@@ -1,0 +1,66 @@
+[workspace]
+members = [
+    "crates/common/",
+    "crates/config/",
+    "crates/worker/",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75" # Remember to update clippy.toml as well
+authors = ["Re:Earth Flow Contributors"]
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/reearth/reearth-flow"
+repository = "https://github.com/reearth/reearth-flow"
+exclude = []
+
+[profile.dev]
+# Disabling debug info speeds up builds a bunch,
+# and we don't rely on it for debugging that much
+debug = 0
+
+# Local "release" mode, more optimized than dev but much faster to compile than release
+[profile.local]
+inherits = "dev"
+opt-level = 1
+strip = true
+panic = "abort"
+codegen-units = 16
+
+# Like release, but with full debug symbols and with stack unwinds. Useful for e.g. `perf`.
+[profile.debug-fast]
+inherits = "release"
+debug = true
+strip = "none"
+panic = "unwind"
+incremental = false
+
+# Optimized release profile
+[profile.release]
+opt-level = 3
+lto = "fat"
+strip = true
+panic = "abort"
+codegen-units = 1
+
+[workspace.dependencies]
+reearth-flow-common = { path = "crates/common" }
+reearth-flow-config = { path = "crates/config" }
+reearth-flow-worker = { path = "crates/worker" }
+
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+color-eyre = "0.6"
+derive_more = "0.99"
+eyre = "0.6"
+itertools = "0.12"
+jsonpath_lib = "0.3"
+pretty_assertions = "1.4"
+rand = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["arbitrary_precision"] }
+thiserror = "1.0"
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = "0.3"
