@@ -1,5 +1,5 @@
 # Re:Earth Flow
-A no/less-code application for data conversion and integration.
+Build and run workflows to calculate and convert various data (WIP)
 
 ## Development
 
