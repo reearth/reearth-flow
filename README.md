@@ -13,12 +13,6 @@ cargo install cargo-make
 cargo install cargo-watch
 ```
 
-### Run with hot-reload
-
-```console
-cargo make dev
-```
-
 ## License
 
 Licensed under either of
