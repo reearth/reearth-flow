@@ -1,0 +1,23 @@
+[package]
+name = "reearth-flow-workflow"
+description = "Re:Earth Flow workflow"
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+eyre.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
