@@ -12,7 +12,7 @@ authors = ["Re:Earth Flow Contributors"]
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/reearth/reearth-flow"
 repository = "https://github.com/reearth/reearth-flow"
-exclude = []
+exclude = ["benches/", "tests/", "test-data/", "testdata/"]
 
 [profile.dev]
 # Disabling debug info speeds up builds a bunch,
