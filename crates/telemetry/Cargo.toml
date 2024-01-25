@@ -1,6 +1,6 @@
 [package]
-name = "reearth-flow-config"
-description = "Re:Earth Flow configuration"
+name = "reearth-flow-telemetry"
+description = "Re:Earth Flow telemetry library"
 
 version.workspace = true
 edition.workspace = true
@@ -11,17 +11,11 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-eyre.workspace = true
 serde_json.workspace = true
-once_cell = "1.19"
-regex = "1.10"
-serde_regex = "1.1"
 serde.workspace = true
-thiserror.workspace = true
-toml = { version = "0.8", features = ["preserve_order"] }
-toml_edit = "0.21"
+time = { version = "0.3.31", features = ["formatting"] }
 tracing.workspace = true
-walkdir = "2.4"
+tracing-subscriber.workspace = true
 
 [dev-dependencies]
-pretty_assertions.workspace = true
+time = { version = "0.3.31", features = ["parsing", "macros"] }

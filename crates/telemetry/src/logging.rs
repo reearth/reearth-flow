@@ -1,3 +1,15 @@
+//! logging
+//! # Examples
+//! ```
+//! use time::macros::format_description;
+//! use tracing::{error, info_span};
+//! use reearth_flow_telemetry::logging::JsonLayer;
+//!
+//! tracing_subscriber::registry().with(JsonLayer::default()).init();
+//! let _span = info_span!("A span", span_field = 42).entered();
+//! error!(logged_message_field = "value", "Logged message");
+//! ```
+
 use serde_json::{Map, Value};
 use time::format_description::well_known::Iso8601;
 use time::formatting::Formattable;
@@ -9,16 +21,6 @@ use tracing_subscriber::layer;
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 
-/// # Examples
-/// ```
-/// use time::macros::format_description;
-/// use tracing::{error, info_span};
-/// use tracing_subscriber::prelude::*;
-/// use tracing_json_span_fields::JsonLayer;
-/// tracing_subscriber::registry().with(JsonLayer::default()).init();
-/// let _span = info_span!("A span", span_field = 42).entered();
-/// error!(logged_message_field = "value", "Logged message");
-/// ```
 #[derive(Debug)]
 struct CustomFieldStorage(Map<String, Value>);
 
@@ -61,6 +63,7 @@ impl Default for JsonLayer {
     }
 }
 
+#[allow(dead_code)]
 impl JsonLayer<JsonStdout, Iso8601> {
     pub fn pretty() -> JsonLayer<JsonStdout, Iso8601> {
         JsonLayer::default().with_output(JsonStdout { pretty: true })
@@ -79,6 +82,7 @@ where
             max_level: self.max_level,
         }
     }
+    #[allow(dead_code)]
     pub fn with_level(self, max_level: LevelFilter) -> JsonLayer<O, F> {
         JsonLayer {
             output: self.output,
@@ -269,7 +273,7 @@ mod tests {
 
         assert_json_timestamp_name(
             serde_json::json!({
-                "target": "reearth_flow_logging::tests",
+                "target": "reearth_flow_telemetry::logging::tests",
                 "log_level": "INFO",
                 "message": "FOOBAR",
                 "field_top": 0,
@@ -279,7 +283,7 @@ mod tests {
         );
         assert_json_timestamp_name(
             serde_json::json!({
-                "target": "reearth_flow_logging::tests",
+                "target": "reearth_flow_telemetry::logging::tests",
                 "log_level": "ERROR",
                 "message": "BAZ",
                 "field_top": 0,
@@ -307,7 +311,7 @@ mod tests {
 
         assert_json_timestamp_name(
             serde_json::json!({
-                "target": "reearth_flow_logging::tests",
+                "target": "reearth_flow_telemetry::logging::tests",
                 "log_level": "INFO",
                 "message": "FOOBAR",
                 "field_overwrite": 1,

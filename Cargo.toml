@@ -44,9 +44,8 @@ panic = "abort"
 codegen-units = 1
 
 [workspace.dependencies]
-reearth-flow-config = { path = "crates/config" }
-reearth-flow-workflow = { path = "crates/workflow" }
-reearth-flow-logging = { path = "crates/logging" }
+reearth-flow-telemetry = {path = "crates/telemetry"}
+reearth-flow-workflow = {path = "crates/workflow"}
 
 anyhow = "1.0.79"
 chrono = { version = "0.4.31", default-features = false, features = ["clock", "std"] }
