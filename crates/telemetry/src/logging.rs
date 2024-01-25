@@ -1,4 +1,4 @@
-//! logging
+//! logging module
 //! # Examples
 //! ```
 //! use time::macros::format_description;
