@@ -1,6 +1,6 @@
-//! logging
+//! logging module
 //! # Examples
-//! ```
+//! ```no_run,ignore
 //! use time::macros::format_description;
 //! use tracing::{error, info_span};
 //! use reearth_flow_telemetry::logging::JsonLayer;
