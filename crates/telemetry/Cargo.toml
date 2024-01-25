@@ -1,6 +1,6 @@
 [package]
-name = "reearth-flow-logging"
-description = "Re:Earth Flow logging library"
+name = "reearth-flow-telemetry"
+description = "Re:Earth Flow telemetry library"
 
 version.workspace = true
 edition.workspace = true

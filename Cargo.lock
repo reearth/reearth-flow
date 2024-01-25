@@ -181,7 +181,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "reearth-flow-logging"
+name = "reearth-flow-telemetry"
 version = "0.1.0"
 dependencies = [
  "serde",
