@@ -10,16 +10,17 @@ use futures::Stream;
 use futures::StreamExt;
 use object_store::GetResult;
 use object_store::GetResultPayload;
-use object_store::ListResult;
 use object_store::ObjectMeta;
 use object_store::Result;
-use opendal::Metadata;
 use opendal::Metakey;
 use opendal::Operator;
 use opendal::Reader;
 
+use reearth_flow_common::uri::Uri;
+
 #[derive(Debug)]
 pub struct Storage {
+    base_uri: Uri,
     inner: Operator,
 }
 
@@ -30,8 +31,11 @@ impl std::fmt::Display for Storage {
 }
 
 impl Storage {
-    pub fn new(op: Operator) -> Self {
-        Self { inner: op }
+    pub fn new(base_uri: Uri, op: Operator) -> Self {
+        Self {
+            base_uri,
+            inner: op,
+        }
     }
 
     pub async fn put(&self, location: &Path, bytes: Bytes) -> Result<()> {
@@ -129,7 +133,7 @@ impl Storage {
         Ok(())
     }
 
-    pub async fn list(&self, prefix: Option<&Path>) -> Result<BoxStream<'_, Result<ObjectMeta>>> {
+    pub async fn list(&self, prefix: Option<&Path>) -> Result<BoxStream<'_, Result<Uri>>> {
         let p = prefix.ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
                 path: format!("{:?}", prefix).into(),
@@ -153,53 +157,13 @@ impl Storage {
 
         let stream = stream.then(|res| async {
             let entry = res.map_err(|err| format_object_store_error(err, ""))?;
-            let meta = entry.metadata();
-
-            Ok(format_object_meta(entry.path(), meta))
+            Ok(Uri::for_test(&format!(
+                "{}/{}",
+                self.base_uri,
+                entry.path()
+            )))
         });
-
         Ok(stream.boxed())
-    }
-
-    pub async fn list_with_delimiter(&self, prefix: Option<&Path>) -> Result<ListResult> {
-        let p = prefix.ok_or(object_store::Error::InvalidPath {
-            source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", prefix).into(),
-            },
-        })?;
-        let path =
-            p.to_str()
-                .map(|v| format!("{}/", v))
-                .ok_or(object_store::Error::InvalidPath {
-                    source: object_store::path::Error::InvalidPath {
-                        path: format!("{:?}", prefix).into(),
-                    },
-                })?;
-        let mut stream = self
-            .inner
-            .lister_with(&path)
-            .metakey(Metakey::Mode | Metakey::ContentLength | Metakey::LastModified)
-            .await
-            .map_err(|err| format_object_store_error(err, &path))?;
-
-        let mut common_prefixes = Vec::new();
-        let mut objects = Vec::new();
-
-        while let Some(res) = stream.next().await {
-            let entry = res.map_err(|err| format_object_store_error(err, ""))?;
-            let meta = entry.metadata();
-
-            if meta.is_dir() {
-                common_prefixes.push(entry.path().into());
-            } else {
-                objects.push(format_object_meta(entry.path(), meta));
-            }
-        }
-
-        Ok(ListResult {
-            common_prefixes,
-            objects,
-        })
     }
 
     pub async fn copy(&self, from: &Path, to: &Path) -> Result<()> {
@@ -242,16 +206,6 @@ fn format_object_store_error(err: opendal::Error, path: &str) -> object_store::E
     }
 }
 
-fn format_object_meta(path: &str, meta: &Metadata) -> ObjectMeta {
-    ObjectMeta {
-        location: path.into(),
-        last_modified: meta.last_modified().unwrap_or_default(),
-        size: meta.content_length() as usize,
-        e_tag: None,
-        version: None,
-    }
-}
-
 struct OpendalReader {
     inner: Reader,
 }
@@ -273,14 +227,14 @@ impl Stream for OpendalReader {
 
 #[cfg(test)]
 mod tests {
-    use opendal::services;
-    use std::path::Path;
-
     use super::*;
+    use opendal::services;
+    use reearth_flow_common::uri::Uri;
+    use std::path::Path;
 
     async fn create_test_object_store() -> Storage {
         let op = Operator::new(services::Memory::default()).unwrap().finish();
-        let object_store = Storage::new(op);
+        let object_store = Storage::new(Uri::for_test("ram://"), op);
 
         let path = Path::new("/data/test.txt");
         let bytes = Bytes::from_static(b"hello, world!");
@@ -295,7 +249,7 @@ mod tests {
     #[tokio::test]
     async fn test_basic() {
         let op = Operator::new(services::Memory::default()).unwrap().finish();
-        let object_store = Storage::new(op);
+        let object_store = Storage::new(Uri::for_test("ram://"), op);
 
         // Retrieve a specific file
         let path = Path::new("/data/test.txt");
@@ -323,24 +277,13 @@ mod tests {
             .collect::<Vec<_>>()
             .await;
         assert_eq!(results.len(), 2);
-        let mut locations = results
+        let locations = results
             .iter()
-            .map(|x| x.as_ref().unwrap().location.as_ref())
+            .map(|x| x.as_ref().unwrap())
             .collect::<Vec<_>>();
-
-        let expected_files = vec!["data/nested", "data/test.txt"];
-        locations.sort();
+        let p1 = Uri::for_test("ram:///data/nested/");
+        let p2 = Uri::for_test("ram:///data/test.txt");
+        let expected_files = vec![&p1, &p2];
         assert_eq!(locations, expected_files);
-    }
-
-    #[tokio::test]
-    async fn test_list_with_delimiter() {
-        let object_store = create_test_object_store().await;
-        let path = Path::new("/data/");
-        let result = object_store.list_with_delimiter(Some(path)).await.unwrap();
-        assert_eq!(result.objects.len(), 1);
-        assert_eq!(result.common_prefixes.len(), 1);
-        assert_eq!(result.objects[0].location.as_ref(), "data/test.txt");
-        assert_eq!(result.common_prefixes[0].as_ref(), "data/nested");
     }
 }

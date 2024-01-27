@@ -7,5 +7,5 @@ use crate::storage::Storage;
 /// Resolves the given URI.
 pub fn resolve(uri: &Uri) -> Result<Storage> {
     let op = resolve_operator(uri)?;
-    Ok(Storage::new(op))
+    Ok(Storage::new(uri.root_uri(), op))
 }

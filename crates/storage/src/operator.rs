@@ -47,7 +47,7 @@ fn init_fs_operator() -> impl Builder {
 /// init_gcs_operator will init a opendal gcs operator.
 fn init_gcs_operator(uri: &Uri) -> impl Builder {
     let mut builder = services::Gcs::default();
-    builder.bucket(uri.root()).root(&uri.path());
+    builder.bucket(uri.root());
     builder
 }
 
