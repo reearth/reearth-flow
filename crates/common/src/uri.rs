@@ -69,8 +69,8 @@ pub struct Uri {
 }
 
 impl Uri {
-    pub fn for_test(uri: &'static str) -> Self {
-        Uri::from_str(uri).unwrap()
+    pub fn for_test(uri: &str) -> Self {
+        Self::from_str(uri).unwrap()
     }
 
     /// Returns the extension of the URI.
@@ -84,16 +84,6 @@ impl Uri {
 
     pub fn protocol(&self) -> Protocol {
         self.protocol
-    }
-
-    /// Returns the file path of the URI.
-    /// Applies only to `file://` and `ram://` URIs.
-    pub fn filepath(&self) -> Option<&Path> {
-        if self.protocol().is_file_storage() {
-            Some(self._path())
-        } else {
-            None
-        }
     }
 
     /// Returns the parent URI.
@@ -115,6 +105,16 @@ impl Uri {
 
     fn _path(&self) -> &Path {
         Path::new(&self.uri[self.protocol.as_str().len() + PROTOCOL_SEPARATOR.len()..])
+    }
+
+    pub fn root_uri(&self) -> Self {
+        let p = &self.uri[self.protocol.as_str().len() + PROTOCOL_SEPARATOR.len()..];
+        Self::for_test(&format!(
+            "{}{}{}",
+            self.protocol.as_str(),
+            PROTOCOL_SEPARATOR,
+            p.split('/').next().unwrap_or_default()
+        ))
     }
 
     pub fn root(&self) -> &str {
@@ -324,7 +324,6 @@ mod tests {
 
         let uri = Uri::from_str("file:///home/foo/bar").unwrap();
         assert_eq!(uri.protocol(), Protocol::File);
-        assert_eq!(uri.filepath(), Some(Path::new("/home/foo/bar")));
         assert_eq!(uri, "file:///home/foo/bar");
         assert_eq!(uri, "file:///home/foo/bar".to_string());
         assert_eq!(
@@ -500,24 +499,6 @@ mod tests {
             Uri::for_test("gs://bucket/foo/").file_name().unwrap(),
             Path::new("foo"),
         );
-    }
-
-    #[test]
-    fn test_uri_filepath() {
-        assert_eq!(
-            Uri::for_test("file:///").filepath().unwrap(),
-            Path::new("/")
-        );
-        assert_eq!(
-            Uri::for_test("file:///foo").filepath().unwrap(),
-            Path::new("/foo")
-        );
-        assert_eq!(Uri::for_test("ram:///").filepath().unwrap(), Path::new("/"));
-        assert_eq!(
-            Uri::for_test("ram:///foo").filepath().unwrap(),
-            Path::new("/foo")
-        );
-        assert!(Uri::for_test("gs://bucket/").filepath().is_none());
     }
 
     #[test]
