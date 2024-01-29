@@ -1,23 +1,81 @@
-use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-use crate::graph::Graph;
-use crate::graph::PropertyValue;
-use crate::id::Id;
+use anyhow::Result;
+use petgraph::graph::Graph;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Parameter {
-    pub name: String,
-    pub value: PropertyValue,
-}
+use reearth_flow_workflow::error::Error;
+use reearth_flow_workflow::graph::{EdgeProperty, Node};
+use reearth_flow_workflow::id::Id;
+use reearth_flow_workflow::workflow::Workflow;
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Workflow {
+type Graphs = HashMap<Id, Graph<Node, EdgeProperty>>;
+
+#[derive(Debug)]
+pub struct ExecuteGraph {
     pub id: Id,
     pub name: String,
-    pub entry_graph_id: Id,
-    pub parameters: Vec<Parameter>,
-    pub graphs: Vec<Graph>,
+    pub entry_graph: Graph<Node, EdgeProperty>,
+    pub sub_graphs: Graphs,
+}
+
+impl ExecuteGraph {
+    pub fn new(workflow: &Workflow) -> Result<Self> {
+        let entry_graph = workflow
+            .graphs
+            .iter()
+            .filter(|graph| graph.id == workflow.entry_graph_id)
+            .map(create_graph)
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .next();
+        let entry_graph = entry_graph.ok_or(Error::WorkflowConfigError(format!(
+            "Failed to init entry graph with {}",
+            workflow.entry_graph_id
+        )))?;
+        let sub_graphs = workflow
+            .graphs
+            .iter()
+            .filter(|graph| graph.id != workflow.entry_graph_id)
+            .map(|graph| {
+                let g = create_graph(graph)?;
+                Ok((graph.id, g))
+            })
+            .collect::<Result<HashMap<_, _>>>()?;
+        Ok(Self {
+            id: workflow.id,
+            name: workflow.name.clone(),
+            entry_graph,
+            sub_graphs,
+        })
+    }
+}
+
+fn create_graph(graph: &reearth_flow_workflow::graph::Graph) -> Result<Graph<Node, EdgeProperty>> {
+    let mut g = Graph::<Node, EdgeProperty>::new();
+    let nodes = graph
+        .nodes
+        .iter()
+        .map(|node| {
+            let index = g.add_node(node.clone());
+            (node.id(), index)
+        })
+        .collect::<HashMap<_, _>>();
+    for edge in graph.edges.iter() {
+        let from = *nodes
+            .get(&edge.from)
+            .ok_or(Error::WorkflowConfigError(format!(
+                "Failed to get from node with edge = {:?}",
+                edge
+            )))?;
+        let to = *nodes
+            .get(&edge.to)
+            .ok_or(Error::WorkflowConfigError(format!(
+                "Failed to get to nodes with edge = {:?}",
+                edge
+            )))?;
+        g.add_edge(from, to, edge.edge_properties.clone());
+    }
+    Ok(g)
 }
 
 mod tests {
@@ -25,7 +83,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse() {
+    fn test_new() {
         let json = r#"
         {
             "id":"7b66c0a4-e1fa-41dd-a0c9-df3f6e01cc22",
@@ -132,7 +190,7 @@ mod tests {
                      {
                         "id":"1fc55186-2156-4283-bee5-fc86a90923ae",
                         "from":"05a17b1c-40d0-433d-8d17-f47ca49e5e9b",
-                        "to":"1fc55186-2156-4283-bee5-fc86a90923ae",
+                        "to":"06cee130-5828-412f-b467-17d58942e74d",
                         "edgeProperties": {
                             "fromOutput":"property02_output"
                         }
@@ -142,37 +200,11 @@ mod tests {
             ]
           }
   "#;
-
         let workflow: Workflow = serde_json::from_str(json).unwrap();
-        assert_eq!(
-            workflow.id.to_string(),
-            "7b66c0a4-e1fa-41dd-a0c9-df3f6e01cc22"
-        );
-        assert_eq!(workflow.name, "hoge-workflow");
-        assert_eq!(
-            workflow.entry_graph_id.to_string(),
-            "c6863b71-953b-4d15-af56-396fc93fc617"
-        );
-        assert_eq!(workflow.parameters.len(), 2);
-        assert_eq!(workflow.parameters[0].name, "param01");
-        assert_eq!(
-            workflow.parameters[0].value,
-            PropertyValue::String("sample".to_string())
-        );
-        assert_eq!(workflow.parameters[1].name, "param02");
-        assert_eq!(
-            workflow.parameters[1].value,
-            PropertyValue::Array(vec![
-                PropertyValue::String("sample1".to_string()),
-                PropertyValue::String("sample2".to_string())
-            ])
-        );
-        assert_eq!(workflow.graphs.len(), 2);
-        assert_eq!(
-            workflow.graphs[0].id.to_string(),
-            "c6863b71-953b-4d15-af56-396fc93fc617"
-        );
-        assert_eq!(workflow.graphs[0].name, "hoge-graph");
-        assert_eq!(workflow.graphs[0].nodes.len(), 2);
+        let graph = ExecuteGraph::new(&workflow).unwrap();
+        assert_eq!(graph.id, workflow.id);
+        assert_eq!(graph.name, workflow.name);
+        assert_eq!(graph.entry_graph.node_count(), 2);
+        assert_eq!(graph.sub_graphs.len(), 1);
     }
 }

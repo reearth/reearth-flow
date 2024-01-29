@@ -1,6 +1,6 @@
 [package]
-description = "Re:Earth Flow storage library"
-name = "reearth-flow-storage"
+description = "Re:Earth Flow workflow runner"
+name = "reearth-flow-workflow-runner"
 
 authors.workspace = true
 edition.workspace = true
@@ -12,19 +12,15 @@ version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-bytes.workspace = true
-chrono.workspace = true
-futures.workspace = true
-itertools.workspace = true
-object_store = "0.9.0"
-opendal.workspace = true
-reearth-flow-common.workspace = true
+eyre.workspace = true
+petgraph.workspace = true
+reearth-flow-workflow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serde_with.workspace = true
-tempfile = "3"
 thiserror.workspace = true
-tokio-stream.workspace = true
-tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true

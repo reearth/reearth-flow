@@ -460,6 +460,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
 
 [[package]]
+name = "fixedbitset"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
+
+[[package]]
 name = "flagset"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1251,6 +1257,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 
 [[package]]
+name = "petgraph"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1d3afd2628e69da2be385eb6f2fd57c8ac7977ceeff6dc166ff1657b0e386a9"
+dependencies = [
+ "fixedbitset",
+ "indexmap 2.1.0",
+]
+
+[[package]]
 name = "pin-project"
 version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1454,10 +1470,13 @@ name = "reearth-flow-common"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "futures",
  "home",
+ "petgraph",
  "serde",
  "serde_json",
  "tempfile",
+ "thiserror",
  "tokio",
  "tokio-stream",
  "tracing",
@@ -1505,6 +1524,23 @@ dependencies = [
  "anyhow",
  "eyre",
  "pretty_assertions",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "reearth-flow-workflow-runner"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "eyre",
+ "petgraph",
+ "pretty_assertions",
+ "reearth-flow-workflow",
  "serde",
  "serde_json",
  "thiserror",
