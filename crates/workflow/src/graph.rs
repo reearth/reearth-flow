@@ -6,38 +6,38 @@ use crate::id::Id;
 
 pub type PropertyValue = Value;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum PropertyKind {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum NodePropertyKind {
     #[serde(rename = "general")]
     General,
     #[serde(rename = "output")]
     Output,
 }
 
-impl ToString for PropertyKind {
+impl ToString for NodePropertyKind {
     fn to_string(&self) -> String {
         match self {
-            PropertyKind::General => "general".to_string(),
-            PropertyKind::Output => "output".to_string(),
+            NodePropertyKind::General => "general".to_string(),
+            NodePropertyKind::Output => "output".to_string(),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Property {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct NodeProperty {
     pub name: String,
-    pub kind: PropertyKind,
+    pub kind: NodePropertyKind,
     pub value: PropertyValue,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NodeEntity {
     pub id: Id,
     pub name: String,
-    pub properties: Vec<Property>,
+    pub properties: Vec<NodeProperty>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum Node {
     #[serde(rename = "action")]
@@ -77,7 +77,7 @@ impl Node {
         }
     }
 
-    pub fn properties(&self) -> &Vec<Property> {
+    pub fn properties(&self) -> &Vec<NodeProperty> {
         match self {
             Node::Action { entity, action: _ } => &entity.properties,
             Node::SubGraph {
@@ -88,13 +88,19 @@ impl Node {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct EdgeProperty {
+    pub from_output: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Edge {
     pub id: Id,
     pub from: Id,
     pub to: Id,
-    pub from_output: String,
+    pub edge_properties: EdgeProperty,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
