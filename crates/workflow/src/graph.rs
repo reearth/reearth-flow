@@ -1,40 +1,16 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
-use crate::action::Action;
 use crate::id::Id;
 
-pub type PropertyValue = Value;
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum NodePropertyKind {
-    #[serde(rename = "general")]
-    General,
-    #[serde(rename = "output")]
-    Output,
-}
-
-impl ToString for NodePropertyKind {
-    fn to_string(&self) -> String {
-        match self {
-            NodePropertyKind::General => "general".to_string(),
-            NodePropertyKind::Output => "output".to_string(),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct NodeProperty {
-    pub name: String,
-    pub kind: NodePropertyKind,
-    pub value: PropertyValue,
-}
+pub type NodeProperty = Map<String, Value>;
+pub type NodeAction = String;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NodeEntity {
     pub id: Id,
     pub name: String,
-    pub properties: Vec<NodeProperty>,
+    pub with: NodeProperty,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -44,8 +20,7 @@ pub enum Node {
     Action {
         #[serde(flatten)]
         entity: NodeEntity,
-        #[serde(flatten)]
-        action: Action,
+        action: NodeAction,
     },
     #[serde(rename = "subGraph")]
     SubGraph {
@@ -77,21 +52,15 @@ impl Node {
         }
     }
 
-    pub fn properties(&self) -> &Vec<NodeProperty> {
+    pub fn with(&self) -> &NodeProperty {
         match self {
-            Node::Action { entity, action: _ } => &entity.properties,
+            Node::Action { entity, action: _ } => &entity.with,
             Node::SubGraph {
                 entity,
                 sub_graph_id: _,
-            } => &entity.properties,
+            } => &entity.with,
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct EdgeProperty {
-    pub from_output: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -100,7 +69,8 @@ pub struct Edge {
     pub id: Id,
     pub from: Id,
     pub to: Id,
-    pub edge_properties: EdgeProperty,
+    pub from_output: String,
+    pub to_input: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

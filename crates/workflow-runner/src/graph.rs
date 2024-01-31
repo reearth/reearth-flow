@@ -4,16 +4,23 @@ use anyhow::Result;
 use petgraph::graph::Graph;
 
 use reearth_flow_workflow::error::Error;
-use reearth_flow_workflow::graph::{EdgeProperty, Node};
+use reearth_flow_workflow::graph::Node;
 use reearth_flow_workflow::id::Id;
-use reearth_flow_workflow::workflow::Workflow;
+use reearth_flow_workflow::workflow::{Property, Workflow};
 
 type Graphs = HashMap<Id, Graph<Node, EdgeProperty>>;
+
+#[derive(Debug, Clone)]
+pub struct EdgeProperty {
+    pub from_output: String,
+    pub to_input: String,
+}
 
 #[derive(Debug)]
 pub struct ExecuteGraph {
     pub id: Id,
     pub name: String,
+    pub with: Property,
     pub entry_graph: Graph<Node, EdgeProperty>,
     pub sub_graphs: Graphs,
 }
@@ -23,7 +30,7 @@ impl ExecuteGraph {
         let entry_graph = workflow
             .graphs
             .iter()
-            .filter(|graph| graph.id == workflow.entry_graph_id)
+            .filter(|&graph| graph.id == workflow.entry_graph_id)
             .map(create_graph)
             .collect::<Result<Vec<_>>>()?
             .into_iter()
@@ -35,7 +42,7 @@ impl ExecuteGraph {
         let sub_graphs = workflow
             .graphs
             .iter()
-            .filter(|graph| graph.id != workflow.entry_graph_id)
+            .filter(|&graph| graph.id != workflow.entry_graph_id)
             .map(|graph| {
                 let g = create_graph(graph)?;
                 Ok((graph.id, g))
@@ -44,6 +51,7 @@ impl ExecuteGraph {
         Ok(Self {
             id: workflow.id,
             name: workflow.name.clone(),
+            with: workflow.with.clone(),
             entry_graph,
             sub_graphs,
         })
@@ -73,12 +81,22 @@ fn create_graph(graph: &reearth_flow_workflow::graph::Graph) -> Result<Graph<Nod
                 "Failed to get to nodes with edge = {:?}",
                 edge
             )))?;
-        g.add_edge(from, to, edge.edge_properties.clone());
+        g.add_edge(
+            from,
+            to,
+            EdgeProperty {
+                from_output: edge.from_output.clone(),
+                to_input: edge.to_input.clone(),
+            },
+        );
     }
     Ok(g)
 }
 
 mod tests {
+    #[allow(unused_imports)]
+    use petgraph::visit::IntoNodeIdentifiers;
+
     #[allow(unused_imports)]
     use super::*;
 
@@ -89,19 +107,10 @@ mod tests {
             "id":"7b66c0a4-e1fa-41dd-a0c9-df3f6e01cc22",
             "name":"hoge-workflow",
             "entryGraphId":"c6863b71-953b-4d15-af56-396fc93fc617",
-            "parameters":[
-               {
-                  "name":"param01",
-                  "value":"sample"
-               },
-               {
-                  "name":"param02",
-                  "value":[
-                     "sample1",
-                     "sample2"
-                  ]
-               }
-            ],
+            "with": {
+                "param01": "sample",
+                "param02": ["sample1", "sample2"]
+            },
             "graphs":[
                {
                   "id":"c6863b71-953b-4d15-af56-396fc93fc617",
@@ -112,27 +121,14 @@ mod tests {
                         "name":"hoge-action-node",
                         "type":"action",
                         "action":"featureReader",
-                        "properties":[
-                           {
-                              "name":"property01",
-                              "kind":"general",
-                              "value":{
-                                 "hoge":"fuga"
-                              }
-                           },
-                           {
-                              "name":"property02_output",
-                              "kind":"output",
-                              "value":null
-                           }
-                        ]
+                        "with": {"format":"csv","dataset":"file:///hoge/fuga.csv"}
                      },
                      {
                         "id":"1efa785f-6550-4a54-9983-537a3d4bf341",
                         "name":"hoge-graph-node",
                         "type":"subGraph",
                         "subGraphId":"c6863b71-953b-4d15-af56-396fc93fc617",
-                        "properties":[]
+                        "with": {}
                      }
                   ],
                   "edges":[
@@ -140,9 +136,8 @@ mod tests {
                         "id":"1379a497-9e4e-40fb-8361-d2eeeb491762",
                         "from":"a1a91180-ab88-4c1a-aab5-48c242a218ca",
                         "to":"1efa785f-6550-4a54-9983-537a3d4bf341",
-                        "edgeProperties": {
-                            "fromOutput":"property02_output"
-                        }
+                        "fromOutput":"default",
+                        "toInput":"default"
                      }
                   ]
                },
@@ -155,35 +150,14 @@ mod tests {
                         "name":"hoge-action-node-01",
                         "type":"action",
                         "action":"featureReader",
-                        "properties":[
-                           {
-                              "name":"property01",
-                              "kind":"general",
-                              "value":{
-                                 "hoge":"fuga"
-                              }
-                           },
-                           {
-                              "name":"property02_output",
-                              "kind":"output",
-                              "value":null
-                           }
-                        ]
+                        "with": {"format":"csv","dataset":"file:///hoge/fuga.csv"}
                      },
                      {
                         "id":"06cee130-5828-412f-b467-17d58942e74d",
                         "name":"hoge-action-node-02",
                         "type":"action",
                         "action":"featureReader",
-                        "properties":[
-                           {
-                              "name":"property01",
-                              "kind":"general",
-                              "value":{
-                                 "hoge":"fuga"
-                              }
-                           }
-                        ]
+                        "with": {"format":"csv","dataset":"file:///hoge/fuga.csv"}
                      }
                   ],
                   "edges":[
@@ -191,10 +165,9 @@ mod tests {
                         "id":"1fc55186-2156-4283-bee5-fc86a90923ae",
                         "from":"05a17b1c-40d0-433d-8d17-f47ca49e5e9b",
                         "to":"06cee130-5828-412f-b467-17d58942e74d",
-                        "edgeProperties": {
-                            "fromOutput":"property02_output"
-                        }
-                     }
+                        "fromOutput":"output_01",
+                        "toInput":"input_01"
+                    }
                   ]
                }
             ]
