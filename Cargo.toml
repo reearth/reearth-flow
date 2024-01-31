@@ -44,10 +44,12 @@ panic = "abort"
 strip = true
 
 [workspace.dependencies]
+reearth-flow-action = {path = "crates/action"}
 reearth-flow-common = {path = "crates/common"}
 reearth-flow-storage = {path = "crates/storage"}
 reearth-flow-telemetry = {path = "crates/telemetry"}
 reearth-flow-workflow = {path = "crates/workflow"}
+reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
 
 anyhow = "1.0.79"
 bytes = "1.5.0"
