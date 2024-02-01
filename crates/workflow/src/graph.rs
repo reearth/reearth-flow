@@ -69,8 +69,8 @@ pub struct Edge {
     pub id: Id,
     pub from: Id,
     pub to: Id,
-    pub from_output: String,
-    pub to_input: String,
+    pub from_port: String,
+    pub to_port: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
