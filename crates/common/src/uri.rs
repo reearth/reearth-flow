@@ -122,7 +122,7 @@ impl Uri {
         p.split('/').next().unwrap_or_default()
     }
 
-    pub fn path(&self) -> String {
+    pub fn path(&self) -> PathBuf {
         let p = &self.uri[self.protocol.as_str().len() + PROTOCOL_SEPARATOR.len()..];
         let sub_path = p
             .split('/')
@@ -130,7 +130,7 @@ impl Uri {
             .collect::<Vec<&str>>()
             .join("/")
             .to_string();
-        format!("/{}", sub_path)
+        PathBuf::from(format!("/{}", sub_path))
     }
 
     pub fn file_name(&self) -> Option<&Path> {
@@ -510,11 +510,17 @@ mod tests {
 
     #[test]
     fn test_sub_path() {
-        assert_eq!(Uri::for_test("file:///foo/hoge").path(), "/foo/hoge");
-        assert_eq!(Uri::for_test("ram:///").path(), "/");
+        assert_eq!(
+            Uri::for_test("file:///foo/hoge").path(),
+            PathBuf::from_str("/foo/hoge").unwrap()
+        );
+        assert_eq!(
+            Uri::for_test("ram:///").path(),
+            PathBuf::from_str("/").unwrap()
+        );
         assert_eq!(
             Uri::for_test("gs://bucket/hogefuga/piyo").path(),
-            "/hogefuga/piyo"
+            PathBuf::from_str("/hogefuga/piyo").unwrap(),
         );
     }
 

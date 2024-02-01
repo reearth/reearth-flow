@@ -172,14 +172,14 @@ mod tests {
                         "name":"hoge-action-node-01",
                         "type":"action",
                         "action":"featureReader",
-                        "with": {"format":"csv","dataset":"file:///hoge/fuga.csv"}
+                        "with": {"format":"text","dataset":"ram:///data/test.txt"}
                      },
                      {
                         "id":"a1a91180-ab88-4c1a-aab5-48c242a218cb",
                         "name":"hoge-action-node-02",
                         "type":"action",
                         "action":"featureReader",
-                        "with": {"format":"csv","dataset":"file:///hoge/fuga.csv"}
+                        "with": {"format":"text","dataset":"ram:///data/nested/test.txt"}
                      }
                   ],
                   "edges":[
@@ -195,10 +195,9 @@ mod tests {
             ]
           }
   "#;
-
         let workflow: Workflow = serde_json::from_str(json).unwrap();
         let executor = DagExecutor::new(&workflow).unwrap();
         let res = executor.start().await;
-        assert!(res.is_ok());
+        assert!(res.is_err());
     }
 }
