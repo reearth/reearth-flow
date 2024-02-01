@@ -41,7 +41,9 @@ pub fn build_operator<B: Builder>(builder: B) -> Result<Operator> {
 
 /// init_fs_operator will init a opendal fs operator.
 fn init_fs_operator() -> impl Builder {
-    services::Fs::default()
+    let mut builder = services::Fs::default();
+    builder.root("/");
+    builder
 }
 
 /// init_gcs_operator will init a opendal gcs operator.

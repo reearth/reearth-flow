@@ -22,6 +22,7 @@ pub enum ActionValue {
     Number(Number),
     String(String),
     Array(Vec<ActionValue>),
+    ArrayMap(Vec<HashMap<String, ActionValue>>),
     Bytes(Bytes),
     Object(HashMap<String, ActionValue>),
 }

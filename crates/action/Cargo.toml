@@ -11,12 +11,14 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+reearth-flow-common.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-workflow.workspace = true
 
 anyhow.workspace = true
 bytes.workspace = true
 chrono.workspace = true
+csv = "1.3.0"
 futures.workspace = true
 serde.workspace = true
 serde_json.workspace = true
