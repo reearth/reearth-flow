@@ -11,17 +11,19 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+reearth-flow-storage.workspace = true
+reearth-flow-workflow.workspace = true
+
 anyhow.workspace = true
 bytes.workspace = true
 chrono.workspace = true
 futures.workspace = true
-reearth-flow-workflow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+strum = "0.26"
+strum_macros = "0.26"
 thiserror.workspace = true
 tokio-stream.workspace = true
 tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
-strum = "0.26"
-strum_macros = "0.26"

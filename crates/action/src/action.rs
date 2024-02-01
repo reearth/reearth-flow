@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 
 use bytes::Bytes;
 use futures::Future;
@@ -7,14 +6,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use strum_macros::EnumString;
 
-use reearth_flow_workflow::error::Error::WorkflowConfigError;
-use reearth_flow_workflow::graph::{NodeAction, NodeProperty};
+use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
+use reearth_flow_workflow::workflow::Parameter;
 
-pub type ActionInputPort = String;
-pub type ActionOutputPort = String;
-pub type ActionOutput = HashMap<ActionOutputPort, ActionValue>;
-pub type ActionInput = HashMap<ActionInputPort, ActionValue>;
+use crate::feature_reader;
+
+pub type Port = String;
+pub const DEFAULT_PORT: &str = "default";
+pub type ActionDataframe = HashMap<Port, Option<ActionValue>>;
 
 #[derive(Debug, Clone)]
 pub enum ActionValue {
@@ -32,38 +32,38 @@ pub enum Action {
     FeatureReader,
 }
 
-impl TryFrom<NodeAction> for Action {
-    type Error = anyhow::Error;
-
-    fn try_from(action: NodeAction) -> Result<Self, Self::Error> {
-        Self::from_str(&action.to_string())
-            .map_err(|e| WorkflowConfigError(format!("unknown action: {}", e)).into())
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ActionContext {
     pub node_id: Id,
     pub node_name: String,
-    pub property: NodeProperty,
+    pub node_property: NodeProperty,
+    pub parameter: Parameter,
 }
 
-pub struct ActionResult {}
+impl ActionContext {
+    pub fn new(
+        node_id: Id,
+        node_name: String,
+        node_property: NodeProperty,
+        parameter: Parameter,
+    ) -> Self {
+        Self {
+            node_id,
+            node_name,
+            node_property,
+            parameter,
+        }
+    }
+}
 
 impl Action {
     pub fn run(
         &self,
         ctx: ActionContext,
-        inputs: ActionInput,
-    ) -> Box<dyn Future<Output = anyhow::Result<ActionOutput>> + Send> {
+        input: Option<ActionDataframe>,
+    ) -> impl Future<Output = anyhow::Result<ActionDataframe>> {
         match self {
-            Action::FeatureReader => Box::new(feature_reader(ctx, inputs)),
+            Action::FeatureReader => feature_reader::run(ctx, input),
         }
     }
-}
-
-async fn feature_reader(ctx: ActionContext, inputs: ActionInput) -> anyhow::Result<ActionOutput> {
-    println!("FeatureReader {:?}", ctx);
-    println!("inputs {:?}", inputs);
-    Ok(ActionOutput::new())
 }

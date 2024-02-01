@@ -4,7 +4,7 @@ use serde_json::{Map, Value};
 use crate::graph::Graph;
 use crate::id::Id;
 
-pub type Property = Map<String, Value>;
+pub type Parameter = Map<String, Value>;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -12,7 +12,7 @@ pub struct Workflow {
     pub id: Id,
     pub name: String,
     pub entry_graph_id: Id,
-    pub with: Property,
+    pub with: Parameter,
     pub graphs: Vec<Graph>,
 }
 
@@ -56,8 +56,8 @@ mod tests {
                         "id":"1379a497-9e4e-40fb-8361-d2eeeb491762",
                         "from":"a1a91180-ab88-4c1a-aab5-48c242a218ca",
                         "to":"1efa785f-6550-4a54-9983-537a3d4bf341",
-                        "fromOutput":"default",
-                        "toInput":"default"
+                        "fromPort":"default",
+                        "toPort":"default"
                      }
                   ]
                },
@@ -85,8 +85,8 @@ mod tests {
                         "id":"1fc55186-2156-4283-bee5-fc86a90923ae",
                         "from":"05a17b1c-40d0-433d-8d17-f47ca49e5e9b",
                         "to":"06cee130-5828-412f-b467-17d58942e74d",
-                        "fromOutput":"output_01",
-                        "toInput":"input_01"
+                        "fromPort":"output_01",
+                        "toPort":"input_01"
                     }
                   ]
                }
