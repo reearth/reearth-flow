@@ -139,6 +139,13 @@ impl Dag {
             .collect()
     }
 
+    pub fn is_last_node_index(&self, idx: NodeIndex) -> bool {
+        self.graph
+            .edges_directed(idx, Direction::Outgoing)
+            .next()
+            .is_none()
+    }
+
     pub fn add_node(&mut self, node: Node) -> NodeIndex {
         let node_type = NodeType { id: node.id() };
         let node_index = self.graph.add_node(node_type.clone());

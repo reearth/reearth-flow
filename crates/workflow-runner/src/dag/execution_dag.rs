@@ -109,6 +109,10 @@ impl DagExecutor {
                 results.push(res??);
             }
             for (ix, data_frame) in results {
+                if dag.is_last_node_index(ix) {
+                    dfs.insert(ix, data_frame);
+                    continue;
+                }
                 let edges = dag.edges_from_node_index(ix);
                 edges.for_each(|edge| {
                     let to_ix = edge.to_node;
@@ -131,6 +135,7 @@ impl DagExecutor {
         dfs.values().for_each(|value| {
             result.extend(value.clone());
         });
+        dbg!(result.clone());
         Ok(result)
     }
 }
@@ -172,14 +177,14 @@ mod tests {
                         "name":"hoge-action-node-01",
                         "type":"action",
                         "action":"featureReader",
-                        "with": {"format":"text","dataset":"ram:///data/test.txt"}
+                        "with": {"format":"csv","dataset":"ram///sample/summary.csv"}
                      },
                      {
                         "id":"a1a91180-ab88-4c1a-aab5-48c242a218cb",
                         "name":"hoge-action-node-02",
                         "type":"action",
-                        "action":"featureReader",
-                        "with": {"format":"text","dataset":"ram:///data/nested/test.txt"}
+                        "action":"attributeKeeper",
+                        "with": {"keepAttributes": ["format", "name"]}
                      }
                   ],
                   "edges":[
