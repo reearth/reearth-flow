@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::pin::Pin;
 
 use bytes::Bytes;
 use futures::Future;
@@ -10,7 +11,7 @@ use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
 use reearth_flow_workflow::workflow::Parameter;
 
-use crate::feature_reader;
+use crate::{attribute_keeper, feature_reader};
 
 pub type Port = String;
 pub const DEFAULT_PORT: &str = "default";
@@ -31,6 +32,8 @@ pub enum ActionValue {
 pub enum Action {
     #[strum(serialize = "featureReader")]
     FeatureReader,
+    #[strum(serialize = "attributeKeeper")]
+    AttributeKeeper,
 }
 
 #[derive(Debug, Clone)]
@@ -62,9 +65,10 @@ impl Action {
         &self,
         ctx: ActionContext,
         input: Option<ActionDataframe>,
-    ) -> impl Future<Output = anyhow::Result<ActionDataframe>> {
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<ActionDataframe>> + Send + 'static>> {
         match self {
-            Action::FeatureReader => feature_reader::run(ctx, input),
+            Action::FeatureReader => Box::pin(feature_reader::run(ctx, input)),
+            Action::AttributeKeeper => Box::pin(attribute_keeper::run(ctx, input)),
         }
     }
 }
