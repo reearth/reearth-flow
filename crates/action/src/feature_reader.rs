@@ -14,13 +14,13 @@ use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PropertySchema {
+struct PropertySchema {
     pub format: Format,
     pub dataset: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum Format {
+enum Format {
     #[serde(rename = "csv")]
     Csv,
     #[serde(rename = "text")]
@@ -45,7 +45,7 @@ impl TryFrom<NodeProperty> for PropertySchema {
     }
 }
 
-pub async fn run(
+pub(crate) async fn run(
     ctx: ActionContext,
     _inputs: Option<ActionDataframe>,
 ) -> anyhow::Result<ActionDataframe> {
@@ -63,7 +63,7 @@ pub async fn run(
     Ok(output)
 }
 
-pub async fn read_text(props: &PropertySchema) -> anyhow::Result<ActionValue> {
+async fn read_text(props: &PropertySchema) -> anyhow::Result<ActionValue> {
     let uri = Uri::from_str(&props.dataset)?;
     let storage = resolve(&uri)?;
     let result = storage.get(uri.path().as_path()).await?;
@@ -72,7 +72,7 @@ pub async fn read_text(props: &PropertySchema) -> anyhow::Result<ActionValue> {
     Ok(ActionValue::String(text))
 }
 
-pub async fn read_csv(props: &PropertySchema) -> anyhow::Result<Vec<HashMap<String, ActionValue>>> {
+async fn read_csv(props: &PropertySchema) -> anyhow::Result<Vec<HashMap<String, ActionValue>>> {
     let uri = Uri::from_str(&props.dataset)?;
     let storage = resolve(&uri)?;
     let result = storage.get(uri.path().as_path()).await?;

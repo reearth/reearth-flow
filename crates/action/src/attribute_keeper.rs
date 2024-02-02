@@ -11,7 +11,7 @@ use crate::action::{ActionContext, ActionDataframe, ActionValue};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PropertySchema {
+struct PropertySchema {
     pub keep_attributes: Vec<String>,
 }
 
@@ -29,7 +29,7 @@ impl TryFrom<NodeProperty> for PropertySchema {
     }
 }
 
-pub async fn run(
+pub(crate) async fn run(
     ctx: ActionContext,
     inputs: Option<ActionDataframe>,
 ) -> anyhow::Result<ActionDataframe> {
@@ -54,12 +54,12 @@ pub async fn run(
                             .collect();
                         ActionValue::ArrayMap(processed_items)
                     }
-                    ActionValue::Object(data) => {
+                    ActionValue::Map(data) => {
                         let processed_data = data
                             .into_iter()
                             .filter(|(key, _)| props.keep_attributes.contains(key))
                             .collect();
-                        ActionValue::Object(processed_data)
+                        ActionValue::Map(processed_data)
                     }
                     _ => continue,
                 };

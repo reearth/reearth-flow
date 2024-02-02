@@ -11,7 +11,7 @@ use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
 use reearth_flow_workflow::workflow::Parameter;
 
-use crate::{attribute_keeper, feature_reader};
+use crate::{attribute_keeper, feature_reader, feature_writer};
 
 pub type Port = String;
 pub const DEFAULT_PORT: &str = "default";
@@ -25,7 +25,13 @@ pub enum ActionValue {
     Array(Vec<ActionValue>),
     ArrayMap(Vec<HashMap<String, ActionValue>>),
     Bytes(Bytes),
-    Object(HashMap<String, ActionValue>),
+    Map(HashMap<String, ActionValue>),
+}
+
+impl Default for ActionValue {
+    fn default() -> Self {
+        Self::String("".to_owned())
+    }
 }
 
 #[derive(Serialize, Deserialize, EnumString, Debug, Clone)]
@@ -34,6 +40,8 @@ pub enum Action {
     FeatureReader,
     #[strum(serialize = "attributeKeeper")]
     AttributeKeeper,
+    #[strum(serialize = "featureWriter")]
+    FeatureWriter,
 }
 
 #[derive(Debug, Clone)]
@@ -69,6 +77,7 @@ impl Action {
         match self {
             Action::FeatureReader => Box::pin(feature_reader::run(ctx, input)),
             Action::AttributeKeeper => Box::pin(attribute_keeper::run(ctx, input)),
+            Action::FeatureWriter => Box::pin(feature_writer::run(ctx, input)),
         }
     }
 }

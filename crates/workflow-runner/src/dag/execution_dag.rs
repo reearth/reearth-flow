@@ -135,7 +135,6 @@ impl DagExecutor {
         dfs.values().for_each(|value| {
             result.extend(value.clone());
         });
-        dbg!(result.clone());
         Ok(result)
     }
 }
@@ -177,7 +176,7 @@ mod tests {
                         "name":"hoge-action-node-01",
                         "type":"action",
                         "action":"featureReader",
-                        "with": {"format":"csv","dataset":"ram///sample/summary.csv"}
+                        "with": {"format":"csv","dataset":"ram:///root/summary.csv"}
                      },
                      {
                         "id":"a1a91180-ab88-4c1a-aab5-48c242a218cb",
@@ -185,6 +184,13 @@ mod tests {
                         "type":"action",
                         "action":"attributeKeeper",
                         "with": {"keepAttributes": ["format", "name"]}
+                     },
+                     {
+                        "id":"a1a91180-ab88-4c1a-aab5-48c242a218cc",
+                        "name":"hoge-action-node-03",
+                        "type":"action",
+                        "action":"featureWriter",
+                        "with": {"format":"csv","output":"ram:///root/output.csv"}
                      }
                   ],
                   "edges":[
@@ -192,6 +198,13 @@ mod tests {
                         "id":"1379a497-9e4e-40fb-8361-d2eeeb491762",
                         "from":"a1a91180-ab88-4c1a-aab5-48c242a218ca",
                         "to":"a1a91180-ab88-4c1a-aab5-48c242a218cb",
+                        "fromPort":"default",
+                        "toPort":"default"
+                     },
+                     {
+                        "id":"1379a497-9e4e-40fb-8361-d2eeeb491763",
+                        "from":"a1a91180-ab88-4c1a-aab5-48c242a218cb",
+                        "to":"a1a91180-ab88-4c1a-aab5-48c242a218cc",
                         "fromPort":"default",
                         "toPort":"default"
                      }
