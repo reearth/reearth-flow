@@ -11,15 +11,15 @@ use opendal::Operator;
 use reearth_flow_common::uri::{Protocol, Uri};
 
 /// init_operator will init an opendal operator based on storage config.
-pub fn resolve_operator(uri: &Uri) -> Result<Operator> {
+pub(crate) fn resolve_operator(uri: &Uri) -> Result<Operator> {
     match uri.protocol() {
-        Protocol::File => build_operator(init_fs_operator()),
+        Protocol::File => build_operator(init_fs_operator(uri)),
         Protocol::Ram => build_operator(init_memory_operator()),
         Protocol::Google => build_operator(init_gcs_operator(uri)),
     }
 }
 
-pub fn build_operator<B: Builder>(builder: B) -> Result<Operator> {
+pub(crate) fn build_operator<B: Builder>(builder: B) -> Result<Operator> {
     let ob = Operator::new(builder)?;
     let op = ob
         .layer(
@@ -40,9 +40,13 @@ pub fn build_operator<B: Builder>(builder: B) -> Result<Operator> {
 }
 
 /// init_fs_operator will init a opendal fs operator.
-fn init_fs_operator() -> impl Builder {
+fn init_fs_operator(uri: &Uri) -> impl Builder {
     let mut builder = services::Fs::default();
-    builder.root("/");
+    let root = match uri.root() {
+        "" => "/",
+        _ => uri.root(),
+    };
+    builder.root(root);
     builder
 }
 
