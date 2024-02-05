@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::str::FromStr;
+use std::time::Instant;
 
 use anyhow::Result;
 use async_recursion::async_recursion;
 use petgraph::graph::NodeIndex;
 use reearth_flow_action::action::ActionContext;
 use tokio::task::JoinSet;
+use tracing::info;
 
 use reearth_flow_action::action::{Action, ActionDataframe};
 use reearth_flow_workflow::graph::Node;
@@ -59,7 +61,14 @@ impl DagExecutor {
     }
 
     pub async fn start(&self) -> Result<()> {
+        info!("Start workflow = {:?}", self.name);
+        let start = Instant::now();
         let _ = self.run_dag(&self.entry_dag).await?;
+        let duration = start.elapsed();
+        info!(
+            "Finish workflow = {:?}, duration = {:?}",
+            self.name, duration
+        );
         Ok(())
     }
 
@@ -145,8 +154,16 @@ async fn run_async(
     action: Action,
     input: Option<ActionDataframe>,
 ) -> Result<(NodeIndex, ActionDataframe)> {
+    let node_name = ctx.node_name.clone();
+    info!("Start action = {:?}, name = {:?}", action, node_name);
     let func = action.run(ctx, input);
     let res = func.await?;
+    info!(
+        "Finish action = {:?}, name = {:?}, ports = {:?}",
+        action,
+        node_name,
+        res.keys()
+    );
     Ok((ix, res))
 }
 

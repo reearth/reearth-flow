@@ -5,6 +5,7 @@ use std::{collections::HashMap, str::FromStr};
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::info;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve;
@@ -50,6 +51,7 @@ pub(crate) async fn run(
     _inputs: Option<ActionDataframe>,
 ) -> anyhow::Result<ActionDataframe> {
     let props = PropertySchema::try_from(ctx.node_property)?;
+    info!(?props, "read");
     let data = match props.format {
         Format::Csv => {
             let result = read_csv(&props).await?;
