@@ -15,17 +15,7 @@ rust-version = "1.75" # Remember to update clippy.toml as well
 version = "0.1.0"
 
 [profile.dev]
-# Disabling debug info speeds up builds a bunch,
-# and we don't rely on it for debugging that much
-debug = 0
-
-# Local "release" mode, more optimized than dev but much faster to compile than release
-[profile.local]
-codegen-units = 16
-inherits = "dev"
-opt-level = 1
-panic = "abort"
-strip = true
+opt-level = 0
 
 # Like release, but with full debug symbols and with stack unwinds. Useful for e.g. `perf`.
 [profile.debug-fast]
