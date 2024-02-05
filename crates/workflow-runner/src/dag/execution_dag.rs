@@ -213,7 +213,7 @@ mod tests {
             ]
           }
   "#;
-        let workflow: Workflow = serde_json::from_str(json).unwrap();
+        let workflow = Workflow::try_from_str(json).unwrap();
         let executor = DagExecutor::new(&workflow).unwrap();
         let res = executor.start().await;
         assert!(res.is_err());
