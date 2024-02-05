@@ -1,0 +1,31 @@
+[package]
+description = "Re:Earth Flow cli library"
+name = "reearth-flow-cli"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "reearth-flow"
+path = "src/main.rs"
+
+[dependencies]
+reearth-flow-common.workspace = true
+reearth-flow-storage.workspace = true
+reearth-flow-workflow-runner.workspace = true
+reearth-flow-workflow.workspace = true
+
+anyhow.workspace = true
+bytes.workspace = true
+clap = {version = "4.4.18", features = ["env", "string"]}
+colored = "2.1.0"
+time = {version = "0.3.34", features = ["formatting"]}
+tokio-stream.workspace = true
+tokio.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true

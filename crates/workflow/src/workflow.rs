@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -14,6 +15,12 @@ pub struct Workflow {
     pub entry_graph_id: Id,
     pub with: Parameter,
     pub graphs: Vec<Graph>,
+}
+
+impl Workflow {
+    pub fn try_from_str(s: &str) -> Result<Self> {
+        serde_json::from_str(s).map_err(|e| anyhow::anyhow!("Failed to parse workflow: {}", e))
+    }
 }
 
 mod tests {
@@ -94,7 +101,7 @@ mod tests {
           }
   "#;
 
-        let workflow: Workflow = serde_json::from_str(json).unwrap();
+        let workflow = Workflow::try_from_str(json).unwrap();
         assert_eq!(
             workflow.id.to_string(),
             "7b66c0a4-e1fa-41dd-a0c9-df3f6e01cc22"

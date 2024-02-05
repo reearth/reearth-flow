@@ -49,6 +49,7 @@ reearth-flow-common = {path = "crates/common"}
 reearth-flow-storage = {path = "crates/storage"}
 reearth-flow-telemetry = {path = "crates/telemetry"}
 reearth-flow-workflow = {path = "crates/workflow"}
+reearth-flow-workflow-cli = {path = "crates/cli"}
 reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
 
 anyhow = "1.0.79"
@@ -79,5 +80,9 @@ tokio-stream = {version = "0.1.14", features = ["sync"]}
 tokio-util = {version = "0.7.10", features = ["full"]}
 toml = "0.8.8"
 tracing = "0.1.40"
-tracing-subscriber = "0.3.18"
+tracing-subscriber = {version = "0.3.18", features = [
+  "env-filter",
+  "std",
+  "time",
+]}
 uuid = {version = "1.7.0", features = ["v4", "fast-rng", "macro-diagnostics", "serde"]}
