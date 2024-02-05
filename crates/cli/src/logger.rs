@@ -1,5 +1,3 @@
-use std::env;
-
 use anyhow::Context;
 use tracing::Level;
 use tracing_subscriber::fmt::time::UtcTime;
@@ -7,10 +5,9 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 
 pub fn setup_logging_and_tracing(level: Level, ansi_colors: bool) -> anyhow::Result<()> {
-    let env_filter = env::var("RUST_LOG")
-        .map(|_| EnvFilter::from_default_env())
-        .or_else(|_| EnvFilter::try_new(format!("reearth-flow={level},tantivy=WARN")))
-        .context("Failed to set up tracing env filter.")?;
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(level.into())
+        .from_env_lossy();
     let registry = tracing_subscriber::registry().with(env_filter);
     let event_format = tracing_subscriber::fmt::format()
         .with_target(true)

@@ -4,6 +4,7 @@ use anyhow::Result;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
+use tracing::info;
 
 use reearth_flow_action::action::Port;
 use reearth_flow_workflow::graph::Node;
@@ -118,6 +119,7 @@ impl Dag {
                 &Endpoint::new(to_node_index, edge.to_port.to_owned()),
             )?;
         }
+        info!("Created dag = {:?}", dag.id);
         Ok(dag)
     }
 

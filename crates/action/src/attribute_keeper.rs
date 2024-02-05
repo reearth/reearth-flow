@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::info;
 
 use reearth_flow_workflow::graph::NodeProperty;
 
@@ -34,6 +35,7 @@ pub(crate) async fn run(
     inputs: Option<ActionDataframe>,
 ) -> anyhow::Result<ActionDataframe> {
     let props = PropertySchema::try_from(ctx.node_property)?;
+    info!(?props, "read");
     let output = match inputs {
         Some(inputs) => {
             let mut output = HashMap::new();
