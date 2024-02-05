@@ -13,9 +13,9 @@ version.workspace = true
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
-time = {version = "0.3.31", features = ["formatting"]}
+time = {version = "0.3.34", features = ["formatting"]}
 tracing-subscriber.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-time = {version = "0.3.31", features = ["parsing", "macros"]}
+time = {version = "0.3.34", features = ["parsing", "macros"]}
