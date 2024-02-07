@@ -17,6 +17,7 @@ pub enum Protocol {
     File = 1,
     Ram = 2,
     Google = 3,
+    Http = 4,
 }
 
 impl Protocol {
@@ -25,11 +26,12 @@ impl Protocol {
             Protocol::File => "file",
             Protocol::Ram => "ram",
             Protocol::Google => "gs",
+            Protocol::Http => "https",
         }
     }
 
     pub fn is_file(&self) -> bool {
-        matches!(&self, Protocol::File)
+        matches!(&self, Protocol::File | Protocol::Ram | Protocol::Http)
     }
 
     pub fn is_file_storage(&self) -> bool {
@@ -55,6 +57,7 @@ impl FromStr for Protocol {
             "file" => Ok(Protocol::File),
             "ram" => Ok(Protocol::Ram),
             "gs" => Ok(Protocol::Google),
+            "https" => Ok(Protocol::Http),
             _ => bail!("unknown URI protocol `{protocol}`"),
         }
     }
