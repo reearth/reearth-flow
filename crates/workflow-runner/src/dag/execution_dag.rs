@@ -192,7 +192,7 @@ mod tests {
                         "id":"a1a91180-ab88-4c1a-aab5-48c242a218ca",
                         "name":"hoge-action-node-01",
                         "type":"action",
-                        "action":"featureReader",
+                        "action":"fileReader",
                         "with": {"format":"csv","dataset":"ram:///root/summary.csv"}
                      },
                      {
@@ -206,7 +206,7 @@ mod tests {
                         "id":"a1a91180-ab88-4c1a-aab5-48c242a218cc",
                         "name":"hoge-action-node-03",
                         "type":"action",
-                        "action":"featureWriter",
+                        "action":"fileWriter",
                         "with": {"format":"csv","output":"ram:///root/output.csv"}
                      }
                   ],

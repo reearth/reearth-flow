@@ -11,7 +11,7 @@ use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
 use reearth_flow_workflow::workflow::Parameter;
 
-use crate::{attribute_keeper, feature_reader, feature_writer};
+use crate::{attribute_keeper, file_reader, file_writer};
 
 pub type Port = String;
 pub const DEFAULT_PORT: &str = "default";
@@ -36,12 +36,12 @@ impl Default for ActionValue {
 
 #[derive(Serialize, Deserialize, EnumString, Debug, Clone)]
 pub enum Action {
-    #[strum(serialize = "featureReader")]
-    FeatureReader,
+    #[strum(serialize = "fileReader")]
+    FileReader,
     #[strum(serialize = "attributeKeeper")]
     AttributeKeeper,
-    #[strum(serialize = "featureWriter")]
-    FeatureWriter,
+    #[strum(serialize = "fileWriter")]
+    FileWriter,
 }
 
 #[derive(Debug, Clone)]
@@ -75,9 +75,9 @@ impl Action {
         input: Option<ActionDataframe>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<ActionDataframe>> + Send + 'static>> {
         match self {
-            Action::FeatureReader => Box::pin(feature_reader::run(ctx, input)),
+            Action::FileReader => Box::pin(file_reader::run(ctx, input)),
             Action::AttributeKeeper => Box::pin(attribute_keeper::run(ctx, input)),
-            Action::FeatureWriter => Box::pin(feature_writer::run(ctx, input)),
+            Action::FileWriter => Box::pin(file_writer::run(ctx, input)),
         }
     }
 }
