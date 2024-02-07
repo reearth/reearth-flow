@@ -13,6 +13,7 @@ use crate::action::ActionValue;
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CsvPropertySchema {
     pub(crate) header: bool,
+    pub(crate) offset: Option<usize>,
 }
 
 pub(crate) async fn read_csv(
@@ -25,14 +26,23 @@ pub(crate) async fn read_csv(
     let byte = result.bytes().await?;
     if props.header {
         let cursor = Cursor::new(byte);
-        let mut rdr = csv::Reader::from_reader(cursor);
+        let mut rdr = csv::ReaderBuilder::new()
+            .flexible(true)
+            .has_headers(false)
+            .from_reader(cursor);
+        let offset = props.offset.unwrap_or(0);
         let mut result: Vec<ActionValue> = Vec::new();
+        let header = rdr
+            .deserialize()
+            .nth(offset)
+            .unwrap_or(Ok(Vec::<String>::new()))?;
         for rd in rdr.deserialize() {
-            let record: HashMap<String, String> = rd?;
-            let mut row: HashMap<String, ActionValue> = HashMap::new();
-            record.iter().for_each(|(k, v)| {
-                row.insert(k.to_string(), ActionValue::String(v.to_string()));
-            });
+            let record: Vec<String> = rd?;
+            let row = record
+                .iter()
+                .enumerate()
+                .map(|(i, value)| (header[i].clone(), ActionValue::String(value.clone())))
+                .collect::<HashMap<String, ActionValue>>();
             result.push(ActionValue::Map(row));
         }
         Ok(result)
