@@ -13,7 +13,7 @@ use crate::action::{ActionContext, ActionDataframe, ActionValue};
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
-    pub keep_attributes: Vec<String>,
+    keep_attributes: Vec<String>,
 }
 
 impl TryFrom<NodeProperty> for PropertySchema {
@@ -45,16 +45,21 @@ pub(crate) async fn run(
                     None => continue,
                 };
                 let processed_data = match data {
-                    ActionValue::ArrayMap(data) => {
+                    ActionValue::Array(data) => {
                         let processed_items = data
                             .into_iter()
-                            .map(|item| {
-                                item.into_iter()
-                                    .filter(|(key, _)| props.keep_attributes.contains(key))
-                                    .collect::<HashMap<_, _>>()
+                            .map(|item| match item {
+                                ActionValue::Map(item) => {
+                                    let processed_item = item
+                                        .into_iter()
+                                        .filter(|(key, _)| props.keep_attributes.contains(key))
+                                        .collect::<HashMap<_, _>>();
+                                    ActionValue::Map(processed_item)
+                                }
+                                _ => ActionValue::Map(HashMap::new()),
                             })
-                            .collect();
-                        ActionValue::ArrayMap(processed_items)
+                            .collect::<Vec<_>>();
+                        ActionValue::Array(processed_items)
                     }
                     ActionValue::Map(data) => {
                         let processed_data = data

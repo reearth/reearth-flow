@@ -18,8 +18,8 @@ use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
-    pub format: Format,
-    pub output: String,
+    format: Format,
+    output: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -88,13 +88,35 @@ async fn write_csv(
 ) -> anyhow::Result<ActionValue> {
     let value = get_input_value(inputs)?;
     match value {
-        ActionValue::ArrayMap(s) => {
+        ActionValue::Array(s) => {
             let mut wtr = Writer::from_writer(vec![]);
             let fields = get_fields(&s);
-            wtr.write_record(fields.clone())?;
+            if let Some(ref fields) = fields {
+                if !fields.is_empty() {
+                    wtr.write_record(fields.clone())?;
+                }
+            }
             for row in s {
-                let values = get_row_values(&row, &fields)?;
-                wtr.write_record(values)?;
+                match fields {
+                    Some(ref fields) if !fields.is_empty() => {
+                        let values = get_row_values(&row, &fields.clone())?;
+                        wtr.write_record(values)?;
+                    }
+                    _ => match row {
+                        ActionValue::String(s) => wtr.write_record(vec![s])?,
+                        ActionValue::Array(s) => {
+                            let values = s
+                                .into_iter()
+                                .map(|v| match v {
+                                    ActionValue::String(s) => s,
+                                    _ => "".to_string(),
+                                })
+                                .collect::<Vec<_>>();
+                            wtr.write_record(values)?
+                        }
+                        _ => return Err(anyhow!("Unsupported input")),
+                    },
+                }
             }
             wtr.flush()?;
             let data = String::from_utf8(wtr.into_inner()?)?;
@@ -116,25 +138,104 @@ fn get_input_value(dataframe: Option<ActionDataframe>) -> anyhow::Result<ActionV
         .ok_or(Error::internal_runtime_error("No input").into())
 }
 
-fn get_fields(rows: &[HashMap<String, ActionValue>]) -> Vec<String> {
-    rows.first()
-        .map(|row| row.keys().cloned().collect())
-        .unwrap_or_default()
+fn get_fields(rows: &[ActionValue]) -> Option<Vec<String>> {
+    rows.first().map(|row| match row {
+        ActionValue::Map(row) => row.keys().cloned().collect::<Vec<_>>(),
+        _ => vec![],
+    })
 }
 
-fn get_row_values(
-    row: &HashMap<String, ActionValue>,
-    fields: &[String],
-) -> anyhow::Result<Vec<String>> {
+fn get_row_values(row: &ActionValue, fields: &[String]) -> anyhow::Result<Vec<String>> {
     fields
         .iter()
-        .map(|field| {
-            row.get(field)
-                .map(|value| match value {
-                    ActionValue::String(s) => Ok(s.to_owned()),
-                    _ => Err(anyhow!("Unsupported input")),
-                })
-                .unwrap_or_else(|| Err(anyhow!("Field not found")))
+        .map(|field| match row {
+            ActionValue::Map(row) => row
+                .get(field)
+                .map(|v| v.to_string())
+                .ok_or_else(|| anyhow!("Field not found: {}", field)),
+            _ => Err(anyhow!("Unsupported input")),
         })
         .collect()
+}
+
+mod tests {
+    #[allow(unused_imports)]
+    use super::*;
+
+    #[tokio::test]
+    async fn test_write_text() {
+        let inputs = Some(
+            vec![(
+                DEFAULT_PORT.to_string(),
+                Some(ActionValue::String("value".to_owned())),
+            )]
+            .into_iter()
+            .collect::<ActionDataframe>(),
+        );
+        let props = PropertySchema {
+            format: Format::Text,
+            output: "ram:///root/output.txt".to_owned(),
+        };
+        let result = write_text(inputs, &props).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_write_csv() {
+        let inputs = Some(
+            vec![(
+                DEFAULT_PORT.to_string(),
+                Some(ActionValue::Array(vec![
+                    ActionValue::Map(
+                        vec![(
+                            "field1".to_owned(),
+                            ActionValue::String("value1".to_owned()),
+                        )]
+                        .into_iter()
+                        .collect(),
+                    ),
+                    ActionValue::Map(
+                        vec![(
+                            "field1".to_owned(),
+                            ActionValue::String("value2".to_owned()),
+                        )]
+                        .into_iter()
+                        .collect(),
+                    ),
+                ])),
+            )]
+            .into_iter()
+            .collect::<ActionDataframe>(),
+        );
+        let props = PropertySchema {
+            format: Format::Csv,
+            output: "ram:///root/output.csv".to_owned(),
+        };
+        let result = write_csv(inputs, &props).await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_get_fields() {
+        let rows = vec![
+            ActionValue::Map(
+                vec![(
+                    "field1".to_owned(),
+                    ActionValue::String("value1".to_owned()),
+                )]
+                .into_iter()
+                .collect(),
+            ),
+            ActionValue::Map(
+                vec![(
+                    "field1".to_owned(),
+                    ActionValue::String("value2".to_owned()),
+                )]
+                .into_iter()
+                .collect(),
+            ),
+        ];
+        let result = get_fields(&rows);
+        assert_eq!(result, Some(vec!["field1".to_owned()]));
+    }
 }
