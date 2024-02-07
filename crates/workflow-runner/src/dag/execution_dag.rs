@@ -193,7 +193,7 @@ mod tests {
                         "name":"hoge-action-node-01",
                         "type":"action",
                         "action":"fileReader",
-                        "with": {"format":"csv","dataset":"ram:///root/summary.csv"}
+                        "with": {"format":"csv","dataset":"ram:///root/summary.csv", "header": true}
                      },
                      {
                         "id":"a1a91180-ab88-4c1a-aab5-48c242a218cb",
