@@ -6,7 +6,7 @@ use bytes::Bytes;
 use csv::Writer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::info;
+use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve;
@@ -53,7 +53,7 @@ pub(crate) async fn run(
     inputs: Option<ActionDataframe>,
 ) -> anyhow::Result<ActionDataframe> {
     let props = PropertySchema::try_from(ctx.node_property)?;
-    info!(?props, "read");
+    debug!(?props, "read");
     match props.format {
         Format::Csv => write_csv(inputs, &props).await?,
         Format::Text => write_text(inputs, &props).await?,

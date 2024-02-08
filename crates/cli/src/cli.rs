@@ -1,3 +1,5 @@
+use std::env;
+
 use anyhow::{bail, Context};
 use clap::{ArgMatches, Command};
 use tracing::Level;
@@ -19,9 +21,12 @@ pub enum CliCommand {
 
 impl CliCommand {
     pub fn default_log_level(&self) -> Level {
-        match self {
+        let env_level = env::var("RUST_LOG")
+            .ok()
+            .and_then(|s| s.parse::<Level>().ok());
+        env_level.unwrap_or(match self {
             CliCommand::Run(_) => Level::INFO,
-        }
+        })
     }
 
     pub fn parse_cli_args(mut matches: ArgMatches) -> anyhow::Result<Self> {

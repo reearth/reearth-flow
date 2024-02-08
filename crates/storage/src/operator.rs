@@ -9,7 +9,7 @@ use opendal::services;
 use opendal::Builder;
 use opendal::Operator;
 use reearth_flow_common::uri::{Protocol, Uri};
-use tracing::info;
+use tracing::debug;
 
 /// init_operator will init an opendal operator based on storage config.
 pub(crate) fn resolve_operator(uri: &Uri) -> Result<Operator> {
@@ -66,7 +66,7 @@ fn init_memory_operator() -> impl Builder {
 
 fn init_http_operator(uri: &Uri) -> impl Builder {
     let mut builder = services::Http::default();
-    info!("init_http_operator: {}", uri.root());
+    debug!("init_http_operator: {}", uri.root());
     builder.endpoint(&format!("https://{}", uri.root()));
     builder.root("/");
     builder
