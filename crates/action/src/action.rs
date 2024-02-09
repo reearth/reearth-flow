@@ -13,13 +13,14 @@ use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
 
-use crate::{attribute_filter, attribute_keeper, file_reader, file_writer};
+use crate::{attribute_filter, attribute_keeper, attribute_merger, file_reader, file_writer};
 
 pub type Port = String;
 pub const DEFAULT_PORT: &str = "default";
 pub type ActionDataframe = HashMap<Port, Option<ActionValue>>;
+pub type ActionValueIndex = HashMap<String, HashMap<String, Vec<ActionValue>>>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActionValue {
     Bool(bool),
     Number(Number),
@@ -98,6 +99,8 @@ pub enum Action {
     FileWriter,
     #[strum(serialize = "attributeFilter")]
     AttributeFilter,
+    #[strum(serialize = "attributeMerger")]
+    AttributeMerger,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -135,6 +138,7 @@ impl Action {
             Action::AttributeKeeper => Box::pin(attribute_keeper::run(ctx, input)),
             Action::FileWriter => Box::pin(file_writer::run(ctx, input)),
             Action::AttributeFilter => Box::pin(attribute_filter::run(ctx, input)),
+            Action::AttributeMerger => Box::pin(attribute_merger::run(ctx, input)),
         }
     }
 }
