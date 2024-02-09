@@ -4,7 +4,7 @@ use std::sync::RwLock;
 pub mod engine;
 pub mod error;
 mod module;
-mod scope;
+pub mod scope;
 mod utils;
 
 pub(crate) type ShareLock<T> = Arc<RwLock<T>>;

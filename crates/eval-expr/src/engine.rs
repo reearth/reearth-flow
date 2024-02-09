@@ -34,9 +34,8 @@ impl Engine {
         self.scope.write().unwrap().set_or_push("env", self.clone());
     }
 
-    pub fn new_scope(&self) -> Arc<Scope> {
-        let scope = Scope::new(self);
-        Arc::new(scope)
+    pub fn new_scope(&self) -> Scope {
+        Scope::new(self)
     }
 
     pub fn vars(&self) -> Vars {

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::Result;
@@ -11,9 +12,10 @@ use tokio::task::JoinSet;
 use tracing::info;
 
 use reearth_flow_action::action::{Action, ActionDataframe};
+use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_workflow::graph::Node;
 use reearth_flow_workflow::id::Id;
-use reearth_flow_workflow::workflow::{Parameter, Workflow};
+use reearth_flow_workflow::workflow::Workflow;
 
 use super::dag_impl::Dag;
 use super::error::Error;
@@ -21,11 +23,10 @@ use super::error::Error;
 type Graphs = HashMap<Id, Dag>;
 
 pub struct DagExecutor {
-    pub workflow_id: Id,
-    pub name: String,
-    pub with: Parameter,
-    pub entry_dag: Dag,
-    pub sub_dags: Graphs,
+    name: String,
+    entry_dag: Dag,
+    sub_dags: Graphs,
+    expr_engine: Arc<Engine>,
 }
 
 impl DagExecutor {
@@ -51,12 +52,15 @@ impl DagExecutor {
                 Ok((graph.id, g))
             })
             .collect::<Result<HashMap<_, _>>>()?;
+        let engine = Engine::new();
+        workflow.with.iter().for_each(|(k, v)| {
+            engine.set_scope_var(k, v);
+        });
         Ok(Self {
-            workflow_id: workflow.id,
             name: workflow.name.clone(),
-            with: workflow.with.clone(),
             entry_dag,
             sub_dags,
+            expr_engine: Arc::new(engine),
         })
     }
 
@@ -94,7 +98,7 @@ impl DagExecutor {
                     node.id(),
                     node.name().to_owned(),
                     node.with().clone(),
-                    self.with.clone(),
+                    self.expr_engine.clone(),
                 );
                 match node {
                     Node::Action { action, .. } => {

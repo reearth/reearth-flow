@@ -1,9 +1,15 @@
+use base64::{engine::general_purpose, Engine as _};
+
 pub fn remove_bom(s: &str) -> &str {
     if s.as_bytes().starts_with(&[0xEF, 0xBB, 0xBF]) {
         &s[3..]
     } else {
         s
     }
+}
+
+pub fn base64_encode<T: AsRef<[u8]>>(s: T) -> String {
+    general_purpose::STANDARD.encode(s)
 }
 
 #[cfg(test)]
