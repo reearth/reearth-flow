@@ -1,19 +1,19 @@
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::pin::Pin;
+use std::{collections::HashMap, sync::Arc};
 
 use bytes::Bytes;
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use strum_macros::EnumString;
-use uuid::Uuid;
 
+use reearth_flow_common::str::base64_encode;
+use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
-use reearth_flow_workflow::workflow::Parameter;
 
-use crate::{attribute_keeper, file_reader, file_writer};
+use crate::{attribute_filter, attribute_keeper, file_reader, file_writer};
 
 pub type Port = String;
 pub const DEFAULT_PORT: &str = "default";
@@ -48,6 +48,46 @@ impl Display for ActionValue {
     }
 }
 
+impl From<serde_json::Value> for ActionValue {
+    fn from(value: serde_json::Value) -> Self {
+        match value {
+            serde_json::Value::Bool(v) => ActionValue::Bool(v),
+            serde_json::Value::Number(v) => ActionValue::Number(v),
+            serde_json::Value::String(v) => ActionValue::String(v),
+            serde_json::Value::Array(v) => {
+                ActionValue::Array(v.into_iter().map(ActionValue::from).collect::<Vec<_>>())
+            }
+            serde_json::Value::Object(v) => ActionValue::Map(
+                v.into_iter()
+                    .map(|(k, v)| (k, ActionValue::from(v)))
+                    .collect::<HashMap<_, _>>(),
+            ),
+            _ => ActionValue::String("".to_owned()),
+        }
+    }
+}
+
+impl From<ActionValue> for serde_json::Value {
+    fn from(value: ActionValue) -> Self {
+        match value {
+            ActionValue::Bool(v) => serde_json::Value::Bool(v),
+            ActionValue::Number(v) => serde_json::Value::Number(v),
+            ActionValue::String(v) => serde_json::Value::String(v),
+            ActionValue::Array(v) => serde_json::Value::Array(
+                v.into_iter()
+                    .map(serde_json::Value::from)
+                    .collect::<Vec<_>>(),
+            ),
+            ActionValue::Bytes(v) => serde_json::Value::String(base64_encode(v.as_ref())),
+            ActionValue::Map(v) => serde_json::Value::Object(
+                v.into_iter()
+                    .map(|(k, v)| (k, serde_json::Value::from(v)))
+                    .collect::<serde_json::Map<_, _>>(),
+            ),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, EnumString, Debug, Clone)]
 pub enum Action {
     #[strum(serialize = "fileReader")]
@@ -56,25 +96,16 @@ pub enum Action {
     AttributeKeeper,
     #[strum(serialize = "fileWriter")]
     FileWriter,
+    #[strum(serialize = "attributeFilter")]
+    AttributeFilter,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct ActionContext {
     pub node_id: Id,
     pub node_name: String,
     pub node_property: NodeProperty,
-    pub parameter: Parameter,
-}
-
-impl Default for ActionContext {
-    fn default() -> Self {
-        Self {
-            node_id: Uuid::new_v4(),
-            node_name: "".to_owned(),
-            node_property: serde_json::Map::new(),
-            parameter: serde_json::Map::new(),
-        }
-    }
+    pub expr_engine: Arc<Engine>,
 }
 
 impl ActionContext {
@@ -82,13 +113,13 @@ impl ActionContext {
         node_id: Id,
         node_name: String,
         node_property: NodeProperty,
-        parameter: Parameter,
+        expr_engine: Arc<Engine>,
     ) -> Self {
         Self {
             node_id,
             node_name,
             node_property,
-            parameter,
+            expr_engine,
         }
     }
 }
@@ -103,6 +134,7 @@ impl Action {
             Action::FileReader => Box::pin(file_reader::run(ctx, input)),
             Action::AttributeKeeper => Box::pin(attribute_keeper::run(ctx, input)),
             Action::FileWriter => Box::pin(file_writer::run(ctx, input)),
+            Action::AttributeFilter => Box::pin(attribute_filter::run(ctx, input)),
         }
     }
 }

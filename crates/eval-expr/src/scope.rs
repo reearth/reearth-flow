@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::{engine::Engine, error::Error, ShareLock, Value, Vars};
 
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Scope {
     engine: Arc<Engine>,
     pub(crate) scope: ShareLock<rhai::Scope<'static>>,
@@ -67,7 +67,6 @@ impl Scope {
             .or_insert(value);
     }
 
-    #[allow(unused)]
     pub fn remove(&self, name: &str) {
         if self.engine.vars().contains_key(name) {
             return self.engine.remove(name);
