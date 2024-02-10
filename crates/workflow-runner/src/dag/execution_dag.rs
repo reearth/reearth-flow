@@ -98,7 +98,7 @@ impl DagExecutor {
                     node.id(),
                     node.name().to_owned(),
                     node.with().clone(),
-                    self.expr_engine.clone(),
+                    Arc::clone(&self.expr_engine),
                 );
                 match node {
                     Node::Action { action, .. } => {
