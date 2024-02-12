@@ -1,5 +1,5 @@
 use core::result::Result;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
@@ -46,7 +46,7 @@ pub(crate) async fn run(
     let inputs = inputs.ok_or(anyhow!("No Input"))?;
     let input = inputs.get(DEFAULT_PORT).ok_or(anyhow!("No Default Port"))?;
     let input = input.as_ref().ok_or(anyhow!("No Value"))?;
-    let expr_engin = ctx.expr_engine.clone();
+    let expr_engine = Arc::clone(&ctx.expr_engine);
 
     let output = match input {
         ActionValue::Array(rows) => {
@@ -58,7 +58,7 @@ pub(crate) async fn run(
                             let expr = &condition.expr;
                             let output_port = &condition.output_port;
                             let entry = result.entry(output_port.to_owned()).or_default();
-                            let scope = expr_engin.new_scope();
+                            let scope = expr_engine.new_scope();
                             for (k, v) in row {
                                 scope.set(k, v.clone().into());
                             }

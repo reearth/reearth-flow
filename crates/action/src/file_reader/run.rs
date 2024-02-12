@@ -68,7 +68,7 @@ pub(crate) async fn run(
             ActionValue::Array(result)
         }
         PropertySchema::Text { common_property } => text::read_text(&common_property).await?,
-        _ => panic!("Unsupported format"),
+        _ => return Err(anyhow!("Unsupported format")),
     };
     let mut output = HashMap::new();
     output.insert(DEFAULT_PORT.to_string(), Some(data));

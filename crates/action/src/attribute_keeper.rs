@@ -74,7 +74,7 @@ pub(crate) async fn run(
             }
             output
         }
-        None => HashMap::new(),
+        None => return Err(anyhow!("No input dataframe")),
     };
     Ok(output)
 }

@@ -13,7 +13,10 @@ use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
 
-use crate::{attribute_filter, attribute_keeper, attribute_merger, file_reader, file_writer};
+use crate::{
+    attribute_filter, attribute_keeper, attribute_manager, attribute_merger, file_reader,
+    file_writer,
+};
 
 pub type Port = String;
 pub const DEFAULT_PORT: &str = "default";
@@ -89,6 +92,16 @@ impl From<ActionValue> for serde_json::Value {
     }
 }
 
+impl TryFrom<rhai::Dynamic> for ActionValue {
+    type Error = anyhow::Error;
+
+    fn try_from(value: rhai::Dynamic) -> Result<Self, Self::Error> {
+        let json = serde_json::to_string(&value)?;
+        let result: serde_json::Value = serde_json::from_str(&json)?;
+        Ok(result.into())
+    }
+}
+
 #[derive(Serialize, Deserialize, EnumString, Debug, Clone)]
 pub enum Action {
     #[strum(serialize = "fileReader")]
@@ -101,6 +114,8 @@ pub enum Action {
     AttributeFilter,
     #[strum(serialize = "attributeMerger")]
     AttributeMerger,
+    #[strum(serialize = "attributeManager")]
+    AttributeManager,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -139,6 +154,7 @@ impl Action {
             Action::FileWriter => Box::pin(file_writer::run(ctx, input)),
             Action::AttributeFilter => Box::pin(attribute_filter::run(ctx, input)),
             Action::AttributeMerger => Box::pin(attribute_merger::run(ctx, input)),
+            Action::AttributeManager => Box::pin(attribute_manager::run(ctx, input)),
         }
     }
 }

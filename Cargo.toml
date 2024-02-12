@@ -1,7 +1,5 @@
 [workspace]
-members = [
-  "crates/*",
-]
+members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
@@ -11,7 +9,7 @@ exclude = ["benches/", "tests/", "test-data/", "testdata/"]
 homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
-rust-version = "1.75" # Remember to update clippy.toml as well
+rust-version = "1.75"                                       # Remember to update clippy.toml as well
 version = "0.1.0"
 
 [profile.dev]
@@ -34,18 +32,21 @@ panic = "abort"
 strip = true
 
 [workspace.dependencies]
-reearth-flow-action = {path = "crates/action"}
-reearth-flow-common = {path = "crates/common"}
-reearth-flow-eval-expr = {path = "crates/eval-expr"}
-reearth-flow-storage = {path = "crates/storage"}
-reearth-flow-telemetry = {path = "crates/telemetry"}
-reearth-flow-workflow = {path = "crates/workflow"}
-reearth-flow-workflow-cli = {path = "crates/cli"}
-reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
+reearth-flow-action = { path = "crates/action" }
+reearth-flow-common = { path = "crates/common" }
+reearth-flow-eval-expr = { path = "crates/eval-expr" }
+reearth-flow-storage = { path = "crates/storage" }
+reearth-flow-telemetry = { path = "crates/telemetry" }
+reearth-flow-workflow = { path = "crates/workflow" }
+reearth-flow-workflow-cli = { path = "crates/cli" }
+reearth-flow-workflow-runner = { path = "crates/workflow-runner" }
 
 anyhow = "1.0.79"
 bytes = "1.5.0"
-chrono = {version = "0.4.31", default-features = false, features = ["clock", "std"]}
+chrono = { version = "0.4.31", default-features = false, features = [
+  "clock",
+  "std",
+] }
 color-eyre = "0.6.2"
 derive_more = "0.99.17"
 eyre = "0.6.12"
@@ -53,23 +54,29 @@ futures = "0.3.30"
 itertools = "0.12.1"
 jsonpath_lib = "0.3.0"
 once_cell = "1"
-opendal = {version = "0.45.0", features = ["layers-minitrace"]}
+opendal = { version = "0.45.0", features = ["layers-minitrace"] }
 petgraph = "0.6.4"
 pretty_assertions = "1.4.0"
 rand = "0.8.5"
 regex = "1.10.3"
-serde = {version = "1.0.196", features = ["derive"]}
-serde_json = {version = "1.0.113", features = ["arbitrary_precision"]}
+rhai = { version = "1.17.1", features = ["internals", "sync", "serde"] }
+serde = { version = "1.0.196", features = ["derive"] }
+serde_json = { version = "1.0.113", features = ["arbitrary_precision"] }
 serde_with = "3.6.1"
 thiserror = "1.0.56"
-tokio = {version = "1.36.0", features = ["full", "time"]}
-tokio-stream = {version = "0.1.14", features = ["sync"]}
-tokio-util = {version = "0.7.10", features = ["full"]}
+tokio = { version = "1.36.0", features = ["full", "time"] }
+tokio-stream = { version = "0.1.14", features = ["sync"] }
+tokio-util = { version = "0.7.10", features = ["full"] }
 toml = "0.8.8"
 tracing = "0.1.40"
-tracing-subscriber = {version = "0.3.18", features = [
+tracing-subscriber = { version = "0.3.18", features = [
   "env-filter",
   "std",
   "time",
-]}
-uuid = {version = "1.7.0", features = ["v4", "fast-rng", "macro-diagnostics", "serde"]}
+] }
+uuid = { version = "1.7.0", features = [
+  "v4",
+  "fast-rng",
+  "macro-diagnostics",
+  "serde",
+] }

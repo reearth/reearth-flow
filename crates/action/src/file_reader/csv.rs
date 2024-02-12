@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use reearth_flow_common::{str::remove_bom, uri::Uri};
 use reearth_flow_storage::resolve;
 
-use super::base::CommonPropertySchema;
+use super::run::CommonPropertySchema;
 use crate::action::ActionValue;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
