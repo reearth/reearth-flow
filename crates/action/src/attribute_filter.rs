@@ -47,6 +47,20 @@ pub(crate) async fn run(
     let input = inputs.get(DEFAULT_PORT).ok_or(anyhow!("No Default Port"))?;
     let input = input.as_ref().ok_or(anyhow!("No Value"))?;
     let expr_engine = Arc::clone(&ctx.expr_engine);
+    let params = inputs
+        .keys()
+        .filter(|&key| *key != DEFAULT_PORT && inputs.get(key).unwrap().is_some())
+        .filter(|&key| {
+            matches!(
+                inputs.get(key).unwrap().clone().unwrap(),
+                ActionValue::Bool(_)
+                    | ActionValue::Number(_)
+                    | ActionValue::String(_)
+                    | ActionValue::Map(_)
+            )
+        })
+        .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
+        .collect::<HashMap<_, _>>();
 
     let output = match input {
         ActionValue::Array(rows) => {
@@ -60,6 +74,9 @@ pub(crate) async fn run(
                             let entry = result.entry(output_port.to_owned()).or_default();
                             let scope = expr_engine.new_scope();
                             for (k, v) in row {
+                                scope.set(k, v.clone().into());
+                            }
+                            for (k, v) in &params {
                                 scope.set(k, v.clone().into());
                             }
                             let eval = scope.eval::<bool>(expr)?;

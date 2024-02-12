@@ -1,5 +1,5 @@
 use core::result::Result;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::anyhow;
 use rhai::Dynamic;
@@ -51,66 +51,72 @@ pub(crate) async fn run(
     inputs: Option<ActionDataframe>,
 ) -> anyhow::Result<ActionDataframe> {
     let props = PropertySchema::try_from(ctx.node_property)?;
-    let expr_engine = Arc::clone(&ctx.expr_engine);
     debug!(?props, "read");
+    let inputs = inputs.ok_or(anyhow!("No Input"))?;
+    let expr_engine = Arc::clone(&ctx.expr_engine);
+    let params = inputs
+        .keys()
+        .filter(|&key| inputs.get(key).unwrap().is_some())
+        .filter(|&key| {
+            matches!(
+                inputs.get(key).unwrap().clone().unwrap(),
+                ActionValue::Bool(_)
+                    | ActionValue::Number(_)
+                    | ActionValue::String(_)
+                    | ActionValue::Map(_)
+            )
+        })
+        .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
+        .collect::<HashMap<_, _>>();
 
-    let output = match inputs {
-        Some(inputs) => {
-            let mut output = ActionDataframe::new();
-            for (port, data) in inputs {
-                let data = match data {
-                    Some(data) => data,
-                    None => continue,
-                };
-                let processed_data = match data {
-                    ActionValue::Array(rows) => {
-                        let mut processed_items = Vec::new();
-                        for row in rows {
-                            match row {
-                                ActionValue::Map(row) => {
-                                    let mut result = row.clone();
-                                    for operation in &props.operations {
-                                        let method = &operation.method;
-                                        let attribute = &operation.attribute;
-                                        let value = row.get(attribute).ok_or_else(|| {
-                                            anyhow!(
-                                                "Attribute {} not found in the input",
-                                                attribute
-                                            )
-                                        })?;
-                                        match method {
-                                            Method::Convert => {
-                                                let expr = &operation.value;
-                                                let scope = expr_engine.new_scope();
-                                                for (k, v) in &row {
-                                                    scope.set(k, v.clone().into());
-                                                }
-                                                let new_value = scope.eval::<Dynamic>(expr)?;
-                                                result.insert(
-                                                    attribute.clone(),
-                                                    new_value.try_into()?,
-                                                );
-                                            }
-                                            Method::Rename => {
-                                                let new_key = operation.value.clone();
-                                                result.insert(new_key, value.clone());
-                                            }
+    let mut output = ActionDataframe::new();
+    for (port, data) in inputs {
+        let data = match data {
+            Some(data) => data,
+            None => continue,
+        };
+        let processed_data = match data {
+            ActionValue::Array(rows) => {
+                let mut processed_items = Vec::new();
+                for row in rows {
+                    match row {
+                        ActionValue::Map(row) => {
+                            let mut result = row.clone();
+                            for operation in &props.operations {
+                                let method = &operation.method;
+                                let attribute = &operation.attribute;
+                                let value = row.get(attribute).ok_or_else(|| {
+                                    anyhow!("Attribute {} not found in the input", attribute)
+                                })?;
+                                match method {
+                                    Method::Convert => {
+                                        let expr = &operation.value;
+                                        let scope = expr_engine.new_scope();
+                                        for (k, v) in &row {
+                                            scope.set(k, v.clone().into());
                                         }
+                                        for (k, v) in &params {
+                                            scope.set(k, v.clone().into());
+                                        }
+                                        let new_value = scope.eval::<Dynamic>(expr)?;
+                                        result.insert(attribute.clone(), new_value.try_into()?);
                                     }
-                                    processed_items.push(ActionValue::Map(result));
+                                    Method::Rename => {
+                                        let new_key = operation.value.clone();
+                                        result.insert(new_key, value.clone());
+                                    }
                                 }
-                                _ => return Err(anyhow!("Invalid Input. supported only Map")),
                             }
+                            processed_items.push(ActionValue::Map(result));
                         }
-                        ActionValue::Array(processed_items)
+                        _ => return Err(anyhow!("Invalid Input. supported only Map")),
                     }
-                    _ => continue,
-                };
-                output.insert(port, Some(processed_data));
+                }
+                ActionValue::Array(processed_items)
             }
-            output
-        }
-        None => return Err(anyhow!("No input dataframe")),
-    };
+            _ => continue,
+        };
+        output.insert(port, Some(processed_data));
+    }
     Ok(output)
 }
