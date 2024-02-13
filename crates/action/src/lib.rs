@@ -1,4 +1,5 @@
 pub mod action;
+mod attribute_aggregator;
 mod attribute_filter;
 mod attribute_keeper;
 mod attribute_manager;

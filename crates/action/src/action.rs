@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt::Display;
 use std::pin::Pin;
 use std::{collections::HashMap, sync::Arc};
@@ -14,8 +15,8 @@ use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
 
 use crate::{
-    attribute_filter, attribute_keeper, attribute_manager, attribute_merger, file_reader,
-    file_writer,
+    attribute_aggregator, attribute_filter, attribute_keeper, attribute_manager, attribute_merger,
+    file_reader, file_writer,
 };
 
 pub type Port = String;
@@ -102,6 +103,30 @@ impl TryFrom<rhai::Dynamic> for ActionValue {
     }
 }
 
+impl PartialOrd for ActionValue {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (ActionValue::Number(a), ActionValue::Number(b)) => compare_numbers(a, b),
+            (ActionValue::String(a), ActionValue::String(b)) => a.partial_cmp(b),
+            _ => None,
+        }
+    }
+}
+
+fn compare_numbers(n1: &Number, n2: &Number) -> Option<Ordering> {
+    if let Some(i1) = n1.as_i64() {
+        if let Some(i2) = n2.as_i64() {
+            return i1.partial_cmp(&i2);
+        }
+    }
+    if let Some(f1) = n1.as_f64() {
+        if let Some(f2) = n2.as_f64() {
+            return f1.partial_cmp(&f2);
+        }
+    }
+    None
+}
+
 #[derive(Serialize, Deserialize, EnumString, Debug, Clone)]
 pub enum Action {
     #[strum(serialize = "fileReader")]
@@ -116,6 +141,8 @@ pub enum Action {
     AttributeMerger,
     #[strum(serialize = "attributeManager")]
     AttributeManager,
+    #[strum(serialize = "attributeAggregator")]
+    AttributeAggregator,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -155,6 +182,7 @@ impl Action {
             Action::AttributeFilter => Box::pin(attribute_filter::run(ctx, input)),
             Action::AttributeMerger => Box::pin(attribute_merger::run(ctx, input)),
             Action::AttributeManager => Box::pin(attribute_manager::run(ctx, input)),
+            Action::AttributeAggregator => Box::pin(attribute_aggregator::run(ctx, input)),
         }
     }
 }

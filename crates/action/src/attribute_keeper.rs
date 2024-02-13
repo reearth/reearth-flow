@@ -20,8 +20,7 @@ impl TryFrom<NodeProperty> for PropertySchema {
     type Error = anyhow::Error;
 
     fn try_from(node_property: NodeProperty) -> Result<Self, anyhow::Error> {
-        let value = Value::Object(node_property);
-        serde_json::from_value(value).map_err(|e| {
+        serde_json::from_value(Value::Object(node_property)).map_err(|e| {
             anyhow!(
                 "Failed to convert NodeProperty to PropertySchema with {}",
                 e
