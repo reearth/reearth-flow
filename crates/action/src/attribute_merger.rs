@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use reearth_flow_workflow::graph::NodeProperty;
+use tracing::debug;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue, ActionValueIndex, DEFAULT_PORT};
 
@@ -15,7 +16,7 @@ const SUPPLIER_PORT: &str = "supplier";
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
-    joins: Vec<Join>,
+    join: Join,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -60,26 +61,29 @@ pub(crate) async fn run(
             for row in rows {
                 match row {
                     ActionValue::Map(row) => {
-                        for join in &props.joins {
-                            let requestor = &join.requestor;
-                            let supplier = &join.supplier;
-                            let requestor_value =
-                                row.get(requestor).ok_or(anyhow!("No Requestor Value"))?;
-                            let supplier_index = supplier_indexs
-                                .get(supplier)
-                                .ok_or(anyhow!("No Supplier Index"))?;
-                            let supplier_rows = supplier_index
-                                .get(&requestor_value.to_string())
-                                .ok_or(anyhow!("No Supplier Rows"))?;
-                            for supplier_row in supplier_rows {
-                                match supplier_row {
-                                    ActionValue::Map(supplier_row) => {
-                                        let mut new_row = row.clone();
-                                        new_row.extend(supplier_row.clone());
-                                        result.push(ActionValue::Map(new_row));
-                                    }
-                                    _ => return Err(anyhow!("Supplier is not a map")),
+                        let requestor = &props.join.requestor;
+                        let supplier = &props.join.supplier;
+                        let requestor_value = row
+                            .get(requestor)
+                            .ok_or(anyhow!("No Requestor Value with requestor = {}", requestor))?;
+                        let supplier_index = supplier_indexs.get(supplier).ok_or(anyhow!(
+                            "No Supplier Index with request value = {}",
+                            requestor_value
+                        ))?;
+                        let supplier_rows = supplier_index.get(&requestor_value.to_string());
+                        if supplier_rows.is_none() {
+                            debug!("No Supplier Rows with request value = {}", requestor_value);
+                            continue;
+                        }
+                        let supplier_rows = supplier_rows.unwrap();
+                        for supplier_row in supplier_rows {
+                            match supplier_row {
+                                ActionValue::Map(supplier_row) => {
+                                    let mut new_row = row.clone();
+                                    new_row.extend(supplier_row.clone());
+                                    result.push(ActionValue::Map(new_row));
                                 }
+                                _ => return Err(anyhow!("Supplier is not a map")),
                             }
                         }
                     }
@@ -107,17 +111,16 @@ fn create_supplier_index(
             for row in rows {
                 match row {
                     ActionValue::Map(row) => {
-                        for join in &props.joins {
-                            let supplier = &join.supplier;
-                            let supplier_value =
-                                row.get(supplier).ok_or(anyhow!("No Supplier Value"))?;
-                            let supplier_index_entry =
-                                supplier_indexs.entry(supplier.to_owned()).or_default();
-                            supplier_index_entry
-                                .entry(supplier_value.to_string())
-                                .or_default()
-                                .push(ActionValue::Map(row.clone()));
-                        }
+                        let supplier = &props.join.supplier;
+                        let supplier_value = row
+                            .get(supplier)
+                            .ok_or(anyhow!("No Supplier Value By create supplier index"))?;
+                        let supplier_index_entry =
+                            supplier_indexs.entry(supplier.to_owned()).or_default();
+                        supplier_index_entry
+                            .entry(supplier_value.to_string())
+                            .or_default()
+                            .push(ActionValue::Map(row.clone()));
                     }
                     _ => return Err(anyhow!("Supplier is not an array")),
                 }
