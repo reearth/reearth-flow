@@ -160,13 +160,16 @@ async fn run_async(
 ) -> Result<(NodeIndex, ActionDataframe)> {
     let node_name = ctx.node_name.clone();
     info!("Start action = {:?}, name = {:?}", action, node_name);
+    let start = Instant::now();
     let func = action.run(ctx, input);
     let res = func.await?;
+    let duration = start.elapsed();
     info!(
-        "Finish action = {:?}, name = {:?}, ports = {:?}",
+        "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
         action,
         node_name,
-        res.keys()
+        res.keys(),
+        duration,
     );
     Ok((ix, res))
 }

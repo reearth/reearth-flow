@@ -2,6 +2,7 @@ use core::result::Result;
 use std::{collections::HashMap, sync::Arc};
 
 use anyhow::anyhow;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
@@ -61,37 +62,40 @@ pub(crate) async fn run(
         .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
         .collect::<HashMap<_, _>>();
 
-    let output = match input {
-        ActionValue::Array(rows) => {
-            let mut result = HashMap::<Port, Vec<ActionValue>>::new();
-            for row in rows {
-                match row {
-                    ActionValue::Map(row) => {
-                        for condition in &props.conditions {
-                            let expr = &condition.expr;
-                            let output_port = &condition.output_port;
-                            let entry = result.entry(output_port.to_owned()).or_default();
-                            let scope = expr_engine.new_scope();
-                            for (k, v) in row {
-                                scope.set(k, v.clone().into());
-                            }
-                            for (k, v) in &params {
-                                scope.set(k, v.clone().into());
-                            }
-                            let eval = scope.eval::<bool>(expr)?;
-                            if eval {
-                                entry.push(ActionValue::Map(row.clone()));
-                            }
+    let mut result = HashMap::<Port, Vec<ActionValue>>::new();
+    for condition in &props.conditions {
+        let expr = &condition.expr;
+        let template_ast = expr_engine.compile(expr)?;
+        let output_port = &condition.output_port;
+        let output = match input {
+            ActionValue::Array(rows) => rows
+                .par_iter()
+                .filter(|row| {
+                    if let ActionValue::Map(row) = row {
+                        let scope = expr_engine.new_scope();
+                        for (k, v) in &params {
+                            scope.set(k, v.clone().into());
                         }
+                        for (k, v) in row {
+                            scope.set(k, v.clone().into());
+                        }
+                        let eval = scope.eval_ast::<bool>(&template_ast);
+                        if let Ok(eval) = eval {
+                            eval
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
                     }
-                    _ => return Err(anyhow!("Invalid Input. supported only Map")),
-                }
-            }
-            result
-        }
-        _ => return Err(anyhow!("Invalid Input. supported only Array")),
-    };
-    Ok(output
+                })
+                .cloned()
+                .collect::<Vec<_>>(),
+            _ => return Err(anyhow!("Invalid Input. supported only Array")),
+        };
+        result.insert(output_port.clone(), output);
+    }
+    Ok(result
         .iter()
         .map(|(k, v)| (k.clone(), Some(ActionValue::Array(v.clone()))))
         .collect::<ActionDataframe>())

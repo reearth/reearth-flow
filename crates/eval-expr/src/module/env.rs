@@ -3,7 +3,7 @@ use rhai::plugin::*;
 use crate::{engine::Engine, utils};
 
 #[export_module]
-mod env_module {
+pub(crate) mod env_module {
     pub fn get(engine: &mut Engine, name: &str) -> Dynamic {
         let v = engine
             .get(name)
@@ -17,7 +17,7 @@ mod env_module {
 }
 
 #[export_module]
-mod scope_module {
+pub(crate) mod scope_module {
     use crate::scope::Scope;
 
     pub fn get(env: &mut Scope, name: &str) -> Dynamic {
@@ -30,15 +30,5 @@ mod scope_module {
 
     pub fn set(env: &mut Scope, name: &str, value: Dynamic) {
         env.set(name, utils::dynamic_to_value(&value));
-    }
-}
-
-impl Engine {
-    pub fn registry_env_module(&self) {
-        let module = rhai::exported_module!(env_module);
-        self.register_global_module(module);
-
-        let module = rhai::exported_module!(scope_module);
-        self.register_global_module(module);
     }
 }

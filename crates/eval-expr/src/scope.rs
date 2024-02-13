@@ -51,6 +51,13 @@ impl Scope {
         }
     }
 
+    pub fn eval_ast<T: rhai::Variant + Clone>(&self, ast: &rhai::AST) -> anyhow::Result<T> {
+        match self.engine.eval_scope_ast::<T>(ast, self) {
+            Ok(ret) => Ok(ret),
+            Err(err) => Err(Error::InternalRuntime(format!("{err}")).into()),
+        }
+    }
+
     pub fn get(&self, name: &str) -> Option<Value> {
         let vars = self.vars.read().unwrap();
         vars.get(name).cloned().or_else(|| self.engine.get(name))

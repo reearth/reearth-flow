@@ -58,6 +58,7 @@ opendal = {version = "0.45.0", features = ["layers-minitrace"]}
 petgraph = "0.6.4"
 pretty_assertions = "1.4.0"
 rand = "0.8.5"
+rayon = "1.8.1"
 regex = "1.10.3"
 rhai = {version = "1.17.1", features = ["internals", "sync", "serde"]}
 serde = {version = "1.0.196", features = ["derive"]}

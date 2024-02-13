@@ -1,13 +1,13 @@
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 use rhai::{Engine as ScriptEngine, Scope as RhaiScope};
-use tracing::debug;
 
+use super::module::env::{env_module, scope_module};
 use crate::{error::Error, scope::Scope, ShareLock, Value, Vars};
 
 #[derive(Debug, Default, Clone)]
 pub struct Engine {
-    pub(crate) script_engine: Arc<Mutex<ScriptEngine>>,
+    pub(crate) script_engine: Arc<ScriptEngine>,
     pub(crate) scope: ShareLock<RhaiScope<'static>>,
     pub(crate) vars: ShareLock<Vars>,
 }
@@ -17,10 +17,19 @@ unsafe impl Sync for Engine {}
 
 impl Engine {
     pub fn new() -> Self {
-        let script_engine = ScriptEngine::new();
+        let mut script_engine = ScriptEngine::new();
+        script_engine.set_allow_looping(false);
+        script_engine.set_allow_anonymous_fn(false);
+        script_engine.set_allow_shadowing(false);
         let scope = rhai::Scope::new();
+        let module = rhai::exported_module!(env_module);
+        script_engine.register_global_module(module.into());
+
+        let module = rhai::exported_module!(scope_module);
+        script_engine.register_global_module(module.into());
+
         let engine = Self {
-            script_engine: Arc::new(Mutex::new(script_engine)),
+            script_engine: Arc::new(script_engine),
             scope: Arc::new(RwLock::new(scope)),
             vars: Arc::new(RwLock::new(Vars::new())),
         };
@@ -29,8 +38,6 @@ impl Engine {
     }
 
     pub fn init(&self) {
-        debug!("engine::init");
-        self.registry_env_module();
         self.scope.write().unwrap().set_or_push("env", self.clone());
     }
 
@@ -56,10 +63,7 @@ impl Engine {
     }
 
     pub fn eval<T: rhai::Variant + Clone>(&self, expr: &str) -> anyhow::Result<T> {
-        let scr = self
-            .script_engine
-            .lock()
-            .map_err(|_| Error::InternalRuntime("lock".to_string()))?;
+        let scr = Arc::clone(&self.script_engine);
         let mut scope = self
             .scope
             .write()
@@ -70,18 +74,50 @@ impl Engine {
         }
     }
 
+    pub fn eval_ast<T: rhai::Variant + Clone>(&self, ast: &rhai::AST) -> anyhow::Result<T> {
+        let scr = Arc::clone(&self.script_engine);
+        let mut scope = self
+            .scope
+            .write()
+            .map_err(|_| Error::InternalRuntime("lock".to_string()))?;
+        match scr.eval_ast_with_scope::<T>(&mut scope, ast) {
+            Ok(ret) => Ok(ret),
+            Err(err) => Err(Error::InternalRuntime(format!("{}", err)).into()),
+        }
+    }
+
     pub fn eval_scope<T: rhai::Variant + Clone>(
         &self,
         expr: &str,
         scope: &Scope,
     ) -> anyhow::Result<T> {
-        let scr = self.script_engine.lock().unwrap();
+        let scr = Arc::clone(&self.script_engine);
         let mut scope = scope.scope.write().unwrap();
 
         match scr.eval_with_scope::<T>(&mut scope, expr) {
             Ok(ret) => Ok(ret),
             Err(err) => Err(Error::InternalRuntime(format!("{}", err)).into()),
         }
+    }
+
+    pub fn eval_scope_ast<T: rhai::Variant + Clone>(
+        &self,
+        ast: &rhai::AST,
+        scope: &Scope,
+    ) -> anyhow::Result<T> {
+        let scr = Arc::clone(&self.script_engine);
+        let mut scope = scope.scope.write().unwrap();
+
+        match scr.eval_ast_with_scope::<T>(&mut scope, ast) {
+            Ok(ret) => Ok(ret),
+            Err(err) => Err(Error::InternalRuntime(format!("{}", err)).into()),
+        }
+    }
+
+    pub fn compile(&self, expr: &str) -> anyhow::Result<rhai::AST> {
+        let scr = Arc::clone(&self.script_engine);
+        scr.compile(expr)
+            .map_err(|err| Error::InternalRuntime(format!("{}", err)).into())
     }
 
     pub fn get(&self, name: &str) -> Option<Value> {
@@ -99,16 +135,6 @@ impl Engine {
     pub fn remove(&self, name: &str) {
         let mut vars = self.vars.write().unwrap();
         vars.remove(name);
-    }
-
-    pub fn register_module(&self, name: impl AsRef<str>, module: rhai::Module) {
-        let scr = &mut *self.script_engine.lock().unwrap();
-        scr.register_static_module(name, module.into());
-    }
-
-    pub fn register_global_module(&self, module: rhai::Module) {
-        let scr = &mut *self.script_engine.lock().unwrap();
-        scr.register_global_module(module.into());
     }
 }
 
