@@ -3,7 +3,7 @@ use std::str::FromStr;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve;
 
-use super::run::CommonPropertySchema;
+use super::runner::CommonPropertySchema;
 use crate::action::ActionValue;
 
 pub(crate) async fn read_text(common_props: &CommonPropertySchema) -> anyhow::Result<ActionValue> {
