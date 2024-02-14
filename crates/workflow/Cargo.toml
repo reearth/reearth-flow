@@ -11,6 +11,8 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+reearth-flow-common.workspace = true
+
 anyhow.workspace = true
 eyre.workspace = true
 serde.workspace = true
