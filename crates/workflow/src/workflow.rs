@@ -5,6 +5,8 @@ use serde_json::{Map, Value};
 use crate::graph::Graph;
 use crate::id::Id;
 
+use reearth_flow_common::serde::from_str;
+
 pub type Parameter = Map<String, Value>;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -19,7 +21,7 @@ pub struct Workflow {
 
 impl Workflow {
     pub fn try_from_str(s: &str) -> Result<Self> {
-        serde_json::from_str(s).map_err(|e| anyhow::anyhow!("Failed to parse workflow: {}", e))
+        from_str(s).map_err(|e| anyhow::anyhow!("Failed to parse workflow: {}", e))
     }
 }
 

@@ -64,6 +64,7 @@ rhai = {version = "1.17.1", features = ["internals", "sync", "serde"]}
 serde = {version = "1.0.196", features = ["derive"]}
 serde_json = {version = "1.0.113", features = ["arbitrary_precision"]}
 serde_with = "3.6.1"
+serde_yaml = "0.9.31"
 thiserror = "1.0.56"
 tokio = {version = "1.36.0", features = ["full", "time"]}
 tokio-stream = {version = "0.1.14", features = ["sync"]}
