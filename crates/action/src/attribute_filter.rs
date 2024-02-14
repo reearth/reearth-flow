@@ -68,9 +68,8 @@ pub(crate) async fn run(
         let template_ast = expr_engine.compile(expr)?;
         let output_port = &condition.output_port;
         let output = match input {
-            ActionValue::Array(rows) => rows
-                .par_iter()
-                .filter(|row| {
+            ActionValue::Array(rows) => {
+                let filter = |row: &ActionValue| {
                     if let ActionValue::Map(row) = row {
                         let scope = expr_engine.new_scope();
                         for (k, v) in &params {
@@ -88,9 +87,21 @@ pub(crate) async fn run(
                     } else {
                         false
                     }
-                })
-                .cloned()
-                .collect::<Vec<_>>(),
+                };
+                // NOTE: Parallelization with a small number of cases will conversely slow down the process.
+                match rows.len() {
+                    0..=1000 => rows
+                        .iter()
+                        .filter(|&row| filter(row))
+                        .cloned()
+                        .collect::<Vec<_>>(),
+                    _ => rows
+                        .par_iter()
+                        .filter(|&row| filter(row))
+                        .cloned()
+                        .collect::<Vec<_>>(),
+                }
+            }
             _ => return Err(anyhow!("Invalid Input. supported only Array")),
         };
         result.insert(output_port.clone(), output);

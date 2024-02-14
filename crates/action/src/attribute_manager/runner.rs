@@ -2,6 +2,7 @@ use core::result::Result;
 use std::{collections::HashMap, sync::Arc};
 
 use anyhow::anyhow;
+use rayon::prelude::*;
 use rhai::Dynamic;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -31,6 +32,18 @@ pub(crate) enum Method {
     Convert,
     #[serde(rename = "rename")]
     Rename,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum Operate {
+    Convert {
+        expr: Option<rhai::AST>,
+        attribute: String,
+    },
+    Rename {
+        new_key: String,
+        attribute: String,
+    },
 }
 
 impl TryFrom<NodeProperty> for PropertySchema {
@@ -68,6 +81,24 @@ pub(crate) async fn run(
         })
         .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
         .collect::<HashMap<_, _>>();
+    let operations = props
+        .operations
+        .iter()
+        .map(|operation| {
+            let method = &operation.method;
+            let attribute = &operation.attribute;
+            match method {
+                Method::Convert => Operate::Convert {
+                    expr: expr_engine.compile(&operation.value).ok(),
+                    attribute: attribute.clone(),
+                },
+                Method::Rename => Operate::Rename {
+                    new_key: operation.value.clone(),
+                    attribute: attribute.clone(),
+                },
+            }
+        })
+        .collect::<Vec<_>>();
 
     let mut output = ActionDataframe::new();
     for (port, data) in inputs {
@@ -75,48 +106,56 @@ pub(crate) async fn run(
             Some(data) => data,
             None => continue,
         };
-        let processed_data = match data {
-            ActionValue::Array(rows) => {
-                let mut processed_items = Vec::new();
-                for row in rows {
-                    match row {
-                        ActionValue::Map(row) => {
-                            let mut result = row.clone();
-                            for operation in &props.operations {
-                                let method = &operation.method;
-                                let attribute = &operation.attribute;
-                                let value = row.get(attribute).ok_or_else(|| {
-                                    anyhow!("Attribute {} not found in the input", attribute)
-                                })?;
-                                match method {
-                                    Method::Convert => {
-                                        let expr = &operation.value;
-                                        let scope = expr_engine.new_scope();
-                                        for (k, v) in &row {
-                                            scope.set(k, v.clone().into());
-                                        }
-                                        for (k, v) in &params {
-                                            scope.set(k, v.clone().into());
-                                        }
-                                        let new_value = scope.eval::<Dynamic>(expr)?;
-                                        result.insert(attribute.clone(), new_value.try_into()?);
-                                    }
-                                    Method::Rename => {
-                                        let new_key = operation.value.clone();
-                                        result.insert(new_key, value.clone());
+        let mapper = |row: &ActionValue| match row {
+            ActionValue::Map(row) => {
+                let mut result = row.clone();
+                for operation in &operations {
+                    match operation {
+                        Operate::Convert { expr, attribute } => {
+                            let value = row.get(attribute);
+                            if value.is_none() {
+                                continue;
+                            }
+                            let scope = expr_engine.new_scope();
+                            for (k, v) in &params {
+                                scope.set(k, v.clone().into());
+                            }
+                            for (k, v) in row {
+                                scope.set(k, v.clone().into());
+                            }
+                            if let Some(expr) = expr {
+                                let new_value = scope.eval_ast::<Dynamic>(expr);
+                                if let Ok(new_value) = new_value {
+                                    if let Ok(new_value) = new_value.try_into() {
+                                        result.insert(attribute.clone(), new_value);
                                     }
                                 }
                             }
-                            processed_items.push(ActionValue::Map(result));
                         }
-                        _ => return Err(anyhow!("Invalid Input. supported only Map")),
-                    }
+                        Operate::Rename { new_key, attribute } => {
+                            let value = row.get(attribute);
+                            if value.is_none() {
+                                continue;
+                            }
+                            result.insert(new_key.clone(), value.unwrap().clone());
+                        }
+                    };
                 }
-                ActionValue::Array(processed_items)
+                ActionValue::Map(result)
+            }
+            _ => row.clone(),
+        };
+        let processed_data = match data {
+            ActionValue::Array(rows) => {
+                // NOTE: Parallelization with a small number of cases will conversely slow down the process.
+                match rows.len() {
+                    0..=1000 => rows.iter().map(mapper).collect::<Vec<_>>(),
+                    _ => rows.par_iter().map(mapper).collect::<Vec<_>>(),
+                }
             }
             _ => continue,
         };
-        output.insert(port, Some(processed_data));
+        output.insert(port, Some(ActionValue::Array(processed_data)));
     }
     Ok(output)
 }
