@@ -3,7 +3,6 @@ use std::{collections::HashMap, str::FromStr};
 
 use anyhow::anyhow;
 use bytes::Bytes;
-use csv::Writer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
@@ -54,9 +53,10 @@ pub(crate) async fn run(
     let props = PropertySchema::try_from(ctx.node_property)?;
     debug!(?props, "read");
     match props.format {
-        Format::Csv => write_csv(inputs, &props).await?,
+        Format::Csv => write_csv(inputs, b',', &props).await?,
+        Format::Tsv => write_csv(inputs, b'\t', &props).await?,
+        Format::Json => write_json(inputs, &props).await?,
         Format::Text => write_text(inputs, &props).await?,
-        _ => panic!("Unsupported format"),
     };
     let mut output: ActionDataframe = HashMap::new();
     let summary = vec![("output".to_owned(), ActionValue::String(props.output))]
@@ -81,14 +81,33 @@ async fn write_text(
     Ok(ActionValue::Bool(true))
 }
 
+async fn write_json(
+    inputs: Option<ActionDataframe>,
+    props: &PropertySchema,
+) -> anyhow::Result<ActionValue> {
+    let value = get_input_value(inputs)?;
+    let json_value: serde_json::Value = value.into();
+
+    let uri = Uri::from_str(&props.output)?;
+    let storage = resolve(&uri)?;
+    storage
+        .put(uri.path().as_path(), Bytes::from(json_value.to_string()))
+        .await?;
+    Ok(ActionValue::Bool(true))
+}
+
 async fn write_csv(
     inputs: Option<ActionDataframe>,
+    delimiter: u8,
     props: &PropertySchema,
 ) -> anyhow::Result<ActionValue> {
     let value = get_input_value(inputs)?;
     match value {
         ActionValue::Array(s) => {
-            let mut wtr = Writer::from_writer(vec![]);
+            let mut wtr = csv::WriterBuilder::new()
+                .delimiter(delimiter)
+                .quote_style(csv::QuoteStyle::NonNumeric)
+                .from_writer(vec![]);
             let fields = get_fields(&s);
             if let Some(ref fields) = fields {
                 if !fields.is_empty() {
@@ -210,7 +229,7 @@ mod tests {
             format: Format::Csv,
             output: "ram:///root/output.csv".to_owned(),
         };
-        let result = write_csv(inputs, &props).await;
+        let result = write_csv(inputs, b',', &props).await;
         assert!(result.is_ok());
     }
 

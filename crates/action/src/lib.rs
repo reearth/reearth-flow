@@ -5,5 +5,6 @@ mod attribute_manager;
 mod attribute_merger;
 mod color_converter;
 mod entity_filter;
+mod entity_transformer;
 mod file_reader;
 mod file_writer;
