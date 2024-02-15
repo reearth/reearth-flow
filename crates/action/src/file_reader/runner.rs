@@ -27,6 +27,13 @@ pub(crate) enum PropertySchema {
         #[serde(flatten)]
         property: csv::CsvPropertySchema,
     },
+    #[serde(rename = "tsv")]
+    Tsv {
+        #[serde(flatten)]
+        common_property: CommonPropertySchema,
+        #[serde(flatten)]
+        property: csv::CsvPropertySchema,
+    },
     #[serde(rename = "text")]
     Text {
         #[serde(flatten)]
@@ -63,7 +70,14 @@ pub(crate) async fn run(
             common_property,
             property,
         } => {
-            let result = csv::read_csv(&common_property, &property).await?;
+            let result = csv::read_csv(b',', &common_property, &property).await?;
+            ActionValue::Array(result)
+        }
+        PropertySchema::Tsv {
+            common_property,
+            property,
+        } => {
+            let result = csv::read_csv(b'\t', &common_property, &property).await?;
             ActionValue::Array(result)
         }
         PropertySchema::Text { common_property } => text::read_text(&common_property).await?,

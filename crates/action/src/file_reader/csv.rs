@@ -17,6 +17,7 @@ pub(crate) struct CsvPropertySchema {
 }
 
 pub(crate) async fn read_csv(
+    delimiter: u8,
     common_props: &CommonPropertySchema,
     props: &CsvPropertySchema,
 ) -> anyhow::Result<Vec<ActionValue>> {
@@ -29,6 +30,7 @@ pub(crate) async fn read_csv(
         let mut rdr = csv::ReaderBuilder::new()
             .flexible(true)
             .has_headers(false)
+            .delimiter(delimiter)
             .from_reader(cursor);
         let offset = props.offset.unwrap_or(0);
         let mut result: Vec<ActionValue> = Vec::new();
