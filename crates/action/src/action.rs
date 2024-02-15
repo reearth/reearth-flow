@@ -15,8 +15,8 @@ use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
 
 use crate::{
-    attribute_aggregator, attribute_filter, attribute_keeper, attribute_manager, attribute_merger,
-    file_reader, file_writer,
+    attribute_aggregator, attribute_keeper, attribute_manager, attribute_merger, color_converter,
+    entity_filter, file_reader, file_writer,
 };
 
 pub type Port = String;
@@ -129,20 +129,22 @@ fn compare_numbers(n1: &Number, n2: &Number) -> Option<Ordering> {
 
 #[derive(Serialize, Deserialize, EnumString, Debug, Clone)]
 pub enum Action {
-    #[strum(serialize = "fileReader")]
-    FileReader,
     #[strum(serialize = "attributeKeeper")]
     AttributeKeeper,
-    #[strum(serialize = "fileWriter")]
-    FileWriter,
-    #[strum(serialize = "attributeFilter")]
-    AttributeFilter,
     #[strum(serialize = "attributeMerger")]
     AttributeMerger,
     #[strum(serialize = "attributeManager")]
     AttributeManager,
     #[strum(serialize = "attributeAggregator")]
     AttributeAggregator,
+    #[strum(serialize = "colorConverter")]
+    ColorConverter,
+    #[strum(serialize = "entityFilter")]
+    EntityFilter,
+    #[strum(serialize = "fileReader")]
+    FileReader,
+    #[strum(serialize = "fileWriter")]
+    FileWriter,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -176,13 +178,14 @@ impl Action {
         input: Option<ActionDataframe>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<ActionDataframe>> + Send + 'static>> {
         match self {
-            Action::FileReader => Box::pin(file_reader::run(ctx, input)),
             Action::AttributeKeeper => Box::pin(attribute_keeper::run(ctx, input)),
-            Action::FileWriter => Box::pin(file_writer::run(ctx, input)),
-            Action::AttributeFilter => Box::pin(attribute_filter::run(ctx, input)),
             Action::AttributeMerger => Box::pin(attribute_merger::run(ctx, input)),
             Action::AttributeManager => Box::pin(attribute_manager::run(ctx, input)),
             Action::AttributeAggregator => Box::pin(attribute_aggregator::run(ctx, input)),
+            Action::ColorConverter => Box::pin(color_converter::run(ctx, input)),
+            Action::EntityFilter => Box::pin(entity_filter::run(ctx, input)),
+            Action::FileReader => Box::pin(file_reader::run(ctx, input)),
+            Action::FileWriter => Box::pin(file_writer::run(ctx, input)),
         }
     }
 }
