@@ -16,7 +16,7 @@ use reearth_flow_workflow::id::Id;
 
 use crate::{
     attribute_aggregator, attribute_keeper, attribute_manager, attribute_merger, color_converter,
-    entity_filter, entity_transformer, file_reader, file_writer,
+    dataframe_transformer, entity_filter, entity_transformer, file_reader, file_writer,
 };
 
 pub type Port = String;
@@ -139,6 +139,8 @@ pub enum Action {
     AttributeAggregator,
     #[strum(serialize = "colorConverter")]
     ColorConverter,
+    #[strum(serialize = "dataframeTransformer")]
+    DataframeTransformer,
     #[strum(serialize = "entityFilter")]
     EntityFilter,
     #[strum(serialize = "entityTransformer")]
@@ -184,6 +186,7 @@ impl Action {
             Action::AttributeMerger => Box::pin(attribute_merger::run(ctx, input)),
             Action::AttributeManager => Box::pin(attribute_manager::run(ctx, input)),
             Action::AttributeAggregator => Box::pin(attribute_aggregator::run(ctx, input)),
+            Action::DataframeTransformer => Box::pin(dataframe_transformer::run(ctx, input)),
             Action::ColorConverter => Box::pin(color_converter::run(ctx, input)),
             Action::EntityFilter => Box::pin(entity_filter::run(ctx, input)),
             Action::EntityTransformer => Box::pin(entity_transformer::run(ctx, input)),
