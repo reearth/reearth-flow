@@ -1,10 +1,10 @@
 use std::io::Cursor;
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_common::{str::remove_bom, uri::Uri};
-use reearth_flow_storage::resolve;
+use reearth_flow_storage::resolve::StorageResolver;
 
 use super::runner::CommonPropertySchema;
 use crate::action::ActionValue;
@@ -20,9 +20,10 @@ pub(crate) async fn read_csv(
     delimiter: u8,
     common_props: &CommonPropertySchema,
     props: &CsvPropertySchema,
+    storage_resolver: Arc<StorageResolver>,
 ) -> anyhow::Result<Vec<ActionValue>> {
     let uri = Uri::from_str(&common_props.dataset)?;
-    let storage = resolve(&uri)?;
+    let storage = storage_resolver.resolve(&uri)?;
     let result = storage.get(uri.path().as_path()).await?;
     let byte = result.bytes().await?;
     if props.header {

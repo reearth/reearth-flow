@@ -8,6 +8,7 @@ use anyhow::Result;
 use async_recursion::async_recursion;
 use petgraph::graph::NodeIndex;
 use reearth_flow_action::action::ActionContext;
+use reearth_flow_storage::resolve::StorageResolver;
 use tokio::task::JoinSet;
 use tracing::info;
 
@@ -27,10 +28,11 @@ pub struct DagExecutor {
     entry_dag: Dag,
     sub_dags: Graphs,
     expr_engine: Arc<Engine>,
+    storage_resolver: Arc<StorageResolver>,
 }
 
 impl DagExecutor {
-    pub fn new(workflow: &Workflow) -> Result<Self> {
+    pub fn new(workflow: &Workflow, storage_resolver: Arc<StorageResolver>) -> Result<Self> {
         let entry_graph = workflow
             .graphs
             .iter()
@@ -61,6 +63,7 @@ impl DagExecutor {
             entry_dag,
             sub_dags,
             expr_engine: Arc::new(engine),
+            storage_resolver: Arc::clone(&storage_resolver),
         })
     }
 
@@ -99,6 +102,7 @@ impl DagExecutor {
                     node.name().to_owned(),
                     node.with().clone(),
                     Arc::clone(&self.expr_engine),
+                    Arc::clone(&self.storage_resolver),
                 );
                 match node {
                     Node::Action { action, .. } => {
@@ -176,8 +180,13 @@ async fn run_async(
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     #[allow(unused_imports)]
     use super::*;
+
+    use bytes::Bytes;
+    use reearth_flow_common::uri::Uri;
 
     #[tokio::test]
     async fn test_run() {
@@ -237,9 +246,19 @@ mod tests {
             ]
           }
   "#;
+        let storage_resolver = Arc::new(StorageResolver::new());
+        let storage = storage_resolver
+            .resolve(&Uri::from_str("ram:///root/summary.csv").unwrap())
+            .unwrap();
+        let bytes = Bytes::from_static(b"format,name,age\njson,alice,20\njson,bob,30");
+        storage
+            .put(PathBuf::from("/root/summary.csv").as_path(), bytes)
+            .await
+            .unwrap();
+
         let workflow = Workflow::try_from_str(json).unwrap();
-        let executor = DagExecutor::new(&workflow).unwrap();
+        let executor = DagExecutor::new(&workflow, storage_resolver).unwrap();
         let res = executor.start().await;
-        assert!(res.is_err());
+        assert!(res.is_ok());
     }
 }

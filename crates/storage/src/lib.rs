@@ -1,5 +1,3 @@
 pub mod operator;
-pub mod resolver;
+pub mod resolve;
 pub mod storage;
-
-pub use resolver::resolve;

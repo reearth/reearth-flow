@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use anyhow::anyhow;
 use clap::{Arg, ArgMatches, Command};
 use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
-use reearth_flow_storage::resolver;
+use reearth_flow_storage::resolve;
 use reearth_flow_workflow::workflow::Workflow;
 use reearth_flow_workflow_runner::dag::DagExecutor;
 
@@ -39,12 +41,13 @@ impl RunCliCommand {
 
     pub async fn execute(&self) -> anyhow::Result<()> {
         debug!(args = ?self, "run-workflow");
-        let storage = resolver::resolve(&self.workflow_uri)?;
+        let storage_resolver = Arc::new(resolve::StorageResolver::new());
+        let storage = storage_resolver.resolve(&self.workflow_uri)?;
         let result = storage.get(self.workflow_uri.path().as_path()).await?;
         let content = result.bytes().await?;
         let json = String::from_utf8(content.to_vec())?;
         let workflow = Workflow::try_from_str(&json)?;
-        let executor = DagExecutor::new(&workflow)?;
+        let executor = DagExecutor::new(&workflow, storage_resolver)?;
         executor.start().await
     }
 }
