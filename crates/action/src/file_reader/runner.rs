@@ -1,5 +1,6 @@
 use core::result::Result;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
@@ -65,22 +66,26 @@ pub(crate) async fn run(
 ) -> anyhow::Result<ActionDataframe> {
     let props = PropertySchema::try_from(ctx.node_property)?;
     debug!(?props, "read");
+    let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let data = match props {
         PropertySchema::Csv {
             common_property,
             property,
         } => {
-            let result = csv::read_csv(b',', &common_property, &property).await?;
+            let result = csv::read_csv(b',', &common_property, &property, storage_resolver).await?;
             ActionValue::Array(result)
         }
         PropertySchema::Tsv {
             common_property,
             property,
         } => {
-            let result = csv::read_csv(b'\t', &common_property, &property).await?;
+            let result =
+                csv::read_csv(b'\t', &common_property, &property, storage_resolver).await?;
             ActionValue::Array(result)
         }
-        PropertySchema::Text { common_property } => text::read_text(&common_property).await?,
+        PropertySchema::Text { common_property } => {
+            text::read_text(&common_property, storage_resolver).await?
+        }
         _ => return Err(anyhow!("Unsupported format")),
     };
     let mut output = HashMap::new();

@@ -1,14 +1,14 @@
 use core::result::Result;
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use anyhow::anyhow;
 use bytes::Bytes;
+use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
-use reearth_flow_storage::resolve;
 use reearth_flow_workflow::error::Error;
 use reearth_flow_workflow::graph::NodeProperty;
 
@@ -52,11 +52,12 @@ pub(crate) async fn run(
 ) -> anyhow::Result<ActionDataframe> {
     let props = PropertySchema::try_from(ctx.node_property)?;
     debug!(?props, "read");
+    let storage_resolver = Arc::clone(&ctx.storage_resolver);
     match props.format {
-        Format::Csv => write_csv(inputs, b',', &props).await?,
-        Format::Tsv => write_csv(inputs, b'\t', &props).await?,
-        Format::Json => write_json(inputs, &props).await?,
-        Format::Text => write_text(inputs, &props).await?,
+        Format::Csv => write_csv(inputs, b',', &props, storage_resolver).await?,
+        Format::Tsv => write_csv(inputs, b'\t', &props, storage_resolver).await?,
+        Format::Json => write_json(inputs, &props, storage_resolver).await?,
+        Format::Text => write_text(inputs, &props, storage_resolver).await?,
     };
     let mut output: ActionDataframe = HashMap::new();
     let summary = vec![("output".to_owned(), ActionValue::String(props.output))]
@@ -69,6 +70,7 @@ pub(crate) async fn run(
 async fn write_text(
     inputs: Option<ActionDataframe>,
     props: &PropertySchema,
+    storage_resolver: Arc<StorageResolver>,
 ) -> anyhow::Result<ActionValue> {
     let value = get_input_value(inputs)?;
     let bytes = match value {
@@ -76,7 +78,7 @@ async fn write_text(
         _ => return Err(anyhow!("Unsupported input")),
     };
     let uri = Uri::from_str(&props.output)?;
-    let storage = resolve(&uri)?;
+    let storage = storage_resolver.resolve(&uri)?;
     storage.put(uri.path().as_path(), bytes).await?;
     Ok(ActionValue::Bool(true))
 }
@@ -84,12 +86,13 @@ async fn write_text(
 async fn write_json(
     inputs: Option<ActionDataframe>,
     props: &PropertySchema,
+    storage_resolver: Arc<StorageResolver>,
 ) -> anyhow::Result<ActionValue> {
     let value = get_input_value(inputs)?;
     let json_value: serde_json::Value = value.into();
 
     let uri = Uri::from_str(&props.output)?;
-    let storage = resolve(&uri)?;
+    let storage = storage_resolver.resolve(&uri)?;
     storage
         .put(uri.path().as_path(), Bytes::from(json_value.to_string()))
         .await?;
@@ -100,6 +103,7 @@ async fn write_csv(
     inputs: Option<ActionDataframe>,
     delimiter: u8,
     props: &PropertySchema,
+    storage_resolver: Arc<StorageResolver>,
 ) -> anyhow::Result<ActionValue> {
     let value = get_input_value(inputs)?;
     match value {
@@ -139,7 +143,7 @@ async fn write_csv(
             wtr.flush()?;
             let data = String::from_utf8(wtr.into_inner()?)?;
             let uri = Uri::from_str(&props.output)?;
-            let storage = resolve(&uri)?;
+            let storage = storage_resolver.resolve(&uri)?;
             storage.put(uri.path().as_path(), Bytes::from(data)).await?;
         }
         _ => return Err(anyhow!("Unsupported input")),
@@ -194,7 +198,8 @@ mod tests {
             format: Format::Text,
             output: "ram:///root/output.txt".to_owned(),
         };
-        let result = write_text(inputs, &props).await;
+        let resolver = Arc::new(StorageResolver::default());
+        let result = write_text(inputs, &props, resolver).await;
         assert!(result.is_ok());
     }
 
@@ -229,7 +234,8 @@ mod tests {
             format: Format::Csv,
             output: "ram:///root/output.csv".to_owned(),
         };
-        let result = write_csv(inputs, b',', &props).await;
+        let resolver = Arc::new(StorageResolver::default());
+        let result = write_csv(inputs, b',', &props, resolver).await;
         assert!(result.is_ok());
     }
 

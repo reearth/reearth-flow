@@ -11,6 +11,7 @@ use strum_macros::EnumString;
 
 use reearth_flow_common::str::base64_encode;
 use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
 
@@ -157,6 +158,7 @@ pub struct ActionContext {
     pub node_name: String,
     pub node_property: NodeProperty,
     pub expr_engine: Arc<Engine>,
+    pub storage_resolver: Arc<StorageResolver>,
 }
 
 impl ActionContext {
@@ -165,12 +167,14 @@ impl ActionContext {
         node_name: String,
         node_property: NodeProperty,
         expr_engine: Arc<Engine>,
+        storage_resolver: Arc<StorageResolver>,
     ) -> Self {
         Self {
             node_id,
             node_name,
             node_property,
             expr_engine,
+            storage_resolver,
         }
     }
 }
