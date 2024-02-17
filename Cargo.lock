@@ -607,16 +607,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fs4"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29f9df8a11882c4e3335eb2d18a0137c505d9ca927470b0cac9c6f0ae07d28f7"
-dependencies = [
- "rustix",
- "windows-sys 0.48.0",
-]
-
-[[package]]
 name = "futures"
 version = "0.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1647,14 +1637,13 @@ dependencies = [
 name = "reearth-flow-state"
 version = "0.1.0"
 dependencies = [
- "fs4",
- "parking_lot",
+ "bytes",
  "reearth-flow-common",
+ "reearth-flow-storage",
  "serde",
- "serde_derive",
  "serde_json",
  "serde_with",
- "tempfile",
+ "tokio",
  "tracing",
  "tracing-subscriber",
  "uuid",
