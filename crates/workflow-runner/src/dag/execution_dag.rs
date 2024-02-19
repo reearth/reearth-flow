@@ -184,7 +184,7 @@ async fn run_async(
     let func = action.run(ctx, input);
     let res = func.await?;
     dataframe_state
-        .save(&res, node_id.to_string().as_str())
+        .save(&convert_dataframe(&res), node_id.to_string().as_str())
         .await?;
     let duration = start.elapsed();
     info!(
@@ -195,6 +195,19 @@ async fn run_async(
         duration,
     );
     Ok((ix, res))
+}
+
+fn convert_dataframe(dataframe: &ActionDataframe) -> HashMap<String, serde_json::Value> {
+    dataframe
+        .iter()
+        .filter_map(|(k, v)| match v {
+            Some(v) => {
+                let value: serde_json::Value = v.clone().into();
+                Some((k.clone(), value))
+            }
+            None => None,
+        })
+        .collect::<HashMap<String, serde_json::Value>>()
 }
 
 #[cfg(test)]
