@@ -25,7 +25,7 @@ pub const DEFAULT_PORT: &str = "default";
 pub type ActionDataframe = HashMap<Port, Option<ActionValue>>;
 pub type ActionValueIndex = HashMap<String, HashMap<String, Vec<ActionValue>>>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ActionValue {
     Bool(bool),
     Number(Number),
@@ -154,6 +154,8 @@ pub enum Action {
 
 #[derive(Debug, Default, Clone)]
 pub struct ActionContext {
+    pub job_id: Id,
+    pub workflow_id: Id,
     pub node_id: Id,
     pub node_name: String,
     pub node_property: NodeProperty,
@@ -163,6 +165,8 @@ pub struct ActionContext {
 
 impl ActionContext {
     pub fn new(
+        job_id: Id,
+        workflow_id: Id,
         node_id: Id,
         node_name: String,
         node_property: NodeProperty,
@@ -170,6 +174,8 @@ impl ActionContext {
         storage_resolver: Arc<StorageResolver>,
     ) -> Self {
         Self {
+            job_id,
+            workflow_id,
             node_id,
             node_name,
             node_property,

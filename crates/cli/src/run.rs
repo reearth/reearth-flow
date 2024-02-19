@@ -1,12 +1,14 @@
-use std::sync::Arc;
+use std::{fs, path::Path, str::FromStr, sync::Arc};
 
 use anyhow::anyhow;
 use clap::{Arg, ArgMatches, Command};
+use directories::ProjectDirs;
 use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve;
-use reearth_flow_workflow::workflow::Workflow;
+use reearth_flow_workflow::{id::Id, workflow::Workflow};
 use reearth_flow_workflow_runner::dag::DagExecutor;
 
 pub fn build_run_command() -> Command {
@@ -14,6 +16,8 @@ pub fn build_run_command() -> Command {
         .about("Start a workflow.")
         .long_about("Start a workflow .")
         .arg(workflow_cli_arg())
+        .arg(job_id_cli_arg())
+        .arg(dataframe_state_cli_arg())
 }
 
 fn workflow_cli_arg() -> Arg {
@@ -21,13 +25,33 @@ fn workflow_cli_arg() -> Arg {
         .long("workflow")
         .help("Workflow file location")
         .env("REEARTH_FLOW_WORKFLOW")
-        .global(true)
+        .required(true)
         .display_order(1)
+}
+
+fn job_id_cli_arg() -> Arg {
+    Arg::new("job_id")
+        .long("job-id")
+        .help("Job id")
+        .env("REEARTH_FLOW_JOB_ID")
+        .required(false)
+        .display_order(2)
+}
+
+fn dataframe_state_cli_arg() -> Arg {
+    Arg::new("dataframe_state")
+        .long("dataframe-state")
+        .help("Dataframe state location")
+        .env("REEARTH_FLOW_DATAFRAME_STATE")
+        .required(false)
+        .display_order(3)
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct RunCliCommand {
     workflow_uri: Uri,
+    job_id: Option<String>,
+    dataframe_state_uri: Option<String>,
 }
 
 impl RunCliCommand {
@@ -36,7 +60,13 @@ impl RunCliCommand {
             .remove_one::<String>("workflow")
             .map(|uri_str| Uri::for_test(&uri_str))
             .ok_or(anyhow!("No workflow uri provided"))?;
-        Ok(RunCliCommand { workflow_uri })
+        let job_id = matches.remove_one::<String>("job_id");
+        let dataframe_state_uri = matches.remove_one::<String>("dataframe_state");
+        Ok(RunCliCommand {
+            workflow_uri,
+            job_id,
+            dataframe_state_uri,
+        })
     }
 
     pub async fn execute(&self) -> anyhow::Result<()> {
@@ -47,7 +77,26 @@ impl RunCliCommand {
         let content = result.bytes().await?;
         let json = String::from_utf8(content.to_vec())?;
         let workflow = Workflow::try_from_str(&json)?;
-        let executor = DagExecutor::new(&workflow, storage_resolver)?;
+        let job_id = match &self.job_id {
+            Some(job_id) => Id::from_str(job_id.as_str())?,
+            None => Id::new_v4(),
+        };
+        let dataframe_state_uri = match &self.dataframe_state_uri {
+            Some(uri) => Uri::from_str(uri)?,
+            None => {
+                let p = ProjectDirs::from("reearth", "flow", "worker")
+                    .ok_or(anyhow!("No dataframe state uri provided"))?;
+                let p = p
+                    .data_dir()
+                    .to_str()
+                    .ok_or(anyhow!("Invalid dataframe state uri"))?;
+                let p = format!("{}/dataframe/{}", p, job_id);
+                fs::create_dir_all(Path::new(p.as_str()))?;
+                Uri::for_test(format!("file://{}", p).as_str())
+            }
+        };
+        let state = Arc::new(State::new(&dataframe_state_uri, &storage_resolver)?);
+        let executor = DagExecutor::new(job_id, &workflow, storage_resolver, state)?;
         executor.start().await
     }
 }
