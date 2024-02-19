@@ -3,7 +3,8 @@ updates:
   - package-ecosystem: cargo
     directory: /
     schedule:
-      interval: daily
-    commit-message:
-      prefix: ''
+      interval: "daily"
+      time: "08:00"
+      timezone: "Asia/Tokyo"
+    target-branch: "main"
     labels: []
