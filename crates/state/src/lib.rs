@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use reearth_flow_common::str::remove_trailing_slash;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_storage::storage::Storage;
@@ -16,13 +17,16 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(root: &Uri, storage_resolver: Arc<StorageResolver>) -> Result<Self> {
+    pub fn new(root: &Uri, storage_resolver: &StorageResolver) -> Result<Self> {
         let storage = storage_resolver
             .resolve(root)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
         Ok(Self {
             storage,
-            root: Path::new(root.root()).to_path_buf(),
+            root: Path::new(
+                remove_trailing_slash(root.path().to_str().unwrap_or_default()).as_str(),
+            )
+            .to_path_buf(),
         })
     }
 
@@ -32,8 +36,9 @@ impl State {
     {
         let s = self.object_to_string(obj)?;
         let content = bytes::Bytes::from(s);
+        let p = self.id_to_location(id);
         self.storage
-            .put(self.id_to_location(id).as_path(), content)
+            .put(p.as_path(), content)
             .await
             .map_err(|e| Error::new(ErrorKind::Other, e))
     }
@@ -64,7 +69,7 @@ impl State {
     }
 
     fn id_to_location(&self, id: &str) -> PathBuf {
-        Path::new(format!("{}/{}", self.root.to_str().unwrap_or_default(), id).as_str())
+        Path::new(format!("{}/{}.json", self.root.to_str().unwrap_or_default(), id).as_str())
             .to_path_buf()
     }
 
@@ -92,7 +97,7 @@ mod tests {
 
         let storage_resolver = Arc::new(StorageResolver::new());
 
-        let state = State::new(&Uri::for_test("ram://workflows/"), storage_resolver).unwrap();
+        let state = State::new(&Uri::for_test("ram:///workflows"), &storage_resolver).unwrap();
         let data = Data { x: 42 };
         state.save(&data, "test").await.unwrap();
         let result: Data = state.get("test").await.unwrap();

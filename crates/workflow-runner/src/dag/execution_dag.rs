@@ -7,16 +7,14 @@ use std::time::Instant;
 use anyhow::Result;
 use async_recursion::async_recursion;
 use petgraph::graph::NodeIndex;
-use reearth_flow_action::action::ActionContext;
-use reearth_flow_storage::resolve::StorageResolver;
 use tokio::task::JoinSet;
 use tracing::info;
 
-use reearth_flow_action::action::{Action, ActionDataframe};
+use reearth_flow_action::action::{Action, ActionContext, ActionDataframe};
 use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_workflow::graph::Node;
-use reearth_flow_workflow::id::Id;
-use reearth_flow_workflow::workflow::Workflow;
+use reearth_flow_state::State;
+use reearth_flow_storage::resolve::StorageResolver;
+use reearth_flow_workflow::{graph::Node, id::Id, workflow::Workflow};
 
 use super::dag_impl::Dag;
 use super::error::Error;
@@ -24,15 +22,23 @@ use super::error::Error;
 type Graphs = HashMap<Id, Dag>;
 
 pub struct DagExecutor {
-    name: String,
+    job_id: Id,
+    workflow_id: Id,
+    workflow_name: String,
     entry_dag: Dag,
     sub_dags: Graphs,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
+    dataframe_state: Arc<State>,
 }
 
 impl DagExecutor {
-    pub fn new(workflow: &Workflow, storage_resolver: Arc<StorageResolver>) -> Result<Self> {
+    pub fn new(
+        job_id: Id,
+        workflow: &Workflow,
+        storage_resolver: Arc<StorageResolver>,
+        dataframe_state: Arc<State>,
+    ) -> Result<Self> {
         let entry_graph = workflow
             .graphs
             .iter()
@@ -59,22 +65,25 @@ impl DagExecutor {
             engine.set_scope_var(k, v);
         });
         Ok(Self {
-            name: workflow.name.clone(),
+            workflow_id: workflow.id,
+            job_id,
+            workflow_name: workflow.name.clone(),
             entry_dag,
             sub_dags,
             expr_engine: Arc::new(engine),
             storage_resolver: Arc::clone(&storage_resolver),
+            dataframe_state: Arc::clone(&dataframe_state),
         })
     }
 
     pub async fn start(&self) -> Result<()> {
-        info!("Start workflow = {:?}", self.name);
+        info!("Start workflow = {:?}", self.workflow_name);
         let start = Instant::now();
         let _ = self.run_dag(&self.entry_dag).await?;
         let duration = start.elapsed();
         info!(
             "Finish workflow = {:?}, duration = {:?}",
-            self.name, duration
+            self.workflow_name, duration
         );
         Ok(())
     }
@@ -98,6 +107,8 @@ impl DagExecutor {
                     ix
                 )))?;
                 let ctx = ActionContext::new(
+                    self.job_id,
+                    self.workflow_id,
                     node.id(),
                     node.name().to_owned(),
                     node.with().clone(),
@@ -107,7 +118,10 @@ impl DagExecutor {
                 match node {
                     Node::Action { action, .. } => {
                         let action = Action::from_str(action)?;
-                        async_tools.spawn(async move { run_async(ix, ctx, action, input).await });
+                        let dataframe_state = Arc::clone(&self.dataframe_state);
+                        async_tools.spawn(async move {
+                            run_async(ix, ctx, dataframe_state, action, input).await
+                        });
                     }
                     Node::SubGraph { sub_graph_id, .. } => {
                         let sub_dag =
@@ -159,14 +173,19 @@ impl DagExecutor {
 async fn run_async(
     ix: NodeIndex,
     ctx: ActionContext,
+    dataframe_state: Arc<State>,
     action: Action,
     input: Option<ActionDataframe>,
 ) -> Result<(NodeIndex, ActionDataframe)> {
+    let node_id = ctx.node_id;
     let node_name = ctx.node_name.clone();
     info!("Start action = {:?}, name = {:?}", action, node_name);
     let start = Instant::now();
     let func = action.run(ctx, input);
     let res = func.await?;
+    dataframe_state
+        .save(&res, node_id.to_string().as_str())
+        .await?;
     let duration = start.elapsed();
     info!(
         "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
@@ -247,6 +266,8 @@ mod tests {
           }
   "#;
         let storage_resolver = Arc::new(StorageResolver::new());
+        let state =
+            Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
         let storage = storage_resolver
             .resolve(&Uri::from_str("ram:///root/summary.csv").unwrap())
             .unwrap();
@@ -257,7 +278,8 @@ mod tests {
             .unwrap();
 
         let workflow = Workflow::try_from_str(json).unwrap();
-        let executor = DagExecutor::new(&workflow, storage_resolver).unwrap();
+        let job_id = Id::new_v4();
+        let executor = DagExecutor::new(job_id, &workflow, storage_resolver, state).unwrap();
         let res = executor.start().await;
         assert!(res.is_ok());
     }
