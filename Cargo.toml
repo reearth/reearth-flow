@@ -33,6 +33,7 @@ strip = true
 
 [workspace.dependencies]
 reearth-flow-action = {path = "crates/action"}
+reearth-flow-action-log = {path = "crates/action-log"}
 reearth-flow-common = {path = "crates/common"}
 reearth-flow-eval-expr = {path = "crates/eval-expr"}
 reearth-flow-state = {path = "crates/state"}
@@ -69,6 +70,7 @@ serde_derive = "1.0.196"
 serde_json = {version = "1.0.113", features = ["arbitrary_precision"]}
 serde_with = "3.6.1"
 serde_yaml = "0.9.32"
+slog = {version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"]}
 tempfile = "3.10.0"
 thiserror = "1.0.57"
 tokio = {version = "1.36.0", features = ["full", "time"]}

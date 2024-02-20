@@ -50,6 +50,23 @@ impl Storage {
             .map_err(|err| format_object_store_error(err, p))
     }
 
+    pub async fn append(&self, location: &Path, bytes: Bytes) -> Result<()> {
+        let p = location.to_str().ok_or(object_store::Error::InvalidPath {
+            source: object_store::path::Error::InvalidPath {
+                path: format!("{:?}", location).into(),
+            },
+        })?;
+        let mut w = self
+            .inner
+            .writer_with(p)
+            .append(true)
+            .await
+            .map_err(|err| format_object_store_error(err, p))?;
+        w.write(bytes)
+            .await
+            .map_err(|err| format_object_store_error(err, p))
+    }
+
     pub async fn get(&self, location: &Path) -> Result<GetResult> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {

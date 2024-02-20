@@ -5,6 +5,7 @@ use clap::{Arg, ArgMatches, Command};
 use directories::ProjectDirs;
 use tracing::debug;
 
+use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve;
@@ -18,6 +19,7 @@ pub fn build_run_command() -> Command {
         .arg(workflow_cli_arg())
         .arg(job_id_cli_arg())
         .arg(dataframe_state_cli_arg())
+        .arg(action_log_cli_arg())
 }
 
 fn workflow_cli_arg() -> Arg {
@@ -47,11 +49,21 @@ fn dataframe_state_cli_arg() -> Arg {
         .display_order(3)
 }
 
+fn action_log_cli_arg() -> Arg {
+    Arg::new("action_log")
+        .long("action-log")
+        .help("Action log location")
+        .env("REEARTH_FLOW_ACTION_LOG")
+        .required(false)
+        .display_order(4)
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct RunCliCommand {
     workflow_uri: Uri,
     job_id: Option<String>,
     dataframe_state_uri: Option<String>,
+    action_log_uri: Option<String>,
 }
 
 impl RunCliCommand {
@@ -62,10 +74,12 @@ impl RunCliCommand {
             .ok_or(anyhow!("No workflow uri provided"))?;
         let job_id = matches.remove_one::<String>("job_id");
         let dataframe_state_uri = matches.remove_one::<String>("dataframe_state");
+        let action_log_uri = matches.remove_one::<String>("action_log");
         Ok(RunCliCommand {
             workflow_uri,
             job_id,
             dataframe_state_uri,
+            action_log_uri,
         })
     }
 
@@ -95,8 +109,26 @@ impl RunCliCommand {
                 Uri::for_test(format!("file://{}", p).as_str())
             }
         };
+        let action_log_uri = match &self.action_log_uri {
+            Some(uri) => Uri::from_str(uri)?,
+            None => {
+                let p = ProjectDirs::from("reearth", "flow", "worker")
+                    .ok_or(anyhow!("No dataframe state uri provided"))?;
+                let p = p
+                    .data_dir()
+                    .to_str()
+                    .ok_or(anyhow!("Invalid dataframe state uri"))?;
+                let p = format!("{}/action-log/{}", p, job_id);
+                fs::create_dir_all(Path::new(p.as_str()))?;
+                Uri::for_test(format!("file://{}", p).as_str())
+            }
+        };
         let state = Arc::new(State::new(&dataframe_state_uri, &storage_resolver)?);
-        let executor = DagExecutor::new(job_id, &workflow, storage_resolver, state)?;
+        let log_factory = Arc::new(LoggerFactory::new(
+            create_root_logger(action_log_uri.path()),
+            action_log_uri.path(),
+        ));
+        let executor = DagExecutor::new(job_id, &workflow, storage_resolver, state, log_factory)?;
         executor.start().await
     }
 }

@@ -11,6 +11,8 @@ use tokio::task::JoinSet;
 use tracing::info;
 
 use reearth_flow_action::action::{Action, ActionContext, ActionDataframe};
+use reearth_flow_action_log::action_log;
+use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -30,6 +32,7 @@ pub struct DagExecutor {
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     dataframe_state: Arc<State>,
+    logger_factory: Arc<LoggerFactory>,
 }
 
 impl DagExecutor {
@@ -38,6 +41,7 @@ impl DagExecutor {
         workflow: &Workflow,
         storage_resolver: Arc<StorageResolver>,
         dataframe_state: Arc<State>,
+        logger_factory: Arc<LoggerFactory>,
     ) -> Result<Self> {
         let entry_graph = workflow
             .graphs
@@ -73,6 +77,7 @@ impl DagExecutor {
             expr_engine: Arc::new(engine),
             storage_resolver: Arc::clone(&storage_resolver),
             dataframe_state: Arc::clone(&dataframe_state),
+            logger_factory: Arc::clone(&logger_factory),
         })
     }
 
@@ -106,17 +111,20 @@ impl DagExecutor {
                     "Failed to get node from index = {:?}",
                     ix
                 )))?;
-                let ctx = ActionContext::new(
-                    self.job_id,
-                    self.workflow_id,
-                    node.id(),
-                    node.name().to_owned(),
-                    node.with().clone(),
-                    Arc::clone(&self.expr_engine),
-                    Arc::clone(&self.storage_resolver),
-                );
                 match node {
                     Node::Action { action, .. } => {
+                        let node_id = node.id();
+                        let ctx = ActionContext::new(
+                            self.job_id,
+                            self.workflow_id,
+                            node_id,
+                            node.name().to_owned(),
+                            node.with().clone(),
+                            Arc::clone(&self.expr_engine),
+                            Arc::clone(&self.storage_resolver),
+                            self.logger_factory
+                                .action_logger(node_id.to_string().as_str()),
+                        );
                         let action = Action::from_str(action)?;
                         let dataframe_state = Arc::clone(&self.dataframe_state);
                         async_tools.spawn(async move {
@@ -180,6 +188,13 @@ async fn run_async(
     let node_id = ctx.node_id;
     let node_name = ctx.node_name.clone();
     info!("Start action = {:?}, name = {:?}", action, node_name);
+    let logger = Arc::clone(&ctx.logger);
+    action_log!(
+        logger,
+        "Start action = {:?}, name = {:?}",
+        action,
+        node_name
+    );
     let start = Instant::now();
     let func = action.run(ctx, input);
     let res = func.await?;
@@ -188,6 +203,14 @@ async fn run_async(
         .await?;
     let duration = start.elapsed();
     info!(
+        "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
+        action,
+        node_name,
+        res.keys(),
+        duration,
+    );
+    action_log!(
+        logger,
         "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
         action,
         node_name,
@@ -292,7 +315,15 @@ mod tests {
 
         let workflow = Workflow::try_from_str(json).unwrap();
         let job_id = Id::new_v4();
-        let executor = DagExecutor::new(job_id, &workflow, storage_resolver, state).unwrap();
+        let log_factory = Arc::new(LoggerFactory::new(
+            reearth_flow_action_log::Logger::root(
+                reearth_flow_action_log::Discard,
+                reearth_flow_action_log::o!(),
+            ),
+            PathBuf::new(),
+        ));
+        let executor =
+            DagExecutor::new(job_id, &workflow, storage_resolver, state, log_factory).unwrap();
         let res = executor.start().await;
         assert!(res.is_ok());
     }
