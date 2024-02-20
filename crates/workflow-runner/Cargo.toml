@@ -11,6 +11,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+reearth-flow-action-log.workspace = true
 reearth-flow-action.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true

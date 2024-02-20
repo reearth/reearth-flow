@@ -15,6 +15,7 @@ name = "reearth-flow"
 path = "src/main.rs"
 
 [dependencies]
+reearth-flow-action-log.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true

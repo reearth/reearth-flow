@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use strum_macros::EnumString;
 
+use reearth_flow_action_log::Logger;
 use reearth_flow_common::str::base64_encode;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -152,7 +153,7 @@ pub enum Action {
     FileWriter,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct ActionContext {
     pub job_id: Id,
     pub workflow_id: Id,
@@ -161,9 +162,11 @@ pub struct ActionContext {
     pub node_property: NodeProperty,
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
+    pub logger: Arc<Logger>,
 }
 
 impl ActionContext {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         job_id: Id,
         workflow_id: Id,
@@ -172,6 +175,7 @@ impl ActionContext {
         node_property: NodeProperty,
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
+        logger: Logger,
     ) -> Self {
         Self {
             job_id,
@@ -181,6 +185,7 @@ impl ActionContext {
             node_property,
             expr_engine,
             storage_resolver,
+            logger: Arc::new(logger),
         }
     }
 }

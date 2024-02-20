@@ -90,7 +90,6 @@ impl Uri {
     }
 
     /// Returns the parent URI.
-    /// Does not apply to PostgreSQL URIs.
     pub fn parent(&self) -> Option<Uri> {
         let path = self._path();
         let protocol = self.protocol();
