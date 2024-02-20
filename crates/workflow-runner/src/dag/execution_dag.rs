@@ -187,13 +187,11 @@ async fn run_async(
 ) -> Result<(NodeIndex, ActionDataframe)> {
     let node_id = ctx.node_id;
     let node_name = ctx.node_name.clone();
-    info!("Start action = {:?}, name = {:?}", action, node_name);
-    let logger = Arc::clone(&ctx.logger);
-    action_log!(
-        logger,
-        "Start action = {:?}, name = {:?}",
-        action,
-        node_name
+    let start_logger = Arc::clone(&ctx.logger);
+    let end_logger = Arc::clone(&ctx.logger);
+    action_log(
+        start_logger,
+        format!("Start action = {:?}, name = {:?}", action, node_name).as_str(),
     );
     let start = Instant::now();
     let func = action.run(ctx, input);
@@ -202,20 +200,16 @@ async fn run_async(
         .save(&convert_dataframe(&res), node_id.to_string().as_str())
         .await?;
     let duration = start.elapsed();
-    info!(
-        "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
-        action,
-        node_name,
-        res.keys(),
-        duration,
-    );
-    action_log!(
-        logger,
-        "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
-        action,
-        node_name,
-        res.keys(),
-        duration,
+    action_log(
+        end_logger,
+        format!(
+            "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
+            action,
+            node_name,
+            res.keys(),
+            duration,
+        )
+        .as_str(),
     );
     Ok((ix, res))
 }
@@ -316,7 +310,7 @@ mod tests {
         let workflow = Workflow::try_from_str(json).unwrap();
         let job_id = Id::new_v4();
         let log_factory = Arc::new(LoggerFactory::new(
-            reearth_flow_action_log::Logger::root(
+            reearth_flow_action_log::ActionLogger::root(
                 reearth_flow_action_log::Discard,
                 reearth_flow_action_log::o!(),
             ),

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use strum_macros::EnumString;
 
-use reearth_flow_action_log::Logger;
+use reearth_flow_action_log::ActionLogger;
 use reearth_flow_common::str::base64_encode;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -162,7 +162,7 @@ pub struct ActionContext {
     pub node_property: NodeProperty,
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
-    pub logger: Arc<Logger>,
+    pub logger: Arc<ActionLogger>,
 }
 
 impl ActionContext {
@@ -175,7 +175,7 @@ impl ActionContext {
         node_property: NodeProperty,
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
-        logger: Logger,
+        logger: ActionLogger,
     ) -> Self {
         Self {
             job_id,
