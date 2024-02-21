@@ -67,7 +67,7 @@ regex = "1.10.3"
 rhai = {version = "1.17.1", features = ["internals", "sync", "serde"]}
 serde = {version = "1.0.197", features = ["derive"]}
 serde_derive = "1.0.196"
-serde_json = {version = "1.0.113", features = ["arbitrary_precision"]}
+serde_json = {version = "1.0.114", features = ["arbitrary_precision"]}
 serde_with = "3.6.1"
 serde_yaml = "0.9.32"
 slog = {version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"]}
