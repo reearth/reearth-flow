@@ -47,15 +47,15 @@ pub(crate) async fn run(
                     ActionValue::Array(data) => {
                         let processed_items = data
                             .into_iter()
-                            .map(|item| match item {
+                            .filter_map(|item| match item {
                                 ActionValue::Map(item) => {
                                     let processed_item = item
                                         .into_iter()
                                         .filter(|(key, _)| props.keep_attributes.contains(key))
                                         .collect::<HashMap<_, _>>();
-                                    ActionValue::Map(processed_item)
+                                    Some(ActionValue::Map(processed_item))
                                 }
-                                _ => ActionValue::Map(HashMap::new()),
+                                _ => None,
                             })
                             .collect::<Vec<_>>();
                         ActionValue::Array(processed_items)
