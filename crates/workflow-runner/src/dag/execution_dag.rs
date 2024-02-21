@@ -189,9 +189,11 @@ async fn run_async(
     let node_name = ctx.node_name.clone();
     let start_logger = Arc::clone(&ctx.logger);
     let end_logger = Arc::clone(&ctx.logger);
-    action_log(
+    action_log!(
         start_logger,
-        format!("Start action = {:?}, name = {:?}", action, node_name).as_str(),
+        "Start action = {:?}, name = {:?}",
+        action,
+        node_name,
     );
     let start = Instant::now();
     let func = action.run(ctx, input);
@@ -200,16 +202,13 @@ async fn run_async(
         .save(&convert_dataframe(&res), node_id.to_string().as_str())
         .await?;
     let duration = start.elapsed();
-    action_log(
+    action_log!(
         end_logger,
-        format!(
-            "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
-            action,
-            node_name,
-            res.keys(),
-            duration,
-        )
-        .as_str(),
+        "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
+        action,
+        node_name,
+        res.keys(),
+        duration,
     );
     Ok((ix, res))
 }
