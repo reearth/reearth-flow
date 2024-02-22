@@ -1,18 +1,6 @@
 # Re:Earth Flow
 Build and run workflows to calculate and convert various data (WIP)
 
-## Development
-
-### Install toolchains
-- Rust (stable)
-
-### Install prerequisites
-
-```console
-cargo install cargo-make
-cargo install cargo-watch
-```
-
 ## License
 
 Licensed under either of
