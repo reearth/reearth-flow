@@ -5,7 +5,6 @@ import {
   ResizablePanelGroup,
 } from "@flow/components/ui/resizable";
 
-import './globals.css';
 import MenubarComponent from '@flow/features/Menubar';
 
 function App() {
@@ -23,13 +22,28 @@ function App() {
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel defaultSize={50}>
-          <div className="flex h-full items-center justify-center p-6">
-            <h1 className="text-3xl text-slate-200 font-bold underline">Re:Earth Flow</h1>
-          </div>
+          <ResizablePanelGroup
+            direction="vertical"
+            className="min-h-[200px] rounded-lg border"
+          >
+            <ResizablePanel defaultSize={50}>
+
+              <div className="flex justify-center p-6">
+                <h1 className="text-3xl text-slate-200 font-bold underline">Re:Earth Flow</h1>
+              </div>
+            </ResizablePanel>
+            <ResizableHandle />
+            <ResizablePanel defaultSize={50}>
+              <div className="flex h-full items-center justify-center p-6">
+                <Button size="sm">Styles are working</Button>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </ResizablePanel>
         <ResizableHandle />
         <ResizablePanel defaultSize={25}>
-          <div className="flex h-full items-center justify-center p-6">
+          <div className="flex h-full justify-center p-3 gap-3">
+            <Button size="sm">Styles are working</Button>
             <Button size="sm">Styles are working</Button>
           </div>
         </ResizablePanel>
