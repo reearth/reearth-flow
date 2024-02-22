@@ -1,12 +1,16 @@
-name: deny
+name: Crates deny
 
 on:
   push:
-    branches: [main]
-    paths: [Cargo.lock, deny.toml]
+    branches:
+      - main
+    paths:
+      - Cargo.lock
+      - deny.toml
   pull_request:
-    branches: [main]
-    paths: [Cargo.lock, deny.toml]
+    paths:
+      - Cargo.lock
+      - deny.toml
 
 env:
   CARGO_TERM_COLOR: always
