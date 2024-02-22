@@ -63,11 +63,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - name: Clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all -- -D warnings
+      - name: rustfmt
+        run: cargo clippy --all -- -D warnings
 
   test:
     runs-on: ubuntu-latest
