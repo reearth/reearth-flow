@@ -129,6 +129,7 @@ impl RunCliCommand {
             action_log_uri.path(),
         ));
         let executor = DagExecutor::new(job_id, &workflow, storage_resolver, state, log_factory)?;
-        executor.start().await
+        executor.start().await?;
+        Ok(())
     }
 }

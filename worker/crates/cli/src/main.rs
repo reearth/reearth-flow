@@ -1,4 +1,6 @@
 use colored::{Color, Colorize};
+use opentelemetry::global::{shutdown_meter_provider, shutdown_tracer_provider};
+
 use reearth_flow_cli::cli::{build_cli, CliCommand};
 use reearth_flow_cli::logger;
 
@@ -28,6 +30,8 @@ async fn main_impl() -> anyhow::Result<()> {
     } else {
         0
     };
+    shutdown_tracer_provider();
+    shutdown_meter_provider();
     std::process::exit(return_code)
 }
 

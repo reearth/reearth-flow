@@ -8,7 +8,7 @@ use anyhow::Result;
 use async_recursion::async_recursion;
 use petgraph::graph::NodeIndex;
 use tokio::task::JoinSet;
-use tracing::info;
+use tracing::{info, info_span};
 
 use reearth_flow_action::action::{Action, ActionContext, ActionDataframe};
 use reearth_flow_action_log::action_log;
@@ -33,6 +33,7 @@ pub struct DagExecutor {
     storage_resolver: Arc<StorageResolver>,
     dataframe_state: Arc<State>,
     logger_factory: Arc<LoggerFactory>,
+    root_span: tracing::Span,
 }
 
 impl DagExecutor {
@@ -68,6 +69,13 @@ impl DagExecutor {
         workflow.with.iter().for_each(|(k, v)| {
             engine.set_scope_var(k, v);
         });
+        let root_span = info_span!(
+            "root",
+            "otel.name" = workflow.name.as_str(),
+            "otel.kind" = "workflow",
+            "workflow.id" = workflow.id.to_string().as_str(),
+            "workflow.job_id" = job_id.to_string().as_str(),
+        );
         Ok(Self {
             workflow_id: workflow.id,
             job_id,
@@ -78,15 +86,18 @@ impl DagExecutor {
             storage_resolver: Arc::clone(&storage_resolver),
             dataframe_state: Arc::clone(&dataframe_state),
             logger_factory: Arc::clone(&logger_factory),
+            root_span,
         })
     }
 
     pub async fn start(&self) -> Result<()> {
-        info!("Start workflow = {:?}", self.workflow_name);
+        let workflow_name = self.workflow_name.clone();
+        info!(parent: &self.root_span, "Start workflow = {:?}", workflow_name);
         let start = Instant::now();
         let _ = self.run_dag(&self.entry_dag).await?;
         let duration = start.elapsed();
         info!(
+            parent: &self.root_span,
             "Finish workflow = {:?}, duration = {:?}",
             self.workflow_name, duration
         );
@@ -124,6 +135,7 @@ impl DagExecutor {
                             Arc::clone(&self.storage_resolver),
                             self.logger_factory
                                 .action_logger(node_id.to_string().as_str()),
+                            self.root_span.clone(),
                         );
                         let action = Action::from_str(action)?;
                         let dataframe_state = Arc::clone(&self.dataframe_state);
@@ -189,7 +201,16 @@ async fn run_async(
     let node_name = ctx.node_name.clone();
     let start_logger = Arc::clone(&ctx.logger);
     let end_logger = Arc::clone(&ctx.logger);
+    let span = info_span!(
+        parent: ctx.root_span.clone(), "run_async",
+        "otel.name" = action.to_string().as_str(),
+        "otel.kind" = "action",
+        "workflow.action" = format!("{:?}", action),
+        "workflow.node_id" = node_id.to_string().as_str(),
+        "workflow.node_name" = node_name.as_str()
+    );
     action_log!(
+        parent: span,
         start_logger,
         "Start action = {:?}, name = {:?}",
         action,
@@ -203,6 +224,7 @@ async fn run_async(
         .await?;
     let duration = start.elapsed();
     action_log!(
+        parent: span,
         end_logger,
         "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
         action,
