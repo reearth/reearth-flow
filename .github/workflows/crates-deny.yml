@@ -15,6 +15,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+defaults:
+  run:
+    working-directory: ./worker
+
 jobs:
   cargo-deny:
     name: cargo deny check
