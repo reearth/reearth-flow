@@ -11,11 +11,12 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+once_cell.workspace = true
+opentelemetry-otlp.workspace = true
+opentelemetry-stdout.workspace = true
+opentelemetry.workspace = true
+opentelemetry_sdk.workspace = true
+opentelemetry-semantic-conventions.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-time = {version = "0.3.34", features = ["formatting"]}
-tracing-subscriber.workspace = true
-tracing.workspace = true
-
-[dev-dependencies]
-time = {version = "0.3.34", features = ["parsing", "macros"]}

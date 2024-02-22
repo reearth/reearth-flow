@@ -2,7 +2,8 @@ use std::io::Result;
 use std::time::Duration;
 
 use opendal::layers::LoggingLayer;
-use opendal::layers::MinitraceLayer;
+use opendal::layers::MetricsLayer;
+use opendal::layers::OtelTraceLayer;
 use opendal::layers::RetryLayer;
 use opendal::layers::TimeoutLayer;
 use opendal::services;
@@ -36,7 +37,8 @@ pub(crate) fn build_operator<B: Builder>(builder: B) -> Result<Operator> {
         // Add retry
         .layer(RetryLayer::new().with_jitter())
         .layer(LoggingLayer::default())
-        .layer(MinitraceLayer)
+        .layer(MetricsLayer)
+        .layer(OtelTraceLayer)
         .finish();
     Ok(op)
 }

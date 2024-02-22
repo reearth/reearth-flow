@@ -153,6 +153,23 @@ pub enum Action {
     FileWriter,
 }
 
+impl Display for Action {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Action::AttributeKeeper => write!(f, "attributeKeeper"),
+            Action::AttributeMerger => write!(f, "attributeMerger"),
+            Action::AttributeManager => write!(f, "attributeManager"),
+            Action::AttributeAggregator => write!(f, "attributeAggregator"),
+            Action::ColorConverter => write!(f, "colorConverter"),
+            Action::DataframeTransformer => write!(f, "dataframeTransformer"),
+            Action::EntityFilter => write!(f, "entityFilter"),
+            Action::EntityTransformer => write!(f, "entityTransformer"),
+            Action::FileReader => write!(f, "fileReader"),
+            Action::FileWriter => write!(f, "fileWriter"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ActionContext {
     pub job_id: Id,
@@ -163,6 +180,7 @@ pub struct ActionContext {
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
     pub logger: Arc<ActionLogger>,
+    pub root_span: tracing::Span,
 }
 
 impl ActionContext {
@@ -176,6 +194,7 @@ impl ActionContext {
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
         logger: ActionLogger,
+        root_span: tracing::Span,
     ) -> Self {
         Self {
             job_id,
@@ -186,6 +205,7 @@ impl ActionContext {
             expr_engine,
             storage_resolver,
             logger: Arc::new(logger),
+            root_span,
         }
     }
 }
