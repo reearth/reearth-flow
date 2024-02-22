@@ -12,6 +12,19 @@ Build and run workflows to calculate and convert various types of data (WIP)
 cargo install cargo-make
 cargo install cargo-watch
 ```
+## Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.
+
+[![Contributers](https://contrib.rocks/image?repo=reearth/reearth-flow)](https://github.com/reearth/reearth-flow/graphs/contributors)
+
+Made with [contrib.rocks](https://contrib.rocks).
+
+## Contact
+
+Re:Earth core comitters: [community@reearth.io](mailto:community@reearth.io)
 
 ## License
 
@@ -21,9 +34,3 @@ Licensed under either (at your discretion):
    ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
 - MIT license
    ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-## Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
-dual licensed as above, without any additional terms or conditions.
