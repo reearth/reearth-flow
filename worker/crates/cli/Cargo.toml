@@ -19,6 +19,7 @@ reearth-flow-action-log.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
+reearth-flow-telemetry.workspace = true
 reearth-flow-workflow-runner.workspace = true
 reearth-flow-workflow.workspace = true
 
@@ -27,8 +28,10 @@ bytes.workspace = true
 clap = {version = "4.5.1", features = ["env", "string"]}
 colored = "2.1.0"
 directories = "5.0.1"
+opentelemetry.workspace = true
 time = {version = "0.3.34", features = ["formatting"]}
 tokio-stream.workspace = true
 tokio.workspace = true
+tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true

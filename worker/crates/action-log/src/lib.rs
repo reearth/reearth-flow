@@ -9,8 +9,9 @@ pub use slog::{o, Discard, Drain, Logger as ActionLogger};
 
 #[macro_export]
 macro_rules! action_log {
-    ($logger:expr, $($args:tt)*) => {{
+    (parent: $parent:expr, $logger:expr, $($args:tt)*) => {{
         $crate::slog_info!($logger, $($args)*);
-        $crate::tracing_info!($($args)*);
+        let parent_clone = $parent.clone();
+        $crate::tracing_info!(parent: parent_clone, $($args)*); // Use the cloned parent context
     }};
 }
