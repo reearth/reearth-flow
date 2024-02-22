@@ -1,17 +1,17 @@
 # Re:Earth Flow
 Build and run workflows to calculate and convert various types of data (WIP)
 
-## Development
+## License
 
-### Install toolchains
-- Rust (stable)
+Licensed under either of
 
-### Install prerequisites
+- Apache License, Version 2.0
+   ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license
+   ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
-```console
-cargo install cargo-make
-cargo install cargo-watch
-```
+at your option.
+
 ## Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally submitted

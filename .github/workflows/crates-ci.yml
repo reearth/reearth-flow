@@ -5,16 +5,16 @@ on:
     branches:
       - main
     paths:
-      - "crates/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
+      - "worker/crates/**"
+      - "worker/Cargo.toml"
+      - "worker/Cargo.lock"
       - ".github/workflows/crates-ci.yml"
   pull_request:
     paths:
-      - "crates/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - ".github/workflows/crates-ci.yml"
+      - "worker/crates/**"
+      - "worker/Cargo.toml"
+      - "worker/Cargo.lock"
+      - "worker/.github/workflows/crates-ci.yml"
 env:
   # Disable incremental compilation.
   CARGO_INCREMENTAL: 0
@@ -25,6 +25,10 @@ env:
   RUSTUP_MAX_RETRIES: 10
   # Don't emit giant backtraces in the CI logs.
   RUST_BACKTRACE: short
+
+defaults:
+  run:
+    working-directory: ./worker
 
 jobs:
   check:
@@ -59,11 +63,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - name: Clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all -- -D warnings
+      - name: rustfmt
+        run: cargo clippy --all -- -D warnings
 
   test:
     runs-on: ubuntu-latest
