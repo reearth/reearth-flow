@@ -1,117 +1,52 @@
-import {
-  Menubar,
-  MenubarCheckboxItem,
-  MenubarContent,
-  MenubarItem,
-  MenubarMenu,
-  MenubarRadioGroup,
-  MenubarRadioItem,
-  MenubarSeparator,
-  MenubarShortcut,
-  MenubarSub,
-  MenubarSubContent,
-  MenubarSubTrigger,
-  MenubarTrigger,
-} from "@flow/components/ui/menubar";
+import { Button } from "@flow/components";
+import { Menubar } from "@flow/components/menubar";
+
+import Github from "../../stories_examples/assets/github.svg";
+
+import EditMenu from "./components/Edit";
+import FileMenu from "./components/File";
+import HelpMenu from "./components/Help";
+import ReadersMenu from "./components/Readers";
+import RunMenu from "./components/Run";
+import ToolsMenu from "./components/Tools";
+import TransformersMenu from "./components/Transformers";
+import ViewMenu from "./components/View";
+import WritersMenu from "./components/Writers";
 
 export default function MenubarComponent() {
   return (
-    <Menubar style={{ border: "none", borderRadius: 0, position: "relative" }}>
-      <MenubarMenu>
-        <MenubarTrigger>File</MenubarTrigger>
-        <MenubarContent>
-          <MenubarItem>
-            New Tab <MenubarShortcut>⌘T</MenubarShortcut>
-          </MenubarItem>
-          <MenubarItem>
-            New Window <MenubarShortcut>⌘N</MenubarShortcut>
-          </MenubarItem>
-          <MenubarItem disabled>New Incognito Window</MenubarItem>
-          <MenubarSeparator />
-          <MenubarSub>
-            <MenubarSubTrigger>Share</MenubarSubTrigger>
-            <MenubarSubContent>
-              <MenubarItem>Email link</MenubarItem>
-              <MenubarItem>Messages</MenubarItem>
-              <MenubarItem>Notes</MenubarItem>
-            </MenubarSubContent>
-          </MenubarSub>
-          <MenubarSeparator />
-          <MenubarItem>
-            Print... <MenubarShortcut>⌘P</MenubarShortcut>
-          </MenubarItem>
-        </MenubarContent>
-      </MenubarMenu>
-      <MenubarMenu>
-        <MenubarTrigger>Edit</MenubarTrigger>
-        <MenubarContent>
-          <MenubarItem>
-            Undo <MenubarShortcut>⌘Z</MenubarShortcut>
-          </MenubarItem>
-          <MenubarItem>
-            Redo <MenubarShortcut>⇧⌘Z</MenubarShortcut>
-          </MenubarItem>
-          <MenubarSeparator />
-          <MenubarSub>
-            <MenubarSubTrigger>Find</MenubarSubTrigger>
-            <MenubarSubContent>
-              <MenubarItem>Search the web</MenubarItem>
-              <MenubarSeparator />
-              <MenubarItem>Find...</MenubarItem>
-              <MenubarItem>Find Next</MenubarItem>
-              <MenubarItem>Find Previous</MenubarItem>
-            </MenubarSubContent>
-          </MenubarSub>
-          <MenubarSeparator />
-          <MenubarItem>Cut</MenubarItem>
-          <MenubarItem>Copy</MenubarItem>
-          <MenubarItem>Paste</MenubarItem>
-        </MenubarContent>
-      </MenubarMenu>
-      <MenubarMenu>
-        <MenubarTrigger>View</MenubarTrigger>
-        <MenubarContent>
-          <MenubarCheckboxItem>Always Show Bookmarks Bar</MenubarCheckboxItem>
-          <MenubarCheckboxItem checked>Always Show Full URLs</MenubarCheckboxItem>
-          <MenubarSeparator />
-          <MenubarItem inset>
-            Reload <MenubarShortcut>⌘R</MenubarShortcut>
-          </MenubarItem>
-          <MenubarItem disabled inset>
-            Force Reload <MenubarShortcut>⇧⌘R</MenubarShortcut>
-          </MenubarItem>
-          <MenubarSeparator />
-          <MenubarItem inset>Toggle Fullscreen</MenubarItem>
-          <MenubarSeparator />
-          <MenubarItem inset>Hide Sidebar</MenubarItem>
-        </MenubarContent>
-      </MenubarMenu>
-      <MenubarMenu>
-        <MenubarTrigger>Profiles</MenubarTrigger>
-        <MenubarContent>
-          <MenubarRadioGroup value="benoit">
-            <MenubarRadioItem value="andy">Andy</MenubarRadioItem>
-            <MenubarRadioItem value="benoit">Benoit</MenubarRadioItem>
-            <MenubarRadioItem value="Luis">Luis</MenubarRadioItem>
-          </MenubarRadioGroup>
-          <MenubarSeparator />
-          <MenubarItem inset>Edit...</MenubarItem>
-          <MenubarSeparator />
-          <MenubarItem inset>Add Profile...</MenubarItem>
-        </MenubarContent>
-      </MenubarMenu>
-      <p
+    <Menubar
+      style={{
+        color: "#dbdbdb",
+        border: "none",
+        borderBottom: "0.5px solid #dbdbdb",
+        borderRadius: 0,
+        position: "relative",
+      }}>
+      <FileMenu />
+      <EditMenu />
+      <ViewMenu />
+      <ReadersMenu />
+      <TransformersMenu />
+      <WritersMenu />
+      <RunMenu />
+      <ToolsMenu />
+      <HelpMenu />
+      <div
         style={{
           position: "absolute",
-          left: 0,
           right: 0,
-          marginLeft: "auto",
-          marginRight: "auto",
-          width: "50px",
-          background: "red",
+          marginRight: "10px",
+          display: "flex",
+          gap: "10px",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}>
-        Flow
-      </p>
+        <p>yokohamaRiver.fmw - CDED -&#62; NONE - Flow 2024</p>
+        <Button size="icon" variant="ghost" style={{ height: "30px", width: "30px" }}>
+          <img src={Github} alt="Github" width="25px" height="25px" />
+        </Button>
+      </div>
     </Menubar>
   );
 }
