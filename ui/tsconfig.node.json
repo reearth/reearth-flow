@@ -6,9 +6,10 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "strict": true,
+    "baseUrl": ".",
     "paths": {
       "@flow/*": [
-        "./src/*"
+        "src/*"
       ]
     }
   },
