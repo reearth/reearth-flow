@@ -81,15 +81,15 @@ pub(crate) async fn run(
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let params = inputs
         .keys()
-        .filter(|&key| inputs.get(key).unwrap().is_some())
         .filter(|&key| {
-            matches!(
-                inputs.get(key).unwrap().clone().unwrap(),
-                ActionValue::Bool(_)
-                    | ActionValue::Number(_)
-                    | ActionValue::String(_)
-                    | ActionValue::Map(_)
-            )
+            inputs.get(key).unwrap().is_some()
+                && matches!(
+                    inputs.get(key).unwrap().clone().unwrap(),
+                    ActionValue::Bool(_)
+                        | ActionValue::Number(_)
+                        | ActionValue::String(_)
+                        | ActionValue::Map(_)
+                )
         })
         .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
         .collect::<HashMap<_, _>>();

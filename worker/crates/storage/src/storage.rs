@@ -50,6 +50,18 @@ impl Storage {
             .map_err(|err| format_object_store_error(err, p))
     }
 
+    pub async fn create_dir(&self, location: &Path) -> Result<()> {
+        let p = location.to_str().ok_or(object_store::Error::InvalidPath {
+            source: object_store::path::Error::InvalidPath {
+                path: format!("{:?}", location).into(),
+            },
+        })?;
+        self.inner
+            .create_dir(p)
+            .await
+            .map_err(|err| format_object_store_error(err, p))
+    }
+
     pub async fn append(&self, location: &Path, bytes: Bytes) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
@@ -97,6 +109,18 @@ impl Storage {
             range: (0..meta.size),
             meta,
         })
+    }
+
+    pub async fn exists(&self, location: &Path) -> Result<bool> {
+        let p = location.to_str().ok_or(object_store::Error::InvalidPath {
+            source: object_store::path::Error::InvalidPath {
+                path: format!("{:?}", location).into(),
+            },
+        })?;
+        self.inner
+            .is_exist(p)
+            .await
+            .map_err(|err| format_object_store_error(err, p))
     }
 
     pub async fn get_range(&self, location: &Path, range: Range<usize>) -> Result<Bytes> {

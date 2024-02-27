@@ -23,6 +23,7 @@ serde_yaml.workspace = true
 tempfile = "3"
 thiserror.workspace = true
 tokio-stream.workspace = true
+tokio-util.workspace = true
 tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
