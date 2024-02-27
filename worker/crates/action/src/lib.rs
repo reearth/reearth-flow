@@ -7,6 +7,8 @@ mod color_converter;
 mod dataframe_transformer;
 mod entity_filter;
 mod entity_transformer;
+mod error;
 mod file_reader;
 mod file_writer;
+mod utils;
 mod zip_extractor;

@@ -9,10 +9,10 @@ use serde_json::Value;
 use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
-use reearth_flow_workflow::error::Error;
 use reearth_flow_workflow::graph::NodeProperty;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
+use crate::error::Error;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -136,7 +136,7 @@ async fn write_csv(
                                 .collect::<Vec<_>>();
                             wtr.write_record(values)?
                         }
-                        _ => return Err(anyhow!("Unsupported input")),
+                        _ => return Err(Error::unsupported_feature("Unsupported input").into()),
                     },
                 }
             }
@@ -146,18 +146,18 @@ async fn write_csv(
             let storage = storage_resolver.resolve(&uri)?;
             storage.put(uri.path().as_path(), Bytes::from(data)).await?;
         }
-        _ => return Err(anyhow!("Unsupported input")),
+        _ => return Err(Error::unsupported_feature("Unsupported input").into()),
     };
     Ok(ActionValue::Bool(true))
 }
 
 fn get_input_value(dataframe: Option<ActionDataframe>) -> anyhow::Result<ActionValue> {
     dataframe
-        .ok_or(Error::internal_runtime_error("No input"))?
+        .ok_or(Error::internal_runtime("No input"))?
         .get(DEFAULT_PORT)
-        .ok_or(Error::internal_runtime_error("No input"))?
+        .ok_or(Error::internal_runtime("No input"))?
         .clone()
-        .ok_or(Error::internal_runtime_error("No input").into())
+        .ok_or(Error::internal_runtime("No input").into())
 }
 
 fn get_fields(rows: &[ActionValue]) -> Option<Vec<String>> {
@@ -175,7 +175,7 @@ fn get_row_values(row: &ActionValue, fields: &[String]) -> anyhow::Result<Vec<St
                 .get(field)
                 .map(|v| v.to_string())
                 .ok_or_else(|| anyhow!("Field not found: {}", field)),
-            _ => Err(anyhow!("Unsupported input")),
+            _ => Err(Error::unsupported_feature("Unsupported input").into()),
         })
         .collect()
 }

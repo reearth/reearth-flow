@@ -11,6 +11,7 @@ use reearth_flow_workflow::graph::NodeProperty;
 
 use super::{csv, text};
 use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
+use crate::error::Error;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -86,7 +87,7 @@ pub(crate) async fn run(
         PropertySchema::Text { common_property } => {
             text::read_text(&common_property, storage_resolver).await?
         }
-        _ => return Err(anyhow!("Unsupported format")),
+        _ => return Err(Error::unsupported_feature("Unsupported format").into()),
     };
     let mut output = HashMap::new();
     output.insert(DEFAULT_PORT.to_string(), Some(data));

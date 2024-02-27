@@ -2201,12 +2201,10 @@ name = "reearth-flow-workflow"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "eyre",
  "pretty_assertions",
  "reearth-flow-common",
  "serde",
  "serde_json",
- "thiserror",
  "tracing",
  "tracing-subscriber",
  "uuid",

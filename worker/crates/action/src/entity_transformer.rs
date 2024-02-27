@@ -12,6 +12,8 @@ use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_workflow::graph::NodeProperty;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue};
+use crate::error::Error;
+use crate::utils::convert_dataframe_to_scope_params;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -38,23 +40,10 @@ pub(crate) async fn run(
 ) -> anyhow::Result<ActionDataframe> {
     let props = PropertySchema::try_from(ctx.node_property)?;
     debug!(?props, "read");
-    let inputs = inputs.ok_or(anyhow!("No Input"))?;
+    let inputs = inputs.ok_or(Error::input("No Input"))?;
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let ast = expr_engine.compile(props.transform_expr.as_str())?;
-    let params = inputs
-        .keys()
-        .filter(|&key| inputs.get(key).unwrap().is_some())
-        .filter(|&key| {
-            matches!(
-                inputs.get(key).unwrap().clone().unwrap(),
-                ActionValue::Bool(_)
-                    | ActionValue::Number(_)
-                    | ActionValue::String(_)
-                    | ActionValue::Map(_)
-            )
-        })
-        .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
-        .collect::<HashMap<_, _>>();
+    let params = convert_dataframe_to_scope_params(&inputs);
 
     let mut output = ActionDataframe::new();
     for (port, data) in inputs {
