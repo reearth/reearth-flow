@@ -14,6 +14,7 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_workflow::graph::NodeProperty;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
+use crate::utils::inject_variables_to_scope;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -43,25 +44,13 @@ pub(crate) async fn run(
     info!(?props, "read");
     let inputs = inputs.unwrap_or_default();
     let expr_engine = Arc::clone(&ctx.expr_engine);
+
     let scope = expr_engine.new_scope();
-    inputs
-        .keys()
-        .filter(|&key| {
-            inputs.get(key).unwrap().is_some()
-                && matches!(
-                    inputs.get(key).unwrap().clone().unwrap(),
-                    ActionValue::Bool(_)
-                        | ActionValue::Number(_)
-                        | ActionValue::String(_)
-                        | ActionValue::Map(_)
-                )
-        })
-        .for_each(|key| {
-            scope.set(key, inputs.get(key).unwrap().clone().into());
-        });
+    inject_variables_to_scope(&inputs, &scope)?;
     let path = expr_engine
         .eval_scope::<String>(&props.path, &scope)
         .and_then(|s| Uri::from_str(s.as_str()))?;
+
     let storage = ctx.storage_resolver.resolve(&path)?;
     let file_result = storage.get(path.path().as_path()).await?;
     let bytes = file_result.bytes().await?;

@@ -1,5 +1,5 @@
 use core::result::Result;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::anyhow;
 use rhai::Dynamic;
@@ -10,6 +10,7 @@ use tracing::debug;
 use reearth_flow_workflow::graph::NodeProperty;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue};
+use crate::utils::convert_dataframe_to_scope_params;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -45,20 +46,7 @@ pub(crate) async fn run(
     debug!(?props, "read");
     let inputs = inputs.ok_or(anyhow!("No Input"))?;
     let expr_engine = Arc::clone(&ctx.expr_engine);
-    let params = inputs
-        .keys()
-        .filter(|&key| inputs.get(key).unwrap().is_some())
-        .filter(|&key| {
-            matches!(
-                inputs.get(key).unwrap().clone().unwrap(),
-                ActionValue::Bool(_)
-                    | ActionValue::Number(_)
-                    | ActionValue::String(_)
-                    | ActionValue::Map(_)
-            )
-        })
-        .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
-        .collect::<HashMap<_, _>>();
+    let params = convert_dataframe_to_scope_params(&inputs);
 
     let mut output = ActionDataframe::new();
     for (port, data) in inputs {

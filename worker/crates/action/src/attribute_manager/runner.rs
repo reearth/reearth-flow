@@ -12,6 +12,7 @@ use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_workflow::graph::NodeProperty;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue};
+use crate::utils::convert_dataframe_to_scope_params;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -79,20 +80,7 @@ pub(crate) async fn run(
     debug!(?props, "read");
     let inputs = inputs.ok_or(anyhow!("No Input"))?;
     let expr_engine = Arc::clone(&ctx.expr_engine);
-    let params = inputs
-        .keys()
-        .filter(|&key| {
-            inputs.get(key).unwrap().is_some()
-                && matches!(
-                    inputs.get(key).unwrap().clone().unwrap(),
-                    ActionValue::Bool(_)
-                        | ActionValue::Number(_)
-                        | ActionValue::String(_)
-                        | ActionValue::Map(_)
-                )
-        })
-        .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
-        .collect::<HashMap<_, _>>();
+    let params = convert_dataframe_to_scope_params(&inputs);
     let operations = convert_single_operation(props.operations, Arc::clone(&expr_engine));
 
     let mut output = ActionDataframe::new();

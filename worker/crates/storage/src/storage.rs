@@ -174,7 +174,11 @@ impl Storage {
         Ok(())
     }
 
-    pub async fn list(&self, prefix: Option<&Path>) -> Result<BoxStream<'_, Result<Uri>>> {
+    pub async fn list(
+        &self,
+        prefix: Option<&Path>,
+        recursive: bool,
+    ) -> Result<BoxStream<'_, Result<Uri>>> {
         let p = prefix.ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
                 path: format!("{:?}", prefix).into(),
@@ -191,7 +195,7 @@ impl Storage {
         let stream = self
             .inner
             .lister_with(&path)
-            .recursive(false)
+            .recursive(recursive)
             .metakey(Metakey::ContentLength | Metakey::LastModified)
             .await
             .map_err(|err| format_object_store_error(err, &path))?;
@@ -312,7 +316,7 @@ mod tests {
         let object_store = create_test_object_store().await;
         let path = Path::new("/data/");
         let results = object_store
-            .list(Some(path))
+            .list(Some(path), false)
             .await
             .unwrap()
             .collect::<Vec<_>>()
