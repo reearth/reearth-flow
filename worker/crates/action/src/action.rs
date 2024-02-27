@@ -19,6 +19,7 @@ use reearth_flow_workflow::id::Id;
 use crate::{
     attribute_aggregator, attribute_keeper, attribute_manager, attribute_merger, color_converter,
     dataframe_transformer, entity_filter, entity_transformer, file_reader, file_writer,
+    zip_extractor,
 };
 
 pub type Port = String;
@@ -151,6 +152,8 @@ pub enum Action {
     FileReader,
     #[strum(serialize = "fileWriter")]
     FileWriter,
+    #[strum(serialize = "zipExtractor")]
+    ZipExtractor,
 }
 
 impl Display for Action {
@@ -166,6 +169,7 @@ impl Display for Action {
             Action::EntityTransformer => write!(f, "entityTransformer"),
             Action::FileReader => write!(f, "fileReader"),
             Action::FileWriter => write!(f, "fileWriter"),
+            Action::ZipExtractor => write!(f, "zipExtractor"),
         }
     }
 }
@@ -227,6 +231,7 @@ impl Action {
             Action::EntityTransformer => Box::pin(entity_transformer::run(ctx, input)),
             Action::FileReader => Box::pin(file_reader::run(ctx, input)),
             Action::FileWriter => Box::pin(file_writer::run(ctx, input)),
+            Action::ZipExtractor => Box::pin(zip_extractor::run(ctx, input)),
         }
     }
 }

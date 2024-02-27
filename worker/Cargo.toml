@@ -52,6 +52,7 @@ chrono = {version = "0.4.34", default-features = false, features = [
 color-eyre = "0.6.2"
 colorsys = "0.6.7"
 derive_more = "0.99.17"
+directories = "5.0.1"
 eyre = "0.6.12"
 futures = "0.3.30"
 itertools = "0.12.1"
@@ -76,6 +77,8 @@ serde_json = {version = "1.0.114", features = ["arbitrary_precision"]}
 serde_with = "3.6.1"
 serde_yaml = "0.9.32"
 slog = {version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"]}
+strum = "0.26.1"
+strum_macros = "0.26.1"
 tempfile = "3.10.0"
 thiserror = "1.0.57"
 tokio = {version = "1.36.0", features = ["full", "time"]}
