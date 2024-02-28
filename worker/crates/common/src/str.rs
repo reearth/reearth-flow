@@ -20,6 +20,14 @@ pub fn remove_trailing_slash(s: &str) -> String {
     }
 }
 
+pub fn is_boolean(s: &str) -> bool {
+    matches!(s.to_ascii_lowercase().as_str(), "true" | "false")
+}
+
+pub fn is_number(s: &str) -> bool {
+    s.parse::<f64>().is_ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

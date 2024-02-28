@@ -11,6 +11,7 @@ use strum_macros::EnumString;
 
 use reearth_flow_action_log::ActionLogger;
 use reearth_flow_common::str::base64_encode;
+use reearth_flow_common::xml::XmlXpathValue;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_workflow::graph::NodeProperty;
@@ -19,7 +20,7 @@ use reearth_flow_workflow::id::Id;
 use crate::{
     attribute_aggregator, attribute_keeper, attribute_manager, attribute_merger, color_converter,
     dataframe_transformer, entity_filter, entity_transformer, file_reader, file_writer,
-    zip_extractor,
+    xml_xpath_extractor, zip_extractor,
 };
 
 pub type Port = String;
@@ -96,6 +97,14 @@ impl From<ActionValue> for serde_json::Value {
     }
 }
 
+impl From<XmlXpathValue> for ActionValue {
+    fn from(value: XmlXpathValue) -> Self {
+        std::convert::Into::<ActionValue>::into(
+            value.to_string().parse::<serde_json::Value>().unwrap(),
+        )
+    }
+}
+
 impl TryFrom<rhai::Dynamic> for ActionValue {
     type Error = anyhow::Error;
 
@@ -152,6 +161,8 @@ pub enum Action {
     FileReader,
     #[strum(serialize = "fileWriter")]
     FileWriter,
+    #[strum(serialize = "xmlXpathExtractor")]
+    XmlXpathExtractor,
     #[strum(serialize = "zipExtractor")]
     ZipExtractor,
 }
@@ -169,6 +180,7 @@ impl Display for Action {
             Action::EntityTransformer => write!(f, "entityTransformer"),
             Action::FileReader => write!(f, "fileReader"),
             Action::FileWriter => write!(f, "fileWriter"),
+            Action::XmlXpathExtractor => write!(f, "xmlXpathExtractor"),
             Action::ZipExtractor => write!(f, "zipExtractor"),
         }
     }
@@ -231,6 +243,7 @@ impl Action {
             Action::EntityTransformer => Box::pin(entity_transformer::run(ctx, input)),
             Action::FileReader => Box::pin(file_reader::run(ctx, input)),
             Action::FileWriter => Box::pin(file_writer::run(ctx, input)),
+            Action::XmlXpathExtractor => Box::pin(xml_xpath_extractor::run(ctx, input)),
             Action::ZipExtractor => Box::pin(zip_extractor::run(ctx, input)),
         }
     }

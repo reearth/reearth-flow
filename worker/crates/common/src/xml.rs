@@ -1,43 +1,47 @@
 use anyhow::anyhow;
-use sxd_document::dom::Document;
-use sxd_document::parser;
-use sxd_document::Package;
-use sxd_xpath::{context::Context, Factory, Value};
+use libxml::parser::{Parser, ParserOptions};
+use libxml::tree::document;
+use libxml::xpath::Context;
 
-pub fn parse<T: AsRef<str>>(xml: T) -> anyhow::Result<Package> {
-    parser::parse(xml.as_ref()).map_err(|e| anyhow::anyhow!(e))
+pub type XmlDocument = document::Document;
+pub type XmlXpathValue = libxml::xpath::Object;
+
+pub fn parse<T: AsRef<[u8]>>(xml: T) -> anyhow::Result<XmlDocument> {
+    let parser = Parser::default();
+    parser
+        .parse_string_with_options(
+            xml,
+            ParserOptions {
+                recover: true,
+                no_def_dtd: true,
+                no_error: false,
+                no_warning: false,
+                pedantic: false,
+                no_blanks: false,
+                no_net: false,
+                no_implied: false,
+                compact: false,
+                ignore_enc: false,
+                encoding: None,
+            },
+        )
+        .map_err(|e| anyhow!(e))
 }
 
-pub fn evaluate<'d, T: AsRef<str>>(
-    package: &'d Document<'d>,
-    xpath: T,
-) -> anyhow::Result<Value<'d>> {
-    let evaluator = XPathEvaluator::new();
-    evaluator.evaluate(package, xpath.as_ref())
-}
-
-struct XPathEvaluator<'d> {
-    context: Context<'d>,
-    factory: Factory,
-}
-
-impl<'d> XPathEvaluator<'d> {
-    fn new() -> XPathEvaluator<'d> {
-        let context = Context::new();
-        XPathEvaluator {
-            context,
-            factory: Factory::new(),
-        }
+pub fn evaluate<T: AsRef<str>>(document: &XmlDocument, xpath: T) -> anyhow::Result<XmlXpathValue> {
+    let context =
+        Context::new(document).map_err(|_| anyhow!("Failed to initialize xpath context"))?;
+    let root = document
+        .get_root_element()
+        .ok_or(anyhow!("No root element"))?;
+    for ns in root.get_namespace_declarations().iter() {
+        context
+            .register_namespace(ns.get_prefix().as_str(), ns.get_href().as_str())
+            .map_err(|_| anyhow!("Failed to register namespace"))?;
     }
-
-    fn evaluate(&self, doc: &'d Document<'d>, xpath: &str) -> anyhow::Result<Value<'d>> {
-        let root = doc.root();
-        let xpath = self.factory.build(xpath)?;
-        let xpath = xpath.ok_or(anyhow!("Failed to build xpath"))?;
-        xpath
-            .evaluate(&self.context, root)
-            .map_err(|e| anyhow::anyhow!(e))
-    }
+    context
+        .evaluate(xpath.as_ref())
+        .map_err(|_| anyhow!("Failed to evaluate xpath"))
 }
 
 #[cfg(test)]
@@ -47,16 +51,18 @@ mod tests {
     #[test]
     fn test_parse() {
         let xml = r#"<root><element>Test</element></root>"#;
-        let package = parse(xml).unwrap();
-        assert_eq!(package.as_document().root().children().len(), 1);
+        let document = parse(xml).unwrap();
+        assert_eq!(
+            document.to_string(),
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<root><element>Test</element></root>\n"
+        );
     }
 
     #[test]
     fn test_evaluate() {
         let xml = r#"<root><element>Test</element></root>"#;
-        let package = parse(xml).unwrap();
-        let document = package.as_document();
+        let document = parse(xml).unwrap();
         let value = evaluate(&document, "//element/text()").unwrap();
-        assert_eq!(value.string(), "Test");
+        assert_eq!(value.to_string(), "Test");
     }
 }
