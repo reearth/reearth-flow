@@ -7,8 +7,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
-use reearth_flow_workflow::graph::NodeProperty;
-
 use crate::action::{ActionContext, ActionDataframe, ActionValue, Port, DEFAULT_PORT};
 use crate::error::Error;
 use crate::utils::convert_dataframe_to_scope_params;
@@ -19,24 +17,13 @@ struct PropertySchema {
     conditions: Vec<Condition>,
 }
 
+property_schema!(PropertySchema);
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct Condition {
     expr: String,
     output_port: String,
-}
-
-impl TryFrom<NodeProperty> for PropertySchema {
-    type Error = anyhow::Error;
-
-    fn try_from(node_property: NodeProperty) -> Result<Self, anyhow::Error> {
-        serde_json::from_value(Value::Object(node_property)).map_err(|e| {
-            anyhow!(
-                "Failed to convert NodeProperty to PropertySchema with {}",
-                e
-            )
-        })
-    }
 }
 
 pub(crate) async fn run(

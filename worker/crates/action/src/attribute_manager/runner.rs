@@ -9,7 +9,6 @@ use serde_json::Value;
 use tracing::debug;
 
 use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_workflow::graph::NodeProperty;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue};
 use crate::utils::convert_dataframe_to_scope_params;
@@ -27,6 +26,7 @@ pub(crate) struct Operation {
     pub(crate) method: Method,
     pub(crate) value: String,
 }
+property_schema!(PropertySchema);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) enum Method {
@@ -57,19 +57,6 @@ pub(crate) enum Operate {
     Remove {
         attribute: String,
     },
-}
-
-impl TryFrom<NodeProperty> for PropertySchema {
-    type Error = anyhow::Error;
-
-    fn try_from(node_property: NodeProperty) -> Result<Self, anyhow::Error> {
-        serde_json::from_value(Value::Object(node_property)).map_err(|e| {
-            anyhow!(
-                "Failed to convert NodeProperty to PropertySchema with {}",
-                e
-            )
-        })
-    }
 }
 
 pub(crate) async fn run(

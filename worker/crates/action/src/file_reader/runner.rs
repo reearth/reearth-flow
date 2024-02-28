@@ -7,8 +7,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
-use reearth_flow_workflow::graph::NodeProperty;
-
 use super::{csv, text};
 use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
 use crate::error::Error;
@@ -48,18 +46,7 @@ pub(crate) enum PropertySchema {
     },
 }
 
-impl TryFrom<NodeProperty> for PropertySchema {
-    type Error = anyhow::Error;
-
-    fn try_from(node_property: NodeProperty) -> Result<Self, anyhow::Error> {
-        serde_json::from_value(Value::Object(node_property)).map_err(|e| {
-            anyhow!(
-                "Failed to convert NodeProperty to PropertySchema with {}",
-                e
-            )
-        })
-    }
-}
+property_schema!(PropertySchema);
 
 pub(crate) async fn run(
     ctx: ActionContext,
@@ -108,7 +95,8 @@ mod tests {
         }
   "#;
 
-        let props = serde_json::from_str::<NodeProperty>(json).unwrap();
+        let props =
+            serde_json::from_str::<reearth_flow_workflow::graph::NodeProperty>(json).unwrap();
         let schema = PropertySchema::try_from(props).unwrap();
         match schema {
             PropertySchema::Csv {
