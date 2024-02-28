@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
+use reearth_flow_macros::PropertySchema;
+
 use super::{csv, text};
 use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
 use crate::error::Error;
@@ -17,7 +19,7 @@ pub(crate) struct CommonPropertySchema {
     pub(crate) dataset: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PropertySchema)]
 #[serde(tag = "format")]
 pub(crate) enum PropertySchema {
     #[serde(rename = "csv")]
@@ -45,8 +47,6 @@ pub(crate) enum PropertySchema {
         common_property: CommonPropertySchema,
     },
 }
-
-property_schema!(PropertySchema);
 
 pub(crate) async fn run(
     ctx: ActionContext,

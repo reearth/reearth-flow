@@ -36,6 +36,7 @@ reearth-flow-action = {path = "crates/action"}
 reearth-flow-action-log = {path = "crates/action-log"}
 reearth-flow-common = {path = "crates/common"}
 reearth-flow-eval-expr = {path = "crates/eval-expr"}
+reearth-flow-macros = {path = "crates/macros"}
 reearth-flow-state = {path = "crates/state"}
 reearth-flow-storage = {path = "crates/storage"}
 reearth-flow-telemetry = {path = "crates/telemetry"}
@@ -45,17 +46,11 @@ reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
 
 anyhow = "1.0.80"
 bytes = {version = "1.5.0", features = ["serde"]}
-chrono = {version = "0.4.34", default-features = false, features = [
-  "clock",
-  "std",
-]}
 color-eyre = "0.6.2"
 colorsys = "0.6.7"
 derive_more = "0.99.17"
 directories = "5.0.1"
-eyre = "0.6.12"
 futures = "0.3.30"
-itertools = "0.12.1"
 jsonpath_lib = "0.3.0"
 once_cell = "1.19.0"
 opendal = {version = "0.45.0", features = ["layers-metrics", "layers-otel-trace"]}

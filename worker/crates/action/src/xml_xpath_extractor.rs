@@ -8,18 +8,16 @@ use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
+use reearth_flow_macros::PropertySchema;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue, Port};
 use crate::utils::inject_variables_to_scope;
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 struct PropertySchema {
     path: String,
     conditions: Vec<Condition>,
 }
-
-property_schema!(PropertySchema);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]

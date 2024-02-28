@@ -6,15 +6,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
+use reearth_flow_macros::PropertySchema;
+
 use crate::action::{ActionContext, ActionDataframe, ActionValue};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
     keep_attributes: Vec<String>,
 }
-
-property_schema!(PropertySchema);
 
 pub(crate) async fn run(
     ctx: ActionContext,

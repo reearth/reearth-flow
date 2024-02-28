@@ -9,18 +9,17 @@ use serde_json::Value;
 use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
+use reearth_flow_macros::PropertySchema;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
 use crate::error::Error;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
     format: Format,
     output: String,
 }
-
-property_schema!(PropertySchema);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum Format {

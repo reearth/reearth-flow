@@ -11,18 +11,17 @@ use serde_json::Value;
 use tracing::info;
 
 use reearth_flow_common::uri::Uri;
+use reearth_flow_macros::PropertySchema;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
 use crate::utils::inject_variables_to_scope;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
     path: String,
     output_path: Option<String>,
 }
-
-property_schema!(PropertySchema);
 
 pub(crate) async fn run(
     ctx: ActionContext,

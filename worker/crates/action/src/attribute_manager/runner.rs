@@ -9,11 +9,12 @@ use serde_json::Value;
 use tracing::debug;
 
 use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_macros::PropertySchema;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue};
 use crate::utils::convert_dataframe_to_scope_params;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
     operations: Vec<Operation>,
@@ -26,7 +27,6 @@ pub(crate) struct Operation {
     pub(crate) method: Method,
     pub(crate) value: String,
 }
-property_schema!(PropertySchema);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) enum Method {

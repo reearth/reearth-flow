@@ -6,10 +6,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
+use reearth_flow_macros::PropertySchema;
+
 use super::hsl_to_rgba;
 use crate::action::{ActionContext, ActionDataframe};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PropertySchema)]
 #[serde(tag = "type")]
 pub(crate) enum PropertySchema {
     #[serde(rename = "hslToRgba")]
@@ -18,8 +20,6 @@ pub(crate) enum PropertySchema {
         property: hsl_to_rgba::HslPropertySchema,
     },
 }
-
-property_schema!(PropertySchema);
 
 pub(crate) async fn run(
     ctx: ActionContext,
