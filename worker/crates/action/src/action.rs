@@ -7,7 +7,7 @@ use bytes::Bytes;
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
-use strum_macros::EnumString;
+use strum_macros::{Display, EnumString};
 
 use reearth_flow_action_log::ActionLogger;
 use reearth_flow_common::str::base64_encode;
@@ -139,7 +139,7 @@ fn compare_numbers(n1: &Number, n2: &Number) -> Option<Ordering> {
     None
 }
 
-#[derive(Serialize, Deserialize, EnumString, Debug, Clone)]
+#[derive(Serialize, Deserialize, EnumString, Display, Debug, Clone)]
 pub enum Action {
     #[strum(serialize = "attributeKeeper")]
     AttributeKeeper,
@@ -165,25 +165,6 @@ pub enum Action {
     XmlXpathExtractor,
     #[strum(serialize = "zipExtractor")]
     ZipExtractor,
-}
-
-impl Display for Action {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Action::AttributeKeeper => write!(f, "attributeKeeper"),
-            Action::AttributeMerger => write!(f, "attributeMerger"),
-            Action::AttributeManager => write!(f, "attributeManager"),
-            Action::AttributeAggregator => write!(f, "attributeAggregator"),
-            Action::ColorConverter => write!(f, "colorConverter"),
-            Action::DataframeTransformer => write!(f, "dataframeTransformer"),
-            Action::EntityFilter => write!(f, "entityFilter"),
-            Action::EntityTransformer => write!(f, "entityTransformer"),
-            Action::FileReader => write!(f, "fileReader"),
-            Action::FileWriter => write!(f, "fileWriter"),
-            Action::XmlXpathExtractor => write!(f, "xmlXpathExtractor"),
-            Action::ZipExtractor => write!(f, "zipExtractor"),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

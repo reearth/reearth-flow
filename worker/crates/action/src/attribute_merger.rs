@@ -4,8 +4,9 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
 use tracing::debug;
+
+use reearth_flow_macros::PropertySchema;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue, ActionValueIndex, DEFAULT_PORT};
 use crate::error::Error;
@@ -14,7 +15,7 @@ const REQUESTOR_PORT: &str = "requestor";
 const SUPPLIER_PORT: &str = "supplier";
 const ROW_NUMBER: &str = "row_number";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
     join: Join,
@@ -26,8 +27,6 @@ struct Join {
     requestor: String,
     supplier: String,
 }
-
-property_schema!(PropertySchema);
 
 pub(crate) async fn run(
     ctx: ActionContext,

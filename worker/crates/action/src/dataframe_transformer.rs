@@ -7,16 +7,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
+use reearth_flow_macros::PropertySchema;
+
 use crate::action::{ActionContext, ActionDataframe, ActionValue};
 use crate::utils::convert_dataframe_to_scope_params;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
     operations: Vec<Operation>,
 }
-
-property_schema!(PropertySchema);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
