@@ -5,8 +5,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
-use reearth_flow_workflow::graph::NodeProperty;
-
 use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -35,18 +33,7 @@ pub(crate) enum Method {
     Avg,
 }
 
-impl TryFrom<NodeProperty> for PropertySchema {
-    type Error = anyhow::Error;
-
-    fn try_from(node_property: NodeProperty) -> Result<Self, anyhow::Error> {
-        serde_json::from_value(Value::Object(node_property)).map_err(|e| {
-            anyhow!(
-                "Failed to convert NodeProperty to PropertySchema with {}",
-                e
-            )
-        })
-    }
-}
+property_schema!(PropertySchema);
 
 pub(crate) async fn run(
     ctx: ActionContext,

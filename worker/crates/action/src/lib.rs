@@ -1,3 +1,6 @@
+#[macro_use]
+mod macros;
+
 pub mod action;
 mod attribute_aggregator;
 mod attribute_keeper;
