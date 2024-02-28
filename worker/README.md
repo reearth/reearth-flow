@@ -18,9 +18,8 @@ On linux systems you'd need the development headers of libxml2 (e.g. `libxml2-de
 
 ### MacOS
 ```
-$ brew install libxml2 # e.g. version 2.9.12
-$ ln -s /usr/local/Cellar/libxml2/2.9.12/lib/libxml2.2.dylib /usr/local/lib/libxml-2.0.dylib
-$ export LIBXML2=/usr/local/Cellar/libxml2/2.9.12/lib/pkgconfig/libxml-2.0.pc
+$ brew install libxml2 pkg-config
+$ echo $PKG_CONFIG_PATH
 ```
 
 ### Windows
