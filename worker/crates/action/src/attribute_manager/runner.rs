@@ -25,7 +25,7 @@ struct PropertySchema {
 pub(crate) struct Operation {
     pub(crate) attribute: String,
     pub(crate) method: Method,
-    pub(crate) value: String,
+    pub(crate) value: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -76,10 +76,10 @@ pub(crate) async fn run(
             Some(data) => data,
             None => continue,
         };
-        let processed_data = match data {
+        let value = match data {
             ActionValue::Array(rows) => {
                 // NOTE: Parallelization with a small number of cases will conversely slow down the process.
-                match rows.len() {
+                let processed_data = match rows.len() {
                     0..=1000 => rows
                         .iter()
                         .map(|row| mapper(row, &operations, &params, Arc::clone(&expr_engine)))
@@ -88,11 +88,18 @@ pub(crate) async fn run(
                         .par_iter()
                         .map(|row| mapper(row, &operations, &params, Arc::clone(&expr_engine)))
                         .collect::<Vec<_>>(),
-                }
+                };
+                ActionValue::Array(processed_data)
             }
-            _ => continue,
+            ActionValue::Map(row) => mapper(
+                &ActionValue::Map(row),
+                &operations,
+                &params,
+                Arc::clone(&expr_engine),
+            ),
+            _ => data,
         };
-        output.insert(port, Some(ActionValue::Array(processed_data)));
+        output.insert(port, Some(value));
     }
     Ok(output)
 }
@@ -175,17 +182,18 @@ fn convert_single_operation(operations: Vec<Operation>, expr_engine: Arc<Engine>
         .map(|operation| {
             let method = &operation.method;
             let attribute = &operation.attribute;
+            let value = operation.value.clone().unwrap_or_default();
             match method {
                 Method::Convert => Operate::Convert {
-                    expr: expr_engine.compile(&operation.value).ok(),
+                    expr: expr_engine.compile(&value).ok(),
                     attribute: attribute.clone(),
                 },
                 Method::Create => Operate::Create {
-                    expr: expr_engine.compile(&operation.value).ok(),
+                    expr: expr_engine.compile(&value).ok(),
                     attribute: attribute.clone(),
                 },
                 Method::Rename => Operate::Rename {
-                    new_key: operation.value.clone(),
+                    new_key: value,
                     attribute: attribute.clone(),
                 },
                 Method::Remove => Operate::Remove {

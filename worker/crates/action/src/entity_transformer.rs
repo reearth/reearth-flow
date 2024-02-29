@@ -52,7 +52,10 @@ pub(crate) async fn run(
                         .collect::<Vec<_>>(),
                 }
             }
-            _ => continue,
+            _ => {
+                output.insert(port, Some(data));
+                continue;
+            }
         };
         output.insert(port, Some(ActionValue::Array(processed_data)));
     }

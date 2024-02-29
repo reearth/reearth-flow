@@ -48,7 +48,6 @@ pub(crate) async fn run(
     let targets = match input {
         ActionValue::Array(rows) => rows
             .iter()
-            .filter(|&v| matches!(v, ActionValue::Map(_)))
             .filter_map(|v| match v {
                 ActionValue::Map(row) => Some(row),
                 _ => None,

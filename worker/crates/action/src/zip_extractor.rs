@@ -30,8 +30,8 @@ pub(crate) async fn run(
     let props = PropertySchema::try_from(ctx.node_property)?;
     info!(?props, "read");
     let inputs = inputs.unwrap_or_default();
-    let expr_engine = Arc::clone(&ctx.expr_engine);
 
+    let expr_engine = Arc::clone(&ctx.expr_engine);
     let scope = expr_engine.new_scope();
     inject_variables_to_scope(&inputs, &scope)?;
     let path = expr_engine

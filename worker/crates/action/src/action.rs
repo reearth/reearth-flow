@@ -161,8 +161,8 @@ pub enum Action {
     FileReader,
     #[strum(serialize = "fileWriter")]
     FileWriter,
-    #[strum(serialize = "xmlXpathExtractor")]
-    XmlXpathExtractor,
+    #[strum(serialize = "xmlXPathExtractor")]
+    XmlXPathExtractor,
     #[strum(serialize = "zipExtractor")]
     ZipExtractor,
 }
@@ -224,7 +224,7 @@ impl Action {
             Action::EntityTransformer => Box::pin(entity_transformer::run(ctx, input)),
             Action::FileReader => Box::pin(file_reader::run(ctx, input)),
             Action::FileWriter => Box::pin(file_writer::run(ctx, input)),
-            Action::XmlXpathExtractor => Box::pin(xml_xpath_extractor::run(ctx, input)),
+            Action::XmlXPathExtractor => Box::pin(xml_xpath_extractor::run(ctx, input)),
             Action::ZipExtractor => Box::pin(zip_extractor::run(ctx, input)),
         }
     }

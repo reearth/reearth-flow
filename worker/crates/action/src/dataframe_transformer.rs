@@ -44,8 +44,12 @@ pub(crate) async fn run(
         let operation = props
             .operations
             .iter()
-            .find(|operation| operation.target_port == port)
-            .ok_or(anyhow!("No Operation"))?;
+            .find(|operation| operation.target_port == port);
+        if operation.is_none() {
+            output.insert(port, Some(data));
+            continue;
+        }
+        let operation = operation.unwrap();
         let ast = expr_engine.compile(&operation.transform_expr)?;
         let scope = expr_engine.new_scope();
         for (k, v) in &params {

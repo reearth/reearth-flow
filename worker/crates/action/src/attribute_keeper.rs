@@ -54,7 +54,7 @@ pub(crate) async fn run(
                             .collect();
                         ActionValue::Map(processed_data)
                     }
-                    _ => continue,
+                    _ => data,
                 };
                 output.insert(port, Some(processed_data));
             }

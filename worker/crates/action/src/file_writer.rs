@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
+use reearth_flow_common::csv::Delimiter;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_macros::PropertySchema;
 
@@ -41,8 +42,8 @@ pub(crate) async fn run(
     debug!(?props, "read");
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     match props.format {
-        Format::Csv => write_csv(inputs, b',', &props, storage_resolver).await?,
-        Format::Tsv => write_csv(inputs, b'\t', &props, storage_resolver).await?,
+        Format::Csv => write_csv(inputs, Delimiter::Comma, &props, storage_resolver).await?,
+        Format::Tsv => write_csv(inputs, Delimiter::Tab, &props, storage_resolver).await?,
         Format::Json => write_json(inputs, &props, storage_resolver).await?,
         Format::Text => write_text(inputs, &props, storage_resolver).await?,
     };
@@ -62,7 +63,7 @@ async fn write_text(
     let value = get_input_value(inputs)?;
     let bytes = match value {
         ActionValue::String(s) => Bytes::from(s),
-        _ => return Err(anyhow!("Unsupported input")),
+        _ => return Err(Error::unsupported_feature("Unsupported input").into()),
     };
     let uri = Uri::from_str(&props.output)?;
     let storage = storage_resolver.resolve(&uri)?;
@@ -88,7 +89,7 @@ async fn write_json(
 
 async fn write_csv(
     inputs: Option<ActionDataframe>,
-    delimiter: u8,
+    delimiter: Delimiter,
     props: &PropertySchema,
     storage_resolver: Arc<StorageResolver>,
 ) -> anyhow::Result<ActionValue> {
@@ -96,7 +97,7 @@ async fn write_csv(
     match value {
         ActionValue::Array(s) => {
             let mut wtr = csv::WriterBuilder::new()
-                .delimiter(delimiter)
+                .delimiter(delimiter.into())
                 .quote_style(csv::QuoteStyle::NonNumeric)
                 .from_writer(vec![]);
             let fields = get_fields(&s);
@@ -222,7 +223,7 @@ mod tests {
             output: "ram:///root/output.csv".to_owned(),
         };
         let resolver = Arc::new(StorageResolver::default());
-        let result = write_csv(inputs, b',', &props, resolver).await;
+        let result = write_csv(inputs, Delimiter::Comma, &props, resolver).await;
         assert!(result.is_ok());
     }
 
