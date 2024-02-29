@@ -20,8 +20,19 @@ pub fn remove_trailing_slash(s: &str) -> String {
     }
 }
 
-pub fn is_boolean(s: &str) -> bool {
-    matches!(s.to_ascii_lowercase().as_str(), "true" | "false")
+pub fn is_boolean<T: AsRef<str>>(s: T) -> bool {
+    matches!(
+        s.as_ref().to_ascii_lowercase().as_str(),
+        "true" | "false" | "yes" | "no" | "on" | "off" | "1" | "0"
+    )
+}
+
+pub fn parse_boolean<T: AsRef<str>>(s: T) -> bool {
+    match s.as_ref().to_ascii_lowercase().as_str() {
+        "true" | "yes" | "on" | "1" => true,
+        "false" | "no" | "off" | "0" => false,
+        _ => unreachable!(),
+    }
 }
 
 pub fn is_number(s: &str) -> bool {
