@@ -2,6 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use rhai::{Engine as ScriptEngine, Scope as RhaiScope};
 
+use super::module::console::console_module;
 use super::module::env::{env_module, scope_module};
 use crate::{error::Error, scope::Scope, ShareLock, Value, Vars};
 
@@ -18,15 +19,19 @@ unsafe impl Sync for Engine {}
 impl Engine {
     pub fn new() -> Self {
         let mut script_engine = ScriptEngine::new();
-        script_engine.set_allow_looping(false);
-        script_engine.set_allow_anonymous_fn(false);
-        script_engine.set_allow_shadowing(false);
+        script_engine.set_allow_looping(true);
+        script_engine.set_allow_anonymous_fn(true);
+        script_engine.set_allow_shadowing(true);
         let scope = rhai::Scope::new();
-        let module = rhai::exported_module!(env_module);
-        script_engine.register_global_module(module.into());
-
-        let module = rhai::exported_module!(scope_module);
-        script_engine.register_global_module(module.into());
+        vec![
+            rhai::exported_module!(env_module),
+            rhai::exported_module!(scope_module),
+            rhai::exported_module!(console_module),
+        ]
+        .iter()
+        .for_each(|module| {
+            script_engine.register_global_module(module.clone().into());
+        });
 
         let engine = Self {
             script_engine: Arc::new(script_engine),
