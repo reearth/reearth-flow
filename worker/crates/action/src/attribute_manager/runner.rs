@@ -11,7 +11,7 @@ use tracing::debug;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_macros::PropertySchema;
 
-use crate::action::{ActionContext, ActionDataframe, ActionValue};
+use crate::action::{ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue};
 use crate::utils::convert_dataframe_to_scope_params;
 
 #[derive(Serialize, Deserialize, Debug, PropertySchema)]
@@ -59,49 +59,51 @@ pub(crate) enum Operate {
     },
 }
 
-pub(crate) async fn run(
-    ctx: ActionContext,
-    inputs: Option<ActionDataframe>,
-) -> anyhow::Result<ActionDataframe> {
-    let props = PropertySchema::try_from(ctx.node_property)?;
-    debug!(?props, "read");
-    let inputs = inputs.ok_or(anyhow!("No Input"))?;
-    let expr_engine = Arc::clone(&ctx.expr_engine);
-    let params = convert_dataframe_to_scope_params(&inputs);
-    let operations = convert_single_operation(props.operations, Arc::clone(&expr_engine));
+pub(crate) struct AttributeManager;
 
-    let mut output = ActionDataframe::new();
-    for (port, data) in inputs {
-        let data = match data {
-            Some(data) => data,
-            None => continue,
-        };
-        let value = match data {
-            ActionValue::Array(rows) => {
-                // NOTE: Parallelization with a small number of cases will conversely slow down the process.
-                let processed_data = match rows.len() {
-                    0..=1000 => rows
-                        .iter()
-                        .map(|row| mapper(row, &operations, &params, Arc::clone(&expr_engine)))
-                        .collect::<Vec<_>>(),
-                    _ => rows
-                        .par_iter()
-                        .map(|row| mapper(row, &operations, &params, Arc::clone(&expr_engine)))
-                        .collect::<Vec<_>>(),
-                };
-                ActionValue::Array(processed_data)
-            }
-            ActionValue::Map(row) => mapper(
-                &ActionValue::Map(row),
-                &operations,
-                &params,
-                Arc::clone(&expr_engine),
-            ),
-            _ => data,
-        };
-        output.insert(port, Some(value));
+#[async_trait::async_trait]
+impl ActionRunner for AttributeManager {
+    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
+        let props = PropertySchema::try_from(ctx.node_property)?;
+        debug!(?props, "read");
+        let inputs = inputs.ok_or(anyhow!("No Input"))?;
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let params = convert_dataframe_to_scope_params(&inputs);
+        let operations = convert_single_operation(props.operations, Arc::clone(&expr_engine));
+
+        let mut output = ActionDataframe::new();
+        for (port, data) in inputs {
+            let data = match data {
+                Some(data) => data,
+                None => continue,
+            };
+            let value = match data {
+                ActionValue::Array(rows) => {
+                    // NOTE: Parallelization with a small number of cases will conversely slow down the process.
+                    let processed_data = match rows.len() {
+                        0..=1000 => rows
+                            .iter()
+                            .map(|row| mapper(row, &operations, &params, Arc::clone(&expr_engine)))
+                            .collect::<Vec<_>>(),
+                        _ => rows
+                            .par_iter()
+                            .map(|row| mapper(row, &operations, &params, Arc::clone(&expr_engine)))
+                            .collect::<Vec<_>>(),
+                    };
+                    ActionValue::Array(processed_data)
+                }
+                ActionValue::Map(row) => mapper(
+                    &ActionValue::Map(row),
+                    &operations,
+                    &params,
+                    Arc::clone(&expr_engine),
+                ),
+                _ => data,
+            };
+            output.insert(port, Some(value));
+        }
+        Ok(output)
     }
-    Ok(output)
 }
 
 fn mapper(

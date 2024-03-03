@@ -2,4 +2,4 @@ mod csv;
 mod runner;
 mod text;
 
-pub(crate) use runner::run;
+pub(crate) use runner::FileReader;

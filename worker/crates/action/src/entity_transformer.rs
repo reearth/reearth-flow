@@ -11,7 +11,7 @@ use tracing::debug;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_macros::PropertySchema;
 
-use crate::action::{ActionContext, ActionDataframe, ActionValue};
+use crate::action::{ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue};
 use crate::error::Error;
 use crate::utils::convert_dataframe_to_scope_params;
 
@@ -21,45 +21,47 @@ struct PropertySchema {
     transform_expr: String,
 }
 
-pub(crate) async fn run(
-    ctx: ActionContext,
-    inputs: Option<ActionDataframe>,
-) -> anyhow::Result<ActionDataframe> {
-    let props = PropertySchema::try_from(ctx.node_property)?;
-    debug!(?props, "read");
-    let inputs = inputs.ok_or(Error::input("No Input"))?;
-    let expr_engine = Arc::clone(&ctx.expr_engine);
-    let ast = expr_engine.compile(props.transform_expr.as_str())?;
-    let params = convert_dataframe_to_scope_params(&inputs);
+pub(crate) struct EntityTransformer;
 
-    let mut output = ActionDataframe::new();
-    for (port, data) in inputs {
-        let data = match data {
-            Some(data) => data,
-            None => continue,
-        };
-        let processed_data = match data {
-            ActionValue::Array(rows) => {
-                // NOTE: Parallelization with a small number of cases will conversely slow down the process.
-                match rows.len() {
-                    0..=1000 => rows
-                        .iter()
-                        .map(|row| mapper(row, &ast, &params, Arc::clone(&expr_engine)))
-                        .collect::<Vec<_>>(),
-                    _ => rows
-                        .par_iter()
-                        .map(|row| mapper(row, &ast, &params, Arc::clone(&expr_engine)))
-                        .collect::<Vec<_>>(),
+#[async_trait::async_trait]
+impl ActionRunner for EntityTransformer {
+    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
+        let props = PropertySchema::try_from(ctx.node_property)?;
+        debug!(?props, "read");
+        let inputs = inputs.ok_or(Error::input("No Input"))?;
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let ast = expr_engine.compile(props.transform_expr.as_str())?;
+        let params = convert_dataframe_to_scope_params(&inputs);
+
+        let mut output = ActionDataframe::new();
+        for (port, data) in inputs {
+            let data = match data {
+                Some(data) => data,
+                None => continue,
+            };
+            let processed_data = match data {
+                ActionValue::Array(rows) => {
+                    // NOTE: Parallelization with a small number of cases will conversely slow down the process.
+                    match rows.len() {
+                        0..=1000 => rows
+                            .iter()
+                            .map(|row| mapper(row, &ast, &params, Arc::clone(&expr_engine)))
+                            .collect::<Vec<_>>(),
+                        _ => rows
+                            .par_iter()
+                            .map(|row| mapper(row, &ast, &params, Arc::clone(&expr_engine)))
+                            .collect::<Vec<_>>(),
+                    }
                 }
-            }
-            _ => {
-                output.insert(port, Some(data));
-                continue;
-            }
-        };
-        output.insert(port, Some(ActionValue::Array(processed_data)));
+                _ => {
+                    output.insert(port, Some(data));
+                    continue;
+                }
+            };
+            output.insert(port, Some(ActionValue::Array(processed_data)));
+        }
+        Ok(output)
     }
-    Ok(output)
 }
 
 fn mapper(

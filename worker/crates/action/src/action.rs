@@ -1,10 +1,9 @@
 use std::cmp::Ordering;
 use std::fmt::Display;
-use std::pin::Pin;
 use std::{collections::HashMap, sync::Arc};
 
 use bytes::Bytes;
-use futures::Future;
+use enum_assoc::Assoc;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use strum_macros::{Display, EnumString};
@@ -17,16 +16,16 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
 
-use crate::{
-    attribute_aggregator, attribute_keeper, attribute_manager, attribute_merger, color_converter,
-    dataframe_transformer, entity_filter, entity_transformer, file_reader, file_writer,
-    xml_xpath_extractor, zip_extractor,
-};
-
 pub type Port = String;
 pub const DEFAULT_PORT: &str = "default";
 pub type ActionDataframe = HashMap<Port, Option<ActionValue>>;
 pub type ActionValueIndex = HashMap<String, HashMap<String, Vec<ActionValue>>>;
+pub type ActionResult = Result<ActionDataframe, anyhow::Error>;
+
+#[async_trait::async_trait]
+pub trait ActionRunner {
+    async fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult;
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ActionValue {
@@ -139,30 +138,54 @@ fn compare_numbers(n1: &Number, n2: &Number) -> Option<Ordering> {
     None
 }
 
-#[derive(Serialize, Deserialize, EnumString, Display, Debug, Clone)]
+#[derive(Assoc, Serialize, Deserialize, EnumString, Display, Debug, Clone)]
+#[func(fn action_runner(&self) -> Box<dyn ActionRunner + Send>)]
 pub enum Action {
+    #[assoc(action_runner = Box::new(crate::attribute_keeper::AttributeKeeper))]
     #[strum(serialize = "attributeKeeper")]
     AttributeKeeper,
+
+    #[assoc(action_runner = Box::new(crate::attribute_merger::AttributeMerger))]
     #[strum(serialize = "attributeMerger")]
     AttributeMerger,
+
+    #[assoc(action_runner = Box::new(crate::attribute_manager::AttributeManager))]
     #[strum(serialize = "attributeManager")]
     AttributeManager,
+
+    #[assoc(action_runner = Box::new(crate::attribute_aggregator::AttributeAggregator))]
     #[strum(serialize = "attributeAggregator")]
     AttributeAggregator,
+
+    #[assoc(action_runner = Box::new(crate::color_converter::ColorConverter))]
     #[strum(serialize = "colorConverter")]
     ColorConverter,
+
+    #[assoc(action_runner = Box::new(crate::dataframe_transformer::DataframeTransformer))]
     #[strum(serialize = "dataframeTransformer")]
     DataframeTransformer,
+
+    #[assoc(action_runner = Box::new(crate::entity_filter::EntityFilter))]
     #[strum(serialize = "entityFilter")]
     EntityFilter,
+
+    #[assoc(action_runner = Box::new(crate::entity_transformer::EntityTransformer))]
     #[strum(serialize = "entityTransformer")]
     EntityTransformer,
+
+    #[assoc(action_runner = Box::new(crate::file_reader::FileReader))]
     #[strum(serialize = "fileReader")]
     FileReader,
+
+    #[assoc(action_runner = Box::new(crate::file_writer::FileWriter))]
     #[strum(serialize = "fileWriter")]
     FileWriter,
+
+    #[assoc(action_runner = Box::new(crate::xml_xpath_extractor::XmlXPathExtractor))]
     #[strum(serialize = "xmlXPathExtractor")]
     XmlXPathExtractor,
+
+    #[assoc(action_runner = Box::new(crate::zip_extractor::ZipExtractor))]
     #[strum(serialize = "zipExtractor")]
     ZipExtractor,
 }
@@ -208,24 +231,8 @@ impl ActionContext {
 }
 
 impl Action {
-    pub fn run(
-        &self,
-        ctx: ActionContext,
-        input: Option<ActionDataframe>,
-    ) -> Pin<Box<dyn Future<Output = anyhow::Result<ActionDataframe>> + Send + 'static>> {
-        match self {
-            Action::AttributeKeeper => Box::pin(attribute_keeper::run(ctx, input)),
-            Action::AttributeMerger => Box::pin(attribute_merger::run(ctx, input)),
-            Action::AttributeManager => Box::pin(attribute_manager::run(ctx, input)),
-            Action::AttributeAggregator => Box::pin(attribute_aggregator::run(ctx, input)),
-            Action::DataframeTransformer => Box::pin(dataframe_transformer::run(ctx, input)),
-            Action::ColorConverter => Box::pin(color_converter::run(ctx, input)),
-            Action::EntityFilter => Box::pin(entity_filter::run(ctx, input)),
-            Action::EntityTransformer => Box::pin(entity_transformer::run(ctx, input)),
-            Action::FileReader => Box::pin(file_reader::run(ctx, input)),
-            Action::FileWriter => Box::pin(file_writer::run(ctx, input)),
-            Action::XmlXPathExtractor => Box::pin(xml_xpath_extractor::run(ctx, input)),
-            Action::ZipExtractor => Box::pin(zip_extractor::run(ctx, input)),
-        }
+    pub async fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult {
+        let runner = self.action_runner();
+        runner.run(ctx, input).await
     }
 }
