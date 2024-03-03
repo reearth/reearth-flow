@@ -1,10 +1,11 @@
 use std::{collections::HashMap, sync::Arc};
 
+use reearth_flow_common::color;
 use reearth_flow_eval_expr::engine::Engine;
 use serde::{Deserialize, Serialize};
 
 use crate::action::{ActionDataframe, ActionValue};
-use reearth_flow_common::color;
+use crate::utils::convert_dataframe_to_scope_params;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct HslPropertySchema {
@@ -33,20 +34,7 @@ pub(crate) async fn convert_hsl_to_rgba(
         lightness: expr_engine.compile(property.lightness.as_str())?,
         alpha: expr_engine.compile(property.alpha.as_str())?,
     };
-    let params = inputs
-        .keys()
-        .filter(|&key| inputs.get(key).unwrap().is_some())
-        .filter(|&key| {
-            matches!(
-                inputs.get(key).unwrap().clone().unwrap(),
-                ActionValue::Bool(_)
-                    | ActionValue::Number(_)
-                    | ActionValue::String(_)
-                    | ActionValue::Map(_)
-            )
-        })
-        .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
-        .collect::<HashMap<_, _>>();
+    let params = convert_dataframe_to_scope_params(&inputs);
 
     let mut output = ActionDataframe::new();
     for (port, data) in inputs {
@@ -71,7 +59,7 @@ pub(crate) async fn convert_hsl_to_rgba(
                 );
                 processed_item.ok_or(anyhow::anyhow!("Failed to convert"))?
             }
-            _ => continue,
+            _ => data,
         };
         output.insert(port, Some(processed_data));
     }

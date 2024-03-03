@@ -4,17 +4,18 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
-use reearth_flow_workflow::graph::NodeProperty;
 use tracing::debug;
 
+use reearth_flow_macros::PropertySchema;
+
 use crate::action::{ActionContext, ActionDataframe, ActionValue, ActionValueIndex, DEFAULT_PORT};
+use crate::error::Error;
 
 const REQUESTOR_PORT: &str = "requestor";
 const SUPPLIER_PORT: &str = "supplier";
 const ROW_NUMBER: &str = "row_number";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
     join: Join,
@@ -27,34 +28,23 @@ struct Join {
     supplier: String,
 }
 
-impl TryFrom<NodeProperty> for PropertySchema {
-    type Error = anyhow::Error;
-
-    fn try_from(node_property: NodeProperty) -> Result<Self, anyhow::Error> {
-        serde_json::from_value(Value::Object(node_property)).map_err(|e| {
-            anyhow!(
-                "Failed to convert NodeProperty to PropertySchema with {}",
-                e
-            )
-        })
-    }
-}
-
 pub(crate) async fn run(
     ctx: ActionContext,
     inputs: Option<ActionDataframe>,
 ) -> anyhow::Result<ActionDataframe> {
     let props = PropertySchema::try_from(ctx.node_property)?;
-    let inputs = inputs.ok_or(anyhow!("No Input"))?;
+    let inputs = inputs.ok_or(Error::input("No Input"))?;
     let requestor = inputs
         .get(REQUESTOR_PORT)
-        .ok_or(anyhow!("No Requestor Port"))?;
-    let requestor = requestor.as_ref().ok_or(anyhow!("No Requestor Value"))?;
+        .ok_or(Error::input("No Requestor Port"))?;
+    let requestor = requestor
+        .as_ref()
+        .ok_or(Error::input("No Requestor Value"))?;
 
     let supplier = inputs
         .get(SUPPLIER_PORT)
-        .ok_or(anyhow!("No Supplier Port"))?;
-    let supplier = supplier.as_ref().ok_or(anyhow!("No Supplier Value"))?;
+        .ok_or(Error::input("No Supplier Port"))?;
+    let supplier = supplier.as_ref().ok_or(Error::input("No Supplier Value"))?;
     let requestor_key = &props.join.requestor;
     let supplier_key = &props.join.supplier;
     let is_row_number_join = requestor_key == ROW_NUMBER && supplier_key == ROW_NUMBER;
@@ -65,11 +55,11 @@ pub(crate) async fn run(
     };
     let requestor = match requestor {
         ActionValue::Array(rows) => rows,
-        _ => return Err(anyhow!("Requestor is not an array")),
+        _ => return Err(Error::validate("Requestor is not an array").into()),
     };
     let supplier = match supplier {
         ActionValue::Array(rows) => rows,
-        _ => return Err(anyhow!("Supplier is not an array")),
+        _ => return Err(Error::validate("Supplier is not an array").into()),
     };
     let mut result = Vec::<ActionValue>::new();
     for (idx, row) in requestor.iter().enumerate() {
@@ -104,11 +94,11 @@ pub(crate) async fn run(
                             new_row.extend(supplier_row.clone());
                             result.push(ActionValue::Map(new_row));
                         }
-                        _ => return Err(anyhow!("Supplier is not a map")),
+                        _ => return Err(Error::validate("Supplier is not a map").into()),
                     }
                 }
             }
-            _ => return Err(anyhow!("Requestor is not an array")),
+            _ => return Err(Error::validate("Requestor is not an array").into()),
         }
     }
     Ok(
@@ -139,11 +129,11 @@ fn create_supplier_index(
                             .or_default()
                             .push(ActionValue::Map(row.clone()));
                     }
-                    _ => return Err(anyhow!("Supplier is not an array")),
+                    _ => return Err(Error::validate("Supplier is not an array").into()),
                 }
             }
             Ok(supplier_indexs)
         }
-        _ => Err(anyhow!("Supplier is not an array")),
+        _ => Err(Error::validate("Supplier is not an array").into()),
     }
 }

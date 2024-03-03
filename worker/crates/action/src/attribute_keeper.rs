@@ -6,27 +6,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
-use reearth_flow_workflow::graph::NodeProperty;
+use reearth_flow_macros::PropertySchema;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
     keep_attributes: Vec<String>,
-}
-
-impl TryFrom<NodeProperty> for PropertySchema {
-    type Error = anyhow::Error;
-
-    fn try_from(node_property: NodeProperty) -> Result<Self, anyhow::Error> {
-        serde_json::from_value(Value::Object(node_property)).map_err(|e| {
-            anyhow!(
-                "Failed to convert NodeProperty to PropertySchema with {}",
-                e
-            )
-        })
-    }
 }
 
 pub(crate) async fn run(
@@ -67,7 +54,7 @@ pub(crate) async fn run(
                             .collect();
                         ActionValue::Map(processed_data)
                     }
-                    _ => continue,
+                    _ => data,
                 };
                 output.insert(port, Some(processed_data));
             }

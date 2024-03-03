@@ -6,12 +6,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
-use reearth_flow_workflow::graph::NodeProperty;
+use reearth_flow_macros::PropertySchema;
 
 use super::hsl_to_rgba;
 use crate::action::{ActionContext, ActionDataframe};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PropertySchema)]
 #[serde(tag = "type")]
 pub(crate) enum PropertySchema {
     #[serde(rename = "hslToRgba")]
@@ -19,19 +19,6 @@ pub(crate) enum PropertySchema {
         #[serde(flatten)]
         property: hsl_to_rgba::HslPropertySchema,
     },
-}
-
-impl TryFrom<NodeProperty> for PropertySchema {
-    type Error = anyhow::Error;
-
-    fn try_from(node_property: NodeProperty) -> Result<Self, anyhow::Error> {
-        serde_json::from_value(Value::Object(node_property)).map_err(|e| {
-            anyhow!(
-                "Failed to convert NodeProperty to PropertySchema with {}",
-                e
-            )
-        })
-    }
 }
 
 pub(crate) async fn run(

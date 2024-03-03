@@ -27,7 +27,7 @@ anyhow.workspace = true
 bytes.workspace = true
 clap = {version = "4.5.1", features = ["env", "string"]}
 colored = "2.1.0"
-directories = "5.0.1"
+directories.workspace = true
 opentelemetry.workspace = true
 time = {version = "0.3.34", features = ["formatting"]}
 tokio-stream.workspace = true

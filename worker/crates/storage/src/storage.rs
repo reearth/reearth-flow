@@ -50,6 +50,18 @@ impl Storage {
             .map_err(|err| format_object_store_error(err, p))
     }
 
+    pub async fn create_dir(&self, location: &Path) -> Result<()> {
+        let p = location.to_str().ok_or(object_store::Error::InvalidPath {
+            source: object_store::path::Error::InvalidPath {
+                path: format!("{:?}", location).into(),
+            },
+        })?;
+        self.inner
+            .create_dir(p)
+            .await
+            .map_err(|err| format_object_store_error(err, p))
+    }
+
     pub async fn append(&self, location: &Path, bytes: Bytes) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
@@ -97,6 +109,18 @@ impl Storage {
             range: (0..meta.size),
             meta,
         })
+    }
+
+    pub async fn exists(&self, location: &Path) -> Result<bool> {
+        let p = location.to_str().ok_or(object_store::Error::InvalidPath {
+            source: object_store::path::Error::InvalidPath {
+                path: format!("{:?}", location).into(),
+            },
+        })?;
+        self.inner
+            .is_exist(p)
+            .await
+            .map_err(|err| format_object_store_error(err, p))
     }
 
     pub async fn get_range(&self, location: &Path, range: Range<usize>) -> Result<Bytes> {
@@ -150,7 +174,11 @@ impl Storage {
         Ok(())
     }
 
-    pub async fn list(&self, prefix: Option<&Path>) -> Result<BoxStream<'_, Result<Uri>>> {
+    pub async fn list(
+        &self,
+        prefix: Option<&Path>,
+        recursive: bool,
+    ) -> Result<BoxStream<'_, Result<Uri>>> {
         let p = prefix.ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
                 path: format!("{:?}", prefix).into(),
@@ -167,7 +195,7 @@ impl Storage {
         let stream = self
             .inner
             .lister_with(&path)
-            .recursive(false)
+            .recursive(recursive)
             .metakey(Metakey::ContentLength | Metakey::LastModified)
             .await
             .map_err(|err| format_object_store_error(err, &path))?;
@@ -288,7 +316,7 @@ mod tests {
         let object_store = create_test_object_store().await;
         let path = Path::new("/data/");
         let results = object_store
-            .list(Some(path))
+            .list(Some(path), false)
             .await
             .unwrap()
             .collect::<Vec<_>>()

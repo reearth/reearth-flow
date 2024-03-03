@@ -21,7 +21,6 @@ reearth-flow-workflow.workspace = true
 
 anyhow.workspace = true
 async-recursion = "1.0.5"
-eyre.workspace = true
 opentelemetry.workspace = true
 petgraph.workspace = true
 serde.workspace = true

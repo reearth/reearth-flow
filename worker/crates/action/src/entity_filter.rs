@@ -7,11 +7,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
-use reearth_flow_workflow::graph::NodeProperty;
+use reearth_flow_macros::PropertySchema;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue, Port, DEFAULT_PORT};
+use crate::error::Error;
+use crate::utils::convert_dataframe_to_scope_params;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
     conditions: Vec<Condition>,
@@ -24,43 +26,19 @@ struct Condition {
     output_port: String,
 }
 
-impl TryFrom<NodeProperty> for PropertySchema {
-    type Error = anyhow::Error;
-
-    fn try_from(node_property: NodeProperty) -> Result<Self, anyhow::Error> {
-        serde_json::from_value(Value::Object(node_property)).map_err(|e| {
-            anyhow!(
-                "Failed to convert NodeProperty to PropertySchema with {}",
-                e
-            )
-        })
-    }
-}
-
 pub(crate) async fn run(
     ctx: ActionContext,
     inputs: Option<ActionDataframe>,
 ) -> anyhow::Result<ActionDataframe> {
     let props = PropertySchema::try_from(ctx.node_property)?;
     debug!(?props, "read");
-    let inputs = inputs.ok_or(anyhow!("No Input"))?;
-    let input = inputs.get(DEFAULT_PORT).ok_or(anyhow!("No Default Port"))?;
-    let input = input.as_ref().ok_or(anyhow!("No Value"))?;
+    let inputs = inputs.ok_or(Error::input("No Input"))?;
+    let input = inputs
+        .get(DEFAULT_PORT)
+        .ok_or(Error::input("No Default Port"))?;
+    let input = input.as_ref().ok_or(Error::input("No Value"))?;
     let expr_engine = Arc::clone(&ctx.expr_engine);
-    let params = inputs
-        .keys()
-        .filter(|&key| *key != DEFAULT_PORT && inputs.get(key).unwrap().is_some())
-        .filter(|&key| {
-            matches!(
-                inputs.get(key).unwrap().clone().unwrap(),
-                ActionValue::Bool(_)
-                    | ActionValue::Number(_)
-                    | ActionValue::String(_)
-                    | ActionValue::Map(_)
-            )
-        })
-        .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
-        .collect::<HashMap<_, _>>();
+    let params = convert_dataframe_to_scope_params(&inputs);
 
     let mut result = HashMap::<Port, Vec<ActionValue>>::new();
     for condition in &props.conditions {
@@ -102,7 +80,7 @@ pub(crate) async fn run(
                         .collect::<Vec<_>>(),
                 }
             }
-            _ => return Err(anyhow!("Invalid Input. supported only Array")),
+            _ => return Err(Error::input("Invalid Input. supported only Array").into()),
         };
         result.insert(output_port.clone(), output);
     }

@@ -1,12 +1,11 @@
 use std::io::Cursor;
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_common::{str::remove_bom, uri::Uri};
+use reearth_flow_common::{csv::Delimiter, str::remove_bom, uri::Uri};
 use reearth_flow_storage::resolve::StorageResolver;
 
-use super::runner::CommonPropertySchema;
 use crate::action::ActionValue;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -17,21 +16,20 @@ pub(crate) struct CsvPropertySchema {
 }
 
 pub(crate) async fn read_csv(
-    delimiter: u8,
-    common_props: &CommonPropertySchema,
+    delimiter: Delimiter,
+    input_path: Uri,
     props: &CsvPropertySchema,
     storage_resolver: Arc<StorageResolver>,
 ) -> anyhow::Result<Vec<ActionValue>> {
-    let uri = Uri::from_str(&common_props.dataset)?;
-    let storage = storage_resolver.resolve(&uri)?;
-    let result = storage.get(uri.path().as_path()).await?;
+    let storage = storage_resolver.resolve(&input_path)?;
+    let result = storage.get(input_path.path().as_path()).await?;
     let byte = result.bytes().await?;
     if props.header {
         let cursor = Cursor::new(byte);
         let mut rdr = csv::ReaderBuilder::new()
             .flexible(true)
             .has_headers(false)
-            .delimiter(delimiter)
+            .delimiter(delimiter.into())
             .from_reader(cursor);
         let offset = props.offset.unwrap_or(0);
         let mut result: Vec<ActionValue> = Vec::new();

@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
-use reearth_flow_workflow::graph::NodeProperty;
+use reearth_flow_macros::PropertySchema;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
     aggregations: Vec<Aggregation>,
@@ -35,19 +35,6 @@ pub(crate) enum Method {
     Avg,
 }
 
-impl TryFrom<NodeProperty> for PropertySchema {
-    type Error = anyhow::Error;
-
-    fn try_from(node_property: NodeProperty) -> Result<Self, anyhow::Error> {
-        serde_json::from_value(Value::Object(node_property)).map_err(|e| {
-            anyhow!(
-                "Failed to convert NodeProperty to PropertySchema with {}",
-                e
-            )
-        })
-    }
-}
-
 pub(crate) async fn run(
     ctx: ActionContext,
     inputs: Option<ActionDataframe>,
@@ -61,7 +48,6 @@ pub(crate) async fn run(
     let targets = match input {
         ActionValue::Array(rows) => rows
             .iter()
-            .filter(|&v| matches!(v, ActionValue::Map(_)))
             .filter_map(|v| match v {
                 ActionValue::Map(row) => Some(row),
                 _ => None,

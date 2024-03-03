@@ -1,5 +1,5 @@
 use core::result::Result;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::anyhow;
 use rhai::Dynamic;
@@ -7,11 +7,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
-use reearth_flow_workflow::graph::NodeProperty;
+use reearth_flow_macros::PropertySchema;
 
 use crate::action::{ActionContext, ActionDataframe, ActionValue};
+use crate::utils::convert_dataframe_to_scope_params;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PropertySchema)]
 #[serde(rename_all = "camelCase")]
 struct PropertySchema {
     operations: Vec<Operation>,
@@ -24,19 +25,6 @@ pub(crate) struct Operation {
     target_port: String,
 }
 
-impl TryFrom<NodeProperty> for PropertySchema {
-    type Error = anyhow::Error;
-
-    fn try_from(node_property: NodeProperty) -> Result<Self, anyhow::Error> {
-        serde_json::from_value(Value::Object(node_property)).map_err(|e| {
-            anyhow!(
-                "Failed to convert NodeProperty to PropertySchema with {}",
-                e
-            )
-        })
-    }
-}
-
 pub(crate) async fn run(
     ctx: ActionContext,
     inputs: Option<ActionDataframe>,
@@ -45,20 +33,7 @@ pub(crate) async fn run(
     debug!(?props, "read");
     let inputs = inputs.ok_or(anyhow!("No Input"))?;
     let expr_engine = Arc::clone(&ctx.expr_engine);
-    let params = inputs
-        .keys()
-        .filter(|&key| inputs.get(key).unwrap().is_some())
-        .filter(|&key| {
-            matches!(
-                inputs.get(key).unwrap().clone().unwrap(),
-                ActionValue::Bool(_)
-                    | ActionValue::Number(_)
-                    | ActionValue::String(_)
-                    | ActionValue::Map(_)
-            )
-        })
-        .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
-        .collect::<HashMap<_, _>>();
+    let params = convert_dataframe_to_scope_params(&inputs);
 
     let mut output = ActionDataframe::new();
     for (port, data) in inputs {
@@ -69,8 +44,12 @@ pub(crate) async fn run(
         let operation = props
             .operations
             .iter()
-            .find(|operation| operation.target_port == port)
-            .ok_or(anyhow!("No Operation"))?;
+            .find(|operation| operation.target_port == port);
+        if operation.is_none() {
+            output.insert(port, Some(data));
+            continue;
+        }
+        let operation = operation.unwrap();
         let ast = expr_engine.compile(&operation.transform_expr)?;
         let scope = expr_engine.new_scope();
         for (k, v) in &params {

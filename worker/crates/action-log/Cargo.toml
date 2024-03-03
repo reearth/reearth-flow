@@ -14,8 +14,8 @@ version.workspace = true
 reearth-flow-common.workspace = true
 
 anyhow.workspace = true
-chrono.workspace = true
 futures.workspace = true
+once_cell.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 slog-async = "2.8.0"

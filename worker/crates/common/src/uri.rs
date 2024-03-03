@@ -147,6 +147,10 @@ impl Uri {
         self.uri
     }
 
+    pub fn is_dir(&self) -> bool {
+        self.uri.ends_with('/')
+    }
+
     pub fn join<P: AsRef<Path> + std::fmt::Debug>(&self, path: P) -> anyhow::Result<Self> {
         if path.as_ref().is_absolute() {
             bail!(

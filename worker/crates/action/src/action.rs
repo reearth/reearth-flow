@@ -7,10 +7,11 @@ use bytes::Bytes;
 use futures::Future;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
-use strum_macros::EnumString;
+use strum_macros::{Display, EnumString};
 
 use reearth_flow_action_log::ActionLogger;
 use reearth_flow_common::str::base64_encode;
+use reearth_flow_common::xml::XmlXpathValue;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_workflow::graph::NodeProperty;
@@ -19,6 +20,7 @@ use reearth_flow_workflow::id::Id;
 use crate::{
     attribute_aggregator, attribute_keeper, attribute_manager, attribute_merger, color_converter,
     dataframe_transformer, entity_filter, entity_transformer, file_reader, file_writer,
+    xml_xpath_extractor, zip_extractor,
 };
 
 pub type Port = String;
@@ -95,6 +97,14 @@ impl From<ActionValue> for serde_json::Value {
     }
 }
 
+impl From<XmlXpathValue> for ActionValue {
+    fn from(value: XmlXpathValue) -> Self {
+        std::convert::Into::<ActionValue>::into(
+            value.to_string().parse::<serde_json::Value>().unwrap(),
+        )
+    }
+}
+
 impl TryFrom<rhai::Dynamic> for ActionValue {
     type Error = anyhow::Error;
 
@@ -129,7 +139,7 @@ fn compare_numbers(n1: &Number, n2: &Number) -> Option<Ordering> {
     None
 }
 
-#[derive(Serialize, Deserialize, EnumString, Debug, Clone)]
+#[derive(Serialize, Deserialize, EnumString, Display, Debug, Clone)]
 pub enum Action {
     #[strum(serialize = "attributeKeeper")]
     AttributeKeeper,
@@ -151,23 +161,10 @@ pub enum Action {
     FileReader,
     #[strum(serialize = "fileWriter")]
     FileWriter,
-}
-
-impl Display for Action {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Action::AttributeKeeper => write!(f, "attributeKeeper"),
-            Action::AttributeMerger => write!(f, "attributeMerger"),
-            Action::AttributeManager => write!(f, "attributeManager"),
-            Action::AttributeAggregator => write!(f, "attributeAggregator"),
-            Action::ColorConverter => write!(f, "colorConverter"),
-            Action::DataframeTransformer => write!(f, "dataframeTransformer"),
-            Action::EntityFilter => write!(f, "entityFilter"),
-            Action::EntityTransformer => write!(f, "entityTransformer"),
-            Action::FileReader => write!(f, "fileReader"),
-            Action::FileWriter => write!(f, "fileWriter"),
-        }
-    }
+    #[strum(serialize = "xmlXPathExtractor")]
+    XmlXPathExtractor,
+    #[strum(serialize = "zipExtractor")]
+    ZipExtractor,
 }
 
 #[derive(Debug, Clone)]
@@ -227,6 +224,8 @@ impl Action {
             Action::EntityTransformer => Box::pin(entity_transformer::run(ctx, input)),
             Action::FileReader => Box::pin(file_reader::run(ctx, input)),
             Action::FileWriter => Box::pin(file_writer::run(ctx, input)),
+            Action::XmlXPathExtractor => Box::pin(xml_xpath_extractor::run(ctx, input)),
+            Action::ZipExtractor => Box::pin(zip_extractor::run(ctx, input)),
         }
     }
 }

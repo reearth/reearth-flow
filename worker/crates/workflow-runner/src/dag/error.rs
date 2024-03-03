@@ -13,10 +13,6 @@ pub(crate) enum Error {
     #[error("Failed to initialize dag: {0}")]
     #[allow(dead_code)]
     Init(String),
-
-    #[error("Unsupported feature: {0}")]
-    #[allow(dead_code)]
-    UnsupportedFeature(String),
 }
 
 impl Error {
@@ -27,11 +23,6 @@ impl Error {
     #[allow(dead_code)]
     pub fn init<T: ToString>(message: T) -> Self {
         Self::Init(message.to_string())
-    }
-
-    #[allow(dead_code)]
-    pub fn unsupported_feature<T: ToString>(message: T) -> Self {
-        Self::UnsupportedFeature(message.to_string())
     }
 
     #[allow(dead_code)]
@@ -50,7 +41,6 @@ impl PartialEq for Error {
         match (self, other) {
             (Self::NodeNotFound(a), Self::NodeNotFound(b)) => a == b,
             (Self::Init(a), Self::Init(b)) => a == b,
-            (Self::UnsupportedFeature(a), Self::UnsupportedFeature(b)) => a == b,
             (Self::Execution(a), Self::Execution(b)) => a == b,
             (Self::EdgeAlreadyExists(a), Self::EdgeAlreadyExists(b)) => a == b,
             _ => false,
@@ -64,10 +54,6 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        assert_eq!(
-            Error::unsupported_feature("hello"),
-            Error::unsupported_feature("hello")
-        );
         assert_eq!(Error::execution("hello"), Error::execution("hello"));
         assert_eq!(Error::init("hello"), Error::init("hello"));
         assert_eq!(
