@@ -12,7 +12,9 @@ use reearth_flow_common::csv::Delimiter;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_macros::PropertySchema;
 
-use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
+use crate::action::{
+    ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue, DEFAULT_PORT,
+};
 use crate::error::Error;
 
 #[derive(Serialize, Deserialize, Debug, PropertySchema)]
@@ -34,25 +36,27 @@ enum Format {
     Tsv,
 }
 
-pub(crate) async fn run(
-    ctx: ActionContext,
-    inputs: Option<ActionDataframe>,
-) -> anyhow::Result<ActionDataframe> {
-    let props = PropertySchema::try_from(ctx.node_property)?;
-    debug!(?props, "read");
-    let storage_resolver = Arc::clone(&ctx.storage_resolver);
-    match props.format {
-        Format::Csv => write_csv(inputs, Delimiter::Comma, &props, storage_resolver).await?,
-        Format::Tsv => write_csv(inputs, Delimiter::Tab, &props, storage_resolver).await?,
-        Format::Json => write_json(inputs, &props, storage_resolver).await?,
-        Format::Text => write_text(inputs, &props, storage_resolver).await?,
-    };
-    let mut output: ActionDataframe = HashMap::new();
-    let summary = vec![("output".to_owned(), ActionValue::String(props.output))]
-        .into_iter()
-        .collect::<HashMap<_, _>>();
-    output.insert(DEFAULT_PORT.to_string(), Some(ActionValue::Map(summary)));
-    Ok(output)
+pub(crate) struct FileWriter;
+
+#[async_trait::async_trait]
+impl ActionRunner for FileWriter {
+    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
+        let props = PropertySchema::try_from(ctx.node_property)?;
+        debug!(?props, "read");
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        match props.format {
+            Format::Csv => write_csv(inputs, Delimiter::Comma, &props, storage_resolver).await?,
+            Format::Tsv => write_csv(inputs, Delimiter::Tab, &props, storage_resolver).await?,
+            Format::Json => write_json(inputs, &props, storage_resolver).await?,
+            Format::Text => write_text(inputs, &props, storage_resolver).await?,
+        };
+        let mut output: ActionDataframe = HashMap::new();
+        let summary = vec![("output".to_owned(), ActionValue::String(props.output))]
+            .into_iter()
+            .collect::<HashMap<_, _>>();
+        output.insert(DEFAULT_PORT.to_string(), Some(ActionValue::Map(summary)));
+        Ok(output)
+    }
 }
 
 async fn write_text(

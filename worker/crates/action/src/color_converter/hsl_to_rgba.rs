@@ -4,7 +4,7 @@ use reearth_flow_common::color;
 use reearth_flow_eval_expr::engine::Engine;
 use serde::{Deserialize, Serialize};
 
-use crate::action::{ActionDataframe, ActionValue};
+use crate::action::{ActionDataframe, ActionResult, ActionValue};
 use crate::utils::convert_dataframe_to_scope_params;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -26,7 +26,7 @@ pub(crate) async fn convert_hsl_to_rgba(
     expr_engine: Arc<Engine>,
     property: HslPropertySchema,
     inputs: Option<ActionDataframe>,
-) -> anyhow::Result<ActionDataframe> {
+) -> ActionResult {
     let inputs = inputs.ok_or(anyhow::anyhow!("No Input"))?;
     let ast = HslAST {
         hue: expr_engine.compile(property.hue.as_str())?,
