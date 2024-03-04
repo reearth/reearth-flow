@@ -1,23 +1,17 @@
-use core::result::Result;
 use std::{collections::HashMap, sync::Arc};
 
-use anyhow::anyhow;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::debug;
-
-use reearth_flow_macros::PropertySchema;
 
 use crate::action::{
-    ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue, Port, DEFAULT_PORT,
+    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port, DEFAULT_PORT,
 };
 use crate::error::Error;
 use crate::utils::convert_dataframe_to_scope_params;
 
-#[derive(Serialize, Deserialize, Debug, PropertySchema)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct PropertySchema {
+pub struct EntityFilter {
     conditions: Vec<Condition>,
 }
 
@@ -28,13 +22,10 @@ struct Condition {
     output_port: String,
 }
 
-pub(crate) struct EntityFilter;
-
 #[async_trait::async_trait]
-impl ActionRunner for EntityFilter {
+#[typetag::serde(name = "entityFilter")]
+impl Action for EntityFilter {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let props = PropertySchema::try_from(ctx.node_property)?;
-        debug!(?props, "read");
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let input = inputs
             .get(DEFAULT_PORT)
@@ -44,7 +35,7 @@ impl ActionRunner for EntityFilter {
         let params = convert_dataframe_to_scope_params(&inputs);
 
         let mut result = HashMap::<Port, Vec<ActionValue>>::new();
-        for condition in &props.conditions {
+        for condition in &self.conditions {
             let expr = &condition.expr;
             let template_ast = expr_engine.compile(expr)?;
             let output_port = &condition.output_port;

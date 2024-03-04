@@ -1,19 +1,13 @@
-use core::result::Result;
-
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::debug;
-
-use reearth_flow_macros::PropertySchema;
 
 use crate::action::{
-    ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue, DEFAULT_PORT,
+    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
 };
 
-#[derive(Serialize, Deserialize, Debug, PropertySchema)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct PropertySchema {
+pub struct AttributeAggregator {
     aggregations: Vec<Aggregation>,
 }
 
@@ -37,13 +31,10 @@ pub(crate) enum Method {
     Avg,
 }
 
-pub(crate) struct AttributeAggregator;
-
 #[async_trait::async_trait]
-impl ActionRunner for AttributeAggregator {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let props = PropertySchema::try_from(ctx.node_property)?;
-        debug!(?props, "read");
+#[typetag::serde(name = "attributeAggregator")]
+impl Action for AttributeAggregator {
+    async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(anyhow!("No Input"))?;
         let input = inputs.get(DEFAULT_PORT).ok_or(anyhow!("No Default Port"))?;
         let input = input.as_ref().ok_or(anyhow!("No Value"))?;
@@ -59,7 +50,7 @@ impl ActionRunner for AttributeAggregator {
             _ => return Err(anyhow!("Invalid Input. supported only Array")),
         };
         let mut output = ActionDataframe::new();
-        for aggregation in &props.aggregations {
+        for aggregation in &self.aggregations {
             match aggregation.method {
                 Method::Max => {
                     let result = targets

@@ -1,22 +1,18 @@
-use core::result::Result;
 use std::{collections::HashMap, sync::Arc};
 
 use anyhow::anyhow;
 use rayon::prelude::*;
 use rhai::Dynamic;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::debug;
 
 use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_macros::PropertySchema;
 
-use crate::action::{ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue};
+use crate::action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
 use crate::utils::convert_dataframe_to_scope_params;
 
-#[derive(Serialize, Deserialize, Debug, PropertySchema)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct PropertySchema {
+pub struct AttributeManager {
     operations: Vec<Operation>,
 }
 
@@ -59,17 +55,14 @@ pub(crate) enum Operate {
     },
 }
 
-pub(crate) struct AttributeManager;
-
 #[async_trait::async_trait]
-impl ActionRunner for AttributeManager {
+#[typetag::serde(name = "attributeManager")]
+impl Action for AttributeManager {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let props = PropertySchema::try_from(ctx.node_property)?;
-        debug!(?props, "read");
         let inputs = inputs.ok_or(anyhow!("No Input"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let params = convert_dataframe_to_scope_params(&inputs);
-        let operations = convert_single_operation(props.operations, Arc::clone(&expr_engine));
+        let operations = convert_single_operation(&self.operations, Arc::clone(&expr_engine));
 
         let mut output = ActionDataframe::new();
         for (port, data) in inputs {
@@ -178,7 +171,7 @@ fn mapper(
     }
 }
 
-fn convert_single_operation(operations: Vec<Operation>, expr_engine: Arc<Engine>) -> Vec<Operate> {
+fn convert_single_operation(operations: &[Operation], expr_engine: Arc<Engine>) -> Vec<Operate> {
     operations
         .iter()
         .map(|operation| {

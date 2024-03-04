@@ -1,28 +1,20 @@
-use core::result::Result;
 use std::collections::HashMap;
 
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::debug;
 
-use reearth_flow_macros::PropertySchema;
+use crate::action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
 
-use crate::action::{ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue};
-
-#[derive(Serialize, Deserialize, Debug, PropertySchema)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct PropertySchema {
+pub struct AttributeKeeper {
     keep_attributes: Vec<String>,
 }
 
-pub(crate) struct AttributeKeeper;
-
 #[async_trait::async_trait]
-impl ActionRunner for AttributeKeeper {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let props = PropertySchema::try_from(ctx.node_property)?;
-        debug!(?props, "read");
+#[typetag::serde(name = "attributeKeeper")]
+impl Action for AttributeKeeper {
+    async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let output = match inputs {
             Some(inputs) => {
                 let mut output = HashMap::new();
@@ -39,7 +31,7 @@ impl ActionRunner for AttributeKeeper {
                                     ActionValue::Map(item) => {
                                         let processed_item = item
                                             .into_iter()
-                                            .filter(|(key, _)| props.keep_attributes.contains(key))
+                                            .filter(|(key, _)| self.keep_attributes.contains(key))
                                             .collect::<HashMap<_, _>>();
                                         Some(ActionValue::Map(processed_item))
                                     }
@@ -51,7 +43,7 @@ impl ActionRunner for AttributeKeeper {
                         ActionValue::Map(data) => {
                             let processed_data = data
                                 .into_iter()
-                                .filter(|(key, _)| props.keep_attributes.contains(key))
+                                .filter(|(key, _)| self.keep_attributes.contains(key))
                                 .collect();
                             ActionValue::Map(processed_data)
                         }

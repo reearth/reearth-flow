@@ -1,3 +1,3 @@
 mod runner;
 
-pub(crate) use runner::AttributeManager;
+pub use runner::AttributeManager;

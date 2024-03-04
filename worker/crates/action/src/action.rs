@@ -3,10 +3,8 @@ use std::fmt::Display;
 use std::{collections::HashMap, sync::Arc};
 
 use bytes::Bytes;
-use enum_assoc::Assoc;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
-use strum_macros::{Display, EnumString};
 
 use reearth_flow_action_log::ActionLogger;
 use reearth_flow_common::str::base64_encode;
@@ -23,7 +21,8 @@ pub type ActionValueIndex = HashMap<String, HashMap<String, Vec<ActionValue>>>;
 pub type ActionResult = Result<ActionDataframe, anyhow::Error>;
 
 #[async_trait::async_trait]
-pub trait ActionRunner {
+#[typetag::serde(tag = "action", content = "with")]
+pub trait Action: Send + Sync {
     async fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult;
 }
 
@@ -138,58 +137,6 @@ fn compare_numbers(n1: &Number, n2: &Number) -> Option<Ordering> {
     None
 }
 
-#[derive(Assoc, Serialize, Deserialize, EnumString, Display, Debug, Clone)]
-#[func(fn action_runner(&self) -> Box<dyn ActionRunner + Send>)]
-pub enum Action {
-    #[assoc(action_runner = Box::new(crate::attribute_keeper::AttributeKeeper))]
-    #[strum(serialize = "attributeKeeper")]
-    AttributeKeeper,
-
-    #[assoc(action_runner = Box::new(crate::attribute_merger::AttributeMerger))]
-    #[strum(serialize = "attributeMerger")]
-    AttributeMerger,
-
-    #[assoc(action_runner = Box::new(crate::attribute_manager::AttributeManager))]
-    #[strum(serialize = "attributeManager")]
-    AttributeManager,
-
-    #[assoc(action_runner = Box::new(crate::attribute_aggregator::AttributeAggregator))]
-    #[strum(serialize = "attributeAggregator")]
-    AttributeAggregator,
-
-    #[assoc(action_runner = Box::new(crate::color_converter::ColorConverter))]
-    #[strum(serialize = "colorConverter")]
-    ColorConverter,
-
-    #[assoc(action_runner = Box::new(crate::dataframe_transformer::DataframeTransformer))]
-    #[strum(serialize = "dataframeTransformer")]
-    DataframeTransformer,
-
-    #[assoc(action_runner = Box::new(crate::entity_filter::EntityFilter))]
-    #[strum(serialize = "entityFilter")]
-    EntityFilter,
-
-    #[assoc(action_runner = Box::new(crate::entity_transformer::EntityTransformer))]
-    #[strum(serialize = "entityTransformer")]
-    EntityTransformer,
-
-    #[assoc(action_runner = Box::new(crate::file_reader::FileReader))]
-    #[strum(serialize = "fileReader")]
-    FileReader,
-
-    #[assoc(action_runner = Box::new(crate::file_writer::FileWriter))]
-    #[strum(serialize = "fileWriter")]
-    FileWriter,
-
-    #[assoc(action_runner = Box::new(crate::xml_xpath_extractor::XmlXPathExtractor))]
-    #[strum(serialize = "xmlXPathExtractor")]
-    XmlXPathExtractor,
-
-    #[assoc(action_runner = Box::new(crate::zip_extractor::ZipExtractor))]
-    #[strum(serialize = "zipExtractor")]
-    ZipExtractor,
-}
-
 #[derive(Debug, Clone)]
 pub struct ActionContext {
     pub job_id: Id,
@@ -227,12 +174,5 @@ impl ActionContext {
             logger: Arc::new(logger),
             root_span,
         }
-    }
-}
-
-impl Action {
-    pub async fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult {
-        let runner = self.action_runner();
-        runner.run(ctx, input).await
     }
 }

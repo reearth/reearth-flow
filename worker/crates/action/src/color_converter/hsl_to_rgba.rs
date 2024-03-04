@@ -8,7 +8,7 @@ use crate::action::{ActionDataframe, ActionResult, ActionValue};
 use crate::utils::convert_dataframe_to_scope_params;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct HslPropertySchema {
+pub struct HslPropertySchema {
     hue: String,
     saturation: String,
     lightness: String,
@@ -24,7 +24,7 @@ struct HslAST {
 
 pub(crate) async fn convert_hsl_to_rgba(
     expr_engine: Arc<Engine>,
-    property: HslPropertySchema,
+    property: &HslPropertySchema,
     inputs: Option<ActionDataframe>,
 ) -> ActionResult {
     let inputs = inputs.ok_or(anyhow::anyhow!("No Input"))?;
