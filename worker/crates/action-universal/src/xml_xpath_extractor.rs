@@ -5,8 +5,10 @@ use serde::{Deserialize, Serialize};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
 
-use crate::action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port};
-use crate::utils::inject_variables_to_scope;
+use reearth_flow_action::utils::inject_variables_to_scope;
+use reearth_flow_action::{
+    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct XmlXPathExtractor {

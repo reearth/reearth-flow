@@ -9,11 +9,11 @@ use serde::{Deserialize, Serialize};
 use reearth_flow_common::csv::Delimiter;
 
 use super::{csv, text};
-use crate::action::{
+use reearth_flow_action::error::Error;
+use reearth_flow_action::utils::inject_variables_to_scope;
+use reearth_flow_action::{
     Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
 };
-use crate::error::Error;
-use crate::utils::inject_variables_to_scope;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]

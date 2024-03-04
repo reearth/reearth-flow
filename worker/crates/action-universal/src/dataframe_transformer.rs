@@ -4,8 +4,8 @@ use anyhow::anyhow;
 use rhai::Dynamic;
 use serde::{Deserialize, Serialize};
 
-use crate::action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
-use crate::utils::convert_dataframe_to_scope_params;
+use reearth_flow_action::utils::convert_dataframe_to_scope_params;
+use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]

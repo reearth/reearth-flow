@@ -3,10 +3,9 @@ use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
+use reearth_flow_action::ActionValue;
 use reearth_flow_common::{csv::Delimiter, str::remove_bom, uri::Uri};
 use reearth_flow_storage::resolve::StorageResolver;
-
-use crate::action::ActionValue;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]

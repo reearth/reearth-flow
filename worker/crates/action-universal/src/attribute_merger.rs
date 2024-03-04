@@ -4,11 +4,11 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-use crate::action::{
+use reearth_flow_action::error::Error;
+use reearth_flow_action::{
     Action, ActionContext, ActionDataframe, ActionResult, ActionValue, ActionValueIndex,
     DEFAULT_PORT,
 };
-use crate::error::Error;
 
 const REQUESTOR_PORT: &str = "requestor";
 const SUPPLIER_PORT: &str = "supplier";

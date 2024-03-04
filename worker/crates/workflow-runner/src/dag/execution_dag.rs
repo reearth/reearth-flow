@@ -10,7 +10,7 @@ use reearth_flow_workflow::graph::NodeAction;
 use tokio::task::JoinSet;
 use tracing::{info, info_span};
 
-use reearth_flow_action::action::{ActionContext, ActionDataframe};
+use reearth_flow_action::{ActionContext, ActionDataframe};
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;

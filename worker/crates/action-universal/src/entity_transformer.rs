@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_eval_expr::engine::Engine;
 
-use crate::action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
-use crate::error::Error;
-use crate::utils::convert_dataframe_to_scope_params;
+use reearth_flow_action::error::Error;
+use reearth_flow_action::utils::convert_dataframe_to_scope_params;
+use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]

@@ -9,10 +9,10 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_common::uri::Uri;
 
-use crate::action::{
+use reearth_flow_action::utils::inject_variables_to_scope;
+use reearth_flow_action::{
     Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
 };
-use crate::utils::inject_variables_to_scope;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]

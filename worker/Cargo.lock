@@ -2031,6 +2031,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "reearth-flow-action-universal"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "async_zip",
+ "bytes",
+ "csv",
+ "directories",
+ "futures",
+ "rayon",
+ "reearth-flow-action",
+ "reearth-flow-action-log",
+ "reearth-flow-common",
+ "reearth-flow-eval-expr",
+ "reearth-flow-storage",
+ "reearth-flow-workflow",
+ "rhai",
+ "serde",
+ "serde_json",
+ "strum",
+ "strum_macros",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+ "typetag",
+ "uuid",
+]
+
+[[package]]
 name = "reearth-flow-cli"
 version = "0.1.0"
 dependencies = [
@@ -2184,6 +2217,7 @@ dependencies = [
  "pretty_assertions",
  "reearth-flow-action",
  "reearth-flow-action-log",
+ "reearth-flow-action-universal",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-state",

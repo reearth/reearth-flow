@@ -8,10 +8,10 @@ use serde::{Deserialize, Serialize};
 use reearth_flow_common::csv::Delimiter;
 use reearth_flow_common::uri::Uri;
 
-use crate::action::{
+use reearth_flow_action::error::Error;
+use reearth_flow_action::{
     Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
 };
-use crate::error::Error;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]

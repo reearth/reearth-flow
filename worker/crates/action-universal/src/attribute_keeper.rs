@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
-use crate::action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
+use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
