@@ -2,12 +2,9 @@ use std::collections::HashMap;
 
 use reearth_flow_eval_expr::scope::Scope;
 
-use crate::action::{ActionDataframe, ActionValue};
+use crate::{ActionDataframe, ActionValue};
 
-pub(crate) fn inject_variables_to_scope(
-    inputs: &ActionDataframe,
-    scope: &Scope,
-) -> anyhow::Result<()> {
+pub fn inject_variables_to_scope(inputs: &ActionDataframe, scope: &Scope) -> anyhow::Result<()> {
     inputs
         .keys()
         .filter(|&key| {
@@ -26,9 +23,7 @@ pub(crate) fn inject_variables_to_scope(
     Ok(())
 }
 
-pub(crate) fn convert_dataframe_to_scope_params(
-    inputs: &ActionDataframe,
-) -> HashMap<String, ActionValue> {
+pub fn convert_dataframe_to_scope_params(inputs: &ActionDataframe) -> HashMap<String, ActionValue> {
     inputs
         .keys()
         .filter(|&key| {

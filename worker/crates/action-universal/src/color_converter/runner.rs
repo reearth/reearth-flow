@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
+use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionResult};
+
 use super::hsl_to_rgba;
-use crate::action::{Action, ActionContext, ActionDataframe, ActionResult};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]

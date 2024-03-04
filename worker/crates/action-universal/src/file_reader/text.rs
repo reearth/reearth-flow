@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
+use reearth_flow_action::ActionValue;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
-
-use crate::action::ActionValue;
 
 pub(crate) async fn read_text(
     input_path: Uri,

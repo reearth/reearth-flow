@@ -4,8 +4,8 @@ use reearth_flow_common::color;
 use reearth_flow_eval_expr::engine::Engine;
 use serde::{Deserialize, Serialize};
 
-use crate::action::{ActionDataframe, ActionResult, ActionValue};
-use crate::utils::convert_dataframe_to_scope_params;
+use reearth_flow_action::utils::convert_dataframe_to_scope_params;
+use reearth_flow_action::{ActionDataframe, ActionResult, ActionValue};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HslPropertySchema {

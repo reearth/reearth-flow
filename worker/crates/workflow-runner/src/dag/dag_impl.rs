@@ -6,7 +6,7 @@ use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 use tracing::info;
 
-use reearth_flow_action::action::Port;
+use reearth_flow_action::Port;
 use reearth_flow_workflow::graph::Node;
 use reearth_flow_workflow::id::Id;
 

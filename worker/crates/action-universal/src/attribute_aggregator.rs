@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
-use crate::action::{
+use reearth_flow_action::{
     Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
 };
 
