@@ -80,7 +80,7 @@ pub struct EdgeIndex {
 }
 
 pub struct Dag {
-    pub id: GraphId,
+    id: GraphId,
     /// The graph.
     graph: DiGraph<NodeType, EdgeType>,
     /// Lookup table for node indexes.

@@ -1,15 +1,11 @@
-use core::result::Result;
 use std::collections::HashMap;
 
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use tracing::debug;
 
-use reearth_flow_macros::PropertySchema;
-
 use crate::action::{
-    ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue, ActionValueIndex,
+    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, ActionValueIndex,
     DEFAULT_PORT,
 };
 use crate::error::Error;
@@ -18,9 +14,9 @@ const REQUESTOR_PORT: &str = "requestor";
 const SUPPLIER_PORT: &str = "supplier";
 const ROW_NUMBER: &str = "row_number";
 
-#[derive(Serialize, Deserialize, Debug, PropertySchema)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct PropertySchema {
+pub struct AttributeMerger {
     join: Join,
 }
 
@@ -31,12 +27,10 @@ struct Join {
     supplier: String,
 }
 
-pub(crate) struct AttributeMerger;
-
 #[async_trait::async_trait]
-impl ActionRunner for AttributeMerger {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let props = PropertySchema::try_from(ctx.node_property)?;
+#[typetag::serde(name = "attributeMerger")]
+impl Action for AttributeMerger {
+    async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let requestor = inputs
             .get(REQUESTOR_PORT)
@@ -49,13 +43,13 @@ impl ActionRunner for AttributeMerger {
             .get(SUPPLIER_PORT)
             .ok_or(Error::input("No Supplier Port"))?;
         let supplier = supplier.as_ref().ok_or(Error::input("No Supplier Value"))?;
-        let requestor_key = &props.join.requestor;
-        let supplier_key = &props.join.supplier;
+        let requestor_key = &self.join.requestor;
+        let supplier_key = &self.join.supplier;
         let is_row_number_join = requestor_key == ROW_NUMBER && supplier_key == ROW_NUMBER;
         let supplier_indexs = if is_row_number_join {
             ActionValueIndex::new()
         } else {
-            create_supplier_index(supplier, &props)?
+            self.create_supplier_index(supplier)?
         };
         let requestor = match requestor {
             ActionValue::Array(rows) => rows,
@@ -113,32 +107,31 @@ impl ActionRunner for AttributeMerger {
     }
 }
 
-fn create_supplier_index(
-    supplier: &ActionValue,
-    props: &PropertySchema,
-) -> anyhow::Result<ActionValueIndex> {
-    let mut supplier_indexs = ActionValueIndex::new();
-    match supplier {
-        ActionValue::Array(rows) => {
-            for row in rows {
-                match row {
-                    ActionValue::Map(row) => {
-                        let supplier = &props.join.supplier;
-                        let supplier_value = row
-                            .get(supplier)
-                            .ok_or(anyhow!("No Supplier Value By create supplier index"))?;
-                        let supplier_index_entry =
-                            supplier_indexs.entry(supplier.to_owned()).or_default();
-                        supplier_index_entry
-                            .entry(supplier_value.to_string())
-                            .or_default()
-                            .push(ActionValue::Map(row.clone()));
+impl AttributeMerger {
+    fn create_supplier_index(&self, supplier: &ActionValue) -> anyhow::Result<ActionValueIndex> {
+        let mut supplier_indexs = ActionValueIndex::new();
+        match supplier {
+            ActionValue::Array(rows) => {
+                for row in rows {
+                    match row {
+                        ActionValue::Map(row) => {
+                            let supplier = &self.join.supplier;
+                            let supplier_value = row
+                                .get(supplier)
+                                .ok_or(anyhow!("No Supplier Value By create supplier index"))?;
+                            let supplier_index_entry =
+                                supplier_indexs.entry(supplier.to_owned()).or_default();
+                            supplier_index_entry
+                                .entry(supplier_value.to_string())
+                                .or_default()
+                                .push(ActionValue::Map(row.clone()));
+                        }
+                        _ => return Err(Error::validate("Supplier is not an array").into()),
                     }
-                    _ => return Err(Error::validate("Supplier is not an array").into()),
                 }
+                Ok(supplier_indexs)
             }
-            Ok(supplier_indexs)
+            _ => Err(Error::validate("Supplier is not an array").into()),
         }
-        _ => Err(Error::validate("Supplier is not an array").into()),
     }
 }

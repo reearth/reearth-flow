@@ -1,34 +1,29 @@
-use core::result::Result;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::anyhow;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::debug;
 
 use reearth_flow_common::csv::Delimiter;
-use reearth_flow_macros::PropertySchema;
 
 use super::{csv, text};
 use crate::action::{
-    ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue, DEFAULT_PORT,
+    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
 };
 use crate::error::Error;
 use crate::utils::inject_variables_to_scope;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CommonPropertySchema {
+pub struct CommonPropertySchema {
     pub(crate) dataset: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PropertySchema)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "format")]
-pub(crate) enum PropertySchema {
+pub enum FileReader {
     #[serde(rename = "csv")]
     Csv {
         #[serde(flatten)]
@@ -55,48 +50,44 @@ pub(crate) enum PropertySchema {
     },
 }
 
-pub(crate) struct FileReader;
-
 #[async_trait::async_trait]
-impl ActionRunner for FileReader {
+#[typetag::serde(name = "fileReader")]
+impl Action for FileReader {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let props = PropertySchema::try_from(ctx.node_property)?;
-        debug!(?props, "read");
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let data = match props {
-            PropertySchema::Csv {
+        let data = match self {
+            Self::Csv {
                 common_property,
                 property,
             } => {
                 let input_path = get_input_path(
                     &inputs.unwrap_or_default(),
-                    &common_property,
+                    common_property,
                     Arc::clone(&ctx.expr_engine),
                 )
                 .await?;
                 let result =
-                    csv::read_csv(Delimiter::Comma, input_path, &property, storage_resolver)
-                        .await?;
+                    csv::read_csv(Delimiter::Comma, input_path, property, storage_resolver).await?;
                 ActionValue::Array(result)
             }
-            PropertySchema::Tsv {
+            Self::Tsv {
                 common_property,
                 property,
             } => {
                 let input_path = get_input_path(
                     &inputs.unwrap_or_default(),
-                    &common_property,
+                    common_property,
                     Arc::clone(&ctx.expr_engine),
                 )
                 .await?;
                 let result =
-                    csv::read_csv(Delimiter::Tab, input_path, &property, storage_resolver).await?;
+                    csv::read_csv(Delimiter::Tab, input_path, property, storage_resolver).await?;
                 ActionValue::Array(result)
             }
-            PropertySchema::Text { common_property } => {
+            Self::Text { common_property } => {
                 let input_path = get_input_path(
                     &inputs.unwrap_or_default(),
-                    &common_property,
+                    common_property,
                     Arc::clone(&ctx.expr_engine),
                 )
                 .await?;
@@ -120,34 +111,4 @@ async fn get_input_path(
     expr_engine
         .eval_scope::<String>(&common_property.dataset, &scope)
         .and_then(|s| Uri::from_str(s.as_str()))
-}
-
-mod tests {
-    #[allow(unused_imports)]
-    use super::*;
-
-    #[test]
-    fn test_parse_csv() {
-        let json = r#"
-        {
-            "format": "csv",
-            "dataset": "file:///hoge/fuga.csv",
-            "header": true
-        }
-  "#;
-
-        let props =
-            serde_json::from_str::<reearth_flow_workflow::graph::NodeProperty>(json).unwrap();
-        let schema = PropertySchema::try_from(props).unwrap();
-        match schema {
-            PropertySchema::Csv {
-                common_property,
-                property,
-            } => {
-                assert_eq!(common_property.dataset, "file:///hoge/fuga.csv");
-                assert!(property.header);
-            }
-            _ => panic!("Unsupported format"),
-        }
-    }
 }

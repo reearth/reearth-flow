@@ -1,36 +1,28 @@
-use core::result::Result;
 use std::{collections::HashMap, sync::Arc};
 
-use anyhow::anyhow;
 use rayon::prelude::*;
 use rhai::Dynamic;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::debug;
 
 use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_macros::PropertySchema;
 
-use crate::action::{ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue};
+use crate::action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
 use crate::error::Error;
 use crate::utils::convert_dataframe_to_scope_params;
 
-#[derive(Serialize, Deserialize, Debug, PropertySchema)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct PropertySchema {
+pub struct EntityTransformer {
     transform_expr: String,
 }
 
-pub(crate) struct EntityTransformer;
-
 #[async_trait::async_trait]
-impl ActionRunner for EntityTransformer {
+#[typetag::serde(name = "entityTransformer")]
+impl Action for EntityTransformer {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let props = PropertySchema::try_from(ctx.node_property)?;
-        debug!(?props, "read");
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let ast = expr_engine.compile(props.transform_expr.as_str())?;
+        let ast = expr_engine.compile(self.transform_expr.as_str())?;
         let params = convert_dataframe_to_scope_params(&inputs);
 
         let mut output = ActionDataframe::new();

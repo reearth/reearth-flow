@@ -1,4 +1,3 @@
-use core::result::Result;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -7,38 +6,32 @@ use async_zip::base::read::mem::ZipFileReader;
 use directories::ProjectDirs;
 use futures::AsyncReadExt;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::info;
 
 use reearth_flow_common::uri::Uri;
-use reearth_flow_macros::PropertySchema;
 
 use crate::action::{
-    ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue, DEFAULT_PORT,
+    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
 };
 use crate::utils::inject_variables_to_scope;
 
-#[derive(Serialize, Deserialize, Debug, PropertySchema)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct PropertySchema {
+pub struct ZipExtractor {
     path: String,
     output_path: Option<String>,
 }
 
-pub(crate) struct ZipExtractor;
-
 #[async_trait::async_trait]
-impl ActionRunner for ZipExtractor {
+#[typetag::serde(name = "zipExtractor")]
+impl Action for ZipExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let props = PropertySchema::try_from(ctx.node_property)?;
-        info!(?props, "read");
         let inputs = inputs.unwrap_or_default();
 
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let scope = expr_engine.new_scope();
         inject_variables_to_scope(&inputs, &scope)?;
         let path = expr_engine
-            .eval_scope::<String>(&props.path, &scope)
+            .eval_scope::<String>(&self.path, &scope)
             .and_then(|s| Uri::from_str(s.as_str()))?;
 
         let storage = ctx.storage_resolver.resolve(&path)?;
@@ -46,7 +39,7 @@ impl ActionRunner for ZipExtractor {
         let bytes = file_result.bytes().await?;
         let reader = ZipFileReader::new(bytes.to_vec()).await?;
 
-        let root_output_path = match &props.output_path {
+        let root_output_path = match &self.output_path {
             Some(output_path) => expr_engine
                 .eval_scope::<String>(output_path, &scope)
                 .and_then(|s| Uri::from_str(s.as_str()))?,

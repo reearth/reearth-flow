@@ -1,22 +1,15 @@
-use core::result::Result;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
-use reearth_flow_macros::PropertySchema;
 
-use crate::action::{
-    ActionContext, ActionDataframe, ActionResult, ActionRunner, ActionValue, Port,
-};
+use crate::action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port};
 use crate::utils::inject_variables_to_scope;
 
-#[derive(Serialize, Deserialize, Debug, PropertySchema)]
-struct PropertySchema {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct XmlXPathExtractor {
     path: String,
     conditions: Vec<Condition>,
 }
@@ -28,20 +21,17 @@ struct Condition {
     output_port: String,
 }
 
-pub(crate) struct XmlXPathExtractor;
-
 #[async_trait::async_trait]
-impl ActionRunner for XmlXPathExtractor {
+#[typetag::serde(name = "xmlXPathExtractor")]
+impl Action for XmlXPathExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let props = PropertySchema::try_from(ctx.node_property)?;
-        debug!(?props, "read");
         let inputs = inputs.unwrap_or_default();
         let expr_engine = Arc::clone(&ctx.expr_engine);
 
         let scope = expr_engine.new_scope();
         inject_variables_to_scope(&inputs, &scope)?;
         let path = expr_engine
-            .eval_scope::<String>(&props.path, &scope)
+            .eval_scope::<String>(&self.path, &scope)
             .and_then(|s| Uri::from_str(s.as_str()))?;
 
         let storage = ctx.storage_resolver.resolve(&path)?;
@@ -51,7 +41,7 @@ impl ActionRunner for XmlXPathExtractor {
         let document = xml::parse(text)?;
 
         let mut output = HashMap::<Port, ActionValue>::new();
-        for condition in &props.conditions {
+        for condition in &self.conditions {
             let xpath = &condition.xpath;
             let output_port = &condition.output_port;
             let evaluation_result = xml::evaluate(&document, xpath)?;

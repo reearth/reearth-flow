@@ -10,7 +10,7 @@ use crate::action::ActionValue;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CsvPropertySchema {
+pub struct CsvPropertySchema {
     pub(crate) header: bool,
     pub(crate) offset: Option<usize>,
 }
