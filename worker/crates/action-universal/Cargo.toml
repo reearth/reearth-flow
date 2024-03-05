@@ -25,7 +25,6 @@ bytes.workspace = true
 csv = "1.3.0"
 directories.workspace = true
 futures.workspace = true
-rayon.workspace = true
 rhai.workspace = true
 serde.workspace = true
 serde_json.workspace = true

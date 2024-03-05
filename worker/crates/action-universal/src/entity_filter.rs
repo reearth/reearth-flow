@@ -1,13 +1,16 @@
 use std::{collections::HashMap, sync::Arc};
 
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::error::Error;
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
 use reearth_flow_action::{
     Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port, DEFAULT_PORT,
+    REJECTED_PORT,
 };
+use reearth_flow_action_log::action_log;
+use reearth_flow_common::collection;
+use tracing::info_span;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,13 +36,22 @@ impl Action for EntityFilter {
         let input = input.as_ref().ok_or(Error::input("No Value"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let params = convert_dataframe_to_scope_params(&inputs);
+        let span = info_span!(
+            parent: ctx.root_span.clone(), "run",
+            "otel.name" = "entityFilter".to_string().as_str(),
+            "otel.kind" = "action",
+            "workflow.action" = format!("{:?}", "entityFilter"),
+            "workflow.node_id" = ctx.node_id.to_string().as_str(),
+            "workflow.node_name" = ctx.node_name.as_str()
+        );
+        let logger = Arc::clone(&ctx.logger);
 
         let mut result = HashMap::<Port, Vec<ActionValue>>::new();
         for condition in &self.conditions {
             let expr = &condition.expr;
             let template_ast = expr_engine.compile(expr)?;
             let output_port = &condition.output_port;
-            let output = match input {
+            let success = match input {
                 ActionValue::Array(rows) => {
                     let filter = |row: &ActionValue| {
                         if let ActionValue::Map(row) = row {
@@ -57,27 +69,43 @@ impl Action for EntityFilter {
                                 false
                             }
                         } else {
+                            action_log!(
+                                parent: span,
+                                logger,
+                                "Invalid Input. supported only Map",
+                            );
                             false
                         }
                     };
-                    // NOTE: Parallelization with a small number of cases will conversely slow down the process.
-                    match rows.len() {
-                        0..=1000 => rows
-                            .iter()
-                            .filter(|&row| filter(row))
-                            .cloned()
-                            .collect::<Vec<_>>(),
-                        _ => rows
-                            .par_iter()
-                            .filter(|&row| filter(row))
-                            .cloned()
-                            .collect::<Vec<_>>(),
-                    }
+                    collection::filter(rows, filter)
                 }
                 _ => return Err(Error::input("Invalid Input. supported only Array").into()),
             };
-            result.insert(output_port.clone(), output);
+            result.insert(output_port.clone(), success);
         }
+        let failed = if let ActionValue::Array(failed) = &input {
+            let mut target = collection::vec_to_map(failed, |v| (v.to_string(), false));
+            result.iter().for_each(|(_, v)| {
+                let success = collection::vec_to_map(v, |row| (row.to_string(), true));
+                target.extend(success);
+            });
+            target
+        } else {
+            HashMap::new()
+        };
+
+        let failed = if let ActionValue::Array(all) = &input {
+            collection::filter(all, |v| {
+                if let Some(failed) = failed.get(&v.to_string()) {
+                    !*failed
+                } else {
+                    false
+                }
+            })
+        } else {
+            vec![]
+        };
+        result.insert(REJECTED_PORT.to_owned(), failed);
         Ok(result
             .iter()
             .map(|(k, v)| (k.clone(), Some(ActionValue::Array(v.clone()))))

@@ -1,3 +1,4 @@
+pub mod collection;
 pub mod color;
 pub mod csv;
 pub mod fs;
