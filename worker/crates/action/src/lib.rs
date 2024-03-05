@@ -6,6 +6,7 @@ use std::fmt::Display;
 use std::{collections::HashMap, sync::Arc};
 
 use bytes::Bytes;
+use rhai::serde::from_dynamic;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
 
@@ -19,6 +20,7 @@ use reearth_flow_workflow::id::Id;
 
 pub type Port = String;
 pub const DEFAULT_PORT: &str = "default";
+pub const REJECTED_PORT: &str = "rejected";
 pub type ActionDataframe = HashMap<Port, Option<ActionValue>>;
 pub type ActionValueIndex = HashMap<String, HashMap<String, Vec<ActionValue>>>;
 pub type ActionResult = Result<ActionDataframe, anyhow::Error>;
@@ -110,9 +112,8 @@ impl TryFrom<rhai::Dynamic> for ActionValue {
     type Error = anyhow::Error;
 
     fn try_from(value: rhai::Dynamic) -> Result<Self, Self::Error> {
-        let json = serde_json::to_string(&value)?;
-        let result: serde_json::Value = serde_json::from_str(&json)?;
-        Ok(result.into())
+        let value: serde_json::Value = from_dynamic(&value).map_err(|e| anyhow::anyhow!(e))?;
+        Ok(value.into())
     }
 }
 
@@ -177,5 +178,73 @@ impl ActionContext {
             logger: Arc::new(logger),
             root_span,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_try_from_rhai_dynamic() {
+        let dynamic_value = rhai::Dynamic::from(42);
+        let action_value: Result<ActionValue, _> = dynamic_value.try_into();
+        assert_eq!(action_value.unwrap(), ActionValue::Number(Number::from(42)));
+
+        let dynamic_value = rhai::Dynamic::from("Hello");
+        let action_value: Result<ActionValue, _> = dynamic_value.try_into();
+        assert_eq!(
+            action_value.unwrap(),
+            ActionValue::String("Hello".to_string())
+        );
+    }
+
+    #[test]
+    fn test_partial_ord() {
+        let number1 = ActionValue::Number(Number::from(42));
+        let number2 = ActionValue::Number(Number::from(42));
+        assert_eq!(number1.partial_cmp(&number2), Some(Ordering::Equal));
+
+        let string1 = ActionValue::String("Hello".to_string());
+        let string2 = ActionValue::String("World".to_string());
+        assert_eq!(string1.partial_cmp(&string2), Some(Ordering::Less));
+    }
+
+    #[test]
+    fn test_eq() {
+        let number1 = ActionValue::Number(Number::from(42));
+        let number2 = ActionValue::Number(Number::from(42));
+        assert_eq!(number1, number2);
+
+        let string1 = ActionValue::String("Hello".to_string());
+        let string2 = ActionValue::String("Hello".to_string());
+        assert_eq!(string1, string2);
+
+        let map1 = ActionValue::Map(
+            vec![("key".to_string(), ActionValue::String("value".to_string()))]
+                .into_iter()
+                .collect(),
+        );
+        let map2 = ActionValue::Map(
+            vec![("key".to_string(), ActionValue::String("value".to_string()))]
+                .into_iter()
+                .collect(),
+        );
+        assert_eq!(map1, map2);
+    }
+
+    #[test]
+    fn test_compare_numbers() {
+        let number1 = Number::from(42);
+        let number2 = Number::from(42);
+        assert_eq!(compare_numbers(&number1, &number2), Some(Ordering::Equal));
+
+        let number1 = Number::from(42);
+        let number2 = Number::from(43);
+        assert_eq!(compare_numbers(&number1, &number2), Some(Ordering::Less));
+
+        let number1 = Number::from(43);
+        let number2 = Number::from(42);
+        assert_eq!(compare_numbers(&number1, &number2), Some(Ordering::Greater));
     }
 }
