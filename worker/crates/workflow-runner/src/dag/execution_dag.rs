@@ -1,22 +1,23 @@
 use std::collections::HashMap;
 use std::collections::VecDeque;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::Result;
 use async_recursion::async_recursion;
 use petgraph::graph::NodeIndex;
+use reearth_flow_workflow::graph::NodeAction;
 use tokio::task::JoinSet;
 use tracing::{info, info_span};
 
-use reearth_flow_action::action::{Action, ActionContext, ActionDataframe};
-use reearth_flow_action_log::action_log;
+use reearth_flow_action::{ActionContext, ActionDataframe};
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_workflow::{graph::Node, id::Id, workflow::Workflow};
+
+use crate::action_runner::ActionRunner;
 
 use super::dag_impl::Dag;
 use super::error::Error;
@@ -137,10 +138,10 @@ impl DagExecutor {
                                 .action_logger(node_id.to_string().as_str()),
                             self.root_span.clone(),
                         );
-                        let action = Action::from_str(action)?;
                         let dataframe_state = Arc::clone(&self.dataframe_state);
+                        let action = action.clone();
                         async_tools.spawn(async move {
-                            run_async(ix, ctx, dataframe_state, action, input).await
+                            run_async(ix, ctx, action, dataframe_state, input).await
                         });
                     }
                     Node::SubGraph { sub_graph_id, .. } => {
@@ -193,59 +194,11 @@ impl DagExecutor {
 async fn run_async(
     ix: NodeIndex,
     ctx: ActionContext,
+    action: NodeAction,
     dataframe_state: Arc<State>,
-    action: Action,
     input: Option<ActionDataframe>,
 ) -> Result<(NodeIndex, ActionDataframe)> {
-    let node_id = ctx.node_id;
-    let node_name = ctx.node_name.clone();
-    let start_logger = Arc::clone(&ctx.logger);
-    let end_logger = Arc::clone(&ctx.logger);
-    let span = info_span!(
-        parent: ctx.root_span.clone(), "run_async",
-        "otel.name" = action.to_string().as_str(),
-        "otel.kind" = "action",
-        "workflow.action" = format!("{:?}", action),
-        "workflow.node_id" = node_id.to_string().as_str(),
-        "workflow.node_name" = node_name.as_str()
-    );
-    action_log!(
-        parent: span,
-        start_logger,
-        "Start action = {:?}, name = {:?}",
-        action,
-        node_name,
-    );
-    let start = Instant::now();
-    let func = action.run(ctx, input);
-    let res = func.await?;
-    dataframe_state
-        .save(&convert_dataframe(&res), node_id.to_string().as_str())
-        .await?;
-    let duration = start.elapsed();
-    action_log!(
-        parent: span,
-        end_logger,
-        "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
-        action,
-        node_name,
-        res.keys(),
-        duration,
-    );
-    Ok((ix, res))
-}
-
-fn convert_dataframe(dataframe: &ActionDataframe) -> HashMap<String, serde_json::Value> {
-    dataframe
-        .iter()
-        .filter_map(|(k, v)| match v {
-            Some(v) => {
-                let value: serde_json::Value = v.clone().into();
-                Some((k.clone(), value))
-            }
-            None => None,
-        })
-        .collect::<HashMap<String, serde_json::Value>>()
+    ActionRunner::run_action(ctx, action, ix, dataframe_state, input).await
 }
 
 #[cfg(test)]
@@ -256,6 +209,8 @@ mod tests {
     use super::*;
 
     use bytes::Bytes;
+    use std::str::FromStr;
+
     use reearth_flow_common::uri::Uri;
 
     #[tokio::test]

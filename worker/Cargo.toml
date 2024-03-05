@@ -34,6 +34,7 @@ strip = true
 [workspace.dependencies]
 reearth-flow-action = {path = "crates/action"}
 reearth-flow-action-log = {path = "crates/action-log"}
+reearth-flow-action-universal = {path = "crates/action-universal"}
 reearth-flow-common = {path = "crates/common"}
 reearth-flow-eval-expr = {path = "crates/eval-expr"}
 reearth-flow-macros = {path = "crates/macros"}
@@ -45,6 +46,7 @@ reearth-flow-workflow-cli = {path = "crates/cli"}
 reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
 
 anyhow = "1.0.80"
+async-trait = "0.1.77"
 bytes = {version = "1.5.0", features = ["serde"]}
 color-eyre = "0.6.2"
 colorsys = "0.6.7"
@@ -87,6 +89,7 @@ tracing-subscriber = {version = "0.3.18", features = [
   "std",
   "time",
 ]}
+typetag = "0.2.16"
 uuid = {version = "1.7.0", features = [
   "v4",
   "fast-rng",

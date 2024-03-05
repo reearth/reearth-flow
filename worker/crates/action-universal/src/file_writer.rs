@@ -1,23 +1,21 @@
-use core::result::Result;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use anyhow::anyhow;
 use bytes::Bytes;
 use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::debug;
 
 use reearth_flow_common::csv::Delimiter;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_macros::PropertySchema;
 
-use crate::action::{ActionContext, ActionDataframe, ActionValue, DEFAULT_PORT};
-use crate::error::Error;
+use reearth_flow_action::error::Error;
+use reearth_flow_action::{
+    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
+};
 
-#[derive(Serialize, Deserialize, Debug, PropertySchema)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct PropertySchema {
+pub struct FileWriter {
     format: Format,
     output: String,
 }
@@ -34,30 +32,32 @@ enum Format {
     Tsv,
 }
 
-pub(crate) async fn run(
-    ctx: ActionContext,
-    inputs: Option<ActionDataframe>,
-) -> anyhow::Result<ActionDataframe> {
-    let props = PropertySchema::try_from(ctx.node_property)?;
-    debug!(?props, "read");
-    let storage_resolver = Arc::clone(&ctx.storage_resolver);
-    match props.format {
-        Format::Csv => write_csv(inputs, Delimiter::Comma, &props, storage_resolver).await?,
-        Format::Tsv => write_csv(inputs, Delimiter::Tab, &props, storage_resolver).await?,
-        Format::Json => write_json(inputs, &props, storage_resolver).await?,
-        Format::Text => write_text(inputs, &props, storage_resolver).await?,
-    };
-    let mut output: ActionDataframe = HashMap::new();
-    let summary = vec![("output".to_owned(), ActionValue::String(props.output))]
+#[async_trait::async_trait]
+#[typetag::serde(name = "fileWriter")]
+impl Action for FileWriter {
+    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        match self.format {
+            Format::Csv => write_csv(inputs, Delimiter::Comma, self, storage_resolver).await?,
+            Format::Tsv => write_csv(inputs, Delimiter::Tab, self, storage_resolver).await?,
+            Format::Json => write_json(inputs, self, storage_resolver).await?,
+            Format::Text => write_text(inputs, self, storage_resolver).await?,
+        };
+        let mut output: ActionDataframe = HashMap::new();
+        let summary = vec![(
+            "output".to_owned(),
+            ActionValue::String(self.output.clone()),
+        )]
         .into_iter()
         .collect::<HashMap<_, _>>();
-    output.insert(DEFAULT_PORT.to_string(), Some(ActionValue::Map(summary)));
-    Ok(output)
+        output.insert(DEFAULT_PORT.to_string(), Some(ActionValue::Map(summary)));
+        Ok(output)
+    }
 }
 
 async fn write_text(
     inputs: Option<ActionDataframe>,
-    props: &PropertySchema,
+    props: &FileWriter,
     storage_resolver: Arc<StorageResolver>,
 ) -> anyhow::Result<ActionValue> {
     let value = get_input_value(inputs)?;
@@ -73,7 +73,7 @@ async fn write_text(
 
 async fn write_json(
     inputs: Option<ActionDataframe>,
-    props: &PropertySchema,
+    props: &FileWriter,
     storage_resolver: Arc<StorageResolver>,
 ) -> anyhow::Result<ActionValue> {
     let value = get_input_value(inputs)?;
@@ -90,7 +90,7 @@ async fn write_json(
 async fn write_csv(
     inputs: Option<ActionDataframe>,
     delimiter: Delimiter,
-    props: &PropertySchema,
+    props: &FileWriter,
     storage_resolver: Arc<StorageResolver>,
 ) -> anyhow::Result<ActionValue> {
     let value = get_input_value(inputs)?;
@@ -182,7 +182,7 @@ mod tests {
             .into_iter()
             .collect::<ActionDataframe>(),
         );
-        let props = PropertySchema {
+        let props = FileWriter {
             format: Format::Text,
             output: "ram:///root/output.txt".to_owned(),
         };
@@ -218,7 +218,7 @@ mod tests {
             .into_iter()
             .collect::<ActionDataframe>(),
         );
-        let props = PropertySchema {
+        let props = FileWriter {
             format: Format::Csv,
             output: "ram:///root/output.csv".to_owned(),
         };

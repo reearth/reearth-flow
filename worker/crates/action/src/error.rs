@@ -1,5 +1,5 @@
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum Error {
+pub enum Error {
     #[error("Error while running workflow: {0}")]
     InternalRuntime(String),
 
@@ -22,30 +22,30 @@ pub(crate) enum Error {
 }
 
 impl Error {
-    pub(crate) fn internal_runtime<T: ToString>(message: T) -> Self {
+    pub fn internal_runtime<T: ToString>(message: T) -> Self {
         Self::InternalRuntime(message.to_string())
     }
 
-    pub(crate) fn input<T: ToString>(message: T) -> Self {
+    pub fn input<T: ToString>(message: T) -> Self {
         Self::Input(message.to_string())
     }
 
     #[allow(dead_code)]
-    pub(crate) fn output<T: ToString>(message: T) -> Self {
+    pub fn output<T: ToString>(message: T) -> Self {
         Self::Output(message.to_string())
     }
 
-    pub(crate) fn validate<T: ToString>(message: T) -> Self {
+    pub fn validate<T: ToString>(message: T) -> Self {
         Self::Validate(message.to_string())
     }
 
     #[allow(dead_code)]
-    pub(crate) fn io(source: std::io::Error) -> Self {
+    pub fn io(source: std::io::Error) -> Self {
         Self::IO(source)
     }
 
     #[allow(dead_code)]
-    pub(crate) fn unsupported_feature<T: ToString>(message: T) -> Self {
+    pub fn unsupported_feature<T: ToString>(message: T) -> Self {
         Self::UnsupportedFeature(message.to_string())
     }
 }
