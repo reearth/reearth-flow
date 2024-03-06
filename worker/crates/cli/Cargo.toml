@@ -29,6 +29,7 @@ clap = {version = "4.5.1", features = ["env", "string"]}
 colored = "2.1.0"
 directories.workspace = true
 opentelemetry.workspace = true
+opentelemetry_sdk.workspace = true
 time = {version = "0.3.34", features = ["formatting"]}
 tokio-stream.workspace = true
 tokio.workspace = true

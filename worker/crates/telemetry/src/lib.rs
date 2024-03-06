@@ -5,12 +5,15 @@ use anyhow::Ok;
 use once_cell::sync::Lazy;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::{metrics::MeterProvider, trace::Tracer};
+use opentelemetry_sdk::{
+    metrics::{MeterProviderBuilder, SdkMeterProvider},
+    trace::Tracer,
+};
 
 static OTEL_COLLECTOR_ENDPOINT: Lazy<Mutex<Option<String>>> =
     Lazy::new(|| Mutex::new(env::var("OTEL_COLLECTOR_ENDPOINT").ok()));
 
-pub fn init_metrics(service_name: String) -> anyhow::Result<MeterProvider> {
+pub fn init_metrics(service_name: String) -> anyhow::Result<SdkMeterProvider> {
     let metrics = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
         Some(endpoint) => opentelemetry_otlp::new_pipeline()
             .metrics(opentelemetry_sdk::runtime::Tokio)
@@ -27,7 +30,7 @@ pub fn init_metrics(service_name: String) -> anyhow::Result<MeterProvider> {
             ]))
             .build()
             .map_err(|e| anyhow::anyhow!("Failed to build metrics controller: {}", e))?,
-        None => opentelemetry_sdk::metrics::MeterProvider::builder()
+        None => MeterProviderBuilder::default()
             .with_reader(
                 opentelemetry_sdk::metrics::PeriodicReader::builder(
                     opentelemetry_stdout::MetricsExporter::default(),
