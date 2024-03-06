@@ -4,10 +4,10 @@ use std::{collections::HashMap, sync::Arc};
 use petgraph::graph::NodeIndex;
 use reearth_flow_state::State;
 use reearth_flow_workflow::graph::NodeAction;
-use tracing::info_span;
 
 use reearth_flow_action::{Action, ActionContext, ActionDataframe};
 use reearth_flow_action_log::action_log;
+use reearth_flow_action_log::span;
 #[allow(unused_imports)]
 use reearth_flow_action_universal::prelude::*;
 
@@ -25,13 +25,11 @@ impl ActionRunner {
         let node_name = ctx.node_name.clone();
         let start_logger = Arc::clone(&ctx.logger);
         let end_logger = Arc::clone(&ctx.logger);
-        let span = info_span!(
-            parent: ctx.root_span.clone(), "run_async",
-            "otel.name" = action.to_string().as_str(),
-            "otel.kind" = "action",
-            "workflow.action" = format!("{:?}", action),
-            "workflow.node_id" = node_id.to_string().as_str(),
-            "workflow.node_name" = node_name.as_str()
+        let span = span(
+            ctx.root_span.clone(),
+            action.to_string(),
+            node_id.to_string(),
+            node_name.clone(),
         );
         action_log!(
             parent: span,

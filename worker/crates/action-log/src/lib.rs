@@ -4,6 +4,7 @@ mod split;
 
 pub use slog::info as slog_info;
 pub use tracing::info as tracing_info;
+use tracing::info_span;
 
 pub use slog::{o, Discard, Drain, Logger as ActionLogger};
 
@@ -14,4 +15,20 @@ macro_rules! action_log {
         let parent_clone = $parent.clone();
         $crate::tracing_info!(parent: parent_clone, $($args)*); // Use the cloned parent context
     }};
+}
+
+pub fn span(
+    parent: tracing::Span,
+    action: String,
+    node_id: String,
+    node_name: String,
+) -> tracing::Span {
+    info_span!(
+        parent: parent, "action",
+        "otel.name" = action.to_string().as_str(),
+        "otel.kind" = "action",
+        "workflow.action" = format!("{:?}", action),
+        "workflow.node_id" = node_id.to_string().as_str(),
+        "workflow.node_name" = node_name.as_str()
+    )
 }
