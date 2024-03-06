@@ -233,21 +233,21 @@ mod tests {
                         "id":"a1a91180-ab88-4c1a-aab5-48c242a218ca",
                         "name":"hoge-action-node-01",
                         "type":"action",
-                        "action":"fileReader",
+                        "action":"FileReader",
                         "with": {"format":"csv","dataset":"\"ram:///root/summary.csv\"", "header": true}
                      },
                      {
                         "id":"a1a91180-ab88-4c1a-aab5-48c242a218cb",
                         "name":"hoge-action-node-02",
                         "type":"action",
-                        "action":"attributeKeeper",
+                        "action":"AttributeKeeper",
                         "with": {"keepAttributes": ["format", "name"]}
                      },
                      {
                         "id":"a1a91180-ab88-4c1a-aab5-48c242a218cc",
                         "name":"hoge-action-node-03",
                         "type":"action",
-                        "action":"fileWriter",
+                        "action":"FileWriter",
                         "with": {"format":"csv","output":"ram:///root/output.csv"}
                      }
                   ],

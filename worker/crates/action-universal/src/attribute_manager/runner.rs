@@ -55,7 +55,7 @@ pub(crate) enum Operate {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "attributeManager")]
+#[typetag::serde(name = "AttributeManager")]
 impl Action for AttributeManager {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(anyhow!("No Input"))?;

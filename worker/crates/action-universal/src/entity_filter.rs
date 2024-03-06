@@ -26,7 +26,7 @@ struct Condition {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "entityFilter")]
+#[typetag::serde(name = "EntityFilter")]
 impl Action for EntityFilter {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
@@ -38,7 +38,7 @@ impl Action for EntityFilter {
         let params = convert_dataframe_to_scope_params(&inputs);
         let span = span(
             ctx.root_span.clone(),
-            "entityFilter".to_string(),
+            "EntityFilter".to_string(),
             ctx.node_id.to_string(),
             ctx.node_name,
         );

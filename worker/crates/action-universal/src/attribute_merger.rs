@@ -28,7 +28,7 @@ struct Join {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "attributeMerger")]
+#[typetag::serde(name = "AttributeMerger")]
 impl Action for AttributeMerger {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
