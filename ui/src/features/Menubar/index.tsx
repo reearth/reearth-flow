@@ -15,14 +15,7 @@ import WritersMenu from "./components/Writers";
 
 export default function MenubarComponent() {
   return (
-    <Menubar
-      style={{
-        color: "#dbdbdb",
-        border: "none",
-        borderBottom: "0.5px solid #dbdbdb",
-        borderRadius: 0,
-        position: "relative",
-      }}>
+    <Menubar className="border-b rounded-none border-zinc-700" style={{ color: "#dbdbdb" }}>
       <FileMenu />
       <EditMenu />
       <ViewMenu />
@@ -45,6 +38,9 @@ export default function MenubarComponent() {
         <p>yokohamaRiver.fmw - CDED -&#62; NONE - Flow 2024</p>
         <Button size="icon" variant="ghost" style={{ height: "30px", width: "30px" }}>
           <img src={Github} alt="Github" width="25px" height="25px" />
+        </Button>
+        <Button size="sm" variant="default">
+          Publish
         </Button>
       </div>
     </Menubar>
