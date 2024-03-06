@@ -9,8 +9,8 @@ use reearth_flow_action::{
     REJECTED_PORT,
 };
 use reearth_flow_action_log::action_log;
+use reearth_flow_action_log::span;
 use reearth_flow_common::collection;
-use tracing::info_span;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -36,13 +36,11 @@ impl Action for EntityFilter {
         let input = input.as_ref().ok_or(Error::input("No Value"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let params = convert_dataframe_to_scope_params(&inputs);
-        let span = info_span!(
-            parent: ctx.root_span.clone(), "run",
-            "otel.name" = "entityFilter".to_string().as_str(),
-            "otel.kind" = "action",
-            "workflow.action" = format!("{:?}", "entityFilter"),
-            "workflow.node_id" = ctx.node_id.to_string().as_str(),
-            "workflow.node_name" = ctx.node_name.as_str()
+        let span = span(
+            ctx.root_span.clone(),
+            "entityFilter".to_string(),
+            ctx.node_id.to_string(),
+            ctx.node_name,
         );
         let logger = Arc::clone(&ctx.logger);
 
