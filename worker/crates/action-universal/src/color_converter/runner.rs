@@ -17,7 +17,7 @@ pub enum ColorConverter {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "colorConverter")]
+#[typetag::serde(name = "ColorConverter")]
 impl Action for ColorConverter {
     async fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult {
         let data = match self {

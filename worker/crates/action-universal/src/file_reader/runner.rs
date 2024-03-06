@@ -51,7 +51,7 @@ pub enum FileReader {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "fileReader")]
+#[typetag::serde(name = "FileReader")]
 impl Action for FileReader {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);

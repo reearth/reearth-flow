@@ -22,7 +22,7 @@ pub struct ZipExtractor {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "zipExtractor")]
+#[typetag::serde(name = "ZipExtractor")]
 impl Action for ZipExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.unwrap_or_default();

@@ -16,7 +16,7 @@ pub struct EntityTransformer {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "entityTransformer")]
+#[typetag::serde(name = "EntityTransformer")]
 impl Action for EntityTransformer {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;

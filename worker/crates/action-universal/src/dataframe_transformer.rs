@@ -21,7 +21,7 @@ pub(crate) struct Operation {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "dataframeTransformer")]
+#[typetag::serde(name = "DataframeTransformer")]
 impl Action for DataframeTransformer {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(anyhow!("No Input"))?;

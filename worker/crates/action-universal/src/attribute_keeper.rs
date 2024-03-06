@@ -12,7 +12,7 @@ pub struct AttributeKeeper {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "attributeKeeper")]
+#[typetag::serde(name = "AttributeKeeper")]
 impl Action for AttributeKeeper {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let output = match inputs {

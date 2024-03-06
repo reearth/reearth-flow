@@ -33,7 +33,7 @@ enum Format {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "fileWriter")]
+#[typetag::serde(name = "FileWriter")]
 impl Action for FileWriter {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
