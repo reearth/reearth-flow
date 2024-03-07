@@ -39,8 +39,9 @@ function CustomTextUpdaterNode({ data }: NodeProps<NodeData>) {
   return (
     <>
       <Handle type="target" position={Position.Top} />
-      <div className="bg-zinc-700 text-zinc-300 border border-zinc-600 rounded-sm p-[8px] w-[150px] h-[100px]">
+      <div className="bg-zinc-700 text-zinc-300 border border-zinc-600 rounded-sm p-[8px] w-[150px] h-[80px]">
         <label htmlFor="text">{data.label}</label>
+        <p>............</p>
         {/* <input id="text" name="text" onChange={onChange} className="nodrag" /> */}
       </div>
       <Handle type="source" position={Position.Bottom} id="a" />
@@ -119,7 +120,7 @@ export default function Canvas() {
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       // maxZoom={1}
-      // fitView
+      fitView
       // fitViewOptions={}
       // nodeDragThreshold={100}
       // minZoom={0.7}
@@ -128,8 +129,13 @@ export default function Canvas() {
       defaultEdgeOptions={defaultEdgeOptions}
       nodeTypes={nodeTypes}
       proOptions={{ hideAttribution: true }}>
-      <MiniMap />
-      <Background variant={BackgroundVariant["Lines"]} gap={30} color="#5a5a5a" />
+      <MiniMap
+        className="bg-zinc-900"
+        nodeColor="purple"
+        maskStrokeColor="red"
+        maskStrokeWidth={3}
+      />
+      <Background variant={BackgroundVariant["Lines"]} gap={30} color="rgb(39 39 42)" />
     </ReactFlow>
   );
 }

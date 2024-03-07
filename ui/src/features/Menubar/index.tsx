@@ -1,3 +1,5 @@
+import { DoubleArrowRightIcon, Link2Icon, PlayIcon, StopIcon } from "@radix-ui/react-icons";
+
 import { Button } from "@flow/components";
 import { Menubar } from "@flow/components/menubar";
 
@@ -15,7 +17,14 @@ import WritersMenu from "./components/Writers";
 
 export default function MenubarComponent() {
   return (
-    <Menubar className="border-b rounded-none border-zinc-700" style={{ color: "#dbdbdb" }}>
+    <Menubar className="border-none bg-zinc-800 m-1 p-2" style={{ color: "#dbdbdb" }}>
+      <Button
+        className="bg-red-900 h-[30px] w-[30px] border border-black"
+        size="icon"
+        variant="ghost">
+        <img src={Github} alt="Github" width="25px" height="25px" />
+      </Button>
+      <p className="text-xl pl-2 pr-4">Flow</p>
       <FileMenu />
       <EditMenu />
       <ViewMenu />
@@ -25,23 +34,22 @@ export default function MenubarComponent() {
       <RunMenu />
       <ToolsMenu />
       <HelpMenu />
-      <div
-        style={{
-          position: "absolute",
-          right: 0,
-          marginRight: "10px",
-          display: "flex",
-          gap: "10px",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}>
-        <p>yokohamaRiver.fmw - CDED -&#62; NONE - Flow 2024</p>
-        <Button size="icon" variant="ghost" style={{ height: "30px", width: "30px" }}>
-          <img src={Github} alt="Github" width="25px" height="25px" />
+      <div className="flex justify-end align-middle gap-[10px] flex-1">
+        <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
+          <StopIcon />
         </Button>
-        <Button size="sm" variant="default">
+        <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
+          <DoubleArrowRightIcon />
+        </Button>
+        <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
+          <PlayIcon />
+        </Button>
+        <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
+          <Link2Icon />
+        </Button>
+        {/* <Button className="bg-zinc-900 border border-zinc-600" size="sm">
           Publish
-        </Button>
+        </Button> */}
       </div>
     </Menubar>
   );

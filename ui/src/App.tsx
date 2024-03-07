@@ -1,10 +1,10 @@
 import { useState } from "react";
 
 // import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@flow/components/resizable";
+import BottomPanel from "@flow/features/BottomPanel";
+import Canvas from "@flow/features/Canvas";
+import LeftPanel from "@flow/features/LeftPanel";
 import MenubarComponent from "@flow/features/Menubar";
-
-import { CollapsibleSidebar } from "./components";
-import Canvas from "./features/Canvas";
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -22,30 +22,12 @@ function App() {
     <div className="flex flex-col bg-zinc-900 h-screen">
       <MenubarComponent />
       <div className="flex flex-1">
-        <CollapsibleSidebar
-          className="border-r border-zinc-800"
-          isOpen={isSidebarOpen}
-          toggleSidebar={toggleSidebar}>
-          <p>Some content</p>
-        </CollapsibleSidebar>
+        <LeftPanel isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         <div className="flex flex-col flex-1">
-          <div className="flex-1 p-2">
+          <div className="flex-1 mr-1 mb-1 p-1 border border-zinc-700 rounded-sm">
             <Canvas />
           </div>
-          <CollapsibleSidebar
-            className="bg-zinc-950"
-            direction="horizontal"
-            isOpen={isBottomBarOpen}
-            minHeight="h-[25px]"
-            maxHeight="h-[100px]"
-            toggleSidebar={toggleBottombar}>
-            <div className="flex items-center gap-6 ml-[18px]">
-              <p className="text-[14px]">Deploy</p>
-              <p className="text-[14px]">Build</p>
-              <p className="text-[14px]">Build Scheduler</p>
-              <p className="text-[14px]">Alerts</p>
-            </div>
-          </CollapsibleSidebar>
+          <BottomPanel isBottomBarOpen={isBottomBarOpen} toggleBottombar={toggleBottombar} />
         </div>
       </div>
     </div>

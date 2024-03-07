@@ -11,16 +11,27 @@ export type ArrowPosition = "center" | "end";
 export type ArrowDirection = "left" | "right" | "up" | "down";
 
 export type ToggleProps = {
+  className?: string;
+  buttonClassName?: string;
   arrowPosition?: ArrowPosition;
   arrowDirection?: ArrowDirection;
   onClick?: () => void;
 };
 
-const ToggleArea: React.FC<ToggleProps> = ({ arrowPosition, arrowDirection, onClick }) => (
+const ToggleArea: React.FC<ToggleProps> = ({
+  className,
+  buttonClassName,
+  arrowPosition,
+  arrowDirection,
+  onClick,
+}) => (
   <div
-    className={`flex ${arrowPosition === "end" ? "justify-end" : "justify-center"} w-fill cursor-pointer`}
+    className={`flex ${arrowPosition === "end" ? "justify-end" : "justify-center"} w-fill cursor-pointer ${className}`}
     onClick={onClick}>
-    <Button className="hover:bg-zinc-800 hover:text-white" variant="ghost" size="icon">
+    <Button
+      className={`hover:bg-zinc-800 hover:text-white ${buttonClassName}`}
+      variant="ghost"
+      size="icon">
       {arrowDirection === "right" ? (
         <ChevronRightIcon />
       ) : arrowDirection === "up" ? (
