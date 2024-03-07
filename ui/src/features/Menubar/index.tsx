@@ -1,9 +1,13 @@
-import { DoubleArrowRightIcon, Link2Icon, PlayIcon, StopIcon } from "@radix-ui/react-icons";
+import {
+  Component1Icon,
+  DoubleArrowRightIcon,
+  Link2Icon,
+  PlayIcon,
+  StopIcon,
+} from "@radix-ui/react-icons";
 
 import { Button } from "@flow/components";
 import { Menubar } from "@flow/components/menubar";
-
-import Github from "../../stories_examples/assets/github.svg";
 
 import EditMenu from "./components/Edit";
 import FileMenu from "./components/File";
@@ -22,9 +26,9 @@ export default function MenubarComponent() {
         className="bg-red-900 h-[30px] w-[30px] border border-black"
         size="icon"
         variant="ghost">
-        <img src={Github} alt="Github" width="25px" height="25px" />
+        <Component1Icon />
       </Button>
-      <p className="text-xl pl-2 pr-4">Flow</p>
+      {/* <p className="text-xl pl-2 pr-4">Flow</p> */}
       <FileMenu />
       <EditMenu />
       <ViewMenu />
