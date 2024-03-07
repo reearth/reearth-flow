@@ -14,7 +14,7 @@ use reearth_flow_action_universal::prelude::*;
 pub(crate) struct ActionRunner;
 
 impl ActionRunner {
-    pub(crate) async fn run_action(
+    pub(crate) async fn run(
         ctx: ActionContext,
         action: NodeAction,
         ix: NodeIndex,

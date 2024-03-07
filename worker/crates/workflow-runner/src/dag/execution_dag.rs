@@ -198,7 +198,7 @@ async fn run_async(
     dataframe_state: Arc<State>,
     input: Option<ActionDataframe>,
 ) -> Result<(NodeIndex, ActionDataframe)> {
-    ActionRunner::run_action(ctx, action, ix, dataframe_state, input).await
+    ActionRunner::run(ctx, action, ix, dataframe_state, input).await
 }
 
 #[cfg(test)]
