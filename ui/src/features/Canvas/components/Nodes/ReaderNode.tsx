@@ -6,7 +6,7 @@ type CustomNodeData = {
 
 export type CustomNodeProps = NodeProps<CustomNodeData>;
 
-const BasicFlowNode: React.FC<CustomNodeProps> = ({ data }) => {
+const ReaderNode: React.FC<CustomNodeProps> = ({ data }) => {
   console.log("D", data);
   // const onChange = useCallback(
   //   (evt: any) => {
@@ -18,9 +18,8 @@ const BasicFlowNode: React.FC<CustomNodeProps> = ({ data }) => {
   const handleStyle = { top: 10 };
   return (
     <>
-      <Handle id="target" type="target" position={Position.Left} />
-      <div className="bg-cyan-900 text-zinc-300 border border-cyan-700 rounded-sm p-[8px] w-[150px] h-[50px]">
-        <label htmlFor="text" className="text-sm">
+      <div className="bg-cyan-900 text-zinc-300 border border-cyan-700 rounded-sm pl-1 w-[150px] h-[50px]">
+        <label htmlFor="text" className="text-xs">
           {data.label}
         </label>
         {/* <input id="text" name="text" onChange={onChange} className="nodrag" /> */}
@@ -31,4 +30,4 @@ const BasicFlowNode: React.FC<CustomNodeProps> = ({ data }) => {
   );
 };
 
-export default BasicFlowNode;
+export default ReaderNode;

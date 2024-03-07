@@ -6,7 +6,7 @@ import {
   MenubarRadioGroup,
   MenubarRadioItem,
   MenubarTrigger,
-} from "@flow/components/menubar";
+} from "@flow/components/Menubar";
 
 const HelpMenu: React.FC = () => {
   return (

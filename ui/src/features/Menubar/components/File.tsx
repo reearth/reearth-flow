@@ -8,7 +8,7 @@ import {
   MenubarSubContent,
   MenubarSubTrigger,
   MenubarTrigger,
-} from "@flow/components/menubar";
+} from "@flow/components/Menubar";
 
 const FileMenu: React.FC = () => {
   return (

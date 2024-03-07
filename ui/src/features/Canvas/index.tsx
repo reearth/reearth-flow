@@ -16,31 +16,33 @@ import ReactFlow, {
 } from "reactflow";
 
 import { Button } from "@flow/components";
+import CustomConnectionLine, {
+  connectionLineStyle,
+} from "@flow/features/Canvas/components/CustomConnectionLine";
+import nodeTypes from "@flow/features/Canvas/components/Nodes";
 
 import "reactflow/dist/style.css";
-import CustomConnectionLine, { connectionLineStyle } from "./CustomConnectionLine";
-import nodeTypes from "./CustomNodes";
 
 const initialNodes: Node[] = [
   {
     id: "1",
-    type: "basic",
-    data: { label: "Node 1" },
+    type: "reader",
+    data: { label: "Reader Node 1" },
     position: { x: 10, y: 1 },
     width: 150,
     height: 150,
   },
   {
     id: "2",
-    type: "basic",
+    type: "transformer",
     selected: true,
-    data: { label: "Node 2" },
+    data: { label: "Transformer Node 2" },
     position: { x: 115, y: 300 },
   },
-  { id: "3", type: "basic", data: { label: "Node 3" }, position: { x: 405, y: 300 } },
-  { id: "4", type: "basic", data: { label: "Node 4" }, position: { x: 605, y: 500 } },
-  { id: "5", type: "basic", data: { label: "Node 5" }, position: { x: 600, y: 50 } },
-  { id: "6", type: "basic", data: { label: "Node 6" }, position: { x: 850, y: 600 } },
+  { id: "3", type: "writer", data: { label: "Writer Node 3" }, position: { x: 405, y: 300 } },
+  { id: "4", type: "writer", data: { label: "Writer Node 4" }, position: { x: 605, y: 500 } },
+  { id: "5", type: "writer", data: { label: "Writer Node 5" }, position: { x: 600, y: 50 } },
+  { id: "6", type: "reader", data: { label: "Reader Node 6" }, position: { x: 850, y: 600 } },
 ];
 
 const initialEdges: Edge[] = [
@@ -98,7 +100,7 @@ export default function Canvas() {
         // panOnDrag={false}
         nodes={nodes}
         nodeTypes={nodeTypes}
-        nodeDragThreshold={60}
+        // nodeDragThreshold={60}
         edges={edges}
         // edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}

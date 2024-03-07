@@ -1,8 +1,6 @@
 import { DoubleArrowRightIcon, Link2Icon, PlayIcon, StopIcon } from "@radix-ui/react-icons";
 
-import { Button } from "@flow/components";
-import FlowLogo from "@flow/components/Logo";
-import { Menubar } from "@flow/components/menubar";
+import { Button, FlowLogo, Menubar } from "@flow/components";
 
 import EditMenu from "./components/Edit";
 import FileMenu from "./components/File";

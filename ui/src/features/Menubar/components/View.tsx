@@ -6,7 +6,7 @@ import {
   MenubarShortcut,
   MenubarCheckboxItem,
   MenubarTrigger,
-} from "@flow/components/menubar";
+} from "@flow/components/Menubar";
 
 const ViewMenu: React.FC = () => {
   return (

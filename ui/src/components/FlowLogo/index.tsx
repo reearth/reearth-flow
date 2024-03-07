@@ -32,4 +32,4 @@ const FlowLogo: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-export default FlowLogo;
+export { FlowLogo };
