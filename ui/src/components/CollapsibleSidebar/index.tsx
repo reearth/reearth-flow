@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+
 import { ToggleArea } from "./ToggleArea";
 
 export type Props = {
@@ -46,12 +48,7 @@ const CollapsibleSidebar: React.FC<Props> = ({
         ? maxHeight ?? "w-[250px]"
         : minHeight ?? "w-[50px]",
     className,
-  ].reduce((acc, cur) => {
-    if (cur) {
-      return `${acc} ${cur}`;
-    }
-    return acc;
-  });
+  ].reduce((acc, cur) => (cur ? `${acc} ${cur}` : acc));
 
   return (
     <div className={classes}>
@@ -67,14 +64,16 @@ const CollapsibleSidebar: React.FC<Props> = ({
         className={`flex-1 overflow-hidden w-[250px] transition-all ${!isOpen ? "w-[15px] self-center" : undefined}`}>
         {sidebarContents?.map(content => {
           return isOpen ? (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2" key={content.id}>
               {content.title && <p className="text-lg">{content.title}</p>}
               {content.component}
             </div>
           ) : content.icon ? (
-            <div className="w-[13]">{content.icon}</div>
+            <div className="w-[13]" key={content.id}>
+              {content.icon}
+            </div>
           ) : (
-            content.component
+            <Fragment key={content.id}>{content.component}</Fragment>
           );
         })}
       </div>

@@ -38,6 +38,7 @@ const LeftPanel: React.FC<Props> = ({ isSidebarOpen, toggleSidebar }) => {
     <CollapsibleSidebar
       className="bg-zinc-800 ml-1 mb-1 mr-1 rounded-md text-zinc-300"
       isOpen={isSidebarOpen}
+      togglePosition="end"
       toggleSidebar={toggleSidebar}
       sidebarContents={sidebarContents}
     />

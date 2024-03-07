@@ -24,9 +24,7 @@ function App() {
       <div className="flex flex-1">
         <LeftPanel isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         <div className="flex flex-col flex-1">
-          <div className="flex-1 mr-1 mb-1 p-1 border border-zinc-700 rounded-sm">
-            <Canvas />
-          </div>
+          <Canvas />
           <BottomPanel isBottomBarOpen={isBottomBarOpen} toggleBottombar={toggleBottombar} />
         </div>
       </div>

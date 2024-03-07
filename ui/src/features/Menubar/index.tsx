@@ -1,23 +1,18 @@
-import {
-  Component1Icon,
-  DoubleArrowRightIcon,
-  Link2Icon,
-  PlayIcon,
-  StopIcon,
-} from "@radix-ui/react-icons";
+import { DoubleArrowRightIcon, Link2Icon, PlayIcon, StopIcon } from "@radix-ui/react-icons";
 
 import { Button } from "@flow/components";
+import FlowLogo from "@flow/components/Logo";
 import { Menubar } from "@flow/components/menubar";
 
 import EditMenu from "./components/Edit";
 import FileMenu from "./components/File";
 import HelpMenu from "./components/Help";
-import ReadersMenu from "./components/Readers";
-import RunMenu from "./components/Run";
-import ToolsMenu from "./components/Tools";
-import TransformersMenu from "./components/Transformers";
+// import ReadersMenu from "./components/Readers";
+// import RunMenu from "./components/Run";
+// import ToolsMenu from "./components/Tools";
+// import TransformersMenu from "./components/Transformers";
 import ViewMenu from "./components/View";
-import WritersMenu from "./components/Writers";
+// import WritersMenu from "./components/Writers";
 
 export default function MenubarComponent() {
   return (
@@ -26,17 +21,17 @@ export default function MenubarComponent() {
         className="bg-red-900 h-[30px] w-[30px] border border-black"
         size="icon"
         variant="ghost">
-        <Component1Icon />
+        <FlowLogo />
       </Button>
       {/* <p className="text-xl pl-2 pr-4">Flow</p> */}
       <FileMenu />
       <EditMenu />
       <ViewMenu />
-      <ReadersMenu />
+      {/* <ReadersMenu />
       <TransformersMenu />
       <WritersMenu />
       <RunMenu />
-      <ToolsMenu />
+      <ToolsMenu /> */}
       <HelpMenu />
       <div className="flex justify-end align-middle gap-[10px] flex-1">
         <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
@@ -51,9 +46,6 @@ export default function MenubarComponent() {
         <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
           <Link2Icon />
         </Button>
-        {/* <Button className="bg-zinc-900 border border-zinc-600" size="sm">
-          Publish
-        </Button> */}
       </div>
     </Menubar>
   );
