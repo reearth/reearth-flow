@@ -1,14 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
-use rayon::prelude::*;
 use rhai::Dynamic;
 use serde::{Deserialize, Serialize};
-
-use reearth_flow_eval_expr::engine::Engine;
 
 use reearth_flow_action::error::Error;
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
 use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
+use reearth_flow_common::collection;
+use reearth_flow_eval_expr::engine::Engine;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -17,7 +16,7 @@ pub struct EntityTransformer {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "entityTransformer")]
+#[typetag::serde(name = "EntityTransformer")]
 impl Action for EntityTransformer {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
@@ -32,19 +31,9 @@ impl Action for EntityTransformer {
                 None => continue,
             };
             let processed_data = match data {
-                ActionValue::Array(rows) => {
-                    // NOTE: Parallelization with a small number of cases will conversely slow down the process.
-                    match rows.len() {
-                        0..=1000 => rows
-                            .iter()
-                            .map(|row| mapper(row, &ast, &params, Arc::clone(&expr_engine)))
-                            .collect::<Vec<_>>(),
-                        _ => rows
-                            .par_iter()
-                            .map(|row| mapper(row, &ast, &params, Arc::clone(&expr_engine)))
-                            .collect::<Vec<_>>(),
-                    }
-                }
+                ActionValue::Array(rows) => collection::map(&rows, |row| {
+                    mapper(row, &ast, &params, Arc::clone(&expr_engine))
+                }),
                 _ => {
                     output.insert(port, Some(data));
                     continue;

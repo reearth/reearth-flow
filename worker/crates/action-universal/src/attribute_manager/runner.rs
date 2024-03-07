@@ -1,14 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
 use anyhow::anyhow;
-use rayon::prelude::*;
 use rhai::Dynamic;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_eval_expr::engine::Engine;
-
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
 use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
+use reearth_flow_common::collection;
+use reearth_flow_eval_expr::engine::Engine;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -56,7 +55,7 @@ pub(crate) enum Operate {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "attributeManager")]
+#[typetag::serde(name = "AttributeManager")]
 impl Action for AttributeManager {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(anyhow!("No Input"))?;
@@ -72,17 +71,9 @@ impl Action for AttributeManager {
             };
             let value = match data {
                 ActionValue::Array(rows) => {
-                    // NOTE: Parallelization with a small number of cases will conversely slow down the process.
-                    let processed_data = match rows.len() {
-                        0..=1000 => rows
-                            .iter()
-                            .map(|row| mapper(row, &operations, &params, Arc::clone(&expr_engine)))
-                            .collect::<Vec<_>>(),
-                        _ => rows
-                            .par_iter()
-                            .map(|row| mapper(row, &operations, &params, Arc::clone(&expr_engine)))
-                            .collect::<Vec<_>>(),
-                    };
+                    let processed_data = collection::map(&rows, |row| {
+                        mapper(row, &operations, &params, Arc::clone(&expr_engine))
+                    });
                     ActionValue::Array(processed_data)
                 }
                 ActionValue::Map(row) => mapper(

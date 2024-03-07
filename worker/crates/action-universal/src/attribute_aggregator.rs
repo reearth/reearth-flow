@@ -32,7 +32,7 @@ pub(crate) enum Method {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "attributeAggregator")]
+#[typetag::serde(name = "AttributeAggregator")]
 impl Action for AttributeAggregator {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(anyhow!("No Input"))?;
