@@ -14,11 +14,7 @@ const LeftPanel: React.FC<Props> = () => {
       id: "navigator",
       title: "Navigator",
       icon: <FileIcon />,
-      component: (
-        <div className="flex gap-1 items-center mb-4">
-          <img className="opacity-50" src={BoilerFiletree} alt="file-tree-example" />
-        </div>
-      ),
+      component: <img className="opacity-50 " src={BoilerFiletree} alt="file-tree-example" />,
     },
     {
       id: "transformer-gallery",
@@ -26,10 +22,10 @@ const LeftPanel: React.FC<Props> = () => {
       title: "Transformers Gallery",
       component: (
         <div>
-          <p className="text-sm">All of my transformers</p>
-          <p className="text-sm">All of my transformers</p>
-          <p className="text-sm">All of my transformers</p>
-          <p className="text-sm">All of my transformers</p>
+          <p className="text-xs">All of my transformers</p>
+          <p className="text-xs">All of my transformers</p>
+          <p className="text-xs">All of my transformers</p>
+          <p className="text-xs">All of my transformers</p>
         </div>
       ),
     },

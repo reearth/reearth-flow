@@ -126,31 +126,40 @@ export default function Canvas() {
         <Background variant={BackgroundVariant["Lines"]} gap={30} color="rgb(39 39 42)" />
       </ReactFlow>
       <div className="flex flex-col bg-zinc-800 border border-zinc-600 rounded-md width-[300px] absolute top-3 left-3 text-zinc-400">
-        <Button className=" hover:bg-zinc-600 hover:text-zinc-400" variant="ghost" size="sm">
+        <Button className=" hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
           <LayersIcon />
         </Button>
-        <Button className="hover:bg-zinc-600 hover:text-zinc-400" variant="ghost" size="sm">
+        <Button className="hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
           <SizeIcon />
         </Button>
-        <Button className="hover:bg-zinc-600 hover:text-zinc-400" variant="ghost" size="sm">
+        <Button className="hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
           <MaskOffIcon />
         </Button>
-        <Button className=" hover:bg-zinc-600 hover:text-zinc-400" variant="ghost" size="sm">
+        <Button className=" hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
           <LayersIcon />
         </Button>
-        <Button className="hover:bg-zinc-600 hover:text-zinc-400" variant="ghost" size="sm">
+        <Button className="hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
           <SizeIcon />
         </Button>
-        <Button className="hover:bg-zinc-600 hover:text-zinc-400" variant="ghost" size="sm">
+        <Button className="hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
           <MaskOffIcon />
         </Button>
-        <Button className=" hover:bg-zinc-600 hover:text-zinc-400" variant="ghost" size="sm">
+        <Button className=" hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
           <LayersIcon />
         </Button>
-        <Button className="hover:bg-zinc-600 hover:text-zinc-400" variant="ghost" size="sm">
+        <Button className="hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
           <SizeIcon />
         </Button>
-        <Button className="hover:bg-zinc-600 hover:text-zinc-400" variant="ghost" size="sm">
+        <Button className="hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
+          <MaskOffIcon />
+        </Button>
+        <Button className=" hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
+          <LayersIcon />
+        </Button>
+        <Button className="hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
+          <SizeIcon />
+        </Button>
+        <Button className="hover:bg-zinc-600 hover:text-zinc-300" variant="ghost" size="sm">
           <MaskOffIcon />
         </Button>
       </div>

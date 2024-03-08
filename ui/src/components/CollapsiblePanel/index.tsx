@@ -60,13 +60,13 @@ const CollapsiblePanel: React.FC<Props> = ({
         />
       )}
       <div
-        className={`flex flex-1 ${direction === "horizontal" ? "px-3" : "flex-col py-3"} gap-3 overflow-hidden transition-all ${!isOpen ? "self-center" : "w-[250px]"}`}>
+        className={`flex flex-1 ${direction === "horizontal" ? "px-3 py-1" : "flex-col py-3 px-1"} gap-3 overflow-hidden transition-all ${!isOpen ? "self-center" : "w-[250px]"}`}>
         {panelContents?.map(content => {
           return isOpen ? (
             <div
               className={`flex ${direction === "vertical" ? "flex-col" : undefined} gap-2`}
               key={content.id}>
-              {content.title && <p className="text-lg">{content.title}</p>}
+              {content.title && <p className="text-md">{content.title}</p>}
               {content.component}
             </div>
           ) : content.icon ? (

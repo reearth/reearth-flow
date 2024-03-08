@@ -18,7 +18,7 @@ const WriterNode: React.FC<CustomNodeProps> = ({ data }) => {
   const handleStyle = { top: 10 };
   return (
     <>
-      <div className="bg-[#635116] text-zinc-300 border border-[#91855b] rounded-sm pl-1 w-[150px] h-[50px]">
+      <div className="bg-[#635116] border border-[#91855b] rounded-sm pl-1 w-[150px] h-[50px]">
         <label htmlFor="text" className="text-xs">
           {data.label}
         </label>

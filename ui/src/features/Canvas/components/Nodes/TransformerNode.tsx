@@ -18,7 +18,7 @@ const TransformerNode: React.FC<CustomNodeProps> = ({ data }) => {
   const handleStyle = { top: 10 };
   return (
     <>
-      <div className="bg-[#631628] text-zinc-300 border border-[#915b68] rounded-sm pl-1 w-[150px] h-[50px]">
+      <div className="bg-[#631628] border border-[#915b68] rounded-sm pl-1 w-[150px] h-[50px]">
         <label htmlFor="text" className="text-xs">
           {data.label}
         </label>

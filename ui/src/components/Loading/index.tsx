@@ -11,7 +11,7 @@ const Loading: React.FC<{ show?: boolean }> = ({ show }) => {
         <div className="flex gap-3">
           <FlowLogo
             id="loading-svg"
-            className="bg-red-900 rounded-lg p-1 mb-8"
+            className="bg-red-900 text-zinc-200 rounded-lg p-1 mb-8"
             style={{ height: "130px", width: "130px" }}
           />
           <DoubleArrowRightIcon className="w-[130px] h-[130px] text-zinc-600" />

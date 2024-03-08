@@ -18,7 +18,7 @@ const ReaderNode: React.FC<CustomNodeProps> = ({ data }) => {
   const handleStyle = { top: 10 };
   return (
     <>
-      <div className="bg-cyan-900 text-zinc-300 border border-cyan-700 rounded-sm pl-1 w-[150px] h-[50px]">
+      <div className="bg-cyan-900 border border-cyan-700 rounded-sm pl-1 w-[150px] h-[50px]">
         <label htmlFor="text" className="text-xs">
           {data.label}
         </label>
