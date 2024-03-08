@@ -154,6 +154,25 @@ pub struct ActionContext {
     pub root_span: tracing::Span,
 }
 
+impl Default for ActionContext {
+    fn default() -> Self {
+        Self {
+            job_id: Id::default(),
+            workflow_id: Id::default(),
+            node_id: Id::default(),
+            node_name: "".to_owned(),
+            node_property: Default::default(),
+            expr_engine: Arc::new(Engine::new()),
+            storage_resolver: Arc::new(StorageResolver::new()),
+            logger: Arc::new(ActionLogger::root(
+                reearth_flow_action_log::Discard,
+                reearth_flow_action_log::o!(),
+            )),
+            root_span: tracing::Span::current(),
+        }
+    }
+}
+
 impl ActionContext {
     #[allow(clippy::too_many_arguments)]
     pub fn new(

@@ -9,5 +9,6 @@ mod entity_transformer;
 mod file_reader;
 mod file_writer;
 pub mod prelude;
+mod rhai_caller;
 mod xml_xpath_extractor;
 mod zip_extractor;
