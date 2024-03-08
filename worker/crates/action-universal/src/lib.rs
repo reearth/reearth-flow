@@ -2,6 +2,7 @@ mod attribute_aggregator;
 mod attribute_keeper;
 mod attribute_manager;
 mod attribute_merger;
+mod attribute_sorter;
 mod color_converter;
 mod dataframe_transformer;
 mod entity_filter;
