@@ -1,49 +1,27 @@
-import { useEffect, useState } from "react";
-
 // import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@flow/components/resizable";
+import { Loading } from "@flow/components/Loading";
 import BottomPanel from "@flow/features/BottomPanel";
 import Canvas from "@flow/features/Canvas";
 import LeftPanel from "@flow/features/LeftPanel";
-import MenubarComponent from "@flow/features/Menubar";
-
-import { Loading } from "./components/Loading";
+import Menubar from "@flow/features/Menubar";
+import { useTimeoutOnLoad } from "@flow/hooks";
 
 function App() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isBottomBarOpen, setIsBottomBarOpen] = useState(false);
-
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const toggleBottombar = () => {
-    setIsBottomBarOpen(!isBottomBarOpen);
-  };
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setIsLoaded(true);
-    }, 1000);
-
-    // Cleanup function to clear the timeout on unmount
-    return () => clearTimeout(timeoutId);
-  }, []);
+  const { running: isLoading } = useTimeoutOnLoad(1000);
 
   return (
     <>
-      <div className="flex flex-col bg-zinc-900 h-screen">
-        <MenubarComponent />
+      <div className="flex flex-col bg-zinc-900 text-zinc-300 h-screen">
+        <Menubar />
         <div className="flex flex-1">
-          <LeftPanel isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+          <LeftPanel />
           <div className="flex flex-col flex-1">
             <Canvas />
-            <BottomPanel isBottomBarOpen={isBottomBarOpen} toggleBottombar={toggleBottombar} />
+            <BottomPanel />
           </div>
         </div>
       </div>
-      <Loading show={!isLoaded} />
+      <Loading show={isLoading} />
     </>
     // <div
     //   className="bg-zinc-800"

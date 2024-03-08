@@ -9,28 +9,28 @@ export type Props = {
   minHeight?: string; // tailwindcss height class
   maxHeight?: string; // tailwindcss height class
   togglePosition?: "start" | "end";
-  toggleSidebar?: () => void;
-  sidebarContents?: SidebarContent[];
+  panelContents?: PanelContent[];
+  onPanelToggle?: (open: boolean) => void;
 };
 
-export type SidebarContent = {
+export type PanelContent = {
   id: string;
   component: React.ReactNode;
   title?: string;
   icon?: React.ReactNode;
 };
 
-const baseClasses = `text-white z-20 flex p-[10px] box-content transition-width duration-300 ease-in-out`;
+const baseClasses = `flex box-content transition-width duration-300 ease-in-out`;
 
-const CollapsibleSidebar: React.FC<Props> = ({
+const CollapsiblePanel: React.FC<Props> = ({
   className,
   isOpen,
   direction = "vertical",
   minHeight,
   maxHeight,
   togglePosition = "start",
-  toggleSidebar,
-  sidebarContents,
+  panelContents,
+  onPanelToggle,
 }) => {
   const arrowPosition = isOpen ? "end" : "center";
 
@@ -42,11 +42,11 @@ const CollapsibleSidebar: React.FC<Props> = ({
     direction === "vertical" ? "flex-col" : undefined,
     direction === "horizontal"
       ? isOpen
-        ? maxHeight ?? "h-[250px]"
-        : minHeight ?? "h-[50px]"
+        ? maxHeight ?? "h-64"
+        : minHeight ?? "h-[36px]"
       : isOpen
-        ? maxHeight ?? "w-[250px]"
-        : minHeight ?? "w-[50px]",
+        ? maxHeight ?? "w-64"
+        : minHeight ?? "w-[41px]",
     className,
   ].reduce((acc, cur) => (cur ? `${acc} ${cur}` : acc));
 
@@ -54,24 +54,23 @@ const CollapsibleSidebar: React.FC<Props> = ({
     <div className={classes}>
       {togglePosition === "start" && (
         <ToggleArea
-          buttonClassName={!isOpen ? minHeight : undefined}
           arrowDirection={arrowDirection}
           arrowPosition={arrowPosition}
-          onClick={toggleSidebar}
+          onClick={() => onPanelToggle?.(!isOpen)}
         />
       )}
       <div
-        className={`flex-1 overflow-hidden w-[250px] transition-all ${!isOpen ? "w-[15px] self-center" : undefined}`}>
-        {sidebarContents?.map(content => {
+        className={`flex flex-1 ${direction === "horizontal" ? "px-3" : "flex-col py-3"} gap-3 overflow-hidden transition-all ${!isOpen ? "self-center" : "w-[250px]"}`}>
+        {panelContents?.map(content => {
           return isOpen ? (
-            <div className="flex flex-col gap-2" key={content.id}>
+            <div
+              className={`flex ${direction === "vertical" ? "flex-col" : undefined} gap-2`}
+              key={content.id}>
               {content.title && <p className="text-lg">{content.title}</p>}
               {content.component}
             </div>
           ) : content.icon ? (
-            <div className="w-[13]" key={content.id}>
-              {content.icon}
-            </div>
+            <div key={content.id}>{content.icon}</div>
           ) : (
             <Fragment key={content.id}>{content.component}</Fragment>
           );
@@ -81,11 +80,11 @@ const CollapsibleSidebar: React.FC<Props> = ({
         <ToggleArea
           arrowDirection={arrowDirection}
           arrowPosition={arrowPosition}
-          onClick={toggleSidebar}
+          onClick={() => onPanelToggle?.(!isOpen)}
         />
       )}
     </div>
   );
 };
 
-export { CollapsibleSidebar };
+export { CollapsiblePanel };

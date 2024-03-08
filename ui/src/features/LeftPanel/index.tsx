@@ -1,15 +1,15 @@
 import { FileIcon, StopIcon } from "@radix-ui/react-icons";
 
 import BoilerFiletree from "@flow/assets/filetree-example.png";
-import { CollapsibleSidebar, type SidebarContent } from "@flow/components";
+import { CollapsiblePanel, type PanelContent } from "@flow/components";
+import { useStateManager } from "@flow/hooks";
 
-type Props = {
-  isSidebarOpen: boolean;
-  toggleSidebar: () => void;
-};
+type Props = {};
 
-const LeftPanel: React.FC<Props> = ({ isSidebarOpen, toggleSidebar }) => {
-  const sidebarContents: SidebarContent[] = [
+const LeftPanel: React.FC<Props> = () => {
+  const [isPanelOpen, handlePanelToggle] = useStateManager<boolean>(true);
+
+  const panelContents: PanelContent[] = [
     {
       id: "navigator",
       title: "Navigator",
@@ -35,12 +35,12 @@ const LeftPanel: React.FC<Props> = ({ isSidebarOpen, toggleSidebar }) => {
     },
   ];
   return (
-    <CollapsibleSidebar
-      className="bg-zinc-800 ml-1 mb-1 mr-1 rounded-md text-zinc-300"
-      isOpen={isSidebarOpen}
+    <CollapsiblePanel
+      className="bg-zinc-800 ml-1 mb-1 mr-1 rounded-md"
+      isOpen={!!isPanelOpen}
       togglePosition="end"
-      toggleSidebar={toggleSidebar}
-      sidebarContents={sidebarContents}
+      panelContents={panelContents}
+      onPanelToggle={handlePanelToggle}
     />
   );
 };
