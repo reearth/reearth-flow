@@ -14,7 +14,7 @@ pub struct RhaiCaller {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Caller {
+struct Caller {
     script: String,
     output_port: String,
 }

@@ -37,3 +37,6 @@ tracing-subscriber.workspace = true
 tracing.workspace = true
 typetag.workspace = true
 uuid.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true

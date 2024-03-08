@@ -69,6 +69,7 @@ rand = "0.8.5"
 rayon = "1.9.0"
 regex = "1.10.3"
 rhai = {version = "1.17.1", features = ["internals", "sync", "serde"]}
+rstest = "0.18.2"
 serde = {version = "1.0.197", features = ["derive"]}
 serde_derive = "1.0.197"
 serde_json = {version = "1.0.114", features = ["arbitrary_precision"]}
