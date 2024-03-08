@@ -1,0 +1,37 @@
+/* Icon animation */
+
+#loading-svg {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 1);
+	transform: scale(1);
+	animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+	0% {
+		transform: scale(0.95);
+		box-shadow: 0 0 0 0 rgba(127, 29, 29, 0.7);
+	}
+
+	70% {
+		transform: scale(1);
+		box-shadow: 0 0 0 20px rgba(0, 0, 0, 0);
+	}
+
+	100% {
+		transform: scale(0.95);
+		box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+	}
+}
+
+/* Text animation */
+/* #loading-text {
+    font-family: "Courier";
+    white-space: nowrap;
+    overflow: hidden;
+    width: 150px;
+    animation: typedelay 2s infinite steps(12, end); 
+  }
+  
+  @keyframes typedelay{ 
+    from { width: 0; } 
+  }  */

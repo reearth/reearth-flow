@@ -1,10 +1,18 @@
-const FlowLogo: React.FC<{ className?: string }> = ({ className }) => (
+import { CSSProperties } from "react";
+
+const FlowLogo: React.FC<{ className?: string; id?: string; style?: CSSProperties }> = ({
+  className,
+  id,
+  style,
+}) => (
   <svg
     className={className}
+    id={id}
     width="24"
     height="24"
     viewBox="0 0 24 24"
     fill="none"
+    style={style}
     xmlns="http://www.w3.org/2000/svg">
     <g>
       <rect width="24" height="24" fill="none" />
