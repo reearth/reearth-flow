@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
-use anyhow::anyhow;
 use rhai::Dynamic;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
-use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
+use reearth_flow_action::{
+    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -24,7 +25,7 @@ pub(crate) struct Operation {
 #[typetag::serde(name = "DataframeTransformer")]
 impl Action for DataframeTransformer {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let inputs = inputs.ok_or(anyhow!("No Input"))?;
+        let inputs = inputs.ok_or(Error::input("No Input"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let params = convert_dataframe_to_scope_params(&inputs);
 
@@ -43,13 +44,17 @@ impl Action for DataframeTransformer {
                 continue;
             }
             let operation = operation.unwrap();
-            let ast = expr_engine.compile(&operation.transform_expr)?;
+            let ast = expr_engine
+                .compile(&operation.transform_expr)
+                .map_err(Error::internal_runtime)?;
             let scope = expr_engine.new_scope();
             for (k, v) in &params {
                 scope.set(k, v.clone().into());
             }
             scope.set(&port, data.into());
-            let new_value = scope.eval_ast::<Dynamic>(&ast)?;
+            let new_value = scope
+                .eval_ast::<Dynamic>(&ast)
+                .map_err(Error::internal_runtime)?;
             let new_value: ActionValue = new_value.try_into()?;
             output.insert(port, Some(new_value));
         }

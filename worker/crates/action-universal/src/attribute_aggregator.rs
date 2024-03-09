@@ -1,8 +1,7 @@
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
+    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -35,9 +34,11 @@ pub(crate) enum Method {
 #[typetag::serde(name = "AttributeAggregator")]
 impl Action for AttributeAggregator {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let inputs = inputs.ok_or(anyhow!("No Input"))?;
-        let input = inputs.get(DEFAULT_PORT).ok_or(anyhow!("No Default Port"))?;
-        let input = input.as_ref().ok_or(anyhow!("No Value"))?;
+        let inputs = inputs.ok_or(Error::input("No Input"))?;
+        let input = inputs
+            .get(DEFAULT_PORT)
+            .ok_or(Error::input("No Default Port"))?;
+        let input = input.as_ref().ok_or(Error::input("No Value"))?;
 
         let targets = match input {
             ActionValue::Array(rows) => rows
@@ -47,7 +48,7 @@ impl Action for AttributeAggregator {
                     _ => None,
                 })
                 .collect::<Vec<_>>(),
-            _ => return Err(anyhow!("Invalid Input. supported only Array")),
+            _ => return Err(Error::input("Invalid Input. supported only Array")),
         };
         let mut output = ActionDataframe::new();
         for aggregation in &self.aggregations {

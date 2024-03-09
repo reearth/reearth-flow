@@ -4,7 +4,9 @@ use rhai::Dynamic;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
-use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
+use reearth_flow_action::{
+    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -29,12 +31,16 @@ impl Action for RhaiCaller {
 
         let mut output = ActionDataframe::new();
         for caller in &self.callers {
-            let ast = expr_engine.compile(&caller.script)?;
+            let ast = expr_engine
+                .compile(&caller.script)
+                .map_err(Error::internal_runtime)?;
             let scope = expr_engine.new_scope();
             for (k, v) in &params {
                 scope.set(k, v.clone().into());
             }
-            let new_value = scope.eval_ast::<Dynamic>(&ast)?;
+            let new_value = scope
+                .eval_ast::<Dynamic>(&ast)
+                .map_err(Error::internal_runtime)?;
             let new_value: ActionValue = new_value.try_into()?;
             output.insert(caller.output_port.to_owned(), Some(new_value));
         }

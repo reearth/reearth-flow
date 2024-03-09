@@ -47,7 +47,7 @@ impl Action for EntityFilter {
         let mut result = HashMap::<Port, Vec<ActionValue>>::new();
         for condition in &self.conditions {
             let expr = &condition.expr;
-            let template_ast = expr_engine.compile(expr)?;
+            let template_ast = expr_engine.compile(expr).map_err(Error::internal_runtime)?;
             let output_port = &condition.output_port;
             let success = match input {
                 ActionValue::Array(rows) => {
@@ -77,7 +77,7 @@ impl Action for EntityFilter {
                     };
                     collection::filter(rows, filter)
                 }
-                _ => return Err(Error::input("Invalid Input. supported only Array").into()),
+                _ => return Err(Error::input("Invalid Input. supported only Array")),
             };
             result.insert(output_port.clone(), success);
         }

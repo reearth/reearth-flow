@@ -13,7 +13,6 @@ version.workspace = true
 [dependencies]
 reearth-flow-common.workspace = true
 
-anyhow.workspace = true
 futures.workspace = true
 once_cell.workspace = true
 serde.workspace = true

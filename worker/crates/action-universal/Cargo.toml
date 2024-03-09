@@ -18,7 +18,6 @@ reearth-flow-eval-expr.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-workflow.workspace = true
 
-anyhow.workspace = true
 async-trait.workspace = true
 async_zip = {version = "0.0.16", features = ["full"]}
 bytes.workspace = true

@@ -1,6 +1,5 @@
 use std::{fs, path::Path, str::FromStr, sync::Arc};
 
-use anyhow::anyhow;
 use clap::{Arg, ArgMatches, Command};
 use directories::ProjectDirs;
 use tracing::debug;
@@ -67,11 +66,11 @@ pub struct RunCliCommand {
 }
 
 impl RunCliCommand {
-    pub fn parse_cli_args(mut matches: ArgMatches) -> anyhow::Result<Self> {
+    pub fn parse_cli_args(mut matches: ArgMatches) -> crate::Result<Self> {
         let workflow_uri = matches
             .remove_one::<String>("workflow")
             .map(|uri_str| Uri::for_test(&uri_str))
-            .ok_or(anyhow!("No workflow uri provided"))?;
+            .ok_or(crate::Error::init("No workflow uri provided"))?;
         let job_id = matches.remove_one::<String>("job_id");
         let dataframe_state_uri = matches.remove_one::<String>("dataframe_state");
         let action_log_uri = matches.remove_one::<String>("action_log");
@@ -83,53 +82,61 @@ impl RunCliCommand {
         })
     }
 
-    pub async fn execute(&self) -> anyhow::Result<()> {
+    pub async fn execute(&self) -> crate::Result<()> {
         debug!(args = ?self, "run-workflow");
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
-        let storage = storage_resolver.resolve(&self.workflow_uri)?;
-        let result = storage.get(self.workflow_uri.path().as_path()).await?;
-        let content = result.bytes().await?;
-        let json = String::from_utf8(content.to_vec())?;
-        let workflow = Workflow::try_from_str(&json)?;
+        let storage = storage_resolver
+            .resolve(&self.workflow_uri)
+            .map_err(crate::Error::init)?;
+        let result = storage
+            .get(self.workflow_uri.path().as_path())
+            .await
+            .map_err(crate::Error::init)?;
+        let content = result.bytes().await.map_err(crate::Error::init)?;
+        let json = String::from_utf8(content.to_vec()).map_err(crate::Error::init)?;
+        let workflow = Workflow::try_from_str(&json).map_err(crate::Error::init)?;
         let job_id = match &self.job_id {
-            Some(job_id) => Id::from_str(job_id.as_str())?,
+            Some(job_id) => Id::from_str(job_id.as_str()).map_err(crate::Error::init)?,
             None => Id::new_v4(),
         };
         let dataframe_state_uri = match &self.dataframe_state_uri {
-            Some(uri) => Uri::from_str(uri)?,
+            Some(uri) => Uri::from_str(uri).map_err(crate::Error::init)?,
             None => {
                 let p = ProjectDirs::from("reearth", "flow", "worker")
-                    .ok_or(anyhow!("No dataframe state uri provided"))?;
+                    .ok_or(crate::Error::init("No dataframe state uri provided"))?;
                 let p = p
                     .data_dir()
                     .to_str()
-                    .ok_or(anyhow!("Invalid dataframe state uri"))?;
+                    .ok_or(crate::Error::init("Invalid dataframe state uri"))?;
                 let p = format!("{}/dataframe/{}", p, job_id);
-                fs::create_dir_all(Path::new(p.as_str()))?;
+                fs::create_dir_all(Path::new(p.as_str())).map_err(crate::Error::init)?;
                 Uri::for_test(format!("file://{}", p).as_str())
             }
         };
         let action_log_uri = match &self.action_log_uri {
-            Some(uri) => Uri::from_str(uri)?,
+            Some(uri) => Uri::from_str(uri).map_err(crate::Error::init)?,
             None => {
                 let p = ProjectDirs::from("reearth", "flow", "worker")
-                    .ok_or(anyhow!("No dataframe state uri provided"))?;
+                    .ok_or(crate::Error::init("No dataframe state uri provided"))?;
                 let p = p
                     .data_dir()
                     .to_str()
-                    .ok_or(anyhow!("Invalid dataframe state uri"))?;
+                    .ok_or(crate::Error::init("Invalid dataframe state uri"))?;
                 let p = format!("{}/action-log/{}", p, job_id);
-                fs::create_dir_all(Path::new(p.as_str()))?;
+                fs::create_dir_all(Path::new(p.as_str())).map_err(crate::Error::init)?;
                 Uri::for_test(format!("file://{}", p).as_str())
             }
         };
-        let state = Arc::new(State::new(&dataframe_state_uri, &storage_resolver)?);
+        let state = Arc::new(
+            State::new(&dataframe_state_uri, &storage_resolver).map_err(crate::Error::init)?,
+        );
         let log_factory = Arc::new(LoggerFactory::new(
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        let executor = DagExecutor::new(job_id, &workflow, storage_resolver, state, log_factory)?;
-        executor.start().await?;
+        let executor = DagExecutor::new(job_id, &workflow, storage_resolver, state, log_factory)
+            .map_err(crate::Error::init)?;
+        executor.start().await.map_err(crate::Error::run)?;
         Ok(())
     }
 }

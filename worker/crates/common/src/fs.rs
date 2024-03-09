@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use tokio;
 
-pub async fn empty_dir<P: AsRef<Path>>(path: P) -> anyhow::Result<()> {
+pub async fn empty_dir<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
     let mut entries = tokio::fs::read_dir(path).await?;
     while let Some(entry) = entries.next_entry().await? {
         if entry.file_type().await?.is_dir() {
@@ -26,7 +26,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_empty_dir() -> anyhow::Result<()> {
+    async fn test_empty_dir() -> std::io::Result<()> {
         let temp_dir = tempfile::tempdir()?;
 
         let file_path = temp_dir.path().join("file");
