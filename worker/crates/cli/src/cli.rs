@@ -1,6 +1,5 @@
 use std::env;
 
-use anyhow::{bail, Context};
 use clap::{ArgMatches, Command};
 use tracing::Level;
 
@@ -29,17 +28,17 @@ impl CliCommand {
         })
     }
 
-    pub fn parse_cli_args(mut matches: ArgMatches) -> anyhow::Result<Self> {
+    pub fn parse_cli_args(mut matches: ArgMatches) -> crate::Result<Self> {
         let (subcommand, submatches) = matches
             .remove_subcommand()
-            .context("failed to parse command")?;
+            .ok_or(crate::Error::parse("missing subcommand"))?;
         match subcommand.as_str() {
             "run" => RunCliCommand::parse_cli_args(submatches).map(CliCommand::Run),
-            _ => bail!("unknown command `{subcommand}`"),
+            _ => Err(crate::Error::unknown_command(subcommand)),
         }
     }
 
-    pub async fn execute(self) -> anyhow::Result<()> {
+    pub async fn execute(self) -> crate::Result<()> {
         match self {
             CliCommand::Run(subcommand) => subcommand.execute().await,
         }

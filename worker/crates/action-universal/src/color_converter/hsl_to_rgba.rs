@@ -5,7 +5,7 @@ use reearth_flow_eval_expr::engine::Engine;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
-use reearth_flow_action::{ActionDataframe, ActionResult, ActionValue};
+use reearth_flow_action::{error::Error, ActionDataframe, ActionResult, ActionValue};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HslPropertySchema {
@@ -27,12 +27,20 @@ pub(crate) async fn convert_hsl_to_rgba(
     property: &HslPropertySchema,
     inputs: Option<ActionDataframe>,
 ) -> ActionResult {
-    let inputs = inputs.ok_or(anyhow::anyhow!("No Input"))?;
+    let inputs = inputs.ok_or(Error::input("No Input"))?;
     let ast = HslAST {
-        hue: expr_engine.compile(property.hue.as_str())?,
-        saturation: expr_engine.compile(property.saturation.as_str())?,
-        lightness: expr_engine.compile(property.lightness.as_str())?,
-        alpha: expr_engine.compile(property.alpha.as_str())?,
+        hue: expr_engine
+            .compile(property.hue.as_str())
+            .map_err(Error::input)?,
+        saturation: expr_engine
+            .compile(property.saturation.as_str())
+            .map_err(Error::input)?,
+        lightness: expr_engine
+            .compile(property.lightness.as_str())
+            .map_err(Error::input)?,
+        alpha: expr_engine
+            .compile(property.alpha.as_str())
+            .map_err(Error::input)?,
     };
     let params = convert_dataframe_to_scope_params(&inputs);
 
@@ -57,7 +65,7 @@ pub(crate) async fn convert_hsl_to_rgba(
                     &params,
                     Arc::clone(&expr_engine),
                 );
-                processed_item.ok_or(anyhow::anyhow!("Failed to convert"))?
+                processed_item.ok_or(Error::internal_runtime("Failed to convert"))?
             }
             _ => data,
         };

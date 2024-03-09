@@ -67,7 +67,7 @@ impl Engine {
         }
     }
 
-    pub fn eval<T: rhai::Variant + Clone>(&self, expr: &str) -> anyhow::Result<T> {
+    pub fn eval<T: rhai::Variant + Clone>(&self, expr: &str) -> crate::Result<T> {
         let scr = Arc::clone(&self.script_engine);
         let mut scope = self
             .scope
@@ -75,11 +75,11 @@ impl Engine {
             .map_err(|_| Error::InternalRuntime("lock".to_string()))?;
         match scr.eval_with_scope::<T>(&mut scope, expr) {
             Ok(ret) => Ok(ret),
-            Err(err) => Err(Error::InternalRuntime(format!("{}", err)).into()),
+            Err(err) => Err(Error::InternalRuntime(format!("{}", err))),
         }
     }
 
-    pub fn eval_ast<T: rhai::Variant + Clone>(&self, ast: &rhai::AST) -> anyhow::Result<T> {
+    pub fn eval_ast<T: rhai::Variant + Clone>(&self, ast: &rhai::AST) -> crate::Result<T> {
         let scr = Arc::clone(&self.script_engine);
         let mut scope = self
             .scope
@@ -87,7 +87,7 @@ impl Engine {
             .map_err(|_| Error::InternalRuntime("lock".to_string()))?;
         match scr.eval_ast_with_scope::<T>(&mut scope, ast) {
             Ok(ret) => Ok(ret),
-            Err(err) => Err(Error::InternalRuntime(format!("{}", err)).into()),
+            Err(err) => Err(Error::InternalRuntime(format!("{}", err))),
         }
     }
 
@@ -95,13 +95,13 @@ impl Engine {
         &self,
         expr: &str,
         scope: &Scope,
-    ) -> anyhow::Result<T> {
+    ) -> crate::Result<T> {
         let scr = Arc::clone(&self.script_engine);
         let mut scope = scope.scope.write().unwrap();
 
         match scr.eval_with_scope::<T>(&mut scope, expr) {
             Ok(ret) => Ok(ret),
-            Err(err) => Err(Error::InternalRuntime(format!("{}", err)).into()),
+            Err(err) => Err(Error::InternalRuntime(format!("{}", err))),
         }
     }
 
@@ -109,20 +109,20 @@ impl Engine {
         &self,
         ast: &rhai::AST,
         scope: &Scope,
-    ) -> anyhow::Result<T> {
+    ) -> crate::Result<T> {
         let scr = Arc::clone(&self.script_engine);
         let mut scope = scope.scope.write().unwrap();
 
         match scr.eval_ast_with_scope::<T>(&mut scope, ast) {
             Ok(ret) => Ok(ret),
-            Err(err) => Err(Error::InternalRuntime(format!("{}", err)).into()),
+            Err(err) => Err(Error::InternalRuntime(format!("{}", err))),
         }
     }
 
-    pub fn compile(&self, expr: &str) -> anyhow::Result<rhai::AST> {
+    pub fn compile(&self, expr: &str) -> crate::Result<rhai::AST> {
         let scr = Arc::clone(&self.script_engine);
         scr.compile(expr)
-            .map_err(|err| Error::InternalRuntime(format!("{}", err)).into())
+            .map_err(|err| Error::InternalRuntime(format!("{}", err)))
     }
 
     pub fn get(&self, name: &str) -> Option<Value> {

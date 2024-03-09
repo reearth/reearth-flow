@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use anyhow::Result;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
@@ -10,7 +9,7 @@ use reearth_flow_action::Port;
 use reearth_flow_workflow::graph::Node;
 use reearth_flow_workflow::id::Id;
 
-use super::error::Error;
+use crate::Error;
 
 pub type NodeId = Id;
 pub type GraphId = Id;
@@ -92,7 +91,7 @@ pub struct Dag {
 }
 
 impl Dag {
-    pub fn from_graph(graph: &reearth_flow_workflow::graph::Graph) -> Result<Self> {
+    pub fn from_graph(graph: &reearth_flow_workflow::graph::Graph) -> crate::Result<Self> {
         let mut dag = Self {
             id: graph.id,
             graph: DiGraph::<NodeType, EdgeType>::new(),
@@ -156,11 +155,11 @@ impl Dag {
         node_index
     }
 
-    pub fn node_index(&self, node: &Node) -> Result<NodeIndex> {
+    pub fn node_index(&self, node: &Node) -> crate::Result<NodeIndex> {
         self.node_lookup_table
             .get(&NodeType { id: node.id() })
             .copied()
-            .ok_or_else(|| Error::node_not_found(format!("node_id = {}", node.id())).into())
+            .ok_or_else(|| Error::node_not_found(format!("node_id = {}", node.id())))
     }
 
     pub fn is_ready_node(&self, idx: NodeIndex, finish_ports: Vec<Port>) -> bool {
@@ -176,7 +175,7 @@ impl Dag {
         finish_ports == to_all_ports
     }
 
-    pub fn connect(&mut self, from: &Endpoint, to: &Endpoint) -> Result<()> {
+    pub fn connect(&mut self, from: &Endpoint, to: &Endpoint) -> crate::Result<()> {
         self.connect_with_index(from.node, &from.port, to.node, &to.port)
     }
 
@@ -186,7 +185,7 @@ impl Dag {
         from_port: &Port,
         to_node_index: NodeIndex,
         to_port: &Port,
-    ) -> Result<()> {
+    ) -> crate::Result<()> {
         let edge_index = self.graph.add_edge(
             from_node_index,
             to_node_index,
@@ -199,7 +198,10 @@ impl Dag {
             to_node: to_node_index,
             to_port: to_port.clone(),
         }) {
-            Err(Error::edge_already_exists(format!("edge = {:?}", edge_index)).into())
+            Err(Error::edge_already_exists(format!(
+                "edge = {:?}",
+                edge_index
+            )))
         } else {
             Ok(())
         }

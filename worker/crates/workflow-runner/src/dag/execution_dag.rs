@@ -3,7 +3,6 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Instant;
 
-use anyhow::Result;
 use async_recursion::async_recursion;
 use petgraph::graph::NodeIndex;
 use reearth_flow_workflow::graph::NodeAction;
@@ -17,10 +16,9 @@ use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_workflow::{graph::Node, id::Id, workflow::Workflow};
 
-use crate::action_runner::ActionRunner;
-
 use super::dag_impl::Dag;
-use super::error::Error;
+use crate::action_runner::ActionRunner;
+use crate::Error;
 
 type Graphs = HashMap<Id, Dag>;
 
@@ -44,13 +42,13 @@ impl DagExecutor {
         storage_resolver: Arc<StorageResolver>,
         dataframe_state: Arc<State>,
         logger_factory: Arc<LoggerFactory>,
-    ) -> Result<Self> {
+    ) -> crate::Result<Self> {
         let entry_graph = workflow
             .graphs
             .iter()
             .filter(|&graph| graph.id == workflow.entry_graph_id)
             .map(Dag::from_graph)
-            .collect::<Result<Vec<_>>>()?
+            .collect::<crate::Result<Vec<_>>>()?
             .into_iter()
             .next();
         let entry_dag = entry_graph.ok_or(Error::Init(format!(
@@ -65,7 +63,7 @@ impl DagExecutor {
                 let g = Dag::from_graph(graph)?;
                 Ok((graph.id, g))
             })
-            .collect::<Result<HashMap<_, _>>>()?;
+            .collect::<crate::Result<HashMap<_, _>>>()?;
         let engine = Engine::new();
         workflow.with.iter().for_each(|(k, v)| {
             engine.set_scope_var(k, v);
@@ -91,7 +89,7 @@ impl DagExecutor {
         })
     }
 
-    pub async fn start(&self) -> Result<()> {
+    pub async fn start(&self) -> crate::Result<()> {
         let workflow_name = self.workflow_name.clone();
         info!(parent: &self.root_span, "Start workflow = {:?}", workflow_name);
         let start = Instant::now();
@@ -106,7 +104,7 @@ impl DagExecutor {
     }
 
     #[async_recursion]
-    pub async fn run_dag(&self, dag: &Dag) -> Result<ActionDataframe> {
+    pub async fn run_dag(&self, dag: &Dag) -> crate::Result<ActionDataframe> {
         let mut dfs: HashMap<NodeIndex, ActionDataframe> = HashMap::new();
         let entry_node_ids = dag
             .entry_nodes()
@@ -158,7 +156,7 @@ impl DagExecutor {
                 }
             }
             while let Some(res) = async_tools.join_next().await {
-                results.push(res??);
+                results.push(res.map_err(crate::Error::execution)??);
             }
             for (ix, data_frame) in results {
                 if dag.is_last_node_index(ix) {
@@ -197,7 +195,7 @@ async fn run_async(
     action: NodeAction,
     dataframe_state: Arc<State>,
     input: Option<ActionDataframe>,
-) -> Result<(NodeIndex, ActionDataframe)> {
+) -> crate::Result<(NodeIndex, ActionDataframe)> {
     ActionRunner::run(ctx, action, ix, dataframe_state, input).await
 }
 

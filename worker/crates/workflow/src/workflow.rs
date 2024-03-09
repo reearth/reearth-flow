@@ -1,4 +1,3 @@
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -20,8 +19,8 @@ pub struct Workflow {
 }
 
 impl Workflow {
-    pub fn try_from_str(s: &str) -> Result<Self> {
-        from_str(s).map_err(|e| anyhow::anyhow!("Failed to parse workflow: {}", e))
+    pub fn try_from_str(s: &str) -> crate::Result<Self> {
+        from_str(s).map_err(|e| crate::Error::Workflow(format!("Failed to parse workflow: {}", e)))
     }
 }
 

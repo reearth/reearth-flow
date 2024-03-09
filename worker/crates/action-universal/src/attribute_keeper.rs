@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
+use reearth_flow_action::{
+    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -53,7 +54,7 @@ impl Action for AttributeKeeper {
                 }
                 output
             }
-            None => return Err(anyhow!("No input dataframe")),
+            None => return Err(Error::input("No input dataframe")),
         };
         Ok(output)
     }

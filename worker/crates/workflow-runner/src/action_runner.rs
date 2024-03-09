@@ -20,7 +20,7 @@ impl ActionRunner {
         ix: NodeIndex,
         dataframe_state: Arc<State>,
         input: Option<ActionDataframe>,
-    ) -> anyhow::Result<(NodeIndex, ActionDataframe)> {
+    ) -> crate::Result<(NodeIndex, ActionDataframe)> {
         let node_id = ctx.node_id;
         let node_name = ctx.node_name.clone();
         let start_logger = Arc::clone(&ctx.logger);
@@ -52,11 +52,16 @@ impl ActionRunner {
             ]
             .into_iter()
             .collect::<serde_json::Map<_, _>>(),
-        ))?;
-        let res = action_run.run(ctx, input).await?;
+        ))
+        .map_err(crate::Error::execution)?;
+        let res = action_run
+            .run(ctx, input)
+            .await
+            .map_err(|e| crate::Error::action(e, action.to_string()))?;
         dataframe_state
             .save(&convert_dataframe(&res), node_id.to_string().as_str())
-            .await?;
+            .await
+            .map_err(crate::Error::execution)?;
         let duration = start.elapsed();
         action_log!(
             parent: span,

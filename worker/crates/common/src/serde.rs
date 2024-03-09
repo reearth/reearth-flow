@@ -8,15 +8,19 @@ enum SerdeFormat {
     Unknown,
 }
 
-pub fn from_str<'a, T>(s: &'a str) -> anyhow::Result<T>
+pub fn from_str<'a, T>(s: &'a str) -> crate::Result<T>
 where
     T: serde::Deserialize<'a>,
 {
     let format = determine_format(s);
     match format {
-        SerdeFormat::Json => serde_json::from_str(s).map_err(|e| anyhow::anyhow!(e)),
-        SerdeFormat::Yaml => serde_yaml::from_str(s).map_err(|e| anyhow::anyhow!(e)),
-        SerdeFormat::Unknown => Err(anyhow::anyhow!("Unknown format")),
+        SerdeFormat::Json => {
+            serde_json::from_str(s).map_err(|e| crate::Error::Serde(format!("{}", e)))
+        }
+        SerdeFormat::Yaml => {
+            serde_yaml::from_str(s).map_err(|e| crate::Error::Serde(format!("{}", e)))
+        }
+        SerdeFormat::Unknown => Err(crate::Error::Serde("Unknown format".to_string())),
     }
 }
 

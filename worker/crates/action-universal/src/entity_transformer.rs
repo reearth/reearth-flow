@@ -21,7 +21,9 @@ impl Action for EntityTransformer {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let ast = expr_engine.compile(self.transform_expr.as_str())?;
+        let ast = expr_engine
+            .compile(self.transform_expr.as_str())
+            .map_err(Error::internal_runtime)?;
         let params = convert_dataframe_to_scope_params(&inputs);
 
         let mut output = ActionDataframe::new();

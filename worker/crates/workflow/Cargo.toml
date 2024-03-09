@@ -13,12 +13,9 @@ version.workspace = true
 [dependencies]
 reearth-flow-common.workspace = true
 
-anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
+thiserror.workspace = true
 uuid.workspace = true
-
-[dev-dependencies]
-pretty_assertions.workspace = true

@@ -4,7 +4,7 @@ use reearth_flow_eval_expr::scope::Scope;
 
 use crate::{ActionDataframe, ActionValue};
 
-pub fn inject_variables_to_scope(inputs: &ActionDataframe, scope: &Scope) -> anyhow::Result<()> {
+pub fn inject_variables_to_scope(inputs: &ActionDataframe, scope: &Scope) -> crate::Result<()> {
     inputs
         .keys()
         .filter(|&key| {

@@ -3,7 +3,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_action::ActionValue;
+use reearth_flow_action::error::Error;
+use reearth_flow_action::{ActionValue, Result};
 use reearth_flow_common::{csv::Delimiter, str::remove_bom, uri::Uri};
 use reearth_flow_storage::resolve::StorageResolver;
 
@@ -19,10 +20,15 @@ pub(crate) async fn read_csv(
     input_path: Uri,
     props: &CsvPropertySchema,
     storage_resolver: Arc<StorageResolver>,
-) -> anyhow::Result<Vec<ActionValue>> {
-    let storage = storage_resolver.resolve(&input_path)?;
-    let result = storage.get(input_path.path().as_path()).await?;
-    let byte = result.bytes().await?;
+) -> Result<Vec<ActionValue>> {
+    let storage = storage_resolver
+        .resolve(&input_path)
+        .map_err(Error::input)?;
+    let result = storage
+        .get(input_path.path().as_path())
+        .await
+        .map_err(Error::internal_runtime)?;
+    let byte = result.bytes().await.map_err(Error::internal_runtime)?;
     if props.header {
         let cursor = Cursor::new(byte);
         let mut rdr = csv::ReaderBuilder::new()
@@ -35,9 +41,10 @@ pub(crate) async fn read_csv(
         let header = rdr
             .deserialize()
             .nth(offset)
-            .unwrap_or(Ok(Vec::<String>::new()))?;
+            .unwrap_or(Ok(Vec::<String>::new()))
+            .map_err(Error::internal_runtime)?;
         for rd in rdr.deserialize() {
-            let record: Vec<String> = rd?;
+            let record: Vec<String> = rd.map_err(Error::internal_runtime)?;
             let row = record
                 .iter()
                 .enumerate()
@@ -48,7 +55,7 @@ pub(crate) async fn read_csv(
         Ok(result)
     } else {
         let raw_str = String::from_utf8(byte.to_vec())
-            .map_err(|e| anyhow::anyhow!("Failed to parse csv: {}", e))?;
+            .map_err(|e| Error::internal_runtime(format!("Failed to parse csv: {}", e)))?;
         let raw_str = remove_bom(&raw_str);
         let rows = raw_str
             .lines()

@@ -3,6 +3,7 @@ use opentelemetry::global::shutdown_tracer_provider;
 
 use reearth_flow_cli::cli::{build_cli, CliCommand};
 use reearth_flow_cli::logger;
+use reearth_flow_cli::Result;
 
 const RED_COLOR: Color = Color::TrueColor {
     r: 230,
@@ -10,7 +11,7 @@ const RED_COLOR: Color = Color::TrueColor {
     b: 34,
 };
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -18,7 +19,7 @@ fn main() -> anyhow::Result<()> {
         .block_on(main_impl())
 }
 
-async fn main_impl() -> anyhow::Result<()> {
+async fn main_impl() -> Result<()> {
     let about_text = about_text();
     let app = build_cli().about(about_text).version("0.1.0");
     let matches = app.get_matches();

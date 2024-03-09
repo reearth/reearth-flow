@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 use reearth_flow_action::error::Error;
 use reearth_flow_action::{
-    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, ActionValueIndex,
+    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, ActionValueIndex, Result,
     DEFAULT_PORT,
 };
 
@@ -53,11 +52,11 @@ impl Action for AttributeMerger {
         };
         let requestor = match requestor {
             ActionValue::Array(rows) => rows,
-            _ => return Err(Error::validate("Requestor is not an array").into()),
+            _ => return Err(Error::validate("Requestor is not an array")),
         };
         let supplier = match supplier {
             ActionValue::Array(rows) => rows,
-            _ => return Err(Error::validate("Supplier is not an array").into()),
+            _ => return Err(Error::validate("Supplier is not an array")),
         };
         let mut result = Vec::<ActionValue>::new();
         for (idx, row) in requestor.iter().enumerate() {
@@ -71,14 +70,14 @@ impl Action for AttributeMerger {
                         }
                         continue;
                     }
-                    let requestor_value = row.get(requestor_key).ok_or(anyhow!(
-                        "No Requestor Value with requestor = {}",
-                        requestor_key
+                    let requestor_value = row.get(requestor_key).ok_or(Error::validate(
+                        format!("No Requestor Value with requestor = {}", requestor_key).as_str(),
                     ))?;
-                    let supplier_index = supplier_indexs.get(supplier_key).ok_or(anyhow!(
-                        "No Supplier Index with request value = {}",
-                        requestor_value
-                    ))?;
+                    let supplier_index =
+                        supplier_indexs.get(supplier_key).ok_or(Error::validate(
+                            format!("No Supplier Index with request value = {}", requestor_value)
+                                .as_str(),
+                        ))?;
                     let supplier_rows = supplier_index.get(&requestor_value.to_string());
                     if supplier_rows.is_none() {
                         debug!("No Supplier Rows with request value = {}", requestor_value);
@@ -92,11 +91,11 @@ impl Action for AttributeMerger {
                                 new_row.extend(supplier_row.clone());
                                 result.push(ActionValue::Map(new_row));
                             }
-                            _ => return Err(Error::validate("Supplier is not a map").into()),
+                            _ => return Err(Error::validate("Supplier is not a map")),
                         }
                     }
                 }
-                _ => return Err(Error::validate("Requestor is not an array").into()),
+                _ => return Err(Error::validate("Requestor is not an array")),
             }
         }
         Ok(
@@ -108,7 +107,7 @@ impl Action for AttributeMerger {
 }
 
 impl AttributeMerger {
-    fn create_supplier_index(&self, supplier: &ActionValue) -> anyhow::Result<ActionValueIndex> {
+    fn create_supplier_index(&self, supplier: &ActionValue) -> Result<ActionValueIndex> {
         let mut supplier_indexs = ActionValueIndex::new();
         match supplier {
             ActionValue::Array(rows) => {
@@ -116,9 +115,9 @@ impl AttributeMerger {
                     match row {
                         ActionValue::Map(row) => {
                             let supplier = &self.join.supplier;
-                            let supplier_value = row
-                                .get(supplier)
-                                .ok_or(anyhow!("No Supplier Value By create supplier index"))?;
+                            let supplier_value = row.get(supplier).ok_or(Error::validate(
+                                "No Supplier Value By create supplier index",
+                            ))?;
                             let supplier_index_entry =
                                 supplier_indexs.entry(supplier.to_owned()).or_default();
                             supplier_index_entry
@@ -126,12 +125,12 @@ impl AttributeMerger {
                                 .or_default()
                                 .push(ActionValue::Map(row.clone()));
                         }
-                        _ => return Err(Error::validate("Supplier is not an array").into()),
+                        _ => return Err(Error::validate("Supplier is not an array")),
                     }
                 }
                 Ok(supplier_indexs)
             }
-            _ => Err(Error::validate("Supplier is not an array").into()),
+            _ => Err(Error::validate("Supplier is not an array")),
         }
     }
 }

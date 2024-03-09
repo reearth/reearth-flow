@@ -81,7 +81,7 @@ impl Action for AttributeSorter {
                 }
                 output
             }
-            None => return Err(error::Error::input("No input dataframe").into()),
+            None => return Err(error::Error::input("No input dataframe")),
         };
         Ok(output)
     }

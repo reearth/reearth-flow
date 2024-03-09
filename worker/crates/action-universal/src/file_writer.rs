@@ -1,6 +1,5 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
-use anyhow::anyhow;
 use bytes::Bytes;
 use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
@@ -10,7 +9,7 @@ use reearth_flow_common::uri::Uri;
 
 use reearth_flow_action::error::Error;
 use reearth_flow_action::{
-    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
+    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Result, DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -59,15 +58,18 @@ async fn write_text(
     inputs: Option<ActionDataframe>,
     props: &FileWriter,
     storage_resolver: Arc<StorageResolver>,
-) -> anyhow::Result<ActionValue> {
+) -> Result<ActionValue> {
     let value = get_input_value(inputs)?;
     let bytes = match value {
         ActionValue::String(s) => Bytes::from(s),
-        _ => return Err(Error::unsupported_feature("Unsupported input").into()),
+        _ => return Err(Error::unsupported_feature("Unsupported input")),
     };
-    let uri = Uri::from_str(&props.output)?;
-    let storage = storage_resolver.resolve(&uri)?;
-    storage.put(uri.path().as_path(), bytes).await?;
+    let uri = Uri::from_str(&props.output).map_err(Error::input)?;
+    let storage = storage_resolver.resolve(&uri).map_err(Error::input)?;
+    storage
+        .put(uri.path().as_path(), bytes)
+        .await
+        .map_err(Error::internal_runtime)?;
     Ok(ActionValue::Bool(true))
 }
 
@@ -75,15 +77,16 @@ async fn write_json(
     inputs: Option<ActionDataframe>,
     props: &FileWriter,
     storage_resolver: Arc<StorageResolver>,
-) -> anyhow::Result<ActionValue> {
+) -> Result<ActionValue> {
     let value = get_input_value(inputs)?;
     let json_value: serde_json::Value = value.into();
 
-    let uri = Uri::from_str(&props.output)?;
-    let storage = storage_resolver.resolve(&uri)?;
+    let uri = Uri::from_str(&props.output).map_err(Error::input)?;
+    let storage = storage_resolver.resolve(&uri).map_err(Error::input)?;
     storage
         .put(uri.path().as_path(), Bytes::from(json_value.to_string()))
-        .await?;
+        .await
+        .map_err(Error::internal_runtime)?;
     Ok(ActionValue::Bool(true))
 }
 
@@ -92,7 +95,7 @@ async fn write_csv(
     delimiter: Delimiter,
     props: &FileWriter,
     storage_resolver: Arc<StorageResolver>,
-) -> anyhow::Result<ActionValue> {
+) -> Result<ActionValue> {
     let value = get_input_value(inputs)?;
     match value {
         ActionValue::Array(s) => {
@@ -103,17 +106,20 @@ async fn write_csv(
             let fields = get_fields(&s);
             if let Some(ref fields) = fields {
                 if !fields.is_empty() {
-                    wtr.write_record(fields.clone())?;
+                    wtr.write_record(fields.clone())
+                        .map_err(Error::internal_runtime)?;
                 }
             }
             for row in s {
                 match fields {
                     Some(ref fields) if !fields.is_empty() => {
                         let values = get_row_values(&row, &fields.clone())?;
-                        wtr.write_record(values)?;
+                        wtr.write_record(values).map_err(Error::internal_runtime)?;
                     }
                     _ => match row {
-                        ActionValue::String(s) => wtr.write_record(vec![s])?,
+                        ActionValue::String(s) => {
+                            wtr.write_record(vec![s]).map_err(Error::internal_runtime)?
+                        }
                         ActionValue::Array(s) => {
                             let values = s
                                 .into_iter()
@@ -122,30 +128,34 @@ async fn write_csv(
                                     _ => "".to_string(),
                                 })
                                 .collect::<Vec<_>>();
-                            wtr.write_record(values)?
+                            wtr.write_record(values).map_err(Error::internal_runtime)?
                         }
-                        _ => return Err(Error::unsupported_feature("Unsupported input").into()),
+                        _ => return Err(Error::unsupported_feature("Unsupported input")),
                     },
                 }
             }
             wtr.flush()?;
-            let data = String::from_utf8(wtr.into_inner()?)?;
-            let uri = Uri::from_str(&props.output)?;
-            let storage = storage_resolver.resolve(&uri)?;
-            storage.put(uri.path().as_path(), Bytes::from(data)).await?;
+            let data = String::from_utf8(wtr.into_inner().map_err(Error::internal_runtime)?)
+                .map_err(Error::internal_runtime)?;
+            let uri = Uri::from_str(&props.output).map_err(Error::input)?;
+            let storage = storage_resolver.resolve(&uri).map_err(Error::input)?;
+            storage
+                .put(uri.path().as_path(), Bytes::from(data))
+                .await
+                .map_err(Error::internal_runtime)?;
         }
-        _ => return Err(Error::unsupported_feature("Unsupported input").into()),
+        _ => return Err(Error::unsupported_feature("Unsupported input")),
     };
     Ok(ActionValue::Bool(true))
 }
 
-fn get_input_value(dataframe: Option<ActionDataframe>) -> anyhow::Result<ActionValue> {
+fn get_input_value(dataframe: Option<ActionDataframe>) -> Result<ActionValue> {
     dataframe
         .ok_or(Error::internal_runtime("No input"))?
         .get(DEFAULT_PORT)
         .ok_or(Error::internal_runtime("No input"))?
         .clone()
-        .ok_or(Error::internal_runtime("No input").into())
+        .ok_or(Error::internal_runtime("No input"))
 }
 
 fn get_fields(rows: &[ActionValue]) -> Option<Vec<String>> {
@@ -155,15 +165,15 @@ fn get_fields(rows: &[ActionValue]) -> Option<Vec<String>> {
     })
 }
 
-fn get_row_values(row: &ActionValue, fields: &[String]) -> anyhow::Result<Vec<String>> {
+fn get_row_values(row: &ActionValue, fields: &[String]) -> Result<Vec<String>> {
     fields
         .iter()
         .map(|field| match row {
             ActionValue::Map(row) => row
                 .get(field)
                 .map(|v| v.to_string())
-                .ok_or_else(|| anyhow!("Field not found: {}", field)),
-            _ => Err(Error::unsupported_feature("Unsupported input").into()),
+                .ok_or_else(|| Error::input(format!("Field not found: {}", field))),
+            _ => Err(Error::unsupported_feature("Unsupported input")),
         })
         .collect()
 }
