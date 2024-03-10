@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use petgraph::dot::Dot;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
@@ -43,6 +44,7 @@ pub struct NodeType {
     pub id: NodeId,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EdgeType {
     pub from: Port,
     pub to: Port,
@@ -124,6 +126,10 @@ impl Dag {
 
     pub fn graph(&self) -> &DiGraph<NodeType, EdgeType> {
         &self.graph
+    }
+
+    pub fn to_dot(&self) -> String {
+        format!("{:?}", Dot::new(&self.graph))
     }
 
     pub fn entry_nodes(&self) -> Vec<Node> {

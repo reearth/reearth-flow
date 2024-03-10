@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod dot;
 pub mod logger;
 pub mod run;
 
