@@ -95,39 +95,27 @@ mod tests {
     #[fixture]
     async fn inputs() -> Vec<ActionValue> {
         vec![
-            ActionValue::Map(
-                vec![
-                    ("name".to_string(), ActionValue::String("Alice".to_string())),
-                    (
-                        "age".to_string(),
-                        ActionValue::Number(serde_json::Number::from(20)),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            ),
-            ActionValue::Map(
-                vec![
-                    ("name".to_string(), ActionValue::String("Bob".to_string())),
-                    (
-                        "age".to_string(),
-                        ActionValue::Number(serde_json::Number::from(25)),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            ),
-            ActionValue::Map(
-                vec![
-                    ("name".to_string(), ActionValue::String("Bob".to_string())),
-                    (
-                        "age".to_string(),
-                        ActionValue::Number(serde_json::Number::from(28)),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            ),
+            ActionValue::Map(HashMap::from([
+                ("name".to_string(), ActionValue::String("Alice".to_string())),
+                (
+                    "age".to_string(),
+                    ActionValue::Number(serde_json::Number::from(20)),
+                ),
+            ])),
+            ActionValue::Map(HashMap::from([
+                ("name".to_string(), ActionValue::String("Bob".to_string())),
+                (
+                    "age".to_string(),
+                    ActionValue::Number(serde_json::Number::from(25)),
+                ),
+            ])),
+            ActionValue::Map(HashMap::from([
+                ("name".to_string(), ActionValue::String("Bob".to_string())),
+                (
+                    "age".to_string(),
+                    ActionValue::Number(serde_json::Number::from(28)),
+                ),
+            ])),
         ]
     }
 
@@ -135,74 +123,50 @@ mod tests {
     async fn expected() -> Vec<Vec<ActionValue>> {
         vec![
             vec![
-                ActionValue::Map(
-                    vec![
-                        ("name".to_string(), ActionValue::String("Bob".to_string())),
-                        (
-                            "age".to_string(),
-                            ActionValue::Number(serde_json::Number::from(25)),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect(),
-                ),
-                ActionValue::Map(
-                    vec![
-                        ("name".to_string(), ActionValue::String("Bob".to_string())),
-                        (
-                            "age".to_string(),
-                            ActionValue::Number(serde_json::Number::from(28)),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect(),
-                ),
-                ActionValue::Map(
-                    vec![
-                        ("name".to_string(), ActionValue::String("Alice".to_string())),
-                        (
-                            "age".to_string(),
-                            ActionValue::Number(serde_json::Number::from(20)),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect(),
-                ),
+                ActionValue::Map(HashMap::from([
+                    ("name".to_string(), ActionValue::String("Bob".to_string())),
+                    (
+                        "age".to_string(),
+                        ActionValue::Number(serde_json::Number::from(25)),
+                    ),
+                ])),
+                ActionValue::Map(HashMap::from([
+                    ("name".to_string(), ActionValue::String("Bob".to_string())),
+                    (
+                        "age".to_string(),
+                        ActionValue::Number(serde_json::Number::from(28)),
+                    ),
+                ])),
+                ActionValue::Map(HashMap::from([
+                    ("name".to_string(), ActionValue::String("Alice".to_string())),
+                    (
+                        "age".to_string(),
+                        ActionValue::Number(serde_json::Number::from(20)),
+                    ),
+                ])),
             ],
             vec![
-                ActionValue::Map(
-                    vec![
-                        ("name".to_string(), ActionValue::String("Bob".to_string())),
-                        (
-                            "age".to_string(),
-                            ActionValue::Number(serde_json::Number::from(28)),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect(),
-                ),
-                ActionValue::Map(
-                    vec![
-                        ("name".to_string(), ActionValue::String("Bob".to_string())),
-                        (
-                            "age".to_string(),
-                            ActionValue::Number(serde_json::Number::from(25)),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect(),
-                ),
-                ActionValue::Map(
-                    vec![
-                        ("name".to_string(), ActionValue::String("Alice".to_string())),
-                        (
-                            "age".to_string(),
-                            ActionValue::Number(serde_json::Number::from(20)),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect(),
-                ),
+                ActionValue::Map(HashMap::from([
+                    ("name".to_string(), ActionValue::String("Bob".to_string())),
+                    (
+                        "age".to_string(),
+                        ActionValue::Number(serde_json::Number::from(28)),
+                    ),
+                ])),
+                ActionValue::Map(HashMap::from([
+                    ("name".to_string(), ActionValue::String("Bob".to_string())),
+                    (
+                        "age".to_string(),
+                        ActionValue::Number(serde_json::Number::from(25)),
+                    ),
+                ])),
+                ActionValue::Map(HashMap::from([
+                    ("name".to_string(), ActionValue::String("Alice".to_string())),
+                    (
+                        "age".to_string(),
+                        ActionValue::Number(serde_json::Number::from(20)),
+                    ),
+                ])),
             ],
         ]
     }

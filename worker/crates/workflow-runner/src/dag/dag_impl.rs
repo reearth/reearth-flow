@@ -42,6 +42,18 @@ impl Edge {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NodeType {
     pub id: NodeId,
+    pub name: String,
+    pub action: String,
+}
+
+impl From<Node> for NodeType {
+    fn from(node: Node) -> Self {
+        Self {
+            id: node.id(),
+            name: node.name().to_string(),
+            action: node.action().to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -154,7 +166,7 @@ impl Dag {
     }
 
     pub fn add_node(&mut self, node: Node) -> NodeIndex {
-        let node_type = NodeType { id: node.id() };
+        let node_type = NodeType::from(node.clone());
         let node_index = self.graph.add_node(node_type.clone());
         self.nodes.insert(node.id(), node);
         self.node_lookup_table.insert(node_type.clone(), node_index);
@@ -163,7 +175,7 @@ impl Dag {
 
     pub fn node_index(&self, node: &Node) -> crate::Result<NodeIndex> {
         self.node_lookup_table
-            .get(&NodeType { id: node.id() })
+            .get(&NodeType::from(node.clone()))
             .copied()
             .ok_or_else(|| Error::node_not_found(format!("node_id = {}", node.id())))
     }
