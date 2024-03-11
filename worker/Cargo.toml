@@ -80,7 +80,6 @@ serde_yaml = "0.9.32"
 slog = {version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"]}
 strum = "0.26.1"
 strum_macros = "0.26.1"
-tempdir = "0.3.7"
 tempfile = "3.10.1"
 thiserror = "1.0.57"
 tokio = {version = "1.36.0", features = ["full", "time"]}
