@@ -5,6 +5,7 @@ mod attribute_merger;
 mod attribute_sorter;
 mod color_converter;
 mod dataframe_transformer;
+mod dataframe_union;
 mod entity_filter;
 mod entity_transformer;
 mod file_reader;

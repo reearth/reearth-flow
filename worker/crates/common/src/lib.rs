@@ -19,6 +19,32 @@ pub enum Error {
     Xml(String),
 }
 
+impl Error {
+    pub fn color<T: ToString>(message: T) -> Self {
+        Self::Color(message.to_string())
+    }
+
+    pub fn csv<T: ToString>(message: T) -> Self {
+        Self::Csv(message.to_string())
+    }
+
+    pub fn fs<T: ToString>(message: T) -> Self {
+        Self::Fs(message.to_string())
+    }
+
+    pub fn serde<T: ToString>(message: T) -> Self {
+        Self::Serde(message.to_string())
+    }
+
+    pub fn uri<T: ToString>(message: T) -> Self {
+        Self::Uri(message.to_string())
+    }
+
+    pub fn xml<T: ToString>(message: T) -> Self {
+        Self::Xml(message.to_string())
+    }
+}
+
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub mod collection;

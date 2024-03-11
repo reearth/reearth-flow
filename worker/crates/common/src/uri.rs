@@ -150,6 +150,13 @@ impl Uri {
         self.uri.ends_with('/')
     }
 
+    pub fn dir(&self) -> Option<Uri> {
+        if !self.is_dir() {
+            return self.parent();
+        }
+        Some(self.clone())
+    }
+
     pub fn join<P: AsRef<Path> + std::fmt::Debug>(&self, path: P) -> crate::Result<Self> {
         if path.as_ref().is_absolute() {
             return Err(crate::Error::Uri(format!(
@@ -448,6 +455,10 @@ mod tests {
         assert_eq!(
             Uri::for_test("file:///foo/bar").parent().unwrap(),
             "file:///foo"
+        );
+        assert_eq!(
+            Uri::for_test("file:///foo/bar/hoge.txt").parent().unwrap(),
+            "file:///foo/bar"
         );
         assert!(Uri::for_test("ram:///").parent().is_none());
         assert_eq!(Uri::for_test("ram:///foo").parent().unwrap(), "ram:///");
