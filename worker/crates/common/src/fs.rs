@@ -21,14 +21,12 @@ pub fn get_cache_directory_path(data_dir_path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use tempfile;
-
     use super::*;
+    use tempfile::Builder;
 
     #[tokio::test]
     async fn test_empty_dir() -> std::io::Result<()> {
-        let temp_dir = tempfile::tempdir()?;
-
+        let temp_dir = Builder::new().prefix("foobar").tempdir_in(".").unwrap();
         let file_path = temp_dir.path().join("file");
         tokio::fs::File::create(file_path).await?;
 
