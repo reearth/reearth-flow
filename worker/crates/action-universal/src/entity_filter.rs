@@ -22,7 +22,7 @@ pub struct EntityFilter {
 #[serde(rename_all = "camelCase")]
 struct Condition {
     expr: String,
-    output_port: String,
+    output_port: Port,
 }
 
 #[async_trait::async_trait]

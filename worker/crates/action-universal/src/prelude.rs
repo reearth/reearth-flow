@@ -5,6 +5,7 @@ pub use crate::attribute_merger::AttributeMerger;
 pub use crate::attribute_sorter::AttributeSorter;
 pub use crate::color_converter::ColorConverter;
 pub use crate::dataframe_transformer::DataframeTransformer;
+pub use crate::dataframe_union::DataframeUnion;
 pub use crate::entity_filter::EntityFilter;
 pub use crate::entity_transformer::EntityTransformer;
 pub use crate::file_reader::FileReader;

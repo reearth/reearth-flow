@@ -20,7 +20,7 @@ pub struct XmlXPathExtractor {
 #[serde(rename_all = "camelCase")]
 struct Condition {
     xpath: String,
-    output_port: String,
+    output_port: Port,
 }
 
 #[async_trait::async_trait]

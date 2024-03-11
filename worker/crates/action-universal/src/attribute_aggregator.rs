@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
+    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port,
+    DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -15,7 +16,7 @@ pub struct AttributeAggregator {
 struct Aggregation {
     attribute: String,
     method: Method,
-    output_port: String,
+    output_port: Port,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

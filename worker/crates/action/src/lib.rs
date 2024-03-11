@@ -6,6 +6,7 @@ use std::fmt::Display;
 use std::{collections::HashMap, sync::Arc};
 
 use bytes::Bytes;
+use reearth_flow_common::uri::Uri;
 use rhai::serde::from_dynamic;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
@@ -40,6 +41,24 @@ pub enum ActionValue {
     Array(Vec<ActionValue>),
     Bytes(Bytes),
     Map(HashMap<String, ActionValue>),
+}
+
+impl ActionValue {
+    pub fn extend(self, value: Self) -> Result<Self> {
+        match (self, value) {
+            (ActionValue::Map(mut a), ActionValue::Map(b)) => {
+                for (k, v) in b {
+                    a.insert(k, v);
+                }
+                Ok(ActionValue::Map(a))
+            }
+            (ActionValue::Array(mut a), ActionValue::Array(b)) => {
+                a.extend(b);
+                Ok(ActionValue::Array(a))
+            }
+            _ => Err(error::Error::internal_runtime("Cannot extend")),
+        }
+    }
 }
 
 impl Default for ActionValue {
@@ -115,6 +134,16 @@ impl TryFrom<rhai::Dynamic> for ActionValue {
     fn try_from(value: rhai::Dynamic) -> std::result::Result<Self, Self::Error> {
         let value: serde_json::Value =
             from_dynamic(&value).map_err(error::Error::internal_runtime)?;
+        Ok(value.into())
+    }
+}
+
+impl TryFrom<Uri> for ActionValue {
+    type Error = error::Error;
+
+    fn try_from(value: Uri) -> std::result::Result<Self, Self::Error> {
+        let value: serde_json::Value =
+            serde_json::to_value(value).map_err(error::Error::internal_runtime)?;
         Ok(value.into())
     }
 }

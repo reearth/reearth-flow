@@ -34,6 +34,7 @@ strip = true
 [workspace.dependencies]
 reearth-flow-action = {path = "crates/action"}
 reearth-flow-action-log = {path = "crates/action-log"}
+reearth-flow-action-plateau = {path = "crates/action-plateau"}
 reearth-flow-action-universal = {path = "crates/action-universal"}
 reearth-flow-common = {path = "crates/common"}
 reearth-flow-eval-expr = {path = "crates/eval-expr"}
@@ -46,9 +47,11 @@ reearth-flow-workflow-cli = {path = "crates/cli"}
 reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
 
 async-trait = "0.1.77"
+async_zip = {version = "0.0.16", features = ["full"]}
 bytes = {version = "1.5.0", features = ["serde"]}
 color-eyre = "0.6.2"
 colorsys = "0.6.7"
+csv = "1.3.0"
 derive_more = "0.99.17"
 directories = "5.0.1"
 futures = "0.3.30"
@@ -77,6 +80,7 @@ serde_yaml = "0.9.32"
 slog = {version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"]}
 strum = "0.26.1"
 strum_macros = "0.26.1"
+tempdir = "0.3.7"
 tempfile = "3.10.1"
 thiserror = "1.0.57"
 tokio = {version = "1.36.0", features = ["full", "time"]}

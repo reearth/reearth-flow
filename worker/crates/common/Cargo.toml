@@ -11,12 +11,14 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+bytes.workspace = true
 base64 = "0.22.0"
 colorsys.workspace = true
 futures.workspace = true
 home = "0.5.9"
 libxml = "0.3.3"
 petgraph.workspace = true
+rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
@@ -29,4 +31,3 @@ tokio-util.workspace = true
 tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
-rayon.workspace = true
