@@ -23,7 +23,8 @@ pub const DEFAULT_PORT: &str = "default";
 pub const REJECTED_PORT: &str = "rejected";
 pub type ActionDataframe = HashMap<Port, Option<ActionValue>>;
 pub type ActionValueIndex = HashMap<String, HashMap<String, Vec<ActionValue>>>;
-pub type ActionResult = Result<ActionDataframe, anyhow::Error>;
+pub type ActionResult = std::result::Result<ActionDataframe, error::Error>;
+pub type Result<T, E = error::Error> = std::result::Result<T, E>;
 
 #[async_trait::async_trait]
 #[typetag::serde(tag = "action", content = "with")]
@@ -109,10 +110,11 @@ impl From<XmlXpathValue> for ActionValue {
 }
 
 impl TryFrom<rhai::Dynamic> for ActionValue {
-    type Error = anyhow::Error;
+    type Error = error::Error;
 
-    fn try_from(value: rhai::Dynamic) -> Result<Self, Self::Error> {
-        let value: serde_json::Value = from_dynamic(&value).map_err(|e| anyhow::anyhow!(e))?;
+    fn try_from(value: rhai::Dynamic) -> std::result::Result<Self, Self::Error> {
+        let value: serde_json::Value =
+            from_dynamic(&value).map_err(error::Error::internal_runtime)?;
         Ok(value.into())
     }
 }
@@ -154,6 +156,25 @@ pub struct ActionContext {
     pub root_span: tracing::Span,
 }
 
+impl Default for ActionContext {
+    fn default() -> Self {
+        Self {
+            job_id: Id::default(),
+            workflow_id: Id::default(),
+            node_id: Id::default(),
+            node_name: "".to_owned(),
+            node_property: Default::default(),
+            expr_engine: Arc::new(Engine::new()),
+            storage_resolver: Arc::new(StorageResolver::new()),
+            logger: Arc::new(ActionLogger::root(
+                reearth_flow_action_log::Discard,
+                reearth_flow_action_log::o!(),
+            )),
+            root_span: tracing::Span::current(),
+        }
+    }
+}
+
 impl ActionContext {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -188,11 +209,11 @@ mod tests {
     #[test]
     fn test_try_from_rhai_dynamic() {
         let dynamic_value = rhai::Dynamic::from(42);
-        let action_value: Result<ActionValue, _> = dynamic_value.try_into();
+        let action_value: std::result::Result<ActionValue, _> = dynamic_value.try_into();
         assert_eq!(action_value.unwrap(), ActionValue::Number(Number::from(42)));
 
         let dynamic_value = rhai::Dynamic::from("Hello");
-        let action_value: Result<ActionValue, _> = dynamic_value.try_into();
+        let action_value: std::result::Result<ActionValue, _> = dynamic_value.try_into();
         assert_eq!(
             action_value.unwrap(),
             ActionValue::String("Hello".to_string())

@@ -7,7 +7,7 @@ pub fn convert_hsl_to_rgba(
     saturation: f64,
     lightness: f64,
     alpha: f64,
-) -> anyhow::Result<ColorTupleA> {
+) -> crate::Result<ColorTupleA> {
     let mut hsl = Hsl::default();
     hsl.set_hue(hue);
     hsl.set_saturation(saturation);
@@ -23,9 +23,10 @@ pub fn convert_hsl_to_rgba(
     ))
 }
 
-fn percent_to_hex_color(percent: f64) -> anyhow::Result<i64> {
+fn percent_to_hex_color(percent: f64) -> crate::Result<i64> {
     let hex = (255.0 * percent).round() as u8;
-    i64::from_str_radix(format!("{:02X}", hex).as_str(), 16).map_err(|e| anyhow::anyhow!("{}", e))
+    i64::from_str_radix(format!("{:02X}", hex).as_str(), 16)
+        .map_err(|e| crate::Error::Color(format!("{}", e)))
 }
 
 #[cfg(test)]

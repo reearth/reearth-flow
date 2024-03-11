@@ -52,6 +52,16 @@ impl Node {
         }
     }
 
+    pub fn action(&self) -> &str {
+        match self {
+            Node::Action { entity: _, action } => action.as_str(),
+            Node::SubGraph {
+                entity: _,
+                sub_graph_id: _,
+            } => "subGraph",
+        }
+    }
+
     pub fn with(&self) -> &NodeProperty {
         match self {
             Node::Action { entity, action: _ } => &entity.with,

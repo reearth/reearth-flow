@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use libxml::parser::{Parser, ParserOptions};
 use libxml::tree::document;
 use libxml::xpath::Context;
@@ -6,7 +5,7 @@ use libxml::xpath::Context;
 pub type XmlDocument = document::Document;
 pub type XmlXpathValue = libxml::xpath::Object;
 
-pub fn parse<T: AsRef<[u8]>>(xml: T) -> anyhow::Result<XmlDocument> {
+pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
     let parser = Parser::default();
     parser
         .parse_string_with_options(
@@ -25,23 +24,23 @@ pub fn parse<T: AsRef<[u8]>>(xml: T) -> anyhow::Result<XmlDocument> {
                 encoding: None,
             },
         )
-        .map_err(|e| anyhow!(e))
+        .map_err(|e| crate::Error::Xml(format!("{}", e)))
 }
 
-pub fn evaluate<T: AsRef<str>>(document: &XmlDocument, xpath: T) -> anyhow::Result<XmlXpathValue> {
-    let context =
-        Context::new(document).map_err(|_| anyhow!("Failed to initialize xpath context"))?;
+pub fn evaluate<T: AsRef<str>>(document: &XmlDocument, xpath: T) -> crate::Result<XmlXpathValue> {
+    let context = Context::new(document)
+        .map_err(|_| crate::Error::Xml("Failed to initialize xpath context".to_string()))?;
     let root = document
         .get_root_element()
-        .ok_or(anyhow!("No root element"))?;
+        .ok_or(crate::Error::Xml("No root element".to_string()))?;
     for ns in root.get_namespace_declarations().iter() {
         context
             .register_namespace(ns.get_prefix().as_str(), ns.get_href().as_str())
-            .map_err(|_| anyhow!("Failed to register namespace"))?;
+            .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
     }
     context
         .evaluate(xpath.as_ref())
-        .map_err(|_| anyhow!("Failed to evaluate xpath"))
+        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))
 }
 
 #[cfg(test)]

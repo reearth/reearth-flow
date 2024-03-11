@@ -1,6 +1,6 @@
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("Error while running workflow: {0}")]
+    #[error("Error while running action: {0}")]
     InternalRuntime(String),
 
     #[error("InputError: {0}")]

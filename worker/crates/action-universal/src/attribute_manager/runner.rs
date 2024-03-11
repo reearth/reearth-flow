@@ -1,11 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
-use anyhow::anyhow;
 use rhai::Dynamic;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
-use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionResult, ActionValue};
+use reearth_flow_action::{
+    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+};
 use reearth_flow_common::collection;
 use reearth_flow_eval_expr::engine::Engine;
 
@@ -58,7 +59,7 @@ pub(crate) enum Operate {
 #[typetag::serde(name = "AttributeManager")]
 impl Action for AttributeManager {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let inputs = inputs.ok_or(anyhow!("No Input"))?;
+        let inputs = inputs.ok_or(Error::input("No Input"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let params = convert_dataframe_to_scope_params(&inputs);
         let operations = convert_single_operation(&self.operations, Arc::clone(&expr_engine));

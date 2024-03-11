@@ -16,8 +16,11 @@ impl StorageResolver {
     }
 
     /// Resolves the given URI.
-    pub fn resolve(&self, uri: &Uri) -> anyhow::Result<Arc<Storage>> {
-        let storages = self.storages.read().map_err(|e| anyhow::anyhow!("{}", e))?;
+    pub fn resolve(&self, uri: &Uri) -> crate::Result<Arc<Storage>> {
+        let storages = self
+            .storages
+            .read()
+            .map_err(|e| crate::Error::Resolve(format!("{}", e)))?;
         if let Some(storage) = storages.get(&uri.root_uri()) {
             return Ok(Arc::clone(storage));
         }
@@ -25,8 +28,8 @@ impl StorageResolver {
         let mut storages = self
             .storages
             .write()
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
-        let op = resolve_operator(uri)?;
+            .map_err(|e| crate::Error::Resolve(format!("{}", e)))?;
+        let op = resolve_operator(uri).map_err(|e| crate::Error::Resolve(format!("{}", e)))?;
         let storage = Arc::new(Storage::new(uri.root_uri(), op));
         storages.insert(uri.root_uri(), Arc::clone(&storage));
         Ok(storage)

@@ -12,7 +12,7 @@ use super::{csv, text};
 use reearth_flow_action::error::Error;
 use reearth_flow_action::utils::inject_variables_to_scope;
 use reearth_flow_action::{
-    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
+    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Result, DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -93,7 +93,7 @@ impl Action for FileReader {
                 .await?;
                 text::read_text(input_path, storage_resolver).await?
             }
-            _ => return Err(Error::unsupported_feature("Unsupported format").into()),
+            _ => return Err(Error::unsupported_feature("Unsupported format")),
         };
         let mut output = HashMap::new();
         output.insert(DEFAULT_PORT.to_string(), Some(data));
@@ -105,10 +105,11 @@ async fn get_input_path(
     inputs: &ActionDataframe,
     common_property: &CommonPropertySchema,
     expr_engine: Arc<Engine>,
-) -> anyhow::Result<Uri> {
+) -> Result<Uri> {
     let scope = expr_engine.new_scope();
     inject_variables_to_scope(inputs, &scope)?;
-    expr_engine
+    let path = expr_engine
         .eval_scope::<String>(&common_property.dataset, &scope)
-        .and_then(|s| Uri::from_str(s.as_str()))
+        .map_err(Error::input)?;
+    Uri::from_str(path.as_str()).map_err(Error::input)
 }

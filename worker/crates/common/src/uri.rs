@@ -6,7 +6,6 @@ use std::hash::Hash;
 use std::path::{Component, Path, PathBuf};
 use std::str::FromStr;
 
-use anyhow::{bail, Context};
 use serde::de::Error;
 use serde::{Deserialize, Serialize, Serializer};
 
@@ -50,15 +49,15 @@ impl Display for Protocol {
 }
 
 impl FromStr for Protocol {
-    type Err = anyhow::Error;
+    type Err = crate::Error;
 
-    fn from_str(protocol: &str) -> anyhow::Result<Self> {
+    fn from_str(protocol: &str) -> crate::Result<Self> {
         match protocol {
             "file" => Ok(Protocol::File),
             "ram" => Ok(Protocol::Ram),
             "gs" => Ok(Protocol::Google),
             "https" => Ok(Protocol::Http),
-            _ => bail!("unknown URI protocol `{protocol}`"),
+            _ => Err(crate::Error::Uri(format!("Unknown protocol: {}", protocol))),
         }
     }
 }
@@ -151,13 +150,12 @@ impl Uri {
         self.uri.ends_with('/')
     }
 
-    pub fn join<P: AsRef<Path> + std::fmt::Debug>(&self, path: P) -> anyhow::Result<Self> {
+    pub fn join<P: AsRef<Path> + std::fmt::Debug>(&self, path: P) -> crate::Result<Self> {
         if path.as_ref().is_absolute() {
-            bail!(
+            return Err(crate::Error::Uri(format!(
                 "cannot join URI `{}` with absolute path `{:?}`",
-                self.uri,
-                path
-            );
+                self.uri, path
+            )));
         }
         let joined = match self.protocol() {
             Protocol::File => Path::new(&self.uri)
@@ -182,9 +180,9 @@ impl Uri {
     /// File URIs are resolved (normalized) relative to the current working directory
     /// unless an absolute path is specified.
     /// Handles special characters such as `~`, `.`, `..`.
-    fn parse_str(uri_str: &str) -> anyhow::Result<Self> {
+    fn parse_str(uri_str: &str) -> crate::Result<Self> {
         if uri_str.is_empty() {
-            bail!("failed to parse empty URI");
+            return Err(crate::Error::Uri("URI cannot be empty".to_string()));
         }
         let (protocol, mut path) = match uri_str.split_once(PROTOCOL_SEPARATOR) {
             None => (Protocol::File, uri_str.to_string()),
@@ -195,21 +193,24 @@ impl Uri {
                 // We only accept `~` (alias to the home directory) and `~/path/to/something`.
                 // If there is something following the `~` that is not `/`, we bail.
                 if path.len() > 1 && !path.starts_with("~/") {
-                    bail!("failed to normalize URI: tilde expansion is only partially supported");
+                    return Err(crate::Error::Uri(
+                        "failed to normalize URI: tilde expansion is only partially supported"
+                            .to_string(),
+                    ));
                 }
 
                 let home_dir_path = home::home_dir()
-                    .context("failed to normalize URI: could not resolve home directory")?
+                    .ok_or(crate::Error::Uri(
+                        "failed to normalize URI: could not resolve home directory".to_string(),
+                    ))?
                     .to_string_lossy()
                     .to_string();
 
                 path.replace_range(0..1, &home_dir_path);
             }
             if Path::new(&path).is_relative() {
-                let current_dir = env::current_dir().context(
-                    "failed to normalize URI: could not resolve current working directory. the \
-                     directory does not exist or user has insufficient permissions",
-                )?;
+                let current_dir =
+                    env::current_dir().map_err(|e| crate::Error::Uri(format!("{:?}", e)))?;
                 path = current_dir.join(path).to_string_lossy().to_string();
             }
             path = normalize_path(Path::new(&path))
@@ -245,9 +246,9 @@ impl Display for Uri {
 }
 
 impl FromStr for Uri {
-    type Err = anyhow::Error;
+    type Err = crate::Error;
 
-    fn from_str(uri_str: &str) -> anyhow::Result<Self> {
+    fn from_str(uri_str: &str) -> crate::Result<Self> {
         Uri::parse_str(uri_str)
     }
 }
@@ -362,7 +363,7 @@ mod tests {
         );
         assert_eq!(
             Uri::from_str("~anything/bar").unwrap_err().to_string(),
-            "failed to normalize URI: tilde expansion is only partially supported"
+            "URIUtilError: failed to normalize URI: tilde expansion is only partially supported"
         );
         assert_eq!(
             Uri::from_str("~/.").unwrap(),

@@ -1,7 +1,6 @@
 use std::env;
 use std::sync::Mutex;
 
-use anyhow::Ok;
 use once_cell::sync::Lazy;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_otlp::WithExportConfig;
@@ -13,7 +12,18 @@ use opentelemetry_sdk::{
 static OTEL_COLLECTOR_ENDPOINT: Lazy<Mutex<Option<String>>> =
     Lazy::new(|| Mutex::new(env::var("OTEL_COLLECTOR_ENDPOINT").ok()));
 
-pub fn init_metrics(service_name: String) -> anyhow::Result<SdkMeterProvider> {
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("MetricsError: {0}")]
+    Metrics(String),
+
+    #[error("TracingError: {0}")]
+    Tracing(String),
+}
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
     let metrics = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
         Some(endpoint) => opentelemetry_otlp::new_pipeline()
             .metrics(opentelemetry_sdk::runtime::Tokio)
@@ -29,7 +39,7 @@ pub fn init_metrics(service_name: String) -> anyhow::Result<SdkMeterProvider> {
                 ),
             ]))
             .build()
-            .map_err(|e| anyhow::anyhow!("Failed to build metrics controller: {}", e))?,
+            .map_err(|e| Error::Metrics(format!("Failed to build metrics controller: {}", e)))?,
         None => MeterProviderBuilder::default()
             .with_reader(
                 opentelemetry_sdk::metrics::PeriodicReader::builder(
@@ -49,7 +59,7 @@ pub fn init_metrics(service_name: String) -> anyhow::Result<SdkMeterProvider> {
     Ok(metrics)
 }
 
-pub fn init_tracing(service_name: String) -> anyhow::Result<Tracer> {
+pub fn init_tracing(service_name: String) -> Result<Tracer> {
     let tracer = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
         Some(endpoint) => opentelemetry_otlp::new_pipeline()
             .tracing()
@@ -70,7 +80,7 @@ pub fn init_tracing(service_name: String) -> anyhow::Result<Tracer> {
                     ])),
             )
             .install_batch(opentelemetry_sdk::runtime::Tokio)
-            .map_err(|e| anyhow::anyhow!("Failed to build metrics controller: {}", e))?,
+            .map_err(|e| Error::Tracing(format!("Failed to build metrics controller: {}", e)))?,
         None => opentelemetry_sdk::trace::TracerProvider::builder()
             .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
             .with_config(

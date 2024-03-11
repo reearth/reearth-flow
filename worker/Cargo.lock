@@ -904,6 +904,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38d84fa142264698cdce1a9f9172cf383a0c82de1bddcf3092901442c4097004"
 
 [[package]]
+name = "futures-timer"
+version = "3.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f288b0a4f20f9a56b5d1da57e2227c661b7b16168e2f72365f57b63326e29b24"
+
+[[package]]
 name = "futures-util"
 version = "0.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1994,7 +2000,6 @@ dependencies = [
 name = "reearth-flow-action"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "bytes",
  "futures",
@@ -2020,7 +2025,6 @@ dependencies = [
 name = "reearth-flow-action-log"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "futures",
  "once_cell",
  "reearth-flow-common",
@@ -2041,7 +2045,6 @@ dependencies = [
 name = "reearth-flow-action-universal"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "async_zip",
  "bytes",
@@ -2055,6 +2058,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-workflow",
  "rhai",
+ "rstest",
  "serde",
  "serde_json",
  "strum",
@@ -2072,7 +2076,6 @@ dependencies = [
 name = "reearth-flow-cli"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bytes",
  "clap",
  "colored",
@@ -2086,6 +2089,7 @@ dependencies = [
  "reearth-flow-telemetry",
  "reearth-flow-workflow",
  "reearth-flow-workflow-runner",
+ "thiserror",
  "time",
  "tokio",
  "tokio-stream",
@@ -2098,7 +2102,6 @@ dependencies = [
 name = "reearth-flow-common"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "base64 0.22.0",
  "colorsys",
  "futures",
@@ -2124,7 +2127,6 @@ dependencies = [
 name = "reearth-flow-eval-expr"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "futures",
  "rhai",
  "serde",
@@ -2166,7 +2168,6 @@ dependencies = [
 name = "reearth-flow-storage"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bytes",
  "futures",
  "object_store",
@@ -2187,7 +2188,6 @@ dependencies = [
 name = "reearth-flow-telemetry"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "once_cell",
  "opentelemetry",
  "opentelemetry-otlp",
@@ -2196,17 +2196,17 @@ dependencies = [
  "opentelemetry_sdk",
  "serde",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]
 name = "reearth-flow-workflow"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "pretty_assertions",
  "reearth-flow-common",
  "serde",
  "serde_json",
+ "thiserror",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -2216,7 +2216,6 @@ dependencies = [
 name = "reearth-flow-workflow-runner"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-recursion",
  "bytes",
  "opentelemetry",
@@ -2282,6 +2281,12 @@ name = "regex-syntax"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
+
+[[package]]
+name = "relative-path"
+version = "1.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e898588f33fdd5b9420719948f9f2a32c922a246964576f71ba7f24f80610fbc"
 
 [[package]]
 name = "reqsign"
@@ -2418,6 +2423,35 @@ dependencies = [
  "spki",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "rstest"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97eeab2f3c0a199bc4be135c36c924b6590b88c377d416494288c14f2db30199"
+dependencies = [
+ "futures",
+ "futures-timer",
+ "rstest_macros",
+ "rustc_version",
+]
+
+[[package]]
+name = "rstest_macros"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d428f8247852f894ee1be110b375111b586d4fa431f6c46e64ba5a0dcccbe605"
+dependencies = [
+ "cfg-if",
+ "glob",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "relative-path",
+ "rustc_version",
+ "syn 2.0.52",
+ "unicode-ident",
 ]
 
 [[package]]
