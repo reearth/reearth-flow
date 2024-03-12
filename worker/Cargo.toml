@@ -46,6 +46,7 @@ reearth-flow-workflow = {path = "crates/workflow"}
 reearth-flow-workflow-cli = {path = "crates/cli"}
 reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
 
+async-recursion = "1.0.5"
 async-trait = "0.1.77"
 async_zip = {version = "0.0.16", features = ["full"]}
 bytes = {version = "1.5.0", features = ["serde"]}

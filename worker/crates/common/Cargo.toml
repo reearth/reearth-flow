@@ -11,6 +11,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+async-recursion.workspace = true
 bytes.workspace = true
 base64 = "0.22.0"
 colorsys.workspace = true
