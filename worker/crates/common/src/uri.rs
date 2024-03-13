@@ -261,6 +261,15 @@ impl FromStr for Uri {
     }
 }
 
+impl TryFrom<PathBuf> for Uri {
+    type Error = crate::Error;
+
+    fn try_from(path: PathBuf) -> crate::Result<Self> {
+        let path = path.to_string_lossy().to_string();
+        Uri::parse_str(&path)
+    }
+}
+
 impl PartialEq<&str> for Uri {
     fn eq(&self, other: &&str) -> bool {
         &self.uri == other

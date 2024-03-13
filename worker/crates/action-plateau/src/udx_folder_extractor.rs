@@ -1,5 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
+use reearth_flow_common::uri::Uri;
+use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
@@ -100,40 +102,32 @@ impl Action for UdxFolderExtractor {
             }
             _ => (),
         };
-        let dir_codelists = rtdir.join("codelists");
-        let dir_schemas = rtdir.join("schemas");
+        let (dir_root, dir_codelists, dir_schemas) = if !rtdir.as_os_str().is_empty() {
+            let (dir_root, dir_codelists, dir_schemas) = self
+                .gen_codelists_and_schemas_path(
+                    rtdir,
+                    pkg.clone(),
+                    Arc::clone(&ctx.storage_resolver),
+                )
+                .await?;
+            (
+                dir_root.to_string(),
+                dir_codelists.to_string(),
+                dir_schemas.to_string(),
+            )
+        } else {
+            ("".to_string(), "".to_string(), "".to_string())
+        };
 
-        if PKG_FOLDERS.contains(&pkg.as_str()) {
-            if !dir_codelists.exists() {
-                let dir = PathBuf::from(
-                    self.codelists_path
-                        .clone()
-                        .ok_or(error::Error::input("Invalid codelists path"))?,
-                );
-                if dir.exists() {
-                    tokio::fs::copy(&dir, &dir_codelists).await?;
-                }
-            }
-            if !dir_schemas.exists() {
-                let dir = PathBuf::from(
-                    self.schemas_path
-                        .clone()
-                        .ok_or(error::Error::input("Invalid schemas path"))?,
-                );
-                if dir.exists() {
-                    tokio::fs::copy(&dir, &dir_schemas).await?;
-                }
-            }
-        }
         let res = Response {
             root,
             package: pkg.clone(),
             admin,
             area,
             udx_dirs: dirs,
-            dir_root: rtdir.to_str().unwrap_or_default().to_string(),
-            dir_codelists: dir_codelists.to_str().unwrap_or_default().to_string(),
-            dir_schemas: dir_schemas.to_str().unwrap_or_default().to_string(),
+            dir_root,
+            dir_codelists,
+            dir_schemas,
         };
         let output_port = if PKG_FOLDERS.contains(&pkg.as_str()) {
             DEFAULT_PORT
@@ -144,6 +138,75 @@ impl Action for UdxFolderExtractor {
             output_port.to_string(),
             Some(res.try_into()?),
         )]))
+    }
+}
+
+impl UdxFolderExtractor {
+    async fn gen_codelists_and_schemas_path(
+        &self,
+        rtdir: PathBuf,
+        pkg: String,
+        storage_resolver: Arc<StorageResolver>,
+    ) -> Result<(Uri, Uri, Uri)> {
+        let rtdir: Uri = rtdir.try_into().map_err(error::Error::internal_runtime)?;
+        let storage = storage_resolver
+            .resolve(&rtdir)
+            .map_err(error::Error::internal_runtime)?;
+
+        let dir_codelists = rtdir
+            .join("codelists")
+            .map_err(error::Error::internal_runtime)?;
+        let dir_schemas = rtdir
+            .join("schemas")
+            .map_err(error::Error::internal_runtime)?;
+
+        if PKG_FOLDERS.contains(&pkg.as_str()) {
+            if !storage
+                .exists(dir_codelists.path().as_path())
+                .await
+                .map_err(error::Error::internal_runtime)?
+            {
+                let dir = Uri::for_test(
+                    &self
+                        .codelists_path
+                        .clone()
+                        .ok_or(error::Error::input("Invalid codelists path"))?,
+                );
+                if !storage
+                    .exists(dir.path().as_path())
+                    .await
+                    .map_err(error::Error::internal_runtime)?
+                {
+                    storage
+                        .copy(dir.path().as_path(), dir_codelists.path().as_path())
+                        .await
+                        .map_err(error::Error::internal_runtime)?;
+                }
+            }
+            if !storage
+                .exists(dir_schemas.path().as_path())
+                .await
+                .map_err(error::Error::internal_runtime)?
+            {
+                let dir = Uri::for_test(
+                    &self
+                        .schemas_path
+                        .clone()
+                        .ok_or(error::Error::input("Invalid codelists path"))?,
+                );
+                if !storage
+                    .exists(dir.path().as_path())
+                    .await
+                    .map_err(error::Error::internal_runtime)?
+                {
+                    storage
+                        .copy(dir.path().as_path(), dir_codelists.path().as_path())
+                        .await
+                        .map_err(error::Error::internal_runtime)?;
+                }
+            }
+        }
+        Ok((rtdir, dir_codelists, dir_schemas))
     }
 }
 
@@ -166,6 +229,7 @@ mod tests {
         let ctx = ActionContext::default(); // Add any required context here
         let result = extractor.run(ctx, Some(ActionDataframe::new())).await;
 
+        println!("{:?}", result);
         assert!(result.is_ok());
     }
 }

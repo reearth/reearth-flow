@@ -1,1 +1,1 @@
-pub use crate::file_path_extractor::FilePathExtractor;
+pub use crate::udx_folder_extractor::UdxFolderExtractor;

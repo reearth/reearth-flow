@@ -3,8 +3,8 @@ use std::{collections::HashMap, sync::Arc};
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error::Error, utils, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
-    DEFAULT_PORT,
+    error::{self, Error},
+    utils, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
 };
 use reearth_flow_common::uri::Uri;
 
@@ -16,7 +16,7 @@ pub struct FilePathExtractor {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "PLATEAU.FilePathExtractor")]
+#[typetag::serde(name = "FilePathExtractor")]
 impl Action for FilePathExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.unwrap_or_default();
@@ -26,22 +26,25 @@ impl Action for FilePathExtractor {
         if self.is_extractable_archive(&source_dataset) {
             let root_output_path =
                 utils::dir::project_output_dir(ctx.node_id.to_string().as_str())?;
-            tokio::fs::create_dir_all(&root_output_path).await?;
-            let root_output_path = Uri::for_test(format!("file://{}", root_output_path).as_str());
-            let storage = ctx
+            let root_output_path = Uri::for_test(&root_output_path);
+            let source_dataset_storage = ctx
                 .storage_resolver
                 .resolve(&source_dataset)
                 .map_err(Error::input)?;
-            let file_result = storage
+            let file_result = source_dataset_storage
                 .get(source_dataset.path().as_path())
                 .await
                 .map_err(Error::internal_runtime)?;
             let bytes = file_result.bytes().await.map_err(Error::internal_runtime)?;
-            let storage = ctx
+            let root_output_storage = ctx
                 .storage_resolver
                 .resolve(&root_output_path)
                 .map_err(Error::input)?;
-            let result = utils::zip::extract(bytes, root_output_path, storage).await?;
+            root_output_storage
+                .create_dir(root_output_path.path().as_path())
+                .await
+                .map_err(error::Error::input)?;
+            let result = utils::zip::extract(bytes, root_output_path, root_output_storage).await?;
             let values = result
                 .entries
                 .into_iter()
@@ -58,11 +61,27 @@ impl Action for FilePathExtractor {
                 Some(ActionValue::Array(values)),
             )]))
         } else {
+            let storage = ctx
+                .storage_resolver
+                .resolve(&source_dataset)
+                .map_err(Error::input)?;
+            let entries = storage
+                .list_with_result(Some(source_dataset.path().as_path()), true)
+                .await
+                .map_err(error::Error::input)?;
+
+            let values = entries
+                .into_iter()
+                .map(|entry| {
+                    ActionValue::Map(HashMap::from([(
+                        "path".to_string(),
+                        ActionValue::try_from(entry).unwrap_or_default(),
+                    )]))
+                })
+                .collect::<Vec<ActionValue>>();
             Ok(ActionDataframe::from([(
                 DEFAULT_PORT.to_string(),
-                Some(ActionValue::Array(vec![ActionValue::Map(HashMap::from([
-                    ("path".to_string(), ActionValue::try_from(source_dataset)?),
-                ]))])),
+                Some(ActionValue::Array(values)),
             )]))
         }
     }
