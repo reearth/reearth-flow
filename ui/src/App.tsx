@@ -1,46 +1,68 @@
-import { Button } from "@flow/components/ui/button";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@flow/components/ui/resizable";
-import MenubarComponent from "@flow/features/Menubar";
+// import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@flow/components/resizable";
+import { Loading } from "@flow/components/Loading";
+import BottomPanel from "@flow/features/BottomPanel";
+import Canvas from "@flow/features/Canvas";
+import LeftPanel from "@flow/features/LeftPanel";
+import Menubar from "@flow/features/Menubar";
+import RightPanel from "@flow/features/RightPanel";
+import { useTimeoutOnLoad } from "@flow/hooks";
 
 function App() {
+  const { running: isLoading } = useTimeoutOnLoad(1000);
+
   return (
-    <div style={{ background: "#343536", height: "100vh" }}>
-      <MenubarComponent />
-      <ResizablePanelGroup direction="horizontal" className="min-h-[200px] rounded-lg border">
-        <ResizablePanel defaultSize={25} className="min-w-52">
-          <div className="flex h-full items-center justify-center p-6">
-            <Button size="sm">Styles are working</Button>
+    <>
+      <div className="flex flex-col bg-zinc-900 text-zinc-300 h-screen">
+        <Menubar />
+        <div className="flex flex-1">
+          <LeftPanel />
+          <div className="flex flex-col flex-1">
+            <Canvas />
+            <BottomPanel />
           </div>
-        </ResizablePanel>
-        <ResizableHandle />
-        <ResizablePanel defaultSize={50}>
-          <ResizablePanelGroup direction="vertical" className="min-h-[200px] rounded-lg border">
-            <ResizablePanel defaultSize={80}>
-              <div className="flex justify-center p-6">
-                <h1 className="text-3xl text-slate-200 font-bold underline">Re:Earth Flow</h1>
-              </div>
-            </ResizablePanel>
-            <ResizableHandle />
-            <ResizablePanel defaultSize={20}>
-              <div className="flex h-full items-center justify-center p-6">
-                <Button size="sm">Styles are working</Button>
-              </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </ResizablePanel>
-        <ResizableHandle />
-        <ResizablePanel defaultSize={25} className="min-w-52">
-          <div className="flex h-full justify-center p-3 gap-3">
-            <Button size="sm">Styles are working</Button>
-            <Button size="sm">Styles are working</Button>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </div>
+          <RightPanel />
+        </div>
+      </div>
+      <Loading show={isLoading} />
+    </>
+    // <div
+    //   className="bg-zinc-800"
+    //   style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+    //   <MenubarComponent />
+    //   <div className="p-4 text-zinc-50">Toolbox</div>
+    //   <div style={{ flex: 1 }}>
+    //     <ResizablePanelGroup direction="horizontal" className="min-h-[200px]">
+    //       <ResizablePanel defaultSize={18} className="min-w-52 bg-zinc-700">
+    //         <div className="flex h-full items-center justify-center p-6">
+    //           <p className="text-zinc-50">Navigator</p>
+    //         </div>
+    //       </ResizablePanel>
+    //       <ResizableHandle withHandle />
+    //       <ResizablePanel defaultSize={70}>
+    //         <ResizablePanelGroup direction="vertical" className="min-h-[200px]">
+    //           <ResizablePanel defaultSize={85} className="bg-white">
+    //             <Canvas />
+    //             {/* <div className="flex justify-center p-6">
+    //               <h1 className="text-3xl text-slate-200 font-bold underline">Re:Earth Flow</h1>
+    //             </div> */}
+    //           </ResizablePanel>
+    //           <ResizableHandle withHandle />
+    //           <ResizablePanel defaultSize={15} className="bg-zinc-700">
+    //             <div className="flex h-full gap-4 items-center justify-center p-6">
+    //               <p className="text-zinc-50">Visual Preview</p>
+    //             </div>
+    //           </ResizablePanel>
+    //         </ResizablePanelGroup>
+    //       </ResizablePanel>
+    //       <ResizableHandle withHandle />
+    //       <ResizablePanel defaultSize={18} className="min-w-52 bg-zinc-700">
+    //         <div className="flex h-full items-center justify-center p-6">
+    //           <p className="text-zinc-50">Feature Information</p>
+    //         </div>
+    //       </ResizablePanel>
+    //     </ResizablePanelGroup>
+    //   </div>
+    // </div>
   );
 }
 
