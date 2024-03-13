@@ -191,6 +191,7 @@ impl Uri {
         if uri_str.is_empty() {
             return Err(crate::Error::Uri("URI cannot be empty".to_string()));
         }
+        let uri_str = uri_str.replace('\\', "/");
         let (protocol, mut path) = match uri_str.split_once(PROTOCOL_SEPARATOR) {
             None => (Protocol::File, uri_str.to_string()),
             Some((protocol, path)) => (Protocol::from_str(protocol)?, path.to_string()),
