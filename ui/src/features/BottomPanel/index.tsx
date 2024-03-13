@@ -29,7 +29,7 @@ const BottomPanel: React.FC<BottomPanelProps> = () => {
 
   return (
     <CollapsiblePanel
-      className="bg-zinc-950 mr-1 mb-1 rounded-md"
+      className="bg-zinc-950 mb-1 rounded-md"
       direction="horizontal"
       isOpen={!!isPanelOpen}
       panelContents={panelContents}

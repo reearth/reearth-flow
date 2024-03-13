@@ -27,4 +27,4 @@ const CustomConnectionLine: ConnectionLineComponent = ({
   );
 };
 
-export default CustomConnectionLine;
+export { CustomConnectionLine };

@@ -34,7 +34,7 @@ const LeftPanel: React.FC<Props> = () => {
     <CollapsiblePanel
       className="bg-zinc-800 ml-1 mb-1 mr-1 rounded-md"
       isOpen={!!isPanelOpen}
-      togglePosition="end"
+      togglePosition="end-right"
       panelContents={panelContents}
       onPanelToggle={handlePanelToggle}
     />

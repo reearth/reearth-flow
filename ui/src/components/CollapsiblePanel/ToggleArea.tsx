@@ -7,7 +7,7 @@ import {
 
 import { Button } from "..";
 
-export type ArrowPosition = "center" | "end";
+export type ArrowPosition = "start" | "center" | "end";
 export type ArrowDirection = "left" | "right" | "up" | "down";
 
 export type ToggleProps = {
@@ -26,10 +26,10 @@ const ToggleArea: React.FC<ToggleProps> = ({
   onClick,
 }) => (
   <div
-    className={`flex ${arrowPosition === "end" ? "justify-end" : "justify-center"} w-fill cursor-pointer ${className}`}
+    className={`flex ${arrowPosition === "end" ? "justify-end" : arrowPosition === "start" ? "justify-start" : "justify-center"} w-fill cursor-pointer ${className}`}
     onClick={onClick}>
     <Button
-      className={`hover:bg-zinc-800 hover:text-white ${buttonClassName}`}
+      className={`hover:bg-white hover:bg-opacity-10 hover:text-white ${buttonClassName}`}
       variant="ghost"
       size="icon">
       {arrowDirection === "right" ? (

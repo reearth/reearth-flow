@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useMemo } from "react";
 
 import { ToggleArea } from "./ToggleArea";
 
@@ -8,7 +8,7 @@ export type Props = {
   direction?: "horizontal" | "vertical";
   minHeight?: string; // tailwindcss height class
   maxHeight?: string; // tailwindcss height class
-  togglePosition?: "start" | "end";
+  togglePosition?: "start-left" | "start-right" | "end-left" | "end-right";
   panelContents?: PanelContent[];
   onPanelToggle?: (open: boolean) => void;
 };
@@ -28,31 +28,55 @@ const CollapsiblePanel: React.FC<Props> = ({
   direction = "vertical",
   minHeight,
   maxHeight,
-  togglePosition = "start",
+  togglePosition = "start-right",
   panelContents,
   onPanelToggle,
 }) => {
-  const arrowPosition = isOpen ? "end" : "center";
+  const arrowPosition = useMemo(
+    () => (isOpen ? (togglePosition.includes("left") ? "start" : "end") : "center"),
+    [isOpen, togglePosition],
+  );
 
-  const arrowDirection =
-    direction === "horizontal" ? (isOpen ? "down" : "up") : isOpen ? "left" : "right";
+  const arrowDirection = useMemo(
+    () =>
+      direction === "horizontal"
+        ? togglePosition.includes("right")
+          ? isOpen
+            ? "down"
+            : "up"
+          : isOpen
+            ? "up"
+            : "down"
+        : togglePosition.includes("left")
+          ? isOpen
+            ? "right"
+            : "left"
+          : isOpen
+            ? "left"
+            : "right",
+    [isOpen, direction, togglePosition],
+  );
 
-  const classes = [
-    baseClasses,
-    direction === "vertical" ? "flex-col" : undefined,
-    direction === "horizontal"
-      ? isOpen
-        ? maxHeight ?? "h-64"
-        : minHeight ?? "h-[36px]"
-      : isOpen
-        ? maxHeight ?? "w-64"
-        : minHeight ?? "w-[41px]",
-    className,
-  ].reduce((acc, cur) => (cur ? `${acc} ${cur}` : acc));
+  const classes = useMemo(
+    () =>
+      [
+        baseClasses,
+        direction === "vertical" ? "flex-col" : undefined,
+        direction === "horizontal"
+          ? isOpen
+            ? maxHeight ?? "h-64"
+            : minHeight ?? "h-[36px]"
+          : isOpen
+            ? maxHeight ?? "w-64"
+            : minHeight ?? "w-[41px]",
+        className,
+      ].reduce((acc, cur) => (cur ? `${acc} ${cur}` : acc)),
+    [className, direction, isOpen, maxHeight, minHeight],
+  );
 
   return (
     <div className={classes}>
-      {togglePosition === "start" && (
+      {togglePosition.includes("start") && (
         <ToggleArea
           arrowDirection={arrowDirection}
           arrowPosition={arrowPosition}
@@ -76,7 +100,7 @@ const CollapsiblePanel: React.FC<Props> = ({
           );
         })}
       </div>
-      {togglePosition === "end" && (
+      {togglePosition.includes("end") && (
         <ToggleArea
           arrowDirection={arrowDirection}
           arrowPosition={arrowPosition}

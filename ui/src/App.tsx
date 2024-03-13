@@ -4,6 +4,7 @@ import BottomPanel from "@flow/features/BottomPanel";
 import Canvas from "@flow/features/Canvas";
 import LeftPanel from "@flow/features/LeftPanel";
 import Menubar from "@flow/features/Menubar";
+import RightPanel from "@flow/features/RightPanel";
 import { useTimeoutOnLoad } from "@flow/hooks";
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
             <Canvas />
             <BottomPanel />
           </div>
+          <RightPanel />
         </div>
       </div>
       <Loading show={isLoading} />
