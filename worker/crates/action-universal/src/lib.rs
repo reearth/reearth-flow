@@ -8,6 +8,7 @@ mod dataframe_transformer;
 mod dataframe_union;
 mod entity_filter;
 mod entity_transformer;
+mod file_path_extractor;
 mod file_reader;
 mod file_writer;
 pub mod prelude;
