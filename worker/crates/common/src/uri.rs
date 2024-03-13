@@ -150,6 +150,13 @@ impl Uri {
         self.uri.ends_with('/')
     }
 
+    pub fn dir(&self) -> Option<Uri> {
+        if !self.is_dir() {
+            return self.parent();
+        }
+        Some(self.clone())
+    }
+
     pub fn join<P: AsRef<Path> + std::fmt::Debug>(&self, path: P) -> crate::Result<Self> {
         if path.as_ref().is_absolute() {
             return Err(crate::Error::Uri(format!(
@@ -184,6 +191,7 @@ impl Uri {
         if uri_str.is_empty() {
             return Err(crate::Error::Uri("URI cannot be empty".to_string()));
         }
+        let uri_str = uri_str.replace('\\', "/");
         let (protocol, mut path) = match uri_str.split_once(PROTOCOL_SEPARATOR) {
             None => (Protocol::File, uri_str.to_string()),
             Some((protocol, path)) => (Protocol::from_str(protocol)?, path.to_string()),
@@ -250,6 +258,15 @@ impl FromStr for Uri {
 
     fn from_str(uri_str: &str) -> crate::Result<Self> {
         Uri::parse_str(uri_str)
+    }
+}
+
+impl TryFrom<PathBuf> for Uri {
+    type Error = crate::Error;
+
+    fn try_from(path: PathBuf) -> crate::Result<Self> {
+        let path = path.to_string_lossy().to_string();
+        Uri::parse_str(&path)
     }
 }
 
@@ -448,6 +465,10 @@ mod tests {
         assert_eq!(
             Uri::for_test("file:///foo/bar").parent().unwrap(),
             "file:///foo"
+        );
+        assert_eq!(
+            Uri::for_test("file:///foo/bar/hoge.txt").parent().unwrap(),
+            "file:///foo/bar"
         );
         assert!(Uri::for_test("ram:///").parent().is_none());
         assert_eq!(Uri::for_test("ram:///foo").parent().unwrap(), "ram:///");

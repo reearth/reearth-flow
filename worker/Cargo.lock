@@ -2001,7 +2001,9 @@ name = "reearth-flow-action"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "async_zip",
  "bytes",
+ "directories",
  "futures",
  "reearth-flow-action-log",
  "reearth-flow-common",
@@ -2038,6 +2040,39 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "reearth-flow-action-plateau"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "async_zip",
+ "bytes",
+ "csv",
+ "directories",
+ "futures",
+ "reearth-flow-action",
+ "reearth-flow-action-log",
+ "reearth-flow-common",
+ "reearth-flow-eval-expr",
+ "reearth-flow-storage",
+ "reearth-flow-workflow",
+ "regex",
+ "rhai",
+ "rstest",
+ "serde",
+ "serde_json",
+ "strum",
+ "strum_macros",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "tracing-subscriber",
+ "typetag",
  "uuid",
 ]
 
@@ -2102,7 +2137,9 @@ dependencies = [
 name = "reearth-flow-common"
 version = "0.1.0"
 dependencies = [
+ "async-recursion",
  "base64 0.22.0",
+ "bytes",
  "colorsys",
  "futures",
  "home",
@@ -2223,6 +2260,7 @@ dependencies = [
  "pretty_assertions",
  "reearth-flow-action",
  "reearth-flow-action-log",
+ "reearth-flow-action-plateau",
  "reearth-flow-action-universal",
  "reearth-flow-common",
  "reearth-flow-eval-expr",

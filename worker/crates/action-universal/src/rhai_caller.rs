@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -18,7 +18,7 @@ pub struct RhaiCaller {
 #[serde(rename_all = "camelCase")]
 struct Caller {
     script: String,
-    output_port: String,
+    output_port: Port,
 }
 
 #[async_trait::async_trait]

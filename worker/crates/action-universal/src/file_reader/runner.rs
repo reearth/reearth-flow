@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use reearth_flow_common::uri::Uri;
@@ -10,9 +9,8 @@ use reearth_flow_common::csv::Delimiter;
 
 use super::{csv, text};
 use reearth_flow_action::error::Error;
-use reearth_flow_action::utils::inject_variables_to_scope;
 use reearth_flow_action::{
-    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Result, DEFAULT_PORT,
+    utils, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Result, DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -106,10 +104,5 @@ async fn get_input_path(
     common_property: &CommonPropertySchema,
     expr_engine: Arc<Engine>,
 ) -> Result<Uri> {
-    let scope = expr_engine.new_scope();
-    inject_variables_to_scope(inputs, &scope)?;
-    let path = expr_engine
-        .eval_scope::<String>(&common_property.dataset, &scope)
-        .map_err(Error::input)?;
-    Uri::from_str(path.as_str()).map_err(Error::input)
+    utils::get_expr_path(common_property.dataset.as_str(), inputs, expr_engine).await
 }

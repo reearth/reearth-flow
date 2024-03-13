@@ -211,6 +211,20 @@ impl Storage {
         Ok(stream.boxed())
     }
 
+    pub async fn list_with_result(
+        &self,
+        prefix: Option<&Path>,
+        recursive: bool,
+    ) -> Result<Vec<Uri>> {
+        let result = self.list(prefix, recursive).await?;
+        let result = result.collect::<Vec<_>>().await;
+        Ok(result
+            .iter()
+            .filter_map(|x| x.as_ref().ok())
+            .cloned()
+            .collect::<Vec<_>>())
+    }
+
     pub async fn copy(&self, from: &Path, to: &Path) -> Result<()> {
         let from = from.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
