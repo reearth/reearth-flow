@@ -91,7 +91,7 @@ impl DagExecutor {
         let workflow_name = self.workflow_name.clone();
         info!(parent: &self.root_span, "Start workflow = {:?}", workflow_name);
         let start = Instant::now();
-        let _ = self.run_dag(&self.entry_dag).await?;
+        let _res = self.run_dag(&self.entry_dag).await?;
         let duration = start.elapsed();
         info!(
             parent: &self.root_span,
