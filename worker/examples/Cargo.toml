@@ -30,5 +30,5 @@ tempfile.workspace = true
 tokio.workspace = true
 
 [[example]]
-name = "plateau-integration-tests"
-path = "plateau/integration_tests.rs"
+name = "plateau-runner"
+path = "plateau/runner.rs"
