@@ -1,5 +1,5 @@
 mod csv;
-mod runner;
+pub mod runner;
 mod text;
 
 pub use runner::FileReader;
