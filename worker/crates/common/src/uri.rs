@@ -131,7 +131,11 @@ impl Uri {
             .collect::<Vec<&str>>()
             .join("/")
             .to_string();
-        PathBuf::from(format!("/{}", sub_path))
+        if self.is_dir() {
+            PathBuf::from(format!("/{}/", sub_path))
+        } else {
+            PathBuf::from(format!("/{}", sub_path))
+        }
     }
 
     pub fn file_name(&self) -> Option<&Path> {
@@ -147,7 +151,7 @@ impl Uri {
     }
 
     pub fn is_dir(&self) -> bool {
-        self.uri.ends_with('/')
+        self.extension().is_none()
     }
 
     pub fn dir(&self) -> Option<Uri> {

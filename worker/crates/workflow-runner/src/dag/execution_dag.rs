@@ -65,9 +65,7 @@ impl DagExecutor {
             })
             .collect::<crate::Result<HashMap<_, _>>>()?;
         let engine = Engine::new();
-        workflow.with.iter().for_each(|(k, v)| {
-            engine.set_scope_var(k, v);
-        });
+        engine.append(&workflow.with);
         let root_span = info_span!(
             "root",
             "otel.name" = workflow.name.as_str(),

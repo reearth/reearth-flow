@@ -9,5 +9,5 @@ pub fn project_output_dir(node_id: &str) -> crate::Result<String> {
         .data_dir()
         .to_str()
         .ok_or(Error::input("Invalid output path uri"))?;
-    Ok(format!("{}/output/{}", p, node_id))
+    Ok(format!("{}/output/{}/", p, node_id))
 }
