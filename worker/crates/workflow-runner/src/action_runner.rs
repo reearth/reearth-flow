@@ -9,8 +9,6 @@ use reearth_flow_action::{Action, ActionContext, ActionDataframe};
 use reearth_flow_action_log::action_log;
 use reearth_flow_action_log::span;
 #[allow(unused_imports)]
-use reearth_flow_action_plateau::prelude::*;
-#[allow(unused_imports)]
 use reearth_flow_action_universal::prelude::*;
 
 pub(crate) struct ActionRunner;

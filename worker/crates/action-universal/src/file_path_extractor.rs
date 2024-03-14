@@ -1,10 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
     error::{self, Error},
-    utils, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
+    types, utils, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
 };
 use reearth_flow_common::uri::Uri;
 
@@ -49,10 +49,10 @@ impl Action for FilePathExtractor {
                 .entries
                 .into_iter()
                 .map(|entry| {
-                    ActionValue::Map(HashMap::from([(
-                        "path".to_string(),
-                        ActionValue::try_from(entry).unwrap_or_default(),
-                    )]))
+                    ActionValue::try_from(
+                        types::file::FilePath::try_from(entry).unwrap_or_default(),
+                    )
+                    .unwrap_or_default()
                 })
                 .collect::<Vec<ActionValue>>();
 
@@ -73,10 +73,10 @@ impl Action for FilePathExtractor {
             let values = entries
                 .into_iter()
                 .map(|entry| {
-                    ActionValue::Map(HashMap::from([(
-                        "path".to_string(),
-                        ActionValue::try_from(entry).unwrap_or_default(),
-                    )]))
+                    ActionValue::try_from(
+                        types::file::FilePath::try_from(entry).unwrap_or_default(),
+                    )
+                    .unwrap_or_default()
                 })
                 .collect::<Vec<ActionValue>>();
             Ok(ActionDataframe::from([(

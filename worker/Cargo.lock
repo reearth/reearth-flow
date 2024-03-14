@@ -2044,39 +2044,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "reearth-flow-action-plateau"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "async_zip",
- "bytes",
- "csv",
- "directories",
- "futures",
- "reearth-flow-action",
- "reearth-flow-action-log",
- "reearth-flow-common",
- "reearth-flow-eval-expr",
- "reearth-flow-storage",
- "reearth-flow-workflow",
- "regex",
- "rhai",
- "rstest",
- "serde",
- "serde_json",
- "strum",
- "strum_macros",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tracing",
- "tracing-subscriber",
- "typetag",
- "uuid",
-]
-
-[[package]]
 name = "reearth-flow-action-universal"
 version = "0.1.0"
 dependencies = [
@@ -2086,6 +2053,7 @@ dependencies = [
  "csv",
  "directories",
  "futures",
+ "itertools 0.12.1",
  "reearth-flow-action",
  "reearth-flow-action-log",
  "reearth-flow-common",
@@ -2098,6 +2066,7 @@ dependencies = [
  "serde_json",
  "strum",
  "strum_macros",
+ "tempfile",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -2173,6 +2142,26 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "reearth-flow-examples"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "pretty_assertions",
+ "reearth-flow-action",
+ "reearth-flow-action-log",
+ "reearth-flow-action-universal",
+ "reearth-flow-common",
+ "reearth-flow-eval-expr",
+ "reearth-flow-state",
+ "reearth-flow-storage",
+ "reearth-flow-workflow",
+ "reearth-flow-workflow-runner",
+ "rust-embed",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -2260,7 +2249,6 @@ dependencies = [
  "pretty_assertions",
  "reearth-flow-action",
  "reearth-flow-action-log",
- "reearth-flow-action-plateau",
  "reearth-flow-action-universal",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
@@ -2490,6 +2478,40 @@ dependencies = [
  "rustc_version",
  "syn 2.0.52",
  "unicode-ident",
+]
+
+[[package]]
+name = "rust-embed"
+version = "8.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb78f46d0066053d16d4ca7b898e9343bc3530f71c61d5ad84cd404ada068745"
+dependencies = [
+ "rust-embed-impl",
+ "rust-embed-utils",
+ "walkdir",
+]
+
+[[package]]
+name = "rust-embed-impl"
+version = "8.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b91ac2a3c6c0520a3fb3dd89321177c3c692937c4eb21893378219da10c44fc8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "rust-embed-utils",
+ "syn 2.0.52",
+ "walkdir",
+]
+
+[[package]]
+name = "rust-embed-utils"
+version = "8.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86f69089032567ffff4eada41c573fc43ff466c7db7c5688b2e7969584345581"
+dependencies = [
+ "sha2",
+ "walkdir",
 ]
 
 [[package]]
@@ -3542,9 +3564,9 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "walkdir"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d71d857dc86794ca4c280d616f7da00d2dbfd8cd788846559a6813e6aa4b54ee"
+checksum = "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b"
 dependencies = [
  "same-file",
  "winapi-util",

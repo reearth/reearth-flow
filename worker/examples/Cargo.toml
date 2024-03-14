@@ -1,6 +1,6 @@
 [package]
-description = "Re:Earth Flow workflow runner"
-name = "reearth-flow-workflow-runner"
+description = "Re:Earth Flow examples"
+name = "reearth-flow-examples"
 
 authors.workspace = true
 edition.workspace = true
@@ -10,7 +10,9 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-[dependencies]
+publish = false
+
+[dev-dependencies]
 reearth-flow-action-log.workspace = true
 reearth-flow-action-universal.workspace = true
 reearth-flow-action.workspace = true
@@ -18,19 +20,15 @@ reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
+reearth-flow-workflow-runner.workspace = true
 reearth-flow-workflow.workspace = true
 
-async-recursion.workspace = true
-opentelemetry.workspace = true
-petgraph.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
-tokio.workspace = true
-tracing-subscriber.workspace = true
-tracing.workspace = true
-uuid.workspace = true
-
-[dev-dependencies]
 bytes.workspace = true
 pretty_assertions.workspace = true
+rust-embed = "8.3.0"
+tempfile.workspace = true
+tokio.workspace = true
+
+[[example]]
+name = "plateau-integration-tests"
+path = "plateau/integration_tests.rs"
