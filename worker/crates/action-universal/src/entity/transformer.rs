@@ -62,6 +62,7 @@ fn mapper(
             for (k, v) in row {
                 scope.set(k, v.clone().into());
             }
+            scope.set("__ALL", serde_json::to_value(row.clone()).unwrap());
             let new_value = scope.eval_ast::<Dynamic>(expr);
             if let Ok(new_value) = new_value {
                 if let Ok(ActionValue::Map(new_value)) = new_value.try_into() {

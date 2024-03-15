@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
@@ -26,6 +26,7 @@ pub struct UdxFolderExtractor {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct Response {
+    city_gml_path: String,
     root: String,
     package: String,
     admin: String,
@@ -126,6 +127,8 @@ async fn mapper(
         .split('/')
         .map(String::from)
         .collect::<Vec<String>>();
+    let city_gml_path =
+        Uri::from_str(city_gml_path.to_string().as_str()).map_err(error::Error::input)?;
     let (mut root, mut pkg, mut admin, mut area, mut dirs) = (
         String::new(),
         String::new(),
@@ -181,8 +184,8 @@ async fn mapper(
     } else {
         ("".to_string(), "".to_string(), "".to_string())
     };
-
     Ok(Response {
+        city_gml_path: city_gml_path.to_string(),
         root,
         package: pkg.clone(),
         admin,

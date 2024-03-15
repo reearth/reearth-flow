@@ -43,6 +43,14 @@ pub fn evaluate<T: AsRef<str>>(document: &XmlDocument, xpath: T) -> crate::Resul
         .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))
 }
 
+pub fn collect_text_values(xpath_value: &XmlXpathValue) -> Vec<String> {
+    xpath_value
+        .get_nodes_as_vec()
+        .iter()
+        .map(|node| node.get_content())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -59,9 +67,44 @@ mod tests {
 
     #[test]
     fn test_evaluate() {
-        let xml = r#"<root><element>Test</element></root>"#;
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+        <gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="Agreement_class">
+            <gml:name>Agreement_class</gml:name>
+            <gml:dictionaryEntry>
+                <gml:Definition gml:id="id1">
+                    <gml:description>building agreement</gml:description>
+                    <gml:name>1010</gml:name>
+                </gml:Definition>
+            </gml:dictionaryEntry>
+            <gml:dictionaryEntry>
+                <gml:Definition gml:id="id2">
+                    <gml:description>green space agreement</gml:description>
+                    <gml:name>1020</gml:name>
+                </gml:Definition>
+            </gml:dictionaryEntry>
+            <gml:dictionaryEntry>
+                <gml:Definition gml:id="id3">
+                    <gml:description>landscape agreement</gml:description>
+                    <gml:name>1030</gml:name>
+                </gml:Definition>
+            </gml:dictionaryEntry>
+            <gml:dictionaryEntry>
+                <gml:Definition gml:id="id4">
+                    <gml:description>development permit</gml:description>
+                    <gml:name>1040</gml:name>
+                </gml:Definition>
+            </gml:dictionaryEntry>
+        </gml:Dictionary>
+                "#;
         let document = parse(xml).unwrap();
-        let value = evaluate(&document, "//element/text()").unwrap();
-        assert_eq!(value.to_string(), "Test");
+        let value = evaluate(
+            &document,
+            "/gml:Dictionary/gml:dictionaryEntry/gml:Definition/gml:name/text()",
+        )
+        .unwrap();
+        assert_eq!(
+            collect_text_values(&value),
+            vec!["1010", "1020", "1030", "1040"]
+        );
     }
 }
