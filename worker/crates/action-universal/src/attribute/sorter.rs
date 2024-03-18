@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::HashMap, vec};
+use std::{cmp::Ordering, vec};
 
 use serde::{Deserialize, Serialize};
 
@@ -31,58 +31,53 @@ enum Order {
 #[typetag::serde(name = "AttributeSorter")]
 impl Action for AttributeSorter {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let output = match inputs {
-            Some(inputs) => {
-                let mut output = HashMap::new();
-                for (port, data) in inputs {
-                    let data = match data {
-                        Some(data) => data,
-                        None => continue,
-                    };
-                    let processed_data = match data {
-                        ActionValue::Array(mut data) => {
-                            data.sort_by(|a, b| match a {
-                                ActionValue::Map(item_a) => {
-                                    let cmp = match b {
-                                        ActionValue::Map(item_b) => self
-                                            .sort_by
-                                            .iter()
-                                            .map(|sort_by| {
-                                                let attribute = &sort_by.attribute;
-                                                let order = &sort_by.order;
-                                                let a = item_a.get(attribute);
-                                                let b = item_b.get(attribute);
-                                                match (a, b) {
-                                                    (Some(a), Some(b)) => {
-                                                        if *order == Order::Asc {
-                                                            a.partial_cmp(b)
-                                                        } else {
-                                                            b.partial_cmp(a)
-                                                        }
-                                                    }
-                                                    _ => None,
+        let inputs = inputs.ok_or(error::Error::input("No input dataframe"))?;
+        let mut output = ActionDataframe::new();
+        for (port, data) in inputs {
+            let data = match data {
+                Some(data) => data,
+                None => continue,
+            };
+            let processed_data = match data {
+                ActionValue::Array(mut data) => {
+                    data.sort_by(|a, b| match a {
+                        ActionValue::Map(item_a) => {
+                            let cmp = match b {
+                                ActionValue::Map(item_b) => self
+                                    .sort_by
+                                    .iter()
+                                    .map(|sort_by| {
+                                        let attribute = &sort_by.attribute;
+                                        let order = &sort_by.order;
+                                        let a = item_a.get(attribute);
+                                        let b = item_b.get(attribute);
+                                        match (a, b) {
+                                            (Some(a), Some(b)) => {
+                                                if *order == Order::Asc {
+                                                    a.partial_cmp(b)
+                                                } else {
+                                                    b.partial_cmp(a)
                                                 }
-                                            })
-                                            .collect::<Vec<_>>(),
-                                        _ => vec![Some(Ordering::Equal)],
-                                    };
-                                    cmp.iter().fold(Ordering::Equal, |acc, item| match acc {
-                                        Ordering::Equal if item.is_some() => item.unwrap(),
-                                        _ => acc,
+                                            }
+                                            _ => None,
+                                        }
                                     })
-                                }
-                                _ => Ordering::Equal,
-                            });
-                            ActionValue::Array(data)
+                                    .collect::<Vec<_>>(),
+                                _ => vec![Some(Ordering::Equal)],
+                            };
+                            cmp.iter().fold(Ordering::Equal, |acc, item| match acc {
+                                Ordering::Equal if item.is_some() => item.unwrap(),
+                                _ => acc,
+                            })
                         }
-                        _ => data,
-                    };
-                    output.insert(port, Some(processed_data));
+                        _ => Ordering::Equal,
+                    });
+                    ActionValue::Array(data)
                 }
-                output
-            }
-            None => return Err(error::Error::input("No input dataframe")),
-        };
+                _ => data,
+            };
+            output.insert(port, Some(processed_data));
+        }
         Ok(output)
     }
 }
@@ -91,6 +86,7 @@ impl Action for AttributeSorter {
 mod tests {
     use super::*;
     use rstest::*;
+    use std::collections::HashMap;
 
     #[fixture]
     async fn inputs() -> Vec<ActionValue> {

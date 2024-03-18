@@ -2054,6 +2054,7 @@ dependencies = [
  "directories",
  "futures",
  "itertools 0.12.1",
+ "once_cell",
  "reearth-flow-action",
  "reearth-flow-action-log",
  "reearth-flow-common",

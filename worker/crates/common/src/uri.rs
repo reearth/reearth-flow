@@ -154,6 +154,10 @@ impl Uri {
         self.extension().is_none()
     }
 
+    pub fn is_file(&self) -> bool {
+        !self.is_dir()
+    }
+
     pub fn dir(&self) -> Option<Uri> {
         if !self.is_dir() {
             return self.parent();
