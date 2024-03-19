@@ -2061,6 +2061,7 @@ dependencies = [
  "reearth-flow-eval-expr",
  "reearth-flow-storage",
  "reearth-flow-workflow",
+ "regex",
  "rhai",
  "rstest",
  "serde",

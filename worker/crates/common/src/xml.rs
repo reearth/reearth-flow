@@ -4,6 +4,9 @@ use libxml::xpath::Context;
 
 pub type XmlDocument = document::Document;
 pub type XmlXpathValue = libxml::xpath::Object;
+pub type XmlContext = libxml::xpath::Context;
+pub type XmlNode = libxml::tree::Node;
+pub type XmlNamespace = libxml::tree::Namespace;
 
 pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
     let parser = Parser::default();
@@ -28,6 +31,13 @@ pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
 }
 
 pub fn evaluate<T: AsRef<str>>(document: &XmlDocument, xpath: T) -> crate::Result<XmlXpathValue> {
+    let context = create_context(document)?;
+    context
+        .evaluate(xpath.as_ref())
+        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))
+}
+
+pub fn create_context(document: &XmlDocument) -> crate::Result<XmlContext> {
     let context = Context::new(document)
         .map_err(|_| crate::Error::Xml("Failed to initialize xpath context".to_string()))?;
     let root = document
@@ -38,9 +48,7 @@ pub fn evaluate<T: AsRef<str>>(document: &XmlDocument, xpath: T) -> crate::Resul
             .register_namespace(ns.get_prefix().as_str(), ns.get_href().as_str())
             .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
     }
-    context
-        .evaluate(xpath.as_ref())
-        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))
+    Ok(context)
 }
 
 pub fn collect_text_values(xpath_value: &XmlXpathValue) -> Vec<String> {
@@ -49,6 +57,38 @@ pub fn collect_text_values(xpath_value: &XmlXpathValue) -> Vec<String> {
         .iter()
         .map(|node| node.get_content())
         .collect()
+}
+
+pub fn collect_text_value(xpath_value: &XmlXpathValue) -> String {
+    let v = collect_text_values(xpath_value);
+    if v.is_empty() {
+        "".to_string()
+    } else {
+        v[0].to_string()
+    }
+}
+
+pub fn get_node_tag(node: &XmlNode) -> crate::Result<String> {
+    let ns = node
+        .get_namespace()
+        .ok_or(crate::Error::Xml("No namespace".to_string()))?;
+    Ok(format!("{}:{}", ns.get_prefix(), node.get_name()).to_string())
+}
+
+pub fn node_to_xml_string(document: &XmlDocument, node: &mut XmlNode) -> crate::Result<String> {
+    let root = document
+        .get_root_element()
+        .ok_or(crate::Error::Xml("No root element".to_string()))?;
+    for ns in root.get_namespace_declarations().iter() {
+        node.set_attribute(
+            format!("xmlns:{}", ns.get_prefix()).as_str(),
+            ns.get_href().as_str(),
+        )
+        .map_err(|_| crate::Error::Xml("Failed to set namespace".to_string()))?;
+    }
+    let doc =
+        parse(document.node_to_string(node)).map_err(|e| crate::Error::Xml(format!("{}", e)))?;
+    Ok(doc.to_string())
 }
 
 #[cfg(test)]
@@ -68,7 +108,7 @@ mod tests {
     #[test]
     fn test_evaluate() {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
-        <gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="Agreement_class">
+        <gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" gml:id="Agreement_class">
             <gml:name>Agreement_class</gml:name>
             <gml:dictionaryEntry>
                 <gml:Definition gml:id="id1">
@@ -106,5 +146,16 @@ mod tests {
             collect_text_values(&value),
             vec!["1010", "1020", "1030", "1040"]
         );
+
+        let document = parse(xml).unwrap();
+        let value = evaluate(&document, "/gml:Dictionary").unwrap();
+        let values = value.get_nodes_as_vec();
+        let root = values.first().unwrap();
+        let ctx = create_context(&document).unwrap();
+        let result = ctx.node_evaluate("./gml:dictionaryEntry/gml:Definition", root).unwrap();
+        let result = result.get_nodes_as_vec();
+        let node = result.first().unwrap();
+        let hoge = node.get_attribute_node("id").unwrap();
+        assert_eq!(hoge.get_content(), "id1");
     }
 }

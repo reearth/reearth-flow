@@ -10,85 +10,11 @@ use reearth_flow_action::{
     error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Result, DEFAULT_PORT,
 };
 
-static ADMIN_CODE_LIST: &str = "Common_localPublicAuthorities.xml";
+use super::types::SchemaFeature;
+use super::types::Settings;
+use super::types::DICTIONARIES_INITIATOR_SETTINGS_PORT;
 
-static XMLNS: Lazy<HashMap<&'static str, String>> = Lazy::new(|| {
-    HashMap::from([
-        (
-            "app",
-            "http://www.opengis.net/citygml/appearance/2.0".to_string(),
-        ),
-        (
-            "bldg",
-            "http://www.opengis.net/citygml/building/2.0".to_string(),
-        ),
-        (
-            "brid",
-            "http://www.opengis.net/citygml/bridge/2.0".to_string(),
-        ),
-        ("core", "http://www.opengis.net/citygml/2.0".to_string()),
-        (
-            "dem",
-            "http://www.opengis.net/citygml/relief/2.0".to_string(),
-        ),
-        (
-            "frn",
-            "http://www.opengis.net/citygml/cityfurniture/2.0".to_string(),
-        ),
-        (
-            "gen",
-            "http://www.opengis.net/citygml/generics/2.0".to_string(),
-        ),
-        ("gml", "http://www.opengis.net/gml".to_string()),
-        (
-            "grp",
-            "http://www.opengis.net/citygml/cityobjectgroup/2.0".to_string(),
-        ),
-        (
-            "luse",
-            "http://www.opengis.net/citygml/landuse/2.0".to_string(),
-        ),
-        (
-            "pbase",
-            "http://www.opengis.net/citygml/profiles/base/2.0".to_string(),
-        ),
-        ("sch", "http://www.ascc.net/xml/schematron".to_string()),
-        ("smil20", "http://www.w3.org/2001/SMIL20/".to_string()),
-        (
-            "smil20lang",
-            "http://www.w3.org/2001/SMIL20/Language".to_string(),
-        ),
-        (
-            "tex",
-            "http://www.opengis.net/citygml/texturedsurface/2.0".to_string(),
-        ),
-        (
-            "tran",
-            "http://www.opengis.net/citygml/transportation/2.0".to_string(),
-        ),
-        (
-            "tun",
-            "http://www.opengis.net/citygml/tunnel/2.0".to_string(),
-        ),
-        (
-            "veg",
-            "http://www.opengis.net/citygml/vegetation/2.0".to_string(),
-        ),
-        (
-            "wtr",
-            "http://www.opengis.net/citygml/waterbody/2.0".to_string(),
-        ),
-        (
-            "xAL",
-            "urn:oasis:names:tc:ciq:xsdschema:xAL:2.0".to_string(),
-        ),
-        ("xlink", "http://www.w3.org/1999/xlink".to_string()),
-        (
-            "xsi",
-            "http://www.w3.org/2001/XMLSchema-instance".to_string(),
-        ),
-    ])
-});
+static ADMIN_CODE_LIST: &str = "Common_localPublicAuthorities";
 
 static COMMON_ITEMS: Lazy<Vec<SchemaFeature>> = Lazy::new(|| {
     vec![
@@ -162,17 +88,6 @@ struct Schema {
     complex_types: HashMap<String, Vec<SchemaFeature>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-struct SchemaFeature {
-    name: String,
-    r#type: String,
-    min_occurs: String,
-    max_occurs: String,
-    flag: Option<String>,
-    children: Option<Vec<String>>,
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct Response {
@@ -207,10 +122,10 @@ impl Action for DictionariesInitiator {
             .get(DEFAULT_PORT)
             .ok_or(error::Error::input("No Default Port"))?;
         let data = input.as_ref().ok_or(error::Error::input("No Value"))?;
+        let mut res = ActionDataframe::new();
         let data = match data {
             ActionValue::Array(data) => {
                 let first = data.first().ok_or(error::Error::input("No Value"))?;
-
                 // XPath-Property Dictionary Creation
                 let xpath_to_properties = if let ActionValue::Map(row) = first {
                     match (
@@ -250,39 +165,14 @@ impl Action for DictionariesInitiator {
                     return Err(error::Error::input("Invalid Input. supported only Map"));
                 };
 
-                let mut codelists_map: HashMap<String, HashMap<String, String>> = HashMap::new();
+                let mut codelists_map: HashMap<String, HashMap<String, HashMap<String, String>>> =
+                    HashMap::new();
                 let mut result = Vec::<ActionValue>::new();
                 for row in data {
                     let feature = match row {
                         ActionValue::Map(row) => row,
                         _ => return Err(error::Error::input("Invalid Input. supported only Map")),
                     };
-                    let spec_version = match feature.get("spec_version") {
-                        Some(ActionValue::Number(spec_version)) => spec_version,
-                        _ => {
-                            return Err(error::Error::validate(
-                                "Unexpected version of PLATEAU Standard Specifications",
-                            ))
-                        }
-                    };
-                    let version = match spec_version.as_u64() {
-                        Some(2) => "2.0",
-                        Some(3) => "3.0",
-                        _ => {
-                            return Err(error::Error::validate(
-                                "Unexpected version of PLATEAU Standard Specifications",
-                            ))
-                        }
-                    };
-                    let mut xmlns = XMLNS.clone();
-                    xmlns.insert(
-                        "uro",
-                        format!("https://www.geospatial.jp/iur/uro/{}", version),
-                    );
-                    xmlns.insert(
-                        "urf",
-                        format!("https://www.geospatial.jp/iur/urf/{}", version),
-                    );
                     // Codelist dictionary creation
                     let dir_codelists = match feature.get("dirCodelists") {
                         Some(ActionValue::String(dir)) => dir,
@@ -303,13 +193,15 @@ impl Action for DictionariesInitiator {
                     }
                     let mut result_value = feature.clone();
                     // Municipality name acquisition
-                    if let Some(name) = codelists_map.get(dir_codelists) {
+                    if let Some(file) = codelists_map.get(dir_codelists) {
                         if let Some(ActionValue::String(city_code)) = feature.get("cityCode") {
-                            if let Some(city_name) = name.get(city_code) {
-                                result_value.insert(
-                                    "cityName".to_string(),
-                                    ActionValue::String(city_name.clone()),
-                                );
+                            if let Some(name) = file.get(ADMIN_CODE_LIST) {
+                                if let Some(city_name) = name.get(city_code) {
+                                    result_value.insert(
+                                        "cityName".to_string(),
+                                        ActionValue::String(city_name.clone()),
+                                    );
+                                }
                             }
                         }
                     }
@@ -357,21 +249,37 @@ impl Action for DictionariesInitiator {
                     result_value.insert("featureTypes".to_string(), ActionValue::Array(out_ftypes));
                     result.push(ActionValue::Map(result_value));
                 }
+                let settings = Settings::new(
+                    xpath_to_properties,
+                    except_feature_types,
+                    codelists_map.iter().fold(
+                        HashMap::<String, HashMap<String, String>>::new(),
+                        |mut acc, (_k, v)| {
+                            acc.extend(v.clone());
+                            acc
+                        },
+                    ),
+                );
+                let settings = serde_json::to_value(settings).map_err(|e| {
+                    error::Error::output(format!("Cannot convert to json with error = {:?}", e))
+                })?;
+                res.insert(
+                    DICTIONARIES_INITIATOR_SETTINGS_PORT.to_string(),
+                    Some(settings.into()),
+                );
                 result
             }
             _ => return Err(error::Error::input("Invalid Input. supported only Array")),
         };
-        Ok(ActionDataframe::from([(
-            DEFAULT_PORT.to_string(),
-            Some(ActionValue::Array(data)),
-        )]))
+        res.insert(DEFAULT_PORT.to_string(), Some(ActionValue::Array(data)));
+        Ok(res)
     }
 }
 
 async fn create_codelist_map(
     storage_resolver: Arc<StorageResolver>,
     dir: &Uri,
-) -> Result<HashMap<String, String>> {
+) -> Result<HashMap<String, HashMap<String, String>>> {
     let storage = storage_resolver
         .resolve(dir)
         .map_err(error::Error::internal_runtime)?;
@@ -380,12 +288,13 @@ async fn create_codelist_map(
         .await
         .map_err(error::Error::internal_runtime)?
     {
+        let mut codelist_map: HashMap<String, HashMap<String, String>> = HashMap::new();
         for f in storage
             .list_with_result(Some(dir.path().as_path()), true)
             .await
             .map_err(error::Error::internal_runtime)?
         {
-            if f.is_file() && f.file_name().unwrap().to_str().unwrap() == ADMIN_CODE_LIST {
+            if f.is_file() {
                 if let Some(extension) = f.extension() {
                     if extension == "xml" {
                         let result = storage
@@ -409,7 +318,10 @@ async fn create_codelist_map(
                             .into_iter()
                             .zip(xml::collect_text_values(&descriptions))
                             .collect::<HashMap<_, _>>();
-                        return Ok(codelist);
+                        codelist_map.insert(
+                            f.file_name().unwrap().to_str().unwrap().to_string(),
+                            codelist,
+                        );
                     }
                 }
             }
