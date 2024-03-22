@@ -120,7 +120,6 @@ async fn mapper(
         _ => return Err(error::Error::input("Invalid input")),
     };
     let folders = city_gml_path
-        .to_string()
         .split('/')
         .map(String::from)
         .collect::<Vec<String>>();
