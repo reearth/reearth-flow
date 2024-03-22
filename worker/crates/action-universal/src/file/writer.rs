@@ -49,7 +49,7 @@ impl Action for FileWriter {
         )]
         .into_iter()
         .collect::<HashMap<_, _>>();
-        output.insert(DEFAULT_PORT.to_string(), Some(ActionValue::Map(summary)));
+        output.insert(DEFAULT_PORT.clone(), Some(ActionValue::Map(summary)));
         Ok(output)
     }
 }
@@ -152,7 +152,7 @@ async fn write_csv(
 fn get_input_value(dataframe: Option<ActionDataframe>) -> Result<ActionValue> {
     dataframe
         .ok_or(Error::internal_runtime("No input"))?
-        .get(DEFAULT_PORT)
+        .get(&DEFAULT_PORT)
         .ok_or(Error::internal_runtime("No input"))?
         .clone()
         .ok_or(Error::internal_runtime("No input"))
@@ -186,7 +186,7 @@ mod tests {
     async fn test_write_text() {
         let inputs = Some(
             vec![(
-                DEFAULT_PORT.to_string(),
+                DEFAULT_PORT.clone(),
                 Some(ActionValue::String("value".to_owned())),
             )]
             .into_iter()
@@ -205,7 +205,7 @@ mod tests {
     async fn test_write_csv() {
         let inputs = Some(
             vec![(
-                DEFAULT_PORT.to_string(),
+                DEFAULT_PORT.clone(),
                 Some(ActionValue::Array(vec![
                     ActionValue::Map(
                         vec![(

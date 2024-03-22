@@ -102,12 +102,12 @@ mod tests {
         let mut input_dataframe = ActionDataframe::new();
         let mut input_data = HashMap::new();
         input_data.insert(
-            "port1".to_string(),
+            Port::new("port1"),
             Some(ActionValue::Array(vec![ActionValue::Map(HashMap::new())])),
         );
 
         input_dataframe.insert(
-            "port1".to_string(),
+            Port::new("port1"),
             Some(ActionValue::Array(vec![ActionValue::Map(HashMap::new())])),
         );
 
@@ -118,7 +118,7 @@ mod tests {
         let entity_transformer = EntityTransformer {
             transforms: vec![Transform {
                 expr: "expr1".to_string(),
-                target_port: "port1".to_string(),
+                target_port: Port::new("port1"),
             }],
         };
 
@@ -131,8 +131,8 @@ mod tests {
         assert!(result.is_ok());
         let output_dataframe = result.unwrap();
         assert_eq!(output_dataframe.len(), 1);
-        assert!(output_dataframe.contains_key("port1"));
-        let output_data = output_dataframe.get("port1").unwrap();
+        assert!(output_dataframe.contains_key(&Port::new("port1")));
+        let output_data = output_dataframe.get(&Port::new("port1")).unwrap();
         assert!(output_data.is_some());
         let output_data = output_data.clone().unwrap();
         assert_eq!(

@@ -7,6 +7,8 @@ use std::fmt::Display;
 use std::{collections::HashMap, sync::Arc};
 
 use bytes::Bytes;
+use nutype::nutype;
+use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use rhai::serde::from_dynamic;
 use serde::{Deserialize, Serialize};
@@ -20,13 +22,30 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
 
-pub type Port = String;
-pub const DEFAULT_PORT: &str = "default";
-pub const REJECTED_PORT: &str = "rejected";
+pub static DEFAULT_PORT: Lazy<Port> = Lazy::new(|| Port::new("default"));
+pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
+
 pub type ActionDataframe = HashMap<Port, Option<ActionValue>>;
 pub type ActionValueIndex = HashMap<String, HashMap<String, Vec<ActionValue>>>;
 pub type ActionResult = std::result::Result<ActionDataframe, error::Error>;
 pub type Result<T, E = error::Error> = std::result::Result<T, E>;
+
+#[nutype(
+    sanitize(trim),
+    derive(
+        Debug,
+        Clone,
+        Eq,
+        PartialEq,
+        PartialOrd,
+        Ord,
+        AsRef,
+        Serialize,
+        Deserialize,
+        Hash
+    )
+)]
+pub struct Port(String);
 
 #[async_trait::async_trait]
 #[typetag::serde(tag = "action", content = "with")]

@@ -85,6 +85,7 @@ impl Action for AttributeSorter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reearth_flow_action::DEFAULT_PORT;
     use rstest::*;
     use std::collections::HashMap;
 
@@ -178,11 +179,11 @@ mod tests {
         #[future(awt)] expected: Vec<Vec<ActionValue>>,
     ) {
         let sorter = AttributeSorter { sort_by: arg };
-        let inputs = vec![("default".to_string(), Some(ActionValue::Array(inputs)))]
+        let inputs = vec![(DEFAULT_PORT.clone(), Some(ActionValue::Array(inputs)))]
             .into_iter()
             .collect::<HashMap<_, _>>();
         let expected_output = vec![(
-            "default".to_string(),
+            DEFAULT_PORT.clone(),
             Some(ActionValue::Array(expected[case].clone())),
         )]
         .into_iter()

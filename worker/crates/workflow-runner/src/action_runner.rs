@@ -82,7 +82,7 @@ fn convert_dataframe(dataframe: &ActionDataframe) -> HashMap<String, serde_json:
         .filter_map(|(k, v)| match v {
             Some(v) => {
                 let value: serde_json::Value = v.clone().into();
-                Some((k.clone(), value))
+                Some((k.clone().into_inner(), value))
             }
             None => None,
         })

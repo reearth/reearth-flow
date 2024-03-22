@@ -128,8 +128,8 @@ impl Dag {
             let from_node_index = dag.node_index(from)?;
             let to_node_index = dag.node_index(to)?;
             dag.connect(
-                &Endpoint::new(from_node_index, edge.from_port.to_owned()),
-                &Endpoint::new(to_node_index, edge.to_port.to_owned()),
+                &Endpoint::new(from_node_index, Port::new(edge.from_port.clone())),
+                &Endpoint::new(to_node_index, Port::new(edge.to_port.clone())),
             )?;
         }
         info!("Created dag = {:?}", dag.id);

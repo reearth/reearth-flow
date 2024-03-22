@@ -173,10 +173,13 @@ impl Uri {
             )));
         }
         let joined = match self.protocol() {
-            Protocol::File => Path::new(&self.uri)
-                .join(path)
-                .to_string_lossy()
-                .to_string(),
+            Protocol::File => {
+                let p = Path::new(&self.uri)
+                    .join(path)
+                    .to_string_lossy()
+                    .to_string();
+                Self::parse_str(p.as_str())?.into_string()
+            }
             _ => format!(
                 "{}{}{}",
                 self.uri,
@@ -453,6 +456,10 @@ mod tests {
         );
         assert_eq!(
             Uri::for_test("file:///foo/").join("bar").unwrap(),
+            "file:///foo/bar"
+        );
+        assert_eq!(
+            Uri::for_test("file:///foo/hoge/").join("../bar").unwrap(),
             "file:///foo/bar"
         );
         assert_eq!(

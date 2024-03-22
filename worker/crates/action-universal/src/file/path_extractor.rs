@@ -57,7 +57,7 @@ impl Action for FilePathExtractor {
                 .collect::<Vec<ActionValue>>();
 
             Ok(ActionDataframe::from([(
-                DEFAULT_PORT.to_string(),
+                DEFAULT_PORT.clone(),
                 Some(ActionValue::Array(values)),
             )]))
         } else {
@@ -80,7 +80,7 @@ impl Action for FilePathExtractor {
                 })
                 .collect::<Vec<ActionValue>>();
             Ok(ActionDataframe::from([(
-                DEFAULT_PORT.to_string(),
+                DEFAULT_PORT.clone(),
                 Some(ActionValue::Array(values)),
             )]))
         }

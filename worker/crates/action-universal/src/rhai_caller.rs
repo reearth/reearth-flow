@@ -73,7 +73,7 @@ mod tests {
                     add(1, 2)
                     "#
                     .to_owned(),
-                    output_port: "output1".to_owned(),
+                    output_port: Port::new("output1"),
                 },
                 Caller {
                     script: r#"[
@@ -81,7 +81,7 @@ mod tests {
                         #{ data: "fuga" }
                     ]"#
                     .to_owned(),
-                    output_port: "output2".to_owned(),
+                    output_port: Port::new("output2"),
                 },
             ],
         };
@@ -94,11 +94,11 @@ mod tests {
         let output = result.unwrap();
         assert_eq!(output.len(), 2);
         assert_eq!(
-            output.get("output1"),
+            output.get(&Port::new("output1")),
             Some(&Some(ActionValue::Number(serde_json::Number::from(6))))
         );
         assert_eq!(
-            output.get("output2"),
+            output.get(&Port::new("output2")),
             Some(&Some(ActionValue::Array(vec![
                 ActionValue::Map(
                     vec![("data".to_owned(), ActionValue::String("hoge".to_owned())),]

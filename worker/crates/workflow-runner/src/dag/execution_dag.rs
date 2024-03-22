@@ -172,7 +172,7 @@ impl DagExecutor {
                         None => None,
                     };
                     data.insert(to_port, value);
-                    let finish_all_ports = data.keys().map(|v| v.to_string()).collect::<Vec<_>>();
+                    let finish_all_ports = data.keys().cloned().collect::<Vec<_>>();
                     if dag.is_ready_node(to_ix, finish_all_ports) {
                         ready.push_back(to_ix);
                     }
