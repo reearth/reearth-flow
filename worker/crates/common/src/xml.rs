@@ -152,10 +152,12 @@ mod tests {
         let values = value.get_nodes_as_vec();
         let root = values.first().unwrap();
         let ctx = create_context(&document).unwrap();
-        let result = ctx.node_evaluate("./gml:dictionaryEntry/gml:Definition", root).unwrap();
+        let result = ctx
+            .node_evaluate("./gml:dictionaryEntry/gml:Definition", root)
+            .unwrap();
         let result = result.get_nodes_as_vec();
         let node = result.first().unwrap();
-        let hoge = node.get_attribute_node("id").unwrap();
-        assert_eq!(hoge.get_content(), "id1");
+        let attribute_node = node.get_attribute_node("id").unwrap();
+        assert_eq!(attribute_node.get_content(), "id1");
     }
 }

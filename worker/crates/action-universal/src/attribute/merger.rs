@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 use reearth_flow_action::error::Error;
 use reearth_flow_action::{
-    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, ActionValueIndex, Result,
-    DEFAULT_PORT,
+    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, ActionValueIndex, Port,
+    Result, DEFAULT_PORT,
 };
 
-const REQUESTOR_PORT: &str = "requestor";
-const SUPPLIER_PORT: &str = "supplier";
+pub static REQUESTOR_PORT: Lazy<Port> = Lazy::new(|| Port::new("requestor"));
+pub static SUPPLIER_PORT: Lazy<Port> = Lazy::new(|| Port::new("supplier"));
 const ROW_NUMBER: &str = "row_number";
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -32,14 +33,14 @@ impl Action for AttributeMerger {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let requestor = inputs
-            .get(REQUESTOR_PORT)
+            .get(&REQUESTOR_PORT)
             .ok_or(Error::input("No Requestor Port"))?;
         let requestor = requestor
             .as_ref()
             .ok_or(Error::input("No Requestor Value"))?;
 
         let supplier = inputs
-            .get(SUPPLIER_PORT)
+            .get(&SUPPLIER_PORT)
             .ok_or(Error::input("No Supplier Port"))?;
         let supplier = supplier.as_ref().ok_or(Error::input("No Supplier Value"))?;
         let requestor_key = &self.join.requestor;
@@ -99,7 +100,7 @@ impl Action for AttributeMerger {
             }
         }
         Ok(
-            vec![(DEFAULT_PORT.to_string(), Some(ActionValue::Array(result)))]
+            vec![(DEFAULT_PORT.clone(), Some(ActionValue::Array(result)))]
                 .into_iter()
                 .collect::<HashMap<_, _>>(),
         )

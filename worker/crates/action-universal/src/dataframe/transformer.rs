@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -18,7 +18,7 @@ pub struct DataframeTransformer {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Operation {
     transform_expr: String,
-    target_port: String,
+    target_port: Port,
 }
 
 #[async_trait::async_trait]
@@ -40,7 +40,7 @@ impl Action for DataframeTransformer {
                 .iter()
                 .find(|operation| operation.target_port == port);
             if operation.is_none() {
-                output.insert(port, Some(data));
+                output.insert(port.clone(), Some(data));
                 continue;
             }
             let operation = operation.unwrap();
@@ -51,12 +51,12 @@ impl Action for DataframeTransformer {
             for (k, v) in &params {
                 scope.set(k, v.clone().into());
             }
-            scope.set(&port, data.into());
+            scope.set(port.as_ref(), data.into());
             let new_value = scope
                 .eval_ast::<Dynamic>(&ast)
                 .map_err(Error::internal_runtime)?;
             let new_value: ActionValue = new_value.try_into()?;
-            output.insert(port, Some(new_value));
+            output.insert(port.clone(), Some(new_value));
         }
         Ok(output)
     }

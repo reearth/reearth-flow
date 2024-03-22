@@ -93,7 +93,7 @@ impl Action for FileReader {
             }
             _ => return Err(Error::unsupported_feature("Unsupported format")),
         };
-        Ok(HashMap::from([(DEFAULT_PORT.to_string(), Some(data))]))
+        Ok(HashMap::from([(DEFAULT_PORT.clone(), Some(data))]))
     }
 }
 

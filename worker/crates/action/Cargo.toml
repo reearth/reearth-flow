@@ -19,9 +19,11 @@ reearth-flow-workflow.workspace = true
 
 async-trait.workspace = true
 async_zip.workspace = true
-directories.workspace = true
 bytes.workspace = true
+directories.workspace = true
 futures.workspace = true
+nutype.workspace = true
+once_cell.workspace = true
 rhai.workspace = true
 serde.workspace = true
 serde_json.workspace = true

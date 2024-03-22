@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
-use reearth_flow_action::{ActionValue, error};
+use once_cell::sync::Lazy;
+use reearth_flow_action::{error, ActionValue, Port};
 use serde::{Deserialize, Serialize};
 
-
-pub(crate) static DICTIONARIES_INITIATOR_SETTINGS_PORT: &str = "settings";
+pub(crate) static DICTIONARIES_INITIATOR_SETTINGS_PORT: Lazy<Port> =
+    Lazy::new(|| Port::new("settings"));
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]

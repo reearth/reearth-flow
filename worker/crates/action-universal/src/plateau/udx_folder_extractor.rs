@@ -53,7 +53,7 @@ impl Action for UdxFolderExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(error::Error::input("No Input"))?;
         let input = inputs
-            .get(DEFAULT_PORT)
+            .get(&DEFAULT_PORT)
             .ok_or(error::Error::input("No Default Port"))?;
         let input = input.as_ref().ok_or(error::Error::input("No Value"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
@@ -89,11 +89,8 @@ impl Action for UdxFolderExtractor {
             _ => return Err(error::Error::input("Invalid input")),
         };
         Ok(ActionDataframe::from([
-            (DEFAULT_PORT.to_string(), Some(ActionValue::Array(success))),
-            (
-                REJECTED_PORT.to_string(),
-                Some(ActionValue::Array(rejected)),
-            ),
+            (DEFAULT_PORT.clone(), Some(ActionValue::Array(success))),
+            (REJECTED_PORT.clone(), Some(ActionValue::Array(rejected))),
         ]))
     }
 }

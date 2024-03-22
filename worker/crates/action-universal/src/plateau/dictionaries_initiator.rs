@@ -119,7 +119,7 @@ impl Action for DictionariesInitiator {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(error::Error::input("No Input"))?;
         let input = inputs
-            .get(DEFAULT_PORT)
+            .get(&DEFAULT_PORT)
             .ok_or(error::Error::input("No Default Port"))?;
         let data = input.as_ref().ok_or(error::Error::input("No Value"))?;
         let mut res = ActionDataframe::new();
@@ -252,26 +252,25 @@ impl Action for DictionariesInitiator {
                 let settings = Settings::new(
                     xpath_to_properties,
                     except_feature_types,
-                    codelists_map.iter().fold(
-                        HashMap::<String, HashMap<String, String>>::new(),
-                        |mut acc, (_k, v)| {
+                    codelists_map
+                        .iter()
+                        .fold(HashMap::new(), |mut acc, (_k, v)| {
                             acc.extend(v.clone());
                             acc
-                        },
-                    ),
+                        }),
                 );
                 let settings = serde_json::to_value(settings).map_err(|e| {
                     error::Error::output(format!("Cannot convert to json with error = {:?}", e))
                 })?;
                 res.insert(
-                    DICTIONARIES_INITIATOR_SETTINGS_PORT.to_string(),
+                    DICTIONARIES_INITIATOR_SETTINGS_PORT.clone(),
                     Some(settings.into()),
                 );
                 result
             }
             _ => return Err(error::Error::input("Invalid Input. supported only Array")),
         };
-        res.insert(DEFAULT_PORT.to_string(), Some(ActionValue::Array(data)));
+        res.insert(DEFAULT_PORT.clone(), Some(ActionValue::Array(data)));
         Ok(res)
     }
 }

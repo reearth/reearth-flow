@@ -25,7 +25,10 @@ pub fn inject_variables_to_scope(inputs: &ActionDataframe, scope: &Scope) -> cra
                 )
         })
         .for_each(|key| {
-            scope.set(key, inputs.get(key).unwrap().clone().into());
+            scope.set(
+                key.clone().into_inner().as_str(),
+                inputs.get(key).unwrap().clone().into(),
+            );
         });
     Ok(())
 }
@@ -43,7 +46,12 @@ pub fn convert_dataframe_to_scope_params(inputs: &ActionDataframe) -> HashMap<St
                         | ActionValue::Map(_)
                 )
         })
-        .map(|key| (key.to_owned(), inputs.get(key).unwrap().clone().unwrap()))
+        .map(|key| {
+            (
+                key.clone().into_inner(),
+                inputs.get(key).unwrap().clone().unwrap(),
+            )
+        })
         .collect::<HashMap<String, ActionValue>>()
 }
 

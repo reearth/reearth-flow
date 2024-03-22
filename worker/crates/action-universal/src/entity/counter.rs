@@ -19,7 +19,7 @@ impl Action for EntityCounter {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let input = inputs
-            .get(DEFAULT_PORT)
+            .get(&DEFAULT_PORT)
             .ok_or(Error::input("No Default Port"))?;
         let input = input.as_ref().ok_or(Error::input("No Value"))?;
 
@@ -71,7 +71,7 @@ impl Action for EntityCounter {
                 }
             }
         }
-        output.insert(DEFAULT_PORT.to_string(), Some(ActionValue::Array(result)));
+        output.insert(DEFAULT_PORT.clone(), Some(ActionValue::Array(result)));
         Ok(output)
     }
 }
@@ -108,7 +108,7 @@ mod tests {
         .into_iter()
         .collect();
         inputs.insert(
-            DEFAULT_PORT.to_string(),
+            DEFAULT_PORT.clone(),
             Some(ActionValue::Array(vec![
                 ActionValue::Map(row1),
                 ActionValue::Map(row2),
@@ -117,7 +117,7 @@ mod tests {
         let result = action.run(ctx, Some(inputs)).await;
         assert!(result.is_ok());
         let output = result.unwrap();
-        let output_array = output.get(DEFAULT_PORT).unwrap().clone().unwrap();
+        let output_array = output.get(&DEFAULT_PORT).unwrap().clone().unwrap();
         if let ActionValue::Array(output_array) = output_array {
             assert_eq!(output_array.len(), 2);
             match (output_array[0].clone(), output_array[1].clone()) {
@@ -175,7 +175,7 @@ mod tests {
         .into_iter()
         .collect();
         inputs.insert(
-            DEFAULT_PORT.to_string(),
+            DEFAULT_PORT.clone(),
             Some(ActionValue::Array(vec![
                 ActionValue::Map(row1),
                 ActionValue::Map(row2),
@@ -185,7 +185,7 @@ mod tests {
         let result = action.run(ctx, Some(inputs)).await;
         assert!(result.is_ok());
         let output = result.unwrap();
-        let output_array = output.get(DEFAULT_PORT).unwrap().clone().unwrap();
+        let output_array = output.get(&DEFAULT_PORT).unwrap().clone().unwrap();
         if let ActionValue::Array(output_array) = output_array {
             assert_eq!(output_array.len(), 3);
             match (

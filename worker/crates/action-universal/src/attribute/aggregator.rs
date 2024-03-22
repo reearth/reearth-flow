@@ -37,7 +37,7 @@ impl Action for AttributeAggregator {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let input = inputs
-            .get(DEFAULT_PORT)
+            .get(&DEFAULT_PORT)
             .ok_or(Error::input("No Default Port"))?;
         let input = input.as_ref().ok_or(Error::input("No Value"))?;
 

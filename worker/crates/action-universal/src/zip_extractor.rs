@@ -57,7 +57,7 @@ impl Action for ZipExtractor {
             .map_err(Error::input)?;
         let result = utils::zip::extract(bytes, root_output_path, storage).await?;
         let output = ActionDataframe::from([(
-            DEFAULT_PORT.to_string(),
+            DEFAULT_PORT.clone(),
             Some(ActionValue::String(result.root.to_string())),
         )]);
 
