@@ -6,5 +6,5 @@ mod file;
 mod plateau;
 pub mod prelude;
 mod rhai_caller;
-mod xml_xpath_extractor;
+mod xml;
 mod zip_extractor;

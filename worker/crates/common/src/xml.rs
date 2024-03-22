@@ -68,11 +68,11 @@ pub fn collect_text_value(xpath_value: &XmlXpathValue) -> String {
     }
 }
 
-pub fn get_node_tag(node: &XmlNode) -> crate::Result<String> {
-    let ns = node
-        .get_namespace()
-        .ok_or(crate::Error::Xml("No namespace".to_string()))?;
-    Ok(format!("{}:{}", ns.get_prefix(), node.get_name()).to_string())
+pub fn get_node_tag(node: &XmlNode) -> String {
+    match node.get_namespace() {
+        Some(ns) => format!("{}:{}", ns.get_prefix(), node.get_name()).to_string(),
+        None => node.get_name(),
+    }
 }
 
 pub fn node_to_xml_string(document: &XmlDocument, node: &mut XmlNode) -> crate::Result<String> {

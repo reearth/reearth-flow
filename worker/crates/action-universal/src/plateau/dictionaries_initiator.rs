@@ -88,31 +88,6 @@ struct Schema {
     complex_types: HashMap<String, Vec<SchemaFeature>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct Response {
-    city_gml_path: String,
-    root: String,
-    package: String,
-    admin: String,
-    area: String,
-    udx_dirs: String,
-    dir_root: String,
-    dir_codelists: String,
-    dir_schemas: String,
-    file_index: i64,
-}
-
-impl TryFrom<Response> for ActionValue {
-    type Error = error::Error;
-    fn try_from(value: Response) -> Result<Self, error::Error> {
-        let value = serde_json::to_value(value).map_err(|e| {
-            error::Error::output(format!("Cannot convert to json with error = {:?}", e))
-        })?;
-        Ok(ActionValue::from(value))
-    }
-}
-
 #[async_trait::async_trait]
 #[typetag::serde(name = "PLATEAU.DictionariesInitiator")]
 impl Action for DictionariesInitiator {
