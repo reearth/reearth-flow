@@ -22,7 +22,7 @@ struct HslAST {
     alpha: rhai::AST,
 }
 
-pub(crate) async fn convert_hsl_to_rgba(
+pub(super) async fn convert_hsl_to_rgba(
     expr_engine: Arc<Engine>,
     property: &HslPropertySchema,
     inputs: Option<ActionDataframe>,

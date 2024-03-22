@@ -16,7 +16,7 @@ pub struct DataframeTransformer {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Operation {
+pub(super) struct Operation {
     transform_expr: String,
     target_port: Port,
 }

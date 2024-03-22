@@ -12,8 +12,8 @@ use reearth_flow_workflow::id::Id;
 
 use crate::Error;
 
-pub type NodeId = Id;
-pub type GraphId = Id;
+pub(super) type NodeId = Id;
+pub(super) type GraphId = Id;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Endpoint {
@@ -34,16 +34,16 @@ pub struct Edge {
 }
 
 impl Edge {
-    pub fn new(from: Endpoint, to: Endpoint) -> Self {
+    pub(super) fn new(from: Endpoint, to: Endpoint) -> Self {
         Self { from, to }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NodeType {
-    pub id: NodeId,
-    pub name: String,
-    pub action: String,
+    pub(super) id: NodeId,
+    pub(super) name: String,
+    pub(super) action: String,
 }
 
 impl From<Node> for NodeType {
@@ -58,12 +58,12 @@ impl From<Node> for NodeType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EdgeType {
-    pub from: Port,
-    pub to: Port,
+    pub(super) from: Port,
+    pub(super) to: Port,
 }
 
 impl EdgeType {
-    pub fn new(from: Port, to: Port) -> Self {
+    pub(super) fn new(from: Port, to: Port) -> Self {
         Self { from, to }
     }
 }
@@ -86,10 +86,10 @@ impl EdgeHavePorts for EdgeType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EdgeIndex {
-    pub from_node: NodeIndex,
-    pub from_port: Port,
-    pub to_node: NodeIndex,
-    pub to_port: Port,
+    pub(super) from_node: NodeIndex,
+    pub(super) from_port: Port,
+    pub(super) to_node: NodeIndex,
+    pub(super) to_port: Port,
 }
 
 pub struct Dag {

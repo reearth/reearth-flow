@@ -16,7 +16,7 @@ use reearth_flow_action::{
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CommonPropertySchema {
-    pub(crate) dataset: String,
+    pub(super) dataset: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
