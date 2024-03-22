@@ -876,9 +876,7 @@ fn walk_node(
     let mut result = Attributes::new();
 
     for node in nodes {
-        let tag = xml::get_node_tag(&node).map_err(|e| {
-            error::Error::internal_runtime(format!("Cannot get node tag with error = {:?}", e))
-        })?;
+        let tag = xml::get_node_tag(&node);
         if let Some(cap) = LOD_PATTERN.captures(tag.as_str()) {
             let lod = cap.get(1).map(|lod| lod.as_str());
             if let Some(v) = lod {
@@ -1073,9 +1071,7 @@ fn walk_node(
 }
 
 fn walk_generic_node(document: &XmlDocument, node: &XmlNode) -> Result<Vec<GenericAttribute>> {
-    let tag = xml::get_node_tag(node).map_err(|e| {
-        error::Error::internal_runtime(format!("Cannot get node tag with error = {:?}", e))
-    })?;
+    let tag = xml::get_node_tag(node);
     let typ = match GEN_ATTR_TYPES.get(tag.as_str()) {
         Some(typ) => typ.clone(),
         None => "unknown".to_string(),
