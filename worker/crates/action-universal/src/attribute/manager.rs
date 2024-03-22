@@ -18,14 +18,14 @@ pub struct AttributeManager {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Operation {
-    pub(crate) attribute: String,
-    pub(crate) method: Method,
-    pub(crate) value: Option<String>,
+pub(super) struct Operation {
+    pub(super) attribute: String,
+    pub(super) method: Method,
+    pub(super) value: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) enum Method {
+pub(super) enum Method {
     #[serde(rename = "convert")]
     Convert,
     #[serde(rename = "create")]
@@ -37,7 +37,7 @@ pub(crate) enum Method {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum Operate {
+pub(super) enum Operate {
     Convert {
         expr: Option<rhai::AST>,
         attribute: String,

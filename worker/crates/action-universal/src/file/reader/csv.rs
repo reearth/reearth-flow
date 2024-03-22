@@ -11,11 +11,11 @@ use reearth_flow_storage::resolve::StorageResolver;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CsvPropertySchema {
-    pub(crate) header: bool,
-    pub(crate) offset: Option<usize>,
+    pub(super) header: bool,
+    pub(super) offset: Option<usize>,
 }
 
-pub(crate) async fn read_csv(
+pub(super) async fn read_csv(
     delimiter: Delimiter,
     input_path: Uri,
     props: &CsvPropertySchema,

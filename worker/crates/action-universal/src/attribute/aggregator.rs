@@ -20,7 +20,7 @@ struct Aggregation {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) enum Method {
+pub(super) enum Method {
     #[serde(rename = "max")]
     Max,
     #[serde(rename = "min")]
