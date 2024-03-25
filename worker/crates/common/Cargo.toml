@@ -12,8 +12,8 @@ version.workspace = true
 
 [dependencies]
 async-recursion.workspace = true
-bytes.workspace = true
 base64 = "0.22.0"
+bytes.workspace = true
 colorsys.workspace = true
 futures.workspace = true
 home = "0.5.9"
@@ -23,6 +23,7 @@ rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
+sha2.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 tempfile.workspace = true

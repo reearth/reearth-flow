@@ -1,4 +1,5 @@
 use base64::{engine::general_purpose, Engine as _};
+use sha2::{Digest, Sha256};
 
 pub fn remove_bom(s: &str) -> &str {
     if s.as_bytes().starts_with(&[0xEF, 0xBB, 0xBF]) {
@@ -35,8 +36,14 @@ pub fn parse_boolean<T: AsRef<str>>(s: T) -> bool {
     }
 }
 
-pub fn is_number(s: &str) -> bool {
-    s.parse::<f64>().is_ok()
+pub fn to_hash(s: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(s.as_bytes());
+    let mut result = String::new();
+    for b in hasher.finalize() {
+        result.push_str(&format!("{:02x}", b));
+    }
+    result
 }
 
 #[cfg(test)]
@@ -101,5 +108,36 @@ mod tests {
         // Test case with only slash
         let s = "/";
         assert_eq!(remove_trailing_slash(s), "");
+    }
+
+    #[test]
+    fn test_to_hash() {
+        // Test case with empty string
+        let s = "";
+        assert_eq!(
+            to_hash(s),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+
+        // Test case with non-empty string
+        let s = "Hello, World!";
+        assert_eq!(
+            to_hash(s),
+            "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f"
+        );
+
+        // Test case with special characters
+        let s = "Hello, @#$%^&*()_+{}:\"<>?|\\ World!";
+        assert_eq!(
+            to_hash(s),
+            "8173c9467d7111acce18d5fcd7de17c548de44737692fec3bf370ac868d9c168"
+        );
+
+        // Test case with Unicode characters
+        let s = "こんにちは、世界！";
+        assert_eq!(
+            to_hash(s),
+            "81cf0fb2f41dab4e93c086815bc082140642d0efa1155398597a823c232bf4fa"
+        );
     }
 }
