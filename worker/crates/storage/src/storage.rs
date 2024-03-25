@@ -56,10 +56,15 @@ impl Storage {
                 path: format!("{:?}", location).into(),
             },
         })?;
+        let p = if !p.ends_with('/') {
+            format!("{}/", p)
+        } else {
+            p.to_string()
+        };
         self.inner
-            .create_dir(p)
+            .create_dir(p.as_str())
             .await
-            .map_err(|err| format_object_store_error(err, p))
+            .map_err(|err| format_object_store_error(err, p.as_str()))
     }
 
     pub async fn append(&self, location: &Path, bytes: Bytes) -> Result<()> {

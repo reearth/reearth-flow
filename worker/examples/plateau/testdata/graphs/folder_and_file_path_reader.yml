@@ -6,7 +6,8 @@ nodes:
     type: action
     action: FilePathExtractor
     with:
-      sourceDataset: "https://assets.cms.plateau.reearth.io/assets/18/1ebcee-4f38-47c7-90b1-224a8a117bcd/13229_nishitokyo-shi_2022_citygml_1_op.zip"
+      sourceDataset: |
+        env.get("cityGmlPath")
       extractArchive: true
 
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cb
