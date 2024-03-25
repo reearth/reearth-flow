@@ -34,3 +34,14 @@ C:\> refreshenv
 C:\> vcpkg install libxml2:x64-windows
 C:\> vcpkg integrate install
 ```
+
+## Usage
+### Run workflow
+```console
+$ cargo run -- run --workflow ${workflow_path}
+```
+
+### Run example
+```console
+$ cargo make example
+```
