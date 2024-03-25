@@ -1,0 +1,8 @@
+---
+id: 7b66c0a4-e1fa-41dd-a0c9-df3f6e01cc22
+name: "PLATEAU.FolderAndFilePathReader"
+entryGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+with:
+  targetPackages:
+graphs:
+  - !include ../graphs/folder_and_file_path_reader.yml
