@@ -1,8 +1,0 @@
----
-id: 7b66c0a4-e1fa-41dd-a0c9-df3f6e01cc22
-name: "PLATEAU.FolderAndFilePathReader"
-entryGraphId: c6863b71-953b-4d15-af56-396fc93fc617
-with:
-  cityGmlPath: https://assets.cms.plateau.reearth.io/assets/18/1ebcee-4f38-47c7-90b1-224a8a117bcd/13229_nishitokyo-shi_2022_citygml_1_op.zip
-graphs:
-  - !include ../graphs/folder_and_file_path_reader.yml

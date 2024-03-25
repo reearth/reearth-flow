@@ -1,17 +1,25 @@
 id: 64931277-3a82-4a1c-88bc-9b54fe172518
 name: attribute_reader
 nodes:
-  - id: 3d639401-a28d-4d98-836f-5f3f310a647c
-    name: FilePathExtractor01
+  - id: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
+    name: FolderAndfilePathReader01
+    type: subGraph
+    subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+    with: {}
+
+  - id: cc7d973e-a2eb-4db9-9879-a27154098001
+    name: EntityTransformer01
     type: action
-    action: FilePathExtractor
+    action: EntityTransformer
     with:
-      sourceDataset: "https://assets.cms.plateau.reearth.io/assets/18/1ebcee-4f38-47c7-90b1-224a8a117bcd/13229_nishitokyo-shi_2022_citygml_1_op.zip"
-      extractArchive: true
+      transforms:
+        - expr: |
+            env.get("__all") + #{schemaJson: env.get("schemaJson")}
+          targetPort: default
 
 edges:
-  - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
-    from: b1a91180-ab88-4c1a-aab5-48c242a218ca
-    to: b1a91180-ab88-4c1a-aab5-48c242a218cb
+  - id: afa36141-5b6a-4d2b-8a75-bf184f961378
+    from: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
+    to: cc7d973e-a2eb-4db9-9879-a27154098001
     fromPort: default
     toPort: default

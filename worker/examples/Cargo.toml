@@ -24,8 +24,8 @@ reearth-flow-workflow-runner.workspace = true
 reearth-flow-workflow.workspace = true
 
 bytes.workspace = true
+directories.workspace = true
 pretty_assertions.workspace = true
-tempfile.workspace = true
 tokio.workspace = true
 yaml-include = "0.7.0"
 
