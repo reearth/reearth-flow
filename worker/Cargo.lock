@@ -2226,6 +2226,7 @@ name = "reearth-flow-examples"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "directories",
  "pretty_assertions",
  "reearth-flow-action",
  "reearth-flow-action-log",
@@ -2236,7 +2237,6 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-workflow",
  "reearth-flow-workflow-runner",
- "tempfile",
  "tokio",
  "yaml-include",
 ]

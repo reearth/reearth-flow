@@ -1,9 +1,9 @@
-use std::{env, fs, sync::Arc};
+use std::{env, fs, path::Path, sync::Arc};
 
-use tempfile::Builder;
+use directories::ProjectDirs;
 use yaml_include::Transformer;
 
-use reearth_flow_action_log::factory::LoggerFactory;
+use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -12,7 +12,22 @@ use reearth_flow_workflow_runner::dag::DagExecutor;
 
 #[tokio::main]
 async fn main() {
-    let temp_dir = Builder::new().prefix("examples").tempdir_in(".").unwrap();
+    let job_id = Id::new_v4();
+    let dataframe_state_uri = {
+        let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
+        let p = p.data_dir().to_str().unwrap();
+        let p = format!("{}/dataframe/{}", p, job_id);
+        let _ = fs::create_dir_all(Path::new(p.as_str()));
+        Uri::for_test(format!("file://{}", p).as_str())
+    };
+    let action_log_uri = {
+        let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
+        let p = p.data_dir().to_str().unwrap();
+        let p = format!("{}/action-log/{}", p, job_id);
+        let _ = fs::create_dir_all(Path::new(p.as_str()));
+        Uri::for_test(format!("file://{}", p).as_str())
+    };
+
     let relative_path = file!();
     let current_dir = env::current_dir().unwrap();
     let absolute_path =
@@ -23,25 +38,15 @@ async fn main() {
         let yaml = Transformer::new(path.unwrap().path(), false).unwrap();
         let storage_resolver = Arc::new(StorageResolver::new());
         let yaml = yaml.to_string();
-        let state = Arc::new(
-            State::new(
-                &Uri::for_test(temp_dir.path().to_str().unwrap()),
-                &storage_resolver,
-            )
-            .unwrap(),
-        );
+        let state = Arc::new(State::new(&dataframe_state_uri, &storage_resolver).unwrap());
         let workflow = Workflow::try_from_str(yaml.as_str()).unwrap();
-        let job_id = Id::new_v4();
         let log_factory = Arc::new(LoggerFactory::new(
-            reearth_flow_action_log::ActionLogger::root(
-                reearth_flow_action_log::Discard,
-                reearth_flow_action_log::o!(),
-            ),
-            temp_dir.path().to_path_buf(),
+            create_root_logger(action_log_uri.path()),
+            action_log_uri.path(),
         ));
         let executor =
             DagExecutor::new(job_id, &workflow, storage_resolver, state, log_factory).unwrap();
         let result = executor.start().await;
-        println!("{:?}", result);
+        assert!(result.is_ok());
     }
 }

@@ -14,7 +14,7 @@ pub struct Workflow {
     pub id: Id,
     pub name: String,
     pub entry_graph_id: Id,
-    pub with: Parameter,
+    pub with: Option<Parameter>,
     pub graphs: Vec<Graph>,
 }
 
@@ -112,7 +112,7 @@ mod tests {
             workflow.entry_graph_id.to_string(),
             "c6863b71-953b-4d15-af56-396fc93fc617"
         );
-        assert_eq!(workflow.with.len(), 2);
+        assert_eq!(workflow.with.unwrap().len(), 2);
         assert_eq!(workflow.graphs.len(), 2);
         assert_eq!(
             workflow.graphs[0].id.to_string(),

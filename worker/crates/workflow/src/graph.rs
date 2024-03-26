@@ -10,7 +10,7 @@ pub type NodeAction = String;
 pub struct NodeEntity {
     pub id: Id,
     pub name: String,
-    pub with: NodeProperty,
+    pub with: Option<NodeProperty>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -62,7 +62,7 @@ impl Node {
         }
     }
 
-    pub fn with(&self) -> &NodeProperty {
+    pub fn with(&self) -> &Option<NodeProperty> {
         match self {
             Node::Action { entity, action: _ } => &entity.with,
             Node::SubGraph {
