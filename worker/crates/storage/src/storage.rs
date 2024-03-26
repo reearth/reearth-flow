@@ -209,7 +209,7 @@ impl Storage {
             let entry = res.map_err(|err| format_object_store_error(err, ""))?;
             Ok(Uri::for_test(&format!(
                 "{}/{}",
-                self.base_uri,
+                self.base_uri.protocol().as_str_with_separator(),
                 entry.path()
             )))
         });

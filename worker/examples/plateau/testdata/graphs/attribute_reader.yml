@@ -5,7 +5,6 @@ nodes:
     name: FolderAndfilePathReader01
     type: subGraph
     subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
-    with: {}
 
   - id: cc7d973e-a2eb-4db9-9879-a27154098001
     name: EntityTransformer01
@@ -14,12 +13,28 @@ nodes:
     with:
       transforms:
         - expr: |
-            env.get("__all") + #{schemaJson: env.get("schemaJson")}
+            env.get("__all") + #{
+              schemaJson: env.get("schemaJson"),
+              addNsprefixToFeatureTypes: env.get("addNsprefixToFeatureTypes"),
+              exceptFeatureTypes: env.get("exceptFeatureTypes"),
+              extractDmGeometryAsXmlFragment: env.get("extractDmGeometryAsXmlFragment"),
+              cityCode: env.get("cityCode"),
+            }
           targetPort: default
+
+  - id: b90a3d22-7aaf-4e1c-9e27-d9f01b75d82d
+    name: PLATEAU.DictionariesInitiator01
+    type: action
+    action: PLATEAU.DictionariesInitiator
 
 edges:
   - id: afa36141-5b6a-4d2b-8a75-bf184f961378
     from: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
     to: cc7d973e-a2eb-4db9-9879-a27154098001
+    fromPort: default
+    toPort: default
+  - id: d661eff9-2ee3-4735-ab36-ac2c662464fd
+    from: cc7d973e-a2eb-4db9-9879-a27154098001
+    to: b90a3d22-7aaf-4e1c-9e27-d9f01b75d82d
     fromPort: default
     toPort: default

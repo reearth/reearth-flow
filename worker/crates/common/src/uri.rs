@@ -40,6 +40,15 @@ impl Protocol {
     pub fn is_object_storage(&self) -> bool {
         matches!(&self, Protocol::Google)
     }
+
+    pub fn as_str_with_separator(&self) -> &str {
+        match &self {
+            Protocol::File => "file://",
+            Protocol::Ram => "ram://",
+            Protocol::Google => "gs://",
+            Protocol::Http => "https://",
+        }
+    }
 }
 
 impl Display for Protocol {

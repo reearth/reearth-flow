@@ -154,7 +154,37 @@ impl TryFrom<rhai::Dynamic> for ActionValue {
     fn try_from(value: rhai::Dynamic) -> std::result::Result<Self, Self::Error> {
         let value: serde_json::Value =
             from_dynamic(&value).map_err(error::Error::internal_runtime)?;
-        Ok(value.into())
+        let value: Self = value.into();
+        Ok(normalize_action_value(value))
+    }
+}
+
+fn normalize_action_value(value: ActionValue) -> ActionValue {
+    match &value {
+        ActionValue::Map(v) => {
+            if v.len() > 1 {
+                let mut value = HashMap::new();
+                for (k, v) in v.iter() {
+                    value.insert(k.clone(), normalize_action_value(v.clone()));
+                }
+                ActionValue::Map(value)
+            } else {
+                let (k, v) = v.iter().next().unwrap();
+                match k.as_str() {
+                    "String" => v.clone(),
+                    "Number" => v.clone(),
+                    _ => value,
+                }
+            }
+        }
+        ActionValue::Array(v) => {
+            let result = v
+                .iter()
+                .map(|value| normalize_action_value(value.clone()))
+                .collect::<Vec<_>>();
+            ActionValue::Array(result)
+        }
+        _ => value,
     }
 }
 
@@ -198,7 +228,7 @@ pub struct ActionContext {
     pub workflow_id: Id,
     pub node_id: Id,
     pub node_name: String,
-    pub node_property: NodeProperty,
+    pub node_property: Option<NodeProperty>,
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
     pub logger: Arc<ActionLogger>,
@@ -231,7 +261,7 @@ impl ActionContext {
         workflow_id: Id,
         node_id: Id,
         node_name: String,
-        node_property: NodeProperty,
+        node_property: Option<NodeProperty>,
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
         logger: ActionLogger,

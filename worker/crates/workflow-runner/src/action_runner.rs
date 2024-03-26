@@ -39,19 +39,18 @@ impl ActionRunner {
             node_name,
         );
         let start = Instant::now();
+        let mut params = vec![(
+            "action".to_owned(),
+            serde_json::Value::String(action.to_string()),
+        )];
+        if let Some(node_property) = &ctx.node_property {
+            params.push((
+                "with".to_owned(),
+                serde_json::Value::from(node_property.clone()),
+            ));
+        }
         let action_run: Box<dyn Action> = serde_json::from_value(serde_json::Value::Object(
-            vec![
-                (
-                    "action".to_owned(),
-                    serde_json::Value::String(action.to_string()),
-                ),
-                (
-                    "with".to_owned(),
-                    serde_json::Value::from(ctx.node_property.clone()),
-                ),
-            ]
-            .into_iter()
-            .collect::<serde_json::Map<_, _>>(),
+            params.into_iter().collect::<serde_json::Map<_, _>>(),
         ))
         .map_err(crate::Error::execution)?;
         let res = action_run

@@ -14,7 +14,7 @@ use super::types::SchemaFeature;
 use super::types::Settings;
 use super::types::DICTIONARIES_INITIATOR_SETTINGS_PORT;
 
-static ADMIN_CODE_LIST: &str = "Common_localPublicAuthorities";
+static ADMIN_CODE_LIST: &str = "Common_localPublicAuthorities.xml";
 
 static COMMON_ITEMS: Lazy<Vec<SchemaFeature>> = Lazy::new(|| {
     vec![
@@ -151,7 +151,12 @@ impl Action for DictionariesInitiator {
                     // Codelist dictionary creation
                     let dir_codelists = match feature.get("dirCodelists") {
                         Some(ActionValue::String(dir)) => dir,
-                        _ => return Err(error::Error::input("No dirCodelists value")),
+                        v => {
+                            return Err(error::Error::input(format!(
+                                "No dirCodelists value with {:?}",
+                                v
+                            )))
+                        }
                     };
                     if codelists_map.get(dir_codelists).is_none() {
                         let dir = Uri::from_str(dir_codelists).map_err(|e| {
@@ -257,12 +262,12 @@ async fn create_codelist_map(
     let storage = storage_resolver
         .resolve(dir)
         .map_err(error::Error::internal_runtime)?;
+    let mut codelist_map: HashMap<String, HashMap<String, String>> = HashMap::new();
     if storage
         .exists(dir.path().as_path())
         .await
         .map_err(error::Error::internal_runtime)?
     {
-        let mut codelist_map: HashMap<String, HashMap<String, String>> = HashMap::new();
         for f in storage
             .list_with_result(Some(dir.path().as_path()), true)
             .await
@@ -301,7 +306,7 @@ async fn create_codelist_map(
             }
         }
     }
-    Ok(HashMap::new())
+    Ok(codelist_map)
 }
 
 fn generate_xpath(

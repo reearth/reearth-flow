@@ -247,7 +247,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:bldgDmAttribute",
@@ -261,21 +261,21 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBuildingAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			},
 			{
 				"name" : "uro:buildingDisasterRiskAttribute",
 				"type" : "uro:BuildingDisasterRiskAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:BuildingHighTideRiskAttribute", "uro:BuildingRiverFloodingRiskAttribute", "uro:BuildingInlandFloodingRiskAttribute", "uro:BuildingLandSlideRiskAttribute", "uro:BuildingTsunamiRiskAttribute" ]
+				"children" : [ "uro:BuildingLandSlideRiskAttribute", "uro:BuildingHighTideRiskAttribute", "uro:BuildingRiverFloodingRiskAttribute", "uro:BuildingInlandFloodingRiskAttribute", "uro:BuildingTsunamiRiskAttribute" ]
 			},
 			{
 				"name" : "uro:keyValuePairAttribute",
@@ -359,14 +359,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorFutnitureAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"bldg:BuildingInstallation" : [
@@ -445,7 +445,7 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			}
 		],
 		"bldg:BuildingPart" : [
@@ -695,7 +695,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:bldgDmAttribute",
@@ -709,21 +709,21 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBuildingAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			},
 			{
 				"name" : "uro:buildingDisasterRiskAttribute",
 				"type" : "uro:BuildingDisasterRiskAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:BuildingHighTideRiskAttribute", "uro:BuildingRiverFloodingRiskAttribute", "uro:BuildingInlandFloodingRiskAttribute", "uro:BuildingLandSlideRiskAttribute", "uro:BuildingTsunamiRiskAttribute" ]
+				"children" : [ "uro:BuildingLandSlideRiskAttribute", "uro:BuildingHighTideRiskAttribute", "uro:BuildingRiverFloodingRiskAttribute", "uro:BuildingInlandFloodingRiskAttribute", "uro:BuildingTsunamiRiskAttribute" ]
 			},
 			{
 				"name" : "uro:keyValuePairAttribute",
@@ -802,14 +802,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"bldg:ClosureSurface" : [
@@ -846,14 +846,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"bldg:Door" : [
@@ -892,14 +892,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorOpeningAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			},
 			{
 				"name" : "bldg:address",
@@ -943,14 +943,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"bldg:GroundSurface" : [
@@ -987,14 +987,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"bldg:IntBuildingInstallation" : [
@@ -1043,14 +1043,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorIntInstallationAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"bldg:InteriorWallSurface" : [
@@ -1087,14 +1087,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"bldg:OuterCeilingSurface" : [
@@ -1131,14 +1131,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"bldg:OuterFloorSurface" : [
@@ -1175,14 +1175,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"bldg:RoofSurface" : [
@@ -1219,14 +1219,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"bldg:Room" : [
@@ -1288,14 +1288,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorRoomAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			},
 			{
 				"name" : "uro:roomDataQualityAttribute",
@@ -1339,14 +1339,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"bldg:Window" : [
@@ -1385,14 +1385,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorOpeningAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"brid:Bridge" : [
@@ -1612,7 +1612,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:bridStructureAttribute",
@@ -1640,7 +1640,7 @@
 				"type" : "uro:DisasterRiskAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:TsunamiRiskAttribute", "uro:InlandFloodingRiskAttribute", "uro:RiverFloodingRiskAttribute", "uro:HighTideRiskAttribute", "uro:LandSlideRiskAttribute" ]
+				"children" : [ "uro:LandSlideRiskAttribute", "uro:TsunamiRiskAttribute", "uro:HighTideRiskAttribute", "uro:RiverFloodingRiskAttribute", "uro:InlandFloodingRiskAttribute" ]
 			},
 			{
 				"name" : "uro:bridDmAttribute",
@@ -2096,7 +2096,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:bridStructureAttribute",
@@ -2124,7 +2124,7 @@
 				"type" : "uro:DisasterRiskAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:TsunamiRiskAttribute", "uro:InlandFloodingRiskAttribute", "uro:RiverFloodingRiskAttribute", "uro:HighTideRiskAttribute", "uro:LandSlideRiskAttribute" ]
+				"children" : [ "uro:LandSlideRiskAttribute", "uro:TsunamiRiskAttribute", "uro:HighTideRiskAttribute", "uro:RiverFloodingRiskAttribute", "uro:InlandFloodingRiskAttribute" ]
 			},
 			{
 				"name" : "uro:bridDmAttribute",
@@ -2230,14 +2230,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"brid:ClosureSurface" : [
@@ -2274,14 +2274,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"brid:Door" : [
@@ -2320,14 +2320,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorOpeningAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			},
 			{
 				"name" : "brid:address",
@@ -2371,14 +2371,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"brid:GroundSurface" : [
@@ -2415,14 +2415,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"brid:IntBridgeInstallation" : [
@@ -2501,14 +2501,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"brid:OuterCeilingSurface" : [
@@ -2545,14 +2545,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"brid:OuterFloorSurface" : [
@@ -2589,14 +2589,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"brid:RoofSurface" : [
@@ -2633,14 +2633,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"brid:WallSurface" : [
@@ -2677,14 +2677,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"brid:Window" : [
@@ -2723,14 +2723,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorOpeningAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"dem:BreaklineRelief" : [
@@ -2995,7 +2995,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -3191,21 +3191,21 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorStoreyAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			},
 			{
 				"name" : "urt:dataType",
 				"type" : "urt:PublicTransitDataTypePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "urt:FareRule", "urt:Translation", "urt:StopTime", "urt:Frequency", "urt:Transfer", "urt:FeedInfo" ]
+				"children" : [ "urt:Translation", "urt:Frequency", "urt:FareRule", "urt:Transfer", "urt:StopTime", "urt:FeedInfo" ]
 			}
 		],
 		"luse:LandUse" : [
@@ -3281,7 +3281,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:luseDmAttribute",
@@ -3295,7 +3295,7 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:luseDataQualityAttribute",
@@ -3460,7 +3460,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:tranDataQualityAttribute",
@@ -3571,7 +3571,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:tranDataQualityAttribute",
@@ -3696,7 +3696,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:tranDataQualityAttribute",
@@ -3710,7 +3710,7 @@
 				"type" : "uro:SquareUrbanPlanAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:StationSquareAttribute", "uro:SquareUrbanPlanAttribute", "uro:TerminalAttribute" ]
+				"children" : [ "uro:SquareUrbanPlanAttribute", "uro:StationSquareAttribute", "uro:TerminalAttribute" ]
 			}
 		],
 		"tran:Track" : [
@@ -3807,7 +3807,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:tranDataQualityAttribute",
@@ -3986,7 +3986,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:tranDataQualityAttribute",
@@ -4030,14 +4030,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"tun:ClosureSurface" : [
@@ -4074,14 +4074,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"tun:Door" : [
@@ -4120,14 +4120,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorOpeningAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"tun:FloorSurface" : [
@@ -4164,14 +4164,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"tun:GroundSurface" : [
@@ -4208,14 +4208,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"tun:HollowSpace" : [
@@ -4349,14 +4349,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"tun:OuterCeilingSurface" : [
@@ -4393,14 +4393,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"tun:OuterFloorSurface" : [
@@ -4437,14 +4437,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"tun:RoofSurface" : [
@@ -4481,14 +4481,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"tun:Tunnel" : [
@@ -4695,7 +4695,7 @@
 				"type" : "uro:DisasterRiskAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:TsunamiRiskAttribute", "uro:InlandFloodingRiskAttribute", "uro:RiverFloodingRiskAttribute", "uro:HighTideRiskAttribute", "uro:LandSlideRiskAttribute" ]
+				"children" : [ "uro:LandSlideRiskAttribute", "uro:TsunamiRiskAttribute", "uro:HighTideRiskAttribute", "uro:RiverFloodingRiskAttribute", "uro:InlandFloodingRiskAttribute" ]
 			},
 			{
 				"name" : "uro:tunDmAttribute",
@@ -4730,7 +4730,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			}
 		],
 		"tun:TunnelFurniture" : [
@@ -5044,7 +5044,7 @@
 				"type" : "uro:DisasterRiskAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:TsunamiRiskAttribute", "uro:InlandFloodingRiskAttribute", "uro:RiverFloodingRiskAttribute", "uro:HighTideRiskAttribute", "uro:LandSlideRiskAttribute" ]
+				"children" : [ "uro:LandSlideRiskAttribute", "uro:TsunamiRiskAttribute", "uro:HighTideRiskAttribute", "uro:RiverFloodingRiskAttribute", "uro:InlandFloodingRiskAttribute" ]
 			},
 			{
 				"name" : "uro:tunDmAttribute",
@@ -5079,7 +5079,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			}
 		],
 		"tun:WallSurface" : [
@@ -5116,14 +5116,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBoundarySurfaceAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"tun:Window" : [
@@ -5162,14 +5162,14 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorOpeningAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			}
 		],
 		"urf:Administration" : [
@@ -5640,6 +5640,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:applicableArea",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -5889,6 +5896,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -6130,6 +6144,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:population",
@@ -6632,6 +6653,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -6934,6 +6962,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:number",
@@ -7240,6 +7275,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -7544,6 +7586,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -7816,6 +7865,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:number",
@@ -8116,6 +8172,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -8400,6 +8463,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -9640,6 +9710,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:scheduledExecutor",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -9899,6 +9976,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:objectives",
@@ -10181,6 +10265,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:number",
@@ -10479,6 +10570,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -10954,6 +11052,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:buildingRestrictions",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -11311,6 +11416,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:districtFacilitiesAllocation",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -11590,6 +11702,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			}
 		],
 		"urf:DistrictImprovementPlanForDisasterPreventionBlockImprovementZonePlan" : [
@@ -11827,6 +11946,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:districtFacilitiesAllocation",
@@ -12110,6 +12236,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:districtFacilitiesAllocation",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -12391,6 +12524,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:objectives",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -12666,6 +12806,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -12907,6 +13054,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:number",
@@ -13159,6 +13313,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -13408,6 +13569,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -13649,6 +13817,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:number",
@@ -13913,6 +14088,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -14173,6 +14355,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:implementationBody",
@@ -14654,6 +14843,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -14895,6 +15091,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -15150,6 +15353,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -15425,6 +15635,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -15684,6 +15901,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:objectives",
@@ -15953,6 +16177,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -16422,6 +16653,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:scheduledExecutor",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -16675,6 +16913,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:scheduledExecutor",
@@ -16932,6 +17177,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:developmentPolicy",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -17179,6 +17431,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:developmentPolicy",
@@ -17668,6 +17927,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -17941,6 +18207,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -18189,6 +18462,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:number",
@@ -18913,6 +19193,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:scheduledExecutor",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -19172,6 +19459,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:scheduledExecutor",
@@ -19435,6 +19729,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -19690,6 +19991,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -20190,6 +20498,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -20439,6 +20754,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:developer",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -20686,6 +21008,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -20943,6 +21272,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:developmentPolicy",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -21190,6 +21526,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			}
 		],
 		"urf:PublicTransitFacility" : [
@@ -21695,6 +22038,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:population",
 				"type" : "xs:integer",
 				"minOccurs" : "0",
@@ -22190,6 +22540,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			}
 		],
 		"urf:ResidenceAttractionArea" : [
@@ -22427,6 +22784,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			}
 		],
 		"urf:ResidentialBlockConstructionProject" : [
@@ -22664,6 +23028,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:scheduledExecutor",
@@ -22933,6 +23304,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:developmentPolicy",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -23180,6 +23558,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -23459,6 +23844,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			}
 		],
 		"urf:RoadsideDistrictImprovementPlan" : [
@@ -23696,6 +24088,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:districtFacilitiesAllocation",
@@ -23985,6 +24384,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:objectives",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -24258,6 +24664,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			}
 		],
 		"urf:RuralDistrictImprovementPlan" : [
@@ -24495,6 +24908,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:districtFacilitiesAllocation",
@@ -24784,6 +25204,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:objectives",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -25047,6 +25474,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -25307,6 +25741,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -25818,6 +26259,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:scheduledExecutor",
 				"type" : "xs:string",
 				"minOccurs" : "1",
@@ -26059,6 +26507,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:scheduledExecutor",
@@ -26304,6 +26759,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:scheduledExecutor",
 				"type" : "xs:string",
 				"minOccurs" : "1",
@@ -26545,6 +27007,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:scheduledExecutor",
@@ -26790,6 +27259,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:scheduledExecutor",
 				"type" : "xs:string",
 				"minOccurs" : "1",
@@ -27031,6 +27507,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:scheduledExecutor",
@@ -27276,6 +27759,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:scheduledExecutor",
 				"type" : "xs:string",
 				"minOccurs" : "1",
@@ -27517,6 +28007,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:disasterType",
@@ -27786,6 +28283,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -28048,6 +28552,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -28298,6 +28809,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -28545,6 +29063,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -28838,6 +29363,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -29117,6 +29649,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -29370,6 +29909,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -29627,6 +30173,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -29868,6 +30421,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -30129,6 +30689,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:districtFacilitiesAllocation",
@@ -30412,6 +30979,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -30679,6 +31253,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:developmentPolicy",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -30943,6 +31524,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -31198,6 +31786,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:number",
@@ -31698,6 +32293,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -31958,6 +32560,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:number",
@@ -32268,6 +32877,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -32525,6 +33141,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:areaInTotal",
 				"type" : "gml:MeasureType",
 				"minOccurs" : "0",
@@ -32772,6 +33395,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			}
 		],
 		"urf:UnclassifiedUseDistrict" : [
@@ -33009,6 +33639,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			}
 		],
 		"urf:UnusedLandUsePromotionArea" : [
@@ -33246,6 +33883,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			}
 		],
 		"urf:UrbanDevelopmentProject" : [
@@ -33483,6 +34127,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:scheduledExecutor",
@@ -33726,6 +34377,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:expirationDate",
@@ -33983,6 +34641,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -34231,6 +34896,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:number",
@@ -34493,6 +35165,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			}
 		],
 		"urf:UrbanPlanningArea" : [
@@ -34730,6 +35409,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaClassification",
@@ -35017,6 +35703,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:scheduledExecutor",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -35296,6 +35989,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:developmentPolicy",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -35555,6 +36255,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:scheduledExecutor",
@@ -36072,6 +36779,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:developmentPolicy",
 				"type" : "gml:StringOrRefType",
 				"minOccurs" : "0",
@@ -36334,6 +37048,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -36649,6 +37370,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:number",
@@ -37162,6 +37890,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:number",
 				"type" : "xs:string",
 				"minOccurs" : "0",
@@ -37424,6 +38159,13 @@
 				"maxOccurs" : "1"
 			},
 			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
+			},
+			{
 				"name" : "urf:facilityType",
 				"type" : "gml:CodeType",
 				"minOccurs" : "1",
@@ -37665,6 +38407,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			}
 		],
 		"urf:ZoneForPreservationOfHistoricalLandscape" : [
@@ -37902,6 +38651,13 @@
 				"type" : "xs:string",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:urbanParkAttribute",
+				"type" : "urf:UrbanParkAttributePropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "urf:UrbanParkAttribute" ]
 			},
 			{
 				"name" : "urf:areaInTotal",
@@ -39084,7 +39840,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -39302,7 +40058,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -39631,7 +40387,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -39898,7 +40654,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -40193,7 +40949,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -40435,7 +41191,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -40547,6 +41303,12 @@
 			{
 				"name" : "uro:rotationAngle",
 				"type" : "xs:double",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:elevation",
+				"type" : "gml:LengthType",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
 			}
@@ -40677,7 +41439,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -41159,7 +41921,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -41385,7 +42147,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:luseDmAttribute",
@@ -41399,7 +42161,7 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:luseDataQualityAttribute",
@@ -41600,7 +42362,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -41885,7 +42647,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -42164,7 +42926,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -42564,7 +43326,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:bldgDmAttribute",
@@ -42578,21 +43340,21 @@
 				"type" : "uro:IfcAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IfcZone", "uro:IfcPsetDoorCommon", "uro:IfcMapConversion", "uro:IfcBuilding", "uro:IfcCurtainWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcWindow", "uro:IfcClassificationReference", "uro:IfcBuildingStorey", "uro:IfcRoof", "uro:IfcProject", "uro:IfcSite", "uro:IfcPsetOpeningElementCommon", "uro:IfcDoor", "uro:IfcSpace", "uro:IfcBuildingElement", "uro:IfcGroup", "uro:IfcPsetWindowCommon", "uro:IfcPsetSiteCommon", "uro:IfcProjectedCRS", "uro:IfcFurnishingElement", "uro:IfcCoordinateReferenceSystem", "uro:IfcWall", "uro:IfcSpaceBaseQuantity", "uro:IfcPsetBuildingCommon", "uro:IfcPsetSpaceCommon" ]
+				"children" : [ "uro:IfcDoor", "uro:IfcPsetWindowCommon", "uro:IfcSpaceBaseQuantity", "uro:IfcSpace", "uro:IfcPsetSiteCommon", "uro:IfcCoordinateReferenceSystem", "uro:IfcPsetBuildingCommon", "uro:IfcBuildingElement", "uro:IfcBuildingStorey", "uro:IfcProjectedCRS", "uro:IfcMapConversion", "uro:IfcPsetDoorCommon", "uro:IfcCurtainWall", "uro:IfcGroup", "uro:IfcProject", "uro:IfcRoof", "uro:IfcPsetSpaceCommon", "uro:IfcPsetOpeningElementCommon", "uro:IfcFurnishingElement", "uro:IfcBuilding", "uro:IfcWindow", "uro:IfcWall", "uro:IfcOpeningElement", "uro:IfcWallStandardCase", "uro:IfcClassificationReference", "uro:IfcSite", "uro:IfcZone" ]
 			},
 			{
 				"name" : "uro:indoorBuildingAttribute",
 				"type" : "uro:IndoorAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:IndoorPublicTagAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorTacatileTileAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorFacilityAttribute" ]
+				"children" : [ "uro:IndoorFacilityAttribute", "uro:IndoorFurnishingAttribute", "uro:IndoorUserDefinedAttribute", "uro:IndoorPublicTagAttribute", "uro:IndoorSpaceAttribute", "uro:IndoorZoneAttribute", "uro:IndoorStoreyAttribute", "uro:IndoorTacatileTileAttribute" ]
 			},
 			{
 				"name" : "uro:buildingDisasterRiskAttribute",
 				"type" : "uro:BuildingDisasterRiskAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:BuildingHighTideRiskAttribute", "uro:BuildingRiverFloodingRiskAttribute", "uro:BuildingInlandFloodingRiskAttribute", "uro:BuildingLandSlideRiskAttribute", "uro:BuildingTsunamiRiskAttribute" ]
+				"children" : [ "uro:BuildingLandSlideRiskAttribute", "uro:BuildingHighTideRiskAttribute", "uro:BuildingRiverFloodingRiskAttribute", "uro:BuildingInlandFloodingRiskAttribute", "uro:BuildingTsunamiRiskAttribute" ]
 			},
 			{
 				"name" : "uro:keyValuePairAttribute",
@@ -42779,7 +43541,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:frnDmAttribute",
@@ -43026,7 +43788,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:tranDataQualityAttribute",
@@ -43870,7 +44632,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:vegDmAttribute",
@@ -43987,7 +44749,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:vegDmAttribute",
@@ -44207,7 +44969,7 @@
 				"type" : "uro:FacilityAttributePropertyType",
 				"minOccurs" : "0",
 				"maxOccurs" : "unbounded",
-				"children" : [ "uro:PortProtectiveFacility", "uro:PortWasteTreatmentFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility", "uro:PortStorageFacility", "uro:FishingPortCapacity", "uro:MooringFacility", "uro:PortPassengerFacility", "uro:ShipServiceFacility", "uro:PortManagementFacility", "uro:PortPollutionControlFacility", "uro:PortWelfareFacility", "uro:MaintenanceHistoryAttribute", "uro:FishingPortFacility", "uro:CargoHandlingFacility", "uro:PortEnvironmentalImprovementFacility", "uro:NavigationAssistanceFacility", "uro:PortTransportationFacility" ]
+				"children" : [ "uro:ParkFacilityLongevityPlanAttribute", "uro:PortManagementFacility", "uro:MaintenanceHistoryAttribute", "uro:MooringFacility", "uro:ShipServiceFacility", "uro:FishingPortFacility", "uro:PortPassengerFacility", "uro:PortWasteTreatmentFacility", "uro:PortPollutionControlFacility", "uro:PortTransportationFacility", "uro:PortWelfareFacility", "uro:FishingPortCapacity", "uro:CargoHandlingFacility", "uro:NavigationAssistanceFacility", "uro:PortEnvironmentalImprovementFacility", "uro:PortStorageFacility", "uro:PortProtectiveFacility", "uro:CyberportMarinaAndPBS", "uro:HarborFacility" ]
 			},
 			{
 				"name" : "uro:wtrDmAttribute",
@@ -44411,6 +45173,20 @@
 				"name" : "urf:location",
 				"type" : "gml:MultiCurvePropertyType",
 				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			}
+		],
+		"urf:BreakdownOfNominalArea" : [
+			{
+				"name" : "urf:breakdown",
+				"type" : "xs:string",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:areaInSquareMeter",
+				"type" : "gml:MeasureType",
+				"minOccurs" : "1",
 				"maxOccurs" : "1"
 			}
 		],
@@ -45257,6 +46033,27 @@
 				"type" : "xs:date",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
+			}
+		],
+		"urf:UrbanParkAttribute" : [
+			{
+				"name" : "urf:parkCode",
+				"type" : "gml:CodeType",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:startFrom",
+				"type" : "xs:date",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "urf:breakdownOfNominalArea",
+				"type" : "urf:BreakdownOfNominalAreaPropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "unbounded",
+				"children" : [ "urf:BreakdownOfNominalArea" ]
 			}
 		],
 		"urf:UrbanPlanningBasicSurveyTable" : [
@@ -46610,6 +47407,20 @@
 				"minOccurs" : "1",
 				"maxOccurs" : "1",
 				"children" : [ "uro:VerticalCurveType" ]
+			}
+		],
+		"uro:CountermeasuresCost" : [
+			{
+				"name" : "uro:cost",
+				"type" : "xs:integer",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:costUnit",
+				"type" : "xs:string",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
 			}
 		],
 		"uro:CyberportMarinaAndPBS" : [
@@ -50276,6 +51087,27 @@
 				"maxOccurs" : "1"
 			}
 		],
+		"uro:LongevityMeasures" : [
+			{
+				"name" : "uro:fiscalYearForCountermeasures",
+				"type" : "xs:gYear",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:countermeasuresCost",
+				"type" : "uro:CountermeasuresCostPropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "uro:CountermeasuresCost" ]
+			},
+			{
+				"name" : "uro:description",
+				"type" : "xs:string",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			}
+		],
 		"uro:MaintenanceHistoryAttribute" : [
 			{
 				"name" : "uro:facilityId",
@@ -50612,6 +51444,20 @@
 				"maxOccurs" : "1"
 			}
 		],
+		"uro:NumberOfFacilities" : [
+			{
+				"name" : "uro:quantity",
+				"type" : "xs:integer",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:quantityUnit",
+				"type" : "gml:CodeType",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			}
+		],
 		"uro:Occupancy" : [
 			{
 				"name" : "uro:interval",
@@ -50660,6 +51506,158 @@
 			{
 				"name" : "uro:maxDepth",
 				"type" : "gml:LengthType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			}
+		],
+		"uro:ParkFacilityLongevityPlanAttribute" : [
+			{
+				"name" : "uro:facilityId",
+				"type" : "xs:string",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:parkCode",
+				"type" : "gml:CodeType",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:parkName",
+				"type" : "gml:CodeType",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:parkType",
+				"type" : "gml:CodeType",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:facilityName",
+				"type" : "gml:CodeType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:facilityNameOptional",
+				"type" : "xs:string",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:specificFacilityName",
+				"type" : "xs:string",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:numberOfFacilities",
+				"type" : "uro:NumberOfFacilitiesPropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "uro:NumberOfFacilities" ]
+			},
+			{
+				"name" : "uro:size",
+				"type" : "xs:string",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:mainMaterial",
+				"type" : "gml:CodeType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:mainMaterialOptional",
+				"type" : "xs:string",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:installationYear",
+				"type" : "xs:gYear",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:disposalLimitPeriod",
+				"type" : "xs:integer",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:expectedUsagePeriod",
+				"type" : "xs:integer",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:repairsBeforeParkHealthAssessment",
+				"type" : "uro:RepairsBeforeParkHealthAssessmentPropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1",
+				"children" : [ "uro:RepairsBeforeParkHealthAssessment" ]
+			},
+			{
+				"name" : "uro:parkHealthAssessment",
+				"type" : "uro:ParkHealthAssessmentPropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "unbounded",
+				"children" : [ "uro:ParkHealthAssessment" ]
+			},
+			{
+				"name" : "uro:managementType",
+				"type" : "gml:CodeType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:expectedRenewalYearWithMeasures",
+				"type" : "xs:gYear",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:longevityMeasures",
+				"type" : "uro:LongevityMeasuresPropertyType",
+				"minOccurs" : "0",
+				"maxOccurs" : "unbounded",
+				"children" : [ "uro:LongevityMeasures" ]
+			},
+			{
+				"name" : "uro:noteForLongevity",
+				"type" : "xs:string",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			}
+		],
+		"uro:ParkHealthAssessment" : [
+			{
+				"name" : "uro:assessmentFiscalYear",
+				"type" : "xs:gYear",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:deteriorationStatus",
+				"type" : "xs:string",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:condition",
+				"type" : "gml:CodeType",
+				"minOccurs" : "0",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:urgency",
+				"type" : "gml:CodeType",
 				"minOccurs" : "0",
 				"maxOccurs" : "1"
 			}
@@ -51760,6 +52758,20 @@
 				"name" : "uro:matchingScore",
 				"type" : "xs:integer",
 				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			}
+		],
+		"uro:RepairsBeforeParkHealthAssessment" : [
+			{
+				"name" : "uro:repair",
+				"type" : "gml:CodeType",
+				"minOccurs" : "1",
+				"maxOccurs" : "1"
+			},
+			{
+				"name" : "uro:repairFiscalYear",
+				"type" : "xs:gYear",
+				"minOccurs" : "0",
 				"maxOccurs" : "1"
 			}
 		],
