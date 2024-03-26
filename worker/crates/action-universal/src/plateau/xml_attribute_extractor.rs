@@ -304,7 +304,7 @@ impl SummaryResponse {
 pub struct XmlAttributeExtractor;
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "XMLAttributeExtractor")]
+#[typetag::serde(name = "PLATEAU.XMLAttributeExtractor")]
 impl Action for XmlAttributeExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(error::Error::input("No Input"))?;

@@ -148,6 +148,17 @@ impl From<XmlXpathValue> for ActionValue {
     }
 }
 
+impl TryFrom<ActionValue> for rhai::Dynamic {
+    type Error = error::Error;
+
+    fn try_from(value: ActionValue) -> std::result::Result<Self, Self::Error> {
+        let value: serde_json::Value = value.into();
+        let value: rhai::Dynamic =
+            serde_json::from_value(value).map_err(error::Error::internal_runtime)?;
+        Ok(value)
+    }
+}
+
 impl TryFrom<rhai::Dynamic> for ActionValue {
     type Error = error::Error;
 
@@ -161,14 +172,15 @@ impl TryFrom<rhai::Dynamic> for ActionValue {
 
 fn normalize_action_value(value: ActionValue) -> ActionValue {
     match &value {
-        ActionValue::Map(v) => {
-            if v.len() > 1 {
+        ActionValue::Map(v) => match v.len() {
+            len if len > 1 => {
                 let mut value = HashMap::new();
                 for (k, v) in v.iter() {
                     value.insert(k.clone(), normalize_action_value(v.clone()));
                 }
                 ActionValue::Map(value)
-            } else {
+            }
+            1 => {
                 let (k, v) = v.iter().next().unwrap();
                 match k.as_str() {
                     "String" => v.clone(),
@@ -176,7 +188,8 @@ fn normalize_action_value(value: ActionValue) -> ActionValue {
                     _ => value,
                 }
             }
-        }
+            _ => value,
+        },
         ActionValue::Array(v) => {
             let result = v
                 .iter()
