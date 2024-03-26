@@ -1,4 +1,4 @@
-use std::{env, fs, path::{Path, PathBuf}, sync::Arc};
+use std::{env, fs, path::Path, sync::Arc};
 
 use directories::ProjectDirs;
 use yaml_include::Transformer;
@@ -28,10 +28,14 @@ async fn main() {
         Uri::for_test(format!("file://{}", p).as_str())
     };
 
-    let current_dir = env::current_dir().unwrap().to_str().unwrap().to_string().replace("examples", "");
-    let current_dir = Path::new(&current_dir) ;
-    let absolute_path =
-        fs::canonicalize(current_dir.join("examples/plateau/testdata/workflow"));
+    let current_dir = env::current_dir()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string()
+        .replace("examples", "");
+    let current_dir = Path::new(&current_dir);
+    let absolute_path = fs::canonicalize(current_dir.join("examples/plateau/testdata/workflow"));
     let paths = fs::read_dir(absolute_path.unwrap()).unwrap();
 
     for path in paths {

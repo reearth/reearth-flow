@@ -2211,6 +2211,8 @@ name = "reearth-flow-eval-expr"
 version = "0.1.0"
 dependencies = [
  "futures",
+ "reearth-flow-common",
+ "regex",
  "rhai",
  "serde",
  "serde_json",
