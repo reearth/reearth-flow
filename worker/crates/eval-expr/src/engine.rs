@@ -4,6 +4,8 @@ use rhai::{Engine as ScriptEngine, Scope as RhaiScope};
 
 use super::module::console::console_module;
 use super::module::env::{env_module, scope_module};
+use super::module::file::file_module;
+use super::module::str::str_module;
 use crate::{error::Error, scope::Scope, ShareLock, Value, Vars};
 
 #[derive(Debug, Default, Clone)]
@@ -26,12 +28,15 @@ impl Engine {
         vec![
             rhai::exported_module!(env_module),
             rhai::exported_module!(scope_module),
-            rhai::exported_module!(console_module),
         ]
         .iter()
         .for_each(|module| {
             script_engine.register_global_module(module.clone().into());
         });
+        script_engine
+            .register_static_module("console", rhai::exported_module!(console_module).into());
+        script_engine.register_static_module("file", rhai::exported_module!(file_module).into());
+        script_engine.register_static_module("str", rhai::exported_module!(str_module).into());
 
         let engine = Self {
             script_engine: Arc::new(script_engine),
@@ -229,6 +234,7 @@ mod tests {
         let script = r#"
         let v = 5;
         let v2 = env.get("abc");
+        console::info(`${v2}`);
         v2
         "#;
 
