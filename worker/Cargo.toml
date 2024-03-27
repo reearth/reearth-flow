@@ -88,6 +88,7 @@ strum = "0.26.1"
 strum_macros = "0.26.1"
 tempfile = "3.10.1"
 thiserror = "1.0.57"
+time = {version = "0.3.34", features = ["formatting"]}
 tokio = {version = "1.36.0", features = ["full", "time"]}
 tokio-stream = {version = "0.1.14", features = ["sync"]}
 tokio-util = {version = "0.7.10", features = ["full"]}

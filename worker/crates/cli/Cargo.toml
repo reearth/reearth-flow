@@ -30,7 +30,7 @@ directories.workspace = true
 opentelemetry.workspace = true
 opentelemetry_sdk.workspace = true
 thiserror.workspace = true
-time = {version = "0.3.34", features = ["formatting"]}
+time.workspace = true
 tokio-stream.workspace = true
 tokio.workspace = true
 tracing-opentelemetry.workspace = true

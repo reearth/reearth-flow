@@ -26,7 +26,10 @@ reearth-flow-workflow.workspace = true
 bytes.workspace = true
 directories.workspace = true
 pretty_assertions.workspace = true
+time.workspace = true
 tokio.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true
 yaml-include = "0.7.0"
 
 [[example]]

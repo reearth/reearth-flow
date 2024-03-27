@@ -55,6 +55,7 @@ pub trait Action: Send + Sync {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ActionValue {
+    Null,
     Bool(bool),
     Number(Number),
     String(String),
@@ -90,6 +91,7 @@ impl Default for ActionValue {
 impl Display for ActionValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            ActionValue::Null => write!(f, "null"),
             ActionValue::Bool(v) => write!(f, "{}", v),
             ActionValue::Number(v) => write!(f, "{}", v),
             ActionValue::String(v) => write!(f, "{}", v),
@@ -103,6 +105,7 @@ impl Display for ActionValue {
 impl From<serde_json::Value> for ActionValue {
     fn from(value: serde_json::Value) -> Self {
         match value {
+            serde_json::Value::Null => ActionValue::Null,
             serde_json::Value::Bool(v) => ActionValue::Bool(v),
             serde_json::Value::Number(v) => ActionValue::Number(v),
             serde_json::Value::String(v) => ActionValue::String(v),
@@ -114,7 +117,6 @@ impl From<serde_json::Value> for ActionValue {
                     .map(|(k, v)| (k, ActionValue::from(v)))
                     .collect::<HashMap<_, _>>(),
             ),
-            _ => ActionValue::String("".to_owned()),
         }
     }
 }
@@ -122,6 +124,7 @@ impl From<serde_json::Value> for ActionValue {
 impl From<ActionValue> for serde_json::Value {
     fn from(value: ActionValue) -> Self {
         match value {
+            ActionValue::Null => serde_json::Value::Null,
             ActionValue::Bool(v) => serde_json::Value::Bool(v),
             ActionValue::Number(v) => serde_json::Value::Number(v),
             ActionValue::String(v) => serde_json::Value::String(v),

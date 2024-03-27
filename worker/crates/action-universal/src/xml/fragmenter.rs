@@ -1,17 +1,16 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
-use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
-
-use reearth_flow_common::str::to_hash;
-use reearth_flow_common::uri::Uri;
-use reearth_flow_common::xml::{self, XmlDocument, XmlNode};
 
 use reearth_flow_action::{
     error::Error, utils::convert_dataframe_to_scope_params, Action, ActionContext, ActionDataframe,
     ActionResult, ActionValue, Result,
 };
+use reearth_flow_common::str::to_hash;
+use reearth_flow_common::uri::Uri;
+use reearth_flow_common::xml::{self, XmlDocument, XmlNode};
+use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_storage::resolve::StorageResolver;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -111,19 +110,6 @@ pub(super) async fn url(
                 }
                 ActionValue::Array(result)
             }
-            ActionValue::Map(_) => {
-                let result = action_value_to_fragment(
-                    &data,
-                    &props.attribute,
-                    &elements_to_match_ast,
-                    &elements_to_exclude_ast,
-                    &params,
-                    Arc::clone(&expr_engine),
-                    Arc::clone(&ctx.storage_resolver),
-                )
-                .await?;
-                ActionValue::Array(result)
-            }
             _ => data,
         };
         output.insert(port, Some(processed_data));
@@ -153,15 +139,23 @@ async fn action_value_to_fragment(
                 scope.set(k, v.clone().into());
             }
             let elements_to_match_ast = scope
-                .eval_ast::<Vec<String>>(elements_to_match_ast)
+                .eval_ast::<rhai::Array>(elements_to_match_ast)
                 .map_err(Error::internal_runtime)?;
+            let elements_to_match_ast = elements_to_match_ast
+                .iter()
+                .map(|v| v.clone().into_string().unwrap_or_default())
+                .collect::<Vec<String>>();
             let elements_to_exclude_ast = scope
-                .eval_ast::<Vec<String>>(elements_to_exclude_ast)
+                .eval_ast::<rhai::Array>(elements_to_exclude_ast)
                 .map_err(Error::internal_runtime)?;
+            let elements_to_exclude_ast = elements_to_exclude_ast
+                .iter()
+                .map(|v| v.clone().into_string().unwrap_or_default())
+                .collect::<Vec<String>>();
             let url = match row.get(attribute) {
-                Some(ActionValue::String(url)) => {
-                    Uri::from_str(url).map_err(Error::internal_runtime)?
-                }
+                Some(ActionValue::String(url)) => Uri::from_str(url).map_err(|err| {
+                    Error::internal_runtime(format!("{:?} with url = {}", err, url))
+                })?,
                 _ => return Err(Error::internal_runtime("No url found")),
             };
             let storage = storage_resolver
