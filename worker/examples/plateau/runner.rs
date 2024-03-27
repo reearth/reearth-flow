@@ -1,6 +1,10 @@
 use std::{env, fs, path::Path, sync::Arc};
 
 use directories::ProjectDirs;
+use tracing::Level;
+use tracing_subscriber::fmt::time::UtcTime;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::EnvFilter;
 use yaml_include::Transformer;
 
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
@@ -12,6 +16,7 @@ use reearth_flow_workflow_runner::dag::DagExecutor;
 
 #[tokio::main]
 async fn main() {
+    setup_logging_and_tracing();
     let job_id = Id::new_v4();
     let dataframe_state_uri = {
         let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
@@ -51,6 +56,29 @@ async fn main() {
         let executor =
             DagExecutor::new(job_id, &workflow, storage_resolver, state, log_factory).unwrap();
         let result = executor.start().await;
+        println!("{:?}", result);
         assert!(result.is_ok());
     }
+}
+
+pub fn setup_logging_and_tracing() {
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(Level::INFO.into())
+        .from_env_lossy();
+    let registry = tracing_subscriber::registry().with(env_filter);
+    let event_format = tracing_subscriber::fmt::format()
+        .with_target(true)
+        .with_timer(UtcTime::new(
+            time::format_description::parse(
+                "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z",
+            )
+            .expect("Time format invalid."),
+        ));
+    let _ = registry
+        .with(
+            tracing_subscriber::fmt::layer()
+                .event_format(event_format)
+                .with_ansi(true),
+        )
+        .try_init();
 }
