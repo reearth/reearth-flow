@@ -56,7 +56,6 @@ async fn main() {
         let executor =
             DagExecutor::new(job_id, &workflow, storage_resolver, state, log_factory).unwrap();
         let result = executor.start().await;
-        println!("{:?}", result);
         assert!(result.is_ok());
     }
 }
