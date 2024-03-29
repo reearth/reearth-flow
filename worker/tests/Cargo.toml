@@ -1,0 +1,38 @@
+[package]
+description = "Re:Earth Flow tests"
+name = "reearth-flow-tests"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+publish = false
+
+[dev-dependencies]
+reearth-flow-action-log.workspace = true
+reearth-flow-action-universal.workspace = true
+reearth-flow-action.workspace = true
+reearth-flow-common.workspace = true
+reearth-flow-eval-expr.workspace = true
+reearth-flow-state.workspace = true
+reearth-flow-storage.workspace = true
+reearth-flow-workflow-runner.workspace = true
+reearth-flow-workflow.workspace = true
+
+bytes.workspace = true
+directories.workspace = true
+pretty_assertions.workspace = true
+rust-embed = "8.3.0"
+time.workspace = true
+tokio.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[[test]]
+name = "test-main"
+path = "test_main.rs"
