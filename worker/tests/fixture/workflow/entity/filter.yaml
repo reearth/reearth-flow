@@ -1,0 +1,33 @@
+id: 7b66c0a4-e1fa-41dd-a0c9-df3f6e01cc22
+name: "entity filter integration test"
+entryGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+graphs:
+  - id: c6863b71-953b-4d15-af56-396fc93fc617
+    name: entrypoint
+    nodes:
+      - id: a1a91180-ab88-4c1a-aab5-48c242a218ca
+        name: Source-Sample-DatasetUrl-01
+        type: action
+        action: FileReader
+        with:
+          format: csv
+          dataset: |
+            "ram:///fixture/testdata/entity/filter/filter.csv"
+          header: true
+
+      - id: a1a91180-ab88-4c1a-aab5-48c242a218cb
+        name: Ops-StringSpread-Filter
+        type: action
+        action: EntityFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("city") in ["Tokyo", "Osaka"]
+              outputPort: default
+
+    edges:
+      - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
+        from: a1a91180-ab88-4c1a-aab5-48c242a218ca
+        to: a1a91180-ab88-4c1a-aab5-48c242a218cb
+        fromPort: default
+        toPort: default

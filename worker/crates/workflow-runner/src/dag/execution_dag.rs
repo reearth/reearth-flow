@@ -89,18 +89,18 @@ impl DagExecutor {
         })
     }
 
-    pub async fn start(&self) -> crate::Result<()> {
+    pub async fn start(&self) -> crate::Result<ActionDataframe> {
         let workflow_name = self.workflow_name.clone();
         info!(parent: &self.root_span, "Start workflow = {:?}", workflow_name);
         let start = Instant::now();
-        let _res = self.run_dag(&self.entry_dag).await?;
+        let res = self.run_dag(&self.entry_dag).await?;
         let duration = start.elapsed();
         info!(
             parent: &self.root_span,
             "Finish workflow = {:?}, duration = {:?}",
             self.workflow_name, duration
         );
-        Ok(())
+        Ok(res)
     }
 
     #[async_recursion]

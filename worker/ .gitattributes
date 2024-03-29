@@ -1,1 +1,2 @@
 examples/plateau/testdata/**/* linguist-vendored
+tests/fixture/**/* linguist-vendored
