@@ -28,8 +28,7 @@ impl Action for AttributeStringSearcher {
                 k.clone(),
                 match v {
                     Some(ActionValue::String(s)) => Some(ActionValue::Array(
-                        re.find_iter(&s)
-                            .into_iter()
+                        re.find_iter(s)
                             .map(|m| ActionValue::String(m.as_str().to_string()))
                             .collect()
                     )),
