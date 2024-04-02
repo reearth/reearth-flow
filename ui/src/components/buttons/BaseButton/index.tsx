@@ -38,10 +38,19 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, onClick, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
-      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        onClick={(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+          if (!onClick) return;
+          e.stopPropagation();
+          onClick(e);
+        }}
+        {...props}
+      />
     );
   },
 );
