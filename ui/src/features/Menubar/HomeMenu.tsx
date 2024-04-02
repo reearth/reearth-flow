@@ -1,3 +1,4 @@
+import { FlowLogo } from "@flow/components";
 import {
   MenubarContent,
   MenubarItem,
@@ -10,11 +11,13 @@ import {
   MenubarTrigger,
 } from "@flow/components/Menubar";
 
-const FileMenu: React.FC = () => {
+const HomeMenu: React.FC = () => {
   return (
     <MenubarMenu>
-      <MenubarTrigger>File</MenubarTrigger>
-      <MenubarContent>
+      <MenubarTrigger className="bg-red-900 hover:bg-red-800 transition-colors">
+        <FlowLogo />
+      </MenubarTrigger>
+      <MenubarContent className="w-[300px] bg-zinc-800 border-none text-zinc-200">
         <MenubarItem>
           New Tab <MenubarShortcut>⌘T</MenubarShortcut>
         </MenubarItem>
@@ -22,7 +25,7 @@ const FileMenu: React.FC = () => {
           New Window <MenubarShortcut>⌘N</MenubarShortcut>
         </MenubarItem>
         <MenubarItem disabled>New Incognito Window</MenubarItem>
-        <MenubarSeparator />
+        <MenubarSeparator className="bg-zinc-700" />
         <MenubarSub>
           <MenubarSubTrigger>Share</MenubarSubTrigger>
           <MenubarSubContent>
@@ -31,7 +34,7 @@ const FileMenu: React.FC = () => {
             <MenubarItem>Notes</MenubarItem>
           </MenubarSubContent>
         </MenubarSub>
-        <MenubarSeparator />
+        <MenubarSeparator className="bg-zinc-700" />
         <MenubarItem>
           Print... <MenubarShortcut>⌘P</MenubarShortcut>
         </MenubarItem>
@@ -40,4 +43,4 @@ const FileMenu: React.FC = () => {
   );
 };
 
-export default FileMenu;
+export default HomeMenu;

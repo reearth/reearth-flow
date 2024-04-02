@@ -1,15 +1,29 @@
 import { FileIcon, StopIcon } from "@radix-ui/react-icons";
 
 import BoilerFiletree from "@flow/assets/filetree-example.png";
-import { CollapsiblePanel, type PanelContent } from "@flow/components";
+import { VerticalPanel, FlowLogo, type PanelContent } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
 
-type Props = {};
+import HomeNav from "../HomeNav";
 
-const LeftPanel: React.FC<Props> = () => {
+type Props = {
+  className?: string;
+};
+
+const LeftPanel: React.FC<Props> = ({ className }) => {
   const [isPanelOpen, handlePanelToggle] = useStateManager<boolean>(true);
 
   const panelContents: PanelContent[] = [
+    {
+      id: "home-menu",
+      icon: <FlowLogo />,
+      component: (
+        <>
+          <HomeNav />
+          <div className="border-zinc-700 border-t-[1px] w-[100%]" />
+        </>
+      ),
+    },
     {
       id: "navigator",
       title: "Navigator",
@@ -31,8 +45,8 @@ const LeftPanel: React.FC<Props> = () => {
     },
   ];
   return (
-    <CollapsiblePanel
-      className="bg-zinc-800 ml-1 mb-1 mr-1 rounded-md"
+    <VerticalPanel
+      className={`bg-zinc-800 rounded-md ${className}`}
       isOpen={!!isPanelOpen}
       togglePosition="end-right"
       panelContents={panelContents}

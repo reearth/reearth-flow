@@ -7,57 +7,49 @@ import {
   ZoomInIcon,
   ZoomOutIcon,
 } from "@radix-ui/react-icons";
+import { useCallback, useState } from "react";
 
-import { Button, FlowLogo, Menubar, MenubarSeparator } from "@flow/components";
-import { closeFullscreen, openFullscreen } from "@flow/utils";
+import { IconButton, Menubar, MenubarSeparator } from "@flow/components";
+import { checkIsFullscreen, closeFullscreen, openFullscreen } from "@flow/utils";
 
-import EditMenu from "./components/Edit";
-import HelpMenu from "./components/Help";
-import RunMenu from "./components/Run";
-import ToolsMenu from "./components/Tools";
-import ViewMenu from "./components/View";
+// import HomeMenu from "./HomeMenu";
 
 export default function MenubarComponent() {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const handleFullscreenToggle = useCallback(() => {
+    const isFullscreen = checkIsFullscreen();
+    if (isFullscreen) {
+      closeFullscreen();
+    } else {
+      openFullscreen();
+    }
+    setIsFullscreen(!isFullscreen);
+  }, []);
+
   return (
     <Menubar className="border-none bg-zinc-800 m-1">
-      <Button
-        className="bg-red-900 h-[30px] w-[30px] border border-black"
-        size="icon"
-        variant="ghost">
-        <FlowLogo />
-      </Button>
-      <EditMenu />
-      <ViewMenu />
-      <RunMenu />
-      <ToolsMenu />
-      <HelpMenu />
+      {/* <HomeMenu /> */}
       <div className="flex justify-end align-middle gap-[10px] flex-1">
-        <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
-          <EnterFullScreenIcon onClick={openFullscreen} />
-        </Button>
-        <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
-          <ExitFullScreenIcon onClick={closeFullscreen} />
-        </Button>
-        <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
-          <ZoomInIcon />
-        </Button>
-        <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
-          <ZoomOutIcon />
-        </Button>
+        <IconButton
+          icon={
+            isFullscreen ? (
+              <ExitFullScreenIcon onClick={handleFullscreenToggle} />
+            ) : (
+              <EnterFullScreenIcon onClick={handleFullscreenToggle} />
+            )
+          }
+        />
+        <IconButton icon={<ZoomInIcon />} />
+        <IconButton icon={<ZoomOutIcon />} />
         <MenubarSeparator />
         <div className="border-l border-zinc-700" />
         <MenubarSeparator />
       </div>
       <div className="flex justify-end align-middle gap-[10px]">
-        <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
-          <DoubleArrowRightIcon />
-        </Button>
-        <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
-          <PlayIcon />
-        </Button>
-        <Button className="hover:bg-zinc-600" variant="ghost" size="sm">
-          <Link2Icon />
-        </Button>
+        <IconButton icon={<DoubleArrowRightIcon />} />
+        <IconButton icon={<PlayIcon />} />
+        <IconButton icon={<Link2Icon />} />
       </div>
     </Menubar>
   );

@@ -12,18 +12,25 @@ import ReactFlow, {
   Background,
   BackgroundVariant,
   DefaultEdgeOptions,
+  Panel,
 } from "reactflow";
 
 import {
   Infobar,
-  Toolbox,
   nodeTypes,
   CustomConnectionLine,
   connectionLineStyle,
+  Toolbox,
 } from "@flow/features/Canvas/components";
 
 import "reactflow/dist/style.css";
+
 import { initialEdges, initialNodes } from "./mockData";
+
+type CanvasProps = {
+  leftArea?: React.ReactNode;
+  topArea?: React.ReactNode;
+};
 
 // const edgeTypes: EdgeTypes = {
 //   floating: FloatingEdge,
@@ -43,7 +50,7 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
   // animated: true,
 };
 
-export default function Canvas() {
+export default function Canvas({ leftArea, topArea }: CanvasProps) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
 
@@ -94,7 +101,7 @@ export default function Canvas() {
   }, [hoveredDetails]);
 
   return (
-    <div className="flex-1 mb-1 p-1 border border-zinc-700 rounded-sm relative">
+    <div className="flex-1 m-1 rounded-sm relative">
       <ReactFlow
         // snapToGrid
         // minZoom={0.7}
@@ -130,10 +137,19 @@ export default function Canvas() {
           maskStrokeColor="red"
           maskStrokeWidth={3}
         /> */}
+        <Panel position="bottom-center">
+          <Infobar hoveredDetails={hoveredDetails} />
+        </Panel>
         <Background variant={BackgroundVariant["Lines"]} gap={30} color="rgb(39 39 42)" />
       </ReactFlow>
-      <Toolbox />
-      <Infobar hoveredDetails={hoveredDetails} />
+      {topArea && <div className="absolute top-1 right-1">{topArea}</div>}
+      {leftArea && (
+        <div className="absolute left-1 top-1 bottom-1 flex flex-shrink-0 gap-2">
+          {leftArea}
+          <Toolbox className="self-start" />
+        </div>
+      )}
+      {/* <BottomPanel className="absolute right-1 bottom-1" /> */}
     </div>
   );
 }

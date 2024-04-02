@@ -2,10 +2,12 @@
 import { Loading } from "@flow/components/Loading";
 import BottomPanel from "@flow/features/BottomPanel";
 import Canvas from "@flow/features/Canvas";
-import LeftPanel from "@flow/features/LeftPanel";
+// import LeftPanel from "@flow/features/LeftPanel";
 import Menubar from "@flow/features/Menubar";
 import RightPanel from "@flow/features/RightPanel";
 import { useTimeoutOnLoad } from "@flow/hooks";
+
+import LeftPanel from "./features/LeftPanel";
 
 function App() {
   const { running: isLoading } = useTimeoutOnLoad(1000);
@@ -13,11 +15,9 @@ function App() {
   return (
     <>
       <div className="flex flex-col bg-zinc-900 text-zinc-300 h-screen">
-        <Menubar />
         <div className="flex flex-1">
-          <LeftPanel />
-          <div className="flex flex-col flex-1">
-            <Canvas />
+          <div className="flex flex-col flex-1 p-0">
+            <Canvas leftArea={<LeftPanel />} topArea={<Menubar />} />
             <BottomPanel />
           </div>
           <RightPanel />
