@@ -13,6 +13,7 @@ import ReactFlow, {
   BackgroundVariant,
   DefaultEdgeOptions,
   Panel,
+  ReactFlowProvider,
 } from "reactflow";
 
 import {
@@ -22,6 +23,7 @@ import {
   connectionLineStyle,
   Toolbox,
 } from "@flow/features/Canvas/components";
+import Menubar from "@flow/features/Menubar";
 
 import "reactflow/dist/style.css";
 
@@ -29,7 +31,7 @@ import { initialEdges, initialNodes } from "./mockData";
 
 type CanvasProps = {
   leftArea?: React.ReactNode;
-  topArea?: React.ReactNode;
+  // topArea?: React.ReactNode;
 };
 
 // const edgeTypes: EdgeTypes = {
@@ -50,7 +52,7 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
   // animated: true,
 };
 
-export default function Canvas({ leftArea, topArea }: CanvasProps) {
+export default function Canvas({ leftArea }: CanvasProps) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
 
@@ -102,54 +104,58 @@ export default function Canvas({ leftArea, topArea }: CanvasProps) {
 
   return (
     <div className="flex-1 m-1 rounded-sm relative">
-      <ReactFlow
-        // snapToGrid
-        // minZoom={0.7}
-        // maxZoom={1}
-        // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
-        // panOnDrag={false}
-        // nodeDragThreshold={60}
-        // edgeTypes={edgeTypes}
-        // translateExtent={[
-        //   [-1000, -1000],
-        //   [1000, 1000],
-        // ]}
-        nodes={nodes}
-        nodeTypes={nodeTypes}
-        edges={edges}
-        defaultEdgeOptions={defaultEdgeOptions}
-        connectionLineComponent={CustomConnectionLine}
-        connectionLineStyle={connectionLineStyle}
-        snapGrid={[30, 30]}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeMouseEnter={handleNodeHover}
-        onNodeMouseLeave={handleNodeHover}
-        onEdgeMouseEnter={handleEdgeHover}
-        onEdgeMouseLeave={handleEdgeHover}
-        onConnect={onConnect}
-        fitView
-        panOnScroll
-        proOptions={{ hideAttribution: true }}>
-        {/* <MiniMap
+      <ReactFlowProvider>
+        <ReactFlow
+          // snapToGrid
+          // minZoom={0.7}
+          // maxZoom={1}
+          // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
+          // panOnDrag={false}
+          // nodeDragThreshold={60}
+          // edgeTypes={edgeTypes}
+          // translateExtent={[
+          //   [-1000, -1000],
+          //   [1000, 1000],
+          // ]}
+          nodes={nodes}
+          nodeTypes={nodeTypes}
+          edges={edges}
+          defaultEdgeOptions={defaultEdgeOptions}
+          connectionLineComponent={CustomConnectionLine}
+          connectionLineStyle={connectionLineStyle}
+          snapGrid={[30, 30]}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeMouseEnter={handleNodeHover}
+          onNodeMouseLeave={handleNodeHover}
+          onEdgeMouseEnter={handleEdgeHover}
+          onEdgeMouseLeave={handleEdgeHover}
+          onConnect={onConnect}
+          fitView
+          panOnScroll
+          proOptions={{ hideAttribution: true }}>
+          {/* <MiniMap
           className="bg-zinc-900"
           nodeColor="purple"
           maskStrokeColor="red"
           maskStrokeWidth={3}
         /> */}
-        <Panel position="bottom-center">
-          <Infobar hoveredDetails={hoveredDetails} />
-        </Panel>
-        <Background variant={BackgroundVariant["Lines"]} gap={30} color="rgb(39 39 42)" />
-      </ReactFlow>
-      {topArea && <div className="absolute top-1 right-1">{topArea}</div>}
-      {leftArea && (
-        <div className="absolute left-1 top-1 bottom-1 flex flex-shrink-0 gap-2">
-          {leftArea}
-          <Toolbox className="self-start" />
+          <Panel position="bottom-center">
+            <Infobar hoveredDetails={hoveredDetails} />
+          </Panel>
+          <Background variant={BackgroundVariant["Lines"]} gap={30} color="rgb(39 39 42)" />
+        </ReactFlow>
+        <div className="absolute top-1 right-1">
+          <Menubar />
         </div>
-      )}
-      {/* <BottomPanel className="absolute right-1 bottom-1" /> */}
+        {leftArea && (
+          <div className="absolute left-1 top-1 bottom-1 flex flex-shrink-0 gap-2">
+            {leftArea}
+            <Toolbox className="self-start" />
+          </div>
+        )}
+        {/* <BottomPanel className="absolute right-1 bottom-1" /> */}
+      </ReactFlowProvider>
     </div>
   );
 }

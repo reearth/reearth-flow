@@ -8,6 +8,7 @@ import {
   ZoomOutIcon,
 } from "@radix-ui/react-icons";
 import { useCallback, useState } from "react";
+import { useReactFlow } from "reactflow";
 
 import { IconButton, Menubar, MenubarSeparator } from "@flow/components";
 import { checkIsFullscreen, closeFullscreen, openFullscreen } from "@flow/utils";
@@ -15,6 +16,7 @@ import { checkIsFullscreen, closeFullscreen, openFullscreen } from "@flow/utils"
 // import HomeMenu from "./HomeMenu";
 
 export default function MenubarComponent() {
+  const { zoomIn, zoomOut } = useReactFlow();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const handleFullscreenToggle = useCallback(() => {
@@ -40,8 +42,8 @@ export default function MenubarComponent() {
             )
           }
         />
-        <IconButton icon={<ZoomInIcon />} />
-        <IconButton icon={<ZoomOutIcon />} />
+        <IconButton icon={<ZoomInIcon />} onClick={() => zoomIn({ duration: 400 })} />
+        <IconButton icon={<ZoomOutIcon />} onClick={() => zoomOut({ duration: 400 })} />
         <MenubarSeparator />
         <div className="border-l border-zinc-700" />
         <MenubarSeparator />
