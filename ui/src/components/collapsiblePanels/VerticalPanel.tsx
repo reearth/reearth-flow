@@ -80,7 +80,7 @@ const VerticalPanel: React.FC<VerticalPanelProps> = ({
         />
       )}
       <div
-        className={`flex flex-1 ${direction === "horizontal" ? "px-3 py-1" : "flex-col py-3 px-1"} gap-3 overflow-hidden transition-all ${!isOpen ? "self-center" : "w-[250px]"}`}>
+        className={`flex flex-1 ${direction === "horizontal" ? "px-3 py-1" : "flex-col py-3 px-1"} gap-3 overflow-scroll transition-all ${!isOpen ? "self-center" : "w-[250px]"}`}>
         {panelContents?.map(content => {
           return isOpen ? (
             <div

@@ -4,7 +4,7 @@ import BottomPanel from "@flow/features/BottomPanel";
 import Canvas from "@flow/features/Canvas";
 // import LeftPanel from "@flow/features/LeftPanel";
 import Menubar from "@flow/features/Menubar";
-import RightPanel from "@flow/features/RightPanel";
+// import RightPanel from "@flow/features/RightPanel";
 import { useTimeoutOnLoad } from "@flow/hooks";
 
 import LeftPanel from "./features/LeftPanel";
@@ -20,7 +20,7 @@ function App() {
             <Canvas leftArea={<LeftPanel />} topArea={<Menubar />} />
             <BottomPanel />
           </div>
-          <RightPanel />
+          {/* <RightPanel /> */}
         </div>
       </div>
       <Loading show={isLoading} />
