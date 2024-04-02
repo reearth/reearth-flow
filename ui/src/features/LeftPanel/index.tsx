@@ -50,10 +50,7 @@ const LeftPanel: React.FC<Props> = ({ className }) => {
       isOpen={!!isPanelOpen}
       togglePosition="end-right"
       panelContents={panelContents}
-      onPanelToggle={() => {
-        console.log("LICKEDDD");
-        handlePanelToggle();
-      }}
+      onPanelToggle={handlePanelToggle}
     />
   );
 };

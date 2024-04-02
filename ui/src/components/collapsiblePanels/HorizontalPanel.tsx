@@ -19,8 +19,6 @@ export type HorizontalPanelProps = {
 
 const baseClasses = "flex flex-col box-content transition-width duration-300 ease-in-out";
 
-const baseButtonClasses = "w-[60px] hover:bg-zinc-900";
-
 const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
   className,
   isOpen,
@@ -82,11 +80,11 @@ const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
         </div>
       </div>
       <div id="content" className="flex flex-1 bg-zinc-800">
-        {isOpen ? (
+        {isOpen && (
           <div className="flex flex-1 p-1" key={selected?.id}>
             {selected?.component}
           </div>
-        ) : null}
+        )}
       </div>
       {arrowPosition === "end" && <ArrowButton direction={arrowDirection} />}
     </div>
@@ -97,8 +95,8 @@ export { HorizontalPanel };
 
 const ArrowButton = ({ direction }: { direction: ArrowDirection }) => {
   return direction === "down" ? (
-    <ChevronDownIcon className={baseButtonClasses} />
+    <ChevronDownIcon className="w-[60px]" />
   ) : (
-    <ChevronUpIcon className={baseButtonClasses} />
+    <ChevronUpIcon className="w-[60px]" />
   );
 };
