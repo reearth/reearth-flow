@@ -48,6 +48,7 @@ reearth-flow-telemetry = {path = "crates/telemetry"}
 reearth-flow-workflow = {path = "crates/workflow"}
 reearth-flow-workflow-cli = {path = "crates/cli"}
 reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
+reearth-flow-xml = {path = "crates/xml"}
 
 async-recursion = "1.0.5"
 async-trait = "0.1.77"
