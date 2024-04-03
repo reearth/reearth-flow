@@ -30,8 +30,8 @@ pub enum Error {
     #[error("WrongDocument")]
     WrongDocument,
 
-    #[error("InvalidModification")]
-    Malformed,
+    #[error("InvalidModification: {0}")]
+    Malformed(String),
 }
 
 impl Eq for Error {}
