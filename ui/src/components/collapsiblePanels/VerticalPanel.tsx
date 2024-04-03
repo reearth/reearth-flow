@@ -1,8 +1,9 @@
 import { Fragment, useMemo } from "react";
 
-import { ToggleArea } from "./ToggleArea";
+import { ToggleArea } from "./components/ToggleArea";
+import { PanelContent } from "./types";
 
-export type Props = {
+export type VerticalPanelProps = {
   className?: string;
   isOpen: boolean;
   direction?: "horizontal" | "vertical";
@@ -11,18 +12,12 @@ export type Props = {
   togglePosition?: "start-left" | "start-right" | "end-left" | "end-right";
   panelContents?: PanelContent[];
   onPanelToggle?: (open: boolean) => void;
-};
-
-export type PanelContent = {
-  id: string;
-  component: React.ReactNode;
-  title?: string;
-  icon?: React.ReactNode;
+  onClick?: (currentOpenState?: boolean) => void; // optional onClick handler
 };
 
 const baseClasses = `flex box-content transition-width duration-300 ease-in-out`;
 
-const CollapsiblePanel: React.FC<Props> = ({
+const VerticalPanel: React.FC<VerticalPanelProps> = ({
   className,
   isOpen,
   direction = "vertical",
@@ -30,6 +25,7 @@ const CollapsiblePanel: React.FC<Props> = ({
   maxHeight,
   togglePosition = "start-right",
   panelContents,
+  onClick,
   onPanelToggle,
 }) => {
   const arrowPosition = useMemo(
@@ -75,7 +71,7 @@ const CollapsiblePanel: React.FC<Props> = ({
   );
 
   return (
-    <div className={classes}>
+    <div className={classes} onClick={() => onClick?.(isOpen)}>
       {togglePosition.includes("start") && (
         <ToggleArea
           arrowDirection={arrowDirection}
@@ -84,7 +80,7 @@ const CollapsiblePanel: React.FC<Props> = ({
         />
       )}
       <div
-        className={`flex flex-1 ${direction === "horizontal" ? "px-3 py-1" : "flex-col py-3 px-1"} gap-3 overflow-hidden transition-all ${!isOpen ? "self-center" : "w-[250px]"}`}>
+        className={`flex flex-1 ${direction === "horizontal" ? "px-3 py-1" : "flex-col py-3 px-1"} gap-3 overflow-scroll transition-all ${!isOpen ? "self-center" : "w-[250px]"}`}>
         {panelContents?.map(content => {
           return isOpen ? (
             <div
@@ -111,4 +107,4 @@ const CollapsiblePanel: React.FC<Props> = ({
   );
 };
 
-export { CollapsiblePanel };
+export { VerticalPanel };

@@ -5,7 +5,7 @@ import {
   ChevronRightIcon,
 } from "@radix-ui/react-icons";
 
-import { Button } from "..";
+import { IconButton } from "../..";
 
 export type ArrowPosition = "start" | "center" | "end";
 export type ArrowDirection = "left" | "right" | "up" | "down";
@@ -28,20 +28,20 @@ const ToggleArea: React.FC<ToggleProps> = ({
   <div
     className={`flex ${arrowPosition === "end" ? "justify-end" : arrowPosition === "start" ? "justify-start" : "justify-center"} w-fill cursor-pointer ${className}`}
     onClick={onClick}>
-    <Button
-      className={`hover:bg-white hover:bg-opacity-10 hover:text-white ${buttonClassName}`}
-      variant="ghost"
-      size="icon">
-      {arrowDirection === "right" ? (
-        <ChevronRightIcon />
-      ) : arrowDirection === "up" ? (
-        <ChevronUpIcon />
-      ) : arrowDirection === "down" ? (
-        <ChevronDownIcon />
-      ) : (
-        <ChevronLeftIcon />
-      )}
-    </Button>
+    <IconButton
+      className={buttonClassName}
+      icon={
+        arrowDirection === "right" ? (
+          <ChevronRightIcon />
+        ) : arrowDirection === "up" ? (
+          <ChevronUpIcon />
+        ) : arrowDirection === "down" ? (
+          <ChevronDownIcon />
+        ) : (
+          <ChevronLeftIcon />
+        )
+      }
+    />
   </div>
 );
 

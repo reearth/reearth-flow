@@ -1,7 +1,6 @@
-import { MixerVerticalIcon, Pencil2Icon, ReaderIcon } from "@radix-ui/react-icons";
 import { useCallback, useMemo, useState } from "react";
 
-import { Button } from "@flow/components";
+import { IconButton, ReaderIcon, TransformerIcon, WriterIcon } from "@flow/components";
 
 type Tool = {
   id: string;
@@ -9,7 +8,11 @@ type Tool = {
   icon: React.ReactNode;
 };
 
-const Toolbox: React.FC = () => {
+type Props = {
+  className?: string;
+};
+
+const Toolbox: React.FC<Props> = ({ className }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const availableTools = useMemo<Tool[]>(
@@ -22,12 +25,12 @@ const Toolbox: React.FC = () => {
       {
         id: "transformer-node",
         name: "Transformer Node",
-        icon: <MixerVerticalIcon />,
+        icon: <TransformerIcon />,
       },
       {
         id: "writer-node",
         name: "Writer Node",
-        icon: <Pencil2Icon />,
+        icon: <WriterIcon />,
       },
     ],
     [],
@@ -38,17 +41,11 @@ const Toolbox: React.FC = () => {
 
   return (
     <div
-      className="flex flex-col flex-wrap bg-zinc-800 border border-zinc-600 rounded-md absolute top-3 mb-3 left-3 mr-3 text-zinc-400 transition-all"
+      className={`flex flex-col flex-wrap bg-zinc-800 border border-zinc-600 rounded-md text-zinc-400 transition-all ${className}`}
       onMouseOver={handleMouseOver}
       onMouseLeave={handleMouseLeave}>
       {availableTools.map(tool => (
-        <Button
-          key={tool.id}
-          className="transition-all hover:bg-zinc-600 hover:text-zinc-300"
-          variant="ghost"
-          size="icon">
-          {tool.icon}
-        </Button>
+        <IconButton key={tool.id} icon={tool.icon} />
       ))}
     </div>
   );
