@@ -16,6 +16,7 @@ import ReactFlow, {
   ReactFlowProvider,
 } from "reactflow";
 
+import ActionBar from "@flow/features/Actionbar";
 import {
   Infobar,
   nodeTypes,
@@ -23,7 +24,6 @@ import {
   connectionLineStyle,
   Toolbox,
 } from "@flow/features/Canvas/components";
-import Menubar from "@flow/features/Menubar";
 
 import "reactflow/dist/style.css";
 
@@ -131,6 +131,7 @@ export default function Canvas({ leftArea }: CanvasProps) {
           onEdgeMouseEnter={handleEdgeHover}
           onEdgeMouseLeave={handleEdgeHover}
           onConnect={onConnect}
+          fitViewOptions={{ padding: 0.5 }}
           fitView
           panOnScroll
           proOptions={{ hideAttribution: true }}>
@@ -146,7 +147,7 @@ export default function Canvas({ leftArea }: CanvasProps) {
           <Background variant={BackgroundVariant["Lines"]} gap={30} color="rgb(39 39 42)" />
         </ReactFlow>
         <div className="absolute top-1 right-1">
-          <Menubar />
+          <ActionBar />
         </div>
         {leftArea && (
           <div className="absolute left-1 top-1 bottom-1 flex flex-shrink-0 gap-2">

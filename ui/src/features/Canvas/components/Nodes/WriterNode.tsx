@@ -1,6 +1,8 @@
-import CustomNode, { type CustomNodeProps } from "./CustomNode";
+import GeneralNode, { type GeneralNodeProps } from "./GeneralNode";
 
-const WriterNode: React.FC<CustomNodeProps> = props => {
+// selected style: border border-[#91855b]
+
+const WriterNode: React.FC<GeneralNodeProps> = props => {
   // const onChange = useCallback(
   //   (evt: any) => {
   //     console.log("EVT", evt.target.value);
@@ -8,12 +10,7 @@ const WriterNode: React.FC<CustomNodeProps> = props => {
   //   },
   //   [data],
   // );
-  return (
-    <CustomNode
-      className="bg-[#635116] border border-[#91855b] rounded-sm pl-1 w-[150px] h-[50px]"
-      {...props}
-    />
-  );
+  return <GeneralNode className="bg-[#635116]" {...props} />;
 };
 
 export default WriterNode;

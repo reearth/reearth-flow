@@ -1,6 +1,6 @@
-import CustomNode, { type CustomNodeProps } from "./CustomNode";
+import GeneralNode, { type GeneralNodeProps } from "./GeneralNode";
 
-const ReaderNode: React.FC<CustomNodeProps> = props => {
+const ReaderNode: React.FC<GeneralNodeProps> = props => {
   // const onChange = useCallback(
   //   (evt: any) => {
   //     console.log("EVT", evt.target.value);
@@ -8,12 +8,7 @@ const ReaderNode: React.FC<CustomNodeProps> = props => {
   //   },
   //   [data],
   // );
-  return (
-    <CustomNode
-      className="bg-cyan-900 border border-cyan-700 rounded-sm pl-1 w-[150px] h-[50px]"
-      {...props}
-    />
-  );
+  return <GeneralNode className="bg-[#164E63]" {...props} />;
 };
 
 export default ReaderNode;

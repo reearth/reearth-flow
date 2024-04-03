@@ -13,9 +13,7 @@ import { useReactFlow } from "reactflow";
 import { IconButton, Menubar, MenubarSeparator } from "@flow/components";
 import { checkIsFullscreen, closeFullscreen, openFullscreen } from "@flow/utils";
 
-// import HomeMenu from "./HomeMenu";
-
-export default function MenubarComponent() {
+export default function ActionBar() {
   const { zoomIn, zoomOut } = useReactFlow();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -31,7 +29,6 @@ export default function MenubarComponent() {
 
   return (
     <Menubar className="border-none bg-zinc-800 m-1">
-      {/* <HomeMenu /> */}
       <div className="flex justify-end align-middle gap-[10px] flex-1">
         <IconButton
           icon={
@@ -42,8 +39,8 @@ export default function MenubarComponent() {
             )
           }
         />
-        <IconButton icon={<ZoomInIcon />} onClick={() => zoomIn({ duration: 400 })} />
         <IconButton icon={<ZoomOutIcon />} onClick={() => zoomOut({ duration: 400 })} />
+        <IconButton icon={<ZoomInIcon />} onClick={() => zoomIn({ duration: 400 })} />
         <MenubarSeparator />
         <div className="border-l border-zinc-700" />
         <MenubarSeparator />

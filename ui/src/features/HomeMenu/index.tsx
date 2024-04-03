@@ -12,9 +12,9 @@ import {
   MenubarTrigger,
 } from "@flow/components/Menubar";
 
-const HomeNav: React.FC = () => {
+const HomeMenu: React.FC = () => {
   return (
-    <Menubar className="bg-zinc-800 border-none m-0 p-0">
+    <Menubar className="border-none m-0 p-0">
       <MenubarMenu>
         <MenubarTrigger>
           <FlowLogo />
@@ -46,4 +46,4 @@ const HomeNav: React.FC = () => {
   );
 };
 
-export default HomeNav;
+export default HomeMenu;

@@ -4,7 +4,7 @@ import BoilerFiletree from "@flow/assets/filetree-example.png";
 import { VerticalPanel, FlowLogo, type PanelContent } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
 
-import HomeNav from "../HomeNav";
+import HomeMenu from "../HomeMenu";
 
 type Props = {
   className?: string;
@@ -19,7 +19,7 @@ const LeftPanel: React.FC<Props> = ({ className }) => {
       icon: <FlowLogo />,
       component: (
         <>
-          <HomeNav />
+          <HomeMenu />
           <div className="border-zinc-700 border-t-[1px] w-[100%]" />
         </>
       ),
@@ -28,7 +28,7 @@ const LeftPanel: React.FC<Props> = ({ className }) => {
       id: "navigator",
       title: "Navigator",
       icon: <FileIcon />,
-      component: <img className="opacity-50 " src={BoilerFiletree} alt="file-tree-example" />,
+      component: <img src={BoilerFiletree} alt="file-tree-example" />,
     },
     {
       id: "transformer-gallery",
@@ -46,7 +46,7 @@ const LeftPanel: React.FC<Props> = ({ className }) => {
   ];
   return (
     <VerticalPanel
-      className={`bg-zinc-800 rounded-md ${className}`}
+      className={`bg-zinc-800 bg-opacity-75 rounded-md backdrop-blur-md ${className}`}
       isOpen={!!isPanelOpen}
       togglePosition="end-right"
       panelContents={panelContents}
