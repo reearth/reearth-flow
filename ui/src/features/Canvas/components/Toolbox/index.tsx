@@ -45,7 +45,12 @@ const Toolbox: React.FC<Props> = ({ className }) => {
       onMouseOver={handleMouseOver}
       onMouseLeave={handleMouseLeave}>
       {availableTools.map(tool => (
-        <IconButton key={tool.id} icon={tool.icon} />
+        <IconButton
+          key={tool.id}
+          tooltipPosition="right"
+          tooltipText={tool.name}
+          icon={tool.icon}
+        />
       ))}
     </div>
   );

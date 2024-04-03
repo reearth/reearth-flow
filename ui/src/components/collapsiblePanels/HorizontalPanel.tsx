@@ -13,7 +13,7 @@ export type HorizontalPanelProps = {
   minHeight?: string; // tailwindcss height class
   maxHeight?: string; // tailwindcss height class
   togglePosition?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
-  panelContents?: Omit<PanelContent, "title">[];
+  panelContents?: PanelContent[];
   onToggle?: (open: boolean) => void;
 };
 
@@ -74,6 +74,8 @@ const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
               key={content.id}
               className={`w-[55px] h-[80%] ${selected?.id === content.id ? "text-white bg-zinc-800" : undefined}`}
               icon={content.icon}
+              tooltipText={content.description}
+              tooltipPosition="top"
               onClick={() => handleSelection(content)}
             />
           ))}

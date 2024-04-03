@@ -12,13 +12,15 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ className }) => {
 
   const panelContents: PanelContent[] = [
     {
-      id: "translation-log",
+      id: "output-log",
       icon: <OutputIcon />,
+      description: "Output log",
       component: <LogConsole />,
     },
     {
       id: "visual-preview",
       icon: <PreviewIcon />,
+      description: "Preview data",
       component: (
         <div className="flex flex-1 h-full">
           <DataTable />
