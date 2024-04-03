@@ -12,7 +12,6 @@ import ReactFlow, {
   Background,
   BackgroundVariant,
   DefaultEdgeOptions,
-  Panel,
   ReactFlowProvider,
 } from "reactflow";
 
@@ -31,7 +30,6 @@ import { initialEdges, initialNodes } from "./mockData";
 
 type CanvasProps = {
   leftArea?: React.ReactNode;
-  // topArea?: React.ReactNode;
 };
 
 // const edgeTypes: EdgeTypes = {
@@ -39,7 +37,10 @@ type CanvasProps = {
 // };
 
 const defaultEdgeOptions: DefaultEdgeOptions = {
-  style: { strokeWidth: 2, stroke: "#7f1d1d" },
+  // stroke style for unsure (normal) state: rgb(234, 179, 8) bg-yellow-500
+  // stroke style for success state: rgb(22, 163, 74) bg-green (after running workflow)
+  // stroke style for error state: "#7f1d1d" (after running workflow)
+  style: { strokeWidth: 2, stroke: "rgb(234, 179, 8)" },
   // type: "floating",
   //   markerEnd: {
   //     type: MarkerType.ArrowClosed,
@@ -141,9 +142,6 @@ export default function Canvas({ leftArea }: CanvasProps) {
           maskStrokeColor="red"
           maskStrokeWidth={3}
         /> */}
-          <Panel position="bottom-center">
-            <Infobar hoveredDetails={hoveredDetails} />
-          </Panel>
           <Background variant={BackgroundVariant["Lines"]} gap={30} color="rgb(39 39 42)" />
         </ReactFlow>
         <div className="absolute top-1 right-1">
@@ -155,6 +153,10 @@ export default function Canvas({ leftArea }: CanvasProps) {
             <Toolbox className="self-start" />
           </div>
         )}
+        <Infobar
+          className="absolute bottom-1 left-[50%] translate-x-[-50%]"
+          hoveredDetails={hoveredDetails}
+        />
         {/* <BottomPanel className="absolute right-1 bottom-1" /> */}
       </ReactFlowProvider>
     </div>

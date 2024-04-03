@@ -1,5 +1,6 @@
 import {
   DoubleArrowRightIcon,
+  DownloadIcon,
   EnterFullScreenIcon,
   ExitFullScreenIcon,
   Link2Icon,
@@ -10,11 +11,11 @@ import {
 import { useCallback, useState } from "react";
 import { useReactFlow } from "reactflow";
 
-import { IconButton, Menubar, MenubarSeparator } from "@flow/components";
+import { CenterIcon, IconButton, Menubar } from "@flow/components";
 import { checkIsFullscreen, closeFullscreen, openFullscreen } from "@flow/utils";
 
 export default function ActionBar() {
-  const { zoomIn, zoomOut } = useReactFlow();
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const handleFullscreenToggle = useCallback(() => {
@@ -29,7 +30,7 @@ export default function ActionBar() {
 
   return (
     <Menubar className="border-none bg-zinc-800 m-1">
-      <div className="flex justify-end align-middle gap-[10px] flex-1">
+      <div className="flex justify-end align-middle flex-1">
         <IconButton
           icon={
             isFullscreen ? (
@@ -41,14 +42,20 @@ export default function ActionBar() {
         />
         <IconButton icon={<ZoomOutIcon />} onClick={() => zoomOut({ duration: 400 })} />
         <IconButton icon={<ZoomInIcon />} onClick={() => zoomIn({ duration: 400 })} />
-        <MenubarSeparator />
-        <div className="border-l border-zinc-700" />
-        <MenubarSeparator />
+        <IconButton
+          icon={<CenterIcon />}
+          onClick={() => fitView({ duration: 400, padding: 0.5 })}
+        />
+        <div className="border-l border-zinc-700 mx-3" />
       </div>
-      <div className="flex justify-end align-middle gap-[10px]">
+      <div className="flex align-middle">
         <IconButton icon={<DoubleArrowRightIcon />} />
         <IconButton icon={<PlayIcon />} />
+        <div className="border-l border-zinc-700 mx-3" />
+      </div>
+      <div className="flex align-middle">
         <IconButton icon={<Link2Icon />} />
+        <IconButton icon={<DownloadIcon />} />
       </div>
     </Menubar>
   );

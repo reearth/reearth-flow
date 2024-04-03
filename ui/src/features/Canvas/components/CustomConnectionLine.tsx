@@ -1,8 +1,8 @@
 import { ConnectionLineComponent, getStraightPath } from "reactflow";
 
 export const connectionLineStyle = {
-  strokeWidth: 3,
-  stroke: "red",
+  strokeWidth: 2,
+  stroke: "white",
 };
 
 const CustomConnectionLine: ConnectionLineComponent = ({

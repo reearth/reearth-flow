@@ -1,7 +1,6 @@
-import { MixerVerticalIcon, Pencil2Icon, ReaderIcon } from "@radix-ui/react-icons";
 import { useCallback, useMemo, useState } from "react";
 
-import { IconButton } from "@flow/components";
+import { IconButton, ReaderIcon, TransformerIcon, WriterIcon } from "@flow/components";
 
 type Tool = {
   id: string;
@@ -26,12 +25,12 @@ const Toolbox: React.FC<Props> = ({ className }) => {
       {
         id: "transformer-node",
         name: "Transformer Node",
-        icon: <MixerVerticalIcon />,
+        icon: <TransformerIcon />,
       },
       {
         id: "writer-node",
         name: "Writer Node",
-        icon: <Pencil2Icon />,
+        icon: <WriterIcon />,
       },
     ],
     [],

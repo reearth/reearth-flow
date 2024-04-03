@@ -1,12 +1,13 @@
 import type { Edge, Node } from "reactflow";
 
 type Props = {
+  className?: string;
   hoveredDetails: Node | Edge | undefined;
 };
 
-const Infobar: React.FC<Props> = ({ hoveredDetails }) => {
+const Infobar: React.FC<Props> = ({ className, hoveredDetails }) => {
   return hoveredDetails ? (
-    <div className="flex justify-center gap-5 bg-zinc-800 rounded-md">
+    <div className={`flex justify-center gap-5 bg-zinc-800 rounded-md py-2 px-4 ${className}`}>
       {"source" in hoveredDetails ? (
         <>
           <p className="text-xs text-zinc-400">Source ID: {hoveredDetails.source}</p>
