@@ -10,10 +10,9 @@ graphs:
         type: action
         action: FileReader
         with:
-          format: csv
+          format: json
           dataset: |
-            "ram:///fixture/testdata/entity/filter/filter.csv"
-          header: true
+            "ram:///fixture/testdata/entity/filter/filter.json"
 
       - id: a1a91180-ab88-4c1a-aab5-48c242a218cb
         name: Ops-StringSpread-Filter
