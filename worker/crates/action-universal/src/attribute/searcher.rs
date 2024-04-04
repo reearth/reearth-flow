@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
 use regex::{escape, Regex};
+use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue
+    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -17,20 +17,23 @@ pub struct AttributeStringSearcher {
 impl Action for AttributeStringSearcher {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let re = if self.contains_regular_expression {
-                Regex::new(&self.search_in).map_err(|_| Error::input("Invalid regex"))
-            } else {
-                Regex::new(&escape(&self.search_in)).map_err(|_| Error::input("Invalid regex"))
-            }?;
+            Regex::new(&self.search_in).map_err(|_| Error::input("Invalid regex"))
+        } else {
+            Regex::new(&escape(&self.search_in)).map_err(|_| Error::input("Invalid regex"))
+        }?;
         let output = inputs
             .ok_or(Error::input("No input dataframe"))?
             .iter()
-            .map(|(k, v)| (
-                k.clone(),
-                match v {
-                    Some (v) => Some(search(v.clone(), &re)),
-                    None => None,
-                }
-              )).collect();
+            .map(|(k, v)| {
+                (
+                    k.clone(),
+                    match v {
+                        Some(v) => Some(search(v.clone(), &re)),
+                        None => None,
+                    },
+                )
+            })
+            .collect();
         Ok(output)
     }
 }
@@ -40,10 +43,12 @@ fn search(v: ActionValue, re: &Regex) -> ActionValue {
         ActionValue::String(s) => ActionValue::Array(
             re.find_iter(&s)
                 .map(|m| ActionValue::String(m.as_str().to_string()))
-                .collect()
+                .collect(),
         ),
         ActionValue::Map(kv) => ActionValue::Map(
-            kv.into_iter().map(|(k, v)| (k.clone(), search(v, &re))).collect()
+            kv.into_iter()
+                .map(|(k, v)| (k.clone(), search(v, &re)))
+                .collect(),
         ),
         x => x,
     }
