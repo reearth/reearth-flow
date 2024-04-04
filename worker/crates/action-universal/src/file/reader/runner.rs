@@ -91,6 +91,7 @@ impl Action for FileReader {
                 .await?;
                 text::read_text(input_path, storage_resolver).await?
             }
+            Self::Json (_) => unimplemented!("JSON is not supported yet"),
             _ => return Err(Error::unsupported_feature("Unsupported format")),
         };
         Ok(HashMap::from([(DEFAULT_PORT.clone(), Some(data))]))
