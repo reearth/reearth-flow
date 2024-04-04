@@ -1,5 +1,5 @@
 use std::convert::TryFrom;
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::result::Result as StdResult;
 use std::str::{from_utf8, FromStr};
 
@@ -7,7 +7,7 @@ use crate::error::Error;
 use crate::syntax::*;
 use crate::Result;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     pub(crate) namespace_uri: Option<String>,
     pub(crate) prefix: Option<String>,
@@ -20,6 +20,16 @@ impl Display for Name {
             Some(prefix) => write!(f, "{}{}{}", prefix, XML_NS_SEPARATOR, self.local_name),
             None => write!(f, "{}", self.local_name),
         }
+    }
+}
+
+impl Debug for Name {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            f,
+            "Name {{ namespace_uri: {:?}, prefix: {:?}, local_name: {} }}",
+            self.namespace_uri, self.prefix, self.local_name
+        )
     }
 }
 
@@ -174,11 +184,9 @@ impl Name {
     }
 
     pub fn is_namespace_attribute(&self) -> bool {
-        let xmlns_ns = Some(XMLNS_NS_URI.to_string());
         let xmlns_attribute = XMLNS_NS_ATTRIBUTE.to_string();
-        self.namespace_uri == xmlns_ns
-            && ((self.local_name == xmlns_attribute && self.prefix.is_none())
-                || self.prefix == Some(xmlns_attribute))
+        (self.local_name == xmlns_attribute && self.prefix.is_none())
+            || self.prefix == Some(xmlns_attribute)
     }
 
     pub fn is_id_attribute(&self, lax: bool) -> bool {

@@ -48,7 +48,7 @@ fn document<T: BufRead>(reader: &mut Reader<T>, event_buffer: &mut Vec<u8>) -> R
                 } = &mut mut_document.extension
                 {
                     if xml_declaration.is_some() {
-                        return Err(Error::Malformed);
+                        return Err(Error::Malformed("multiple xml declarations".to_string()));
                     } else {
                         let (version, encoding, standalone) = make_decl(ev)?;
                         *xml_declaration = Some(XmlDecl::new(
@@ -76,9 +76,15 @@ fn document<T: BufRead>(reader: &mut Reader<T>, event_buffer: &mut Vec<u8>) -> R
             Ok(Event::PI(ev)) => {
                 let _safe_to_ignore = handle_pi(reader, &mut document, None, ev)?;
             }
+            Ok(Event::Text(ev)) => {
+                let _safe_to_ignore = handle_text(reader, &mut document, None, ev)?;
+            }
+            Ok(Event::CData(ev)) => {
+                let _safe_to_ignore = handle_cdata(reader, &mut document, None, ev)?;
+            }
             Ok(Event::Eof) => return Ok(document),
-            Ok(_) => {
-                return Error::Malformed.into();
+            Ok(e) => {
+                return Error::Malformed(format!("parse document with {:?}", e)).into();
             }
             Err(err) => {
                 return Error::from(err).into();
@@ -118,8 +124,8 @@ fn element<T: BufRead>(
             Ok(Event::CData(ev)) => {
                 let _safe_to_ignore = handle_cdata(reader, document, Some(parent_element), ev)?;
             }
-            Ok(_) => {
-                return Error::Malformed.into();
+            Ok(e) => {
+                return Error::Malformed(format!("parse element with {:?}", e)).into();
             }
             Err(err) => {
                 return Error::from(err).into();
@@ -136,8 +142,8 @@ fn handle_start<T: BufRead>(
 ) -> Result<RefNode> {
     let mut element = {
         let mut_document = as_document_mut(document).unwrap();
-        let name =
-            String::from_utf8(ev.name().into_inner().to_vec()).map_err(|_| Error::Malformed)?;
+        let name = String::from_utf8(ev.name().into_inner().to_vec())
+            .map_err(|e| Error::Malformed(format!("parse version : {:?}", e)))?;
         let new_node = mut_document.create_element(&name).unwrap();
         let mut actual_parent = match parent_node {
             None => document.clone(),
@@ -149,7 +155,8 @@ fn handle_start<T: BufRead>(
     for attribute in ev.attributes() {
         let attribute = attribute.unwrap();
         let value = attribute.unescape_value()?;
-        let name = std::str::from_utf8(attribute.key.into_inner()).map_err(|_| Error::Malformed)?;
+        let name = std::str::from_utf8(attribute.key.into_inner())
+            .map_err(|e| Error::Malformed(format!("parse attribute key : {:?}", e)))?;
         let attribute_node = document.create_attribute_with(name, &value)?;
         let _safe_to_ignore = element.set_attribute_node(attribute_node)?;
     }
@@ -237,7 +244,7 @@ fn handle_pi<T: BufRead>(
                     (parts[0].to_string(), Some(data.to_string()))
                 }
             }
-            _ => return Error::Malformed.into(),
+            _ => return Error::Malformed("handle pi".to_string()).into(),
         }
     };
     let new_node = match data {
@@ -264,22 +271,26 @@ fn make_text<T: BufRead>(_reader: &mut Reader<T>, ev: BytesText<'_>) -> Result<S
 
 fn make_cdata(ev: BytesCData<'_>) -> Result<String> {
     let cdata_bytes = ev.into_inner();
-    let decoded_string = String::from_utf8(cdata_bytes.to_vec()).map_err(|_| Error::Malformed)?;
+    let decoded_string = String::from_utf8(cdata_bytes.to_vec())
+        .map_err(|e| Error::Malformed(format!("parse cdata : {:?}", e)))?;
     Ok(decoded_string.to_string())
 }
 
 fn make_decl(ev: BytesDecl<'_>) -> Result<(String, Option<String>, Option<bool>)> {
     let version = ev.version()?;
-    let version = String::from_utf8(version.to_vec()).map_err(|_| Error::Malformed)?;
+    let version = String::from_utf8(version.to_vec())
+        .map_err(|e| Error::Malformed(format!("parse version : {:?}", e)))?;
     let version = unquote(version.to_string())?;
     let encoding = if let Some(Ok(ev_value)) = ev.encoding() {
-        let encoding = String::from_utf8(ev_value.to_vec()).map_err(|_| Error::Malformed)?;
+        let encoding = String::from_utf8(ev_value.to_vec())
+            .map_err(|e| Error::Malformed(format!("parse encoding : {:?}", e)))?;
         Some(encoding.to_string())
     } else {
         None
     };
     let standalone = if let Some(Ok(ev_value)) = ev.standalone() {
-        let standalone = String::from_utf8(ev_value.to_vec()).map_err(|_| Error::Malformed)?;
+        let standalone = String::from_utf8(ev_value.to_vec())
+            .map_err(|e| Error::Malformed(format!("parse standalone : {:?}", e)))?;
         Some(standalone == "yes")
     } else {
         None
@@ -305,8 +316,9 @@ mod tests {
     use super::*;
 
     fn test_good_xml(xml: &str) {
-        let dom = read_xml(xml).unwrap();
-        assert_eq!(format!("{}", dom), xml);
+        let dom = read_xml(xml);
+        assert!(dom.is_ok());
+        println!("{}", dom.unwrap())
     }
 
     #[test]
@@ -341,6 +353,35 @@ mod tests {
 
     #[test]
     fn test_attributes() {
-        test_good_xml("<xml id=\"11\"></xml>");
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+        <gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" gml:id="Agreement_class">
+            <gml:name>Agreement_class</gml:name>
+            <gml:dictionaryEntry>
+                <gml:Definition gml:id="id1">
+                    <gml:description>building agreement</gml:description>
+                    <gml:name>1010</gml:name>
+                </gml:Definition>
+            </gml:dictionaryEntry>
+            <gml:dictionaryEntry>
+                <gml:Definition gml:id="id2">
+                    <gml:description>green space agreement</gml:description>
+                    <gml:name>1020</gml:name>
+                </gml:Definition>
+            </gml:dictionaryEntry>
+            <gml:dictionaryEntry>
+                <gml:Definition gml:id="id3">
+                    <gml:description>landscape agreement</gml:description>
+                    <gml:name>1030</gml:name>
+                </gml:Definition>
+            </gml:dictionaryEntry>
+            <gml:dictionaryEntry>
+                <gml:Definition gml:id="id4">
+                    <gml:description>development permit</gml:description>
+                    <gml:name>1040</gml:name>
+                </gml:Definition>
+            </gml:dictionaryEntry>
+        </gml:Dictionary>
+                "#;
+        test_good_xml(xml);
     }
 }

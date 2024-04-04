@@ -1,6 +1,6 @@
 use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::str::FromStr;
 
 use crate::convert::{
@@ -380,6 +380,20 @@ impl DOMImplementation for Implementation {
 }
 
 impl Element for RefNode {
+    fn get_attributes(&self) -> HashMap<Name, RefNode> {
+        let result = HashMap::new();
+        if is_element(self) {
+            let ref_self = self.borrow();
+            if let Extension::Element { attributes, .. } = &ref_self.extension {
+                attributes.clone()
+            } else {
+                result
+            }
+        } else {
+            result
+        }
+    }
+
     fn get_attribute(&self, name: &str) -> Option<String> {
         match self.get_attribute_node(name) {
             None => None,
@@ -551,6 +565,23 @@ impl Element for RefNode {
         match self.get_attribute_node_ns(namespace_uri, local_name) {
             None => Ok(()),
             Some(attribute_node) => self.remove_attribute_node(attribute_node).map(|_| ()),
+        }
+    }
+
+    fn get_attributes_ns(&self) -> Vec<RefNode> {
+        if is_element(self) {
+            let ref_self = self.borrow();
+            if let Extension::Element { attributes, .. } = &ref_self.extension {
+                attributes
+                    .iter()
+                    .filter(|(name, _)| name.is_namespace_attribute())
+                    .map(|(_, node)| node.clone())
+                    .collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
         }
     }
 
@@ -1035,17 +1066,17 @@ impl Text for RefNode {
     }
 }
 
-// ------------------------------------------------------------------------------------------------
-
 impl Display for RefNode {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         display::fmt_node(self, f)
     }
 }
 
-// ------------------------------------------------------------------------------------------------
-// Private Functions
-// ------------------------------------------------------------------------------------------------
+impl Debug for RefNode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        display::debug_node(self, f)
+    }
+}
 
 const WILD_CARD: &str = "*";
 
