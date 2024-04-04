@@ -28,10 +28,6 @@ impl Action for AttributeStringSearcher {
                 (
                     k.clone(),
                     v.as_ref().map(|v| search(v.clone(), &re)),
-                    /*match v {
-                        Some(v) => Some(search(v.clone(), &re)),
-                        None => None,
-                    },*/
                 )
             })
             .collect();
