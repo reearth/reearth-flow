@@ -27,10 +27,11 @@ impl Action for AttributeStringSearcher {
             .map(|(k, v)| {
                 (
                     k.clone(),
-                    match v {
+                    v.as_ref().map(|v| search(v.clone(), &re)),
+                    /*match v {
                         Some(v) => Some(search(v.clone(), &re)),
                         None => None,
-                    },
+                    },*/
                 )
             })
             .collect();
@@ -47,7 +48,7 @@ fn search(v: ActionValue, re: &Regex) -> ActionValue {
         ),
         ActionValue::Map(kv) => ActionValue::Map(
             kv.into_iter()
-                .map(|(k, v)| (k.clone(), search(v, &re)))
+                .map(|(k, v)| (k.clone(), search(v, re)))
                 .collect(),
         ),
         x => x,
