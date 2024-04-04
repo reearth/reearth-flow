@@ -1,6 +1,5 @@
 use std::sync::{Arc, RwLock, Weak};
 
-#[derive(Debug)]
 pub struct ArcRWLock<T: Sized> {
     inner: Arc<RwLock<T>>,
 }

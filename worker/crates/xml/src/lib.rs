@@ -14,4 +14,6 @@ mod text;
 mod trait_impl;
 mod traits;
 
+pub use crate::node::RefNode;
+
 pub(crate) type Result<T, E = error::Error> = std::result::Result<T, E>;
