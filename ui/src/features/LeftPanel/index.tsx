@@ -3,6 +3,7 @@ import { FileIcon, StopIcon } from "@radix-ui/react-icons";
 import BoilerFiletree from "@flow/assets/filetree-example.png";
 import { VerticalPanel, FlowLogo, type PanelContent } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
+import { useT } from "@flow/providers";
 
 import HomeMenu from "../HomeMenu";
 
@@ -12,6 +13,7 @@ type Props = {
 
 const LeftPanel: React.FC<Props> = ({ className }) => {
   const [isPanelOpen, handlePanelToggle] = useStateManager<boolean>(true);
+  const t = useT();
 
   const panelContents: PanelContent[] = [
     {
@@ -26,20 +28,20 @@ const LeftPanel: React.FC<Props> = ({ className }) => {
     },
     {
       id: "navigator",
-      title: "Navigator",
+      title: t("Navigator"),
       icon: <FileIcon />,
       component: <img src={BoilerFiletree} alt="file-tree-example" />,
     },
     {
       id: "transformer-gallery",
       icon: <StopIcon />,
-      title: "Transformers Gallery",
+      title: t("Transformers Gallery"),
       component: (
         <div>
-          <p className="text-xs">All of my transformers</p>
-          <p className="text-xs">All of my transformers</p>
-          <p className="text-xs">All of my transformers</p>
-          <p className="text-xs">All of my transformers</p>
+          <p className="text-xs">{t("All of my transformers")}</p>
+          <p className="text-xs">{t("All of my transformers")}</p>
+          <p className="text-xs">{t("All of my transformers")}</p>
+          <p className="text-xs">{t("All of my transformers")}</p>
         </div>
       ),
     },

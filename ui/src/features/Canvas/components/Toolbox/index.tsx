@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { IconButton, ReaderIcon, TransformerIcon, WriterIcon } from "@flow/components";
+import { useT } from "@flow/providers";
 
 type Tool = {
   id: string;
@@ -13,27 +14,28 @@ type Props = {
 };
 
 const Toolbox: React.FC<Props> = ({ className }) => {
+  const t = useT();
   const [isHovered, setIsHovered] = useState(false);
 
   const availableTools = useMemo<Tool[]>(
     () => [
       {
         id: "reader-node",
-        name: "Reader Node",
+        name: t("Reader Node"),
         icon: <ReaderIcon />,
       },
       {
         id: "transformer-node",
-        name: "Transformer Node",
+        name: t("Transformer Node"),
         icon: <TransformerIcon />,
       },
       {
         id: "writer-node",
-        name: "Writer Node",
+        name: t("Writer Node"),
         icon: <WriterIcon />,
       },
     ],
-    [],
+    [t],
   );
 
   const handleMouseOver = useCallback(() => !isHovered && setIsHovered(true), [isHovered]);
@@ -45,7 +47,12 @@ const Toolbox: React.FC<Props> = ({ className }) => {
       onMouseOver={handleMouseOver}
       onMouseLeave={handleMouseLeave}>
       {availableTools.map(tool => (
-        <IconButton key={tool.id} icon={tool.icon} />
+        <IconButton
+          key={tool.id}
+          tooltipPosition="right"
+          tooltipText={tool.name}
+          icon={tool.icon}
+        />
       ))}
     </div>
   );

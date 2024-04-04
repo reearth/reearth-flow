@@ -10,6 +10,7 @@ const ReaderIcon: React.FC<{ className?: string; id?: string; style?: CSSPropert
     id={id}
     style={style}
     width="18px"
+    fill="none"
     height="18px"
     version="1.1"
     xmlns="http://www.w3.org/2000/svg"

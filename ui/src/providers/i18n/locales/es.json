@@ -1,0 +1,20 @@
+{
+  "Exit fullscreen": "",
+  "Enter fullscreen": "",
+  "Zoom out": "",
+  "Zoom in": "",
+  "All nodes in viewport": "",
+  "Incrementally run workflow": "",
+  "Run workflow": "",
+  "Publish workflow": "",
+  "Download workflow": "",
+  "Data Table": "",
+  "Output log": "",
+  "Preview data": "",
+  "Reader Node": "",
+  "Transformer Node": "",
+  "Writer Node": "",
+  "Navigator": "Navegador",
+  "Transformers Gallery": "Galería de transformadores",
+  "All of my transformers": "Todos mis transformadores"
+}

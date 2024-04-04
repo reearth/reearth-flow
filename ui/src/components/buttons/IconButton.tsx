@@ -1,23 +1,33 @@
 import { Button } from "./BaseButton";
+import { ButtonWithTooltip, type ButtonWithTooltipProps } from "./ButtonWithTooltip";
 
-type Props = {
+type Props = Omit<ButtonWithTooltipProps, "tooltipText"> & {
   key?: string;
-  className?: string;
-  style?: React.CSSProperties;
   icon: React.ReactNode;
-  onClick?: () => void;
+  tooltipText?: string;
 };
 
-const IconButton: React.FC<Props> = ({ key, className, style, icon, onClick }) => (
-  <Button
-    key={key}
-    className={`transition-all text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 cursor-pointer ${className}`}
-    variant="ghost"
-    style={style}
-    size="icon"
-    onClick={onClick}>
-    {icon}
-  </Button>
-);
+const IconButton: React.FC<Props> = ({ key, className, icon, tooltipText, ...props }) => {
+  return tooltipText ? (
+    <ButtonWithTooltip
+      key={key}
+      className={`transition-all text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 cursor-pointer ${className}`}
+      variant="ghost"
+      size="icon"
+      tooltipText={tooltipText}
+      {...props}>
+      {icon}
+    </ButtonWithTooltip>
+  ) : (
+    <Button
+      key={key}
+      className={`transition-all text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 cursor-pointer ${className}`}
+      variant="ghost"
+      size="icon"
+      {...props}>
+      {icon}
+    </Button>
+  );
+};
 
 export { IconButton };
