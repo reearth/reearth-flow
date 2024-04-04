@@ -27,14 +27,24 @@ impl Action for AttributeStringSearcher {
             .map(|(k, v)| (
                 k.clone(),
                 match v {
-                    Some(ActionValue::String(s)) => Some(ActionValue::Array(
-                        re.find_iter(s)
-                            .map(|m| ActionValue::String(m.as_str().to_string()))
-                            .collect()
-                    )),
-                    x => x.clone(),
-                },
+                    Some (v) => Some(search(v.clone(), &re)),
+                    None => None,
+                }
               )).collect();
         Ok(output)
+    }
+}
+
+fn search(v: ActionValue, re: &Regex) -> ActionValue {
+    match v {
+        ActionValue::String(s) => ActionValue::Array(
+            re.find_iter(&s)
+                .map(|m| ActionValue::String(m.as_str().to_string()))
+                .collect()
+        ),
+        ActionValue::Map(kv) => ActionValue::Map(
+            kv.into_iter().map(|(k, v)| (k.clone(), search(v, &re))).collect()
+        ),
+        x => x,
     }
 }
