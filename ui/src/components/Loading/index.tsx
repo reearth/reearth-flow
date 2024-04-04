@@ -7,14 +7,16 @@ import "./styles.css";
 const Loading: React.FC<{ show?: boolean }> = ({ show }) => {
   return (
     show && (
-      <div className="absolute top-0 z-40 flex flex-col items-center pt-64 h-[100vh] w-full bg-zinc-900">
-        <div className="flex gap-3">
-          <FlowLogo
-            id="loading-svg"
-            className="bg-red-900 text-zinc-200 rounded-lg p-1 mb-8"
-            style={{ height: "130px", width: "130px" }}
-          />
-          <DoubleArrowRightIcon className="w-[130px] h-[130px] text-zinc-600" />
+      <div className="absolute top-0 z-40 flex justify-center h-[100vh] w-full bg-zinc-900">
+        <div className="flex items-center h-full">
+          <div className="flex gap-3">
+            <FlowLogo
+              id="loading-svg"
+              className="bg-red-900 bg-opacity-50 text-zinc-200 rounded-lg p-1 mb-8"
+              style={{ height: "110px", width: "110px" }}
+            />
+            <DoubleArrowRightIcon className="w-[110px] h-[110px] text-zinc-600" />
+          </div>
         </div>
         {/* <p id="loading-text" className="text-2xl text-zinc-500">
         Loading...

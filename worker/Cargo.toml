@@ -48,12 +48,13 @@ reearth-flow-telemetry = {path = "crates/telemetry"}
 reearth-flow-workflow = {path = "crates/workflow"}
 reearth-flow-workflow-cli = {path = "crates/cli"}
 reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
+reearth-flow-xml = {path = "crates/xml"}
 
-async-recursion = "1.0.5"
-async-trait = "0.1.77"
-async_zip = {version = "0.0.16", features = ["full"]}
-bytes = {version = "1.5.0", features = ["serde"]}
-color-eyre = "0.6.2"
+async-recursion = "1.1.0"
+async-trait = "0.1.79"
+async_zip = {version = "0.0.17", features = ["full"]}
+bytes = {version = "1.6.0", features = ["serde"]}
+color-eyre = "0.6.3"
 colorsys = "0.6.7"
 csv = "1.3.0"
 derive_more = "0.99.17"
@@ -74,26 +75,26 @@ parking_lot = "0.12.1"
 petgraph = "0.6.4"
 pretty_assertions = "1.4.0"
 rand = "0.8.5"
-rayon = "1.9.0"
-regex = "1.10.3"
+rayon = "1.10.0"
+regex = "1.10.4"
 rhai = {version = "1.17.1", features = ["internals", "sync", "serde"]}
 rstest = "0.18.2"
 serde = {version = "1.0.197", features = ["derive"]}
 serde_derive = "1.0.197"
-serde_json = {version = "1.0.114", features = ["arbitrary_precision"]}
-serde_with = "3.6.1"
-serde_yaml = "0.9.32"
+serde_json = {version = "1.0.115", features = ["arbitrary_precision"]}
+serde_with = "3.7.0"
+serde_yaml = "0.9.34"
 sha2 = "0.10.8"
 slog = {version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"]}
-strum = "0.26.1"
-strum_macros = "0.26.1"
+strum = "0.26.2"
+strum_macros = "0.26.2"
 tempfile = "3.10.1"
-thiserror = "1.0.57"
+thiserror = "1.0.58"
 time = {version = "0.3.34", features = ["formatting"]}
-tokio = {version = "1.36.0", features = ["full", "time"]}
-tokio-stream = {version = "0.1.14", features = ["sync"]}
+tokio = {version = "1.37.0", features = ["full", "time"]}
+tokio-stream = {version = "0.1.15", features = ["sync"]}
 tokio-util = {version = "0.7.10", features = ["full"]}
-toml = "0.8.10"
+toml = "0.8.12"
 tracing = "0.1.40"
 tracing-opentelemetry = {version = "0.23.0", default-features = false, features = ["tracing-log", "metrics"]}
 tracing-subscriber = {version = "0.3.18", features = [
@@ -102,7 +103,7 @@ tracing-subscriber = {version = "0.3.18", features = [
   "time",
 ]}
 typetag = "0.2.16"
-uuid = {version = "1.7.0", features = [
+uuid = {version = "1.8.0", features = [
   "v4",
   "fast-rng",
   "macro-diagnostics",

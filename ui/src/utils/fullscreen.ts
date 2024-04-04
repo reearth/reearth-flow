@@ -11,6 +11,10 @@ declare global {
 
 const elem = document.documentElement;
 
+export const checkIsFullscreen = () => {
+  return document.fullscreenElement !== null;
+};
+
 export const openFullscreen = () => {
   if (elem.requestFullscreen) {
     elem.requestFullscreen();
