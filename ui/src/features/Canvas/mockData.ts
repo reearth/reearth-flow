@@ -10,25 +10,39 @@ export const initialNodes: Node[] = [
   {
     id: "1-transformer",
     type: "transformer",
-    data: { name: "Tranformer Node 1-1", outputs: ["output1", "output2", "output3"] },
+    data: {
+      name: "Tranformer Node 1-1",
+      inputs: ["input1", "input2", "input3"],
+      outputs: ["output1", "output2", "output3"],
+    },
     position: { x: 300, y: 1 },
   },
   {
     id: "2-transformer",
     type: "transformer",
-    data: { name: "Tranformer Node 1-2", outputs: ["output1", "output2"] },
+    data: { name: "Tranformer Node 1-2", inputs: ["input1"], outputs: ["output1", "output2"] },
     position: { x: 600, y: 100 },
   },
   {
     id: "2",
     type: "transformer",
     selected: true,
-    data: { name: "Transformer Node 2", outputs: ["output1", "output2"] },
+    data: { name: "Transformer Node 2", inputs: ["input1"], outputs: ["output1", "output2"] },
     position: { x: 315, y: 400 },
   },
-  { id: "3", type: "writer", data: { name: "Writer Node 3" }, position: { x: 705, y: 400 } },
+  {
+    id: "3",
+    type: "writer",
+    data: { name: "Writer Node 3", inputs: ["input1", "input2"] },
+    position: { x: 705, y: 400 },
+  },
   { id: "4", type: "writer", data: { name: "Writer Node 4" }, position: { x: 605, y: 500 } },
-  { id: "5", type: "writer", data: { name: "Writer Node 5" }, position: { x: 900, y: 50 } },
+  {
+    id: "5",
+    type: "writer",
+    data: { name: "Writer Node 5", inputs: ["input1"] },
+    position: { x: 900, y: 50 },
+  },
   { id: "6", type: "reader", data: { name: "Reader Node 6" }, position: { x: 50, y: 200 } },
 ];
 

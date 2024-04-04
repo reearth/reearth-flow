@@ -42,11 +42,21 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, ...pro
           ) : null}
         </div>
         <p className="text-xs p-1.5 text-zinc-300 leading-none text-center truncate">{data.name}</p>
-        {type !== "reader" && <CustomHandle id="target" type="target" position={Position.Left} />}
       </div>
+      {type !== "reader" && data.inputs && data.inputs.length === 1 && (
+        <CustomHandle id="target" type="target" position={Position.Left} />
+      )}
       <div
         id="handle-wrapper"
         className="absolute bg-zinc-700 border-b border-zinc-900 rounded-b-md ml-auto mr-auto left-0 right-0 w-[90%]">
+        {data.inputs &&
+          data.inputs.length > 1 &&
+          data.inputs?.map((output, index) => (
+            <div key={output + index} className="relative border-b border-zinc-900 py-0.5 px-1.5">
+              <CustomHandle type="target" position={Position.Left} id={output} />
+              <p className="text-xs pl-1">{output}</p>
+            </div>
+          ))}
         {data.outputs?.map((output, index) => (
           <div key={output + index} className="relative border-b border-zinc-900 py-0.5 px-1.5">
             <CustomHandle type="source" position={Position.Right} id={output} />
