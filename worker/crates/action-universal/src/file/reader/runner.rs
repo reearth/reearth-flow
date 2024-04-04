@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_common::csv::Delimiter;
 
-use super::{csv, text};
-use reearth_flow_action::error::Error;
+use super::{csv, json, text};
 use reearth_flow_action::{
     utils, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Result, DEFAULT_PORT,
 };
@@ -91,8 +90,15 @@ impl Action for FileReader {
                 .await?;
                 text::read_text(input_path, storage_resolver).await?
             }
-            Self::Json (_) => unimplemented!("JSON is not supported yet"),
-            _ => return Err(Error::unsupported_feature("Unsupported format")),
+            Self::Json { common_property } => {
+                let input_path = get_input_path(
+                    &inputs.unwrap_or_default(),
+                    common_property,
+                    Arc::clone(&ctx.expr_engine),
+                )
+                .await?;
+                json::read_json(input_path, storage_resolver).await?
+            }
         };
         Ok(HashMap::from([(DEFAULT_PORT.clone(), Some(data))]))
     }
