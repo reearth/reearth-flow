@@ -24,12 +24,7 @@ impl Action for AttributeStringSearcher {
         let output = inputs
             .ok_or(Error::input("No input dataframe"))?
             .iter()
-            .map(|(k, v)| {
-                (
-                    k.clone(),
-                    v.as_ref().map(|v| search(v.clone(), &re)),
-                )
-            })
+            .map(|(k, v)| (k.clone(), v.as_ref().map(|v| search(v.clone(), &re))))
             .collect();
         Ok(output)
     }
