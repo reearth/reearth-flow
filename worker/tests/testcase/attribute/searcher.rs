@@ -19,7 +19,7 @@ async fn test_run() {
             };
             match kv.get("string").unwrap() {
                 ActionValue::Array(xs) => assert_eq!(xs.len(), 1),
-                _ => panic!("unexpected value")
+                _ => panic!("unexpected value"),
             };
             match kv.get("map").unwrap() {
                 ActionValue::Map(kv) => {
@@ -31,8 +31,8 @@ async fn test_run() {
                         ActionValue::Array(xs) => assert_eq!(xs.len(), 3),
                         _ => panic!("unexpexted value"),
                     }
-                },
-                _ => panic!("unexpected")
+                }
+                _ => panic!("unexpected"),
             }
         }
         _ => panic!("unexpected value"),
