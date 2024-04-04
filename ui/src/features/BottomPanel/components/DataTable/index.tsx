@@ -1,7 +1,10 @@
+import { useT } from "@flow/providers";
+
 const DataTable: React.FC = () => {
+  const t = useT();
   return (
     <div className="flex-1 p-2 text-zinc-400">
-      <p>Data Table</p>
+      <p>{t("Data Table")}</p>
       <table className="table-fixed border w-[100%] border-zinc-600">
         <thead>
           <tr>

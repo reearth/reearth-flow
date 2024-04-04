@@ -12,11 +12,13 @@ import { useCallback, useState } from "react";
 import { useReactFlow } from "reactflow";
 
 import { CenterIcon, IconButton, Menubar } from "@flow/components";
+import { useT } from "@flow/providers";
 import { checkIsFullscreen, closeFullscreen, openFullscreen } from "@flow/utils";
 
 const tooltipOffset = 6;
 
 export default function ActionBar() {
+  const t = useT();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -34,25 +36,25 @@ export default function ActionBar() {
     <Menubar className="border-none bg-zinc-800 m-1">
       <div className="flex justify-end align-middle flex-1">
         <IconButton
-          tooltipText={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          tooltipText={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
           tooltipOffset={tooltipOffset}
           icon={isFullscreen ? <ExitFullScreenIcon /> : <EnterFullScreenIcon />}
           onClick={handleFullscreenToggle}
         />
         <IconButton
-          tooltipText="Zoom out"
+          tooltipText={t("Zoom out")}
           tooltipOffset={tooltipOffset}
           icon={<ZoomOutIcon />}
           onClick={() => zoomOut({ duration: 400 })}
         />
         <IconButton
-          tooltipText="Zoom in"
+          tooltipText={t("Zoom in")}
           tooltipOffset={tooltipOffset}
           icon={<ZoomInIcon />}
           onClick={() => zoomIn({ duration: 400 })}
         />
         <IconButton
-          tooltipText="All nodes in viewport"
+          tooltipText={t("All nodes in viewport")}
           tooltipOffset={tooltipOffset}
           icon={<CenterIcon />}
           onClick={() => fitView({ duration: 400, padding: 0.5 })}
@@ -61,21 +63,25 @@ export default function ActionBar() {
       </div>
       <div className="flex align-middle">
         <IconButton
-          tooltipText="Incrementally run workflow"
+          tooltipText={t("Incrementally run workflow")}
           tooltipOffset={tooltipOffset}
           icon={<DoubleArrowRightIcon />}
         />
-        <IconButton tooltipText="Run workflow" tooltipOffset={tooltipOffset} icon={<PlayIcon />} />
+        <IconButton
+          tooltipText={t("Run workflow")}
+          tooltipOffset={tooltipOffset}
+          icon={<PlayIcon />}
+        />
         <div className="border-l border-zinc-700 mx-3" />
       </div>
       <div className="flex align-middle">
         <IconButton
-          tooltipText="Publish workflow"
+          tooltipText={t("Publish workflow")}
           tooltipOffset={tooltipOffset}
           icon={<Link2Icon />}
         />
         <IconButton
-          tooltipText="Download workflow"
+          tooltipText={t("Download workflow")}
           tooltipOffset={tooltipOffset}
           icon={<DownloadIcon />}
         />
