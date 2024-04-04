@@ -1,25 +1,17 @@
 {
-  "sample_data": [
-    {
-      "bool": true,
-      "array": [
-        1,
-        2,
-        3
-      ],
-      "number": 4,
-      "string": "foo is a meta vatiable.",
-      "map": [
-        {
-          "item1": 1
-        },
-        {
-          "item2": "foo bar baz"
-        },
-        {
-          "item3": "foo foo foo"
-        }
-      ]
+  "sample_data": {
+    "bool": true,
+    "array": [
+      1,
+      2,
+      3
+    ],
+    "number": 4,
+    "string": "foo is a meta vatiable.",
+    "map": {
+      "item1": 1,
+      "item2": "foo bar baz",
+      "item3": "foo foo foo"
     }
-  ]
+  } 
 }

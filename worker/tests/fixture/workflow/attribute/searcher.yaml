@@ -19,13 +19,12 @@ graphs:
         type: action
         action: AttributeStringSearcher
         with:
-          conditions:
-            - search_in: foo
-              contain_regular_expression: false
+          searchIn: foo
+          containsRegularExpression: false
 
     edges:
       - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
         from: a1a91180-ab88-4c1a-aab5-48c242a218ca
         to: a1a91180-ab88-4c1a-aab5-48c242a218cb
         fromPort: default
-        toPort: defaut
+        toPort: default
