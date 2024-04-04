@@ -1,4 +1,4 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components/Tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
 
 import { Button, type ButtonProps } from "../BaseButton";
 

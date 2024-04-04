@@ -1,4 +1,4 @@
-import { Loading } from "@flow/components/Loading";
+import { Loading } from "@flow/components";
 import BottomPanel from "@flow/features/BottomPanel";
 import Canvas from "@flow/features/Canvas";
 import LeftPanel from "@flow/features/LeftPanel";
