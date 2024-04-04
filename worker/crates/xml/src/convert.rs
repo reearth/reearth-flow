@@ -272,7 +272,7 @@ make_is_as_functions!(
 );
 
 #[inline]
-pub(crate) fn as_element_namespaced_mut(ref_node: &mut RefNode) -> Result<MutRefNamespaced<'_>> {
+pub fn as_element_namespaced_mut(ref_node: &mut RefNode) -> Result<MutRefNamespaced<'_>> {
     if ref_node.borrow().node_type == NodeType::Element {
         Ok(ref_node as MutRefNamespaced<'_>)
     } else {

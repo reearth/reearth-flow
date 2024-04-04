@@ -162,7 +162,7 @@ pub trait Element: Node {
         name.to_string()
     }
 
-    fn get_attributes_ns(&self) -> Vec<Self::NodeRef>;
+    fn get_attributes_ns(&self) -> HashMap<Name, Self::NodeRef>;
 
     fn get_attributes(&self) -> HashMap<Name, Self::NodeRef>;
 
@@ -208,6 +208,8 @@ pub trait Element: Node {
     fn has_attribute(&self, name: &str) -> bool;
 
     fn has_attribute_ns(&self, namespace_uri: &str, local_name: &str) -> bool;
+
+    fn to_xml(&self) -> Result<String>;
 }
 
 pub trait Entity: Node {
@@ -286,6 +288,8 @@ pub trait Node {
     fn prefix(&self) -> Option<String> {
         self.node_name().prefix
     }
+
+    fn remove_owner_document(&mut self);
 }
 
 pub trait Notation: Node {

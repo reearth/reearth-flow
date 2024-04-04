@@ -8,9 +8,14 @@ use reearth_flow_action::{
 };
 use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_common::xml::{self, XmlDocument, XmlNode};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
+use reearth_flow_xml::{
+    convert::as_element,
+    parser,
+    traits::{Node, NodeType},
+    RefNode,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -167,22 +172,9 @@ async fn action_value_to_fragment(
                 .map_err(Error::internal_runtime)?;
             let bytes = content.bytes().await.map_err(Error::internal_runtime)?;
             let raw_xml = String::from_utf8(bytes.to_vec()).map_err(Error::internal_runtime)?;
-            let document = xml::parse(raw_xml).map_err(Error::internal_runtime)?;
-            let ctx = xml::create_context(&document).map_err(Error::internal_runtime)?;
-            let root = ctx
-                .evaluate("/")
-                .map_err(|_| Error::internal_runtime("Failed to evaluate xpath".to_string()))?;
-            let nodes = root.get_nodes_as_vec();
-            let root = nodes
-                .first()
-                .ok_or(Error::internal_runtime("No root node found".to_string()))?;
-            let mut root = root.clone();
-            let fragments = recursive_fragment(
-                &document,
-                &mut root,
-                &elements_to_match_ast,
-                &elements_to_exclude_ast,
-            )?;
+            let document = parser::read_xml(&raw_xml).map_err(Error::internal_runtime)?;
+            let fragments =
+                recursive_fragment(document, &elements_to_match_ast, &elements_to_exclude_ast)?;
             for fragment in fragments {
                 let mut value = row.clone();
                 value.extend(XmlFragment::to_hashmap(fragment));
@@ -195,23 +187,27 @@ async fn action_value_to_fragment(
 }
 
 fn recursive_fragment(
-    document: &XmlDocument,
-    node: &mut XmlNode,
+    node: RefNode,
     elements_to_match: &Vec<String>,
     elements_to_exclude: &Vec<String>,
 ) -> Result<Vec<XmlFragment>> {
     let mut result = Vec::<XmlFragment>::new();
-    let tag = xml::get_node_tag(node);
-    if elements_to_match.contains(&tag) && !elements_to_exclude.contains(&tag) {
-        let fragment = xml::node_to_xml_string(document, node).map_err(Error::internal_runtime)?;
+    let tag = node.node_name().to_string();
+
+    if elements_to_match.contains(&tag)
+        && !elements_to_exclude.contains(&tag)
+        && node.borrow().node_type == NodeType::Element
+    {
+        let element = as_element(&node).unwrap();
+        let fragment = element.to_xml().map_err(Error::internal_runtime)?;
         let xml_id = to_hash(&fragment);
-        let xml_parent_id = match node.get_parent() {
-            Some(mut parent) => {
-                let parent_fragment = xml::node_to_xml_string(document, &mut parent)
-                    .map_err(Error::internal_runtime)?;
+        let xml_parent_id = match node.parent_node() {
+            Some(parent) if parent.borrow().node_type == NodeType::Element => {
+                let element = as_element(&parent).unwrap();
+                let parent_fragment = element.to_xml().map_err(Error::internal_runtime)?;
                 Some(to_hash(&parent_fragment))
             }
-            None => None,
+            _ => None,
         };
         result.push(XmlFragment {
             xml_id,
@@ -220,10 +216,9 @@ fn recursive_fragment(
             xml_parent_id,
         });
     }
-    for child in node.get_child_nodes() {
-        let mut child = child.clone();
-        let mut child_result =
-            recursive_fragment(document, &mut child, elements_to_match, elements_to_exclude)?;
+    for child in node.child_nodes() {
+        let child = child.clone();
+        let mut child_result = recursive_fragment(child, elements_to_match, elements_to_exclude)?;
         result.append(&mut child_result);
     }
     Ok(result)
