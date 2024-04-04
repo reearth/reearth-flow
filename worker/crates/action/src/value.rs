@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::hash::{Hash, Hasher};
 
 use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
@@ -222,6 +223,41 @@ impl TryFrom<Uri> for ActionValue {
         let value: serde_json::Value =
             serde_json::to_value(value).map_err(error::Error::internal_runtime)?;
         Ok(value.into())
+    }
+}
+
+impl Hash for ActionValue {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            ActionValue::Null => "Null".hash(state),
+            ActionValue::Bool(b) => {
+                "Bool".hash(state);
+                b.hash(state);
+            }
+            ActionValue::Number(n) => {
+                "Number".hash(state);
+                n.hash(state);
+            }
+            ActionValue::String(s) => {
+                "String".hash(state);
+                s.hash(state);
+            }
+            ActionValue::Array(arr) => {
+                "Array".hash(state);
+                arr.hash(state);
+            }
+            ActionValue::Bytes(b) => {
+                "Bytes".hash(state);
+                b.hash(state);
+            }
+            ActionValue::Map(map) => {
+                "Map".hash(state);
+                for (k, v) in map {
+                    k.hash(state);
+                    v.hash(state);
+                }
+            }
+        }
     }
 }
 
