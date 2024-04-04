@@ -158,8 +158,13 @@ pub trait DOMImplementation {
 
 pub trait Element: Node {
     fn tag_name(&self) -> String {
-        Node::node_name(self).to_string()
+        let name = Node::node_name(self);
+        name.to_string()
     }
+
+    fn get_attributes_ns(&self) -> Vec<Self::NodeRef>;
+
+    fn get_attributes(&self) -> HashMap<Name, Self::NodeRef>;
 
     fn get_attribute(&self, name: &str) -> Option<String>;
 
