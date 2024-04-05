@@ -23,11 +23,12 @@ impl Action for AttributeDuplicateFilter {
             };
             let processed_data = match data {
                 ActionValue::Array(data) => {
+                    #[allow(clippy::mutable_key_type)]
                     let mut seen_values = HashSet::new();
                     let mut filtered = vec![];
                     for item in data.iter() {
-                        let key_attributes: Vec<String> = self.filter_by.iter().cloned().collect();
-                        let key_values: Vec<Option<&ActionValue>> = key_attributes
+                        let key_values: Vec<Option<&ActionValue>> = self
+                            .filter_by
                             .iter()
                             .map(|attribute| match item {
                                 ActionValue::Map(map) => map.get(attribute),
