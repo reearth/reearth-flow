@@ -2,20 +2,23 @@ use std::time::Instant;
 use std::{collections::HashMap, sync::Arc};
 
 use petgraph::graph::NodeIndex;
-use reearth_flow_state::State;
-use reearth_flow_workflow::graph::NodeAction;
 
 use reearth_flow_action::{Action, ActionContext, ActionDataframe};
 use reearth_flow_action_log::action_log;
 use reearth_flow_action_log::span;
 #[allow(unused_imports)]
 use reearth_flow_action_universal::prelude::*;
+use reearth_flow_common::serde as serde_utils;
+use reearth_flow_state::State;
+use reearth_flow_workflow::graph::NodeAction;
+use reearth_flow_workflow::workflow::WorkflowParameter;
 
 pub(crate) struct ActionRunner;
 
 impl ActionRunner {
     pub(crate) async fn run(
         ctx: ActionContext,
+        workflow_params: WorkflowParameter,
         action: NodeAction,
         ix: NodeIndex,
         dataframe_state: Arc<State>,
@@ -43,11 +46,22 @@ impl ActionRunner {
             "action".to_owned(),
             serde_json::Value::String(action.to_string()),
         )];
-        if let Some(node_property) = &ctx.node_property {
-            params.push((
-                "with".to_owned(),
-                serde_json::Value::from(node_property.clone()),
-            ));
+        match (&workflow_params.global, &workflow_params.node) {
+            (Some(global_property), Some(node_property)) => {
+                let mut global = serde_json::Value::from(global_property.clone());
+                let with_value = serde_json::Value::Object(node_property.clone());
+                serde_utils::merge_value(&mut global, with_value);
+                params.push(("with".to_owned(), global));
+            }
+            (Some(global_property), None) => {
+                let global = serde_json::Value::from(global_property.clone());
+                params.push(("with".to_owned(), global));
+            }
+            (None, Some(node_property)) => {
+                let with_value = serde_json::Value::Object(node_property.clone());
+                params.push(("with".to_owned(), with_value));
+            }
+            _ => {}
         }
         let action_run: Box<dyn Action> = serde_json::from_value(serde_json::Value::Object(
             params.into_iter().collect::<serde_json::Map<_, _>>(),

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use crate::graph::Graph;
+use crate::graph::{Graph, NodeProperty};
 use crate::id::Id;
 
 use reearth_flow_common::serde::from_str;
@@ -16,6 +16,13 @@ pub struct Workflow {
     pub entry_graph_id: Id,
     pub with: Option<Parameter>,
     pub graphs: Vec<Graph>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkflowParameter {
+    pub global: Option<Parameter>,
+    pub node: Option<NodeProperty>,
 }
 
 impl Workflow {
