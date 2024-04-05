@@ -6,7 +6,7 @@ use reearth_flow_action::{
     error::Error, utils::convert_dataframe_to_scope_params, Action, ActionContext, ActionDataframe,
     ActionResult, ActionValue, Result,
 };
-use reearth_flow_common::str::to_hash;
+use reearth_flow_common::collection;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -99,21 +99,24 @@ pub(super) async fn url(
         };
         let processed_data = match data {
             ActionValue::Array(data) => {
-                let mut result = Vec::<ActionValue>::new();
-                for row in data {
-                    let fragments = action_value_to_fragment(
-                        &row,
+                let result = collection::map(&data, |row| {
+                    let fragment = action_value_to_fragment(
+                        row,
                         &props.attribute,
                         &elements_to_match_ast,
                         &elements_to_exclude_ast,
                         &params,
                         Arc::clone(&expr_engine),
                         Arc::clone(&ctx.storage_resolver),
-                    )
-                    .await?;
-                    result.extend(fragments);
-                }
-                ActionValue::Array(result)
+                    );
+                    match fragment {
+                        Ok(fragment) => fragment,
+                        Err(_) => {
+                            vec![]
+                        }
+                    }
+                });
+                ActionValue::Array(result.into_iter().flatten().collect())
             }
             _ => data,
         };
@@ -122,7 +125,7 @@ pub(super) async fn url(
     Ok(output)
 }
 
-async fn action_value_to_fragment(
+fn action_value_to_fragment(
     row: &ActionValue,
     attribute: &String,
     elements_to_match_ast: &rhai::AST,
@@ -146,14 +149,14 @@ async fn action_value_to_fragment(
             let elements_to_match_ast = scope
                 .eval_ast::<rhai::Array>(elements_to_match_ast)
                 .map_err(Error::internal_runtime)?;
-            let elements_to_match_ast = elements_to_match_ast
+            let elements_to_match = elements_to_match_ast
                 .iter()
                 .map(|v| v.clone().into_string().unwrap_or_default())
                 .collect::<Vec<String>>();
             let elements_to_exclude_ast = scope
                 .eval_ast::<rhai::Array>(elements_to_exclude_ast)
                 .map_err(Error::internal_runtime)?;
-            let elements_to_exclude_ast = elements_to_exclude_ast
+            let elements_to_exclude = elements_to_exclude_ast
                 .iter()
                 .map(|v| v.clone().into_string().unwrap_or_default())
                 .collect::<Vec<String>>();
@@ -167,19 +170,37 @@ async fn action_value_to_fragment(
                 .resolve(&url)
                 .map_err(Error::internal_runtime)?;
             let content = storage
-                .get(&url.path())
-                .await
+                .get_sync(&url.path())
                 .map_err(Error::internal_runtime)?;
-            let bytes = content.bytes().await.map_err(Error::internal_runtime)?;
-            let raw_xml = String::from_utf8(bytes.to_vec()).map_err(Error::internal_runtime)?;
+            let raw_xml = String::from_utf8(content.to_vec()).map_err(Error::internal_runtime)?;
             let document = parser::read_xml(&raw_xml).map_err(Error::internal_runtime)?;
-            let fragments =
-                recursive_fragment(document, &elements_to_match_ast, &elements_to_exclude_ast)?;
-            for fragment in fragments {
+            let root = document
+                .first_child()
+                .ok_or(Error::internal_runtime("No root node"))?;
+            let nodes = recursive_fragment(root, &elements_to_match, &elements_to_exclude)?;
+            let results = collection::par_map(&nodes, |node| {
                 let mut value = row.clone();
-                value.extend(XmlFragment::to_hashmap(fragment));
-                result.push(ActionValue::Map(value));
-            }
+                let tag = node.node_name().to_string();
+                let element = as_element(node).unwrap();
+                let fragment = element
+                    .to_xml(&elements_to_match, &elements_to_exclude)
+                    .unwrap_or_default();
+                let xml_id = element.node_id();
+                let xml_parent_id = match node.parent_node() {
+                    Some(parent) if parent.borrow().node_type == NodeType::Element => {
+                        Some(parent.node_id())
+                    }
+                    _ => None,
+                };
+                value.extend(XmlFragment::to_hashmap(XmlFragment {
+                    xml_id,
+                    fragment,
+                    matched_tag: tag,
+                    xml_parent_id,
+                }));
+                ActionValue::Map(value)
+            });
+            result.extend(results);
         }
         _ => return Ok(result),
     }
@@ -190,36 +211,26 @@ fn recursive_fragment(
     node: RefNode,
     elements_to_match: &Vec<String>,
     elements_to_exclude: &Vec<String>,
-) -> Result<Vec<XmlFragment>> {
-    let mut result = Vec::<XmlFragment>::new();
+) -> Result<Vec<RefNode>> {
+    let mut result = Vec::<RefNode>::new();
     let tag = node.node_name().to_string();
 
     if elements_to_match.contains(&tag)
         && !elements_to_exclude.contains(&tag)
         && node.borrow().node_type == NodeType::Element
     {
-        let element = as_element(&node).unwrap();
-        let fragment = element.to_xml().map_err(Error::internal_runtime)?;
-        let xml_id = to_hash(&fragment);
-        let xml_parent_id = match node.parent_node() {
-            Some(parent) if parent.borrow().node_type == NodeType::Element => {
-                let element = as_element(&parent).unwrap();
-                let parent_fragment = element.to_xml().map_err(Error::internal_runtime)?;
-                Some(to_hash(&parent_fragment))
-            }
-            _ => None,
-        };
-        result.push(XmlFragment {
-            xml_id,
-            fragment,
-            matched_tag: tag,
-            xml_parent_id,
-        });
+        result.push(node.clone());
     }
-    for child in node.child_nodes() {
-        let child = child.clone();
-        let mut child_result = recursive_fragment(child, elements_to_match, elements_to_exclude)?;
-        result.append(&mut child_result);
+    let data = node.child_nodes();
+    let child_result = data
+        .iter()
+        .map(|v| {
+            let child = v.clone();
+            recursive_fragment(child, elements_to_match, elements_to_exclude).unwrap_or_default()
+        })
+        .collect::<Vec<Vec<RefNode>>>();
+    for child in child_result.into_iter() {
+        result.extend(child);
     }
     Ok(result)
 }
