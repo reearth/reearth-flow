@@ -50,11 +50,11 @@ pub(crate) enum Extension {
 
 #[derive(Clone, Debug)]
 pub struct NodeImpl {
-    pub(crate) node_type: NodeType,
-    pub(crate) name: Name,
-    pub(crate) value: Option<String>,
-    pub(crate) parent_node: Option<WeakRefNode>,
-    pub(crate) owner_document: Option<WeakRefNode>,
+    pub node_type: NodeType,
+    pub name: Name,
+    pub value: Option<String>,
+    pub parent_node: Option<WeakRefNode>,
+    pub owner_document: Option<WeakRefNode>,
     pub(crate) child_nodes: Vec<RefNode>,
     pub(crate) extension: Extension,
 }

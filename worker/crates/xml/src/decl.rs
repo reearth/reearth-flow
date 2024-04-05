@@ -73,7 +73,7 @@ impl Default for XmlDecl {
     fn default() -> Self {
         Self {
             version: XmlVersion::V10,
-            encoding: None,
+            encoding: Some("UTF-8".to_string()),
             standalone: None,
         }
     }

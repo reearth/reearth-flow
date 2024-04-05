@@ -9,7 +9,6 @@ with:
   targetPackages:
     - bldg
   addNsprefixToFeatureTypes: true
-  exceptFeatureTypes: null
   extractDmGeometryAsXmlFragment: false
 graphs:
   - !include ../graphs/attribute_reader.yml
