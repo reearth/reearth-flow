@@ -6,7 +6,6 @@ import { PanelContent } from "./types";
 export type VerticalPanelProps = {
   className?: string;
   isOpen: boolean;
-  direction?: "horizontal" | "vertical";
   minHeight?: string; // tailwindcss height class
   maxHeight?: string; // tailwindcss height class
   togglePosition?: "start-left" | "start-right" | "end-left" | "end-right";
@@ -15,12 +14,11 @@ export type VerticalPanelProps = {
   onClick?: (currentOpenState?: boolean) => void; // optional onClick handler
 };
 
-const baseClasses = `flex box-content transition-width duration-300 ease-in-out`;
+const baseClasses = `flex flex-col box-content transition-width duration-300 ease-in-out`;
 
 const VerticalPanel: React.FC<VerticalPanelProps> = ({
   className,
   isOpen,
-  direction = "vertical",
   minHeight,
   maxHeight,
   togglePosition = "start-right",
@@ -35,39 +33,16 @@ const VerticalPanel: React.FC<VerticalPanelProps> = ({
 
   const arrowDirection = useMemo(
     () =>
-      direction === "horizontal"
-        ? togglePosition.includes("right")
-          ? isOpen
-            ? "down"
-            : "up"
-          : isOpen
-            ? "up"
-            : "down"
-        : togglePosition.includes("left")
-          ? isOpen
-            ? "right"
-            : "left"
-          : isOpen
-            ? "left"
-            : "right",
-    [isOpen, direction, togglePosition],
+      togglePosition.includes("left") ? (isOpen ? "right" : "left") : isOpen ? "left" : "right",
+    [isOpen, togglePosition],
   );
 
   const classes = useMemo(
     () =>
-      [
-        baseClasses,
-        direction === "vertical" ? "flex-col" : undefined,
-        direction === "horizontal"
-          ? isOpen
-            ? maxHeight ?? "h-64"
-            : minHeight ?? "h-[36px]"
-          : isOpen
-            ? maxHeight ?? "w-64"
-            : minHeight ?? "w-[41px]",
-        className,
-      ].reduce((acc, cur) => (cur ? `${acc} ${cur}` : acc)),
-    [className, direction, isOpen, maxHeight, minHeight],
+      [baseClasses, isOpen ? maxHeight ?? "w-64" : minHeight ?? "w-[41px]", className].reduce(
+        (acc, cur) => (cur ? `${acc} ${cur}` : acc),
+      ),
+    [className, isOpen, maxHeight, minHeight],
   );
 
   return (
@@ -80,12 +55,10 @@ const VerticalPanel: React.FC<VerticalPanelProps> = ({
         />
       )}
       <div
-        className={`flex flex-1 ${direction === "horizontal" ? "px-3 py-1" : "flex-col py-3 px-1"} gap-3 overflow-scroll transition-all ${!isOpen ? "self-center" : "w-[250px]"}`}>
+        className={`flex flex-1 flex-col py-2 px-1 gap-3 overflow-scroll transition-all ${!isOpen ? "self-center" : "w-[250px]"}`}>
         {panelContents?.map(content => {
           return isOpen ? (
-            <div
-              className={`flex ${direction === "vertical" ? "flex-col" : undefined} gap-2`}
-              key={content.id}>
+            <div className="flex flex-col gap-2" key={content.id}>
               {content.title && <p className="text-md">{content.title}</p>}
               {content.component}
             </div>

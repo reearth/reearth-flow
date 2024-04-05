@@ -1,6 +1,7 @@
 import { Loading } from "@flow/components";
 import BottomPanel from "@flow/features/BottomPanel";
 import Canvas from "@flow/features/Canvas";
+import { Dialog } from "@flow/features/Dialog";
 import LeftPanel from "@flow/features/LeftPanel";
 // import RightPanel from "@flow/features/RightPanel";
 import { useTimeoutOnLoad } from "@flow/hooks";
@@ -22,6 +23,7 @@ function App() {
             {/* <RightPanel /> */}
           </div>
         </div>
+        <Dialog />
         <Loading show={isLoading} />
       </TooltipProvider>
     </I18nProvider>

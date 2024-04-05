@@ -3,7 +3,7 @@ export * from "./collapsiblePanels";
 export * from "./DropdownMenu";
 export * from "./icons";
 export * from "./Loading";
-export * from "./Menubar";
 export * from "./Resizable";
 export * from "./ScrollArea";
 export * from "./Tooltip";
+export * from "./Dialog";

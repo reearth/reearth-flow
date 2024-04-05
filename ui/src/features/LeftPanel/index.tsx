@@ -5,7 +5,7 @@ import { VerticalPanel, FlowLogo, type PanelContent } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
 import { useT } from "@flow/providers";
 
-import HomeMenu from "../HomeMenu";
+import HomeMenu from "./components/HomeMenu";
 
 type Props = {
   className?: string;

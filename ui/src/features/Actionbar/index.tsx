@@ -11,7 +11,7 @@ import {
 import { useCallback, useState } from "react";
 import { useReactFlow } from "reactflow";
 
-import { CenterIcon, IconButton, Menubar } from "@flow/components";
+import { CenterIcon, IconButton } from "@flow/components";
 import { useT } from "@flow/providers";
 import { checkIsFullscreen, closeFullscreen, openFullscreen } from "@flow/utils";
 
@@ -33,7 +33,7 @@ export default function ActionBar() {
   }, []);
 
   return (
-    <Menubar className="border-none bg-zinc-800 m-1">
+    <div className="flex rounded-md border-none bg-zinc-800 p-1 m-1">
       <div className="flex justify-end align-middle flex-1">
         <IconButton
           tooltipText={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
@@ -86,6 +86,6 @@ export default function ActionBar() {
           icon={<DownloadIcon />}
         />
       </div>
-    </Menubar>
+    </div>
   );
 }
