@@ -380,6 +380,39 @@ impl DOMImplementation for Implementation {
 }
 
 impl Element for RefNode {
+    fn to_xml(&self) -> Result<String> {
+        if self.borrow().node_type == NodeType::Element {
+            let element = as_element(self).unwrap();
+            if let Some(_prefix) = element.prefix() {
+                let namespaces = element.get_attributes_ns();
+                let mut new_node = self.clone_node(true).unwrap();
+                new_node.remove_owner_document();
+                let mut document = get_implementation()
+                    .create_document(None, None, None)
+                    .unwrap();
+                let result = document.set_xml_declaration(XmlDecl::default());
+                if result.is_err() {
+                    return Err(Error::Malformed("Invalid XML declaration".to_string()));
+                }
+                document.append_child(new_node.clone()).unwrap();
+                for (_, v) in namespaces {
+                    let mut namespace = v.clone_node(true).unwrap();
+                    namespace.remove_owner_document();
+                    namespace.borrow_mut().owner_document = Some(document.clone().downgrade());
+                    let result = new_node.set_attribute_node_ns(namespace);
+                    if result.is_err() {
+                        return Err(Error::Malformed("Invalid namespace attribute".to_string()));
+                    }
+                }
+                Ok(format!("{}", document))
+            } else {
+                Ok(format!("{}", self))
+            }
+        } else {
+            Err(Error::Malformed("Invalid element".to_string()))
+        }
+    }
+
     fn get_attributes(&self) -> HashMap<Name, RefNode> {
         let result = HashMap::new();
         if is_element(self) {
@@ -463,7 +496,9 @@ impl Element for RefNode {
                 let as_namespaced = as_element_namespaced_mut(self).unwrap();
                 let _ignore = match &name.prefix() {
                     None => as_namespaced.insert_mapping(None, &namespace_uri),
-                    Some(prefix) => as_namespaced.insert_mapping(Some(prefix), &namespace_uri),
+                    Some(_) => {
+                        as_namespaced.insert_mapping(Some(name.local_name()), &namespace_uri)
+                    }
                 }?;
             }
 
@@ -568,20 +603,37 @@ impl Element for RefNode {
         }
     }
 
-    fn get_attributes_ns(&self) -> Vec<RefNode> {
+    fn get_attributes_ns(&self) -> HashMap<Name, RefNode> {
+        let mut result = HashMap::new();
         if is_element(self) {
             let ref_self = self.borrow();
             if let Extension::Element { attributes, .. } = &ref_self.extension {
-                attributes
+                let ns = attributes
                     .iter()
                     .filter(|(name, _)| name.is_namespace_attribute())
-                    .map(|(_, node)| node.clone())
-                    .collect::<Vec<_>>()
+                    .map(|(name, node)| (name.clone(), node.clone()))
+                    .collect::<HashMap<_, _>>();
+                result.extend(ns);
+                let ref_self = self.borrow();
+                match &ref_self.parent_node {
+                    None => result,
+                    Some(parent) => {
+                        let parent = parent.clone();
+                        match parent.upgrade() {
+                            None => result,
+                            Some(parent_node) => {
+                                let parents = parent_node.get_attributes_ns();
+                                result.extend(parents);
+                                result
+                            }
+                        }
+                    }
+                }
             } else {
-                Vec::new()
+                HashMap::new()
             }
         } else {
-            Vec::new()
+            result
         }
     }
 
@@ -1006,6 +1058,10 @@ impl Node for RefNode {
 
     fn has_attributes(&self) -> bool {
         !self.attributes().is_empty()
+    }
+
+    fn remove_owner_document(&mut self) {
+        self.borrow_mut().owner_document = None;
     }
 }
 

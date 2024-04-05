@@ -14,11 +14,6 @@ nodes:
       transforms:
         - expr: |
             env.get("__all") + #{
-              schemaJson: env.get("schemaJson"),
-              addNsprefixToFeatureTypes: env.get("addNsprefixToFeatureTypes"),
-              exceptFeatureTypes: env.get("exceptFeatureTypes"),
-              extractDmGeometryAsXmlFragment: env.get("extractDmGeometryAsXmlFragment"),
-              cityCode: env.get("cityCode"),
               meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("cityGmlPath")))
             }
           targetPort: default
