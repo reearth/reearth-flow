@@ -33,6 +33,15 @@ where
     }
 }
 
+pub fn par_map<T, P, R>(collection: &[T], predict: P) -> Vec<R>
+where
+    T: Send + Sync + Clone,
+    P: Fn(&T) -> R + Send + Sync,
+    R: Send + Sync,
+{
+    collection.par_iter().map(predict).collect::<Vec<_>>()
+}
+
 pub fn vec_to_map<T, P, R>(collection: &[T], predict: P) -> HashMap<String, R>
 where
     T: Send + Sync + Clone,
