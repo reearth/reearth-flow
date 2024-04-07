@@ -318,7 +318,9 @@ mod tests {
     fn test_good_xml(xml: &str) {
         let dom = read_xml(xml);
         assert!(dom.is_ok());
-        println!("{}", dom.unwrap())
+        let document = dom.unwrap();
+        let root = document.first_child().unwrap();
+        println!("root: {:?}", root.node_name());
     }
 
     #[test]

@@ -33,3 +33,14 @@ fn determine_format(input: &str) -> SerdeFormat {
         SerdeFormat::Unknown
     }
 }
+
+pub fn merge_value(a: &mut JsonValue, b: JsonValue) {
+    match (a, b) {
+        (JsonValue::Object(ref mut a_map), JsonValue::Object(b_map)) => {
+            for (k, v) in b_map {
+                merge_value(a_map.entry(k).or_insert(JsonValue::Null), v);
+            }
+        }
+        (a, b) => *a = b,
+    }
+}
