@@ -6,7 +6,7 @@ const WorkspacesSetting: React.FC = () => {
   const t = useT();
   const [_, setDialogType] = useDialogAtom();
   return (
-    <DropdownMenuItem onClick={() => setDialogType("workspaces")}>
+    <DropdownMenuItem onClick={() => setDialogType("workspaces-settings")}>
       {t("Workspaces")}
       <DropdownMenuShortcut>⇧⌘W</DropdownMenuShortcut>
     </DropdownMenuItem>

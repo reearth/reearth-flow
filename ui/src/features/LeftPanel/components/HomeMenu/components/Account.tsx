@@ -6,7 +6,7 @@ const AccountSetting: React.FC = () => {
   const t = useT();
   const [_, setDialogType] = useDialogAtom();
   return (
-    <DropdownMenuItem onClick={() => setDialogType("account")}>
+    <DropdownMenuItem onClick={() => setDialogType("account-settings")}>
       {t("Account")}
       <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
     </DropdownMenuItem>

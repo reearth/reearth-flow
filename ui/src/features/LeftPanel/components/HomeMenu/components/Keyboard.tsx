@@ -6,7 +6,7 @@ const KeyboardSetting: React.FC = () => {
   const t = useT();
   const [_, setDialogType] = useDialogAtom();
   return (
-    <DropdownMenuItem onClick={() => setDialogType("keyboard")}>
+    <DropdownMenuItem onClick={() => setDialogType("keyboard-settings")}>
       {t("Keyboard shortcuts")}
       <DropdownMenuShortcut>⇧⌘K</DropdownMenuShortcut>
     </DropdownMenuItem>

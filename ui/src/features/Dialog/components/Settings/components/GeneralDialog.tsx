@@ -1,7 +1,7 @@
 import { DialogDescription, DialogHeader, DialogTitle } from "@flow/components";
 // import { Button } from "@flow/components/buttons/BaseButton";
 
-const SettingsDialogContent: React.FC = () => {
+const GeneralDialogContent: React.FC = () => {
   return (
     <>
       <DialogHeader>
@@ -54,4 +54,4 @@ const SettingsDialogContent: React.FC = () => {
   );
 };
 
-export { SettingsDialogContent };
+export { GeneralDialogContent };

@@ -1,31 +1,21 @@
 import { DialogContent, Dialog as DialogWrapper } from "@flow/components";
-import { useDialogAtom } from "@flow/stores";
+import { DialogType, useDialogAtom } from "@flow/stores";
 
-import {
-  KeyboardDialogContent,
-  AccountDialogContent,
-  SettingsDialogContent,
-  WorkspacesDialogContent,
-  WorkflowDialogContent,
-} from "./components";
+import { SettingsDialogContent } from "./components/Settings";
 
 const Dialog: React.FC = () => {
   const [dialogType, setDialogType] = useDialogAtom();
-  console.log("dialogType", dialogType);
+
+  const handleDialogTypeChange = (type?: DialogType) => {
+    setDialogType(type);
+  };
+
   return (
     dialogType && (
       <DialogWrapper open={!!dialogType} onOpenChange={o => !o && setDialogType(undefined)}>
         <DialogContent>
-          {dialogType === "keyboard" ? (
-            <KeyboardDialogContent />
-          ) : dialogType === "account" ? (
-            <AccountDialogContent />
-          ) : dialogType === "settings" ? (
-            <SettingsDialogContent />
-          ) : dialogType === "workspaces" ? (
-            <WorkspacesDialogContent />
-          ) : dialogType === "workflow" ? (
-            <WorkflowDialogContent />
+          {dialogType.includes("settings") ? (
+            <SettingsDialogContent tab={dialogType} onTabChange={handleDialogTypeChange} />
           ) : null}
         </DialogContent>
       </DialogWrapper>
