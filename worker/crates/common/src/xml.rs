@@ -7,6 +7,7 @@ pub type XmlXpathValue = libxml::xpath::Object;
 pub type XmlContext = libxml::xpath::Context;
 pub type XmlNode = libxml::tree::Node;
 pub type XmlNamespace = libxml::tree::Namespace;
+pub type XmlNodeType = libxml::tree::NodeType;
 
 pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
     let parser = Parser::default();
@@ -76,16 +77,6 @@ pub fn get_node_tag(node: &XmlNode) -> String {
 }
 
 pub fn node_to_xml_string(document: &XmlDocument, node: &mut XmlNode) -> crate::Result<String> {
-    let root = document
-        .get_root_element()
-        .ok_or(crate::Error::Xml("No root element".to_string()))?;
-    for ns in root.get_namespace_declarations().iter() {
-        node.set_attribute(
-            format!("xmlns:{}", ns.get_prefix()).as_str(),
-            ns.get_href().as_str(),
-        )
-        .map_err(|_| crate::Error::Xml("Failed to set namespace".to_string()))?;
-    }
     let doc =
         parse(document.node_to_string(node)).map_err(|e| crate::Error::Xml(format!("{}", e)))?;
     Ok(doc.to_string())

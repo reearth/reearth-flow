@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port,
+    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Port,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -20,7 +20,7 @@ pub(super) struct Operation {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "DataframeUnion")]
-impl Action for DataframeUnion {
+impl AsyncAction for DataframeUnion {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let output = self

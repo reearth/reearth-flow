@@ -9,7 +9,8 @@ use reearth_flow_common::csv::Delimiter;
 
 use super::{csv, json, text};
 use reearth_flow_action::{
-    utils, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Result, DEFAULT_PORT,
+    utils, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result,
+    DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -49,7 +50,7 @@ pub enum FileReader {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "FileReader")]
-impl Action for FileReader {
+impl AsyncAction for FileReader {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let data = match self {
