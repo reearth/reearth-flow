@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use petgraph::graph::NodeIndex;
 
-use reearth_flow_action::{Action, ActionContext, ActionDataframe};
+use reearth_flow_action::{ActionContext, ActionDataframe, AsyncAction, SyncAction};
 use reearth_flow_action_log::action_log;
 use reearth_flow_action_log::span;
 #[allow(unused_imports)]
@@ -63,14 +63,48 @@ impl ActionRunner {
             }
             _ => {}
         }
-        let action_run: Box<dyn Action> = serde_json::from_value(serde_json::Value::Object(
-            params.into_iter().collect::<serde_json::Map<_, _>>(),
-        ))
-        .map_err(crate::Error::execution)?;
-        let res = action_run
-            .run(ctx, input)
-            .await
-            .map_err(|e| crate::Error::action(e, action.to_string()))?;
+        let res = {
+            let action_run: serde_json::Result<Box<dyn AsyncAction>> =
+                serde_json::from_value(serde_json::Value::Object(
+                    params
+                        .clone()
+                        .into_iter()
+                        .collect::<serde_json::Map<_, _>>(),
+                ));
+            match action_run {
+                Ok(action_run) => action_run
+                    .run(ctx, input)
+                    .await
+                    .map_err(|e| crate::Error::action(e, action.to_string()))?,
+                Err(e) if e.classify() == serde_json::error::Category::Data => {
+                    let action_run: Box<dyn SyncAction> =
+                        serde_json::from_value(serde_json::Value::Object(
+                            params.into_iter().collect::<serde_json::Map<_, _>>(),
+                        ))
+                        .map_err(crate::Error::execution)?;
+                    let result = tokio::task::spawn_blocking(move || action_run.run(ctx, input))
+                        .await
+                        .map_err(|e| {
+                            crate::Error::action(
+                                reearth_flow_action::error::Error::internal_runtime(format!(
+                                    "{:?}",
+                                    e
+                                )),
+                                action.to_string(),
+                            )
+                        })?;
+                    result.map_err(|e| {
+                        crate::Error::action(
+                            reearth_flow_action::error::Error::internal_runtime(format!("{:?}", e)),
+                            action.to_string(),
+                        )
+                    })?
+                }
+                Err(e) => {
+                    return Err(crate::Error::execution(e));
+                }
+            }
+        };
         dataframe_state
             .save(&convert_dataframe(&res), node_id.to_string().as_str())
             .await

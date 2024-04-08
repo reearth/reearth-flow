@@ -7,7 +7,8 @@ use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Result, DEFAULT_PORT,
+    error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result,
+    DEFAULT_PORT,
 };
 
 use super::types::SchemaFeature;
@@ -97,7 +98,7 @@ struct Schema {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "PLATEAU.DictionariesInitiator")]
-impl Action for DictionariesInitiator {
+impl AsyncAction for DictionariesInitiator {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(error::Error::input("No Input"))?;
         let input = inputs

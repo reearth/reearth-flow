@@ -7,7 +7,7 @@ use reearth_flow_common::xml;
 
 use reearth_flow_action::utils::inject_variables_to_scope;
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port,
+    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Port,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -25,7 +25,7 @@ struct Condition {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "XMLXPathExtractor")]
-impl Action for XmlXPathExtractor {
+impl AsyncAction for XmlXPathExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.unwrap_or_default();
         let expr_engine = Arc::clone(&ctx.expr_engine);

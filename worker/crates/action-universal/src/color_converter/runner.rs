@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionResult};
+use reearth_flow_action::{ActionContext, ActionDataframe, ActionResult, AsyncAction};
 
 use super::hsl_to_rgba;
 
@@ -18,7 +18,7 @@ pub enum ColorConverter {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "ColorConverter")]
-impl Action for ColorConverter {
+impl AsyncAction for ColorConverter {
     async fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult {
         let data = match self {
             Self::HslToRgba { property } => {
