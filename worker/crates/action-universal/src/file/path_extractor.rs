@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
     error::{self, Error},
-    types, utils, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
+    types, utils, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
+    DEFAULT_PORT,
 };
 use reearth_flow_common::uri::Uri;
 
@@ -17,7 +18,7 @@ pub struct FilePathExtractor {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "FilePathExtractor")]
-impl Action for FilePathExtractor {
+impl AsyncAction for FilePathExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.unwrap_or_default();
         let source_dataset =

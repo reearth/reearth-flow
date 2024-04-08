@@ -42,8 +42,13 @@ pub struct Port(String);
 
 #[async_trait::async_trait]
 #[typetag::serde(tag = "action", content = "with")]
-pub trait Action: Send + Sync {
+pub trait AsyncAction: Send + Sync {
     async fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult;
+}
+
+#[typetag::serde(tag = "action", content = "with")]
+pub trait SyncAction: Send + Sync {
+    fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult;
 }
 
 #[derive(Debug, Clone)]

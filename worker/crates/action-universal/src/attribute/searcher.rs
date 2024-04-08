@@ -2,7 +2,7 @@ use regex::{escape, Regex};
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -14,7 +14,7 @@ pub struct AttributeStringSearcher {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "AttributeStringSearcher")]
-impl Action for AttributeStringSearcher {
+impl AsyncAction for AttributeStringSearcher {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let re = if self.contains_regular_expression {
             Regex::new(&self.search_in).map_err(|_| Error::input("Invalid regex"))

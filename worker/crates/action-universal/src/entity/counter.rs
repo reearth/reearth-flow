@@ -2,7 +2,8 @@ use itertools::{self, Itertools};
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, DEFAULT_PORT,
+    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
+    DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -15,7 +16,7 @@ pub struct EntityCounter {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "EntityCounter")]
-impl Action for EntityCounter {
+impl AsyncAction for EntityCounter {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let input = inputs

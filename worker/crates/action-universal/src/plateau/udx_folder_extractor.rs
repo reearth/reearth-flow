@@ -6,7 +6,7 @@ use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error, utils, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Result,
+    error, utils, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result,
     DEFAULT_PORT, REJECTED_PORT,
 };
 
@@ -49,7 +49,7 @@ impl TryFrom<Response> for ActionValue {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "PLATEAU.UDXFolderExtractor")]
-impl Action for UdxFolderExtractor {
+impl AsyncAction for UdxFolderExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(error::Error::input("No Input"))?;
         let input = inputs
