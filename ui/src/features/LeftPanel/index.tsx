@@ -1,11 +1,13 @@
 import { FileIcon, StopIcon } from "@radix-ui/react-icons";
+import { Database, Folder } from "lucide-react";
+import { useState } from "react";
 
-import BoilerFiletree from "@flow/assets/filetree-example.png";
-import { VerticalPanel, FlowLogo, type PanelContent } from "@flow/components";
+import { VerticalPanel, FlowLogo, type PanelContent, Tree } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
 import { useT } from "@flow/providers";
 
 import HomeMenu from "./components/HomeMenu";
+import { data } from "./MOCK_DATA"; // TODO: replace with real data
 
 type Props = {
   className?: string;
@@ -14,6 +16,8 @@ type Props = {
 const LeftPanel: React.FC<Props> = ({ className }) => {
   const [isPanelOpen, handlePanelToggle] = useStateManager<boolean>(true);
   const t = useT();
+
+  const [_content, setContent] = useState("Admin Page");
 
   const panelContents: PanelContent[] = [
     {
@@ -30,7 +34,19 @@ const LeftPanel: React.FC<Props> = ({ className }) => {
       id: "navigator",
       title: t("Navigator"),
       icon: <FileIcon />,
-      component: <img src={BoilerFiletree} alt="file-tree-example" />,
+      component: (
+        <>
+          <Tree
+            data={data}
+            className="flex-shrink-0 w-full h-[60vh] text-zinc-300"
+            // initialSlelectedItemId="1"
+            onSelectChange={item => setContent(item?.name ?? "")}
+            folderIcon={Folder}
+            itemIcon={Database}
+          />
+          <div className="border-zinc-700 border-t-[1px] w-[100%]" />
+        </>
+      ),
     },
     {
       id: "transformer-gallery",

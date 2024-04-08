@@ -7,3 +7,4 @@ export * from "./Resizable";
 export * from "./ScrollArea";
 export * from "./Tooltip";
 export * from "./Dialog";
+export * from "./FileTree";

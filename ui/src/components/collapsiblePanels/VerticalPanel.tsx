@@ -55,7 +55,7 @@ const VerticalPanel: React.FC<VerticalPanelProps> = ({
         />
       )}
       <div
-        className={`flex flex-1 flex-col py-2 px-1 gap-3 overflow-scroll transition-all ${!isOpen ? "self-center" : "w-[250px]"}`}>
+        className={`flex flex-1 flex-col py-2 px-1 gap-3 transition-all ${!isOpen ? "self-center" : "w-[250px]"}`}>
         {panelContents?.map(content => {
           return isOpen ? (
             <div className="flex flex-col gap-2" key={content.id}>
