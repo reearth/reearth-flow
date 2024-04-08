@@ -1,7 +1,7 @@
-import { DialogContent, Dialog as DialogWrapper } from "@flow/components";
+import { Dialog as DialogWrapper } from "@flow/components";
 import { DialogType, useDialogAtom } from "@flow/stores";
 
-import { SettingsDialogContent } from "./components/Settings";
+import { DialogContent } from "./components/Content";
 
 const Dialog: React.FC = () => {
   const [dialogType, setDialogType] = useDialogAtom();
@@ -13,11 +13,7 @@ const Dialog: React.FC = () => {
   return (
     dialogType && (
       <DialogWrapper open={!!dialogType} onOpenChange={o => !o && setDialogType(undefined)}>
-        <DialogContent>
-          {dialogType.includes("settings") ? (
-            <SettingsDialogContent tab={dialogType} onTabChange={handleDialogTypeChange} />
-          ) : null}
-        </DialogContent>
+        <DialogContent tab={dialogType} onTabChange={handleDialogTypeChange} />
       </DialogWrapper>
     )
   );

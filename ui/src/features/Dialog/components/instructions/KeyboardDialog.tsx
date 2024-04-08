@@ -1,14 +1,15 @@
 import { DialogDescription, DialogHeader, DialogTitle } from "@flow/components";
-// import { Button } from "@flow/components/buttons/BaseButton";
+import { useT } from "@flow/providers";
 
 const KeyboardDialogContent: React.FC = () => {
+  const t = useT();
+
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Keyboard shortcuts</DialogTitle>
+        <DialogTitle>{t("Keyboard shortcuts")}</DialogTitle>
         <DialogDescription className="text-wrap">
-          This action cannot be undone. This will permanently delete your account and remove your
-          data from our servers.
+          This is a list of keyboard shortcuts that you can use to navigate the application.
         </DialogDescription>
       </DialogHeader>
       <div className="mx-2">
