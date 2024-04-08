@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port,
+    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Port,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -23,7 +23,7 @@ struct Caller {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "RhaiCaller")]
-impl Action for RhaiCaller {
+impl AsyncAction for RhaiCaller {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.unwrap_or_default();
         let expr_engine = Arc::clone(&ctx.expr_engine);
@@ -53,7 +53,6 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
-    use reearth_flow_action::{Action, ActionContext, ActionDataframe, ActionValue};
 
     #[tokio::test]
     async fn test_rhai_caller_run() {

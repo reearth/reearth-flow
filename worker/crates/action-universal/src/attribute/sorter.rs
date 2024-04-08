@@ -3,7 +3,7 @@ use std::{cmp::Ordering, vec};
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+    error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -29,7 +29,7 @@ enum Order {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "AttributeSorter")]
-impl Action for AttributeSorter {
+impl AsyncAction for AttributeSorter {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(error::Error::input("No input dataframe"))?;
         let mut output = ActionDataframe::new();

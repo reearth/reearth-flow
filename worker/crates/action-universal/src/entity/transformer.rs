@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use reearth_flow_action::error::Error;
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
 use reearth_flow_action::{
-    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port,
+    ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Port,
 };
 use reearth_flow_common::collection;
 use reearth_flow_eval_expr::engine::Engine;
@@ -26,7 +26,7 @@ struct Transform {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "EntityTransformer")]
-impl Action for EntityTransformer {
+impl AsyncAction for EntityTransformer {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);

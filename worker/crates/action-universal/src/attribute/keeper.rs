@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -14,7 +14,7 @@ pub struct AttributeKeeper {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "AttributeKeeper")]
-impl Action for AttributeKeeper {
+impl AsyncAction for AttributeKeeper {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No input dataframe"))?;
         let mut output = ActionDataframe::new();

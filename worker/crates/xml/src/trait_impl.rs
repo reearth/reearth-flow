@@ -380,7 +380,7 @@ impl DOMImplementation for Implementation {
 }
 
 impl Element for RefNode {
-    fn to_xml(&self) -> Result<String> {
+    fn to_xml(&self, target_tags: &[String], exclude_tags: &[String]) -> Result<String> {
         if self.borrow().node_type == NodeType::Element {
             let element = as_element(self).unwrap();
             if let Some(_prefix) = element.prefix() {
@@ -404,9 +404,13 @@ impl Element for RefNode {
                         return Err(Error::Malformed("Invalid namespace attribute".to_string()));
                     }
                 }
-                Ok(format!("{}", document))
+                let xml = display::fmt_node(&document, target_tags, exclude_tags)
+                    .map_err(|_| Error::Malformed("Invalid element".to_string()))?;
+                Ok(xml)
             } else {
-                Ok(format!("{}", self))
+                let xml = display::fmt_node(self, target_tags, exclude_tags)
+                    .map_err(|_| Error::Malformed("Invalid element".to_string()))?;
+                Ok(xml)
             }
         } else {
             Err(Error::Malformed("Invalid element".to_string()))
@@ -758,6 +762,11 @@ impl EntityReference for RefNode {}
 
 impl Node for RefNode {
     type NodeRef = RefNode;
+
+    fn node_id(&self) -> String {
+        let ref_self = self.borrow();
+        ref_self.node_id.clone()
+    }
 
     fn node_name(&self) -> Name {
         let ref_self = self.borrow();
@@ -1124,7 +1133,7 @@ impl Text for RefNode {
 
 impl Display for RefNode {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        display::fmt_node(self, f)
+        display::debug_node(self, f)
     }
 }
 
