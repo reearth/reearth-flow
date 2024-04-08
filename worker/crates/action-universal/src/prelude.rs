@@ -17,3 +17,4 @@ pub use crate::rhai_caller::RhaiCaller;
 pub use crate::xml::fragmenter::XmlFragmenter;
 pub use crate::xml::xpath_extractor::XmlXPathExtractor;
 pub use crate::zip_extractor::ZipExtractor;
+pub use crate::excel::writer::ExcelFileWriter;

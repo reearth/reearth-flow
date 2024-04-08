@@ -8,3 +8,4 @@ pub mod prelude;
 mod rhai_caller;
 mod xml;
 mod zip_extractor;
+mod excel;
