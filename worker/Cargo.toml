@@ -109,3 +109,4 @@ uuid = {version = "1.8.0", features = [
   "macro-diagnostics",
   "serde",
 ]}
+jsonpath-rust = "=0.5.0"

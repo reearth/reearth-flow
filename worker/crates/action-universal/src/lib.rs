@@ -3,6 +3,7 @@ mod color_converter;
 mod dataframe;
 mod entity;
 mod file;
+mod json;
 mod plateau;
 pub mod prelude;
 mod rhai_caller;
