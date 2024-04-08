@@ -45,9 +45,7 @@ const DialogContent: React.FC<Props> = ({ tab, onTabChange }) => {
             ))}
           </div>
         )}
-        <div id="settings-content" className="pl-4">
-          {content.find(c => c.id === tab)?.component}
-        </div>
+        <div className="pl-4">{content.find(c => c.id === tab)?.component}</div>
       </div>
     </DialogContentPrimitive>
   ) : null;

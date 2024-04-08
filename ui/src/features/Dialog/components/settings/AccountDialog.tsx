@@ -1,5 +1,4 @@
 import { DialogDescription, DialogHeader, DialogTitle } from "@flow/components";
-// import { Button } from "@flow/components/buttons/BaseButton";
 
 const AccountDialogContent: React.FC = () => {
   return (
