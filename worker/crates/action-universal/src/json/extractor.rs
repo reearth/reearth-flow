@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{from_str, Value};
+use serde_json::Value;
 use std::collections::HashMap;
 
 use jsonpath_rust::JsonPathQuery;
@@ -56,7 +56,7 @@ mod tests {
 
     #[fixture]
     async fn inputs() -> ActionValue {
-        from_str::<Value>(
+        serde_json::from_str::<Value>(
             r#"
                     {
                         "store": {
@@ -103,23 +103,8 @@ mod tests {
 
     #[fixture]
     async fn expected() -> Vec<ActionValue> {
-        let mut authors: HashMap<String, ActionValue> = HashMap::new();
-        authors.insert(
-            "author 1".to_string(),
-            ActionValue::String("Nigel Rees".to_string()),
-        );
-
-        authors.insert(
-            "author 2".to_string(),
-            ActionValue::String("Evelyn Waugh".to_string()),
-        );
-        authors.insert(
-            "author 3".to_string(),
-            ActionValue::String("Herman Melville".to_string()),
-        );
-
         vec![
-            from_str::<Value>(
+            serde_json::from_str::<Value>(
                 r#"
                     {
                         "object": [
@@ -155,7 +140,17 @@ mod tests {
             )
             .unwrap()
             .into(),
-            ActionValue::Map(authors),
+            serde_json::from_str::<Value>(
+                r#"
+                    {
+                        "author 1": "Nigel Rees",
+                        "author 2": "Evelyn Waugh",
+                        "author 3": "Herman Melville"
+                    }
+                "#,
+            )
+            .unwrap()
+            .into(),
         ]
     }
 
