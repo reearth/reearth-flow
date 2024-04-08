@@ -6,7 +6,7 @@ type Props = {
 };
 
 const ContentHeader: React.FC<Props> = ({ title, description }) => (
-  <DialogHeader className="mb-4">
+  <DialogHeader className="mb-8">
     <DialogTitle>{title}</DialogTitle>
     {description && (
       <DialogDescription className="text-wrap text-center">{description}</DialogDescription>

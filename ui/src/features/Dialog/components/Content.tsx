@@ -31,7 +31,7 @@ const DialogContent: React.FC<Props> = ({ tab, onTabChange }) => {
     <DialogContentPrimitive>
       <div className="flex">
         {content.length > 1 && (
-          <div className="flex flex-col gap-6 pr-4 pt-10 border-r border-zinc-800">
+          <div className="flex flex-col gap-6 pr-4 py-6 border-r border-zinc-800">
             {content.map(c => (
               <IconButton
                 key={c.id}
@@ -45,7 +45,7 @@ const DialogContent: React.FC<Props> = ({ tab, onTabChange }) => {
             ))}
           </div>
         )}
-        <div className="pl-4">{content.find(c => c.id === tab)?.component}</div>
+        <div className="pl-4 w-full">{content.find(c => c.id === tab)?.component}</div>
       </div>
     </DialogContentPrimitive>
   ) : null;
