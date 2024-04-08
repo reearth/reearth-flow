@@ -1,3 +1,6 @@
+import { useState } from "react";
+
+import { Dialog, DialogContent, DialogFooter } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
 import { useT } from "@flow/providers";
 
@@ -8,6 +11,7 @@ import { FieldWrapper } from "./components";
 
 const AccountDialogContent: React.FC = () => {
   const t = useT();
+  const [subDialog, setSubDialog] = useState(false);
   return (
     <>
       <ContentHeader
@@ -24,7 +28,7 @@ const AccountDialogContent: React.FC = () => {
                   <p className="text-md">{t("Username")}</p>
                   <p className="text-xs text-zinc-400">flow-user1234</p>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => setSubDialog(true)}>
                   {t("Change username")}
                 </Button>
               </FieldWrapper>
@@ -50,6 +54,20 @@ const AccountDialogContent: React.FC = () => {
       {/* <DialogFooter>
         <Button type="submit">Save changes</Button>
       </DialogFooter> */}
+      <Dialog open={!!subDialog} onOpenChange={() => setSubDialog(!subDialog)}>
+        <DialogContent overlayBgClass="bg-black/30">
+          <ContentHeader title={t("Update field")} />
+          <div className="flex gap-4">
+            <p className="text-lg text-zinc-300">Field</p>
+            <input className="flex-1 bg-zinc-800" type="text" />
+          </div>
+          <DialogFooter>
+            <Button type="submit" onClick={() => setSubDialog(false)}>
+              Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

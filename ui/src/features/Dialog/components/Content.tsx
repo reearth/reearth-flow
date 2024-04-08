@@ -27,11 +27,15 @@ const DialogContent: React.FC<Props> = ({ tab, onTabChange }) => {
       ? instructions
       : null;
 
+  const disableClickaway = tab.includes("settings");
+
   return content ? (
-    <DialogContentPrimitive>
+    <DialogContentPrimitive
+      onPointerDownOutside={e => disableClickaway && e.preventDefault()}
+      onEscapeKeyDown={e => disableClickaway && e.preventDefault()}>
       <div className="flex">
         {content.length > 1 && (
-          <div className="flex flex-col gap-6 pr-4 py-6 border-r border-zinc-800">
+          <div className="flex flex-col pr-4 py-6 border-r border-zinc-800">
             {content.map(c => (
               <IconButton
                 key={c.id}

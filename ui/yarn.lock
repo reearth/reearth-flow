@@ -3370,7 +3370,7 @@ __metadata:
     i18next: "npm:23.10.1"
     i18next-browser-languagedetector: "npm:7.2.1"
     i18next-parser: "npm:^8.13.0"
-    jotai: "npm:^2.7.2"
+    jotai: "npm:2.7.2"
     leaflet: "npm:1.9.4"
     lucide-react: "npm:0.336.0"
     postcss: "npm:8.4.35"
@@ -9936,7 +9936,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jotai@npm:^2.7.2":
+"jotai@npm:2.7.2":
   version: 2.7.2
   resolution: "jotai@npm:2.7.2"
   peerDependencies:
