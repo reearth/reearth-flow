@@ -4,10 +4,10 @@ This module provides support types for the [`Namespaced`](trait.Namespaced.html)
 
 use crate::error::Error;
 use crate::node::{Extension, RefNode};
-use crate::traits::{Namespaced, Node, NodeType};
+use crate::traits::{Namespaced, NodeType};
 use crate::Result;
 
-pub(crate) type MutRefNamespaced<'a> = &'a mut dyn MutNamespaced<NodeRef = RefNode>;
+pub type MutRefNamespaced<'a> = &'a mut dyn MutNamespaced<NodeRef = RefNode>;
 
 #[inline]
 pub(crate) fn as_element_namespaced_mut(ref_node: &mut RefNode) -> Result<MutRefNamespaced<'_>> {
@@ -28,15 +28,13 @@ pub enum NamespacePrefix {
     Some(String),
 }
 
-#[doc(hidden)]
-pub(crate) trait MutNamespaced: Namespaced {
+pub trait MutNamespaced: Namespaced {
     fn insert_mapping(
         &mut self,
         prefix: Option<&str>,
         namespace_uri: &str,
     ) -> Result<Option<String>>;
     fn remove_mapping(&mut self, prefix: Option<&str>) -> Result<Option<String>>;
-    fn normalize_mappings(&mut self) -> Result<()>;
 }
 
 impl NamespacePrefix {
@@ -50,23 +48,8 @@ impl NamespacePrefix {
     }
 }
 
-// ------------------------------------------------------------------------------------------------
-
-fn add_namespaces(element_node: &RefNode) -> bool {
-    if let Some(document) = element_node.owner_document() {
-        let ref_document = document.borrow();
-        if let Extension::Document { options, .. } = &ref_document.extension {
-            return options.has_add_namespaces();
-        }
-    }
-    false
-}
-
 impl Namespaced for RefNode {
     fn contains_mapping(&self, prefix: Option<&str>) -> bool {
-        if !add_namespaces(self) {
-            return false;
-        }
         let ref_self = self.borrow();
         if ref_self.node_type == NodeType::Element {
             if let Extension::Element { namespaces, .. } = &ref_self.extension {
@@ -80,9 +63,6 @@ impl Namespaced for RefNode {
     }
 
     fn get_namespace(&self, prefix: Option<&str>) -> Option<String> {
-        if !add_namespaces(self) {
-            return None;
-        }
         let ref_self = self.borrow();
         if ref_self.node_type == NodeType::Element {
             if let Extension::Element { namespaces, .. } = &ref_self.extension {
@@ -97,9 +77,6 @@ impl Namespaced for RefNode {
     }
 
     fn resolve_namespace(&self, prefix: Option<&str>) -> Option<String> {
-        if !add_namespaces(self) {
-            return None;
-        }
         match self.get_namespace(prefix) {
             None => {
                 let ref_self = self.borrow();
@@ -107,8 +84,10 @@ impl Namespaced for RefNode {
                     None => None,
                     Some(parent) => {
                         let parent = parent.clone();
-                        let parent_node = parent.upgrade().unwrap();
-                        parent_node.resolve_namespace(prefix)
+                        match parent.upgrade() {
+                            None => None,
+                            Some(parent_node) => parent_node.resolve_namespace(prefix),
+                        }
                     }
                 }
             }
@@ -121,9 +100,6 @@ impl Namespaced for RefNode {
     }
 
     fn get_prefix(&self, namespace_uri: &str) -> NamespacePrefix {
-        if !add_namespaces(self) {
-            return NamespacePrefix::None;
-        }
         let ref_self = self.borrow();
         if ref_self.node_type == NodeType::Element {
             if let Extension::Element { namespaces, .. } = &ref_self.extension {
@@ -143,9 +119,6 @@ impl Namespaced for RefNode {
     }
 
     fn resolve_prefix(&self, namespace_uri: &str) -> NamespacePrefix {
-        if !add_namespaces(self) {
-            return NamespacePrefix::None;
-        }
         match self.get_prefix(namespace_uri) {
             NamespacePrefix::None => {
                 let ref_self = self.borrow();
@@ -169,9 +142,6 @@ impl MutNamespaced for RefNode {
         prefix: Option<&str>,
         namespace_uri: &str,
     ) -> Result<Option<String>> {
-        if !add_namespaces(self) {
-            return Ok(None);
-        }
         let mut mut_self = self.borrow_mut();
         if mut_self.node_type == NodeType::Element {
             if let Extension::Element { namespaces, .. } = &mut mut_self.extension {
@@ -185,9 +155,6 @@ impl MutNamespaced for RefNode {
     }
 
     fn remove_mapping(&mut self, prefix: Option<&str>) -> Result<Option<String>> {
-        if !add_namespaces(self) {
-            return Ok(None);
-        }
         let mut mut_self = self.borrow_mut();
         if mut_self.node_type == NodeType::Element {
             if let Extension::Element { namespaces, .. } = &mut mut_self.extension {
@@ -198,14 +165,6 @@ impl MutNamespaced for RefNode {
         } else {
             Err(Error::InvalidState)
         }
-    }
-
-    fn normalize_mappings(&mut self) -> Result<()> {
-        // TODO: ensure this element has a mapping for it's own namespace and for any namespaced attributes
-        if !add_namespaces(self) {
-            return Ok(());
-        }
-        unimplemented!()
     }
 }
 

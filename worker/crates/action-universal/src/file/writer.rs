@@ -9,7 +9,7 @@ use reearth_flow_common::uri::Uri;
 
 use reearth_flow_action::error::Error;
 use reearth_flow_action::{
-    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Result, DEFAULT_PORT,
+    ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result, DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -33,7 +33,7 @@ enum Format {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "FileWriter")]
-impl Action for FileWriter {
+impl AsyncAction for FileWriter {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         match self.format {

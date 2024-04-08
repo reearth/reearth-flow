@@ -50,11 +50,12 @@ pub(crate) enum Extension {
 
 #[derive(Clone, Debug)]
 pub struct NodeImpl {
-    pub(crate) node_type: NodeType,
-    pub(crate) name: Name,
-    pub(crate) value: Option<String>,
-    pub(crate) parent_node: Option<WeakRefNode>,
-    pub(crate) owner_document: Option<WeakRefNode>,
+    pub node_id: String,
+    pub node_type: NodeType,
+    pub name: Name,
+    pub value: Option<String>,
+    pub parent_node: Option<WeakRefNode>,
+    pub owner_document: Option<WeakRefNode>,
     pub(crate) child_nodes: Vec<RefNode>,
     pub(crate) extension: Extension,
 }
@@ -74,6 +75,7 @@ impl Debug for &'static dyn DOMImplementation<NodeRef = RefNode> {
 impl NodeImpl {
     pub(crate) fn new_element(owner_document: WeakRefNode, name: Name) -> Self {
         Self {
+            node_id: uuid::Uuid::new_v4().to_string(),
             node_type: NodeType::Element,
             name,
             value: None,
@@ -97,6 +99,7 @@ impl NodeImpl {
             Vec::new()
         };
         Self {
+            node_id: uuid::Uuid::new_v4().to_string(),
             node_type: NodeType::Attribute,
             name,
             value: None,
@@ -110,6 +113,7 @@ impl NodeImpl {
     }
     pub(crate) fn new_text(owner_document: WeakRefNode, data: &str) -> Self {
         Self {
+            node_id: uuid::Uuid::new_v4().to_string(),
             node_type: NodeType::Text,
             name: Name::for_text(),
             value: Some(data.to_string()),
@@ -121,6 +125,7 @@ impl NodeImpl {
     }
     pub(crate) fn new_cdata(owner_document: WeakRefNode, data: &str) -> Self {
         Self {
+            node_id: uuid::Uuid::new_v4().to_string(),
             node_type: NodeType::CData,
             name: Name::for_cdata(),
             value: Some(data.to_string()),
@@ -136,6 +141,7 @@ impl NodeImpl {
         data: Option<&str>,
     ) -> Self {
         Self {
+            node_id: uuid::Uuid::new_v4().to_string(),
             node_type: NodeType::ProcessingInstruction,
             name: target,
             value: data.map(String::from),
@@ -147,6 +153,7 @@ impl NodeImpl {
     }
     pub(crate) fn new_comment(owner_document: WeakRefNode, data: &str) -> Self {
         Self {
+            node_id: uuid::Uuid::new_v4().to_string(),
             node_type: NodeType::Comment,
             name: Name::for_comment(),
             value: Some(data.to_string()),
@@ -158,6 +165,7 @@ impl NodeImpl {
     }
     pub(crate) fn new_document(doc_type: Option<RefNode>, options: ProcessingOptions) -> Self {
         Self {
+            node_id: uuid::Uuid::new_v4().to_string(),
             node_type: NodeType::Document,
             name: Name::for_document(),
             value: None,
@@ -175,6 +183,7 @@ impl NodeImpl {
     }
     pub(crate) fn new_document_fragment(owner_document: WeakRefNode) -> Self {
         Self {
+            node_id: uuid::Uuid::new_v4().to_string(),
             node_type: NodeType::DocumentFragment,
             name: Name::for_document_fragment(),
             value: None,
@@ -191,6 +200,7 @@ impl NodeImpl {
         system_id: Option<&str>,
     ) -> Self {
         Self {
+            node_id: uuid::Uuid::new_v4().to_string(),
             node_type: NodeType::DocumentType,
             name,
             value: None,
@@ -209,6 +219,7 @@ impl NodeImpl {
 
     pub(crate) fn new_entity_reference(owner_document: WeakRefNode, name: Name) -> Self {
         Self {
+            node_id: uuid::Uuid::new_v4().to_string(),
             node_type: NodeType::EntityReference,
             name,
             value: None,
@@ -263,6 +274,7 @@ impl NodeImpl {
             notation @ Extension::Notation { .. } => notation.clone(),
         };
         Self {
+            node_id: self.node_id.clone(),
             node_type: self.node_type.clone(),
             name: self.name.clone(),
             value: self.value.clone(),

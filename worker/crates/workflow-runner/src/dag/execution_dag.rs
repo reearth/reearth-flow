@@ -6,6 +6,8 @@ use std::time::Instant;
 use async_recursion::async_recursion;
 use petgraph::graph::NodeIndex;
 use reearth_flow_workflow::graph::NodeAction;
+use reearth_flow_workflow::workflow::Parameter;
+use reearth_flow_workflow::workflow::WorkflowParameter;
 use tokio::task::JoinSet;
 use tracing::{info, info_span};
 
@@ -26,6 +28,7 @@ pub struct DagExecutor {
     job_id: Id,
     workflow_id: Id,
     workflow_name: String,
+    workflow_parameter: Option<Parameter>,
     entry_dag: Dag,
     sub_dags: Graphs,
     expr_engine: Arc<Engine>,
@@ -65,9 +68,12 @@ impl DagExecutor {
             })
             .collect::<crate::Result<HashMap<_, _>>>()?;
         let engine = Engine::new();
-        if let Some(with) = &workflow.with {
+        let workflow_parameter = if let Some(with) = &workflow.with {
             engine.append(with);
-        }
+            Some(with.clone())
+        } else {
+            None
+        };
         let root_span = info_span!(
             "root",
             "otel.name" = workflow.name.as_str(),
@@ -79,6 +85,7 @@ impl DagExecutor {
             workflow_id: workflow.id,
             job_id,
             workflow_name: workflow.name.clone(),
+            workflow_parameter,
             entry_dag,
             sub_dags,
             expr_engine: Arc::new(engine),
@@ -129,7 +136,6 @@ impl DagExecutor {
                             self.workflow_id,
                             node_id,
                             node.name().to_owned(),
-                            node.with().clone(),
                             Arc::clone(&self.expr_engine),
                             Arc::clone(&self.storage_resolver),
                             self.logger_factory
@@ -138,8 +144,13 @@ impl DagExecutor {
                         );
                         let dataframe_state = Arc::clone(&self.dataframe_state);
                         let action = action.clone();
+                        let workflow_parameter = WorkflowParameter {
+                            node: node.with().clone(),
+                            global: self.workflow_parameter.clone(),
+                        };
                         async_tools.spawn(async move {
-                            run_async(ix, ctx, action, dataframe_state, input).await
+                            run_async(ix, ctx, workflow_parameter, action, dataframe_state, input)
+                                .await
                         });
                     }
                     Node::SubGraph { sub_graph_id, .. } => {
@@ -192,11 +203,12 @@ impl DagExecutor {
 async fn run_async(
     ix: NodeIndex,
     ctx: ActionContext,
+    params: WorkflowParameter,
     action: NodeAction,
     dataframe_state: Arc<State>,
     input: Option<ActionDataframe>,
 ) -> crate::Result<(NodeIndex, ActionDataframe)> {
-    ActionRunner::run(ctx, action, ix, dataframe_state, input).await
+    ActionRunner::run(ctx, params, action, ix, dataframe_state, input).await
 }
 
 #[cfg(test)]

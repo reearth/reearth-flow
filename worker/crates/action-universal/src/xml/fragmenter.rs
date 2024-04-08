@@ -1,16 +1,17 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
+use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_action::{
-    error::Error, utils::convert_dataframe_to_scope_params, Action, ActionContext, ActionDataframe,
-    ActionResult, ActionValue, Result,
-};
 use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml::{self, XmlDocument, XmlNode};
-use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_storage::resolve::StorageResolver;
+
+use reearth_flow_action::{
+    error::Error, utils::convert_dataframe_to_scope_params, ActionContext, ActionDataframe,
+    ActionResult, ActionValue, Result, SyncAction,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -61,18 +62,17 @@ pub enum XmlFragmenter {
     },
 }
 
-#[async_trait::async_trait]
 #[typetag::serde(name = "XMLFragmenter")]
-impl Action for XmlFragmenter {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
+impl SyncAction for XmlFragmenter {
+    fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No input dataframe"))?;
         match self {
-            XmlFragmenter::Url { property } => url(ctx, inputs, property).await,
+            XmlFragmenter::Url { property } => url(ctx, inputs, property),
         }
     }
 }
 
-pub(super) async fn url(
+pub(super) fn url(
     ctx: ActionContext,
     inputs: ActionDataframe,
     props: &PropertySchema,
@@ -104,10 +104,21 @@ pub(super) async fn url(
                         &params,
                         Arc::clone(&expr_engine),
                         Arc::clone(&ctx.storage_resolver),
-                    )
-                    .await?;
+                    )?;
                     result.extend(fragments);
                 }
+                ActionValue::Array(result)
+            }
+            ActionValue::Map(_) => {
+                let result = action_value_to_fragment(
+                    &data,
+                    &props.attribute,
+                    &elements_to_match_ast,
+                    &elements_to_exclude_ast,
+                    &params,
+                    Arc::clone(&expr_engine),
+                    Arc::clone(&ctx.storage_resolver),
+                )?;
                 ActionValue::Array(result)
             }
             _ => data,
@@ -117,7 +128,7 @@ pub(super) async fn url(
     Ok(output)
 }
 
-async fn action_value_to_fragment(
+fn action_value_to_fragment(
     row: &ActionValue,
     attribute: &String,
     elements_to_match_ast: &rhai::AST,
@@ -138,34 +149,32 @@ async fn action_value_to_fragment(
             for (k, v) in row {
                 scope.set(k, v.clone().into());
             }
-            let elements_to_match_ast = scope
+            let elements_to_match = scope
                 .eval_ast::<rhai::Array>(elements_to_match_ast)
                 .map_err(Error::internal_runtime)?;
-            let elements_to_match_ast = elements_to_match_ast
+            let elements_to_match = elements_to_match
                 .iter()
                 .map(|v| v.clone().into_string().unwrap_or_default())
                 .collect::<Vec<String>>();
-            let elements_to_exclude_ast = scope
+            let elements_to_exclude = scope
                 .eval_ast::<rhai::Array>(elements_to_exclude_ast)
                 .map_err(Error::internal_runtime)?;
-            let elements_to_exclude_ast = elements_to_exclude_ast
+            let elements_to_exclude = elements_to_exclude
                 .iter()
                 .map(|v| v.clone().into_string().unwrap_or_default())
                 .collect::<Vec<String>>();
             let url = match row.get(attribute) {
-                Some(ActionValue::String(url)) => Uri::from_str(url).map_err(|err| {
-                    Error::internal_runtime(format!("{:?} with url = {}", err, url))
-                })?,
+                Some(ActionValue::String(url)) => {
+                    Uri::from_str(url).map_err(Error::internal_runtime)?
+                }
                 _ => return Err(Error::internal_runtime("No url found")),
             };
             let storage = storage_resolver
                 .resolve(&url)
                 .map_err(Error::internal_runtime)?;
-            let content = storage
-                .get(&url.path())
-                .await
+            let bytes = storage
+                .get_sync(&url.path())
                 .map_err(Error::internal_runtime)?;
-            let bytes = content.bytes().await.map_err(Error::internal_runtime)?;
             let raw_xml = String::from_utf8(bytes.to_vec()).map_err(Error::internal_runtime)?;
             let document = xml::parse(raw_xml).map_err(Error::internal_runtime)?;
             let ctx = xml::create_context(&document).map_err(Error::internal_runtime)?;
@@ -180,8 +189,8 @@ async fn action_value_to_fragment(
             let fragments = recursive_fragment(
                 &document,
                 &mut root,
-                &elements_to_match_ast,
-                &elements_to_exclude_ast,
+                &elements_to_match,
+                &elements_to_exclude,
             )?;
             for fragment in fragments {
                 let mut value = row.clone();
@@ -201,24 +210,43 @@ fn recursive_fragment(
     elements_to_exclude: &Vec<String>,
 ) -> Result<Vec<XmlFragment>> {
     let mut result = Vec::<XmlFragment>::new();
-    let tag = xml::get_node_tag(node);
-    if elements_to_match.contains(&tag) && !elements_to_exclude.contains(&tag) {
-        let fragment = xml::node_to_xml_string(document, node).map_err(Error::internal_runtime)?;
-        let xml_id = to_hash(&fragment);
-        let xml_parent_id = match node.get_parent() {
-            Some(mut parent) => {
-                let parent_fragment = xml::node_to_xml_string(document, &mut parent)
-                    .map_err(Error::internal_runtime)?;
-                Some(to_hash(&parent_fragment))
-            }
-            None => None,
-        };
-        result.push(XmlFragment {
-            xml_id,
-            fragment,
-            matched_tag: tag,
-            xml_parent_id,
-        });
+    let node_type = node
+        .get_type()
+        .ok_or(Error::internal_runtime("No node type".to_string()))?;
+    if node_type == xml::XmlNodeType::ElementNode {
+        let root = document
+            .get_root_element()
+            .ok_or(Error::internal_runtime("No root element".to_string()))?;
+        for ns in root.get_namespace_declarations().iter() {
+            let _ = node
+                .set_attribute(
+                    format!("xmlns:{}", ns.get_prefix()).as_str(),
+                    ns.get_href().as_str(),
+                )
+                .map_err(|e| {
+                    Error::internal_runtime(format!("Failed to set namespace with {:?}", e))
+                });
+        }
+        let tag = xml::get_node_tag(node);
+        if elements_to_match.contains(&tag) && !elements_to_exclude.contains(&tag) {
+            let fragment =
+                xml::node_to_xml_string(document, node).map_err(Error::internal_runtime)?;
+            let xml_id = to_hash(&fragment);
+            let xml_parent_id = match node.get_parent() {
+                Some(mut parent) => {
+                    let parent_fragment = xml::node_to_xml_string(document, &mut parent)
+                        .map_err(Error::internal_runtime)?;
+                    Some(to_hash(&parent_fragment))
+                }
+                None => None,
+            };
+            result.push(XmlFragment {
+                xml_id,
+                fragment,
+                matched_tag: tag,
+                xml_parent_id,
+            });
+        }
     }
     for child in node.get_child_nodes() {
         let mut child = child.clone();

@@ -4,7 +4,7 @@ use std::{collections::HashMap, sync::Arc};
 use itertools::{self, Itertools};
 use once_cell::sync::Lazy;
 use reearth_flow_action::{
-    error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port, Result,
+    error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Port, Result,
     DEFAULT_PORT,
 };
 use reearth_flow_action_log::action_log;
@@ -305,7 +305,7 @@ pub struct XmlAttributeExtractor;
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "PLATEAU.XMLAttributeExtractor")]
-impl Action for XmlAttributeExtractor {
+impl AsyncAction for XmlAttributeExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(error::Error::input("No Input"))?;
         let input = inputs
