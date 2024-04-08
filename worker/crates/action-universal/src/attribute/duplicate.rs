@@ -1,5 +1,5 @@
 use reearth_flow_action::{
-    error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+    error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -12,7 +12,7 @@ pub struct AttributeDuplicateFilter {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "AttributeDuplicateFilter")]
-impl Action for AttributeDuplicateFilter {
+impl AsyncAction for AttributeDuplicateFilter {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(error::Error::input("No input dataframe"))?;
         let mut output = ActionDataframe::new();
