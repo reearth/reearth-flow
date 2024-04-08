@@ -1,6 +1,7 @@
 pub mod operator;
 pub mod resolve;
 pub mod storage;
+pub mod storage_sync;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
