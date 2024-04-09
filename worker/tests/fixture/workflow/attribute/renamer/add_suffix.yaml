@@ -1,5 +1,5 @@
 id: 7b66c0a4-e1fa-41dd-a0c9-df3f6e01cc22
-name: "attribute string searcher integration test"
+name: "attribute renamer integration test"
 entryGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 graphs:
   - id: c6863b71-953b-4d15-af56-396fc93fc617
@@ -12,7 +12,7 @@ graphs:
         with:
           format: json
           dataset: |
-            "ram:///fixture/testdata/attribute/renamer/renamer.json"
+            "ram:///fixture/testdata/attribute/renamer/add_suffix/renamer.json"
 
       - id: a1a91180-ab88-4c1a-aab5-48c242a218cb
         name: Attribute-Renamer
@@ -21,7 +21,7 @@ graphs:
         with:
           rename: allAttributes
           action:
-            addStringPrefix : foo
+            addStringSuffix : _foo
 
     edges:
       - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
