@@ -1,7 +1,9 @@
 use std::time::Instant;
 use std::{collections::HashMap, sync::Arc};
 
+use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
+use regex::Regex;
 
 use reearth_flow_action::{ActionContext, ActionDataframe, AsyncAction, SyncAction};
 use reearth_flow_action_log::action_log;
@@ -12,6 +14,9 @@ use reearth_flow_common::serde as serde_utils;
 use reearth_flow_state::State;
 use reearth_flow_workflow::graph::NodeAction;
 use reearth_flow_workflow::workflow::WorkflowParameter;
+
+pub static ERROR_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^unknown variant `.+`, expected one of .+$").unwrap());
 
 pub(crate) struct ActionRunner;
 
@@ -76,7 +81,10 @@ impl ActionRunner {
                     .run(ctx, input)
                     .await
                     .map_err(|e| crate::Error::action(e, action.to_string()))?,
-                Err(e) if e.classify() == serde_json::error::Category::Data => {
+                Err(e)
+                    if e.classify() == serde_json::error::Category::Data
+                        && ERROR_PATTERN.is_match(e.to_string().as_str()) =>
+                {
                     let action_run: Box<dyn SyncAction> =
                         serde_json::from_value(serde_json::Value::Object(
                             params.into_iter().collect::<serde_json::Map<_, _>>(),
