@@ -1,2 +1,2 @@
-mod searcher;
 mod renamer;
+mod searcher;

@@ -19,7 +19,7 @@ async fn test_add_prefix() {
             };
             kv.get("foo_bar1").unwrap();
             kv.get("foo_bar2").unwrap();
-        },
+        }
         _ => panic!("unexpected value"),
     }
 }
@@ -41,7 +41,7 @@ async fn test_add_suffix() {
             };
             kv.get("bar1_foo").unwrap();
             kv.get("bar2_foo").unwrap();
-        },
+        }
         _ => panic!("unexpected value"),
     }
 }
@@ -63,7 +63,7 @@ async fn test_remove_prefix() {
             };
             kv.get("foobar1").unwrap();
             kv.get("bar2").unwrap();
-        },
+        }
         _ => panic!("unexpected value"),
     }
 }
@@ -85,7 +85,54 @@ async fn test_remove_suffix() {
             };
             kv.get("bar1foo").unwrap();
             kv.get("bar2").unwrap();
-        },
+        }
+        _ => panic!("unexpected value"),
+    }
+}
+#[tokio::test]
+async fn test_string_replace() {
+    let executor = init_test_runner("attribute/renamer/string_replace", vec!["renamer.json"]).await;
+    let result = executor.start().await;
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    let default_port = result.get(&Port::new("default")).unwrap();
+    assert!(default_port.is_some());
+    let default_port = default_port.clone().unwrap();
+    match default_port {
+        ActionValue::Map(kv) => {
+            let kv = match kv.get("baz_baz").unwrap() {
+                ActionValue::Map(kv) => kv,
+                _ => panic!("unexpected value"),
+            };
+            kv.get("baz_bar1").unwrap();
+            kv.get("bar2").unwrap();
+        }
+        _ => panic!("unexpected value"),
+    }
+}
+
+#[tokio::test]
+async fn test_regular_expression_replace() {
+    let executor = init_test_runner(
+        "attribute/renamer/regular_expression_replace",
+        vec!["renamer.json"],
+    )
+    .await;
+    let result = executor.start().await;
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    let default_port = result.get(&Port::new("default")).unwrap();
+    assert!(default_port.is_some());
+    let default_port = default_port.clone().unwrap();
+    match default_port {
+        ActionValue::Map(kv) => {
+            let kv = match kv.get("foo").unwrap() {
+                ActionValue::Map(kv) => kv,
+                _ => panic!("unexpected value"),
+            };
+            kv.get("bar1").unwrap();
+            kv.get("bar2").unwrap();
+        }
         _ => panic!("unexpected value"),
     }
 }
