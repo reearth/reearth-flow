@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port, DEFAULT_PORT
+    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Port, DEFAULT_PORT
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -30,7 +30,7 @@ pub(super) enum RenameAction {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "BulkAttributeRenamer")]
-impl Action for BulkAttributeRenamer {
+impl AsyncAction for BulkAttributeRenamer {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let output = 
             inputs
@@ -61,7 +61,10 @@ fn rename(inputs: HashMap<String, ActionValue>, action: &RenameAction) -> HashMa
 
 fn rename_key(k: String, action: &RenameAction) -> String {
     match action {
-        RenameAction::AddStringPrefix(p) => format!("{}_{}", p, k),
+        RenameAction::AddStringPrefix(p) => format!("{}{}", p, k),
+        RenameAction::AddStringSuffix(s) => format!("{}{}", k, s),
+        RenameAction::RemovePrefixString(p) => k.strip_prefix(p).unwrap_or(&k).to_string(),
+        RenameAction::RemoveSuffixString(s) => k.strip_suffix(s).unwrap_or(&k).to_string(),
         _ => unimplemented!(),
     }
 }
