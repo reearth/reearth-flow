@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
 };
 use reearth_flow_common::collection;
 use reearth_flow_eval_expr::engine::Engine;
@@ -57,7 +57,7 @@ pub(super) enum Operate {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "AttributeManager")]
-impl Action for AttributeManager {
+impl AsyncAction for AttributeManager {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);

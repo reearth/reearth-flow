@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use reearth_flow_action::error::Error;
 use reearth_flow_action::utils::convert_dataframe_to_scope_params;
 use reearth_flow_action::{
-    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Port, DEFAULT_PORT,
+    ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Port, DEFAULT_PORT,
     REJECTED_PORT,
 };
 use reearth_flow_action_log::action_log;
@@ -27,7 +27,7 @@ struct Condition {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "EntityFilter")]
-impl Action for EntityFilter {
+impl AsyncAction for EntityFilter {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let input = inputs

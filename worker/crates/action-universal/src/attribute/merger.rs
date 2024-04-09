@@ -6,7 +6,7 @@ use tracing::debug;
 
 use reearth_flow_action::error::Error;
 use reearth_flow_action::{
-    Action, ActionContext, ActionDataframe, ActionResult, ActionValue, ActionValueIndex, Port,
+    ActionContext, ActionDataframe, ActionResult, ActionValue, ActionValueIndex, AsyncAction, Port,
     Result, DEFAULT_PORT,
 };
 
@@ -29,7 +29,7 @@ struct Join {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "AttributeMerger")]
-impl Action for AttributeMerger {
+impl AsyncAction for AttributeMerger {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let requestor = inputs
