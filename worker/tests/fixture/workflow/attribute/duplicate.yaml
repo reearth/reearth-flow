@@ -19,7 +19,7 @@ graphs:
         type: action
         action: AttributeDuplicateFilter
         with:
-          filter_by: ["country"]
+          filterBy: ["country"]
 
     edges:
       - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
