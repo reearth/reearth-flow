@@ -365,12 +365,12 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
             "italic" => builder = builder.set_italic(),
             "background_color" => builder = builder.set_background_color(value),
             "align" => {
-                let align = ExcelFormatAlign::from_str(value).map_err(Error::internal_runtime)?;
+                let align = ExcelFormatAlign::try_from(value).map_err(Error::internal_runtime)?;
                 builder = builder.set_align(align.0);
             }
             "underline" => {
                 let underline =
-                    ExcelFormatUnderline::from_str(value).map_err(Error::internal_runtime)?;
+                    ExcelFormatUnderline::try_from(value).map_err(Error::internal_runtime)?;
                 builder = builder.set_underline(underline.0);
             }
             "wrap" => builder = builder.set_text_wrap(),
@@ -395,14 +395,12 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
 //     Ok(format)
 // }
 
-pub trait ExcelFormatParsable: Sized {
-    fn from_str(value: &str) -> Result<Self, Error>;
-}
-
 pub struct ExcelFormatAlign(pub FormatAlign);
 
-impl ExcelFormatParsable for ExcelFormatAlign {
-    fn from_str(value: &str) -> Result<Self, Error> {
+impl TryFrom<&str> for ExcelFormatAlign {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self> {
         match value {
             "General" => Ok(ExcelFormatAlign(FormatAlign::General)),
             "Left" => Ok(ExcelFormatAlign(FormatAlign::Left)),
@@ -427,8 +425,10 @@ impl ExcelFormatParsable for ExcelFormatAlign {
 
 pub struct ExcelFormatUnderline(pub FormatUnderline);
 
-impl ExcelFormatParsable for ExcelFormatUnderline {
-    fn from_str(value: &str) -> Result<Self, Error> {
+impl TryFrom<&str> for ExcelFormatUnderline {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self> {
         match value {
             "None" => Ok(ExcelFormatUnderline(FormatUnderline::None)),
             "Single" => Ok(ExcelFormatUnderline(FormatUnderline::Single)),
