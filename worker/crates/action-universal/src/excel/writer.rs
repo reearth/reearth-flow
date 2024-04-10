@@ -1,8 +1,10 @@
-use std::{collections::HashMap, str::FromStr};
 use std::path::Path;
 use std::sync::Arc;
+use std::{collections::HashMap, str::FromStr};
 
-use rust_xlsxwriter::{Format, FormatAlign, FormatUnderline, Formula, Url, Workbook, Worksheet, ProtectionOptions};
+use rust_xlsxwriter::{
+    Format, FormatAlign, FormatUnderline, Formula, ProtectionOptions, Url, Workbook, Worksheet,
+};
 
 use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
@@ -10,7 +12,8 @@ use serde::{Deserialize, Serialize};
 use reearth_flow_common::uri::Uri;
 
 use reearth_flow_action::{
-    error::Error, AsyncAction, ActionContext, ActionDataframe, ActionResult, Result, ActionValue, DEFAULT_PORT,
+    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result,
+    DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -49,10 +52,9 @@ async fn write_excel(
 
     let _ = worksheet.set_name(props.worksheet_name.clone());
 
-
     if let Some(dto) = &props.protection_options {
         let protection_options = dto_to_protection_options(dto);
-        worksheet.protect_with_options(&protection_options); 
+        worksheet.protect_with_options(&protection_options);
     }
 
     let mut row_index = 0;
@@ -65,10 +67,34 @@ async fn write_excel(
                         for (row_num, row) in rows.iter().enumerate() {
                             if let ActionValue::Map(row_data) = row {
                                 for (col_num, (key, value)) in row_data.iter().enumerate() {
-                                    write_cell_value(worksheet, row_num + row_index, col_num, key, value)?;
-                                    write_cell_formatting(worksheet, row_num + row_index, col_num, key, row_data)?;
-                                    write_cell_formula(worksheet, row_num + row_index, col_num, key, row_data)?;
-                                    write_cell_hyperlink(worksheet, row_num + row_index, col_num, key, row_data)?;
+                                    write_cell_value(
+                                        worksheet,
+                                        row_num + row_index,
+                                        col_num,
+                                        key,
+                                        value,
+                                    )?;
+                                    write_cell_formatting(
+                                        worksheet,
+                                        row_num + row_index,
+                                        col_num,
+                                        key,
+                                        row_data,
+                                    )?;
+                                    write_cell_formula(
+                                        worksheet,
+                                        row_num + row_index,
+                                        col_num,
+                                        key,
+                                        row_data,
+                                    )?;
+                                    write_cell_hyperlink(
+                                        worksheet,
+                                        row_num + row_index,
+                                        col_num,
+                                        key,
+                                        row_data,
+                                    )?;
                                 }
                             }
                         }
@@ -85,9 +111,7 @@ async fn write_excel(
         }
     }
 
-    let buf = workbook
-        .save_to_buffer()
-        .map_err(Error::internal_runtime)?;
+    let buf = workbook.save_to_buffer().map_err(Error::internal_runtime)?;
 
     let uri = Uri::from_str(&props.output).map_err(Error::input)?;
     let storage = storage_resolver.resolve(&uri).map_err(Error::input)?;
@@ -132,14 +156,10 @@ fn write_cell_formatting(
     key: &str,
     row_data: &HashMap<String, ActionValue>,
 ) -> Result<()> {
-    if let Some(ActionValue::String(formatting_str)) = row_data.get(&format!("{}.formatting", key)) {
+    if let Some(ActionValue::String(formatting_str)) = row_data.get(&format!("{}.formatting", key))
+    {
         let format = parse_formatting(formatting_str)?;
-        let _ = worksheet.write_string_with_format(
-            row as u32,
-            col as u16,
-            "",
-            &format,
-        );
+        let _ = worksheet.write_string_with_format(row as u32, col as u16, "", &format);
     }
 
     Ok(())
@@ -153,11 +173,7 @@ fn write_cell_formula(
     row_data: &HashMap<String, ActionValue>,
 ) -> Result<()> {
     if let Some(ActionValue::String(formula_str)) = row_data.get(&format!("{}.formula", key)) {
-        let _ = worksheet.write_formula(
-            row as u32,
-            col as u16,
-            Formula::new(formula_str),
-        );
+        let _ = worksheet.write_formula(row as u32, col as u16, Formula::new(formula_str));
     }
 
     Ok(())
@@ -171,11 +187,7 @@ fn write_cell_hyperlink(
     row_data: &HashMap<String, ActionValue>,
 ) -> Result<()> {
     if let Some(ActionValue::String(hyperlink_str)) = row_data.get(&format!("{}.hyperlink", key)) {
-        let _ = worksheet.write_url(
-            row as u32,
-            col as u16,
-            Url::new(hyperlink_str),
-        );
+        let _ = worksheet.write_url(row as u32, col as u16, Url::new(hyperlink_str));
     }
 
     Ok(())
@@ -187,29 +199,16 @@ fn write_map_entry(
     key: String,
     value: ActionValue,
 ) -> Result<()> {
-    let _ = worksheet.write_string_with_format(
-        *row_index as u32,
-        0,
-        &key,
-        &Default::default(),
-    );
+    let _ = worksheet.write_string_with_format(*row_index as u32, 0, &key, &Default::default());
 
     match value {
         ActionValue::String(s) => {
-            let _ = worksheet.write_string_with_format(
-                *row_index as u32,
-                1,
-                &s,
-                &Default::default(),
-            );
+            let _ =
+                worksheet.write_string_with_format(*row_index as u32, 1, &s, &Default::default());
         }
         ActionValue::Number(n) => {
             if let Some(num) = n.as_f64() {
-                let _ = worksheet.write_number(
-                    *row_index as u32,
-                    1,
-                    num,
-                );
+                let _ = worksheet.write_number(*row_index as u32, 1, num);
             } else {
                 let _ = worksheet.write_string_with_format(
                     *row_index as u32,
@@ -220,11 +219,7 @@ fn write_map_entry(
             }
         }
         ActionValue::Bool(b) => {
-            let _ = worksheet.write_boolean(
-                *row_index as u32,
-                1,
-                b,
-            );
+            let _ = worksheet.write_boolean(*row_index as u32, 1, b);
         }
         ActionValue::Array(arr) => {
             for (col_num, value) in arr.iter().enumerate() {
@@ -239,11 +234,8 @@ fn write_map_entry(
                     }
                     ActionValue::Number(n) => {
                         if let Some(num) = n.as_f64() {
-                            let _ = worksheet.write_number(
-                                *row_index as u32,
-                                col_num as u16 + 1,
-                                num,
-                            );
+                            let _ =
+                                worksheet.write_number(*row_index as u32, col_num as u16 + 1, num);
                         } else {
                             let _ = worksheet.write_string_with_format(
                                 *row_index as u32,
@@ -254,11 +246,7 @@ fn write_map_entry(
                         }
                     }
                     ActionValue::Bool(b) => {
-                        let _ = worksheet.write_boolean(
-                            *row_index as u32,
-                            col_num as u16 + 1,
-                            *b,
-                        );
+                        let _ = worksheet.write_boolean(*row_index as u32, col_num as u16 + 1, *b);
                     }
                     _ => {}
                 }
@@ -317,7 +305,7 @@ impl FormatBuilder {
         self.format = self.format.set_background_color(value);
         self
     }
-    
+
     fn set_align(mut self, value: FormatAlign) -> Self {
         self.format = self.format.set_align(value);
         self
@@ -337,15 +325,21 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
     let mut builder = FormatBuilder::new();
     for pair in formatting_str.split(';') {
         let mut parts = pair.splitn(2, ',');
-        let key = parts.next().ok_or_else(|| Error::internal_runtime("Invalid formatting key"))?;
-        let value = parts.next().ok_or_else(|| Error::internal_runtime("Invalid formatting value"))?;
+        let key = parts
+            .next()
+            .ok_or_else(|| Error::internal_runtime("Invalid formatting key"))?;
+        let value = parts
+            .next()
+            .ok_or_else(|| Error::internal_runtime("Invalid formatting value"))?;
         match key {
-            "font" => builder = builder.set_font_name(value.to_string()),            
+            "font" => builder = builder.set_font_name(value.to_string()),
             "size" => {
-                let size = value.parse::<f64>().map_err(|_| Error::internal_runtime("Invalid font size"))?;
+                let size = value
+                    .parse::<f64>()
+                    .map_err(|_| Error::internal_runtime("Invalid font size"))?;
                 builder = builder.set_font_size(size);
-            },
-            "color" => builder = builder.set_font_color(value),            
+            }
+            "color" => builder = builder.set_font_color(value),
             "bold" => builder = builder.set_bold(),
             "italic" => builder = builder.set_italic(),
             "underline" => builder = builder.set_underline(str_to_format_underline(value)?.clone()),
@@ -456,18 +450,30 @@ mod tests {
         let inputs = Some(
             vec![(
                 DEFAULT_PORT.clone(),
-                Some(ActionValue::Array(vec![
-                    ActionValue::Map(
-                        vec![
-                            ("field1".to_owned(), ActionValue::String("value1".to_owned())),
-                            ("field2".to_owned(), ActionValue::Number(Number::from_f64(10.0).unwrap())),
-                            ("field1.hyperlink".to_owned(), ActionValue::String("https://www.example.com".to_owned())),
-                            ("field1.formatting".to_owned(), ActionValue::String("font,Arial;size,12;color,#FF0000;bold,true".to_owned())),
-                        ]
-                        .into_iter()
-                        .collect(),
-                    ),
-                ])),
+                Some(ActionValue::Array(vec![ActionValue::Map(
+                    vec![
+                        (
+                            "field1".to_owned(),
+                            ActionValue::String("value1".to_owned()),
+                        ),
+                        (
+                            "field2".to_owned(),
+                            ActionValue::Number(Number::from_f64(10.0).unwrap()),
+                        ),
+                        (
+                            "field1.hyperlink".to_owned(),
+                            ActionValue::String("https://www.example.com".to_owned()),
+                        ),
+                        (
+                            "field1.formatting".to_owned(),
+                            ActionValue::String(
+                                "font,Arial;size,12;color,#FF0000;bold,true".to_owned(),
+                            ),
+                        ),
+                    ]
+                    .into_iter()
+                    .collect(),
+                )])),
             )]
             .into_iter()
             .collect::<ActionDataframe>(),
@@ -492,17 +498,32 @@ mod tests {
                 Some(ActionValue::Array(vec![
                     ActionValue::Map(
                         vec![
-                            ("field1".to_owned(), ActionValue::String("value1".to_owned())),
-                            ("field2".to_owned(), ActionValue::Number(Number::from_f64(10.0).unwrap())),
-                            ("field2.formula".to_owned(), ActionValue::String("=SUM(B1:B2)".to_owned())),
+                            (
+                                "field1".to_owned(),
+                                ActionValue::String("value1".to_owned()),
+                            ),
+                            (
+                                "field2".to_owned(),
+                                ActionValue::Number(Number::from_f64(10.0).unwrap()),
+                            ),
+                            (
+                                "field2.formula".to_owned(),
+                                ActionValue::String("=SUM(B1:B2)".to_owned()),
+                            ),
                         ]
                         .into_iter()
                         .collect(),
                     ),
                     ActionValue::Map(
                         vec![
-                            ("field1".to_owned(), ActionValue::String("value2".to_owned())),
-                            ("field2".to_owned(), ActionValue::Number(Number::from_f64(20.0).unwrap())),
+                            (
+                                "field1".to_owned(),
+                                ActionValue::String("value2".to_owned()),
+                            ),
+                            (
+                                "field2".to_owned(),
+                                ActionValue::Number(Number::from_f64(20.0).unwrap()),
+                            ),
                         ]
                         .into_iter()
                         .collect(),
@@ -531,14 +552,23 @@ mod tests {
                 DEFAULT_PORT.clone(),
                 Some(ActionValue::Map(
                     vec![
-                        ("field1".to_owned(), ActionValue::String("value1".to_owned())),
-                        ("field2".to_owned(), ActionValue::Number(Number::from_f64(10.0).unwrap())),
+                        (
+                            "field1".to_owned(),
+                            ActionValue::String("value1".to_owned()),
+                        ),
+                        (
+                            "field2".to_owned(),
+                            ActionValue::Number(Number::from_f64(10.0).unwrap()),
+                        ),
                         ("field3".to_owned(), ActionValue::Bool(true)),
-                        ("field4".to_owned(), ActionValue::Array(vec![
-                            ActionValue::String("array1".to_owned()),
-                            ActionValue::Number(Number::from_f64(20.0).unwrap()),
-                            ActionValue::Bool(false),
-                        ])),
+                        (
+                            "field4".to_owned(),
+                            ActionValue::Array(vec![
+                                ActionValue::String("array1".to_owned()),
+                                ActionValue::Number(Number::from_f64(20.0).unwrap()),
+                                ActionValue::Bool(false),
+                            ]),
+                        ),
                     ]
                     .into_iter()
                     .collect(),
@@ -579,16 +609,20 @@ mod tests {
         let inputs = Some(
             vec![(
                 DEFAULT_PORT.clone(),
-                Some(ActionValue::Array(vec![
-                    ActionValue::Map(
-                        vec![
-                            ("field1".to_owned(), ActionValue::String("value1".to_owned())),
-                            ("field1.formatting".to_owned(), ActionValue::String("invalid_formatting".to_owned())),
-                        ]
-                        .into_iter()
-                        .collect(),
-                    ),
-                ])),
+                Some(ActionValue::Array(vec![ActionValue::Map(
+                    vec![
+                        (
+                            "field1".to_owned(),
+                            ActionValue::String("value1".to_owned()),
+                        ),
+                        (
+                            "field1.formatting".to_owned(),
+                            ActionValue::String("invalid_formatting".to_owned()),
+                        ),
+                    ]
+                    .into_iter()
+                    .collect(),
+                )])),
             )]
             .into_iter()
             .collect::<ActionDataframe>(),
