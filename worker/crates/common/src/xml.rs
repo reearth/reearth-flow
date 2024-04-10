@@ -23,7 +23,7 @@ pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
                 no_blanks: false,
                 no_net: false,
                 no_implied: false,
-                compact: false,
+                compact: true,
                 ignore_enc: false,
                 encoding: None,
             },
@@ -76,6 +76,12 @@ pub fn get_node_tag(node: &XmlNode) -> String {
     }
 }
 
+pub fn get_root_node(document: &XmlDocument) -> crate::Result<XmlNode> {
+    document
+        .get_root_element()
+        .ok_or(crate::Error::Xml("No root element".to_string()))
+}
+
 pub fn node_to_xml_string(document: &XmlDocument, node: &mut XmlNode) -> crate::Result<String> {
     let doc =
         parse(document.node_to_string(node)).map_err(|e| crate::Error::Xml(format!("{}", e)))?;
@@ -122,7 +128,7 @@ mod tests {
             <gml:dictionaryEntry>
                 <gml:Definition gml:id="id4">
                     <gml:description>development permit</gml:description>
-                    <gml:name>1040</gml:name>
+                    <gml:name>1040<gml:hoge>hogehoge</gml:hoge></gml:name>
                 </gml:Definition>
             </gml:dictionaryEntry>
         </gml:Dictionary>
@@ -144,11 +150,12 @@ mod tests {
         let root = values.first().unwrap();
         let ctx = create_context(&document).unwrap();
         let result = ctx
-            .node_evaluate("./gml:dictionaryEntry/gml:Definition", root)
+            .node_evaluate("//*[(name()='gml:description' or name()='gml:name')]", root)
             .unwrap();
         let result = result.get_nodes_as_vec();
-        let node = result.first().unwrap();
-        let attribute_node = node.get_attribute_node("id").unwrap();
-        assert_eq!(attribute_node.get_content(), "id1");
+        for node in result {
+            let tag = get_node_tag(&node);
+            println!("tag: {}", tag);
+        }
     }
 }

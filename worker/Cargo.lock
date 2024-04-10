@@ -2357,6 +2357,7 @@ version = "0.1.0"
 dependencies = [
  "async-recursion",
  "bytes",
+ "once_cell",
  "opentelemetry",
  "petgraph",
  "pretty_assertions",
@@ -2368,6 +2369,7 @@ dependencies = [
  "reearth-flow-state",
  "reearth-flow-storage",
  "reearth-flow-workflow",
+ "regex",
  "serde",
  "serde_json",
  "thiserror",

@@ -21,8 +21,10 @@ reearth-flow-storage.workspace = true
 reearth-flow-workflow.workspace = true
 
 async-recursion.workspace = true
+once_cell.workspace = true
 opentelemetry.workspace = true
 petgraph.workspace = true
+regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
