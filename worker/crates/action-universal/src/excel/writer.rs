@@ -364,15 +364,15 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
             "bold" => builder = builder.set_bold(),
             "italic" => builder = builder.set_italic(),
             "background_color" => builder = builder.set_background_color(value),
-            "underline" => {
-                let underline = ExcelFormatUnderline::from_str(value)
-                    .map_err(|e| Error::internal_runtime(e))?;
-                builder = builder.set_underline(underline.0);
-            }
             "align" => {
                 let align = ExcelFormatAlign::from_str(value)
                     .map_err(|e| Error::internal_runtime(e))?;
                 builder = builder.set_align(align.0);
+            }
+            "underline" => {
+                let underline = ExcelFormatUnderline::from_str(value)
+                    .map_err(|e| Error::internal_runtime(e))?;
+                builder = builder.set_underline(underline.0);
             }
             "wrap" => builder = builder.set_text_wrap(),
             _ => return Err(Error::internal_runtime("Unknown formatting key")),
