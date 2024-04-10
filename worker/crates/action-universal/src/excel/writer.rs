@@ -363,9 +363,17 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
             "color" => builder = builder.set_font_color(value),
             "bold" => builder = builder.set_bold(),
             "italic" => builder = builder.set_italic(),
-            "underline" => builder = builder.set_underline(str_to_format_underline(value)?),
             "background_color" => builder = builder.set_background_color(value),
-            "align" => builder = builder.set_align(str_to_format_align(value)?),
+            "underline" => {
+                let underline = ExcelFormatUnderline::from_str(value)
+                    .map_err(|e| Error::internal_runtime(e))?;
+                builder = builder.set_underline(underline.0);
+            }
+            "align" => {
+                let align = ExcelFormatAlign::from_str(value)
+                    .map_err(|e| Error::internal_runtime(e))?;
+                builder = builder.set_align(align.0);
+            }
             "wrap" => builder = builder.set_text_wrap(),
             _ => return Err(Error::internal_runtime("Unknown formatting key")),
         };
@@ -388,33 +396,45 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
 //     Ok(format)
 // }
 
-fn str_to_format_underline(s: &str) -> Result<FormatUnderline, Error> {
-    match s {
-        "None" => Ok(FormatUnderline::None),
-        "Single" => Ok(FormatUnderline::Single),
-        "Double" => Ok(FormatUnderline::Double),
-        "SingleAccounting" => Ok(FormatUnderline::SingleAccounting),
-        "DoubleAccounting" => Ok(FormatUnderline::DoubleAccounting),
-        _ => Err(Error::internal_runtime("Invalid underline value")),
+trait ExcelFormatParsable: Sized {
+    fn from_str(value: &str) -> Result<Self, String>;
+}
+
+struct ExcelFormatAlign(FormatAlign);
+
+impl ExcelFormatParsable for ExcelFormatAlign {
+    fn from_str(value: &str) -> Result<Self, String> {
+        match value {
+            "General" => Ok(ExcelFormatAlign(FormatAlign::General)),
+            "Left" => Ok(ExcelFormatAlign(FormatAlign::Left)),
+            "Center" => Ok(ExcelFormatAlign(FormatAlign::Center)),
+            "Right" => Ok(ExcelFormatAlign(FormatAlign::Right)),
+            "Fill" => Ok(ExcelFormatAlign(FormatAlign::Fill)),
+            "Justify" => Ok(ExcelFormatAlign(FormatAlign::Justify)),
+            "CenterAcross" => Ok(ExcelFormatAlign(FormatAlign::CenterAcross)),
+            "Distributed" => Ok(ExcelFormatAlign(FormatAlign::Distributed)),
+            "Top" => Ok(ExcelFormatAlign(FormatAlign::Top)),
+            "Bottom" => Ok(ExcelFormatAlign(FormatAlign::Bottom)),
+            "VerticalCenter" => Ok(ExcelFormatAlign(FormatAlign::VerticalCenter)),
+            "VerticalJustify" => Ok(ExcelFormatAlign(FormatAlign::VerticalJustify)),
+            "VerticalDistributed" => Ok(ExcelFormatAlign(FormatAlign::VerticalDistributed)),
+            _ => Err(format!("Invalid alignment value: {}", value)),
+        }
     }
 }
 
-fn str_to_format_align(s: &str) -> Result<FormatAlign, Error> {
-    match s {
-        "General" => Ok(FormatAlign::General),
-        "Left" => Ok(FormatAlign::Left),
-        "Center" => Ok(FormatAlign::Center),
-        "Right" => Ok(FormatAlign::Right),
-        "Fill" => Ok(FormatAlign::Fill),
-        "Justify" => Ok(FormatAlign::Justify),
-        "CenterAcross" => Ok(FormatAlign::CenterAcross),
-        "Distributed" => Ok(FormatAlign::Distributed),
-        "Top" => Ok(FormatAlign::Top),
-        "Bottom" => Ok(FormatAlign::Bottom),
-        "VerticalCenter" => Ok(FormatAlign::VerticalCenter),
-        "VerticalJustify" => Ok(FormatAlign::VerticalJustify),
-        "VerticalDistributed" => Ok(FormatAlign::VerticalDistributed),
-        _ => Err(Error::internal_runtime("Invalid alignment value")),
+struct ExcelFormatUnderline(FormatUnderline);
+
+impl ExcelFormatParsable for ExcelFormatUnderline {
+    fn from_str(value: &str) -> Result<Self, String> {
+        match value {
+            "None" => Ok(ExcelFormatUnderline(FormatUnderline::None)),
+            "Single" => Ok(ExcelFormatUnderline(FormatUnderline::Single)),
+            "Double" => Ok(ExcelFormatUnderline(FormatUnderline::Double)),
+            "SingleAccounting" => Ok(ExcelFormatUnderline(FormatUnderline::SingleAccounting)),
+            "DoubleAccounting" => Ok(ExcelFormatUnderline(FormatUnderline::DoubleAccounting)),
+            _ => Err(format!("Invalid underline value: {}", value)),
+        }
     }
 }
 
