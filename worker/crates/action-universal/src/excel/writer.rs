@@ -50,7 +50,9 @@ async fn write_excel(
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
 
-    let _ = worksheet.set_name(props.worksheet_name.clone());
+    worksheet
+        .set_name(props.worksheet_name.clone())
+        .map_err(Error::internal_runtime)?;
 
     if let Some(dto) = &props.protection_options {
         let protection_options = dto_to_protection_options(dto);
@@ -139,12 +141,9 @@ fn write_cell_value(
         _ => "".to_string(),
     };
 
-    let _ = worksheet.write_string_with_format(
-        row as u32,
-        col as u16,
-        &cell_value,
-        &Default::default(),
-    );
+    worksheet
+        .write_string_with_format(row as u32, col as u16, &cell_value, &Default::default())
+        .map_err(Error::internal_runtime)?;
 
     Ok(())
 }
@@ -159,7 +158,9 @@ fn write_cell_formatting(
     if let Some(ActionValue::String(formatting_str)) = row_data.get(&format!("{}.formatting", key))
     {
         let format = parse_formatting(formatting_str)?;
-        let _ = worksheet.write_string_with_format(row as u32, col as u16, "", &format);
+        worksheet
+            .write_string_with_format(row as u32, col as u16, "", &format)
+            .map_err(Error::internal_runtime)?;
     }
 
     Ok(())
@@ -173,7 +174,9 @@ fn write_cell_formula(
     row_data: &HashMap<String, ActionValue>,
 ) -> Result<()> {
     if let Some(ActionValue::String(formula_str)) = row_data.get(&format!("{}.formula", key)) {
-        let _ = worksheet.write_formula(row as u32, col as u16, Formula::new(formula_str));
+        worksheet
+            .write_formula(row as u32, col as u16, Formula::new(formula_str))
+            .map_err(Error::internal_runtime)?;
     }
 
     Ok(())
@@ -187,7 +190,9 @@ fn write_cell_hyperlink(
     row_data: &HashMap<String, ActionValue>,
 ) -> Result<()> {
     if let Some(ActionValue::String(hyperlink_str)) = row_data.get(&format!("{}.hyperlink", key)) {
-        let _ = worksheet.write_url(row as u32, col as u16, Url::new(hyperlink_str));
+        worksheet
+            .write_url(row as u32, col as u16, Url::new(hyperlink_str))
+            .map_err(Error::internal_runtime)?;
     }
 
     Ok(())
@@ -199,54 +204,70 @@ fn write_map_entry(
     key: String,
     value: ActionValue,
 ) -> Result<()> {
-    let _ = worksheet.write_string_with_format(*row_index as u32, 0, &key, &Default::default());
+    worksheet
+        .write_string_with_format(*row_index as u32, 0, &key, &Default::default())
+        .map_err(Error::internal_runtime)?;
 
     match value {
         ActionValue::String(s) => {
-            let _ =
-                worksheet.write_string_with_format(*row_index as u32, 1, &s, &Default::default());
+            worksheet
+                .write_string_with_format(*row_index as u32, 1, &s, &Default::default())
+                .map_err(Error::internal_runtime)?;
         }
         ActionValue::Number(n) => {
             if let Some(num) = n.as_f64() {
-                let _ = worksheet.write_number(*row_index as u32, 1, num);
+                worksheet
+                    .write_number(*row_index as u32, 1, num)
+                    .map_err(Error::internal_runtime)?;
             } else {
-                let _ = worksheet.write_string_with_format(
-                    *row_index as u32,
-                    1,
-                    &n.to_string(),
-                    &Default::default(),
-                );
+                worksheet
+                    .write_string_with_format(
+                        *row_index as u32,
+                        1,
+                        &n.to_string(),
+                        &Default::default(),
+                    )
+                    .map_err(Error::internal_runtime)?;
             }
         }
         ActionValue::Bool(b) => {
-            let _ = worksheet.write_boolean(*row_index as u32, 1, b);
+            worksheet
+                .write_boolean(*row_index as u32, 1, b)
+                .map_err(Error::internal_runtime)?;
         }
         ActionValue::Array(arr) => {
             for (col_num, value) in arr.iter().enumerate() {
                 match value {
                     ActionValue::String(s) => {
-                        let _ = worksheet.write_string_with_format(
-                            *row_index as u32,
-                            col_num as u16 + 1,
-                            s,
-                            &Default::default(),
-                        );
+                        worksheet
+                            .write_string_with_format(
+                                *row_index as u32,
+                                col_num as u16 + 1,
+                                s,
+                                &Default::default(),
+                            )
+                            .map_err(Error::internal_runtime)?;
                     }
                     ActionValue::Number(n) => {
                         if let Some(num) = n.as_f64() {
-                            let _ =
-                                worksheet.write_number(*row_index as u32, col_num as u16 + 1, num);
+                            let _ = worksheet
+                                .write_number(*row_index as u32, col_num as u16 + 1, num)
+                                .map_err(Error::internal_runtime)?;
                         } else {
-                            let _ = worksheet.write_string_with_format(
-                                *row_index as u32,
-                                col_num as u16 + 1,
-                                &n.to_string(),
-                                &Default::default(),
-                            );
+                            worksheet
+                                .write_string_with_format(
+                                    *row_index as u32,
+                                    col_num as u16 + 1,
+                                    &n.to_string(),
+                                    &Default::default(),
+                                )
+                                .map_err(Error::internal_runtime)?;
                         }
                     }
                     ActionValue::Bool(b) => {
-                        let _ = worksheet.write_boolean(*row_index as u32, col_num as u16 + 1, *b);
+                        worksheet
+                            .write_boolean(*row_index as u32, col_num as u16 + 1, *b)
+                            .map_err(Error::internal_runtime)?;
                     }
                     _ => {}
                 }
