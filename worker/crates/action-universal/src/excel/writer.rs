@@ -444,10 +444,11 @@ fn dto_to_protection_options(dto: &ProtectionOptionsDTO) -> ProtectionOptions {
     }
 }
 
-#[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
-    use reearth_flow_action::ActionValue;
+
+    #[allow(unused_imports)]
     use serde_json::Number;
 
     #[tokio::test]
