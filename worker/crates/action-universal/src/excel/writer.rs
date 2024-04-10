@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use reearth_flow_common::uri::Uri;
 
 use reearth_flow_action::{
-    error, Action, ActionContext, ActionDataframe, ActionResult, Result, ActionValue, DEFAULT_PORT,
+    error::Error, Action, ActionContext, ActionDataframe, ActionResult, Result, ActionValue, DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -87,17 +87,17 @@ async fn write_excel(
 
     let buf = workbook
         .save_to_buffer()
-        .map_err(error::Error::internal_runtime)?;
+        .map_err(Error::internal_runtime)?;
 
-    let uri = Uri::from_str(&props.output).map_err(error::Error::input)?;
-    let storage = storage_resolver.resolve(&uri).map_err(error::Error::input)?;
+    let uri = Uri::from_str(&props.output).map_err(Error::input)?;
+    let storage = storage_resolver.resolve(&uri).map_err(Error::input)?;
     let uri_path = uri.path();
     let path = Path::new(&uri_path);
 
     storage
         .put(path, bytes::Bytes::from(buf))
         .await
-        .map_err(error::Error::internal_runtime)?;
+        .map_err(Error::internal_runtime)?;
 
     Ok(ActionValue::Bool(true))
 }
@@ -337,12 +337,12 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
     let mut builder = FormatBuilder::new();
     for pair in formatting_str.split(';') {
         let mut parts = pair.splitn(2, ',');
-        let key = parts.next().ok_or_else(|| error::Error::internal_runtime("Invalid formatting key"))?;
-        let value = parts.next().ok_or_else(|| error::Error::internal_runtime("Invalid formatting value"))?;
+        let key = parts.next().ok_or_else(|| Error::internal_runtime("Invalid formatting key"))?;
+        let value = parts.next().ok_or_else(|| Error::internal_runtime("Invalid formatting value"))?;
         match key {
             "font" => builder = builder.set_font_name(value.to_string()),            
             "size" => {
-                let size = value.parse::<f64>().map_err(|_| error::Error::internal_runtime("Invalid font size"))?;
+                let size = value.parse::<f64>().map_err(|_| Error::internal_runtime("Invalid font size"))?;
                 builder = builder.set_font_size(size);
             },
             "color" => builder = builder.set_font_color(value),            
@@ -352,7 +352,7 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
             "background_color" => builder = builder.set_background_color(value),
             "align" => builder = builder.set_align(str_to_format_align(value)?.clone()),
             "wrap" => builder = builder.set_text_wrap(),
-            _ => return Err(error::Error::internal_runtime("Unknown formatting key")),
+            _ => return Err(Error::internal_runtime("Unknown formatting key")),
         };
     }
     Ok(builder.build())
@@ -363,28 +363,28 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
 //     let mut format = Format::new();
 //     for pair in row_formatting.split(';') {
 //         let mut parts = pair.splitn(2, ',');
-//         let key = parts.next().ok_or_else(|| error::Error::internal_runtime("Invalid row formatting key"))?;
-//         let value = parts.next().ok_or_else(|| error::Error::internal_runtime("Invalid row formatting value"))?;
+//         let key = parts.next().ok_or_else(|| Error::internal_runtime("Invalid row formatting key"))?;
+//         let value = parts.next().ok_or_else(|| Error::internal_runtime("Invalid row formatting value"))?;
 //         match key {
-//             "row_height" => format.set_row_height(value.parse().map_err(|_| error::Error::internal_runtime("Invalid row height"))?),
-//             _ => return Err(error::Error::internal_runtime("Unknown row formatting key")),
+//             "row_height" => format.set_row_height(value.parse().map_err(|_| Error::internal_runtime("Invalid row height"))?),
+//             _ => return Err(Error::internal_runtime("Unknown row formatting key")),
 //         }
 //     }
 //     Ok(format)
 // }
 
-fn str_to_format_underline(s: &str) -> Result<FormatUnderline, error::Error> {
+fn str_to_format_underline(s: &str) -> Result<FormatUnderline, Error> {
     match s {
         "None" => Ok(FormatUnderline::None),
         "Single" => Ok(FormatUnderline::Single),
         "Double" => Ok(FormatUnderline::Double),
         "SingleAccounting" => Ok(FormatUnderline::SingleAccounting),
         "DoubleAccounting" => Ok(FormatUnderline::DoubleAccounting),
-        _ => Err(error::Error::internal_runtime("Invalid underline value")),
+        _ => Err(Error::internal_runtime("Invalid underline value")),
     }
 }
 
-fn str_to_format_align(s: &str) -> Result<FormatAlign, error::Error> {
+fn str_to_format_align(s: &str) -> Result<FormatAlign, Error> {
     match s {
         "General" => Ok(FormatAlign::General),
         "Left" => Ok(FormatAlign::Left),
@@ -399,7 +399,7 @@ fn str_to_format_align(s: &str) -> Result<FormatAlign, error::Error> {
         "VerticalCenter" => Ok(FormatAlign::VerticalCenter),
         "VerticalJustify" => Ok(FormatAlign::VerticalJustify),
         "VerticalDistributed" => Ok(FormatAlign::VerticalDistributed),
-        _ => Err(error::Error::internal_runtime("Invalid alignment value")),
+        _ => Err(Error::internal_runtime("Invalid alignment value")),
     }
 }
 
