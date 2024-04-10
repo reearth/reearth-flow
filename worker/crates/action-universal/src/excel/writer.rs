@@ -365,8 +365,8 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
             "italic" => builder = builder.set_italic(),
             "background_color" => builder = builder.set_background_color(value),
             "align" => {
-                let align = ExcelFormatAlign::from_str(value)
-                    .map_err(|e| Error::internal_runtime(e))?;
+                let align =
+                    ExcelFormatAlign::from_str(value).map_err(|e| Error::internal_runtime(e))?;
                 builder = builder.set_align(align.0);
             }
             "underline" => {
