@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { NodeProps, NodeResizer } from "reactflow";
 
-import "./customStyles.css";
-
 type NodeData = {
   name: string;
   width?: number;
