@@ -43,6 +43,10 @@ export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) =>
         newNode = { ...newNode, ...baseBatchNode };
       }
 
+      if (type === "note") {
+        newNode = { ...newNode, data: { content: "New Note", width: 300, height: 200 } };
+      }
+
       setNodes(nds => nds.concat(newNode));
     },
     [reactFlowInstance, setNodes],
