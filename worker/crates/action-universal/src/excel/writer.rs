@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use reearth_flow_common::uri::Uri;
 
 use reearth_flow_action::{
-    error::Error, Action, ActionContext, ActionDataframe, ActionResult, Result, ActionValue, DEFAULT_PORT,
+    error::Error, AsyncAction, ActionContext, ActionDataframe, ActionResult, Result, ActionValue, DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -25,7 +25,7 @@ pub struct ExcelFileWriter {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "ExcelFileWriter")]
-impl Action for ExcelFileWriter {
+impl AsyncAction for ExcelFileWriter {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         write_excel(inputs, self, storage_resolver).await?;
