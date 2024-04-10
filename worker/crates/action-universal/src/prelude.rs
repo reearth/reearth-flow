@@ -1,4 +1,5 @@
 pub use crate::attribute::aggregator::AttributeAggregator;
+pub use crate::attribute::duplicate::AttributeDuplicateFilter;
 pub use crate::attribute::keeper::AttributeKeeper;
 pub use crate::attribute::manager::AttributeManager;
 pub use crate::attribute::merger::AttributeMerger;

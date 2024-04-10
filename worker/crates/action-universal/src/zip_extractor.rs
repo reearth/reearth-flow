@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::utils::inject_variables_to_scope;
 use reearth_flow_action::{
-    error::Error, utils, Action, ActionContext, ActionDataframe, ActionResult, ActionValue,
+    error::Error, utils, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
     DEFAULT_PORT,
 };
 use reearth_flow_common::uri::Uri;
@@ -19,7 +19,7 @@ pub struct ZipExtractor {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "ZipExtractor")]
-impl Action for ZipExtractor {
+impl AsyncAction for ZipExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.unwrap_or_default();
 

@@ -11,7 +11,6 @@ use once_cell::sync::Lazy;
 use reearth_flow_action_log::ActionLogger;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_workflow::graph::NodeProperty;
 use reearth_flow_workflow::id::Id;
 
 pub use value::ActionValue;
@@ -43,8 +42,13 @@ pub struct Port(String);
 
 #[async_trait::async_trait]
 #[typetag::serde(tag = "action", content = "with")]
-pub trait Action: Send + Sync {
+pub trait AsyncAction: Send + Sync {
     async fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult;
+}
+
+#[typetag::serde(tag = "action", content = "with")]
+pub trait SyncAction: Send + Sync {
+    fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult;
 }
 
 #[derive(Debug, Clone)]
@@ -53,7 +57,6 @@ pub struct ActionContext {
     pub workflow_id: Id,
     pub node_id: Id,
     pub node_name: String,
-    pub node_property: Option<NodeProperty>,
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
     pub logger: Arc<ActionLogger>,
@@ -63,11 +66,10 @@ pub struct ActionContext {
 impl Default for ActionContext {
     fn default() -> Self {
         Self {
-            job_id: Id::default(),
-            workflow_id: Id::default(),
-            node_id: Id::default(),
+            job_id: Default::default(),
+            workflow_id: Default::default(),
+            node_id: Default::default(),
             node_name: "".to_owned(),
-            node_property: Default::default(),
             expr_engine: Arc::new(Engine::new()),
             storage_resolver: Arc::new(StorageResolver::new()),
             logger: Arc::new(ActionLogger::root(
@@ -86,7 +88,6 @@ impl ActionContext {
         workflow_id: Id,
         node_id: Id,
         node_name: String,
-        node_property: Option<NodeProperty>,
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
         logger: ActionLogger,
@@ -97,7 +98,6 @@ impl ActionContext {
             workflow_id,
             node_id,
             node_name,
-            node_property,
             expr_engine,
             storage_resolver,
             logger: Arc::new(logger),

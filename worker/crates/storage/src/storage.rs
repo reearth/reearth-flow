@@ -20,8 +20,8 @@ use reearth_flow_common::uri::Uri;
 
 #[derive(Debug)]
 pub struct Storage {
-    base_uri: Uri,
-    inner: Operator,
+    pub(crate) base_uri: Uri,
+    pub(crate) inner: Operator,
 }
 
 impl std::fmt::Display for Storage {
@@ -249,7 +249,7 @@ impl Storage {
     }
 }
 
-fn format_object_store_error(err: opendal::Error, path: &str) -> object_store::Error {
+pub(crate) fn format_object_store_error(err: opendal::Error, path: &str) -> object_store::Error {
     use opendal::ErrorKind;
     match err.kind() {
         ErrorKind::NotFound => object_store::Error::NotFound {

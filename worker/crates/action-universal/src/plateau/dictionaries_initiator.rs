@@ -7,7 +7,8 @@ use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error, Action, ActionContext, ActionDataframe, ActionResult, ActionValue, Result, DEFAULT_PORT,
+    error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result,
+    DEFAULT_PORT,
 };
 
 use super::types::SchemaFeature;
@@ -79,7 +80,14 @@ static COMMON_ITEMS: Lazy<Vec<SchemaFeature>> = Lazy::new(|| {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct DictionariesInitiator;
+pub struct DictionariesInitiator {
+    city_code: Option<String>,
+    target_packages: Option<Vec<String>>,
+    add_nsprefix_to_feature_types: Option<bool>,
+    except_feature_types: Option<Vec<String>>,
+    extract_dm_geometry_as_xml_fragment: Option<bool>,
+    schema_json: Option<String>,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -90,7 +98,7 @@ struct Schema {
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "PLATEAU.DictionariesInitiator")]
-impl Action for DictionariesInitiator {
+impl AsyncAction for DictionariesInitiator {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(error::Error::input("No Input"))?;
         let input = inputs
@@ -98,48 +106,19 @@ impl Action for DictionariesInitiator {
             .ok_or(error::Error::input("No Default Port"))?;
         let data = input.as_ref().ok_or(error::Error::input("No Value"))?;
         let mut res = ActionDataframe::new();
+
+        let xpath_to_properties = {
+            let schema_json = self
+                .schema_json
+                .clone()
+                .ok_or(error::Error::input("No schema_json"))?;
+            let dm_geom_to_xml = self.extract_dm_geometry_as_xml_fragment.unwrap_or_default();
+            generate_xpath(schema_json, dm_geom_to_xml)?
+        };
+        let except_feature_types = self.except_feature_types.clone().unwrap_or_default();
+
         let data = match data {
             ActionValue::Array(data) => {
-                let first = data.first().ok_or(error::Error::input("No Value"))?;
-                // XPath-Property Dictionary Creation
-                let xpath_to_properties = if let ActionValue::Map(row) = first {
-                    match (
-                        row.get("schemaJson")
-                            .ok_or(error::Error::input("No schema json value"))?,
-                        row.get("extractDmGeometryAsXmlFragment")
-                            .ok_or(error::Error::input(
-                                "No extractDmGeometryAsXmlFragment value",
-                            ))?,
-                    ) {
-                        (ActionValue::String(schema_json), ActionValue::Bool(dm_geom_to_xml)) => {
-                            generate_xpath(schema_json.clone(), *dm_geom_to_xml)?
-                        }
-                        _ => {
-                            return Err(error::Error::input("Invalid Input. supported only String"))
-                        }
-                    }
-                } else {
-                    return Err(error::Error::input("Invalid Input. supported only Map"));
-                };
-                let except_feature_types = if let ActionValue::Map(row) = first {
-                    let ftypes = row.get("exceptFeatureTypes");
-                    match ftypes {
-                        Some(ActionValue::Array(ftypes)) => ftypes
-                            .iter()
-                            .filter_map(|ft| {
-                                if let ActionValue::String(ft) = ft {
-                                    Some(ft.clone())
-                                } else {
-                                    None
-                                }
-                            })
-                            .collect::<Vec<_>>(),
-                        _ => vec![],
-                    }
-                } else {
-                    return Err(error::Error::input("Invalid Input. supported only Map"));
-                };
-
                 let mut codelists_map: HashMap<String, HashMap<String, HashMap<String, String>>> =
                     HashMap::new();
                 let mut result = Vec::<ActionValue>::new();
