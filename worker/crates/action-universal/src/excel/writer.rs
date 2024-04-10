@@ -250,7 +250,7 @@ fn write_map_entry(
                     }
                     ActionValue::Number(n) => {
                         if let Some(num) = n.as_f64() {
-                            let _ = worksheet
+                            worksheet
                                 .write_number(*row_index as u32, col_num as u16 + 1, num)
                                 .map_err(Error::internal_runtime)?;
                         } else {
