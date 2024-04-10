@@ -1,7 +1,7 @@
 import { Dispatch, DragEvent, SetStateAction, useCallback, useState } from "react";
 import { Node } from "reactflow";
 
-import { initialSize } from "./components/Nodes/BatchNode";
+import { baseBatchNode } from "./components/Nodes/BatchNode";
 
 export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) => {
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
@@ -29,7 +29,10 @@ export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) =>
         x: event.clientX,
         y: event.clientY,
       });
-      const newNode: Node = {
+
+      let newNode: Node;
+
+      newNode = {
         id: createRandomId(),
         type,
         position,
@@ -37,7 +40,7 @@ export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) =>
       };
 
       if (type === "batch") {
-        newNode["style"] = { width: initialSize.width + "px", height: initialSize.height + "px" };
+        newNode = { ...newNode, ...baseBatchNode };
       }
 
       setNodes(nds => nds.concat(newNode));

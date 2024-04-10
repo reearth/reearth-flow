@@ -1,6 +1,6 @@
 import { Edge, Node } from "reactflow";
 
-import { initialSize } from "./components/Nodes/BatchNode";
+import { baseBatchNode } from "./components/Nodes/BatchNode";
 
 export const initialNodes: Node[] = [
   {
@@ -57,12 +57,10 @@ export const initialNodes: Node[] = [
     position: { x: 50, y: 200 },
   },
   {
+    ...baseBatchNode,
     id: "batch1",
-    type: "batch",
     data: { name: "Batch 1" },
     position: { x: 100, y: 400 },
-    style: { width: initialSize.width + "px", height: initialSize.height + "px" },
-    zIndex: -1001,
   },
 ];
 

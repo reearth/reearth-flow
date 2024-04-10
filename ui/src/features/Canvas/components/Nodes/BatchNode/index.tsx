@@ -11,13 +11,19 @@ type NodeData = {
   textColor?: string;
 };
 
-const minSize = { width: 250, height: 150 };
-
 export const initialSize = { width: 300, height: 200 };
 
+export const baseBatchNode = {
+  type: "batch",
+  style: { width: initialSize.width + "px", height: initialSize.height + "px" },
+  zIndex: -1001,
+};
+
+const minSize = { width: 250, height: 150 };
+
 const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, ...props }) => {
-  const [width, setWidth] = useState(data.width ?? initialSize.width);
-  const [height, setHeight] = useState(data.height ?? initialSize.height);
+  const [width, _setWidth] = useState(data.width ?? initialSize.width);
+  const [height, _setHeight] = useState(data.height ?? initialSize.height);
   // const onChange = useCallback(
   //   (evt: any) => {
   //     console.log("EVT", evt.target.value);
