@@ -1,4 +1,4 @@
-import { useState, useCallback, MouseEvent, useEffect } from "react";
+import { useState, useCallback, MouseEvent, useMemo } from "react";
 import ReactFlow, {
   addEdge,
   applyNodeChanges,
@@ -13,6 +13,9 @@ import ReactFlow, {
   BackgroundVariant,
   DefaultEdgeOptions,
   ReactFlowProvider,
+  useNodesState,
+  useEdgesState,
+  SelectionMode,
 } from "reactflow";
 
 import ActionBar from "@flow/features/Actionbar";
@@ -27,6 +30,7 @@ import {
 import "reactflow/dist/style.css";
 
 import { initialEdges, initialNodes } from "./mockData";
+import useDnd from "./useDnd";
 
 type CanvasProps = {
   leftArea?: React.ReactNode;
@@ -54,10 +58,20 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
 };
 
 export default function Canvas({ leftArea }: CanvasProps) {
-  const [nodes, setNodes] = useState<Node[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
+  const [nodes, setNodes] = useNodesState(initialNodes);
+  const [edges, setEdges] = useEdgesState(initialEdges);
+
+  const selected = useMemo(() => {
+    const selectedNodes = nodes.filter(node => node.selected);
+    const selectedEdges = edges.filter(edge => edge.selected);
+    return { nodes: selectedNodes, edges: selectedEdges };
+  }, [nodes, edges]);
+
+  console.log("selected", selected);
 
   const [hoveredDetails, setHoveredDetails] = useState<Node | Edge | undefined>();
+
+  const { onDragOver, onDrop, setReactFlowInstance } = useDnd({ setNodes });
 
   const onNodesChange: OnNodesChange = useCallback(
     changes => {
@@ -99,9 +113,9 @@ export default function Canvas({ leftArea }: CanvasProps) {
     [hoveredDetails],
   );
 
-  useEffect(() => {
-    console.log("hoveredDetails", hoveredDetails);
-  }, [hoveredDetails]);
+  // useEffect(() => {
+  //   console.log("hoveredDetails", hoveredDetails);
+  // }, [hoveredDetails]);
 
   return (
     <div className="flex-1 m-1 rounded-sm relative">
@@ -118,9 +132,11 @@ export default function Canvas({ leftArea }: CanvasProps) {
           //   [-1000, -1000],
           //   [1000, 1000],
           // ]}
+          selectionMode={SelectionMode["Partial"]}
           nodes={nodes}
           nodeTypes={nodeTypes}
           edges={edges}
+          onInit={setReactFlowInstance}
           defaultEdgeOptions={defaultEdgeOptions}
           connectionLineComponent={CustomConnectionLine}
           connectionLineStyle={connectionLineStyle}
@@ -132,6 +148,8 @@ export default function Canvas({ leftArea }: CanvasProps) {
           onEdgeMouseEnter={handleEdgeHover}
           onEdgeMouseLeave={handleEdgeHover}
           onConnect={onConnect}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
           fitViewOptions={{ padding: 0.5 }}
           fitView
           panOnScroll
