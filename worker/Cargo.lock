@@ -2145,6 +2145,7 @@ dependencies = [
  "regex",
  "rhai",
  "rstest",
+ "rust_xlsxwriter",
  "serde",
  "serde_json",
  "strum",
@@ -2649,6 +2650,17 @@ checksum = "3e0698206bcb8882bf2a9ecb4c1e7785db57ff052297085a6efd4fe42302068a"
 dependencies = [
  "cfg-if",
  "ordered-multimap",
+]
+
+[[package]]
+name = "rust_xlsxwriter"
+version = "0.64.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffc31db4fc8d23b691a19827593ae7f8675ec3379584a006e1272bf7acaf9fd0"
+dependencies = [
+ "lazy_static",
+ "regex",
+ "zip",
 ]
 
 [[package]]
@@ -4082,6 +4094,18 @@ name = "zeroize"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "525b4ec142c6b68a2d10f01f7bbf6755599ca3f81ea53b8431b7dd348f5fdb2d"
+
+[[package]]
+name = "zip"
+version = "0.6.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "760394e246e4c28189f19d488c058bf16f564016aefac5d32bb1f3b51d5e9261"
+dependencies = [
+ "byteorder",
+ "crc32fast",
+ "crossbeam-utils",
+ "flate2",
+]
 
 [[package]]
 name = "zstd"
