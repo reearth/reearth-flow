@@ -365,13 +365,12 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
             "italic" => builder = builder.set_italic(),
             "background_color" => builder = builder.set_background_color(value),
             "align" => {
-                let align =
-                    ExcelFormatAlign::from_str(value).map_err(|e| Error::internal_runtime(e))?;
+                let align = ExcelFormatAlign::from_str(value).map_err(Error::internal_runtime)?;
                 builder = builder.set_align(align.0);
             }
             "underline" => {
-                let underline = ExcelFormatUnderline::from_str(value)
-                    .map_err(|e| Error::internal_runtime(e))?;
+                let underline =
+                    ExcelFormatUnderline::from_str(value).map_err(Error::internal_runtime)?;
                 builder = builder.set_underline(underline.0);
             }
             "wrap" => builder = builder.set_text_wrap(),
@@ -396,14 +395,14 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
 //     Ok(format)
 // }
 
-trait ExcelFormatParsable: Sized {
-    fn from_str(value: &str) -> Result<Self, String>;
+pub trait ExcelFormatParsable: Sized {
+    fn from_str(value: &str) -> Result<Self, Error>;
 }
 
-struct ExcelFormatAlign(FormatAlign);
+pub struct ExcelFormatAlign(pub FormatAlign);
 
 impl ExcelFormatParsable for ExcelFormatAlign {
-    fn from_str(value: &str) -> Result<Self, String> {
+    fn from_str(value: &str) -> Result<Self, Error> {
         match value {
             "General" => Ok(ExcelFormatAlign(FormatAlign::General)),
             "Left" => Ok(ExcelFormatAlign(FormatAlign::Left)),
@@ -418,22 +417,28 @@ impl ExcelFormatParsable for ExcelFormatAlign {
             "VerticalCenter" => Ok(ExcelFormatAlign(FormatAlign::VerticalCenter)),
             "VerticalJustify" => Ok(ExcelFormatAlign(FormatAlign::VerticalJustify)),
             "VerticalDistributed" => Ok(ExcelFormatAlign(FormatAlign::VerticalDistributed)),
-            _ => Err(format!("Invalid alignment value: {}", value)),
+            _ => Err(Error::internal_runtime(format!(
+                "Invalid alignment value: {}",
+                value
+            ))),
         }
     }
 }
 
-struct ExcelFormatUnderline(FormatUnderline);
+pub struct ExcelFormatUnderline(pub FormatUnderline);
 
 impl ExcelFormatParsable for ExcelFormatUnderline {
-    fn from_str(value: &str) -> Result<Self, String> {
+    fn from_str(value: &str) -> Result<Self, Error> {
         match value {
             "None" => Ok(ExcelFormatUnderline(FormatUnderline::None)),
             "Single" => Ok(ExcelFormatUnderline(FormatUnderline::Single)),
             "Double" => Ok(ExcelFormatUnderline(FormatUnderline::Double)),
             "SingleAccounting" => Ok(ExcelFormatUnderline(FormatUnderline::SingleAccounting)),
             "DoubleAccounting" => Ok(ExcelFormatUnderline(FormatUnderline::DoubleAccounting)),
-            _ => Err(format!("Invalid underline value: {}", value)),
+            _ => Err(Error::internal_runtime(format!(
+                "Invalid underline value: {}",
+                value
+            ))),
         }
     }
 }
