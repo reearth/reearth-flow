@@ -342,9 +342,9 @@ fn parse_formatting(formatting_str: &str) -> Result<Format> {
             "color" => builder = builder.set_font_color(value),
             "bold" => builder = builder.set_bold(),
             "italic" => builder = builder.set_italic(),
-            "underline" => builder = builder.set_underline(str_to_format_underline(value)?.clone()),
+            "underline" => builder = builder.set_underline(str_to_format_underline(value)?),
             "background_color" => builder = builder.set_background_color(value),
-            "align" => builder = builder.set_align(str_to_format_align(value)?.clone()),
+            "align" => builder = builder.set_align(str_to_format_align(value)?),
             "wrap" => builder = builder.set_text_wrap(),
             _ => return Err(Error::internal_runtime("Unknown formatting key")),
         };
@@ -434,7 +434,6 @@ fn dto_to_protection_options(dto: &ProtectionOptionsDTO) -> ProtectionOptions {
         use_pivot_tables: dto.use_pivot_tables.unwrap_or(false),
         edit_scenarios: dto.edit_scenarios.unwrap_or(false),
         edit_objects: dto.edit_objects.unwrap_or(false),
-        ..ProtectionOptions::default()
     }
 }
 
