@@ -85,7 +85,7 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
 
     return (
       <div ref={refRoot} className={cn("overflow-auto", className)}>
-        <div className="relative my-2">
+        <div className="relative">
           <TreeItem
             data={data}
             ref={ref}
@@ -158,8 +158,9 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                         )}
                         <span className="text-xs truncate">{item.name}</span>
                       </AccordionTrigger>
-                      <AccordionContent className="pl-6">
+                      <AccordionContent className="pl-6 border-l border-zinc-700 ml-4">
                         <TreeItem
+                          className="-ml-4"
                           data={item.children ? item.children : item}
                           selectedItemId={selectedItemId}
                           handleSelectChange={handleSelectChange}

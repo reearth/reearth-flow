@@ -1,3 +1,5 @@
+import { ChevronDown } from "lucide-react";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,15 +24,11 @@ const HomeMenu: React.FC<Props> = () => {
   const t = useT();
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex [&>*]:data-[state=open]:bg-red-900">
-        <FlowLogo wrapperClassName="justify-start border border-red-900 bg-opacity-75 py-1.5 px-2 ml-2 rounded-md hover:bg-opacity-100 transition-colors" />
+      <DropdownMenuTrigger className="flex items-center [&>div]:data-[state=open]:bg-red-900">
+        <FlowLogo wrapperClassName="justify-start bg-opacity-75 py-1.5 px-2 rounded-md hover:bg-opacity-100 transition-colors" />
+        <ChevronDown className="ml-2" size="12px" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        // side="bottom"
-        sideOffset={4}
-        align="start"
-        alignOffset={5}
-        className="w-[275px]">
+      <DropdownMenuContent sideOffset={4} align="start" alignOffset={5} className="w-[275px]">
         <DropdownMenuLabel className="flex gap-2 text-zinc-400 justify-end items-center">
           <p>{t("Re:Earth Flow v.1.14.2")}</p>
         </DropdownMenuLabel>

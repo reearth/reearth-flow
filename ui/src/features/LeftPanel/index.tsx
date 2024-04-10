@@ -1,5 +1,5 @@
 import { FileIcon, StopIcon } from "@radix-ui/react-icons";
-import { Database, Folder } from "lucide-react";
+import { Database, Folder, SearchIcon } from "lucide-react";
 import { useState } from "react";
 
 import { VerticalPanel, FlowLogo, type PanelContent, Tree } from "@flow/components";
@@ -14,6 +14,7 @@ type Props = {
 };
 
 const LeftPanel: React.FC<Props> = ({ className }) => {
+  const [searchText, setSearchText] = useState<string>("");
   const [isPanelOpen, handlePanelToggle] = useStateManager<boolean>(true);
   const t = useT();
 
@@ -26,16 +27,26 @@ const LeftPanel: React.FC<Props> = ({ className }) => {
       component: (
         <>
           <HomeMenu />
-          <div className="border-zinc-700 border-t-[1px] w-[100%]" />
+          {/* <div className="border-zinc-700 border-t-[1px] w-[100%]" /> */}
         </>
       ),
     },
     {
       id: "navigator",
-      title: t("Navigator"),
+      // title: t("Navigator"),
       icon: <FileIcon />,
       component: (
         <>
+          <div className="flex gap-2 items-center bg-zinc-700/50 rounded-sm px-2 py-1 placeholder-zinc-300/40 text-sm">
+            {searchText.length < 1 && <SearchIcon className="w-4 h-4 text-zinc-400" />}
+            <input
+              className="bg-transparent w-full text-zinc-300 placeholder-zinc-500"
+              placeholder="Search data"
+              value={searchText}
+              onChange={s => setSearchText(s.target.value)}
+            />
+          </div>
+          <div className="border-zinc-700/50 border-t-[1px] w-[100%]" />
           <Tree
             data={data}
             className="flex-shrink-0 w-full h-[60vh] text-zinc-300"
