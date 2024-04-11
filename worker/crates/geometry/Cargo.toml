@@ -1,0 +1,26 @@
+[package]
+description = "Re:Earth Flow geometry library"
+name = "reearth-flow-geometry"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+approx = "0.5.1"
+bytes.workspace = true
+num-traits = "0.2.18"
+reearth-flow-common.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio-stream.workspace = true
+tokio.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
