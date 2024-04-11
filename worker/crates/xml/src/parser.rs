@@ -320,7 +320,7 @@ mod tests {
         assert!(dom.is_ok());
         let document = dom.unwrap();
         let root = document.first_child().unwrap();
-        println!("root: {:?}", root.node_name());
+        println!("root: {:?}", root.to_xml());
     }
 
     #[test]
