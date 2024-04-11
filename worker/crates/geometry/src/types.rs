@@ -1,6 +1,8 @@
 pub mod coordinate;
 pub mod coordnum;
 pub mod geometry;
+pub mod geometry_2d;
+pub mod geometry_3d;
 pub mod geometry_collection;
 pub mod line;
 pub mod line_string;

@@ -1586,6 +1586,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "nusamai-geometry"
+version = "0.1.0"
+source = "git+https://github.com/MIERUNE/plateau-gis-converter#0b7610c782ba92a592f7c26a8510c84f0f3b62fc"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "nutype"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2270,6 +2278,7 @@ dependencies = [
  "approx",
  "bytes",
  "num-traits",
+ "nusamai-geometry",
  "reearth-flow-common",
  "serde",
  "serde_json",
