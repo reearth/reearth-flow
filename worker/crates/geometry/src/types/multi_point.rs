@@ -1,6 +1,7 @@
 use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
+use nusamai_geometry::{MultiPoint2 as NMultiPoint2, MultiPoint3 as NMultiPoint3};
 use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
@@ -70,6 +71,20 @@ impl<T: CoordNum, Z: CoordNum> MultiPoint<T, Z> {
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Point<T, Z>> {
         self.0.iter_mut()
+    }
+}
+
+impl<'a> From<NMultiPoint2<'a>> for MultiPoint2D<f64> {
+    #[inline]
+    fn from(line_strings: NMultiPoint2<'a>) -> Self {
+        MultiPoint2D::new(line_strings.iter().map(|a| a.into()).collect::<Vec<_>>())
+    }
+}
+
+impl<'a> From<NMultiPoint3<'a>> for MultiPoint3D<f64> {
+    #[inline]
+    fn from(line_strings: NMultiPoint3<'a>) -> Self {
+        MultiPoint3D::new(line_strings.iter().map(|a| a.into()).collect::<Vec<_>>())
     }
 }
 

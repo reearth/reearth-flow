@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
-use super::coordinate::Coordinate;
+use nusamai_geometry::{LineString2 as NLineString2, LineString3 as NLineString3};
+
+use super::coordinate::{self, Coordinate};
 use super::coordnum::CoordNum;
 use super::line::Line;
 use super::triangle::Triangle;
@@ -194,6 +196,30 @@ impl<T: CoordNum, Z: CoordNum> Index<usize> for LineString<T, Z> {
 impl<T: CoordNum, Z: CoordNum> IndexMut<usize> for LineString<T, Z> {
     fn index_mut(&mut self, index: usize) -> &mut Coordinate<T, Z> {
         self.0.index_mut(index)
+    }
+}
+
+impl<'a> From<NLineString2<'a>> for LineString2D<f64> {
+    #[inline]
+    fn from(coords: NLineString2<'a>) -> Self {
+        LineString2D::new(
+            coords
+                .iter_closed()
+                .map(|a| coordinate::Coordinate2D::new_(a[0], a[1]))
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+
+impl<'a> From<NLineString3<'a>> for LineString3D<f64> {
+    #[inline]
+    fn from(coords: NLineString3<'a>) -> Self {
+        LineString3D::new(
+            coords
+                .iter_closed()
+                .map(|a| coordinate::Coordinate3D::new__(a[0], a[1], a[2]))
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
