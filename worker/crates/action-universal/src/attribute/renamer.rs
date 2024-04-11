@@ -1,7 +1,5 @@
-use itertools::Itertools;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use reearth_flow_action::{
     error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
@@ -47,16 +45,8 @@ impl AsyncAction for BulkAttributeRenamer {
         let default = inputs.get(&DEFAULT_PORT).ok_or(Error::input("no default port"))?;
         let mut output = ActionDataframe::new();
         match default {
-            Some(ActionValue::Array(xs)) => {
-                output.insert(DEFAULT_PORT.clone(), Some(ActionValue::Array(xs
-                    .into_iter()
-                    .map(|v|
-                        match v {
-                            ActionValue::Map(kv) => ActionValue::Map(rename(kv.clone(), &self.action)),
-                            x => x.clone()
-                        }
-                    ).collect_vec()
-                )));
+            Some(av@ActionValue::Array(_)) => {
+                output.insert(DEFAULT_PORT.clone(), Some(rename(av.clone(), &self.action)));
                 Ok(output)
             },
             _ => Err(Error::input("input must be Array")),
@@ -65,21 +55,20 @@ impl AsyncAction for BulkAttributeRenamer {
 }
 
 fn rename(
-    inputs: HashMap<String, ActionValue>,
+    value: ActionValue,
     action: &RenameAction,
-) -> HashMap<String, ActionValue> {
-    inputs
-        .into_iter()
-        .map(|(k, v)| {
-            (
-                rename_key(k, action),
-                match v {
-                    ActionValue::Map(kv) => ActionValue::Map(rename(kv, action)),
-                    x => x,
-                },
-            )
-        })
-        .collect()
+) -> ActionValue {
+    match value {
+        ActionValue::Map(kv) => 
+            ActionValue::Map(
+                kv.into_iter().map(|(k,v)| (rename_key(k, action), rename(v, action))).collect()
+            ),
+        ActionValue::Array(xs) =>
+            ActionValue::Array(
+                xs.into_iter().map(|v| rename(v, action)).collect()
+            ),
+        x => x
+    }
 }
 
 fn rename_key(k: String, action: &RenameAction) -> String {
