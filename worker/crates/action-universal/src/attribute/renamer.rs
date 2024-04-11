@@ -1,9 +1,10 @@
+use itertools::Itertools;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use reearth_flow_action::{
-    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Port,
+    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
     DEFAULT_PORT,
 };
 
@@ -42,26 +43,24 @@ pub(super) struct ReplaceString {
 #[typetag::serde(name = "BulkAttributeRenamer")]
 impl AsyncAction for BulkAttributeRenamer {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let output = inputs
-            .ok_or(Error::input("no input"))?
-            .into_iter()
-            .map(|(k, v)| {
-                (
-                    if k == *DEFAULT_PORT {
-                        k
-                    } else {
-                        Port::new(rename_key(k.into_inner(), &self.action))
-                    },
-                    match v {
-                        Some(ActionValue::Map(kv)) => {
-                            Some(ActionValue::Map(rename(kv, &self.action)))
+        let inputs = inputs.ok_or(Error::input("no input"))?;
+        let default = inputs.get(&DEFAULT_PORT).ok_or(Error::input("no default port"))?;
+        let mut output = ActionDataframe::new();
+        match default {
+            Some(ActionValue::Array(xs)) => {
+                output.insert(DEFAULT_PORT.clone(), Some(ActionValue::Array(xs
+                    .into_iter()
+                    .map(|v|
+                        match v {
+                            ActionValue::Map(kv) => ActionValue::Map(rename(kv.clone(), &self.action)),
+                            x => x.clone()
                         }
-                        x => x,
-                    },
-                )
-            })
-            .collect();
-        Ok(output)
+                    ).collect_vec()
+                )));
+                Ok(output)
+            },
+            _ => Err(Error::input("input must be Array")),
+        }
     }
 }
 

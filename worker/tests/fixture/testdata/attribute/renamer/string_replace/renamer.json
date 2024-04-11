@@ -1,7 +1,10 @@
-{
-  "foo_foo":
+[
   {
-    "foo_bar1": 1,
-    "bar2": 2
-  }
-}
+    "foo":
+    {
+      "foobar1": 1,
+      "foo_bar2": 2
+    }
+  },
+  { "foobazfoo": 3 }
+]
