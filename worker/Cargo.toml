@@ -79,6 +79,7 @@ rayon = "1.10.0"
 regex = "1.10.4"
 rhai = {version = "1.17.1", features = ["internals", "sync", "serde"]}
 rstest = "0.18.2"
+rust_xlsxwriter = "0.64.1"
 serde = {version = "1.0.197", features = ["derive"]}
 serde_derive = "1.0.197"
 serde_json = {version = "1.0.115", features = ["arbitrary_precision"]}

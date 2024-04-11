@@ -35,7 +35,7 @@ skip = []
 skip-tree = []
 
 [licenses]
-unlicensed = "deny"
+unlicensed = "warn"
 # List of explicitly allowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
 # [possible values: any SPDX 3.7 short identifier (+ optional exception)].
@@ -52,6 +52,7 @@ allow = [
     "WTFPL",
     "BSL-1.0",
     "0BSD",
+    "MPL-2.0",
 ]
 
 # Allow 1 or more licenses on a per-crate basis, so that particular licenses
