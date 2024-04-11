@@ -23,4 +23,4 @@ tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
 
-nusamai-geometry = { git = "https://github.com/MIERUNE/plateau-gis-converter" }
+nusamai-geometry = { git = "https://github.com/MIERUNE/plateau-gis-converter", tag = "v0.0.0-alpha.16" }
