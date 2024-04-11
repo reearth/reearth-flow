@@ -209,7 +209,7 @@ pub trait Element: Node {
 
     fn has_attribute_ns(&self, namespace_uri: &str, local_name: &str) -> bool;
 
-    fn to_xml(&self, target_tags: &[String], exclude_tags: &[String]) -> Result<String>;
+    fn to_xml(&self) -> Result<String>;
 }
 
 pub trait Entity: Node {

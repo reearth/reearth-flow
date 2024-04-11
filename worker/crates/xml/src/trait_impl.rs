@@ -380,7 +380,7 @@ impl DOMImplementation for Implementation {
 }
 
 impl Element for RefNode {
-    fn to_xml(&self, target_tags: &[String], exclude_tags: &[String]) -> Result<String> {
+    fn to_xml(&self) -> Result<String> {
         if self.borrow().node_type == NodeType::Element {
             let element = as_element(self).unwrap();
             if let Some(_prefix) = element.prefix() {
@@ -404,11 +404,11 @@ impl Element for RefNode {
                         return Err(Error::Malformed("Invalid namespace attribute".to_string()));
                     }
                 }
-                let xml = display::fmt_node(&document, target_tags, exclude_tags)
+                let xml = display::fmt_node(&document)
                     .map_err(|_| Error::Malformed("Invalid element".to_string()))?;
                 Ok(xml)
             } else {
-                let xml = display::fmt_node(self, target_tags, exclude_tags)
+                let xml = display::fmt_node(self)
                     .map_err(|_| Error::Malformed("Invalid element".to_string()))?;
                 Ok(xml)
             }
