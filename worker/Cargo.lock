@@ -1588,7 +1588,7 @@ dependencies = [
 [[package]]
 name = "nusamai-geometry"
 version = "0.1.0"
-source = "git+https://github.com/MIERUNE/plateau-gis-converter#0b7610c782ba92a592f7c26a8510c84f0f3b62fc"
+source = "git+https://github.com/MIERUNE/plateau-gis-converter?tag=v0.0.0-alpha.16#48472898735e26c65c42d5c7ab66a472f928e83c"
 dependencies = [
  "num-traits",
 ]
