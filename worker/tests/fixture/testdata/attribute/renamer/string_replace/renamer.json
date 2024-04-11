@@ -1,0 +1,10 @@
+[
+  {
+    "foo":
+    {
+      "foobar1": 1,
+      "foo_bar2": 2
+    }
+  },
+  { "foobazfoo": 3 }
+]
