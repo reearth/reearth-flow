@@ -42,32 +42,31 @@ pub(super) struct ReplaceString {
 impl AsyncAction for BulkAttributeRenamer {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("no input"))?;
-        let default = inputs.get(&DEFAULT_PORT).ok_or(Error::input("no default port"))?;
+        let default = inputs
+            .get(&DEFAULT_PORT)
+            .ok_or(Error::input("no default port"))?;
         let mut output = ActionDataframe::new();
         match default {
-            Some(av@ActionValue::Array(_)) => {
+            Some(av @ ActionValue::Array(_)) => {
                 output.insert(DEFAULT_PORT.clone(), Some(rename(av.clone(), &self.action)));
                 Ok(output)
-            },
+            }
             _ => Err(Error::input("input must be Array")),
         }
     }
 }
 
-fn rename(
-    value: ActionValue,
-    action: &RenameAction,
-) -> ActionValue {
+fn rename(value: ActionValue, action: &RenameAction) -> ActionValue {
     match value {
-        ActionValue::Map(kv) => 
-            ActionValue::Map(
-                kv.into_iter().map(|(k,v)| (rename_key(k, action), rename(v, action))).collect()
-            ),
-        ActionValue::Array(xs) =>
-            ActionValue::Array(
-                xs.into_iter().map(|v| rename(v, action)).collect()
-            ),
-        x => x
+        ActionValue::Map(kv) => ActionValue::Map(
+            kv.into_iter()
+                .map(|(k, v)| (rename_key(k, action), rename(v, action)))
+                .collect(),
+        ),
+        ActionValue::Array(xs) => {
+            ActionValue::Array(xs.into_iter().map(|v| rename(v, action)).collect())
+        }
+        x => x,
     }
 }
 
