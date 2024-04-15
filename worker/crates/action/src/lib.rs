@@ -104,4 +104,18 @@ impl ActionContext {
             root_span,
         }
     }
+
+    pub fn with_logger(&self, logger: ActionLogger) -> Self {
+        Self {
+            logger: Arc::new(logger),
+            ..self.clone()
+        }
+    }
+
+    pub fn with_span(&self, span: tracing::Span) -> Self {
+        Self {
+            root_span: span,
+            ..self.clone()
+        }
+    }
 }

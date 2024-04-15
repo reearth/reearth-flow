@@ -302,6 +302,12 @@ impl PartialEq<String> for Uri {
     }
 }
 
+impl From<Uri> for url::Url {
+    fn from(uri: Uri) -> Self {
+        url::Url::parse(uri.as_str()).unwrap()
+    }
+}
+
 impl<'de> Deserialize<'de> for Uri {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -583,5 +589,12 @@ mod tests {
             serde_json::to_value(uri).unwrap(),
             serde_json::Value::String("gs://bucket/key".to_string())
         );
+    }
+
+    #[test]
+    fn test_into_url() {
+        let uri = Uri::for_test("gs://bucket/key");
+        let url: url::Url = uri.into();
+        assert_eq!(url.as_str(), "gs://bucket/key");
     }
 }

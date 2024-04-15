@@ -8,7 +8,6 @@ use reearth_flow_action::{
     DEFAULT_PORT,
 };
 use reearth_flow_action_log::action_log;
-use reearth_flow_action_log::span;
 use reearth_flow_action_log::ActionLogger;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
@@ -322,12 +321,7 @@ impl AsyncAction for XmlAttributeExtractor {
             .clone()
             .try_into()
             .map_err(|e| error::Error::input(format!("Invalid Settings. {}", e)))?;
-        let span = span(
-            ctx.root_span.clone(),
-            "XMLAttributeExtractor".to_string(),
-            ctx.node_id.to_string(),
-            ctx.node_name,
-        );
+        let span = &ctx.root_span;
         let logger = Arc::clone(&ctx.logger);
 
         let mut result = Vec::<FeatureResponse>::new();
@@ -433,7 +427,7 @@ impl AsyncAction for XmlAttributeExtractor {
                             &city_gml_path,
                             &settings,
                             Arc::clone(&logger),
-                            &span,
+                            span,
                             &schema_def,
                             &document,
                             root,

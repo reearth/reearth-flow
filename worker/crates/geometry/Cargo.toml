@@ -14,6 +14,7 @@ version.workspace = true
 approx = "0.5.1"
 bytes.workspace = true
 num-traits = "0.2.18"
+nusamai-geometry.workspace = true
 reearth-flow-common.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -22,5 +23,3 @@ tokio-stream.workspace = true
 tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
-
-nusamai-geometry = { git = "https://github.com/MIERUNE/plateau-gis-converter", tag = "v0.0.0-alpha.16" }
