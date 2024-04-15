@@ -231,6 +231,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomic"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d818003e740b63afc82337e3160717f4f63078720a810b7b903e70a5d1d2994"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -361,6 +370,12 @@ name = "bumpalo"
 version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
+
+[[package]]
+name = "bytemuck"
+version = "1.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d6d68c57235a3a081186990eca2867354726650f42f7516ca50c28d6281fd15"
 
 [[package]]
 name = "byteorder"
@@ -1056,6 +1071,7 @@ checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
 dependencies = [
  "ahash 0.8.11",
  "allocator-api2",
+ "serde",
 ]
 
 [[package]]
@@ -1309,6 +1325,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
+name = "japan-geoid"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "def642ef4488f91a5baac374b250cae685f1dcfdfb121c722d8e0e5acf37fc94"
+dependencies = [
+ "lz4_flex",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "jobserver"
 version = "0.1.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1433,6 +1459,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
 
 [[package]]
+name = "lz4_flex"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75761162ae2b0e580d7e7c390558127e5f01b4194debd6221fd8c207fc80e3f5"
+
+[[package]]
 name = "lzma-sys"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1441,6 +1473,16 @@ dependencies = [
  "cc",
  "libc",
  "pkg-config",
+]
+
+[[package]]
+name = "macros"
+version = "0.1.0"
+source = "git+https://github.com/MIERUNE/plateau-gis-converter?tag=v0.0.0-alpha.16#48472898735e26c65c42d5c7ab66a472f928e83c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.59",
 ]
 
 [[package]]
@@ -1616,11 +1658,57 @@ dependencies = [
 ]
 
 [[package]]
+name = "nusamai-citygml"
+version = "0.0.0-alpha.0"
+source = "git+https://github.com/MIERUNE/plateau-gis-converter?tag=v0.0.0-alpha.16#48472898735e26c65c42d5c7ab66a472f928e83c"
+dependencies = [
+ "ahash 0.8.11",
+ "chrono",
+ "indexmap 2.2.6",
+ "log",
+ "macros",
+ "nusamai-geometry",
+ "nusamai-projection",
+ "quick-xml",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "url",
+]
+
+[[package]]
 name = "nusamai-geometry"
 version = "0.1.0"
 source = "git+https://github.com/MIERUNE/plateau-gis-converter?tag=v0.0.0-alpha.16#48472898735e26c65c42d5c7ab66a472f928e83c"
 dependencies = [
  "num-traits",
+ "serde",
+]
+
+[[package]]
+name = "nusamai-plateau"
+version = "0.0.0-alpha.0"
+source = "git+https://github.com/MIERUNE/plateau-gis-converter?tag=v0.0.0-alpha.16#48472898735e26c65c42d5c7ab66a472f928e83c"
+dependencies = [
+ "chrono",
+ "hashbrown 0.14.3",
+ "indexmap 2.2.6",
+ "log",
+ "nusamai-citygml",
+ "nusamai-geometry",
+ "quick-xml",
+ "serde",
+ "stretto",
+ "url",
+]
+
+[[package]]
+name = "nusamai-projection"
+version = "0.1.0"
+source = "git+https://github.com/MIERUNE/plateau-gis-converter?tag=v0.0.0-alpha.16#48472898735e26c65c42d5c7ab66a472f928e83c"
+dependencies = [
+ "japan-geoid",
+ "thiserror",
 ]
 
 [[package]]
@@ -2208,8 +2296,11 @@ dependencies = [
  "directories",
  "futures",
  "itertools",
+ "nusamai-citygml",
+ "nusamai-plateau",
  "nutype",
  "once_cell",
+ "quick-xml",
  "reearth-flow-action",
  "reearth-flow-action-log",
  "reearth-flow-common",
@@ -2232,6 +2323,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "typetag",
+ "url",
  "uuid",
 ]
 
@@ -2287,6 +2379,7 @@ dependencies = [
  "tokio-util",
  "tracing",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]
@@ -2896,6 +2989,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "seahash"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c107b6f4780854c8b126e228ea8869f4d7b71260f962fefb57b996b8959ba6b"
+
+[[package]]
 name = "security-framework"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2950,6 +3049,7 @@ version = "1.0.115"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12dc5c46daa8e9fdf4f5e71b6cf9a53f2487da0e86e55808e2d35539666497dd"
 dependencies = [
+ "indexmap 2.2.6",
  "itoa",
  "ryu",
  "serde",
@@ -3235,6 +3335,24 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "stretto"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "392305f7265ba770154ee2b766674eb2a3226a5c943227f735257d7d552bbff5"
+dependencies = [
+ "atomic",
+ "crossbeam-channel",
+ "getrandom",
+ "parking_lot",
+ "rand",
+ "seahash",
+ "thiserror",
+ "tracing",
+ "wg",
+ "xxhash-rust",
+]
 
 [[package]]
 name = "strsim"
@@ -3767,6 +3885,7 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]
@@ -3945,6 +4064,12 @@ dependencies = [
  "js-sys",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "wg"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58f8542ff1b4f572beb2fa9620c0c5fc9abf6b15cfb609bfd87886328cbff4ef"
 
 [[package]]
 name = "widestring"
@@ -4152,6 +4277,12 @@ dependencies = [
  "cfg-if",
  "windows-sys 0.48.0",
 ]
+
+[[package]]
+name = "xxhash-rust"
+version = "0.8.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "927da81e25be1e1a2901d59b81b37dd2efd1fc9c9345a55007f09bf5a2d3ee03"
 
 [[package]]
 name = "xz2"

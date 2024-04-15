@@ -46,6 +46,7 @@ impl ActionRunner {
             action,
             node_name,
         );
+        let ctx = ctx.with_span(span.clone());
         let start = Instant::now();
         let mut params = vec![(
             "action".to_owned(),

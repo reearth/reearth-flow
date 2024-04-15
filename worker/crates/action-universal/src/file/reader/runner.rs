@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_common::csv::Delimiter;
 
-use super::{csv, json, text};
+use super::{citygml, csv, json, text};
 use reearth_flow_action::{
     utils, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result,
     DEFAULT_PORT,
@@ -43,6 +43,11 @@ pub enum FileReader {
     },
     #[serde(rename = "json")]
     Json {
+        #[serde(flatten)]
+        common_property: CommonPropertySchema,
+    },
+    #[serde(rename = "citygml")]
+    CityGML {
         #[serde(flatten)]
         common_property: CommonPropertySchema,
     },
@@ -99,6 +104,15 @@ impl AsyncAction for FileReader {
                 )
                 .await?;
                 json::read_json(input_path, storage_resolver).await?
+            }
+            Self::CityGML { common_property } => {
+                let input_path = get_input_path(
+                    &inputs.unwrap_or_default(),
+                    common_property,
+                    Arc::clone(&ctx.expr_engine),
+                )
+                .await?;
+                citygml::read_citygml(input_path, ctx).await?
             }
         };
         Ok(HashMap::from([(DEFAULT_PORT.clone(), Some(data))]))
