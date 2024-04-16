@@ -153,7 +153,7 @@ impl AsyncAction for DictionariesInitiator {
                     let mut result_value = feature.clone();
                     // Municipality name acquisition
                     if let Some(file) = codelists_map.get(dir_codelists) {
-                        if let Some(ActionValue::String(city_code)) = feature.get("cityCode") {
+                        if let Some(city_code) = &self.city_code {
                             if let Some(name) = file.get(ADMIN_CODE_LIST) {
                                 if let Some(city_name) = name.get(city_code) {
                                     result_value.insert(
@@ -175,36 +175,25 @@ impl AsyncAction for DictionariesInitiator {
                         ),
                     );
                     let ftypes = xpath_to_properties.keys().collect::<Vec<_>>();
-                    let out_ftypes = if let Some(ActionValue::Bool(true)) =
-                        feature.get("addNsprefixToFeatureTypes")
-                    {
-                        except_feature_types
-                            .iter()
-                            .flat_map(|v| {
-                                if ftypes.contains(&v) {
+                    let out_ftypes = ftypes
+                        .iter()
+                        .flat_map(|v| {
+                            if !except_feature_types.contains(v) {
+                                if let Some(true) = self.add_nsprefix_to_feature_types {
                                     Some(ActionValue::String(v.replace(':', "_")))
                                 } else {
-                                    None
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                    } else {
-                        except_feature_types
-                            .iter()
-                            .flat_map(|v| {
-                                if ftypes.contains(&v) {
                                     Some(ActionValue::String(
                                         v.split(':')
                                             .map(|v| v.to_string())
                                             .nth(1)
                                             .unwrap_or_default(),
                                     ))
-                                } else {
-                                    None
                                 }
-                            })
-                            .collect::<Vec<_>>()
-                    };
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>();
                     result_value.insert("featureTypes".to_string(), ActionValue::Array(out_ftypes));
                     result.push(ActionValue::Map(result_value));
                 }
@@ -299,7 +288,7 @@ fn generate_xpath(
         .complex_types
         .iter()
         .map(|(key, value)| {
-            if ["uro:DmGeometricAttribute", "uro:DmAnnotation"].contains(&key.as_ref()) {
+            if ["uro:DmGeometricAttribute", "uro:DmAnnotation"].contains(&key.as_str()) {
                 let value = value
                     .iter()
                     .map(|v| {
@@ -324,6 +313,7 @@ fn generate_xpath(
     for (key, items) in schema.features.iter() {
         let mut complex_type = Vec::new();
         complex_type.extend(COMMON_ITEMS.clone());
+        complex_type.extend(items.clone());
         complex_types.insert(key.clone(), complex_type);
         for obj in items.iter() {
             let properties = create_xpath(&complex_types, key.clone(), key.clone(), obj)?;
