@@ -1,6 +1,7 @@
 import { atom, useAtom } from "jotai";
 
 export type DialogType =
+  | "welcome-init"
   | "account-settings"
   | "workspaces-settings"
   | "workflow-settings"

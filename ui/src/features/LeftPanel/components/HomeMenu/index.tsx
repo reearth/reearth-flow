@@ -14,6 +14,8 @@ import {
   DropdownMenuTrigger,
   FlowLogo,
 } from "@flow/components";
+import { config } from "@flow/config";
+import { useOpenLink } from "@flow/hooks";
 import { useT } from "@flow/providers";
 
 import { AccountSetting, KeyboardSetting, WorkflowSetting, WorkspacesSetting } from "./components";
@@ -22,6 +24,9 @@ type Props = {};
 
 const HomeMenu: React.FC<Props> = () => {
   const t = useT();
+  const githubRepoUrl = config()?.githubRepoUrl;
+
+  const handleGithubPageOpen = useOpenLink(githubRepoUrl ?? "");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center [&>div]:data-[state=open]:bg-red-900">
@@ -30,7 +35,10 @@ const HomeMenu: React.FC<Props> = () => {
       </DropdownMenuTrigger>
       <DropdownMenuContent sideOffset={4} align="start" alignOffset={5} className="w-[275px]">
         <DropdownMenuLabel className="flex gap-2 text-zinc-400 justify-end items-center">
-          <p>{t("Re:Earth Flow v.1.14.2")}</p>
+          <p>
+            {t("Re:Earth Flow v")}
+            {config()?.version ?? "X.X.X"}
+          </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-zinc-800" />
         <DropdownMenuGroup>
@@ -54,12 +62,9 @@ const HomeMenu: React.FC<Props> = () => {
           </DropdownMenuSub>
         </DropdownMenuGroup>
         <DropdownMenuSeparator className="bg-zinc-800" />
-        <DropdownMenuItem
-          onClick={() =>
-            window.open("https://github.com/reearth/reearth-flow", "_blank", "noopener")
-          }>
-          {t("GitHub")}
-        </DropdownMenuItem>
+        {githubRepoUrl && (
+          <DropdownMenuItem onClick={handleGithubPageOpen}>{t("GitHub")}</DropdownMenuItem>
+        )}
         <DropdownMenuItem disabled>{t("Support (coming soon)")}</DropdownMenuItem>
         {/* <DropdownMenuItem disabled>API</DropdownMenuItem> */}
         <DropdownMenuSeparator className="bg-zinc-800" />

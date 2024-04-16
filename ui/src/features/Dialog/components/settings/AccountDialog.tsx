@@ -1,7 +1,6 @@
 import { useState } from "react";
 
-import { Dialog, DialogContent, DialogFooter } from "@flow/components";
-import { Button } from "@flow/components/buttons/BaseButton";
+import { Dialog, DialogContent, DialogFooter, Button } from "@flow/components";
 import { useT } from "@flow/providers";
 
 import { ContentHeader } from "../ContentHeader";

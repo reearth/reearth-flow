@@ -2423,6 +2423,29 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@radix-ui/react-avatar@npm:^1.0.4":
+  version: 1.0.4
+  resolution: "@radix-ui/react-avatar@npm:1.0.4"
+  dependencies:
+    "@babel/runtime": "npm:^7.13.10"
+    "@radix-ui/react-context": "npm:1.0.1"
+    "@radix-ui/react-primitive": "npm:1.0.3"
+    "@radix-ui/react-use-callback-ref": "npm:1.0.1"
+    "@radix-ui/react-use-layout-effect": "npm:1.0.1"
+  peerDependencies:
+    "@types/react": "*"
+    "@types/react-dom": "*"
+    react: ^16.8 || ^17.0 || ^18.0
+    react-dom: ^16.8 || ^17.0 || ^18.0
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    "@types/react-dom":
+      optional: true
+  checksum: 10c0/608494c53968085bfcf9b987d80c3ec6720bdb65f78591d53e8bba3b360e86366d48a7dee11405dd443f5a3565432184b95bb9d4954bca1922cc9385a942caaf
+  languageName: node
+  linkType: hard
+
 "@radix-ui/react-collapsible@npm:1.0.3":
   version: 1.0.3
   resolution: "@radix-ui/react-collapsible@npm:1.0.3"
@@ -2743,6 +2766,39 @@ __metadata:
     "@types/react-dom":
       optional: true
   checksum: 10c0/06926fa59cb8f5614f2e1a085ea1cbf09631ae28fb6e5d6e6d2a0a84d24979e3aca311cdb19dfdb254c1823ff85fd5250c29d4463f8f7622dd523e35df3fce1d
+  languageName: node
+  linkType: hard
+
+"@radix-ui/react-navigation-menu@npm:^1.1.4":
+  version: 1.1.4
+  resolution: "@radix-ui/react-navigation-menu@npm:1.1.4"
+  dependencies:
+    "@babel/runtime": "npm:^7.13.10"
+    "@radix-ui/primitive": "npm:1.0.1"
+    "@radix-ui/react-collection": "npm:1.0.3"
+    "@radix-ui/react-compose-refs": "npm:1.0.1"
+    "@radix-ui/react-context": "npm:1.0.1"
+    "@radix-ui/react-direction": "npm:1.0.1"
+    "@radix-ui/react-dismissable-layer": "npm:1.0.5"
+    "@radix-ui/react-id": "npm:1.0.1"
+    "@radix-ui/react-presence": "npm:1.0.1"
+    "@radix-ui/react-primitive": "npm:1.0.3"
+    "@radix-ui/react-use-callback-ref": "npm:1.0.1"
+    "@radix-ui/react-use-controllable-state": "npm:1.0.1"
+    "@radix-ui/react-use-layout-effect": "npm:1.0.1"
+    "@radix-ui/react-use-previous": "npm:1.0.1"
+    "@radix-ui/react-visually-hidden": "npm:1.0.3"
+  peerDependencies:
+    "@types/react": "*"
+    "@types/react-dom": "*"
+    react: ^16.8 || ^17.0 || ^18.0
+    react-dom: ^16.8 || ^17.0 || ^18.0
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    "@types/react-dom":
+      optional: true
+  checksum: 10c0/0a7594e60fe9a9e4918d1ddaa00554f5e717b724c1a5317885aa995da6bdf18eb0372c5eadfe50e7aea1eadc65a27f183290b22870ae6ea6e590db8c3a883b25
   languageName: node
   linkType: hard
 
@@ -3393,9 +3449,11 @@ __metadata:
   resolution: "@reearth/flow-web@workspace:."
   dependencies:
     "@radix-ui/react-accordion": "npm:1.1.2"
+    "@radix-ui/react-avatar": "npm:^1.0.4"
     "@radix-ui/react-dialog": "npm:1.0.5"
     "@radix-ui/react-dropdown-menu": "npm:2.0.6"
     "@radix-ui/react-icons": "npm:1.3.0"
+    "@radix-ui/react-navigation-menu": "npm:^1.1.4"
     "@radix-ui/react-progress": "npm:1.0.3"
     "@radix-ui/react-scroll-area": "npm:1.0.5"
     "@radix-ui/react-slot": "npm:1.0.2"
@@ -3417,6 +3475,7 @@ __metadata:
     autoprefixer: "npm:10.4.17"
     class-variance-authority: "npm:0.7.0"
     clsx: "npm:2.1.0"
+    embla-carousel-react: "npm:^8.0.2"
     eslint: "npm:8.56.0"
     eslint-config-reearth: "npm:0.3.0"
     eslint-plugin-import: "npm:2.29.1"
@@ -3437,6 +3496,7 @@ __metadata:
     react-leaflet: "npm:4.2.1"
     react-resizable-panels: "npm:2.0.9"
     reactflow: "npm:11.10.4"
+    read-env: "npm:2.0.0"
     storybook: "npm:7.6.17"
     tailwind-merge: "npm:2.2.1"
     tailwindcss: "npm:3.4.1"
@@ -4469,6 +4529,15 @@ __metadata:
     "@types/connect": "npm:*"
     "@types/node": "npm:*"
   checksum: 10c0/aebeb200f25e8818d8cf39cd0209026750d77c9b85381cdd8deeb50913e4d18a1ebe4b74ca9b0b4d21952511eeaba5e9fbbf739b52731a2061e206ec60d568df
+  languageName: node
+  linkType: hard
+
+"@types/camelcase@npm:5.2.0":
+  version: 5.2.0
+  resolution: "@types/camelcase@npm:5.2.0"
+  dependencies:
+    camelcase: "npm:*"
+  checksum: 10c0/42d4a250b5eecaeebd35c216e6394b7b0bf427a4f0b20068db754ed931cb3d2089e93c9c1af61614cca9fb8dfdaffb4be45ddba1fcae35caead73211816118fb
   languageName: node
   linkType: hard
 
@@ -6412,7 +6481,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"camelcase@npm:^5.3.1":
+"camelcase@npm:*":
+  version: 8.0.0
+  resolution: "camelcase@npm:8.0.0"
+  checksum: 10c0/56c5fe072f0523c9908cdaac21d4a3b3fb0f608fb2e9ba90a60e792b95dd3bb3d1f3523873ab17d86d146e94171305f73ef619e2f538bd759675bc4a14b4bff3
+  languageName: node
+  linkType: hard
+
+"camelcase@npm:5.3.1, camelcase@npm:^5.3.1":
   version: 5.3.1
   resolution: "camelcase@npm:5.3.1"
   checksum: 10c0/92ff9b443bfe8abb15f2b1513ca182d16126359ad4f955ebc83dc4ddcc4ef3fdd2c078bc223f2673dc223488e75c99b16cc4d056624374b799e6a1555cf61b23
@@ -7348,6 +7424,34 @@ __metadata:
   version: 1.4.680
   resolution: "electron-to-chromium@npm:1.4.680"
   checksum: 10c0/f5877042ee84fce419b1c475ca1f75d1c19c0ecf358572635dffed97d8591a25c169ee1b5abfb8a14d741c699fcc4a92b1ef1f771fbd7887f3a18499a8eaf260
+  languageName: node
+  linkType: hard
+
+"embla-carousel-react@npm:^8.0.2":
+  version: 8.0.2
+  resolution: "embla-carousel-react@npm:8.0.2"
+  dependencies:
+    embla-carousel: "npm:8.0.2"
+    embla-carousel-reactive-utils: "npm:8.0.2"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.1 || ^18.0.0
+  checksum: 10c0/7e45266d4251a960515a3283e65454b61e54d6f400f2dee7f56a3ac50532f7ce4735d926494cb1570d81de4bf299c3d1417ab4e64467cda139a7f60b49583757
+  languageName: node
+  linkType: hard
+
+"embla-carousel-reactive-utils@npm:8.0.2":
+  version: 8.0.2
+  resolution: "embla-carousel-reactive-utils@npm:8.0.2"
+  peerDependencies:
+    embla-carousel: 8.0.2
+  checksum: 10c0/e7e81916971008642700af0b96a59117324214c020759a53feb1d96edb34649329018777dc00b87c631c9d04efd544945f5914dc3cbd5289766a6cdcea253f4e
+  languageName: node
+  linkType: hard
+
+"embla-carousel@npm:8.0.2":
+  version: 8.0.2
+  resolution: "embla-carousel@npm:8.0.2"
+  checksum: 10c0/e63ce4e387c0e227ce211a1131f81c74dbe6c4bb32a5d072e0c1e30774305ca9a30fc86ebb042707bf8d6ec8cb57575628dfa1b18b36dd3206d4774cd34b73bc
   languageName: node
   linkType: hard
 
@@ -12109,6 +12213,16 @@ __metadata:
   dependencies:
     pify: "npm:^2.3.0"
   checksum: 10c0/90cb2750213c7dd7c80cb420654344a311fdec12944e81eb912cd82f1bc92aea21885fa6ce442e3336d9fccd663b8a7a19c46d9698e6ca55620848ab932da814
+  languageName: node
+  linkType: hard
+
+"read-env@npm:2.0.0":
+  version: 2.0.0
+  resolution: "read-env@npm:2.0.0"
+  dependencies:
+    "@types/camelcase": "npm:5.2.0"
+    camelcase: "npm:5.3.1"
+  checksum: 10c0/d092c46f5701647ab4b842f83e6f46b247fa761e0d57258cdab1d8ad163dd228ec7b12374073a908cd55c5bfe55a6fdbceac985b04d257454bd2e7bdf39c5ece
   languageName: node
   linkType: hard
 

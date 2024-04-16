@@ -1,6 +1,7 @@
 import { DialogContent as DialogContentPrimitive, IconButton } from "@flow/components";
 import { DialogType } from "@flow/stores";
 
+import useInits from "./inits/useInits";
 import useInstructions from "./instructions/useInstructions";
 import useSettings from "./settings/useSettings";
 
@@ -17,25 +18,29 @@ type Props = {
 };
 
 const DialogContent: React.FC<Props> = ({ tab, onTabChange }) => {
+  const inits = useInits();
   const settings = useSettings();
-
   const instructions = useInstructions();
 
-  const content = tab?.includes("settings")
-    ? settings
-    : tab?.includes("instructions")
-      ? instructions
-      : null;
+  const content = tab?.includes("init")
+    ? inits
+    : tab?.includes("settings")
+      ? settings
+      : tab?.includes("instructions")
+        ? instructions
+        : null;
 
-  const disableClickaway = tab.includes("settings");
+  const disableClickaway = tab.includes("settings") || tab === "welcome-init";
 
   return content ? (
     <DialogContentPrimitive
+      size={tab === "welcome-init" ? "2xl" : undefined}
+      hideCloseButton={tab === "welcome-init"}
       onPointerDownOutside={e => disableClickaway && e.preventDefault()}
       onEscapeKeyDown={e => disableClickaway && e.preventDefault()}>
       <div className="flex">
         {content.length > 1 && (
-          <div className="flex flex-col pr-4 py-6 border-r border-zinc-800">
+          <div className="flex flex-col pr-8 py-6 border-r border-zinc-800">
             {content.map(c => (
               <IconButton
                 key={c.id}
@@ -49,7 +54,7 @@ const DialogContent: React.FC<Props> = ({ tab, onTabChange }) => {
             ))}
           </div>
         )}
-        <div className="pl-4 w-full">{content.find(c => c.id === tab)?.component}</div>
+        <div className="w-full">{content.find(c => c.id === tab)?.component}</div>
       </div>
     </DialogContentPrimitive>
   ) : null;

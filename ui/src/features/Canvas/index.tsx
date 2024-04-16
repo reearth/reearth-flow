@@ -1,4 +1,4 @@
-import { useState, useCallback, MouseEvent, useMemo } from "react";
+import { useState, useCallback, MouseEvent, useMemo, useEffect } from "react";
 import ReactFlow, {
   addEdge,
   applyNodeChanges,
@@ -29,11 +29,16 @@ import {
 
 import "reactflow/dist/style.css";
 
-import { initialEdges, initialNodes } from "./mockData";
+import { useDialogAtom } from "@flow/stores";
+
 import useDnd from "./useDnd";
 
 type CanvasProps = {
   leftArea?: React.ReactNode;
+  workflow?: {
+    nodes?: Node[];
+    edges?: Edge[];
+  };
 };
 
 // const edgeTypes: EdgeTypes = {
@@ -57,9 +62,11 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
   // animated: true,
 };
 
-export default function Canvas({ leftArea }: CanvasProps) {
-  const [nodes, setNodes] = useNodesState(initialNodes);
-  const [edges, setEdges] = useEdgesState(initialEdges);
+export default function Canvas({ workflow, leftArea }: CanvasProps) {
+  const [nodes, setNodes] = useNodesState(workflow?.nodes ?? []);
+  const [edges, setEdges] = useEdgesState(workflow?.edges ?? []);
+
+  const [currentDialogType, setDialogType] = useDialogAtom();
 
   const selected = useMemo(() => {
     const selectedNodes = nodes.filter(node => node.selected);
@@ -116,6 +123,15 @@ export default function Canvas({ leftArea }: CanvasProps) {
   // useEffect(() => {
   //   console.log("hoveredDetails", hoveredDetails);
   // }, [hoveredDetails]);
+
+  useEffect(() => {
+    console.log("hi");
+    if (!workflow && currentDialogType !== "welcome-init") {
+      setDialogType("welcome-init");
+    } else if (workflow && currentDialogType === "welcome-init") {
+      setDialogType(undefined);
+    }
+  }, [workflow, currentDialogType, setDialogType]);
 
   return (
     <div className="flex-1 m-1 rounded-sm relative">

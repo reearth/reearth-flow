@@ -32,6 +32,7 @@ export const initialNodes: Node[] = [
     selected: true,
     data: { name: "Transformer Node 2", inputs: ["input1"], outputs: ["output1", "output2"] },
     position: { x: 315, y: 400 },
+    parentNode: "batch1",
   },
   {
     id: "3",

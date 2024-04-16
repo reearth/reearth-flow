@@ -44,7 +44,10 @@ export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) =>
       }
 
       if (type === "note") {
-        newNode = { ...newNode, data: { content: "New Note", width: 300, height: 200 } };
+        newNode = {
+          ...newNode,
+          data: { content: "New Note", width: 300, height: 200 },
+        };
       }
 
       setNodes(nds => nds.concat(newNode));

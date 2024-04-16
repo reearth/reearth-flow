@@ -1,4 +1,4 @@
-import { Button } from "@flow/components/buttons/BaseButton";
+import { Button } from "@flow/components";
 import { useT } from "@flow/providers";
 
 import { ContentHeader } from "../ContentHeader";

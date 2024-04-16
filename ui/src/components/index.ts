@@ -8,3 +8,6 @@ export * from "./ScrollArea";
 export * from "./Tooltip";
 export * from "./Dialog";
 export * from "./FileTree";
+export * from "./Carousel";
+export * from "./Avatar";
+export * from "./NavigationMenu";

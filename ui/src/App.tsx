@@ -6,6 +6,7 @@ import LeftPanel from "@flow/features/LeftPanel";
 // import RightPanel from "@flow/features/RightPanel";
 import { useTimeoutOnLoad } from "@flow/hooks";
 
+// import { initialEdges, initialNodes } from "./features/Canvas/mockData";
 import { I18nProvider, TooltipProvider } from "./providers";
 
 function App() {
@@ -17,13 +18,17 @@ function App() {
         <div className="flex flex-col bg-zinc-900 text-zinc-300 h-screen">
           <div className="flex flex-1">
             <div className="flex flex-col flex-1 p-0">
-              <Canvas leftArea={<LeftPanel />} />
+              <Canvas
+                // workflow={{}}
+                // workflow={{ nodes: initialNodes, edges: initialEdges }}
+                leftArea={<LeftPanel />}
+              />
               <BottomPanel />
             </div>
             {/* <RightPanel /> */}
           </div>
         </div>
-        <Dialog />
+        {!isLoading && <Dialog />}
         <Loading show={isLoading} />
       </TooltipProvider>
     </I18nProvider>
