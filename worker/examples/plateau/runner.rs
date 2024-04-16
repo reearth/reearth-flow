@@ -16,6 +16,7 @@ use reearth_flow_workflow_runner::dag::DagExecutor;
 
 #[tokio::main]
 async fn main() {
+    env::set_var("RAYON_NUM_THREADS", "4");
     setup_logging_and_tracing();
     let job_id = Id::new_v4();
     let dataframe_state_uri = {
