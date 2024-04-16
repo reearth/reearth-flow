@@ -25,9 +25,27 @@ pub async fn extract(
     let reader = ZipFileReader::new(bytes.to_vec())
         .await
         .map_err(crate::error::Error::input)?;
-
-    let mut root: Option<Uri> = None;
+    if reader.file().entries().is_empty() {
+        return Err(crate::error::Error::input("No entries"));
+    }
     let mut entries = Vec::new();
+    let entry = reader
+        .file()
+        .entries()
+        .first()
+        .ok_or(crate::error::Error::internal_runtime("No entry"))?;
+    let filename = entry
+        .filename()
+        .as_str()
+        .map_err(crate::error::Error::internal_runtime)?;
+    let file_uri = filename
+        .split('/')
+        .next()
+        .ok_or(crate::error::Error::internal_runtime("No file name"))?;
+    let file_uri = root_output_path
+        .join(file_uri)
+        .map_err(crate::error::Error::internal_runtime)?;
+    let root = file_uri;
 
     for i in 0..reader.file().entries().len() {
         let entry = reader
@@ -39,16 +57,6 @@ pub async fn extract(
             .filename()
             .as_str()
             .map_err(crate::error::Error::internal_runtime)?;
-        if i == 0 {
-            let file_uri = filename
-                .split('/')
-                .next()
-                .ok_or(crate::error::Error::internal_runtime("No file name"))?;
-            let file_uri = root_output_path
-                .join(file_uri)
-                .map_err(crate::error::Error::internal_runtime)?;
-            root = Some(file_uri);
-        }
         let outpath = root_output_path
             .join(filename)
             .map_err(crate::error::Error::internal_runtime)?;
@@ -91,8 +99,5 @@ pub async fn extract(
             .await
             .map_err(crate::error::Error::internal_runtime)?;
     }
-    Ok(ZipExtract::new(
-        root.ok_or(crate::error::Error::internal_runtime("No root"))?,
-        entries,
-    ))
+    Ok(ZipExtract::new(root, entries))
 }

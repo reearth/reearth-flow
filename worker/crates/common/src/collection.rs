@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use futures::Future;
 use rayon::prelude::*;
 
 pub fn filter<T, P>(collection: &[T], predict: P) -> Vec<T>
@@ -40,6 +41,17 @@ where
     R: Send + Sync,
 {
     collection.par_iter().map(predict).collect::<Vec<_>>()
+}
+
+pub async fn join_parallel<T: Send + 'static>(
+    futs: impl IntoIterator<Item = impl Future<Output = T> + Send + 'static>,
+) -> Vec<T> {
+    let tasks: Vec<_> = futs.into_iter().map(tokio::spawn).collect();
+    futures::future::join_all(tasks)
+        .await
+        .into_iter()
+        .map(Result::unwrap)
+        .collect()
 }
 
 pub fn vec_to_map<T, P, R>(collection: &[T], predict: P) -> HashMap<String, R>
