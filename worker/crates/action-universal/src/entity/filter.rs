@@ -9,7 +9,6 @@ use reearth_flow_action::{
     REJECTED_PORT,
 };
 use reearth_flow_action_log::action_log;
-use reearth_flow_action_log::span;
 use reearth_flow_common::collection;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -36,12 +35,7 @@ impl AsyncAction for EntityFilter {
         let input = input.as_ref().ok_or(Error::input("No Value"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let params = convert_dataframe_to_scope_params(&inputs);
-        let span = span(
-            ctx.root_span.clone(),
-            "EntityFilter".to_string(),
-            ctx.node_id.to_string(),
-            ctx.node_name,
-        );
+        let span = &ctx.root_span;
         let logger = Arc::clone(&ctx.logger);
 
         let mut result = HashMap::<Port, Vec<ActionValue>>::new();

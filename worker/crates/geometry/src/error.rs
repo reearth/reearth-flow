@@ -1,6 +1,6 @@
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("Error while running action: {0}")]
+    #[error("Error mismatched geometry: {0}")]
     MismatchedGeometry(String),
 }
 

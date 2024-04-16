@@ -1,9 +1,11 @@
 use approx::{AbsDiffEq, RelativeEq};
+use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
 use super::line_string::LineString;
 use super::no_value::NoValue;
+use super::rect::Rect;
 use super::triangle::Triangle;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
@@ -65,25 +67,41 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
     }
 }
 
-// impl<T: CoordNum> From<Rect<T>> for Polygon<T> {
-//     fn from(r: Rect<T>) -> Self {
-//         Polygon::new(
-//             vec![
-//                 (r.min().x, r.min().y),
-//                 (r.max().x, r.min().y),
-//                 (r.max().x, r.max().y),
-//                 (r.min().x, r.max().y),
-//                 (r.min().x, r.min().y),
-//             ]
-//             .into(),
-//             Vec::new(),
-//         )
-//     }
-// }
+impl<T: CoordNum> From<Rect<T>> for Polygon<T> {
+    fn from(r: Rect<T>) -> Self {
+        Polygon::new(
+            vec![
+                (r.min().x, r.min().y),
+                (r.max().x, r.min().y),
+                (r.max().x, r.max().y),
+                (r.min().x, r.max().y),
+                (r.min().x, r.min().y),
+            ]
+            .into(),
+            Vec::new(),
+        )
+    }
+}
 
 impl<T: CoordNum, Z: CoordNum> From<Triangle<T, Z>> for Polygon<T, Z> {
     fn from(t: Triangle<T, Z>) -> Self {
         Self::new(vec![t.0, t.1, t.2, t.0].into(), Vec::new())
+    }
+}
+
+impl<'a> From<NPolygon2<'a>> for Polygon2D<f64> {
+    #[inline]
+    fn from(poly: NPolygon2<'a>) -> Self {
+        let interiors = poly.interiors().map(|interior| interior.into()).collect();
+        Polygon2D::new(poly.exterior().into(), interiors)
+    }
+}
+
+impl<'a> From<NPolygon3<'a>> for Polygon3D<f64> {
+    #[inline]
+    fn from(poly: NPolygon3<'a>) -> Self {
+        let interiors = poly.interiors().map(|interior| interior.into()).collect();
+        Polygon3D::new(poly.exterior().into(), interiors)
     }
 }
 

@@ -26,10 +26,14 @@ csv.workspace = true
 directories.workspace = true
 futures.workspace = true
 itertools.workspace = true
+nusamai-citygml.workspace = true
+nusamai-plateau.workspace = true
 nutype.workspace = true
 once_cell.workspace = true
+quick-xml.workspace = true
 regex.workspace = true
 rhai.workspace = true
+rust_xlsxwriter.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
@@ -41,8 +45,8 @@ tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
 typetag.workspace = true
+url.workspace = true
 uuid.workspace = true
-rust_xlsxwriter.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true

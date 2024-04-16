@@ -3,6 +3,10 @@ use std::iter::FromIterator;
 use approx::{AbsDiffEq, RelativeEq};
 use serde::{Deserialize, Serialize};
 
+use nusamai_geometry::{
+    MultiLineString2 as NMultiLineString2, MultiLineString3 as NMultiLineString3,
+};
+
 use super::coordnum::CoordNum;
 use super::line_string::LineString;
 use super::no_value::NoValue;
@@ -71,6 +75,20 @@ impl<T: CoordNum, Z: CoordNum> MultiLineString<T, Z> {
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut LineString<T, Z>> {
         self.0.iter_mut()
+    }
+}
+
+impl<'a> From<NMultiLineString2<'a>> for MultiLineString2D<f64> {
+    #[inline]
+    fn from(line_strings: NMultiLineString2<'a>) -> Self {
+        MultiLineString2D::new(line_strings.iter().map(|a| a.into()).collect::<Vec<_>>())
+    }
+}
+
+impl<'a> From<NMultiLineString3<'a>> for MultiLineString3D<f64> {
+    #[inline]
+    fn from(line_strings: NMultiLineString3<'a>) -> Self {
+        MultiLineString3D::new(line_strings.iter().map(|a| a.into()).collect::<Vec<_>>())
     }
 }
 

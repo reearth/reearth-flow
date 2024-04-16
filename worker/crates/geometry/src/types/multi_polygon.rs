@@ -3,9 +3,11 @@ use std::iter::FromIterator;
 use approx::{AbsDiffEq, RelativeEq};
 use serde::{Deserialize, Serialize};
 
+use nusamai_geometry::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3};
+
 use super::coordnum::CoordNum;
 use super::no_value::NoValue;
-use super::polygon::Polygon;
+use super::polygon::{Polygon, Polygon2D, Polygon3D};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub struct MultiPolygon<T: CoordNum = f64, Z: CoordNum = NoValue>(pub Vec<Polygon<T, Z>>);
@@ -69,6 +71,20 @@ impl<T: CoordNum, Z: CoordNum> MultiPolygon<T, Z> {
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Polygon<T, Z>> {
         self.0.iter_mut()
+    }
+}
+
+impl<'a> From<NMultiPolygon2<'a>> for MultiPolygon2D<f64> {
+    #[inline]
+    fn from(mpoly: NMultiPolygon2<'a>) -> Self {
+        mpoly.iter().map(Polygon2D::from).collect()
+    }
+}
+
+impl<'a> From<NMultiPolygon3<'a>> for MultiPolygon3D<f64> {
+    #[inline]
+    fn from(mpoly: NMultiPolygon3<'a>) -> Self {
+        mpoly.iter().map(Polygon3D::from).collect()
     }
 }
 

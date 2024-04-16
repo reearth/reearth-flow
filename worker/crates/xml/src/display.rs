@@ -14,39 +14,33 @@ use crate::{
 };
 
 #[inline]
-pub(crate) fn fmt_element(
-    element: RefElement<'_>,
-    target_tags: &[String],
-    exclude_tags: &[String],
-) -> Result<Vec<String>> {
+pub(crate) fn fmt_element(element: RefElement<'_>) -> Result<Vec<String>> {
     let mut result = Vec::<String>::new();
-    let is_target = (!target_tags.is_empty()
-        && target_tags.contains(&element.node_name().to_string()))
-        || (exclude_tags.is_empty() && !exclude_tags.contains(&element.node_name().to_string()));
-    if is_target {
-        result.push(format!(
-            "{}{}",
-            XML_ELEMENT_START_START,
-            element.node_name()
-        ));
-        for attr in element.attributes().values() {
-            let attribute = fmt_attribute(as_attribute(attr).unwrap())?;
-            result.extend(attribute);
-        }
-        result.push(XML_ELEMENT_START_END.to_string());
+    result.push(format!(
+        "{}{}",
+        XML_ELEMENT_START_START,
+        element.node_name()
+    ));
+    for attr in element.attributes().values() {
+        let attribute = fmt_attribute(as_attribute(attr).unwrap())?;
+        result.extend(
+            attribute
+                .into_iter()
+                .map(|s| format!(" {}", s))
+                .collect::<Vec<_>>(),
+        );
     }
+    result.push(XML_ELEMENT_START_END.to_string());
     for child in element.child_nodes() {
-        let child_node = recursive_fmt_node(&child, target_tags, exclude_tags)?;
+        let child_node = recursive_fmt_node(&child)?;
         result.extend(child_node);
     }
-    if is_target {
-        result.push(format!(
-            "{}{}{}",
-            XML_ELEMENT_END_START,
-            element.node_name(),
-            XML_ELEMENT_END_END
-        ));
-    }
+    result.push(format!(
+        "{}{}{}",
+        XML_ELEMENT_END_START,
+        element.node_name(),
+        XML_ELEMENT_END_END
+    ));
     Ok(result)
 }
 
@@ -109,22 +103,18 @@ pub(crate) fn fmt_comment(character_data: RefCharacterData<'_>) -> Result<Vec<St
 }
 
 #[inline]
-pub(crate) fn fmt_document(
-    document: RefDocumentDecl<'_>,
-    target_tags: &[String],
-    exclude_tags: &[String],
-) -> Result<Vec<String>> {
+pub(crate) fn fmt_document(document: RefDocumentDecl<'_>) -> Result<Vec<String>> {
     let mut result = Vec::<String>::new();
     if let Some(xml_declaration) = &document.xml_declaration() {
         result.push(format!("{}", xml_declaration));
     }
 
     if let Some(doc_type) = &document.doc_type() {
-        let child_node = recursive_fmt_node(doc_type, target_tags, exclude_tags)?;
+        let child_node = recursive_fmt_node(doc_type)?;
         result.extend(child_node);
     }
     for child in document.child_nodes() {
-        let child_node = recursive_fmt_node(&child, target_tags, exclude_tags)?;
+        let child_node = recursive_fmt_node(&child)?;
         result.extend(child_node);
     }
     Ok(result)
@@ -218,13 +208,9 @@ pub(crate) fn fmt_notation(notation: RefNotation<'_>) -> Result<Vec<String>> {
 }
 
 #[inline]
-pub(crate) fn recursive_fmt_node(
-    node: &RefNode,
-    target_tags: &[String],
-    exclude_tags: &[String],
-) -> Result<Vec<String>> {
+pub(crate) fn recursive_fmt_node(node: &RefNode) -> Result<Vec<String>> {
     match node.borrow().node_type {
-        NodeType::Element => fmt_element(as_element(node).unwrap(), target_tags, exclude_tags),
+        NodeType::Element => fmt_element(as_element(node).unwrap()),
         NodeType::Attribute => fmt_attribute(as_attribute(node).unwrap()),
         NodeType::Text => fmt_text(as_character_data(node).unwrap()),
         NodeType::CData => fmt_cdata(as_character_data(node).unwrap()),
@@ -232,9 +218,7 @@ pub(crate) fn recursive_fmt_node(
             fmt_processing_instruction(as_processing_instruction(node).unwrap())
         }
         NodeType::Comment => fmt_comment(as_character_data(node).unwrap()),
-        NodeType::Document => {
-            fmt_document(as_document_decl(node).unwrap(), target_tags, exclude_tags)
-        }
+        NodeType::Document => fmt_document(as_document_decl(node).unwrap()),
         NodeType::DocumentType => fmt_document_type(as_document_type(node).unwrap()),
         NodeType::DocumentFragment => fmt_document_fragment(as_document_fragment(node).unwrap()),
         NodeType::Entity => fmt_entity(as_entity(node).unwrap()),
@@ -243,12 +227,8 @@ pub(crate) fn recursive_fmt_node(
     }
 }
 
-pub(crate) fn fmt_node(
-    node: &RefNode,
-    target_tags: &[String],
-    exclude_tags: &[String],
-) -> Result<String> {
-    let result = recursive_fmt_node(node, target_tags, exclude_tags)?;
+pub(crate) fn fmt_node(node: &RefNode) -> Result<String> {
+    let result = recursive_fmt_node(node)?;
     Ok(result.join(""))
 }
 
