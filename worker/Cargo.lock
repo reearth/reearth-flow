@@ -440,9 +440,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chrono"
-version = "0.4.37"
+version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a0d04d43504c61aa6c7531f1871dd0d418d91130162063b789da00fd7057a5e"
+checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
@@ -1478,7 +1478,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/MIERUNE/plateau-gis-converter?tag=v0.0.0-alpha.16#48472898735e26c65c42d5c7ab66a472f928e83c"
+source = "git+https://github.com/reearth/plateau-gis-converter#629b41c36afcc8c3b269ce15207bfe07430cb378"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1659,8 +1659,8 @@ dependencies = [
 
 [[package]]
 name = "nusamai-citygml"
-version = "0.0.0-alpha.0"
-source = "git+https://github.com/MIERUNE/plateau-gis-converter?tag=v0.0.0-alpha.16#48472898735e26c65c42d5c7ab66a472f928e83c"
+version = "0.1.0"
+source = "git+https://github.com/reearth/plateau-gis-converter#629b41c36afcc8c3b269ce15207bfe07430cb378"
 dependencies = [
  "ahash 0.8.11",
  "chrono",
@@ -1679,7 +1679,7 @@ dependencies = [
 [[package]]
 name = "nusamai-geometry"
 version = "0.1.0"
-source = "git+https://github.com/MIERUNE/plateau-gis-converter?tag=v0.0.0-alpha.16#48472898735e26c65c42d5c7ab66a472f928e83c"
+source = "git+https://github.com/reearth/plateau-gis-converter#629b41c36afcc8c3b269ce15207bfe07430cb378"
 dependencies = [
  "num-traits",
  "serde",
@@ -1687,8 +1687,8 @@ dependencies = [
 
 [[package]]
 name = "nusamai-plateau"
-version = "0.0.0-alpha.0"
-source = "git+https://github.com/MIERUNE/plateau-gis-converter?tag=v0.0.0-alpha.16#48472898735e26c65c42d5c7ab66a472f928e83c"
+version = "0.1.0"
+source = "git+https://github.com/reearth/plateau-gis-converter#629b41c36afcc8c3b269ce15207bfe07430cb378"
 dependencies = [
  "chrono",
  "hashbrown 0.14.3",
@@ -1705,7 +1705,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/MIERUNE/plateau-gis-converter?tag=v0.0.0-alpha.16#48472898735e26c65c42d5c7ab66a472f928e83c"
+source = "git+https://github.com/reearth/plateau-gis-converter#629b41c36afcc8c3b269ce15207bfe07430cb378"
 dependencies = [
  "japan-geoid",
  "thiserror",
@@ -2117,9 +2117,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.80"
+version = "1.0.81"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a56dea16b0a29e94408b9aa5e2940a4eedbd128a1ba20e8f7ae60fd3d465af0e"
+checksum = "3d1597b0c024618f09a9c3b8655b7e430397a36d23fdafec26d6965e9eec3eba"
 dependencies = [
  "unicode-ident",
 ]
@@ -3025,18 +3025,18 @@ checksum = "92d43fe69e652f3df9bdc2b85b2854a0825b86e4fb76bc44d945137d053639ca"
 
 [[package]]
 name = "serde"
-version = "1.0.197"
+version = "1.0.198"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fb1c873e1b9b056a4dc4c0c198b24c3ffa059243875552b2bd0933b1aee4ce2"
+checksum = "9846a40c979031340571da2545a4e5b7c4163bdae79b301d5f86d03979451fcc"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.197"
+version = "1.0.198"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7eb0b34b42edc17f6b7cac84a52a1c5f0e1bb2227e997ca9011ea3dd34e8610b"
+checksum = "e88edab869b01783ba905e7d0153f9fc1a6505a96e4ad3018011eedb838566d9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3045,9 +3045,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.115"
+version = "1.0.116"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12dc5c46daa8e9fdf4f5e71b6cf9a53f2487da0e86e55808e2d35539666497dd"
+checksum = "3e17db7126d17feb94eb3fad46bf1a96b034e8aacbc2e775fe81505f8b0b2813"
 dependencies = [
  "indexmap 2.2.6",
  "itoa",
