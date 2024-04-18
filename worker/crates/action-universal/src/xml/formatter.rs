@@ -31,19 +31,16 @@ impl AsyncAction for XmlFormatter {
                     .map(|x| match x {
                         ActionValue::Map(mut kv) => {
                             if let Some(v) = kv.get_mut(&self.attribute) {
-                                match v {
-                                    ActionValue::String(src) => {
-                                        *src = match {||
-                                            read_xml(src)?
-                                                .first_child()
-                                                .ok_or(reearth_flow_xml::error::Error::WrongDocument)?
-                                                .to_xml()
-                                        }() {
-                                            Ok(x) => x,
-                                            Err(_) => src.to_string(),
-                                        }
+                                if let ActionValue::String(src) = v {
+                                    *src = match {||
+                                        read_xml(src)?
+                                            .first_child()
+                                            .ok_or(reearth_flow_xml::error::Error::WrongDocument)?
+                                            .to_xml()
+                                    }() {
+                                        Ok(x) => x,
+                                        Err(_) => src.to_string(),
                                     }
-                                    _ => (),
                                 }
                             };
                             ActionValue::Map(kv.clone())
