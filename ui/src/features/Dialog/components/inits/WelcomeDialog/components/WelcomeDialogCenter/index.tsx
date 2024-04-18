@@ -6,22 +6,40 @@ import {
   CarouselPrevious,
 } from "@flow/components";
 import { ContentSection } from "@flow/features/Dialog/components/ContentSection";
+import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 
-import { projects } from "../../mockProjectData";
+import { ProjectCard } from "./components";
 
 const WelcomeDialogCenter: React.FC = () => {
+  const [currentWorkspace] = useCurrentWorkspace();
+  const [currentProject, setCurrentProject] = useCurrentProject();
+
+  const projects = currentWorkspace?.projects;
+
   const renderProjects = () => {
     const pairs = [];
-    const halfLength = Math.ceil(projects.length / 2);
+    const halfLength = (projects && Math.ceil(projects.length / 2)) || 0;
 
     for (let i = 0; i < halfLength; i++) {
-      const firstItem = projects[i];
-      const secondItem = projects[projects.length - 1 - i];
+      const firstItem = projects?.[i];
+      const secondItem = projects?.[projects.length - 1 - i];
 
       pairs.push(
         <CarouselItem key={i} className="md:basis-1/2 lg:basis-1/4 gap-4 flex flex-col">
-          {firstItem && <ProjectCard project={firstItem} />}
-          {secondItem && <ProjectCard project={secondItem} />}
+          {firstItem && (
+            <ProjectCard
+              isSelected={currentProject?.id === firstItem.id}
+              project={firstItem}
+              onClick={() => setCurrentProject(firstItem)}
+            />
+          )}
+          {secondItem && (
+            <ProjectCard
+              className={currentProject?.id === secondItem.id ? "border-zinc-700" : undefined}
+              project={secondItem}
+              onClick={() => setCurrentProject(secondItem)}
+            />
+          )}
         </CarouselItem>,
       );
     }
@@ -45,12 +63,3 @@ const WelcomeDialogCenter: React.FC = () => {
 };
 
 export { WelcomeDialogCenter };
-
-const ProjectCard: React.FC<{ project: { name: string } }> = ({ project }) => {
-  return (
-    <div className="flex flex-col h-[150px] bg-zinc-800/50 rounded-md p-2 cursor-pointer hover:bg-zinc-800">
-      <p className="text-zinc-300 truncate">{project.name}</p>
-      <div className="flex-1 bg-[url('@flow/assets/project-screenshot.png')] bg-cover bg-center" />
-    </div>
-  );
-};

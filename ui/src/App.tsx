@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { Loading } from "@flow/components";
 import BottomPanel from "@flow/features/BottomPanel";
 import Canvas from "@flow/features/Canvas";
@@ -7,10 +9,20 @@ import LeftPanel from "@flow/features/LeftPanel";
 import { useTimeoutOnLoad } from "@flow/hooks";
 
 // import { initialEdges, initialNodes } from "./features/Canvas/mockData";
+import { workspaces } from "./mock_data/workspaceData";
 import { I18nProvider, TooltipProvider } from "./providers";
+import { useCurrentWorkspace } from "./stores";
 
 function App() {
   const { running: isLoading } = useTimeoutOnLoad(1000);
+
+  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
+
+  useEffect(() => {
+    if (!currentWorkspace) {
+      setCurrentWorkspace(workspaces[0]);
+    }
+  }, [currentWorkspace, setCurrentWorkspace]);
 
   return (
     <I18nProvider>

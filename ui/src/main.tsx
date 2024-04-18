@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 
 import App from "./App.tsx";
 import "./index.css";
-import loadConfig from "./config.ts";
+import loadConfig from "./config";
 
 loadConfig().finally(async () => {
   const element = document.getElementById("root");
