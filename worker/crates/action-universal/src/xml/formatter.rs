@@ -1,4 +1,3 @@
-use reearth_flow_xml;
 use reearth_flow_xml::{
     parser::read_xml,
     traits::{Element, Node},
@@ -30,20 +29,17 @@ impl AsyncAction for XmlFormatter {
                 xs.into_iter()
                     .map(|x| match x {
                         ActionValue::Map(mut kv) => {
-                            if let Some(v) = kv.get_mut(&self.attribute) {
-                                if let ActionValue::String(src) = v {
-                                    *src =
-                                        match {
-                                            || {
-                                                read_xml(src)?
+                            if let Some(ActionValue::String(src)) = kv.get_mut(&self.attribute) {
+                                *src = match {
+                                    || {
+                                        read_xml(src)?
                                             .first_child()
                                             .ok_or(reearth_flow_xml::error::Error::WrongDocument)?
                                             .to_xml()
-                                            }
-                                        }() {
-                                            Ok(x) => x,
-                                            Err(_) => src.to_string(),
-                                        }
+                                    }
+                                }() {
+                                    Ok(x) => x,
+                                    Err(_) => src.to_string(),
                                 }
                             };
                             ActionValue::Map(kv.clone())
