@@ -1,5 +1,8 @@
 use reearth_flow_xml;
-use reearth_flow_xml::{parser::read_xml,traits::{self, Element, Node}};
+use reearth_flow_xml::{
+    parser::read_xml,
+    traits::{Element, Node},
+};
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
@@ -134,48 +137,37 @@ mod tests {
         let inputs = Some(
             vec![(
                 DEFAULT_PORT.clone(),
-                Some(ActionValue::Array(vec![
-                    ActionValue::Map(
-                        vec![(
-                            "field1".to_owned(),
-                            ActionValue::String(SRC.to_string().to_owned()),
-                        )]
-                        .into_iter()
-                        .collect(),
-                    ),
-                ])),
+                Some(ActionValue::Array(vec![ActionValue::Map(
+                    vec![(
+                        "field1".to_owned(),
+                        ActionValue::String(SRC.to_string().to_owned()),
+                    )]
+                    .into_iter()
+                    .collect(),
+                )])),
             )]
             .into_iter()
             .collect::<ActionDataframe>(),
         );
-        let xml_formatter = XmlFormatter{
-            attribute: "field1".to_string()
+        let xml_formatter = XmlFormatter {
+            attribute: "field1".to_string(),
         };
         let ctx = ActionContext::default();
-        let result = xml_formatter
-            .run(ctx, inputs)
-            .await
-            .unwrap();
-        let default = result
-            .get(&DEFAULT_PORT)
-            .unwrap()
-            .as_ref()
-            .unwrap();
+        let result = xml_formatter.run(ctx, inputs).await.unwrap();
+        let default = result.get(&DEFAULT_PORT).unwrap().as_ref().unwrap();
         match default {
-            ActionValue::Array(xs) => {
-                match &xs[0] {
-                    ActionValue::Map(kv) => {
-                        if let ActionValue::String(actual) = kv.get("field1").unwrap() {
-                            println!("{}", actual);
-                            assert_eq!(actual, EXPECTED)
-                        } else {
-                            panic!("field1 must be String")
-                        }
-                    },
-                    _ => panic!("Array must include Map"),
+            ActionValue::Array(xs) => match &xs[0] {
+                ActionValue::Map(kv) => {
+                    if let ActionValue::String(actual) = kv.get("field1").unwrap() {
+                        println!("{}", actual);
+                        assert_eq!(actual, EXPECTED)
+                    } else {
+                        panic!("field1 must be String")
+                    }
                 }
+                _ => panic!("Array must include Map"),
             },
-            _ => panic!("output must be Array of Map")
+            _ => panic!("output must be Array of Map"),
         };
     }
 }
