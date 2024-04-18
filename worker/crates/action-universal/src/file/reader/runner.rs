@@ -2,15 +2,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use reearth_flow_common::uri::Uri;
-use reearth_flow_eval_expr::engine::Engine;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_common::csv::Delimiter;
 
 use super::{citygml, csv, json, text};
 use reearth_flow_action::{
-    utils, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result,
-    DEFAULT_PORT,
+    ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result, DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -63,12 +61,8 @@ impl AsyncAction for FileReader {
                 common_property,
                 property,
             } => {
-                let input_path = get_input_path(
-                    &inputs.unwrap_or_default(),
-                    common_property,
-                    Arc::clone(&ctx.expr_engine),
-                )
-                .await?;
+                let input_path =
+                    get_input_path(&ctx, &inputs.unwrap_or_default(), common_property).await?;
                 let result =
                     csv::read_csv(Delimiter::Comma, input_path, property, storage_resolver).await?;
                 ActionValue::Array(result)
@@ -77,41 +71,25 @@ impl AsyncAction for FileReader {
                 common_property,
                 property,
             } => {
-                let input_path = get_input_path(
-                    &inputs.unwrap_or_default(),
-                    common_property,
-                    Arc::clone(&ctx.expr_engine),
-                )
-                .await?;
+                let input_path =
+                    get_input_path(&ctx, &inputs.unwrap_or_default(), common_property).await?;
                 let result =
                     csv::read_csv(Delimiter::Tab, input_path, property, storage_resolver).await?;
                 ActionValue::Array(result)
             }
             Self::Text { common_property } => {
-                let input_path = get_input_path(
-                    &inputs.unwrap_or_default(),
-                    common_property,
-                    Arc::clone(&ctx.expr_engine),
-                )
-                .await?;
+                let input_path =
+                    get_input_path(&ctx, &inputs.unwrap_or_default(), common_property).await?;
                 text::read_text(input_path, storage_resolver).await?
             }
             Self::Json { common_property } => {
-                let input_path = get_input_path(
-                    &inputs.unwrap_or_default(),
-                    common_property,
-                    Arc::clone(&ctx.expr_engine),
-                )
-                .await?;
+                let input_path =
+                    get_input_path(&ctx, &inputs.unwrap_or_default(), common_property).await?;
                 json::read_json(input_path, storage_resolver).await?
             }
             Self::CityGML { common_property } => {
-                let input_path = get_input_path(
-                    &inputs.unwrap_or_default(),
-                    common_property,
-                    Arc::clone(&ctx.expr_engine),
-                )
-                .await?;
+                let input_path =
+                    get_input_path(&ctx, &inputs.unwrap_or_default(), common_property).await?;
                 citygml::read_citygml(input_path, ctx).await?
             }
         };
@@ -120,9 +98,9 @@ impl AsyncAction for FileReader {
 }
 
 async fn get_input_path(
+    ctx: &ActionContext,
     inputs: &ActionDataframe,
     common_property: &CommonPropertySchema,
-    expr_engine: Arc<Engine>,
 ) -> Result<Uri> {
-    utils::get_expr_path(common_property.dataset.as_str(), inputs, expr_engine).await
+    ctx.get_expr_path(&common_property.dataset, inputs).await
 }

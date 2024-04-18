@@ -31,8 +31,7 @@ impl ActionRunner {
     ) -> crate::Result<(NodeIndex, ActionDataframe)> {
         let node_id = ctx.node_id;
         let node_name = ctx.node_name.clone();
-        let start_logger = Arc::clone(&ctx.logger);
-        let end_logger = Arc::clone(&ctx.logger);
+        let logger = Arc::clone(&ctx.logger);
         let span = span(
             ctx.root_span.clone(),
             action.to_string(),
@@ -40,8 +39,8 @@ impl ActionRunner {
             node_name.clone(),
         );
         action_log!(
-            parent: span,
-            start_logger,
+            parent: &span,
+            &logger,
             "Start action = {:?}, name = {:?}",
             action,
             node_name,
@@ -120,8 +119,8 @@ impl ActionRunner {
             .map_err(crate::Error::execution)?;
         let duration = start.elapsed();
         action_log!(
-            parent: span,
-            end_logger,
+            parent: &span,
+            &logger,
             "Finish action = {:?}, name = {:?}, ports = {:?}, duration = {:?}",
             action,
             node_name,

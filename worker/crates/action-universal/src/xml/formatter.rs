@@ -1,4 +1,3 @@
-use reearth_flow_action_log::action_log;
 use reearth_flow_xml::{
     parser::read_xml,
     traits::{Element, Node},
@@ -41,12 +40,7 @@ impl AsyncAction for XmlFormatter {
                                 }() {
                                     Ok(x) => x,
                                     Err(e) => {
-                                        action_log!(
-                                            parent: ctx.root_span,
-                                            ctx.logger,
-                                            "XML error: {:?}",
-                                            e
-                                        );
+                                        ctx.action_log(format!("XML error: {:?}", e));
                                         src.to_string()
                                     }
                                 }
