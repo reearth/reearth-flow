@@ -1,18 +1,20 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
+use reearth_flow_action_log::action_log;
+use reearth_flow_action_log::ActionLogger;
 use reearth_flow_common::collection;
-use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_storage::resolve::StorageResolver;
-use serde::{Deserialize, Serialize};
-
 use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml::{self, XmlDocument};
+use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_storage::resolve::StorageResolver;
+use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
     error::Error, utils::convert_dataframe_to_scope_params, ActionContext, ActionDataframe,
     ActionResult, ActionValue, Result, SyncAction,
 };
+use tracing::Span;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -104,6 +106,8 @@ pub(super) fn url(
                         &params,
                         Arc::clone(&expr_engine),
                         Arc::clone(&ctx.storage_resolver),
+                        &ctx.root_span,
+                        Arc::clone(&ctx.logger),
                     )
                     .unwrap_or_default()
                 });
@@ -118,6 +122,8 @@ pub(super) fn url(
                     &params,
                     Arc::clone(&expr_engine),
                     Arc::clone(&ctx.storage_resolver),
+                    &ctx.root_span,
+                    Arc::clone(&ctx.logger),
                 )?;
                 ActionValue::Array(result)
             }
@@ -128,6 +134,7 @@ pub(super) fn url(
     Ok(output)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn action_value_to_fragment(
     row: &ActionValue,
     attribute: &String,
@@ -136,6 +143,8 @@ fn action_value_to_fragment(
     params: &HashMap<String, ActionValue>,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
+    span: &Span,
+    logger: Arc<ActionLogger>,
 ) -> Result<Vec<ActionValue>> {
     let mut result = Vec::<ActionValue>::new();
     let storage_resolver = Arc::clone(&storage_resolver);
@@ -181,6 +190,11 @@ fn action_value_to_fragment(
                 .get_sync(&url.path())
                 .map_err(Error::internal_runtime)?;
             let raw_xml = String::from_utf8(bytes.to_vec()).map_err(Error::internal_runtime)?;
+            action_log!(
+                parent: span,
+                logger,
+                "Parsing XML document: {:?} ...", url,
+            );
             let document = xml::parse(raw_xml.as_str()).map_err(Error::internal_runtime)?;
 
             let fragments = generate_fragment(&document, &elements_to_match, &elements_to_exclude)?;
@@ -236,28 +250,57 @@ fn generate_fragment(
     let mut nodes = results.get_nodes_as_vec();
 
     let mut result = Vec::<XmlFragment>::new();
+    let mut fragments = HashMap::<String, String>::new();
     for node in nodes.iter_mut() {
         let node_type = node
             .get_type()
             .ok_or(Error::internal_runtime("No node type".to_string()))?;
         if node_type == xml::XmlNodeType::ElementNode {
-            for ns in root.get_namespace_declarations().iter() {
-                let _ = node
-                    .set_attribute(
-                        format!("xmlns:{}", ns.get_prefix()).as_str(),
-                        ns.get_href().as_str(),
-                    )
-                    .map_err(|e| {
-                        Error::internal_runtime(format!("Failed to set namespace with {:?}", e))
-                    });
-            }
             let tag = xml::get_node_tag(node);
-            let fragment =
-                xml::node_to_xml_string(document, node).map_err(Error::internal_runtime)?;
+            let key = format!("{:?}", node);
+            let fragment = {
+                if let Some(fragment) = fragments.get(&key) {
+                    fragment.clone()
+                } else {
+                    for ns in root.get_namespace_declarations().iter() {
+                        let _ = node
+                            .set_attribute(
+                                format!("xmlns:{}", ns.get_prefix()).as_str(),
+                                ns.get_href().as_str(),
+                            )
+                            .map_err(|e| {
+                                Error::internal_runtime(format!(
+                                    "Failed to set namespace with {:?}",
+                                    e
+                                ))
+                            });
+                    }
+                    xml::node_to_xml_string(document, node).map_err(Error::internal_runtime)?
+                }
+            };
             let xml_id = to_hash(&fragment);
-            let xml_parent_id = node
-                .get_parent()
-                .map(|parent| to_hash(format!("{:?}", parent).as_str()));
+            fragments.insert(format!("{:?}", node), xml_id.clone());
+            let xml_parent_id = node.get_parent().map(|mut parent| {
+                let key = format!("{:?}", parent);
+                if let Some(fragment) = fragments.get(&key) {
+                    fragment.clone()
+                } else {
+                    for ns in root.get_namespace_declarations().iter() {
+                        let _ = parent
+                            .set_attribute(
+                                format!("xmlns:{}", ns.get_prefix()).as_str(),
+                                ns.get_href().as_str(),
+                            )
+                            .map_err(|e| {
+                                Error::internal_runtime(format!(
+                                    "Failed to set namespace with {:?}",
+                                    e
+                                ))
+                            });
+                    }
+                    to_hash(&xml::node_to_xml_string(document, &mut parent).unwrap_or_default())
+                }
+            });
             result.push(XmlFragment {
                 xml_id,
                 fragment,
