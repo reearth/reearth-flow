@@ -1,5 +1,5 @@
+use std::collections::HashMap;
 use std::str::FromStr;
-use std::{collections::HashMap, sync::Arc};
 
 use itertools::{self, Itertools};
 use once_cell::sync::Lazy;
@@ -7,8 +7,6 @@ use reearth_flow_action::{
     error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Port, Result,
     DEFAULT_PORT,
 };
-use reearth_flow_action_log::action_log;
-use reearth_flow_action_log::ActionLogger;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
 use reearth_flow_common::xml::XmlDocument;
@@ -321,8 +319,6 @@ impl AsyncAction for XmlAttributeExtractor {
             .clone()
             .try_into()
             .map_err(|e| error::Error::input(format!("Invalid Settings. {}", e)))?;
-        let span = &ctx.root_span;
-        let logger = Arc::clone(&ctx.logger);
 
         let mut result = Vec::<FeatureResponse>::new();
         let mut file_path_responses = Vec::<FilePathResponse>::new();
@@ -424,10 +420,9 @@ impl AsyncAction for XmlAttributeExtractor {
                         }
                         let schema_def = SchemaDef::new(schema_def.unwrap().clone());
                         let (mut attr, lod) = walk_node(
+                            &ctx,
                             &city_gml_path,
                             &settings,
-                            Arc::clone(&logger),
-                            span,
                             &schema_def,
                             &document,
                             root,
@@ -850,10 +845,9 @@ fn ancestor_attributes(
 
 #[allow(clippy::too_many_arguments)]
 fn walk_node(
+    action_ctx: &ActionContext,
     city_gml_path: &Uri,
     settings: &Settings,
-    logger: Arc<ActionLogger>,
-    span: &tracing::Span,
     schema_def: &SchemaDef,
     document: &XmlDocument,
     parent: &XmlNode,
@@ -904,11 +898,10 @@ fn walk_node(
         }
         let props = schema_def.get(format!("{}/{}", xpath, tag).as_str());
         if props.is_none() {
-            action_log!(
-                parent: span,
-                logger,
-                "Not found properties of xpath = {} tag = {}", xpath, tag,
-            );
+            action_ctx.action_log(format!(
+                "Not found properties of xpath = {} tag = {}",
+                xpath, tag
+            ));
             continue;
         }
         let props = props.unwrap();
@@ -942,10 +935,9 @@ fn walk_node(
             }
             "role" => {
                 let (attr, lod) = walk_node(
+                    action_ctx,
                     city_gml_path,
                     settings,
-                    Arc::clone(&logger),
-                    span,
                     schema_def,
                     document,
                     &node,
@@ -960,10 +952,9 @@ fn walk_node(
             }
             "parent" => {
                 let (attr, lod) = walk_node(
+                    action_ctx,
                     city_gml_path,
                     settings,
-                    Arc::clone(&logger),
-                    span,
                     schema_def,
                     document,
                     &node,

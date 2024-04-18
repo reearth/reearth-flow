@@ -10,7 +10,6 @@ use nusamai_citygml::{
 use nusamai_plateau::{appearance::AppearanceStore, models, Entity};
 use quick_xml::NsReader;
 use reearth_flow_action::{error::Error, ActionContext, ActionValue, Result};
-use reearth_flow_action_log::action_log;
 use reearth_flow_common::uri::Uri;
 
 enum Parent {
@@ -21,13 +20,8 @@ enum Parent {
 
 pub(crate) async fn read_citygml(input_path: Uri, ctx: ActionContext) -> Result<ActionValue> {
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
-    let logger = Arc::clone(&ctx.logger);
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
-    action_log!(
-        parent: &ctx.root_span,
-        logger,
-        "Parsing CityGML file: {:?} ...", input_path,
-    );
+    ctx.action_log(format!("Parsing CityGML file: {:?} ...", input_path));
     let storage = storage_resolver
         .resolve(&input_path)
         .map_err(Error::input)?;

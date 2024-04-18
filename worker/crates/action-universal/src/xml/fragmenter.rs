@@ -1,20 +1,15 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
-use reearth_flow_action_log::action_log;
-use reearth_flow_action_log::ActionLogger;
 use reearth_flow_common::collection;
 use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml::{self, XmlDocument};
-use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
     error::Error, utils::convert_dataframe_to_scope_params, ActionContext, ActionDataframe,
     ActionResult, ActionValue, Result, SyncAction,
 };
-use tracing::Span;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -99,15 +94,12 @@ pub(super) fn url(
             ActionValue::Array(data) => {
                 let result = collection::par_map(&data, |row| {
                     action_value_to_fragment(
+                        &ctx,
                         row,
                         &props.attribute,
                         &elements_to_match_ast,
                         &elements_to_exclude_ast,
                         &params,
-                        Arc::clone(&expr_engine),
-                        Arc::clone(&ctx.storage_resolver),
-                        &ctx.root_span,
-                        Arc::clone(&ctx.logger),
                     )
                     .unwrap_or_default()
                 });
@@ -115,15 +107,12 @@ pub(super) fn url(
             }
             ActionValue::Map(_) => {
                 let result = action_value_to_fragment(
+                    &ctx,
                     &data,
                     &props.attribute,
                     &elements_to_match_ast,
                     &elements_to_exclude_ast,
                     &params,
-                    Arc::clone(&expr_engine),
-                    Arc::clone(&ctx.storage_resolver),
-                    &ctx.root_span,
-                    Arc::clone(&ctx.logger),
                 )?;
                 ActionValue::Array(result)
             }
@@ -136,18 +125,16 @@ pub(super) fn url(
 
 #[allow(clippy::too_many_arguments)]
 fn action_value_to_fragment(
+    ctx: &ActionContext,
     row: &ActionValue,
     attribute: &String,
     elements_to_match_ast: &rhai::AST,
     elements_to_exclude_ast: &rhai::AST,
     params: &HashMap<String, ActionValue>,
-    expr_engine: Arc<Engine>,
-    storage_resolver: Arc<StorageResolver>,
-    span: &Span,
-    logger: Arc<ActionLogger>,
 ) -> Result<Vec<ActionValue>> {
     let mut result = Vec::<ActionValue>::new();
-    let storage_resolver = Arc::clone(&storage_resolver);
+    let storage_resolver = Arc::clone(&ctx.storage_resolver);
+    let expr_engine = Arc::clone(&ctx.expr_engine);
 
     match row {
         ActionValue::Map(row) => {
@@ -190,11 +177,7 @@ fn action_value_to_fragment(
                 .get_sync(&url.path())
                 .map_err(Error::internal_runtime)?;
             let raw_xml = String::from_utf8(bytes.to_vec()).map_err(Error::internal_runtime)?;
-            action_log!(
-                parent: span,
-                logger,
-                "Parsing XML document: {:?} ...", url,
-            );
+            ctx.action_log(format!("Parsing XML document: {:?} ...", url));
             let document = xml::parse(raw_xml.as_str()).map_err(Error::internal_runtime)?;
 
             let fragments = generate_fragment(&document, &elements_to_match, &elements_to_exclude)?;
