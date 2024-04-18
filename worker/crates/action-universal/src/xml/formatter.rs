@@ -1,3 +1,4 @@
+use reearth_flow_action_log::action_log;
 use reearth_flow_xml::{
     parser::read_xml,
     traits::{Element, Node},
@@ -18,7 +19,7 @@ pub struct XmlFormatter {
 #[async_trait::async_trait]
 #[typetag::serde(name = "XMLFormatter")]
 impl AsyncAction for XmlFormatter {
-    async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
+    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("no inputs"))?;
         let default = inputs
             .get(&DEFAULT_PORT)
@@ -39,7 +40,15 @@ impl AsyncAction for XmlFormatter {
                                     }
                                 }() {
                                     Ok(x) => x,
-                                    Err(_) => src.to_string(),
+                                    Err(e) => {
+                                        action_log!(
+                                            parent: ctx.root_span,
+                                            ctx.logger,
+                                            "XML error: {:?}",
+                                            e
+                                        );
+                                        src.to_string()
+                                    }
                                 }
                             };
                             ActionValue::Map(kv.clone())
