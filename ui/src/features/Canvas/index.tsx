@@ -26,7 +26,7 @@ import {
   connectionLineStyle,
   Toolbox,
 } from "@flow/features/Canvas/components";
-import { useDialogAtom } from "@flow/stores";
+import { useDialogType } from "@flow/stores";
 
 import useDnd from "./useDnd";
 
@@ -65,7 +65,7 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
   const [nodes, setNodes] = useNodesState(workflow?.nodes ?? []);
   const [edges, setEdges] = useEdgesState(workflow?.edges ?? []);
 
-  const [currentDialogType, setDialogType] = useDialogAtom();
+  const [currentDialogType, setDialogType] = useDialogType();
 
   const selected = useMemo(() => {
     const selectedNodes = nodes.filter(node => node.selected);
@@ -124,13 +124,18 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
   // }, [hoveredDetails]);
 
   useEffect(() => {
+    if (workflow) {
+      setNodes(workflow.nodes ?? []);
+      setEdges(workflow.edges ?? []);
+    }
+  }, [workflow, setNodes, setEdges]);
+
+  useEffect(() => {
     console.log("hi");
     if (!workflow && currentDialogType !== "welcome-init") {
       setDialogType("welcome-init");
-    } else if (workflow && currentDialogType === "welcome-init") {
-      setDialogType(undefined);
     }
-  }, [workflow, currentDialogType, setDialogType]);
+  }, []); // eslint-disable-line
 
   return (
     <div className="flex-1 m-1 rounded-sm relative">

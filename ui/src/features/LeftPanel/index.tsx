@@ -6,8 +6,9 @@ import { VerticalPanel, FlowLogo, type PanelContent, Tree } from "@flow/componen
 import { useStateManager } from "@flow/hooks";
 import { useT } from "@flow/providers";
 
+import { data } from "../../mock_data/fileTreeData"; // TODO: replace with real data
+
 import HomeMenu from "./components/HomeMenu";
-import { data } from "./MOCK_DATA"; // TODO: replace with real data
 
 type Props = {
   className?: string;

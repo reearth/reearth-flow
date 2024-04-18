@@ -1,6 +1,7 @@
 import { ChevronDown } from "lucide-react";
 
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -17,12 +18,14 @@ import {
 import { config } from "@flow/config";
 import { useOpenLink } from "@flow/hooks";
 import { useT } from "@flow/providers";
+import { useDialogType } from "@flow/stores";
 
 import { AccountSetting, KeyboardSetting, WorkflowSetting, WorkspacesSetting } from "./components";
 
 type Props = {};
 
 const HomeMenu: React.FC<Props> = () => {
+  const [, setDialogType] = useDialogType();
   const t = useT();
   const githubRepoUrl = config()?.githubRepoUrl;
 
@@ -34,7 +37,10 @@ const HomeMenu: React.FC<Props> = () => {
         <ChevronDown className="ml-2" size="12px" />
       </DropdownMenuTrigger>
       <DropdownMenuContent sideOffset={4} align="start" alignOffset={5} className="w-[275px]">
-        <DropdownMenuLabel className="flex gap-2 text-zinc-400 justify-end items-center">
+        <DropdownMenuLabel className="flex gap-2 text-zinc-400 justify-between items-center">
+          <Button variant="ghost" onClick={() => setDialogType("welcome-init")}>
+            Home
+          </Button>
           <p>
             {t("Re:Earth Flow v")}
             {config()?.version ?? "X.X.X"}

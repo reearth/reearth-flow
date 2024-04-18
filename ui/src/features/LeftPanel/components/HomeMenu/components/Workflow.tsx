@@ -1,10 +1,10 @@
 import { DropdownMenuItem } from "@flow/components";
 import { useT } from "@flow/providers";
-import { useDialogAtom } from "@flow/stores";
+import { useDialogType } from "@flow/stores";
 
 const WorkflowSetting: React.FC = () => {
   const t = useT();
-  const [_, setDialogType] = useDialogAtom();
+  const [_, setDialogType] = useDialogType();
   return (
     <DropdownMenuItem onClick={() => setDialogType("workflow-settings")}>
       {t("Workflow")}

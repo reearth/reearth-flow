@@ -10,8 +10,8 @@ export type DialogType =
   | "general-settings"
   | "keyboard-instructions";
 
-const dialogAtom = atom<DialogType | undefined>(undefined);
-export const useDialogAtom = () => useAtom(dialogAtom);
+const dialogType = atom<DialogType | undefined>(undefined);
+export const useDialogType = () => useAtom(dialogType);
 
 const currentProject = atom<Project | undefined>(undefined);
 export const useCurrentProject = () => useAtom(currentProject);

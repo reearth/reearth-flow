@@ -1,5 +1,5 @@
 import { DialogContent as DialogContentPrimitive, IconButton } from "@flow/components";
-import { DialogType } from "@flow/stores";
+import { DialogType, useCurrentProject } from "@flow/stores";
 
 import useInits from "./inits/useInits";
 import useInstructions from "./instructions/useInstructions";
@@ -18,6 +18,7 @@ type Props = {
 };
 
 const DialogContent: React.FC<Props> = ({ tab, onTabChange }) => {
+  const [currentProject] = useCurrentProject();
   const inits = useInits();
   const settings = useSettings();
   const instructions = useInstructions();
@@ -30,7 +31,7 @@ const DialogContent: React.FC<Props> = ({ tab, onTabChange }) => {
         ? instructions
         : null;
 
-  const disableClickaway = tab.includes("settings") || tab === "welcome-init";
+  const disableClickaway = tab.includes("settings") || (tab === "welcome-init" && !currentProject);
 
   return content ? (
     <DialogContentPrimitive

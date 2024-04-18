@@ -29,14 +29,9 @@ function App() {
         <div className="flex flex-col bg-zinc-900 text-zinc-300 h-screen">
           <div className="flex flex-1">
             <div className="flex flex-col flex-1 p-0">
-              <Canvas
-                workflow={currentProject?.workflows?.[0]}
-                // workflow={{ nodes: initialNodes, edges: initialEdges }}
-                leftArea={<LeftPanel />}
-              />
+              <Canvas workflow={currentProject?.workflows?.[0]} leftArea={<LeftPanel />} />
               <BottomPanel />
             </div>
-            {/* <RightPanel /> */}
           </div>
         </div>
         {!isLoading && <Dialog />}

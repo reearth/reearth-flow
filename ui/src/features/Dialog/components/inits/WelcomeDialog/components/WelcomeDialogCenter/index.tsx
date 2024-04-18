@@ -6,13 +6,20 @@ import {
   CarouselPrevious,
 } from "@flow/components";
 import { ContentSection } from "@flow/features/Dialog/components";
-import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
+import { useCurrentProject, useCurrentWorkspace, useDialogType } from "@flow/stores";
+import { Project } from "@flow/types";
 
 import { ProjectCard } from "./components";
 
 const WelcomeDialogCenter: React.FC = () => {
   const [currentWorkspace] = useCurrentWorkspace();
   const [currentProject, setCurrentProject] = useCurrentProject();
+  const [, setDialogType] = useDialogType();
+
+  const handleProjectSelect = (p: Project) => {
+    setCurrentProject(p);
+    setDialogType(undefined);
+  };
 
   const projects = currentWorkspace?.projects;
 
@@ -30,14 +37,14 @@ const WelcomeDialogCenter: React.FC = () => {
             <ProjectCard
               isSelected={currentProject?.id === firstItem.id}
               project={firstItem}
-              onClick={() => setCurrentProject(firstItem)}
+              onClick={() => handleProjectSelect(firstItem)}
             />
           )}
           {secondItem && (
             <ProjectCard
               className={currentProject?.id === secondItem.id ? "border-zinc-700" : undefined}
               project={secondItem}
-              onClick={() => setCurrentProject(secondItem)}
+              onClick={() => handleProjectSelect(secondItem)}
             />
           )}
         </CarouselItem>,

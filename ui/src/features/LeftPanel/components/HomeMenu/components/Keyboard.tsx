@@ -1,10 +1,10 @@
 import { DropdownMenuItem, DropdownMenuShortcut } from "@flow/components";
 import { useT } from "@flow/providers";
-import { useDialogAtom } from "@flow/stores";
+import { useDialogType } from "@flow/stores";
 
 const KeyboardSetting: React.FC = () => {
   const t = useT();
-  const [_, setDialogType] = useDialogAtom();
+  const [_, setDialogType] = useDialogType();
   return (
     <DropdownMenuItem onClick={() => setDialogType("keyboard-instructions")}>
       {t("Keyboard shortcuts")}
