@@ -64,7 +64,8 @@ async fn main() {
 pub fn setup_logging_and_tracing() {
     let env_filter = EnvFilter::builder()
         .with_default_directive(Level::INFO.into())
-        .from_env_lossy();
+        .from_env_lossy()
+        .add_directive("opendal=error".parse().unwrap());
     let registry = tracing_subscriber::registry().with(env_filter);
     let event_format = tracing_subscriber::fmt::format()
         .with_target(true)

@@ -250,28 +250,57 @@ fn generate_fragment(
     let mut nodes = results.get_nodes_as_vec();
 
     let mut result = Vec::<XmlFragment>::new();
+    let mut fragments = HashMap::<String, String>::new();
     for node in nodes.iter_mut() {
         let node_type = node
             .get_type()
             .ok_or(Error::internal_runtime("No node type".to_string()))?;
         if node_type == xml::XmlNodeType::ElementNode {
-            for ns in root.get_namespace_declarations().iter() {
-                let _ = node
-                    .set_attribute(
-                        format!("xmlns:{}", ns.get_prefix()).as_str(),
-                        ns.get_href().as_str(),
-                    )
-                    .map_err(|e| {
-                        Error::internal_runtime(format!("Failed to set namespace with {:?}", e))
-                    });
-            }
             let tag = xml::get_node_tag(node);
-            let fragment =
-                xml::node_to_xml_string(document, node).map_err(Error::internal_runtime)?;
+            let key = format!("{:?}", node);
+            let fragment = {
+                if let Some(fragment) = fragments.get(&key) {
+                    fragment.clone()
+                } else {
+                    for ns in root.get_namespace_declarations().iter() {
+                        let _ = node
+                            .set_attribute(
+                                format!("xmlns:{}", ns.get_prefix()).as_str(),
+                                ns.get_href().as_str(),
+                            )
+                            .map_err(|e| {
+                                Error::internal_runtime(format!(
+                                    "Failed to set namespace with {:?}",
+                                    e
+                                ))
+                            });
+                    }
+                    xml::node_to_xml_string(document, node).map_err(Error::internal_runtime)?
+                }
+            };
             let xml_id = to_hash(&fragment);
-            let xml_parent_id = node
-                .get_parent()
-                .map(|parent| to_hash(format!("{:?}", parent).as_str()));
+            fragments.insert(format!("{:?}", node), xml_id.clone());
+            let xml_parent_id = node.get_parent().map(|mut parent| {
+                let key = format!("{:?}", parent);
+                if let Some(fragment) = fragments.get(&key) {
+                    fragment.clone()
+                } else {
+                    for ns in root.get_namespace_declarations().iter() {
+                        let _ = parent
+                            .set_attribute(
+                                format!("xmlns:{}", ns.get_prefix()).as_str(),
+                                ns.get_href().as_str(),
+                            )
+                            .map_err(|e| {
+                                Error::internal_runtime(format!(
+                                    "Failed to set namespace with {:?}",
+                                    e
+                                ))
+                            });
+                    }
+                    to_hash(&xml::node_to_xml_string(document, &mut parent).unwrap_or_default())
+                }
+            });
             result.push(XmlFragment {
                 xml_id,
                 fragment,
