@@ -3,8 +3,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogFooter, Button } from "@flow/components";
 import { useT } from "@flow/providers";
 
-import { ContentHeader } from "../ContentHeader";
-import { ContentSection } from "../ContentSection";
+import { ContentHeader, ContentSection } from "..";
 
 import { FieldWrapper } from "./components";
 

@@ -5,18 +5,17 @@ import BottomPanel from "@flow/features/BottomPanel";
 import Canvas from "@flow/features/Canvas";
 import { Dialog } from "@flow/features/Dialog";
 import LeftPanel from "@flow/features/LeftPanel";
-// import RightPanel from "@flow/features/RightPanel";
 import { useTimeoutOnLoad } from "@flow/hooks";
 
-// import { initialEdges, initialNodes } from "./features/Canvas/mockData";
 import { workspaces } from "./mock_data/workspaceData";
 import { I18nProvider, TooltipProvider } from "./providers";
-import { useCurrentWorkspace } from "./stores";
+import { useCurrentProject, useCurrentWorkspace } from "./stores";
 
 function App() {
   const { running: isLoading } = useTimeoutOnLoad(1000);
 
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
+  const [currentProject] = useCurrentProject();
 
   useEffect(() => {
     if (!currentWorkspace) {
@@ -31,7 +30,7 @@ function App() {
           <div className="flex flex-1">
             <div className="flex flex-col flex-1 p-0">
               <Canvas
-                // workflow={{}}
+                workflow={currentProject?.workflows?.[0]}
                 // workflow={{ nodes: initialNodes, edges: initialEdges }}
                 leftArea={<LeftPanel />}
               />

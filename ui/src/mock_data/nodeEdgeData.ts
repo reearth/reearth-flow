@@ -1,7 +1,7 @@
 import { Edge, Node } from "reactflow";
 
-import { baseBatchNode } from "./components/Nodes/BatchNode";
-import { initialSize } from "./components/Nodes/NoteNode";
+import { baseBatchNode } from "@flow/features/Canvas/components/Nodes/BatchNode";
+import { initialSize } from "@flow/features/Canvas/components/Nodes/NoteNode";
 
 export const initialNodes: Node[] = [
   {

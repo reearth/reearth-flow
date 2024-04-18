@@ -5,7 +5,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@flow/components";
-import { ContentSection } from "@flow/features/Dialog/components/ContentSection";
+import { ContentSection } from "@flow/features/Dialog/components";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 
 import { ProjectCard } from "./components";

@@ -1,3 +1,5 @@
+import { Edge, Node } from "reactflow";
+
 export type Workspace = {
   id: string;
   name: string;
@@ -19,5 +21,6 @@ export type Member = {
 export type Workflow = {
   id: string;
   name: string;
-  // ...nodes
+  nodes?: Node[];
+  edges?: Edge[];
 };

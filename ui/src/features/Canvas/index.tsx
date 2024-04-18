@@ -26,12 +26,11 @@ import {
   connectionLineStyle,
   Toolbox,
 } from "@flow/features/Canvas/components";
-
-import "reactflow/dist/style.css";
-
 import { useDialogAtom } from "@flow/stores";
 
 import useDnd from "./useDnd";
+
+import "reactflow/dist/style.css";
 
 type CanvasProps = {
   leftArea?: React.ReactNode;

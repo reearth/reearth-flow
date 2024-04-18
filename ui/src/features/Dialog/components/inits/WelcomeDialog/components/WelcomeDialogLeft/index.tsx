@@ -6,7 +6,7 @@ import { config } from "@flow/config";
 import { useOpenLink } from "@flow/hooks";
 import { useT } from "@flow/providers";
 
-import { ContentSection } from "../../../../ContentSection";
+import { ContentSection } from "../../../..";
 
 const WelcomeDialogLeft: React.FC = () => {
   const t = useT();

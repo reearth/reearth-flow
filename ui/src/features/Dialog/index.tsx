@@ -5,7 +5,7 @@ import { workspaces as mockWorkspaces } from "@flow/mock_data/workspaceData";
 import { DialogType, useDialogAtom } from "@flow/stores";
 import { Workspace } from "@flow/types";
 
-import { DialogContent } from "./components/Content";
+import { DialogContent } from "./components";
 
 export const DialogContext = createContext<{ workspaces: Workspace[] | undefined } | undefined>(
   undefined,

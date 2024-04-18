@@ -1,8 +1,7 @@
 import { Button } from "@flow/components";
 import { useT } from "@flow/providers";
 
-import { ContentHeader } from "../ContentHeader";
-import { ContentSection } from "../ContentSection";
+import { ContentHeader, ContentSection } from "..";
 
 import { FieldWrapper } from "./components";
 

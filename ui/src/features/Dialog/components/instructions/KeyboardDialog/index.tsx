@@ -1,5 +1,4 @@
-import { ContentHeader } from "../../ContentHeader";
-import { ContentSection } from "../../ContentSection";
+import { ContentHeader, ContentSection } from "../..";
 
 import { Shortcuts } from "./components";
 import useShortcuts from "./useShortcuts";
