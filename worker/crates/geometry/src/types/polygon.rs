@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 use super::coordnum::CoordNum;
 use super::line_string::LineString;
 use super::no_value::NoValue;
-use super::rect::Rect;
+use super::rectangle::Rectangle;
+use super::traits::Surface;
 use super::triangle::Triangle;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
@@ -67,8 +68,8 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
     }
 }
 
-impl<T: CoordNum> From<Rect<T>> for Polygon<T> {
-    fn from(r: Rect<T>) -> Self {
+impl<T: CoordNum> From<Rectangle<T>> for Polygon<T> {
+    fn from(r: Rectangle<T>) -> Self {
         Polygon::new(
             vec![
                 (r.min().x, r.min().y),
@@ -104,6 +105,8 @@ impl<'a> From<NPolygon3<'a>> for Polygon3D<f64> {
         Polygon3D::new(poly.exterior().into(), interiors)
     }
 }
+
+impl<T: CoordNum> Surface for Polygon<T, T> {}
 
 impl<T> RelativeEq for Polygon<T, T>
 where

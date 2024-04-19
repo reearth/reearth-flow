@@ -155,6 +155,51 @@ impl From<ActionValue> for serde_json::Value {
     }
 }
 
+impl From<nusamai_citygml::Value> for ActionValue {
+    fn from(value: nusamai_citygml::Value) -> Self {
+        match value {
+            nusamai_citygml::Value::String(v) => ActionValue::String(v),
+            nusamai_citygml::Value::Code(v) => ActionValue::String(v.value().to_owned()),
+            nusamai_citygml::Value::Integer(v) => ActionValue::Number(Number::from(v)),
+            nusamai_citygml::Value::NonNegativeInteger(v) => ActionValue::Number(Number::from(v)),
+            nusamai_citygml::Value::Double(v) => ActionValue::Number(Number::from_f64(v).unwrap()),
+            nusamai_citygml::Value::Measure(v) => {
+                ActionValue::Number(Number::from_f64(v.value()).unwrap())
+            }
+            nusamai_citygml::Value::Boolean(v) => ActionValue::Bool(v),
+            nusamai_citygml::Value::Uri(v) => ActionValue::String(v.value().to_string()),
+            nusamai_citygml::Value::Date(v) => ActionValue::String(v.to_string()),
+            nusamai_citygml::Value::Point(v) => ActionValue::Map(
+                vec![
+                    ("type".to_string(), ActionValue::String("Point".to_string())),
+                    (
+                        "coordinates".to_string(),
+                        ActionValue::Array(
+                            v.coordinates()
+                                .iter()
+                                .map(|v| ActionValue::Number(Number::from_f64(*v).unwrap()))
+                                .collect(),
+                        ),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+            nusamai_citygml::Value::Array(v) => {
+                ActionValue::Array(v.into_iter().map(ActionValue::from).collect())
+            }
+            nusamai_citygml::Value::Object(v) => {
+                let m = v
+                    .attributes
+                    .iter()
+                    .map(|(k, v)| (k.into(), ActionValue::from(v.clone())))
+                    .collect();
+                ActionValue::Map(m)
+            }
+        }
+    }
+}
+
 impl From<XmlXpathValue> for ActionValue {
     fn from(value: XmlXpathValue) -> Self {
         std::convert::Into::<ActionValue>::into(

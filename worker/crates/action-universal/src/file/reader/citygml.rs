@@ -11,6 +11,7 @@ use nusamai_plateau::{appearance::AppearanceStore, models, Entity};
 use quick_xml::NsReader;
 use reearth_flow_action::{error::Error, ActionContext, ActionValue, Result};
 use reearth_flow_common::uri::Uri;
+use url::Url;
 
 enum Parent {
     Feature { id: String, typename: String },
@@ -33,13 +34,14 @@ pub(crate) async fn read_citygml(input_path: Uri, ctx: ActionContext) -> Result<
     let cursor = Cursor::new(byte);
     let buf_reader = BufReader::new(cursor);
 
+    let base_url: Url = input_path.into();
     let mut xml_reader = NsReader::from_reader(buf_reader);
-    let context = nusamai_citygml::ParseContext::new(input_path.into(), &code_resolver);
+    let context = nusamai_citygml::ParseContext::new(base_url.clone(), &code_resolver);
     let mut citygml_reader = CityGmlReader::new(context);
     let mut st = citygml_reader
         .start_root(&mut xml_reader)
         .map_err(Error::internal_runtime)?;
-    let entities = parse_tree_reader(&mut st).map_err(Error::internal_runtime)?;
+    let entities = parse_tree_reader(&mut st, base_url).map_err(Error::internal_runtime)?;
     let mut flattened_entities = Vec::new();
     for entity in entities {
         flatten_entity(
@@ -54,7 +56,10 @@ pub(crate) async fn read_citygml(input_path: Uri, ctx: ActionContext) -> Result<
     Ok(values.into())
 }
 
-fn parse_tree_reader<R: BufRead>(st: &mut SubTreeReader<R>) -> Result<Vec<Entity>, ParseError> {
+fn parse_tree_reader<R: BufRead>(
+    st: &mut SubTreeReader<R>,
+    base_url: Url,
+) -> Result<Vec<Entity>, ParseError> {
     let mut entities = Vec::new();
     let mut global_appearances = AppearanceStore::default();
 
@@ -77,7 +82,7 @@ fn parse_tree_reader<R: BufRead>(st: &mut SubTreeReader<R>) -> Result<Vec<Entity
                 if let Some(root) = cityobj.into_object() {
                     let entity = Entity {
                         root,
-                        base_url: url::Url::parse("file:///dummy").unwrap(),
+                        base_url: base_url.clone(),
                         geometry_store: RwLock::new(geometry_store).into(),
                         appearance_store: Default::default(), // TODO: from local appearances
                     };
