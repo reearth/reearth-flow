@@ -31,7 +31,8 @@ export const initialNodes: Node[] = [
     type: "transformer",
     selected: true,
     data: { name: "Transformer Node 2", inputs: ["input1"], outputs: ["output1", "output2"] },
-    position: { x: 315, y: 400 },
+    // position: { x: 315, y: 400 }, // Original position
+    position: { x: 115, y: 100 }, // OP - parent's position
     parentNode: "batch1",
   },
   {
@@ -56,7 +57,10 @@ export const initialNodes: Node[] = [
     id: "6",
     type: "reader",
     data: { name: "Reader Node 6", outputs: ["output1"] },
-    position: { x: 50, y: 200 },
+    // position: { x: 210, y: 350 }, // Original position
+    position: { x: 10, y: 50 }, // OP - parent's position
+    parentNode: "batch1",
+    extent: "parent",
   },
   {
     ...baseBatchNode,

@@ -70,8 +70,8 @@ const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, ...props }) => {
         />
       )}
       {/* <div className={`bg-orange-400/60 w-[${width}px] h-[${height}px]`} style={{ width, height }}> */}
-      <div className={`bg-yellow-200/20 rounded-sm h-full z-0`}>
-        <div className="bg-yellow-200/50 py-1 px-2 rounded-t-sm">
+      <div className={`bg-yellow-200/20 rounded-b-sm h-full z-0 relative`}>
+        <div className="bg-yellow-200/50 py-1 px-2 rounded-t-sm absolute -top-[32px] left-0 right-0">
           <p>{data.name}</p>
         </div>
       </div>
