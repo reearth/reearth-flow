@@ -3,15 +3,18 @@ pub mod types;
 pub mod utils;
 mod value;
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use nutype::nutype;
 use once_cell::sync::Lazy;
 
-use reearth_flow_action_log::ActionLogger;
+use reearth_flow_action_log::{action_log, ActionLogger};
+use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_workflow::id::Id;
+
+use crate::utils::inject_variables_to_scope;
 
 pub use value::ActionValue;
 
@@ -117,5 +120,25 @@ impl ActionContext {
             root_span: span,
             ..self.clone()
         }
+    }
+
+    pub fn action_log<T: AsRef<str> + std::fmt::Display>(&self, msg: T) {
+        action_log!(
+            parent: &self.root_span, &self.logger, "{}", msg
+        );
+    }
+
+    pub async fn get_expr_path<T: AsRef<str> + std::fmt::Display>(
+        &self,
+        path: &T,
+        inputs: &ActionDataframe,
+    ) -> Result<Uri> {
+        let scope = self.expr_engine.new_scope();
+        inject_variables_to_scope(inputs, &scope)?;
+        let path = self
+            .expr_engine
+            .eval_scope::<String>(path.as_ref(), &scope)
+            .map_or_else(|_| path.to_string(), |v| v);
+        Uri::from_str(path.as_str()).map_err(error::Error::input)
     }
 }

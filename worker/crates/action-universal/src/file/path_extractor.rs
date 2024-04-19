@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
@@ -21,9 +19,7 @@ pub struct FilePathExtractor {
 impl AsyncAction for FilePathExtractor {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.unwrap_or_default();
-        let source_dataset =
-            utils::get_expr_path(&self.source_dataset, &inputs, Arc::clone(&ctx.expr_engine))
-                .await?;
+        let source_dataset = ctx.get_expr_path(&self.source_dataset, &inputs).await?;
         if self.is_extractable_archive(&source_dataset) {
             let root_output_path =
                 utils::dir::project_output_dir(ctx.node_id.to_string().as_str())?;
