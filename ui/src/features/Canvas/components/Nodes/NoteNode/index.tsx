@@ -9,7 +9,8 @@ type NodeData = {
   textColor?: string;
 };
 
-export const initialSize = { width: 300, height: 200 };
+export const initialSize = { width: 300 };
+// export const initialSize = { width: 300, height: 200 };
 
 // export const baseBatchNode = {
 //   type: "batch",
@@ -21,7 +22,7 @@ const minSize = { width: 250, height: 150 };
 
 const NoteNode: React.FC<NodeProps<NodeData>> = ({ data, ...props }) => {
   const [width, _setWidth] = useState(data.width ?? initialSize.width);
-  const [height, _setHeight] = useState(data.height ?? initialSize.height);
+  const [height, _setHeight] = useState(data.height);
   // const onChange = useCallback(
   //   (evt: any) => {
   //     console.log("EVT", evt.target.value);
@@ -70,9 +71,9 @@ const NoteNode: React.FC<NodeProps<NodeData>> = ({ data, ...props }) => {
         />
       )}
       {/* <div className={`bg-orange-400/60 w-[${width}px] h-[${height}px]`} style={{ width, height }}> */}
-      <div className={`bg-blue-200/20 rounded-sm h-full z-0 p-2`}>
+      <div className={`bg-blue-300/50 rounded-sm h-full z-0 p-2`}>
         <textarea
-          className="resize-none w-full h-auto bg-transparent nowheel"
+          className="resize-none w-full h-full bg-transparent nowheel"
           defaultValue={data.content}
           onMouseDown={e => e.stopPropagation()}
           // onMouseUp={e => e.}
