@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use super::{
     geometry::Geometry3D, geometry_collection::GeometryCollection3D, line::Line3D,
     line_string::LineString3D, multi_line_string::MultiLineString3D, multi_point::MultiPoint3D,
-    multi_polygon::MultiPolygon3D, point::Point3D, polygon::Polygon3D, rect::Rect3D,
+    multi_polygon::MultiPolygon3D, point::Point3D, polygon::Polygon3D, rectangle::Rectangle3D,
     triangle::Triangle3D,
 };
 
@@ -16,7 +16,7 @@ pub enum GeometryCow3D<'a> {
     MultiLineString(Cow<'a, MultiLineString3D<f64>>),
     MultiPolygon(Cow<'a, MultiPolygon3D<f64>>),
     GeometryCollection(Cow<'a, GeometryCollection3D<f64>>),
-    Rect(Cow<'a, Rect3D<f64>>),
+    Rectangle(Cow<'a, Rectangle3D<f64>>),
     Triangle(Cow<'a, Triangle3D<f64>>),
 }
 
@@ -33,7 +33,7 @@ impl<'a> From<&'a Geometry3D<f64>> for GeometryCow3D<'a> {
             Geometry3D::GeometryCollection(g) => {
                 GeometryCow3D::GeometryCollection(Cow::Borrowed(g))
             }
-            Geometry3D::Rect(g) => GeometryCow3D::Rect(Cow::Borrowed(g)),
+            Geometry3D::Rectangle(g) => GeometryCow3D::Rectangle(Cow::Borrowed(g)),
             Geometry3D::Triangle(g) => GeometryCow3D::Triangle(Cow::Borrowed(g)),
         }
     }
@@ -87,9 +87,9 @@ impl<'a> From<&'a GeometryCollection3D<f64>> for GeometryCow3D<'a> {
     }
 }
 
-impl<'a> From<&'a Rect3D<f64>> for GeometryCow3D<'a> {
-    fn from(rect: &'a Rect3D<f64>) -> Self {
-        GeometryCow3D::Rect(Cow::Borrowed(rect))
+impl<'a> From<&'a Rectangle3D<f64>> for GeometryCow3D<'a> {
+    fn from(rectangle: &'a Rectangle3D<f64>) -> Self {
+        GeometryCow3D::Rectangle(Cow::Borrowed(rectangle))
     }
 }
 

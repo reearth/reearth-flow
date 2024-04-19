@@ -1,10 +1,14 @@
 use approx::{AbsDiffEq, RelativeEq};
 use serde::{Deserialize, Serialize};
 
+use crate::polygon;
+
 use super::coordinate::Coordinate;
 use super::coordnum::CoordNum;
 use super::line::Line;
 use super::no_value::NoValue;
+use super::polygon::Polygon;
+use super::traits::Surface;
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Triangle<T: CoordNum = f64, Z: CoordNum = NoValue>(
@@ -34,9 +38,9 @@ impl<T: CoordNum, Z: CoordNum> Triangle<T, Z> {
         ]
     }
 
-    // pub fn to_polygon(self) -> Polygon<T, Z> {
-    //     polygon![self.0, self.1, self.2, self.0]
-    // }
+    pub fn to_polygon(self) -> Polygon<T, Z> {
+        polygon![self.0, self.1, self.2, self.0]
+    }
 }
 
 impl<IC: Into<Coordinate<T, Z>> + Copy, T: CoordNum, Z: CoordNum> From<[IC; 3]> for Triangle<T, Z> {
@@ -44,6 +48,8 @@ impl<IC: Into<Coordinate<T, Z>> + Copy, T: CoordNum, Z: CoordNum> From<[IC; 3]> 
         Self(array[0].into(), array[1].into(), array[2].into())
     }
 }
+
+impl<T: CoordNum> Surface for Triangle<T, T> {}
 
 impl<T> RelativeEq for Triangle<T, T>
 where

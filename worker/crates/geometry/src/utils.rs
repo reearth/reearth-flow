@@ -6,25 +6,25 @@ use crate::{
         line::Line,
         line_string::LineString,
         point::Point,
-        rect::Rect,
+        rectangle::Rectangle,
     },
 };
 
-pub fn line_string_bounding_rect<T>(line_string: &LineString<T>) -> Option<Rect<T>>
+pub fn line_string_bounding_rectangle<T>(line_string: &LineString<T>) -> Option<Rectangle<T>>
 where
     T: CoordNum,
 {
-    get_bounding_rect(line_string.coords().cloned())
+    get_bounding_rectangle(line_string.coords().cloned())
 }
 
-pub fn line_bounding_rect<T>(line: Line<T>) -> Rect<T>
+pub fn line_bounding_rectangle<T>(line: Line<T>) -> Rectangle<T>
 where
     T: CoordNum,
 {
-    Rect::new(line.start, line.end)
+    Rectangle::new(line.start, line.end)
 }
 
-pub fn get_bounding_rect<I, T>(collection: I) -> Option<Rect<T>>
+pub fn get_bounding_rectangle<I, T>(collection: I) -> Option<Rectangle<T>>
 where
     T: CoordNum,
     I: IntoIterator<Item = Coordinate2D<T>>,
@@ -39,7 +39,7 @@ where
             yrange = get_min_max(py, yrange.0, yrange.1);
         }
 
-        return Some(Rect::new(
+        return Some(Rectangle::new(
             coord! {
                 x: xrange.0,
                 y: yrange.0,
