@@ -1,8 +1,8 @@
 import i18n from "i18next";
-// import LanguageDetector from "i18next-browser-languagedetector";
+import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 
-import { AvailableLanguage } from "./locales";
+import { AvailableLanguage, availableLanguages } from "./locales";
 import en from "./locales/en.json";
 import es from "./locales/es.json";
 import fr from "./locales/fr.json";
@@ -27,13 +27,16 @@ const resources: { [l in AvailableLanguage]: { translation: any } } = {
   },
 };
 
-export const availableLanguages = Object.keys(resources);
-
 i18n
-  //   .use(LanguageDetector)
+  .use(LanguageDetector)
   .use(initReactI18next)
   .init({
+    detection: {
+      order: ["navigator"],
+      caches: [],
+    },
     resources,
+    supportedLngs: availableLanguages,
     fallbackLng: "en",
     nsSeparator: false,
     keySeparator: false,

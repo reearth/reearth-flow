@@ -1,4 +1,4 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components/Tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
 
 import { Button, type ButtonProps } from "../BaseButton";
 
@@ -16,8 +16,10 @@ const ButtonWithTooltip: React.FC<ButtonWithTooltipProps> = ({
   ...props
 }) => (
   <Tooltip>
-    <TooltipTrigger className="h-full">
-      <Button {...props}>{children}</Button>
+    <TooltipTrigger asChild>
+      <div className="h-full">
+        <Button {...props}>{children}</Button>
+      </div>
     </TooltipTrigger>
     <TooltipContent side={tooltipPosition} sideOffset={tooltipOffset}>
       <p>{tooltipText}</p>

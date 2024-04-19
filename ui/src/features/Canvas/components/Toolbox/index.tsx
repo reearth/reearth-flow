@@ -1,10 +1,13 @@
-import { useCallback, useMemo, useState } from "react";
+import { DiscIcon, GroupIcon, Pencil2Icon } from "@radix-ui/react-icons";
+import { type DragEvent } from "react";
 
-import { IconButton, ReaderIcon, TransformerIcon, WriterIcon } from "@flow/components";
+import { IconButton, ReaderIcon, TransformerIcon } from "@flow/components";
 import { useT } from "@flow/providers";
 
+import { type NodeType } from "../Nodes/GeneralNode/types";
+
 type Tool = {
-  id: string;
+  id: NodeType;
   name: string;
   icon: React.ReactNode;
 };
@@ -15,43 +18,52 @@ type Props = {
 
 const Toolbox: React.FC<Props> = ({ className }) => {
   const t = useT();
-  const [isHovered, setIsHovered] = useState(false);
 
-  const availableTools = useMemo<Tool[]>(
-    () => [
-      {
-        id: "reader-node",
-        name: t("Reader Node"),
-        icon: <ReaderIcon />,
-      },
-      {
-        id: "transformer-node",
-        name: t("Transformer Node"),
-        icon: <TransformerIcon />,
-      },
-      {
-        id: "writer-node",
-        name: t("Writer Node"),
-        icon: <WriterIcon />,
-      },
-    ],
-    [t],
-  );
+  const availableTools: Tool[] = [
+    {
+      id: "reader",
+      name: t("Reader Node"),
+      icon: <ReaderIcon />,
+    },
+    {
+      id: "transformer",
+      name: t("Transformer Node"),
+      icon: <TransformerIcon />,
+    },
+    {
+      id: "writer",
+      name: t("Writer Node"),
+      icon: <DiscIcon />,
+    },
+    {
+      id: "note",
+      name: t("Note"),
+      icon: <Pencil2Icon />,
+    },
+    {
+      id: "batch",
+      name: t("Batch Node"),
+      icon: <GroupIcon />,
+    },
+  ];
 
-  const handleMouseOver = useCallback(() => !isHovered && setIsHovered(true), [isHovered]);
-  const handleMouseLeave = useCallback(() => isHovered && setIsHovered(false), [isHovered]);
+  const onDragStart = (event: DragEvent<HTMLButtonElement>, nodeType: NodeType) => {
+    event.dataTransfer.setData("application/reactflow", nodeType);
+    event.dataTransfer.effectAllowed = "move";
+  };
 
   return (
     <div
-      className={`flex flex-col flex-wrap bg-zinc-800 border border-zinc-600 rounded-md text-zinc-400 transition-all ${className}`}
-      onMouseOver={handleMouseOver}
-      onMouseLeave={handleMouseLeave}>
+      className={`flex flex-col flex-wrap bg-zinc-800 border border-zinc-600/60 rounded-md text-zinc-400 transition-all ${className}`}>
       {availableTools.map(tool => (
         <IconButton
           key={tool.id}
+          className={`dndnode-${tool.id}`}
           tooltipPosition="right"
           tooltipText={tool.name}
           icon={tool.icon}
+          onDragStart={event => onDragStart(event, tool.id)}
+          draggable
         />
       ))}
     </div>
