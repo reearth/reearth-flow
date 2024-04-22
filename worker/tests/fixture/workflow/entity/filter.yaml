@@ -17,7 +17,7 @@ graphs:
       - id: a1a91180-ab88-4c1a-aab5-48c242a218cb
         name: Ops-StringSpread-Filter
         type: action
-        action: EntityFilter
+        action: FeatureFilter
         with:
           conditions:
             - expr: |

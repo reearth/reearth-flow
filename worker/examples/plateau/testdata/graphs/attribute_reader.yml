@@ -7,9 +7,9 @@ nodes:
     subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
   - id: cc7d973e-a2eb-4db9-9879-a27154098001
-    name: EntityTransformer01
+    name: FeatureTransformer01
     type: action
-    action: EntityTransformer
+    action: FeatureTransformer
     with:
       transforms:
         - expr: |

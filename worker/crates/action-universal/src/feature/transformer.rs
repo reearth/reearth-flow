@@ -13,7 +13,7 @@ use reearth_flow_eval_expr::engine::Engine;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct EntityTransformer {
+pub struct FeatureTransformer {
     transforms: Vec<Transform>,
 }
 
@@ -25,8 +25,8 @@ struct Transform {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "EntityTransformer")]
-impl AsyncAction for EntityTransformer {
+#[typetag::serde(name = "FeatureTransformer")]
+impl AsyncAction for FeatureTransformer {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
@@ -114,8 +114,8 @@ mod tests {
         // Create a sample action context
         let action_context = ActionContext::default();
 
-        // Create a sample EntityTransformer
-        let entity_transformer = EntityTransformer {
+        // Create a sample FeatureTransformer
+        let entity_transformer = FeatureTransformer {
             transforms: vec![Transform {
                 expr: "expr1".to_string(),
                 target_port: Port::new("port1"),
