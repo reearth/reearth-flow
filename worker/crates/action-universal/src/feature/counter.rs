@@ -8,15 +8,15 @@ use reearth_flow_action::{
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct EntityCounter {
+pub struct FeatureCounter {
     count_start: i64,
     group_by: Option<Vec<String>>,
     output_attribute: String,
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "EntityCounter")]
-impl AsyncAction for EntityCounter {
+#[typetag::serde(name = "FeatureCounter")]
+impl AsyncAction for FeatureCounter {
     async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let input = inputs
@@ -83,7 +83,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_entity_counter_no_group_by() {
-        let action = EntityCounter {
+        let action = FeatureCounter {
             count_start: 1,
             group_by: None,
             output_attribute: "count".to_string(),
@@ -141,7 +141,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_entity_counter_with_group_by() {
-        let action = EntityCounter {
+        let action = FeatureCounter {
             count_start: 1,
             group_by: Some(vec!["name".to_string()]),
             output_attribute: "count".to_string(),
