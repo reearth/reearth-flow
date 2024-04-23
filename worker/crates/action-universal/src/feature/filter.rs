@@ -12,7 +12,7 @@ use reearth_flow_common::collection;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct EntityFilter {
+pub struct FeatureFilter {
     conditions: Vec<Condition>,
 }
 
@@ -24,8 +24,8 @@ struct Condition {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "EntityFilter")]
-impl AsyncAction for EntityFilter {
+#[typetag::serde(name = "FeatureFilter")]
+impl AsyncAction for FeatureFilter {
     async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
         let inputs = inputs.ok_or(Error::input("No Input"))?;
         let input = inputs

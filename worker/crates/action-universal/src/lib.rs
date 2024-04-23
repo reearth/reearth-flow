@@ -1,8 +1,8 @@
 mod attribute;
 mod color_converter;
 mod dataframe;
-mod entity;
 mod excel;
+mod feature;
 mod file;
 mod plateau;
 pub mod prelude;
