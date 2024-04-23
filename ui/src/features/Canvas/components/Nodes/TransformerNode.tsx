@@ -11,7 +11,7 @@ const TransformerNode: React.FC<GeneralNodeProps> = props => {
   //   },
   //   [data],
   // );
-  return <GeneralNode className="bg-[#631628]" {...props} />;
+  return <GeneralNode className="bg-[#631628]/60" {...props} />;
 };
 
 export default TransformerNode;

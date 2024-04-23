@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { ReactFlowProvider } from "reactflow";
 
 import { Loading } from "@flow/components";
 import BottomPanel from "@flow/features/BottomPanel";
@@ -29,7 +30,9 @@ function App() {
         <div className="flex flex-col bg-zinc-900 text-zinc-300 h-screen">
           <div className="flex flex-1">
             <div className="flex flex-col flex-1 p-0">
-              <Canvas workflow={currentProject?.workflows?.[0]} leftArea={<LeftPanel />} />
+              <ReactFlowProvider>
+                <Canvas workflow={currentProject?.workflows?.[0]} leftArea={<LeftPanel />} />
+              </ReactFlowProvider>
               <BottomPanel />
             </div>
           </div>

@@ -30,13 +30,13 @@ export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) =>
         y: event.clientY,
       });
 
-      let newNode: Node;
+      let newNode: Node; // TODO: stronger typing
 
       newNode = {
         id: createRandomId(),
         type,
         position,
-        data: { name: `New ${type} node`, inputs: ["source"], outputs: ["target"] },
+        data: { name: `New ${type} node`, inputs: ["source"], outputs: ["target"], status: "idle" },
       };
 
       if (type === "batch") {
