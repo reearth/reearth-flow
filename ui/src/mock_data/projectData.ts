@@ -5,8 +5,8 @@ export function generateProjects(count: number) {
   for (let i = 0; i < count; i++) {
     projects.push({
       id: i.toString(),
-      name: `My Project ${i + 1}`,
-      workflows: generateWorkflows(5),
+      name: i === 0 ? "New Project (empty)" : `My Project ${i + 1}`,
+      workflows: i === 0 ? undefined : generateWorkflows(5),
     });
   }
   return projects;

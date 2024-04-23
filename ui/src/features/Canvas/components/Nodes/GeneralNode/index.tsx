@@ -1,12 +1,12 @@
-import { DiscIcon } from "@radix-ui/react-icons";
-import { NodeProps, Position } from "reactflow";
+import { DiscIcon, GearIcon, DoubleArrowRightIcon, PlayIcon } from "@radix-ui/react-icons";
+import { NodeProps } from "reactflow";
 
-import { ReaderIcon, TransformerIcon } from "@flow/components";
+import { IconButton, ReaderIcon, TransformerIcon } from "@flow/components";
 import { NodeData } from "@flow/types";
 
 import { getPropsFrom } from "../utils";
 
-import CustomHandle from "./CustomHandle";
+import { Handles } from "./components/CustomHandle/Handles";
 import type { NodePosition, NodeType } from "./types";
 
 export type GeneralNodeProps = NodeProps<NodeData> & {
@@ -54,55 +54,20 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
           <div className={`w-[8px] h-[8px] rounded self-center ${metaProps.style}`} />
         </div>
       </div>
-      {type !== "reader" && data.inputs && data.inputs.length === 1 && (
-        <CustomHandle
-          id="target"
-          className="rounded-l rounded-r-none -left-0 z-[1001] w-[16px]"
-          type="target"
-          position={Position.Left}
-        />
-      )}
-      {data.outputs && data.outputs.length === 1 && (
-        <CustomHandle
-          id="source"
-          className="rounded-r rounded-l-none -right-0 z-[1001] w-[16px]"
-          type="source"
-          position={Position.Right}
-        />
-      )}
-      <div
-        id="handle-wrapper"
-        className="absolute bg-zinc-800 text-zinc-400 rounded-b-md ml-auto mr-auto left-0 right-0 w-[95%]">
-        {data.inputs &&
-          data.inputs.length > 1 &&
-          data.inputs.map((input, index) => (
-            <div key={input + index} className="relative border-b border-zinc-900 py-0.5 px-1.5">
-              <CustomHandle
-                type="target"
-                className={`left-0 w-[8px] rounded-none transition-colors ${index === (!data.outputs && data.inputs && data.inputs.length - 1) ? "rounded-bl-md" : undefined}`}
-                position={Position.Left}
-                id={input}
-                // isConnectable={1}
-              />
-              <p className="text-[10px] font-light pl-1">{input}</p>
+      <Handles
+        nodeType={type}
+        inputs={data.inputs}
+        outputs={data.outputs}
+        nodeActionArea={
+          selected && (
+            <div className="absolute flex items-center bg-zinc-800 rounded-b border-t border-zinc-700 right-[50%] translate-x-1/2">
+              <IconButton size="icon" icon={<DoubleArrowRightIcon className="" />} />
+              <IconButton size="icon" icon={<PlayIcon className="" />} />
+              <IconButton size="icon" icon={<GearIcon className="" />} />
             </div>
-          ))}
-        {data.outputs &&
-          data.outputs.length > 1 &&
-          data.outputs.map((output, index) => (
-            <div
-              key={output + index}
-              className="relative border-b border-zinc-900 py-0.5 px-1.5 last-of-type:border-none">
-              <CustomHandle
-                type="source"
-                className={`right-0 w-[8px] rounded-none transition-colors ${index === (data.outputs && data.outputs.length - 1) ? "rounded-br-md" : undefined}`}
-                position={Position.Right}
-                id={output}
-              />
-              <p className="text-[10px] font-light pr-1 text-end">{output}</p>
-            </div>
-          ))}
-      </div>
+          )
+        }
+      />
     </>
   );
 };
