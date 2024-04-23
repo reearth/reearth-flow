@@ -14,9 +14,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const commonArgs = {
-  children: "Button",
-};
+const commonArgs = {};
 
 export const Default: Story = {
   args: {
