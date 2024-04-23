@@ -4,7 +4,7 @@ use crate::helper::init_test_runner;
 
 #[tokio::test]
 async fn test_run() {
-    let executor = init_test_runner("entity/filter", vec!["filter.json"]).await;
+    let executor = init_test_runner("feature/filter", vec!["filter.json"]).await;
     let result = executor.start().await;
     assert!(result.is_ok());
     let result = result.unwrap();
