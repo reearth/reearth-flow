@@ -57,7 +57,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
       {type !== "reader" && data.inputs && data.inputs.length === 1 && (
         <CustomHandle
           id="target"
-          className="rounded-l rounded-r-none -left-0 z-[1001]"
+          className="rounded-l rounded-r-none -left-0 z-[1001] w-[16px]"
           type="target"
           position={Position.Left}
         />
@@ -72,7 +72,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
       )}
       <div
         id="handle-wrapper"
-        className="absolute bg-zinc-800 text-zinc-400 rounded-b-md ml-auto mr-auto left-0 right-0 w-[90%]">
+        className="absolute bg-zinc-800 text-zinc-400 rounded-b-md ml-auto mr-auto left-0 right-0 w-[95%]">
         {data.inputs &&
           data.inputs.length > 1 &&
           data.inputs.map((input, index) => (
