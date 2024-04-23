@@ -9,7 +9,7 @@ use nusamai_citygml::{
 };
 use nusamai_plateau::{appearance::AppearanceStore, models, Entity};
 use quick_xml::NsReader;
-use reearth_flow_action::{error::Error, ActionContext, ActionValue, Result};
+use reearth_flow_action::{error::Error, ActionContext, AttributeValue, Result};
 use reearth_flow_common::uri::Uri;
 use url::Url;
 
@@ -19,7 +19,7 @@ enum Parent {
     Object { id: String, typename: String },
 }
 
-pub(crate) async fn read_citygml(input_path: Uri, ctx: ActionContext) -> Result<ActionValue> {
+pub(crate) async fn read_citygml(input_path: Uri, ctx: ActionContext) -> Result<AttributeValue> {
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     ctx.action_log(format!("Parsing CityGML file: {:?} ...", input_path));

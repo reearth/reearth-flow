@@ -4,7 +4,7 @@ use nusamai_plateau::{
     Entity,
 };
 
-use crate::ActionValue;
+use crate::AttributeValue;
 
 pub struct GeometryValue {}
 
@@ -40,7 +40,7 @@ impl From<AppearanceStore> for Appearance {
 }
 
 pub struct ActionGeometry {
-    pub metadata: ActionValue,
+    pub metadata: AttributeValue,
     pub appearance: Option<Appearance>,
 }
 

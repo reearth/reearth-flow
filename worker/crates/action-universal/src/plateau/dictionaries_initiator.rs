@@ -1,13 +1,17 @@
+use std::vec;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use once_cell::sync::Lazy;
+use reearth_flow_action::Attribute;
+use reearth_flow_action::Dataframe;
+use reearth_flow_action::Feature;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
 use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result,
+    error, ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue, Result,
     DEFAULT_PORT,
 };
 
@@ -99,12 +103,11 @@ struct Schema {
 #[async_trait::async_trait]
 #[typetag::serde(name = "PLATEAU.DictionariesInitiator")]
 impl AsyncAction for DictionariesInitiator {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let inputs = inputs.ok_or(error::Error::input("No Input"))?;
+    async fn run(&self, ctx: ActionContext, inputs: ActionDataframe) -> ActionResult {
         let input = inputs
             .get(&DEFAULT_PORT)
             .ok_or(error::Error::input("No Default Port"))?;
-        let data = input.as_ref().ok_or(error::Error::input("No Value"))?;
+        let data = input;
         let mut res = ActionDataframe::new();
 
         let xpath_to_properties = {
@@ -117,108 +120,105 @@ impl AsyncAction for DictionariesInitiator {
         };
         let except_feature_types = self.except_feature_types.clone().unwrap_or_default();
 
-        let data = match data {
-            ActionValue::Array(data) => {
-                let mut codelists_map: HashMap<String, HashMap<String, HashMap<String, String>>> =
-                    HashMap::new();
-                let mut result = Vec::<ActionValue>::new();
-                for row in data {
-                    let feature = match row {
-                        ActionValue::Map(row) => row,
-                        _ => return Err(error::Error::input("Invalid Input. supported only Map")),
-                    };
-                    // Codelist dictionary creation
-                    let dir_codelists = match feature.get("dirCodelists") {
-                        Some(ActionValue::String(dir)) => dir,
-                        v => {
-                            return Err(error::Error::input(format!(
-                                "No dirCodelists value with {:?}",
-                                v
-                            )))
-                        }
-                    };
-                    if codelists_map.get(dir_codelists).is_none() {
-                        let dir = Uri::from_str(dir_codelists).map_err(|e| {
-                            error::Error::input(format!("Cannot parse uri with error = {:?}", e))
-                        })?;
-                        if dir.is_dir() {
-                            let codelists =
-                                create_codelist_map(Arc::clone(&ctx.storage_resolver), &dir)
-                                    .await?;
-                            if !codelists.is_empty() {
-                                codelists_map.insert(dir_codelists.to_string(), codelists);
-                            }
+        let data = {
+            let mut codelists_map: HashMap<String, HashMap<String, HashMap<String, String>>> =
+                HashMap::new();
+            let mut result = Vec::<Feature>::new();
+            for row in &data.features {
+                let feature = &row.attributes;
+                // Codelist dictionary creation
+                let dir_codelists = match feature.get(&Attribute::new("dirCodelists")) {
+                    Some(AttributeValue::String(dir)) => dir,
+                    v => {
+                        return Err(error::Error::input(format!(
+                            "No dirCodelists value with {:?}",
+                            v
+                        )))
+                    }
+                };
+                if codelists_map.get(dir_codelists).is_none() {
+                    let dir = Uri::from_str(dir_codelists).map_err(|e| {
+                        error::Error::input(format!("Cannot parse uri with error = {:?}", e))
+                    })?;
+                    if dir.is_dir() {
+                        let codelists =
+                            create_codelist_map(Arc::clone(&ctx.storage_resolver), &dir).await?;
+                        if !codelists.is_empty() {
+                            codelists_map.insert(dir_codelists.to_string(), codelists);
                         }
                     }
-                    let mut result_value = feature.clone();
-                    // Municipality name acquisition
-                    if let Some(file) = codelists_map.get(dir_codelists) {
-                        if let Some(city_code) = &self.city_code {
-                            if let Some(name) = file.get(ADMIN_CODE_LIST) {
-                                if let Some(city_name) = name.get(city_code) {
-                                    result_value.insert(
-                                        "cityName".to_string(),
-                                        ActionValue::String(city_name.clone()),
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    result_value.insert(
-                        "featureTypesWithPrefix".to_string(),
-                        ActionValue::Array(
-                            xpath_to_properties
-                                .keys()
-                                .map(|v| ActionValue::String(v.clone()))
-                                .collect::<Vec<_>>(),
-                        ),
-                    );
-                    let ftypes = xpath_to_properties.keys().collect::<Vec<_>>();
-                    let out_ftypes = ftypes
-                        .iter()
-                        .flat_map(|v| {
-                            if !except_feature_types.contains(v) {
-                                if let Some(true) = self.add_nsprefix_to_feature_types {
-                                    Some(ActionValue::String(v.replace(':', "_")))
-                                } else {
-                                    Some(ActionValue::String(
-                                        v.split(':')
-                                            .map(|v| v.to_string())
-                                            .nth(1)
-                                            .unwrap_or_default(),
-                                    ))
-                                }
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>();
-                    result_value.insert("featureTypes".to_string(), ActionValue::Array(out_ftypes));
-                    result.push(ActionValue::Map(result_value));
                 }
-                let settings = Settings::new(
-                    xpath_to_properties,
-                    except_feature_types,
-                    codelists_map
-                        .iter()
-                        .fold(HashMap::new(), |mut acc, (_k, v)| {
-                            acc.extend(v.clone());
-                            acc
-                        }),
+                let mut result_value = feature.clone();
+                // Municipality name acquisition
+                if let Some(file) = codelists_map.get(dir_codelists) {
+                    if let Some(city_code) = &self.city_code {
+                        if let Some(name) = file.get(ADMIN_CODE_LIST) {
+                            if let Some(city_name) = name.get(city_code) {
+                                result_value.insert(
+                                    Attribute::new("cityName"),
+                                    AttributeValue::String(city_name.clone()),
+                                );
+                            }
+                        }
+                    }
+                }
+
+                result_value.insert(
+                    Attribute::new("featureTypesWithPrefix"),
+                    AttributeValue::Array(
+                        xpath_to_properties
+                            .keys()
+                            .map(|v| AttributeValue::String(v.clone()))
+                            .collect::<Vec<_>>(),
+                    ),
                 );
-                let settings = serde_json::to_value(settings).map_err(|e| {
-                    error::Error::output(format!("Cannot convert to json with error = {:?}", e))
-                })?;
-                res.insert(
-                    DICTIONARIES_INITIATOR_SETTINGS_PORT.clone(),
-                    Some(settings.into()),
+                let ftypes = xpath_to_properties.keys().collect::<Vec<_>>();
+                let out_ftypes = ftypes
+                    .iter()
+                    .flat_map(|v| {
+                        if !except_feature_types.contains(v) {
+                            if let Some(true) = self.add_nsprefix_to_feature_types {
+                                Some(AttributeValue::String(v.replace(':', "_")))
+                            } else {
+                                Some(AttributeValue::String(
+                                    v.split(':')
+                                        .map(|v| v.to_string())
+                                        .nth(1)
+                                        .unwrap_or_default(),
+                                ))
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                result_value.insert(
+                    Attribute::new("featureTypes"),
+                    AttributeValue::Array(out_ftypes),
                 );
-                result
+                result.push(row.with_attributes(result_value));
             }
-            _ => return Err(error::Error::input("Invalid Input. supported only Array")),
+            let settings = Settings::new(
+                xpath_to_properties,
+                except_feature_types,
+                codelists_map
+                    .iter()
+                    .fold(HashMap::new(), |mut acc, (_k, v)| {
+                        acc.extend(v.clone());
+                        acc
+                    }),
+            );
+            let settings = serde_json::to_value(settings).map_err(|e| {
+                error::Error::output(format!("Cannot convert to json with error = {:?}", e))
+            })?;
+            let settings: Feature = settings.into();
+            res.insert(
+                DICTIONARIES_INITIATOR_SETTINGS_PORT.clone(),
+                Dataframe::new(vec![settings]),
+            );
+            result
         };
-        res.insert(DEFAULT_PORT.clone(), Some(ActionValue::Array(data)));
+        res.insert(DEFAULT_PORT.clone(), Dataframe::new(data));
         Ok(res)
     }
 }

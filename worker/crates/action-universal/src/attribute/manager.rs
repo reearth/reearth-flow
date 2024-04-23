@@ -1,11 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use rhai::Dynamic;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_action::utils::convert_dataframe_to_scope_params;
 use reearth_flow_action::{
-    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
+    ActionContext, ActionDataframe, ActionResult, AsyncAction, Dataframe, Feature,
 };
 use reearth_flow_common::collection;
 use reearth_flow_eval_expr::engine::Engine;
@@ -58,109 +57,75 @@ pub(super) enum Operate {
 #[async_trait::async_trait]
 #[typetag::serde(name = "AttributeManager")]
 impl AsyncAction for AttributeManager {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let inputs = inputs.ok_or(Error::input("No Input"))?;
+    async fn run(&self, ctx: ActionContext, inputs: ActionDataframe) -> ActionResult {
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let params = convert_dataframe_to_scope_params(&inputs);
         let operations = convert_single_operation(&self.operations, Arc::clone(&expr_engine));
 
         let mut output = ActionDataframe::new();
         for (port, data) in inputs {
-            let data = match data {
-                Some(data) => data,
-                None => continue,
-            };
-            let value = match data {
-                ActionValue::Array(rows) => {
-                    let processed_data = collection::map(&rows, |row| {
-                        mapper(row, &operations, &params, Arc::clone(&expr_engine))
-                    });
-                    ActionValue::Array(processed_data)
-                }
-                ActionValue::Map(row) => mapper(
-                    &ActionValue::Map(row),
-                    &operations,
-                    &params,
-                    Arc::clone(&expr_engine),
-                ),
-                _ => data,
-            };
-            output.insert(port, Some(value));
+            let processed_data = collection::map(&data.features, |row| {
+                mapper(row, &operations, Arc::clone(&expr_engine))
+            });
+            output.insert(port, Dataframe::new(processed_data));
         }
         Ok(output)
     }
 }
 
-fn mapper(
-    row: &ActionValue,
-    operations: &[Operate],
-    params: &HashMap<String, ActionValue>,
-    expr_engine: Arc<Engine>,
-) -> ActionValue {
-    match row {
-        ActionValue::Map(row) => {
-            let mut result = row.clone();
-            for operation in operations {
-                match operation {
-                    Operate::Convert { expr, attribute } => {
-                        let value = row.get(attribute);
-                        if value.is_none() {
-                            continue;
-                        }
-                        let scope = expr_engine.new_scope();
-                        for (k, v) in params {
-                            scope.set(k, v.clone().into());
-                        }
-                        for (k, v) in row {
-                            scope.set(k, v.clone().into());
-                        }
-                        if let Some(expr) = expr {
-                            let new_value = scope.eval_ast::<Dynamic>(expr);
-                            if let Ok(new_value) = new_value {
-                                if let Ok(new_value) = new_value.try_into() {
-                                    result.insert(attribute.clone(), new_value);
-                                }
-                            }
+fn mapper(row: &Feature, operations: &[Operate], expr_engine: Arc<Engine>) -> Feature {
+    let mut result = row.clone();
+    for operation in operations {
+        match operation {
+            Operate::Convert { expr, attribute } => {
+                let value = row.get(attribute);
+                if value.is_none() {
+                    continue;
+                }
+                let scope = expr_engine.new_scope();
+                for (k, v) in row.iter() {
+                    scope.set(k.inner().as_str(), v.clone().into());
+                }
+                if let Some(expr) = expr {
+                    let new_value = scope.eval_ast::<Dynamic>(expr);
+                    if let Ok(new_value) = new_value {
+                        if let Ok(new_value) = new_value.try_into() {
+                            result.insert(attribute.clone(), new_value);
                         }
                     }
-                    Operate::Create { expr, attribute } => {
-                        let scope = expr_engine.new_scope();
-                        for (k, v) in params {
-                            scope.set(k, v.clone().into());
-                        }
-                        for (k, v) in row {
-                            scope.set(k, v.clone().into());
-                        }
-                        if let Some(expr) = expr {
-                            let new_value = scope.eval_ast::<Dynamic>(expr);
-                            if let Ok(new_value) = new_value {
-                                if let Ok(new_value) = new_value.try_into() {
-                                    result.insert(attribute.clone(), new_value);
-                                }
-                            }
-                        }
-                    }
-                    Operate::Rename { new_key, attribute } => {
-                        let value = row.get(attribute);
-                        if value.is_none() {
-                            continue;
-                        }
-                        result.remove(attribute);
-                        result.insert(new_key.clone(), value.unwrap().clone());
-                    }
-                    Operate::Remove { attribute } => {
-                        let value = row.get(attribute);
-                        if value.is_none() {
-                            continue;
-                        }
-                        result.remove(attribute);
-                    }
-                };
+                }
             }
-            ActionValue::Map(result)
-        }
-        _ => row.clone(),
+            Operate::Create { expr, attribute } => {
+                let scope = expr_engine.new_scope();
+                for (k, v) in row.iter() {
+                    scope.set(k.inner().as_str(), v.clone().into());
+                }
+                if let Some(expr) = expr {
+                    let new_value = scope.eval_ast::<Dynamic>(expr);
+                    if let Ok(new_value) = new_value {
+                        if let Ok(new_value) = new_value.try_into() {
+                            result.insert(attribute.clone(), new_value);
+                        }
+                    }
+                }
+            }
+            Operate::Rename { new_key, attribute } => {
+                let value = row.get(attribute);
+                if value.is_none() {
+                    continue;
+                }
+                result.remove(attribute);
+                result.insert(new_key.clone(), value.unwrap().clone());
+            }
+            Operate::Remove { attribute } => {
+                let value = row.get(attribute);
+                if value.is_none() {
+                    continue;
+                }
+                result.remove(attribute);
+            }
+        };
     }
+    result
 }
 
 fn convert_single_operation(operations: &[Operation], expr_engine: Arc<Engine>) -> Vec<Operate> {

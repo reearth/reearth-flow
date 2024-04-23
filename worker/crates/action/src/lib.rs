@@ -1,7 +1,10 @@
+pub mod dataframe;
 pub mod error;
 pub mod types;
 pub mod utils;
 mod value;
+
+pub use crate::dataframe::{Attribute, Dataframe, Feature};
 
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
@@ -13,16 +16,13 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_workflow::id::Id;
-
-use crate::utils::inject_variables_to_scope;
-
-pub use value::ActionValue;
+pub use value::AttributeValue;
 
 pub static DEFAULT_PORT: Lazy<Port> = Lazy::new(|| Port::new("default"));
 pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 
-pub type ActionDataframe = HashMap<Port, Option<ActionValue>>;
-pub type ActionValueIndex = HashMap<String, HashMap<String, Vec<ActionValue>>>;
+pub type ActionDataframe = HashMap<Port, Dataframe>;
+pub type FeatureIndex = HashMap<String, Vec<Feature>>;
 pub type ActionResult = std::result::Result<ActionDataframe, error::Error>;
 pub type Result<T, E = error::Error> = std::result::Result<T, E>;
 
@@ -46,12 +46,12 @@ pub struct Port(String);
 #[async_trait::async_trait]
 #[typetag::serde(tag = "action", content = "with")]
 pub trait AsyncAction: Send + Sync {
-    async fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult;
+    async fn run(&self, ctx: ActionContext, input: ActionDataframe) -> ActionResult;
 }
 
 #[typetag::serde(tag = "action", content = "with")]
 pub trait SyncAction: Send + Sync {
-    fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult;
+    fn run(&self, ctx: ActionContext, input: ActionDataframe) -> ActionResult;
 }
 
 #[derive(Debug, Clone)]
@@ -128,13 +128,8 @@ impl ActionContext {
         );
     }
 
-    pub async fn get_expr_path<T: AsRef<str> + std::fmt::Display>(
-        &self,
-        path: &T,
-        inputs: &ActionDataframe,
-    ) -> Result<Uri> {
+    pub async fn get_expr_path<T: AsRef<str> + std::fmt::Display>(&self, path: &T) -> Result<Uri> {
         let scope = self.expr_engine.new_scope();
-        inject_variables_to_scope(inputs, &scope)?;
         let path = self
             .expr_engine
             .eval_scope::<String>(path.as_ref(), &scope)
