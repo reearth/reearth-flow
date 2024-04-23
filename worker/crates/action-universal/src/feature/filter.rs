@@ -1,12 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::error::Error;
-use reearth_flow_action::utils::convert_dataframe_to_scope_params;
 use reearth_flow_action::{
-    ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Port, DEFAULT_PORT,
-    REJECTED_PORT,
+    ActionContext, ActionDataframe, ActionResult, AsyncAction, Dataframe, Feature, Port,
+    DEFAULT_PORT, REJECTED_PORT,
 };
 use reearth_flow_common::collection;
 
@@ -26,74 +25,51 @@ struct Condition {
 #[async_trait::async_trait]
 #[typetag::serde(name = "FeatureFilter")]
 impl AsyncAction for FeatureFilter {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let inputs = inputs.ok_or(Error::input("No Input"))?;
+    async fn run(&self, ctx: ActionContext, inputs: ActionDataframe) -> ActionResult {
         let input = inputs
             .get(&DEFAULT_PORT)
             .ok_or(Error::input("No Default Port"))?;
-        let input = input.as_ref().ok_or(Error::input("No Value"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let params = convert_dataframe_to_scope_params(&inputs);
 
-        let mut result = HashMap::<Port, Vec<ActionValue>>::new();
+        let mut result = ActionDataframe::new();
         for condition in &self.conditions {
             let expr = &condition.expr;
             let template_ast = expr_engine.compile(expr).map_err(Error::internal_runtime)?;
             let output_port = &condition.output_port;
-            let success = match input {
-                ActionValue::Array(rows) => {
-                    let filter = |row: &ActionValue| {
-                        if let ActionValue::Map(row) = row {
-                            let scope = expr_engine.new_scope();
-                            for (k, v) in &params {
-                                scope.set(k, v.clone().into());
-                            }
-                            for (k, v) in row {
-                                scope.set(k, v.clone().into());
-                            }
-                            let eval = scope.eval_ast::<bool>(&template_ast);
-                            if let Ok(eval) = eval {
-                                eval
-                            } else {
-                                false
-                            }
-                        } else {
-                            ctx.action_log("Invalid Input. supported only Map");
-                            false
-                        }
-                    };
-                    collection::filter(rows, filter)
+            let filter = |row: &Feature| {
+                let scope = expr_engine.new_scope();
+                for (k, v) in &row.attributes {
+                    scope.set(k.inner().as_str(), v.clone().into());
                 }
-                _ => return Err(Error::input("Invalid Input. supported only Array")),
+                let eval = scope.eval_ast::<bool>(&template_ast);
+                if let Ok(eval) = eval {
+                    eval
+                } else {
+                    false
+                }
             };
-            result.insert(output_port.clone(), success);
+            let success = collection::filter(&input.features, filter);
+            result.insert(output_port.clone(), Dataframe::new(success));
         }
-        let failed = if let ActionValue::Array(failed) = &input {
-            let mut target = collection::vec_to_map(failed, |v| (v.to_string(), false));
+        let failed = {
+            let mut target = collection::vec_to_map(&input.features, |v| (v.to_string(), false));
             result.iter().for_each(|(_, v)| {
-                let success = collection::vec_to_map(v, |row| (row.to_string(), true));
+                let success = collection::vec_to_map(&v.features, |row| (row.to_string(), true));
                 target.extend(success);
             });
             target
-        } else {
-            HashMap::new()
         };
 
-        let failed = if let ActionValue::Array(all) = &input {
-            collection::filter(all, |v| {
+        let failed = {
+            collection::filter(&input.features, |v| {
                 if let Some(failed) = failed.get(&v.to_string()) {
                     !*failed
                 } else {
                     false
                 }
             })
-        } else {
-            vec![]
         };
-        result.insert(REJECTED_PORT.to_owned(), failed);
-        Ok(result
-            .iter()
-            .map(|(k, v)| (k.clone(), Some(ActionValue::Array(v.clone()))))
-            .collect::<ActionDataframe>())
+        result.insert(REJECTED_PORT.to_owned(), Dataframe::new(failed));
+        Ok(result)
     }
 }

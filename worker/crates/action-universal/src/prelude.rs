@@ -6,7 +6,6 @@ pub use crate::attribute::merger::AttributeMerger;
 pub use crate::attribute::sorter::AttributeSorter;
 pub use crate::color_converter::ColorConverter;
 pub use crate::dataframe::transformer::DataframeTransformer;
-pub use crate::dataframe::unions::DataframeUnion;
 pub use crate::excel::writer::ExcelFileWriter;
 pub use crate::feature::counter::FeatureCounter;
 pub use crate::feature::filter::FeatureFilter;

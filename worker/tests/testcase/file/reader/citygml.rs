@@ -17,6 +17,5 @@ async fn test_run() {
     let result = executor.start().await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    let default_port = result.get(&Port::new("default")).unwrap();
-    assert!(default_port.is_some());
+    let _default_port = result.get(&Port::new("default")).unwrap();
 }

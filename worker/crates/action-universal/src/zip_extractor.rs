@@ -3,10 +3,8 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_action::utils::inject_variables_to_scope;
 use reearth_flow_action::{
-    error::Error, utils, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
-    DEFAULT_PORT,
+    error::Error, utils, ActionContext, ActionDataframe, ActionResult, AsyncAction,
 };
 use reearth_flow_common::uri::Uri;
 
@@ -20,12 +18,9 @@ pub struct ZipExtractor {
 #[async_trait::async_trait]
 #[typetag::serde(name = "ZipExtractor")]
 impl AsyncAction for ZipExtractor {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let inputs = inputs.unwrap_or_default();
-
+    async fn run(&self, ctx: ActionContext, _inputs: ActionDataframe) -> ActionResult {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let scope = expr_engine.new_scope();
-        inject_variables_to_scope(&inputs, &scope)?;
         let path = expr_engine
             .eval_scope::<String>(&self.path, &scope)
             .map_err(Error::input)?;
@@ -55,12 +50,8 @@ impl AsyncAction for ZipExtractor {
             .storage_resolver
             .resolve(&root_output_path)
             .map_err(Error::input)?;
-        let result = utils::zip::extract(bytes, root_output_path, storage).await?;
-        let output = ActionDataframe::from([(
-            DEFAULT_PORT.clone(),
-            Some(ActionValue::String(result.root.to_string())),
-        )]);
-
+        let _result = utils::zip::extract(bytes, root_output_path, storage).await?;
+        let output = ActionDataframe::new();
         Ok(output)
     }
 }

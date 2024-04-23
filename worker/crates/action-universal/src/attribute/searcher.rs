@@ -2,7 +2,8 @@ use regex::{escape, Regex};
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
+    error::Error, ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue,
+    Dataframe, Feature,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -15,33 +16,39 @@ pub struct AttributeStringSearcher {
 #[async_trait::async_trait]
 #[typetag::serde(name = "AttributeStringSearcher")]
 impl AsyncAction for AttributeStringSearcher {
-    async fn run(&self, _ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
+    async fn run(&self, _ctx: ActionContext, inputs: ActionDataframe) -> ActionResult {
         let re = if self.contains_regular_expression {
-            Regex::new(&self.search_in).map_err(|_| Error::input("Invalid regex"))
+            Regex::new(&self.search_in)
+                .map_err(|e| Error::input(format!("Invalid regex pattern with error: {:?}", e)))
         } else {
-            Regex::new(&escape(&self.search_in)).map_err(|_| Error::input("Invalid regex"))
+            Regex::new(&escape(&self.search_in))
+                .map_err(|e| Error::input(format!("Invalid regex pattern with error: {:?}", e)))
         }?;
         let output = inputs
-            .ok_or(Error::input("No input dataframe"))?
             .iter()
-            .map(|(k, v)| (k.clone(), v.as_ref().map(|v| search(v.clone(), &re))))
+            .map(|(k, v)| {
+                (
+                    k.clone(),
+                    Dataframe::new(
+                        v.features
+                            .iter()
+                            .flat_map(|v| search(v, &re))
+                            .collect::<Vec<_>>(),
+                    ),
+                )
+            })
             .collect();
         Ok(output)
     }
 }
 
-fn search(v: ActionValue, re: &Regex) -> ActionValue {
-    match v {
-        ActionValue::String(s) => ActionValue::Array(
-            re.find_iter(&s)
-                .map(|m| ActionValue::String(m.as_str().to_string()))
-                .collect(),
-        ),
-        ActionValue::Map(kv) => ActionValue::Map(
-            kv.into_iter()
-                .map(|(k, v)| (k.clone(), search(v, re)))
-                .collect(),
-        ),
-        x => x,
+fn search(v: &Feature, re: &Regex) -> Option<Feature> {
+    if v.attributes.iter().any(|(_, v)| match v {
+        AttributeValue::String(s) => re.is_match(s),
+        _ => false,
+    }) {
+        Some(v.clone())
+    } else {
+        None
     }
 }
