@@ -14,10 +14,11 @@ const selector = (s: ReactFlowState) => ({
 });
 
 type Props = Omit<HandleProps, "isConnectable"> & {
+  className?: string;
   isConnectable?: number;
 };
 
-const CustomHandle: React.FC<Props> = props => {
+const CustomHandle: React.FC<Props> = ({ className, ...props }) => {
   const { nodeInternals, edges } = useStore(selector);
   const nodeId = useNodeId();
 
@@ -35,7 +36,7 @@ const CustomHandle: React.FC<Props> = props => {
     <Handle
       {...props}
       isConnectable={isHandleConnectable}
-      className="bg-zinc-300/75 -z-50 border-none rounded-none h-4"
+      className={`bg-transparent border-none h-full hover:bg-zinc-600/60 ${className}`}
     />
   );
 };
