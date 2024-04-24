@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
@@ -6,8 +6,8 @@ use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error, ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue, Dataframe,
-    Feature, Result, DEFAULT_PORT, REJECTED_PORT,
+    error, ActionContext, ActionDataframe, ActionResult, AsyncAction, Attribute, AttributeValue,
+    Dataframe, Feature, Result, DEFAULT_PORT, REJECTED_PORT,
 };
 
 const PKG_FOLDERS: &[&str] = &[
@@ -37,13 +37,15 @@ struct Response {
     dir_schemas: String,
 }
 
-impl TryFrom<Response> for AttributeValue {
-    type Error = error::Error;
-    fn try_from(value: Response) -> Result<Self, error::Error> {
-        let value = serde_json::to_value(value).map_err(|e| {
-            error::Error::output(format!("Cannot convert to json with error = {:?}", e))
-        })?;
-        Ok(AttributeValue::from(value))
+impl From<Response> for HashMap<Attribute, AttributeValue> {
+    fn from(value: Response) -> Self {
+        serde_json::to_value(value)
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (Attribute::new(k), AttributeValue::from(v.clone())))
+            .collect()
     }
 }
 
@@ -61,8 +63,8 @@ impl AsyncAction for UdxFolderExtractor {
             .compile(self.city_gml_path.as_str())
             .map_err(error::Error::internal_runtime)?;
 
-        let mut success = Vec::<AttributeValue>::new();
-        let mut rejected = Vec::<AttributeValue>::new();
+        let mut success = Vec::<HashMap<Attribute, AttributeValue>>::new();
+        let mut rejected = Vec::<HashMap<Attribute, AttributeValue>>::new();
         for row in &input.features {
             let res = mapper(
                 row,
@@ -74,9 +76,9 @@ impl AsyncAction for UdxFolderExtractor {
             )
             .await?;
             if PKG_FOLDERS.contains(&res.package.as_str()) {
-                success.push(res.try_into().map_err(error::Error::internal_runtime)?);
+                success.push(res.into());
             } else {
-                rejected.push(res.try_into().map_err(error::Error::internal_runtime)?);
+                rejected.push(res.into());
             };
         }
         Ok(ActionDataframe::from([
