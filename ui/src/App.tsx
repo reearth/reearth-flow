@@ -31,7 +31,10 @@ function App() {
           <div className="flex flex-1">
             <div className="flex flex-col flex-1 p-0">
               <ReactFlowProvider>
-                <Canvas workflow={currentProject?.workflows?.[0]} leftArea={<LeftPanel />} />
+                <Canvas
+                  workflow={currentProject?.workflows?.[0]}
+                  leftArea={<LeftPanel data={currentProject?.workflows?.[0]} />}
+                />
               </ReactFlowProvider>
               <BottomPanel />
             </div>

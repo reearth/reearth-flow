@@ -160,6 +160,7 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
         //   [-1000, -1000],
         //   [1000, 1000],
         // ]}
+        selectNodesOnDrag={false}
         selectionMode={SelectionMode["Partial"]}
         nodes={nodes}
         nodeTypes={nodeTypes}

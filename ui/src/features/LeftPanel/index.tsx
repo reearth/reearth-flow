@@ -1,25 +1,75 @@
-import { FileIcon, StopIcon } from "@radix-ui/react-icons";
-import { Database, Folder, SearchIcon } from "lucide-react";
+import { FileIcon } from "@radix-ui/react-icons";
+import { Database, Disc, SearchIcon, Zap } from "lucide-react";
 import { useState } from "react";
 
-import { VerticalPanel, FlowLogo, type PanelContent, Tree } from "@flow/components";
+import { VerticalPanel, FlowLogo, type PanelContent, Tree, TreeDataItem } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
-import { useT } from "@flow/providers";
-
-import { data } from "../../mock_data/fileTreeData"; // TODO: replace with real data
+import { Workflow } from "@flow/types";
 
 import HomeMenu from "./components/HomeMenu";
 
 type Props = {
   className?: string;
+  data?: Workflow;
 };
 
-const LeftPanel: React.FC<Props> = ({ className }) => {
+const LeftPanel: React.FC<Props> = ({ className, data }) => {
   const [searchText, setSearchText] = useState<string>("");
   const [isPanelOpen, handlePanelToggle] = useStateManager<boolean>(true);
-  const t = useT();
 
   const [_content, setContent] = useState("Admin Page");
+  console.log("data: ", data);
+
+  const treeContent: TreeDataItem[] = [
+    ...(data?.nodes
+      ?.filter(n => n.type === "reader")
+      .map(n => ({
+        id: n.id,
+        name: n.data.name ?? "untitled",
+        icon: Database,
+      })) ?? []),
+    ...(data?.nodes
+      ?.filter(n => n.type === "writer")
+      .map(n => ({
+        id: n.id,
+        name: n.data.name ?? "untitled",
+        icon: Disc,
+      })) ?? []),
+    {
+      id: "transformer",
+      name: "Transformers",
+      icon: Zap,
+      children: data?.nodes
+        ?.filter(n => n.type === "transformer")
+        .map(n => ({
+          id: n.id,
+          name: n.data.name ?? "untitled",
+          // icon: Disc,
+        })),
+    },
+    // {
+    //   id: "batch",
+    //   name: "Batches",
+    //   children: data?.nodes
+    //     ?.filter(n => n.type === "batch")
+    //     .map(n => ({
+    //       id: n.id,
+    //       name: n.data.name ?? "untitled",
+    //       // icon: Group,
+    //     })),
+    // },
+    // {
+    //   id: "notes",
+    //   name: "Notes",
+    //   children: data?.nodes
+    //     ?.filter(n => n.type === "note")
+    //     .map(n => ({
+    //       id: n.id,
+    //       name: n.data.name ?? "untitled",
+    //       // icon: Pen,
+    //     })),
+    // },
+  ];
 
   const panelContents: PanelContent[] = [
     {
@@ -48,29 +98,18 @@ const LeftPanel: React.FC<Props> = ({ className }) => {
             />
           </div>
           <div className="border-zinc-700/50 border-t-[1px] w-[100%]" />
-          <Tree
-            data={data}
-            className="flex-shrink-0 w-full h-[60vh] text-zinc-300"
-            // initialSlelectedItemId="1"
-            onSelectChange={item => setContent(item?.name ?? "")}
-            folderIcon={Folder}
-            itemIcon={Database}
-          />
-          <div className="border-zinc-700 border-t-[1px] w-[100%]" />
+          {data && (
+            <Tree
+              data={treeContent}
+              className="flex-shrink-0 w-full h-[60vh] text-zinc-300"
+              // initialSlelectedItemId="1"
+              onSelectChange={item => setContent(item?.name ?? "")}
+              // folderIcon={Folder}
+              // itemIcon={Database}
+            />
+          )}
+          {/* <div className="border-zinc-700 border-t-[1px] w-[100%]" /> */}
         </>
-      ),
-    },
-    {
-      id: "transformer-gallery",
-      icon: <StopIcon />,
-      title: t("Transformers Gallery"),
-      component: (
-        <div>
-          <p className="text-xs">{t("All of my transformers")}</p>
-          <p className="text-xs">{t("All of my transformers")}</p>
-          <p className="text-xs">{t("All of my transformers")}</p>
-          <p className="text-xs">{t("All of my transformers")}</p>
-        </div>
       ),
     },
   ];
