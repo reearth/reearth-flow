@@ -25,6 +25,13 @@ impl From<Vec<AttributeValue>> for Dataframe {
     }
 }
 
+impl From<Vec<HashMap<Attribute, AttributeValue>>> for Dataframe {
+    fn from(v: Vec<HashMap<Attribute, AttributeValue>>) -> Self {
+        let features = v.into_iter().map(Feature::from).collect::<Vec<_>>();
+        Self { features }
+    }
+}
+
 impl From<Dataframe> for Vec<AttributeValue> {
     fn from(v: Dataframe) -> Self {
         v.features
@@ -100,6 +107,12 @@ impl From<HashMap<String, AttributeValue>> for Feature {
             .map(|(k, v)| (Attribute::new(k.to_string()), v.clone()))
             .collect::<HashMap<_, _>>();
         Self { attributes }
+    }
+}
+
+impl From<HashMap<Attribute, AttributeValue>> for Feature {
+    fn from(v: HashMap<Attribute, AttributeValue>) -> Self {
+        Self { attributes: v }
     }
 }
 

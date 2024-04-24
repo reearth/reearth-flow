@@ -56,7 +56,7 @@ fn mapper(row: &Feature, expr: &rhai::AST, expr_engine: Arc<Engine>) -> Feature 
     for (k, v) in row.attributes.iter() {
         scope.set(k.inner().as_str(), v.clone().into());
     }
-    scope.set("__all", serde_json::to_value(row.clone()).unwrap());
+    scope.set("__all", serde_json::to_value(&row.attributes).unwrap());
     let new_value = scope.eval_ast::<Dynamic>(expr);
     if let Ok(new_value) = new_value {
         if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
