@@ -4,9 +4,10 @@ use std::str::FromStr;
 use itertools::{self, Itertools};
 use once_cell::sync::Lazy;
 use reearth_flow_action::{
-    error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Port, Result,
+    error, ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue, Port, Result,
     DEFAULT_PORT,
 };
+use reearth_flow_action::{Attribute, Dataframe, Feature};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
 use reearth_flow_common::xml::XmlDocument;
@@ -77,12 +78,14 @@ impl TryFrom<Attributes> for serde_json::Value {
     }
 }
 
-impl TryFrom<Attributes> for ActionValue {
+impl TryFrom<Attributes> for AttributeValue {
     type Error = error::Error;
     fn try_from(value: Attributes) -> Result<Self, error::Error> {
-        Ok(ActionValue::from(serde_json::to_value(value.0).map_err(
-            |e| error::Error::output(format!("Cannot convert to json with error = {:?}", e)),
-        )?))
+        Ok(AttributeValue::from(
+            serde_json::to_value(value.0).map_err(|e| {
+                error::Error::output(format!("Cannot convert to json with error = {:?}", e))
+            })?,
+        ))
     }
 }
 
@@ -218,13 +221,24 @@ struct FilePathResponse {
     max_lod: i32,
 }
 
-impl TryFrom<FilePathResponse> for ActionValue {
+impl TryFrom<FilePathResponse> for AttributeValue {
     type Error = error::Error;
 
     fn try_from(value: FilePathResponse) -> Result<Self, error::Error> {
-        Ok(ActionValue::from(serde_json::to_value(value).map_err(
+        Ok(AttributeValue::from(serde_json::to_value(value).map_err(
             |e| error::Error::output(format!("Cannot convert to json with error = {:?}", e)),
         )?))
+    }
+}
+
+impl TryFrom<FilePathResponse> for Feature {
+    type Error = error::Error;
+
+    fn try_from(value: FilePathResponse) -> Result<Self, error::Error> {
+        let attributes = serde_json::to_value(value).map_err(|e| {
+            error::Error::output(format!("Cannot convert to json with error = {:?}", e))
+        })?;
+        Ok(attributes.into())
     }
 }
 
@@ -249,13 +263,24 @@ struct FeatureResponse {
     xml_parent_id: Option<String>,
 }
 
-impl TryFrom<FeatureResponse> for ActionValue {
+impl TryFrom<FeatureResponse> for AttributeValue {
     type Error = error::Error;
 
     fn try_from(value: FeatureResponse) -> Result<Self, error::Error> {
-        Ok(ActionValue::from(serde_json::to_value(value).map_err(
+        Ok(AttributeValue::from(serde_json::to_value(value).map_err(
             |e| error::Error::output(format!("Cannot convert to json with error = {:?}", e)),
         )?))
+    }
+}
+
+impl TryFrom<FeatureResponse> for Feature {
+    type Error = error::Error;
+
+    fn try_from(value: FeatureResponse) -> Result<Self, error::Error> {
+        let attributes = serde_json::to_value(value).map_err(|e| {
+            error::Error::output(format!("Cannot convert to json with error = {:?}", e))
+        })?;
+        Ok(attributes.into())
     }
 }
 
@@ -268,13 +293,27 @@ struct SummaryResponse {
     xpath_to_properties: HashMap<String, HashMap<String, SchemaFeature>>,
 }
 
-impl TryFrom<SummaryResponse> for ActionValue {
+impl TryFrom<SummaryResponse> for AttributeValue {
     type Error = error::Error;
 
     fn try_from(value: SummaryResponse) -> Result<Self, error::Error> {
-        Ok(ActionValue::from(serde_json::to_value(value).map_err(
+        Ok(AttributeValue::from(serde_json::to_value(value).map_err(
             |e| error::Error::output(format!("Cannot convert to json with error = {:?}", e)),
         )?))
+    }
+}
+
+impl TryFrom<SummaryResponse> for Dataframe {
+    type Error = error::Error;
+
+    fn try_from(value: SummaryResponse) -> Result<Self, error::Error> {
+        let attributes = serde_json::to_value(value).map_err(|e| {
+            error::Error::output(format!("Cannot convert to json with error = {:?}", e))
+        })?;
+        let feature: Feature = attributes.into();
+        Ok(Dataframe {
+            features: vec![feature],
+        })
     }
 }
 
@@ -303,301 +342,249 @@ pub struct XmlAttributeExtractor;
 #[async_trait::async_trait]
 #[typetag::serde(name = "PLATEAU.XMLAttributeExtractor")]
 impl AsyncAction for XmlAttributeExtractor {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let inputs = inputs.ok_or(error::Error::input("No Input"))?;
+    async fn run(&self, ctx: ActionContext, inputs: ActionDataframe) -> ActionResult {
         let input = inputs
             .get(&DEFAULT_PORT)
             .ok_or(error::Error::input("No Default Port"))?;
-        let input = input.as_ref().ok_or(error::Error::input("No Value"))?;
         let settings = inputs
             .get(&DICTIONARIES_INITIATOR_SETTINGS_PORT)
             .ok_or(error::Error::input("No Settings"))?;
-        let settings = settings
-            .as_ref()
-            .ok_or(error::Error::input("No Settings Value"))?;
         let settings: Settings = settings
             .clone()
             .try_into()
             .map_err(|e| error::Error::input(format!("Invalid Settings. {}", e)))?;
-
         let mut result = Vec::<FeatureResponse>::new();
         let mut file_path_responses = Vec::<FilePathResponse>::new();
         let mut summary = SummaryResponse::new(&settings);
-        match input {
-            ActionValue::Array(data) => {
-                let part = data
-                    .iter()
-                    .group_by(|&row| match row {
-                        ActionValue::Map(row) => match row.get("cityGmlPath") {
-                            Some(ActionValue::String(city_gml_path)) => city_gml_path,
-                            _ => "",
-                        },
+        let part = input
+            .features
+            .iter()
+            .group_by(
+                |&row| match row.attributes.get(&Attribute::new("cityGmlPath")) {
+                    Some(AttributeValue::String(city_gml_path)) => city_gml_path,
+                    _ => "",
+                },
+            )
+            .into_iter()
+            .map(|(key, group)| (key, group.collect::<Vec<_>>()))
+            .collect::<Vec<_>>();
+        for (city_gml_path, value) in part {
+            let city_gml_path = Uri::from_str(city_gml_path).map_err(|e| {
+                error::Error::internal_runtime(format!("Cannot create uri with error = {:?}", e))
+            })?;
+            let mut xml_id_to_feature_and_attribute = HashMap::<String, (Uuid, Attributes)>::new();
+            let mut part_features = Vec::<(Uuid, String)>::new();
+            let mut total_lod = LodCount::new();
+            let mut row_map =
+                HashMap::<Uuid, (HashMap<Attribute, AttributeValue>, Attributes)>::new();
+            let first = value.first().ok_or(error::Error::input("No Value"))?;
+            for row in &value {
+                let feature = &row.attributes;
+                let row_id = Uuid::new_v4();
+                let xml_fragment = match feature
+                    .get(&Attribute::new("xmlFragment"))
+                    .ok_or(error::Error::input("No xmlFragment"))?
+                {
+                    AttributeValue::String(document) => document,
+                    _ => return Err(error::Error::input("Invalid Input. supported only String")),
+                };
+                let document = xml::parse(xml_fragment).map_err(|e| {
+                    error::Error::internal_runtime(format!("Cannot parse xml with error = {:?}", e))
+                })?;
+                let context = xml::create_context(&document).map_err(|e| {
+                    error::Error::internal_runtime(format!(
+                        "Cannot create context with error = {:?}",
+                        e
+                    ))
+                })?;
+                let gid = context.evaluate("/*/@gml:id");
+                if gid.is_err() {
+                    continue;
+                }
+                let gid = xml::collect_text_value(&gid.unwrap());
+                let mcode = match feature.get(&Attribute::new("meshCode")) {
+                    Some(AttributeValue::String(mcode)) => mcode,
+                    _ => return Err(error::Error::input("Invalid Input. supported only String")),
+                };
+                let all_node = xml::evaluate(&document, "/*").map_err(|e| {
+                    error::Error::internal_runtime(format!(
+                        "Cannot evaluate xml with error = {:?}",
+                        e
+                    ))
+                })?;
+                let all_node = all_node.get_nodes_as_vec();
+                let root = all_node
+                    .first()
+                    .ok_or(error::Error::input("No Root Node"))?;
+                let tag = root.get_name();
+                let schema_def = settings.xpath_to_properties.get(tag.as_str());
+                if schema_def.is_none() || settings.except_feature_types.contains(&tag) {
+                    continue;
+                }
+                let schema_def = SchemaDef::new(schema_def.unwrap().clone());
+                let (mut attr, lod) = walk_node(
+                    &ctx,
+                    &city_gml_path,
+                    &settings,
+                    &schema_def,
+                    &document,
+                    root,
+                    tag.clone(),
+                )
+                .map_err(|e| {
+                    error::Error::internal_runtime(format!("Cannot walk node with error = {:?}", e))
+                })?;
+                total_lod.plus(&lod);
+                let xml_id = feature
+                    .get(&Attribute::new("xmlId"))
+                    .map(|v| match v {
+                        AttributeValue::String(xml_id) => xml_id,
                         _ => "",
                     })
-                    .into_iter()
-                    .map(|(key, group)| (key, group.collect::<Vec<_>>()))
-                    .collect::<Vec<_>>();
-                for (city_gml_path, value) in part {
-                    let city_gml_path = Uri::from_str(city_gml_path).map_err(|e| {
-                        error::Error::internal_runtime(format!(
-                            "Cannot create uri with error = {:?}",
-                            e
-                        ))
-                    })?;
-                    let mut xml_id_to_feature_and_attribute =
-                        HashMap::<String, (Uuid, Attributes)>::new();
-                    let mut part_features = Vec::<(Uuid, String)>::new();
-                    let mut total_lod = LodCount::new();
-                    let mut row_map =
-                        HashMap::<Uuid, (HashMap<String, ActionValue>, Attributes)>::new();
-                    let first = value
-                        .first()
-                        .ok_or(error::Error::input("No Value"))
-                        .and_then(|first| match first {
-                            ActionValue::Map(first) => Ok(first),
-                            _ => Err(error::Error::validate("Invalid Value")),
-                        })?;
-                    for row in value {
-                        let feature = match row {
-                            ActionValue::Map(row) => row,
-                            _ => {
-                                return Err(error::Error::input(
-                                    "Invalid Input. supported only Map",
-                                ))
-                            }
-                        };
-                        let row_id = Uuid::new_v4();
-                        let xml_fragment = match feature
-                            .get("xmlFragment")
-                            .ok_or(error::Error::input("No xmlFragment"))?
-                        {
-                            ActionValue::String(document) => document,
-                            _ => {
-                                return Err(error::Error::input(
-                                    "Invalid Input. supported only String",
-                                ))
-                            }
-                        };
-                        let document = xml::parse(xml_fragment).map_err(|e| {
-                            error::Error::internal_runtime(format!(
-                                "Cannot parse xml with error = {:?}",
-                                e
-                            ))
-                        })?;
-                        let context = xml::create_context(&document).map_err(|e| {
-                            error::Error::internal_runtime(format!(
-                                "Cannot create context with error = {:?}",
-                                e
-                            ))
-                        })?;
-                        let gid = context.evaluate("/*/@gml:id");
-                        if gid.is_err() {
-                            continue;
+                    .ok_or(error::Error::input("No xml Id"))?;
+                attr.set(
+                    "featureType".to_string(),
+                    serde_json::Value::String(tag.clone()),
+                );
+                xml_id_to_feature_and_attribute.insert(xml_id.to_string(), (row_id, attr.clone()));
+                let mut result_feature = feature.clone();
+                result_feature.insert(
+                    Attribute::new("featureType"),
+                    AttributeValue::String(tag.clone()),
+                );
+                result_feature.insert(
+                    Attribute::new("meshCode"),
+                    AttributeValue::String(mcode.clone()),
+                );
+                result_feature.insert(Attribute::new("gmlId"), AttributeValue::String(gid.clone()));
+                result_feature.insert(
+                    Attribute::new("lod1"),
+                    AttributeValue::Number(serde_json::Number::from(lod.lod1)),
+                );
+                result_feature.insert(
+                    Attribute::new("lod2"),
+                    AttributeValue::Number(serde_json::Number::from(lod.lod2)),
+                );
+                result_feature.insert(
+                    Attribute::new("lod3"),
+                    AttributeValue::Number(serde_json::Number::from(lod.lod3)),
+                );
+                result_feature.insert(
+                    Attribute::new("lod4"),
+                    AttributeValue::Number(serde_json::Number::from(lod.lod4)),
+                );
+                row_map.insert(row_id, (result_feature, attr.clone()));
+                if PART_FEATURE_TYPES.contains(&tag.as_str()) {
+                    let xml_parent_id = feature
+                        .get(&Attribute::new("xmlParentId"))
+                        .map(|v| match v {
+                            AttributeValue::String(xml_parent_id) => xml_parent_id,
+                            _ => "",
+                        })
+                        .ok_or(error::Error::input("No xml Parent Id"))?;
+                    part_features.push((row_id, xml_parent_id.to_string()));
+                }
+            }
+            for (_row_id, xml_parent_id) in part_features {
+                let target = xml_id_to_feature_and_attribute.get(&xml_parent_id);
+                if let Some((row_id, parent_attr)) = target {
+                    let (_feature, attr) = row_map.get_mut(row_id).unwrap();
+                    for (key, value) in parent_attr.iter() {
+                        if !attr.contains_key(key.as_str()) {
+                            attr.set(key.clone(), value.clone());
                         }
-                        let gid = xml::collect_text_value(&gid.unwrap());
-                        let mcode = match feature.get("meshCode") {
-                            Some(ActionValue::String(mcode)) => mcode,
-                            _ => {
-                                return Err(error::Error::input(
-                                    "Invalid Input. supported only String",
-                                ))
-                            }
-                        };
-                        let all_node = xml::evaluate(&document, "/*").map_err(|e| {
-                            error::Error::internal_runtime(format!(
-                                "Cannot evaluate xml with error = {:?}",
-                                e
-                            ))
-                        })?;
-                        let all_node = all_node.get_nodes_as_vec();
-                        let root = all_node
-                            .first()
-                            .ok_or(error::Error::input("No Root Node"))?;
-                        let tag = root.get_name();
-                        let schema_def = settings.xpath_to_properties.get(tag.as_str());
-                        if schema_def.is_none() || settings.except_feature_types.contains(&tag) {
-                            continue;
-                        }
-                        let schema_def = SchemaDef::new(schema_def.unwrap().clone());
-                        let (mut attr, lod) = walk_node(
-                            &ctx,
-                            &city_gml_path,
-                            &settings,
-                            &schema_def,
-                            &document,
-                            root,
-                            tag.clone(),
-                        )
-                        .map_err(|e| {
-                            error::Error::internal_runtime(format!(
-                                "Cannot walk node with error = {:?}",
-                                e
-                            ))
-                        })?;
-                        total_lod.plus(&lod);
-                        let xml_id = feature
-                            .get("xmlId")
-                            .map(|v| match v {
-                                ActionValue::String(xml_id) => xml_id,
-                                _ => "",
-                            })
-                            .ok_or(error::Error::input("No xml Id"))?;
-                        attr.set(
-                            "featureType".to_string(),
-                            serde_json::Value::String(tag.clone()),
-                        );
-                        xml_id_to_feature_and_attribute
-                            .insert(xml_id.to_string(), (row_id, attr.clone()));
-                        let mut result_feature = feature.clone();
-                        result_feature
-                            .insert("featureType".to_string(), ActionValue::String(tag.clone()));
-                        result_feature
-                            .insert("meshCode".to_string(), ActionValue::String(mcode.clone()));
-                        result_feature
-                            .insert("gmlId".to_string(), ActionValue::String(gid.clone()));
-                        result_feature.insert(
-                            "lod1".to_string(),
-                            ActionValue::Number(serde_json::Number::from(lod.lod1)),
-                        );
-                        result_feature.insert(
-                            "lod2".to_string(),
-                            ActionValue::Number(serde_json::Number::from(lod.lod2)),
-                        );
-                        result_feature.insert(
-                            "lod3".to_string(),
-                            ActionValue::Number(serde_json::Number::from(lod.lod3)),
-                        );
-                        result_feature.insert(
-                            "lod4".to_string(),
-                            ActionValue::Number(serde_json::Number::from(lod.lod4)),
-                        );
-                        row_map.insert(row_id, (result_feature, attr.clone()));
-                        if PART_FEATURE_TYPES.contains(&tag.as_str()) {
-                            let xml_parent_id = feature
-                                .get("xmlParentId")
-                                .map(|v| match v {
-                                    ActionValue::String(xml_parent_id) => xml_parent_id,
-                                    _ => "",
-                                })
-                                .ok_or(error::Error::input("No xml Parent Id"))?;
-                            part_features.push((row_id, xml_parent_id.to_string()));
-                        }
-                    }
-                    for (_row_id, xml_parent_id) in part_features {
-                        let target = xml_id_to_feature_and_attribute.get(&xml_parent_id);
-                        if let Some((row_id, parent_attr)) = target {
-                            let (_feature, attr) = row_map.get_mut(row_id).unwrap();
-                            for (key, value) in parent_attr.iter() {
-                                if !attr.contains_key(key.as_str()) {
-                                    attr.set(key.clone(), value.clone());
-                                }
-                            }
-                        }
-                    }
-                    for (_xml_id, (row_id, attr)) in xml_id_to_feature_and_attribute.iter() {
-                        let (feature, _attr) = row_map.get(row_id).unwrap();
-                        let xml_parent_id = feature
-                            .get("xmlParentId")
-                            .map(|v| match v {
-                                ActionValue::String(v) => v,
-                                _ => "",
-                            })
-                            .ok_or(error::Error::input("No Parent Id"))?;
-                        let ancestors = ancestor_attributes(
-                            xml_parent_id.to_string(),
-                            &xml_id_to_feature_and_attribute,
-                            &row_map,
-                        )
-                        .map_err(|e| {
-                            error::Error::internal_runtime(format!(
-                                "Cannot get ancestor attributes with error = {:?}",
-                                e
-                            ))
-                        })?;
-                        let attr = if !ancestors.is_empty() {
-                            let mut attr = attr.clone();
-                            let ancestor = ancestors.first().unwrap().clone();
-                            attr.set(
-                                "ancestors".to_string(),
-                                serde_json::Value::Array(
-                                    ancestors
-                                        .into_iter()
-                                        .map(|x| x.try_into().unwrap())
-                                        .collect(),
-                                ),
-                            );
-                            let feature_type = ancestor
-                                .get("featureType")
-                                .map(|v| match v {
-                                    serde_json::Value::String(v) => v,
-                                    _ => "",
-                                })
-                                .ok_or(error::Error::validate("Ancestor has no feature type"))?;
-                            if ["bldg:Building", "bldg:BuildingPart"].contains(&feature_type)
-                                && attr
-                                    .get("featureType")
-                                    .map(|v| match v {
-                                        serde_json::Value::String(v) => v,
-                                        _ => "",
-                                    })
-                                    .unwrap_or_default()
-                                    != "bldg:BuildingPart"
-                            {
-                                attr.set(
-                                    "uro:BuildingIDAttribute".to_string(),
-                                    ancestor
-                                        .get("uro:BuildingIDAttribute")
-                                        .unwrap_or(&serde_json::Value::Null)
-                                        .clone(),
-                                );
-                            }
-                            attr
-                        } else {
-                            attr.clone()
-                        };
-                        let (feature, _attr) = row_map.get_mut(row_id).unwrap();
-                        feature.insert("attributes".to_string(), attr.try_into().unwrap());
-                    }
-                    result.append(
-                        &mut row_map
-                            .into_iter()
-                            .map(|(_, (feature, _attr))| {
-                                create_feature_response(&city_gml_path, &feature)
-                            })
-                            .collect(),
-                    );
-                    // create file path response
-                    let max_lod = total_lod.max_lod();
-                    file_path_responses.push(create_file_path_response(
-                        &city_gml_path,
-                        first,
-                        max_lod,
-                    ));
-                    if summary.max_lod < max_lod {
-                        summary.max_lod = max_lod;
                     }
                 }
             }
-            _ => return Err(error::Error::validate("Input is not an array")),
-        };
+            for (_xml_id, (row_id, attr)) in xml_id_to_feature_and_attribute.iter() {
+                let (feature, _attr) = row_map.get(row_id).unwrap();
+                let xml_parent_id = feature
+                    .get(&Attribute::new("xmlParentId"))
+                    .map(|v| match v {
+                        AttributeValue::String(v) => v,
+                        _ => "",
+                    })
+                    .ok_or(error::Error::input("No Parent Id"))?;
+                let ancestors = ancestor_attributes(
+                    xml_parent_id.to_string(),
+                    &xml_id_to_feature_and_attribute,
+                    &row_map,
+                )
+                .map_err(|e| {
+                    error::Error::internal_runtime(format!(
+                        "Cannot get ancestor attributes with error = {:?}",
+                        e
+                    ))
+                })?;
+                let attr = if !ancestors.is_empty() {
+                    let mut attr = attr.clone();
+                    let ancestor = ancestors.first().unwrap().clone();
+                    attr.set(
+                        "ancestors".to_string(),
+                        serde_json::Value::Array(
+                            ancestors
+                                .into_iter()
+                                .map(|x| x.try_into().unwrap())
+                                .collect(),
+                        ),
+                    );
+                    let feature_type = ancestor
+                        .get("featureType")
+                        .map(|v| match v {
+                            serde_json::Value::String(v) => v,
+                            _ => "",
+                        })
+                        .ok_or(error::Error::validate("Ancestor has no feature type"))?;
+                    if ["bldg:Building", "bldg:BuildingPart"].contains(&feature_type)
+                        && attr
+                            .get("featureType")
+                            .map(|v| match v {
+                                serde_json::Value::String(v) => v,
+                                _ => "",
+                            })
+                            .unwrap_or_default()
+                            != "bldg:BuildingPart"
+                    {
+                        attr.set(
+                            "uro:BuildingIDAttribute".to_string(),
+                            ancestor
+                                .get("uro:BuildingIDAttribute")
+                                .unwrap_or(&serde_json::Value::Null)
+                                .clone(),
+                        );
+                    }
+                    attr
+                } else {
+                    attr.clone()
+                };
+                let (feature, _attr) = row_map.get_mut(row_id).unwrap();
+                feature.insert(Attribute::new("attributes"), attr.try_into().unwrap());
+            }
+            result.append(
+                &mut row_map
+                    .into_iter()
+                    .map(|(_, (feature, _attr))| create_feature_response(&city_gml_path, &feature))
+                    .collect(),
+            );
+            // create file path response
+            let max_lod = total_lod.max_lod();
+            file_path_responses.push(create_file_path_response(&city_gml_path, first, max_lod));
+            if summary.max_lod < max_lod {
+                summary.max_lod = max_lod;
+            }
+        }
 
         let mut ports = ActionDataframe::new();
         summary.num_features = result.len() as i32;
-        ports.insert(SUMMARY_PORT.clone(), Some(summary.try_into()?));
-        ports.insert(
-            FILE_PATH_PORT.clone(),
-            Some(ActionValue::Array(
-                file_path_responses
-                    .into_iter()
-                    .map(|x| x.try_into().unwrap())
-                    .collect(),
-            )),
-        );
+        ports.insert(SUMMARY_PORT.clone(), summary.try_into()?);
+        let features = file_path_responses
+            .into_iter()
+            .map(|x| x.try_into().unwrap())
+            .collect::<Vec<Feature>>();
+        ports.insert(FILE_PATH_PORT.clone(), Dataframe::new(features));
         ports.insert(
             DEFAULT_PORT.clone(),
-            Some(ActionValue::Array(
-                result.into_iter().map(|x| x.try_into().unwrap()).collect(),
-            )),
+            Dataframe::new(result.into_iter().map(|x| x.try_into().unwrap()).collect()),
         );
         Ok(ports)
     }
@@ -605,112 +592,114 @@ impl AsyncAction for XmlAttributeExtractor {
 
 fn create_feature_response(
     city_gml_path: &Uri,
-    feature: &HashMap<String, ActionValue>,
+    feature: &HashMap<Attribute, AttributeValue>,
 ) -> FeatureResponse {
     FeatureResponse {
         gml_id: feature
-            .get("gmlId")
+            .get(&Attribute::new("gmlId"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         root: feature
-            .get("root")
+            .get(&Attribute::new("root"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         package: feature
-            .get("package")
+            .get(&Attribute::new("package"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         udx_dirs: feature
-            .get("udxDirs")
+            .get(&Attribute::new("udxDirs"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         city_gml_path: city_gml_path.to_string(),
         mesh_code: feature
-            .get("meshCode")
+            .get(&Attribute::new("meshCode"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         city_code: feature
-            .get("cityCode")
+            .get(&Attribute::new("cityCode"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         city_name: feature
-            .get("cityName")
+            .get(&Attribute::new("cityName"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         feature_type: feature
-            .get("featureType")
+            .get(&Attribute::new("featureType"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         attributes: feature
-            .get("attributes")
+            .get(&Attribute::new("attributes"))
             .map(|v| match v {
-                ActionValue::Map(v) => v.clone().into_iter().map(|(k, v)| (k, v.into())).collect(),
+                AttributeValue::Map(v) => {
+                    v.clone().into_iter().map(|(k, v)| (k, v.into())).collect()
+                }
                 _ => HashMap::new(),
             })
             .unwrap_or_default(),
         num_lod1: feature
-            .get("lod1")
+            .get(&Attribute::new("lod1"))
             .map(|v| match v {
-                ActionValue::Number(v) => v.as_i64().unwrap_or(0) as i32,
+                AttributeValue::Number(v) => v.as_i64().unwrap_or(0) as i32,
                 _ => 0,
             })
             .unwrap_or_default(),
         num_lod2: feature
-            .get("lod2")
+            .get(&Attribute::new("lod2"))
             .map(|v| match v {
-                ActionValue::Number(v) => v.as_i64().unwrap_or(0) as i32,
+                AttributeValue::Number(v) => v.as_i64().unwrap_or(0) as i32,
                 _ => 0,
             })
             .unwrap_or_default(),
         num_lod3: feature
-            .get("lod3")
+            .get(&Attribute::new("lod3"))
             .map(|v| match v {
-                ActionValue::Number(v) => v.as_i64().unwrap_or(0) as i32,
+                AttributeValue::Number(v) => v.as_i64().unwrap_or(0) as i32,
                 _ => 0,
             })
             .unwrap_or_default(),
         num_lod4: feature
-            .get("lod4")
+            .get(&Attribute::new("lod4"))
             .map(|v| match v {
-                ActionValue::Number(v) => v.as_i64().unwrap_or(0) as i32,
+                AttributeValue::Number(v) => v.as_i64().unwrap_or(0) as i32,
                 _ => 0,
             })
             .unwrap_or_default(),
         xml_id: feature
-            .get("xmlId")
+            .get(&Attribute::new("xmlId"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         xml_parent_id: feature
-            .get("xmlParentId")
+            .get(&Attribute::new("xmlParentId"))
             .map(|v| match v {
-                ActionValue::String(v) => Some(v.to_string()),
+                AttributeValue::String(v) => Some(v.to_string()),
                 _ => None,
             })
             .unwrap_or_default(),
@@ -719,74 +708,75 @@ fn create_feature_response(
 
 fn create_file_path_response(
     city_gml_path: &Uri,
-    feature: &HashMap<String, ActionValue>,
+    feature: &Feature,
     max_lod: i32,
 ) -> FilePathResponse {
+    let feature = &feature.attributes;
     FilePathResponse {
         root: feature
-            .get("root")
+            .get(&Attribute::new("root"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         package: feature
-            .get("package")
+            .get(&Attribute::new("package"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         admin: feature
-            .get("admin")
+            .get(&Attribute::new("admin"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         area: feature
-            .get("area")
+            .get(&Attribute::new("area"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         udx_dirs: feature
-            .get("udxDirs")
+            .get(&Attribute::new("udxDirs"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         city_gml_path: city_gml_path.to_string(),
         mesh_code: feature
-            .get("meshCode")
+            .get(&Attribute::new("meshCode"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         city_code: feature
-            .get("cityCode")
+            .get(&Attribute::new("cityCode"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         city_name: feature
-            .get("cityName")
+            .get(&Attribute::new("cityName"))
             .map(|v| match v {
-                ActionValue::String(v) => v.to_string(),
+                AttributeValue::String(v) => v.to_string(),
                 _ => "".to_string(),
             })
             .unwrap_or_default(),
         feature_types: feature
-            .get("featureTypes")
+            .get(&Attribute::new("featureTypes"))
             .map(|v| match v {
-                ActionValue::Array(v) => v
+                AttributeValue::Array(v) => v
                     .iter()
                     .map(|v| match v {
-                        ActionValue::String(v) => v.to_string(),
+                        AttributeValue::String(v) => v.to_string(),
                         _ => "".to_string(),
                     })
                     .collect(),
@@ -800,7 +790,7 @@ fn create_file_path_response(
 fn ancestor_attributes(
     xml_parent_id: String,
     xml_id_to_feature_and_attribute: &HashMap<String, (Uuid, Attributes)>,
-    rows_map: &HashMap<Uuid, (HashMap<String, ActionValue>, Attributes)>,
+    rows_map: &HashMap<Uuid, (HashMap<Attribute, AttributeValue>, Attributes)>,
 ) -> Result<Vec<Attributes>> {
     let mut result = Vec::new();
     let (row_id, attr) = match xml_id_to_feature_and_attribute.get(xml_parent_id.as_str()) {
@@ -822,9 +812,9 @@ fn ancestor_attributes(
         .get(row_id)
         .ok_or(error::Error::input("No Parent"))?;
     let xml_parent_id = row
-        .get("xmlParentId")
+        .get(&Attribute::new("xmlParentId"))
         .map(|v| match v {
-            ActionValue::String(v) => v,
+            AttributeValue::String(v) => v,
             _ => "",
         })
         .ok_or(error::Error::input("No Parent Id"))?;

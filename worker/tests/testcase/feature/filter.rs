@@ -4,7 +4,7 @@ use crate::helper::init_test_runner;
 
 #[tokio::test]
 async fn test_run() {
-    let executor = init_test_runner("attribute/duplicate", vec!["duplicate.json"]).await;
+    let executor = init_test_runner("feature/filter", vec!["filter.json"]).await;
     let result = executor.start().await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -19,5 +19,5 @@ async fn test_run() {
     assert_eq!(city, &AttributeValue::String("Tokyo".to_string()));
     let second = second.clone();
     let city = second.attributes.get(&Attribute::new("city")).unwrap();
-    assert_eq!(city, &AttributeValue::String("Delhi".to_string()));
+    assert_eq!(city, &AttributeValue::String("Osaka".to_string()));
 }

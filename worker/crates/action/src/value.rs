@@ -16,137 +16,137 @@ use crate::error;
 use crate::Result;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ActionValue {
+pub enum AttributeValue {
     Null,
     Bool(bool),
     Number(Number),
     String(String),
-    Array(Vec<ActionValue>),
+    Array(Vec<AttributeValue>),
     Bytes(Bytes),
-    Map(HashMap<String, ActionValue>),
+    Map(HashMap<String, AttributeValue>),
 }
 
-impl PartialEq for ActionValue {
+impl PartialEq for AttributeValue {
     fn eq(&self, rhs: &Self) -> bool {
         match (&self, &rhs) {
-            (&ActionValue::Null, &ActionValue::Null) => true,
-            (&ActionValue::Bool(v0), &ActionValue::Bool(v1)) if v0 == v1 => true,
-            (&ActionValue::Number(v0), &ActionValue::Number(v1)) if v0 == v1 => true,
-            (&ActionValue::String(v0), &ActionValue::String(v1)) if v0 == v1 => true,
-            (&ActionValue::Array(v0), &ActionValue::Array(v1)) if v0 == v1 => true,
-            (&ActionValue::Bytes(v0), &ActionValue::Bytes(v1)) if v0 == v1 => true,
-            (&ActionValue::Map(v0), &ActionValue::Map(v1)) if v0 == v1 => true,
+            (&AttributeValue::Null, &AttributeValue::Null) => true,
+            (&AttributeValue::Bool(v0), &AttributeValue::Bool(v1)) if v0 == v1 => true,
+            (&AttributeValue::Number(v0), &AttributeValue::Number(v1)) if v0 == v1 => true,
+            (&AttributeValue::String(v0), &AttributeValue::String(v1)) if v0 == v1 => true,
+            (&AttributeValue::Array(v0), &AttributeValue::Array(v1)) if v0 == v1 => true,
+            (&AttributeValue::Bytes(v0), &AttributeValue::Bytes(v1)) if v0 == v1 => true,
+            (&AttributeValue::Map(v0), &AttributeValue::Map(v1)) if v0 == v1 => true,
             _ => false,
         }
     }
 }
 
-impl Ord for ActionValue {
+impl Ord for AttributeValue {
     fn cmp(&self, rhs: &Self) -> Ordering {
         match (&self, &rhs) {
-            (&ActionValue::Null, &ActionValue::Null) => Ordering::Equal,
-            (&ActionValue::Bool(v0), &ActionValue::Bool(v1)) => v0.cmp(v1),
-            (&ActionValue::Number(v0), &ActionValue::Number(v1)) => {
+            (&AttributeValue::Null, &AttributeValue::Null) => Ordering::Equal,
+            (&AttributeValue::Bool(v0), &AttributeValue::Bool(v1)) => v0.cmp(v1),
+            (&AttributeValue::Number(v0), &AttributeValue::Number(v1)) => {
                 compare_numbers(v0, v1).unwrap()
             }
-            (&ActionValue::String(v0), &ActionValue::String(v1)) => v0.cmp(v1),
-            (&ActionValue::Array(v0), &ActionValue::Array(v1)) => v0.cmp(v1),
-            (&ActionValue::Bytes(v0), &ActionValue::Bytes(v1)) => v0.cmp(v1),
+            (&AttributeValue::String(v0), &AttributeValue::String(v1)) => v0.cmp(v1),
+            (&AttributeValue::Array(v0), &AttributeValue::Array(v1)) => v0.cmp(v1),
+            (&AttributeValue::Bytes(v0), &AttributeValue::Bytes(v1)) => v0.cmp(v1),
             (v0, v1) => v0.discriminant().cmp(&v1.discriminant()),
         }
     }
 }
 
-impl ActionValue {
+impl AttributeValue {
     fn discriminant(&self) -> usize {
         match *self {
-            ActionValue::Null => 0,
-            ActionValue::Bool(..) => 1,
-            ActionValue::Number(..) => 2,
-            ActionValue::String(..) => 3,
-            ActionValue::Array(..) => 4,
-            ActionValue::Bytes(..) => 5,
-            ActionValue::Map(..) => 6,
+            AttributeValue::Null => 0,
+            AttributeValue::Bool(..) => 1,
+            AttributeValue::Number(..) => 2,
+            AttributeValue::String(..) => 3,
+            AttributeValue::Array(..) => 4,
+            AttributeValue::Bytes(..) => 5,
+            AttributeValue::Map(..) => 6,
         }
     }
 
     pub fn extend(self, value: Self) -> Result<Self> {
         match (self, value) {
-            (ActionValue::Map(mut a), ActionValue::Map(b)) => {
+            (AttributeValue::Map(mut a), AttributeValue::Map(b)) => {
                 for (k, v) in b {
                     a.insert(k, v);
                 }
-                Ok(ActionValue::Map(a))
+                Ok(AttributeValue::Map(a))
             }
-            (ActionValue::Array(mut a), ActionValue::Array(b)) => {
+            (AttributeValue::Array(mut a), AttributeValue::Array(b)) => {
                 a.extend(b);
-                Ok(ActionValue::Array(a))
+                Ok(AttributeValue::Array(a))
             }
             _ => Err(error::Error::internal_runtime("Cannot extend")),
         }
     }
 }
 
-impl Eq for ActionValue {}
-impl PartialOrd for ActionValue {
+impl Eq for AttributeValue {}
+impl PartialOrd for AttributeValue {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         Some(self.cmp(rhs))
     }
 }
 
-impl Default for ActionValue {
+impl Default for AttributeValue {
     fn default() -> Self {
         Self::String("".to_owned())
     }
 }
 
-impl Display for ActionValue {
+impl Display for AttributeValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ActionValue::Null => write!(f, "null"),
-            ActionValue::Bool(v) => write!(f, "{}", v),
-            ActionValue::Number(v) => write!(f, "{}", v),
-            ActionValue::String(v) => write!(f, "{}", v),
-            ActionValue::Array(v) => write!(f, "{:?}", v),
-            ActionValue::Bytes(v) => write!(f, "{:?}", v),
-            ActionValue::Map(v) => write!(f, "{:?}", v),
+            AttributeValue::Null => write!(f, "null"),
+            AttributeValue::Bool(v) => write!(f, "{}", v),
+            AttributeValue::Number(v) => write!(f, "{}", v),
+            AttributeValue::String(v) => write!(f, "{}", v),
+            AttributeValue::Array(v) => write!(f, "{:?}", v),
+            AttributeValue::Bytes(v) => write!(f, "{:?}", v),
+            AttributeValue::Map(v) => write!(f, "{:?}", v),
         }
     }
 }
 
-impl From<serde_json::Value> for ActionValue {
+impl From<serde_json::Value> for AttributeValue {
     fn from(value: serde_json::Value) -> Self {
         match value {
-            serde_json::Value::Null => ActionValue::Null,
-            serde_json::Value::Bool(v) => ActionValue::Bool(v),
-            serde_json::Value::Number(v) => ActionValue::Number(v),
-            serde_json::Value::String(v) => ActionValue::String(v),
+            serde_json::Value::Null => AttributeValue::Null,
+            serde_json::Value::Bool(v) => AttributeValue::Bool(v),
+            serde_json::Value::Number(v) => AttributeValue::Number(v),
+            serde_json::Value::String(v) => AttributeValue::String(v),
             serde_json::Value::Array(v) => {
-                ActionValue::Array(v.into_iter().map(ActionValue::from).collect::<Vec<_>>())
+                AttributeValue::Array(v.into_iter().map(AttributeValue::from).collect::<Vec<_>>())
             }
-            serde_json::Value::Object(v) => ActionValue::Map(
+            serde_json::Value::Object(v) => AttributeValue::Map(
                 v.into_iter()
-                    .map(|(k, v)| (k, ActionValue::from(v)))
+                    .map(|(k, v)| (k, AttributeValue::from(v)))
                     .collect::<HashMap<_, _>>(),
             ),
         }
     }
 }
 
-impl From<ActionValue> for serde_json::Value {
-    fn from(value: ActionValue) -> Self {
+impl From<AttributeValue> for serde_json::Value {
+    fn from(value: AttributeValue) -> Self {
         match value {
-            ActionValue::Null => serde_json::Value::Null,
-            ActionValue::Bool(v) => serde_json::Value::Bool(v),
-            ActionValue::Number(v) => serde_json::Value::Number(v),
-            ActionValue::String(v) => serde_json::Value::String(v),
-            ActionValue::Array(v) => serde_json::Value::Array(
+            AttributeValue::Null => serde_json::Value::Null,
+            AttributeValue::Bool(v) => serde_json::Value::Bool(v),
+            AttributeValue::Number(v) => serde_json::Value::Number(v),
+            AttributeValue::String(v) => serde_json::Value::String(v),
+            AttributeValue::Array(v) => serde_json::Value::Array(
                 v.into_iter()
                     .map(serde_json::Value::from)
                     .collect::<Vec<_>>(),
             ),
-            ActionValue::Bytes(v) => serde_json::Value::String(base64_encode(v.as_ref())),
-            ActionValue::Map(v) => serde_json::Value::Object(
+            AttributeValue::Bytes(v) => serde_json::Value::String(base64_encode(v.as_ref())),
+            AttributeValue::Map(v) => serde_json::Value::Object(
                 v.into_iter()
                     .map(|(k, v)| (k, serde_json::Value::from(v)))
                     .collect::<serde_json::Map<_, _>>(),
@@ -155,29 +155,36 @@ impl From<ActionValue> for serde_json::Value {
     }
 }
 
-impl From<nusamai_citygml::Value> for ActionValue {
+impl From<nusamai_citygml::Value> for AttributeValue {
     fn from(value: nusamai_citygml::Value) -> Self {
         match value {
-            nusamai_citygml::Value::String(v) => ActionValue::String(v),
-            nusamai_citygml::Value::Code(v) => ActionValue::String(v.value().to_owned()),
-            nusamai_citygml::Value::Integer(v) => ActionValue::Number(Number::from(v)),
-            nusamai_citygml::Value::NonNegativeInteger(v) => ActionValue::Number(Number::from(v)),
-            nusamai_citygml::Value::Double(v) => ActionValue::Number(Number::from_f64(v).unwrap()),
-            nusamai_citygml::Value::Measure(v) => {
-                ActionValue::Number(Number::from_f64(v.value()).unwrap())
+            nusamai_citygml::Value::String(v) => AttributeValue::String(v),
+            nusamai_citygml::Value::Code(v) => AttributeValue::String(v.value().to_owned()),
+            nusamai_citygml::Value::Integer(v) => AttributeValue::Number(Number::from(v)),
+            nusamai_citygml::Value::NonNegativeInteger(v) => {
+                AttributeValue::Number(Number::from(v))
             }
-            nusamai_citygml::Value::Boolean(v) => ActionValue::Bool(v),
-            nusamai_citygml::Value::Uri(v) => ActionValue::String(v.value().to_string()),
-            nusamai_citygml::Value::Date(v) => ActionValue::String(v.to_string()),
-            nusamai_citygml::Value::Point(v) => ActionValue::Map(
+            nusamai_citygml::Value::Double(v) => {
+                AttributeValue::Number(Number::from_f64(v).unwrap())
+            }
+            nusamai_citygml::Value::Measure(v) => {
+                AttributeValue::Number(Number::from_f64(v.value()).unwrap())
+            }
+            nusamai_citygml::Value::Boolean(v) => AttributeValue::Bool(v),
+            nusamai_citygml::Value::Uri(v) => AttributeValue::String(v.value().to_string()),
+            nusamai_citygml::Value::Date(v) => AttributeValue::String(v.to_string()),
+            nusamai_citygml::Value::Point(v) => AttributeValue::Map(
                 vec![
-                    ("type".to_string(), ActionValue::String("Point".to_string())),
+                    (
+                        "type".to_string(),
+                        AttributeValue::String("Point".to_string()),
+                    ),
                     (
                         "coordinates".to_string(),
-                        ActionValue::Array(
+                        AttributeValue::Array(
                             v.coordinates()
                                 .iter()
-                                .map(|v| ActionValue::Number(Number::from_f64(*v).unwrap()))
+                                .map(|v| AttributeValue::Number(Number::from_f64(*v).unwrap()))
                                 .collect(),
                         ),
                     ),
@@ -186,32 +193,32 @@ impl From<nusamai_citygml::Value> for ActionValue {
                 .collect(),
             ),
             nusamai_citygml::Value::Array(v) => {
-                ActionValue::Array(v.into_iter().map(ActionValue::from).collect())
+                AttributeValue::Array(v.into_iter().map(AttributeValue::from).collect())
             }
             nusamai_citygml::Value::Object(v) => {
                 let m = v
                     .attributes
                     .iter()
-                    .map(|(k, v)| (k.into(), ActionValue::from(v.clone())))
+                    .map(|(k, v)| (k.into(), AttributeValue::from(v.clone())))
                     .collect();
-                ActionValue::Map(m)
+                AttributeValue::Map(m)
             }
         }
     }
 }
 
-impl From<XmlXpathValue> for ActionValue {
+impl From<XmlXpathValue> for AttributeValue {
     fn from(value: XmlXpathValue) -> Self {
-        std::convert::Into::<ActionValue>::into(
+        std::convert::Into::<AttributeValue>::into(
             value.to_string().parse::<serde_json::Value>().unwrap(),
         )
     }
 }
 
-impl TryFrom<ActionValue> for rhai::Dynamic {
+impl TryFrom<AttributeValue> for rhai::Dynamic {
     type Error = error::Error;
 
-    fn try_from(value: ActionValue) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: AttributeValue) -> std::result::Result<Self, Self::Error> {
         let value: serde_json::Value = value.into();
         let value: rhai::Dynamic =
             serde_json::from_value(value).map_err(error::Error::internal_runtime)?;
@@ -219,7 +226,7 @@ impl TryFrom<ActionValue> for rhai::Dynamic {
     }
 }
 
-impl TryFrom<rhai::Dynamic> for ActionValue {
+impl TryFrom<rhai::Dynamic> for AttributeValue {
     type Error = error::Error;
 
     fn try_from(value: rhai::Dynamic) -> std::result::Result<Self, Self::Error> {
@@ -230,15 +237,15 @@ impl TryFrom<rhai::Dynamic> for ActionValue {
     }
 }
 
-fn normalize_action_value(value: ActionValue) -> ActionValue {
+fn normalize_action_value(value: AttributeValue) -> AttributeValue {
     match &value {
-        ActionValue::Map(v) => match v.len() {
+        AttributeValue::Map(v) => match v.len() {
             len if len > 1 => {
                 let mut value = HashMap::new();
                 for (k, v) in v.iter() {
                     value.insert(k.clone(), normalize_action_value(v.clone()));
                 }
-                ActionValue::Map(value)
+                AttributeValue::Map(value)
             }
             1 => {
                 let (k, v) = v.iter().next().unwrap();
@@ -250,18 +257,18 @@ fn normalize_action_value(value: ActionValue) -> ActionValue {
             }
             _ => value,
         },
-        ActionValue::Array(v) => {
+        AttributeValue::Array(v) => {
             let result = v
                 .iter()
                 .map(|value| normalize_action_value(value.clone()))
                 .collect::<Vec<_>>();
-            ActionValue::Array(result)
+            AttributeValue::Array(result)
         }
         _ => value,
     }
 }
 
-impl TryFrom<Uri> for ActionValue {
+impl TryFrom<Uri> for AttributeValue {
     type Error = error::Error;
 
     fn try_from(value: Uri) -> std::result::Result<Self, Self::Error> {
@@ -271,31 +278,31 @@ impl TryFrom<Uri> for ActionValue {
     }
 }
 
-impl Hash for ActionValue {
+impl Hash for AttributeValue {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
-            ActionValue::Null => "Null".hash(state),
-            ActionValue::Bool(b) => {
+            AttributeValue::Null => "Null".hash(state),
+            AttributeValue::Bool(b) => {
                 "Bool".hash(state);
                 b.hash(state);
             }
-            ActionValue::Number(n) => {
+            AttributeValue::Number(n) => {
                 "Number".hash(state);
                 n.hash(state);
             }
-            ActionValue::String(s) => {
+            AttributeValue::String(s) => {
                 "String".hash(state);
                 s.hash(state);
             }
-            ActionValue::Array(arr) => {
+            AttributeValue::Array(arr) => {
                 "Array".hash(state);
                 arr.hash(state);
             }
-            ActionValue::Bytes(b) => {
+            AttributeValue::Bytes(b) => {
                 "Bytes".hash(state);
                 b.hash(state);
             }
-            ActionValue::Map(map) => {
+            AttributeValue::Map(map) => {
                 "Map".hash(state);
                 for (k, v) in map {
                     k.hash(state);
@@ -327,47 +334,56 @@ mod tests {
     #[test]
     fn test_try_from_rhai_dynamic() {
         let dynamic_value = rhai::Dynamic::from(42);
-        let action_value: std::result::Result<ActionValue, _> = dynamic_value.try_into();
-        assert_eq!(action_value.unwrap(), ActionValue::Number(Number::from(42)));
-
-        let dynamic_value = rhai::Dynamic::from("Hello");
-        let action_value: std::result::Result<ActionValue, _> = dynamic_value.try_into();
+        let action_value: std::result::Result<AttributeValue, _> = dynamic_value.try_into();
         assert_eq!(
             action_value.unwrap(),
-            ActionValue::String("Hello".to_string())
+            AttributeValue::Number(Number::from(42))
+        );
+
+        let dynamic_value = rhai::Dynamic::from("Hello");
+        let action_value: std::result::Result<AttributeValue, _> = dynamic_value.try_into();
+        assert_eq!(
+            action_value.unwrap(),
+            AttributeValue::String("Hello".to_string())
         );
     }
 
     #[test]
     fn test_partial_ord() {
-        let number1 = ActionValue::Number(Number::from(42));
-        let number2 = ActionValue::Number(Number::from(42));
+        let number1 = AttributeValue::Number(Number::from(42));
+        let number2 = AttributeValue::Number(Number::from(42));
         assert_eq!(number1.partial_cmp(&number2), Some(Ordering::Equal));
 
-        let string1 = ActionValue::String("Hello".to_string());
-        let string2 = ActionValue::String("World".to_string());
+        let string1 = AttributeValue::String("Hello".to_string());
+        let string2 = AttributeValue::String("World".to_string());
         assert_eq!(string1.partial_cmp(&string2), Some(Ordering::Less));
     }
 
     #[test]
     fn test_eq() {
-        let number1 = ActionValue::Number(Number::from(42));
-        let number2 = ActionValue::Number(Number::from(42));
+        let number1 = AttributeValue::Number(Number::from(42));
+        let number2 = AttributeValue::Number(Number::from(42));
         assert_eq!(number1, number2);
 
-        let string1 = ActionValue::String("Hello".to_string());
-        let string2 = ActionValue::String("Hello".to_string());
+        let string1 = AttributeValue::String("Hello".to_string());
+        let string2 = AttributeValue::String("Hello".to_string());
         assert_eq!(string1, string2);
 
-        let map1 = ActionValue::Map(
-            vec![("key".to_string(), ActionValue::String("value".to_string()))]
-                .into_iter()
-                .collect(),
+        let map1 = AttributeValue::Map(
+            vec![(
+                "key".to_string(),
+                AttributeValue::String("value".to_string()),
+            )]
+            .into_iter()
+            .collect(),
         );
-        let map2 = ActionValue::Map(
-            vec![("key".to_string(), ActionValue::String("value".to_string()))]
-                .into_iter()
-                .collect(),
+        let map2 = AttributeValue::Map(
+            vec![(
+                "key".to_string(),
+                AttributeValue::String("value".to_string()),
+            )]
+            .into_iter()
+            .collect(),
         );
         assert_eq!(map1, map2);
     }

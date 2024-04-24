@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
     error::{self, Error},
-    types, utils, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction,
-    DEFAULT_PORT,
+    types, utils, ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue,
+    Dataframe, DEFAULT_PORT,
 };
 use reearth_flow_common::uri::Uri;
 
@@ -17,9 +17,8 @@ pub struct FilePathExtractor {
 #[async_trait::async_trait]
 #[typetag::serde(name = "FilePathExtractor")]
 impl AsyncAction for FilePathExtractor {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let inputs = inputs.unwrap_or_default();
-        let source_dataset = ctx.get_expr_path(&self.source_dataset, &inputs).await?;
+    async fn run(&self, ctx: ActionContext, _inputs: ActionDataframe) -> ActionResult {
+        let source_dataset = ctx.get_expr_path(&self.source_dataset).await?;
         if self.is_extractable_archive(&source_dataset) {
             let root_output_path =
                 utils::dir::project_output_dir(ctx.node_id.to_string().as_str())?;
@@ -46,16 +45,16 @@ impl AsyncAction for FilePathExtractor {
                 .entries
                 .into_iter()
                 .map(|entry| {
-                    ActionValue::try_from(
+                    AttributeValue::try_from(
                         types::file::FilePath::try_from(entry).unwrap_or_default(),
                     )
                     .unwrap_or_default()
                 })
-                .collect::<Vec<ActionValue>>();
+                .collect::<Vec<AttributeValue>>();
 
             Ok(ActionDataframe::from([(
                 DEFAULT_PORT.clone(),
-                Some(ActionValue::Array(values)),
+                Dataframe::from(values),
             )]))
         } else {
             let storage = ctx
@@ -70,15 +69,15 @@ impl AsyncAction for FilePathExtractor {
             let values = entries
                 .into_iter()
                 .map(|entry| {
-                    ActionValue::try_from(
+                    AttributeValue::try_from(
                         types::file::FilePath::try_from(entry).unwrap_or_default(),
                     )
                     .unwrap_or_default()
                 })
-                .collect::<Vec<ActionValue>>();
+                .collect::<Vec<AttributeValue>>();
             Ok(ActionDataframe::from([(
                 DEFAULT_PORT.clone(),
-                Some(ActionValue::Array(values)),
+                Dataframe::from(values),
             )]))
         }
     }
