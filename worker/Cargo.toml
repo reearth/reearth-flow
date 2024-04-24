@@ -41,6 +41,7 @@ reearth-flow-action-log = {path = "crates/action-log"}
 reearth-flow-action-universal = {path = "crates/action-universal"}
 reearth-flow-common = {path = "crates/common"}
 reearth-flow-eval-expr = {path = "crates/eval-expr"}
+reearth-flow-geometry = {path = "crates/geometry"}
 reearth-flow-macros = {path = "crates/macros"}
 reearth-flow-state = {path = "crates/state"}
 reearth-flow-storage = {path = "crates/storage"}
@@ -49,6 +50,10 @@ reearth-flow-workflow = {path = "crates/workflow"}
 reearth-flow-workflow-cli = {path = "crates/cli"}
 reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
 reearth-flow-xml = {path = "crates/xml"}
+
+nusamai-citygml = {git = "https://github.com/reearth/plateau-gis-converter", features = ["serde", "serde_json"]}
+nusamai-geometry = {git = "https://github.com/reearth/plateau-gis-converter", features = ["serde"]}
+nusamai-plateau = {git = "https://github.com/reearth/plateau-gis-converter", features = ["serde"]}
 
 async-recursion = "1.1.0"
 async-trait = "0.1.80"
@@ -60,11 +65,9 @@ csv = "1.3.0"
 derive_more = "0.99.17"
 directories = "5.0.1"
 futures = "0.3.30"
+hashbrown = "0.14.3"
 itertools = "0.12.1"
 jsonpath_lib = "0.3.0"
-nusamai-citygml = {git = "https://github.com/reearth/plateau-gis-converter"}
-nusamai-geometry = {git = "https://github.com/reearth/plateau-gis-converter"}
-nusamai-plateau = {git = "https://github.com/reearth/plateau-gis-converter"}
 nutype = {version = "0.4.2", features = ["serde"]}
 object_store = "0.9.1"
 once_cell = "1.19.0"

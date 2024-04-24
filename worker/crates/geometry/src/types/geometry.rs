@@ -14,7 +14,7 @@ use super::multi_polygon::MultiPolygon;
 use super::no_value::NoValue;
 use super::point::Point;
 use super::polygon::Polygon;
-use super::rect::Rect;
+use super::rectangle::Rectangle;
 use super::triangle::Triangle;
 use crate::error::Error;
 
@@ -28,7 +28,7 @@ pub enum Geometry<T: CoordNum = f64, Z: CoordNum = NoValue> {
     MultiLineString(MultiLineString<T, Z>),
     MultiPolygon(MultiPolygon<T, Z>),
     GeometryCollection(GeometryCollection<T, Z>),
-    Rect(Rect<T, Z>),
+    Rectangle(Rectangle<T, Z>),
     Triangle(Triangle<T, Z>),
 }
 
@@ -40,6 +40,7 @@ impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for Geometry<T, Z> {
         Self::Point(x)
     }
 }
+
 impl<T: CoordNum, Z: CoordNum> From<Line<T, Z>> for Geometry<T, Z> {
     fn from(x: Line<T, Z>) -> Self {
         Self::Line(x)
@@ -71,9 +72,9 @@ impl<T: CoordNum, Z: CoordNum> From<MultiPolygon<T, Z>> for Geometry<T, Z> {
     }
 }
 
-impl<T: CoordNum, Z: CoordNum> From<Rect<T, Z>> for Geometry<T, Z> {
-    fn from(x: Rect<T, Z>) -> Self {
-        Self::Rect(x)
+impl<T: CoordNum, Z: CoordNum> From<Rectangle<T, Z>> for Geometry<T, Z> {
+    fn from(x: Rectangle<T, Z>) -> Self {
+        Self::Rectangle(x)
     }
 }
 
@@ -111,7 +112,7 @@ try_from_geometry_impl!(
     MultiPoint,
     MultiLineString,
     MultiPolygon,
-    Rect,
+    Rectangle,
     Triangle,
 );
 
@@ -125,7 +126,7 @@ fn inner_type_name<T: CoordNum, Z: CoordNum>(geometry: Geometry<T, Z>) -> &'stat
         Geometry::MultiLineString(_) => type_name::<MultiLineString<T, Z>>(),
         Geometry::MultiPolygon(_) => type_name::<MultiPolygon<T, Z>>(),
         Geometry::GeometryCollection(_) => type_name::<GeometryCollection<T, Z>>(),
-        Geometry::Rect(_) => type_name::<Rect<T, Z>>(),
+        Geometry::Rectangle(_) => type_name::<Rectangle<T, Z>>(),
         Geometry::Triangle(_) => type_name::<Triangle<T, Z>>(),
     }
 }
@@ -166,7 +167,9 @@ where
             (Geometry::GeometryCollection(g1), Geometry::GeometryCollection(g2)) => {
                 g1.relative_eq(g2, epsilon, max_relative)
             }
-            (Geometry::Rect(g1), Geometry::Rect(g2)) => g1.relative_eq(g2, epsilon, max_relative),
+            (Geometry::Rectangle(g1), Geometry::Rectangle(g2)) => {
+                g1.relative_eq(g2, epsilon, max_relative)
+            }
             (Geometry::Triangle(g1), Geometry::Triangle(g2)) => {
                 g1.relative_eq(g2, epsilon, max_relative)
             }
@@ -197,7 +200,7 @@ impl<T: AbsDiffEq<Epsilon = T> + CoordNum> AbsDiffEq for Geometry<T, T> {
             (Geometry::GeometryCollection(g1), Geometry::GeometryCollection(g2)) => {
                 g1.abs_diff_eq(g2, epsilon)
             }
-            (Geometry::Rect(g1), Geometry::Rect(g2)) => g1.abs_diff_eq(g2, epsilon),
+            (Geometry::Rectangle(g1), Geometry::Rectangle(g2)) => g1.abs_diff_eq(g2, epsilon),
             (Geometry::Triangle(g1), Geometry::Triangle(g2)) => g1.abs_diff_eq(g2, epsilon),
             (_, _) => false,
         }

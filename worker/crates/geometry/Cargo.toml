@@ -11,10 +11,12 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+nusamai-citygml.workspace = true
+nusamai-geometry.workspace = true
+
 approx = "0.5.1"
 bytes.workspace = true
 num-traits = "0.2.18"
-nusamai-geometry.workspace = true
 reearth-flow-common.workspace = true
 serde.workspace = true
 serde_json.workspace = true

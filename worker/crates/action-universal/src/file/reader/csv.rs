@@ -4,7 +4,7 @@ use std::{collections::HashMap, sync::Arc};
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::error::Error;
-use reearth_flow_action::{ActionValue, Result};
+use reearth_flow_action::{AttributeValue, Result};
 use reearth_flow_common::{csv::Delimiter, str::remove_bom, uri::Uri};
 use reearth_flow_storage::resolve::StorageResolver;
 
@@ -20,7 +20,7 @@ pub(super) async fn read_csv(
     input_path: Uri,
     props: &CsvPropertySchema,
     storage_resolver: Arc<StorageResolver>,
-) -> Result<Vec<ActionValue>> {
+) -> Result<Vec<AttributeValue>> {
     let storage = storage_resolver
         .resolve(&input_path)
         .map_err(Error::input)?;
@@ -37,7 +37,7 @@ pub(super) async fn read_csv(
             .delimiter(delimiter.into())
             .from_reader(cursor);
         let offset = props.offset.unwrap_or(0);
-        let mut result: Vec<ActionValue> = Vec::new();
+        let mut result: Vec<AttributeValue> = Vec::new();
         let header = rdr
             .deserialize()
             .nth(offset)
@@ -48,9 +48,9 @@ pub(super) async fn read_csv(
             let row = record
                 .iter()
                 .enumerate()
-                .map(|(i, value)| (header[i].clone(), ActionValue::String(value.clone())))
-                .collect::<HashMap<String, ActionValue>>();
-            result.push(ActionValue::Map(row));
+                .map(|(i, value)| (header[i].clone(), AttributeValue::String(value.clone())))
+                .collect::<HashMap<String, AttributeValue>>();
+            result.push(AttributeValue::Map(row));
         }
         Ok(result)
     } else {
@@ -60,9 +60,9 @@ pub(super) async fn read_csv(
         let rows = raw_str
             .lines()
             .map(|line| {
-                ActionValue::Array(
+                AttributeValue::Array(
                     line.split(',')
-                        .map(|s| ActionValue::String(s.to_string()))
+                        .map(|s| AttributeValue::String(s.to_string()))
                         .collect::<Vec<_>>(),
                 )
             })

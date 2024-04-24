@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use reearth_flow_action::{error::Error, ActionValue, Result};
+use reearth_flow_action::{error::Error, AttributeValue, Result};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 
 pub(crate) async fn read_json(
     input_path: Uri,
     storage_resolver: Arc<StorageResolver>,
-) -> Result<ActionValue> {
+) -> Result<AttributeValue> {
     let storage = storage_resolver
         .resolve(&input_path)
         .map_err(Error::input)?;

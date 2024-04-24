@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use reearth_flow_common::uri::Uri;
@@ -8,7 +7,7 @@ use reearth_flow_common::csv::Delimiter;
 
 use super::{citygml, csv, json, text};
 use reearth_flow_action::{
-    ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result, DEFAULT_PORT,
+    ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue, Result, DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -54,53 +53,48 @@ pub enum FileReader {
 #[async_trait::async_trait]
 #[typetag::serde(name = "FileReader")]
 impl AsyncAction for FileReader {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
+    async fn run(&self, ctx: ActionContext, _inputs: ActionDataframe) -> ActionResult {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let data = match self {
+        let results = match self {
             Self::Csv {
                 common_property,
                 property,
             } => {
-                let input_path =
-                    get_input_path(&ctx, &inputs.unwrap_or_default(), common_property).await?;
+                let input_path = get_input_path(&ctx, common_property).await?;
                 let result =
                     csv::read_csv(Delimiter::Comma, input_path, property, storage_resolver).await?;
-                ActionValue::Array(result)
+                AttributeValue::Array(result)
             }
             Self::Tsv {
                 common_property,
                 property,
             } => {
-                let input_path =
-                    get_input_path(&ctx, &inputs.unwrap_or_default(), common_property).await?;
+                let input_path = get_input_path(&ctx, common_property).await?;
                 let result =
                     csv::read_csv(Delimiter::Tab, input_path, property, storage_resolver).await?;
-                ActionValue::Array(result)
+                AttributeValue::Array(result)
             }
             Self::Text { common_property } => {
-                let input_path =
-                    get_input_path(&ctx, &inputs.unwrap_or_default(), common_property).await?;
+                let input_path = get_input_path(&ctx, common_property).await?;
                 text::read_text(input_path, storage_resolver).await?
             }
             Self::Json { common_property } => {
-                let input_path =
-                    get_input_path(&ctx, &inputs.unwrap_or_default(), common_property).await?;
+                let input_path = get_input_path(&ctx, common_property).await?;
                 json::read_json(input_path, storage_resolver).await?
             }
             Self::CityGML { common_property } => {
-                let input_path =
-                    get_input_path(&ctx, &inputs.unwrap_or_default(), common_property).await?;
+                let input_path = get_input_path(&ctx, common_property).await?;
                 citygml::read_citygml(input_path, ctx).await?
             }
         };
-        Ok(HashMap::from([(DEFAULT_PORT.clone(), Some(data))]))
+        let output = ActionDataframe::from([(DEFAULT_PORT.clone(), results.into())]);
+        Ok(output)
     }
 }
 
 async fn get_input_path(
     ctx: &ActionContext,
-    inputs: &ActionDataframe,
     common_property: &CommonPropertySchema,
 ) -> Result<Uri> {
-    ctx.get_expr_path(&common_property.dataset, inputs).await
+    ctx.get_expr_path(&common_property.dataset).await
 }

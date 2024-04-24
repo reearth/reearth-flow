@@ -19,7 +19,7 @@ pub enum ColorConverter {
 #[async_trait::async_trait]
 #[typetag::serde(name = "ColorConverter")]
 impl AsyncAction for ColorConverter {
-    async fn run(&self, ctx: ActionContext, input: Option<ActionDataframe>) -> ActionResult {
+    async fn run(&self, ctx: ActionContext, input: ActionDataframe) -> ActionResult {
         let data = match self {
             Self::HslToRgba { property } => {
                 hsl_to_rgba::convert_hsl_to_rgba(Arc::clone(&ctx.expr_engine), property, input)

@@ -6,8 +6,8 @@ use reearth_flow_storage::resolve::StorageResolver;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error, utils, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result,
-    DEFAULT_PORT, REJECTED_PORT,
+    error, ActionContext, ActionDataframe, ActionResult, AsyncAction, Attribute, AttributeValue,
+    Dataframe, Feature, Result, DEFAULT_PORT, REJECTED_PORT,
 };
 
 const PKG_FOLDERS: &[&str] = &[
@@ -37,87 +37,73 @@ struct Response {
     dir_schemas: String,
 }
 
-impl TryFrom<Response> for ActionValue {
-    type Error = error::Error;
-    fn try_from(value: Response) -> Result<Self, error::Error> {
-        let value = serde_json::to_value(value).map_err(|e| {
-            error::Error::output(format!("Cannot convert to json with error = {:?}", e))
-        })?;
-        Ok(ActionValue::from(value))
+impl From<Response> for HashMap<Attribute, AttributeValue> {
+    fn from(value: Response) -> Self {
+        serde_json::to_value(value)
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (Attribute::new(k), AttributeValue::from(v.clone())))
+            .collect()
     }
 }
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "PLATEAU.UDXFolderExtractor")]
 impl AsyncAction for UdxFolderExtractor {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let inputs = inputs.ok_or(error::Error::input("No Input"))?;
+    async fn run(&self, ctx: ActionContext, inputs: ActionDataframe) -> ActionResult {
         let input = inputs
             .get(&DEFAULT_PORT)
             .ok_or(error::Error::input("No Default Port"))?;
-        let input = input.as_ref().ok_or(error::Error::input("No Value"))?;
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let ast = ctx
             .expr_engine
             .compile(self.city_gml_path.as_str())
             .map_err(error::Error::internal_runtime)?;
-        let params = utils::convert_dataframe_to_scope_params(&inputs);
 
-        let mut success = Vec::<ActionValue>::new();
-        let mut rejected = Vec::<ActionValue>::new();
-        match input {
-            ActionValue::Array(rows) => {
-                for row in rows {
-                    let res = mapper(
-                        row,
-                        &ast,
-                        &params,
-                        Arc::clone(&expr_engine),
-                        Arc::clone(&storage_resolver),
-                        &self.codelists_path,
-                        &self.schemas_path,
-                    )
-                    .await?;
-                    if PKG_FOLDERS.contains(&res.package.as_str()) {
-                        success.push(res.try_into().map_err(error::Error::internal_runtime)?);
-                    } else {
-                        rejected.push(res.try_into().map_err(error::Error::internal_runtime)?);
-                    };
-                }
-            }
-            _ => return Err(error::Error::input("Invalid input")),
-        };
+        let mut success = Vec::<HashMap<Attribute, AttributeValue>>::new();
+        let mut rejected = Vec::<HashMap<Attribute, AttributeValue>>::new();
+        for row in &input.features {
+            let res = mapper(
+                row,
+                &ast,
+                Arc::clone(&expr_engine),
+                Arc::clone(&storage_resolver),
+                &self.codelists_path,
+                &self.schemas_path,
+            )
+            .await?;
+            if PKG_FOLDERS.contains(&res.package.as_str()) {
+                success.push(res.into());
+            } else {
+                rejected.push(res.into());
+            };
+        }
         Ok(ActionDataframe::from([
-            (DEFAULT_PORT.clone(), Some(ActionValue::Array(success))),
-            (REJECTED_PORT.clone(), Some(ActionValue::Array(rejected))),
+            (DEFAULT_PORT.clone(), Dataframe::from(success)),
+            (REJECTED_PORT.clone(), Dataframe::from(rejected)),
         ]))
     }
 }
 
 async fn mapper(
-    row: &ActionValue,
+    row: &Feature,
     expr: &rhai::AST,
-    params: &HashMap<String, ActionValue>,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     codelists_path: &Option<String>,
     schemas_path: &Option<String>,
 ) -> Result<Response> {
-    let city_gml_path = match row {
-        ActionValue::Map(row) => {
-            let scope = expr_engine.new_scope();
-            for (k, v) in params {
-                scope.set(k, v.clone().into());
-            }
-            for (k, v) in row {
-                scope.set(k, v.clone().into());
-            }
-            scope
-                .eval_ast::<String>(expr)
-                .map_err(error::Error::input)?
+    let city_gml_path = {
+        let scope = expr_engine.new_scope();
+        for (k, v) in &row.attributes {
+            scope.set(k.clone().into_inner().as_str(), v.clone().into());
         }
-        _ => return Err(error::Error::input("Invalid input")),
+        scope
+            .eval_ast::<String>(expr)
+            .map_err(error::Error::input)?
     };
     let folders = city_gml_path
         .split('/')

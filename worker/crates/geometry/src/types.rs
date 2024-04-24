@@ -12,5 +12,6 @@ pub mod multi_polygon;
 pub mod no_value;
 pub mod point;
 pub mod polygon;
-pub mod rect;
+pub mod rectangle;
+pub mod traits;
 pub mod triangle;

@@ -1,7 +1,7 @@
 use reearth_flow_common::uri::Uri;
 use serde::{Deserialize, Serialize};
 
-use crate::ActionValue;
+use crate::AttributeValue;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -51,7 +51,7 @@ impl TryFrom<Uri> for FilePath {
     }
 }
 
-impl TryFrom<FilePath> for ActionValue {
+impl TryFrom<FilePath> for AttributeValue {
     type Error = crate::error::Error;
 
     fn try_from(value: FilePath) -> Result<Self, Self::Error> {

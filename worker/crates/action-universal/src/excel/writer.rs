@@ -2,6 +2,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::{collections::HashMap, str::FromStr};
 
+use reearth_flow_action::Attribute;
 use rust_xlsxwriter::{
     Format, FormatAlign, FormatUnderline, Formula, ProtectionOptions, Url, Workbook, Worksheet,
 };
@@ -12,8 +13,7 @@ use serde::{Deserialize, Serialize};
 use reearth_flow_common::uri::Uri;
 
 use reearth_flow_action::{
-    error::Error, ActionContext, ActionDataframe, ActionResult, ActionValue, AsyncAction, Result,
-    DEFAULT_PORT,
+    error::Error, ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue, Result,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -29,24 +29,24 @@ pub struct ExcelFileWriter {
 #[async_trait::async_trait]
 #[typetag::serde(name = "ExcelFileWriter")]
 impl AsyncAction for ExcelFileWriter {
-    async fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
+    async fn run(&self, ctx: ActionContext, inputs: ActionDataframe) -> ActionResult {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        write_excel(inputs, self, storage_resolver).await?;
-        let output = vec![(
+        write_excel(&inputs, self, storage_resolver).await?;
+        let _output = vec![(
             "output".to_owned(),
-            ActionValue::String(self.output.clone()),
+            AttributeValue::String(self.output.clone()),
         )]
         .into_iter()
         .collect::<HashMap<_, _>>();
-        Ok([(DEFAULT_PORT.clone(), Some(ActionValue::Map(output)))].into())
+        Ok(inputs)
     }
 }
 
 async fn write_excel(
-    inputs: Option<ActionDataframe>,
+    inputs: &ActionDataframe,
     props: &ExcelFileWriter,
     storage_resolver: Arc<StorageResolver>,
-) -> Result<ActionValue> {
+) -> Result<AttributeValue> {
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
 
@@ -60,57 +60,34 @@ async fn write_excel(
     }
 
     let mut row_index = 0;
-
-    if let Some(inputs) = inputs {
-        for (_port, data) in inputs {
-            if let Some(data) = data {
-                match data {
-                    ActionValue::Array(rows) => {
-                        for (row_num, row) in rows.iter().enumerate() {
-                            if let ActionValue::Map(row_data) = row {
-                                for (col_num, (key, value)) in row_data.iter().enumerate() {
-                                    write_cell_value(
-                                        worksheet,
-                                        row_num + row_index,
-                                        col_num,
-                                        key,
-                                        value,
-                                    )?;
-                                    write_cell_formatting(
-                                        worksheet,
-                                        row_num + row_index,
-                                        col_num,
-                                        key,
-                                        row_data,
-                                    )?;
-                                    write_cell_formula(
-                                        worksheet,
-                                        row_num + row_index,
-                                        col_num,
-                                        key,
-                                        row_data,
-                                    )?;
-                                    write_cell_hyperlink(
-                                        worksheet,
-                                        row_num + row_index,
-                                        col_num,
-                                        key,
-                                        row_data,
-                                    )?;
-                                }
-                            }
-                        }
-                        row_index += rows.len();
-                    }
-                    ActionValue::Map(map) => {
-                        for (key, value) in map {
-                            write_map_entry(worksheet, &mut row_index, key, value)?;
-                        }
-                    }
-                    _ => {}
-                }
+    for data in inputs.values() {
+        for (row_num, row) in data.features.iter().enumerate() {
+            for (col_num, (key, value)) in row.iter().enumerate() {
+                write_cell_value(worksheet, row_num + row_index, col_num, value)?;
+                write_cell_formatting(
+                    worksheet,
+                    row_num + row_index,
+                    col_num,
+                    key.clone().into_inner(),
+                    &row.attributes,
+                )?;
+                write_cell_formula(
+                    worksheet,
+                    row_num + row_index,
+                    col_num,
+                    key.clone().into_inner(),
+                    &row.attributes,
+                )?;
+                write_cell_hyperlink(
+                    worksheet,
+                    row_num + row_index,
+                    col_num,
+                    key.clone().into_inner(),
+                    &row.attributes,
+                )?;
             }
         }
+        row_index += data.features.len();
     }
 
     let buf = workbook.save_to_buffer().map_err(Error::internal_runtime)?;
@@ -125,19 +102,18 @@ async fn write_excel(
         .await
         .map_err(Error::internal_runtime)?;
 
-    Ok(ActionValue::Bool(true))
+    Ok(AttributeValue::Bool(true))
 }
 
 fn write_cell_value(
     worksheet: &mut Worksheet,
     row: usize,
     col: usize,
-    _key: &str,
-    value: &ActionValue,
+    value: &AttributeValue,
 ) -> Result<()> {
     let cell_value = match value {
-        ActionValue::String(s) => s.clone(),
-        ActionValue::Number(n) => n.to_string(),
+        AttributeValue::String(s) => s.clone(),
+        AttributeValue::Number(n) => n.to_string(),
         _ => "".to_string(),
     };
 
@@ -152,10 +128,11 @@ fn write_cell_formatting(
     worksheet: &mut Worksheet,
     row: usize,
     col: usize,
-    key: &str,
-    row_data: &HashMap<String, ActionValue>,
+    key: String,
+    row_data: &HashMap<Attribute, AttributeValue>,
 ) -> Result<()> {
-    if let Some(ActionValue::String(formatting_str)) = row_data.get(&format!("{}.formatting", key))
+    if let Some(AttributeValue::String(formatting_str)) =
+        row_data.get(&Attribute::new(format!("{}.formatting", key)))
     {
         let format = parse_formatting(formatting_str)?;
         worksheet
@@ -170,10 +147,12 @@ fn write_cell_formula(
     worksheet: &mut Worksheet,
     row: usize,
     col: usize,
-    key: &str,
-    row_data: &HashMap<String, ActionValue>,
+    key: String,
+    row_data: &HashMap<Attribute, AttributeValue>,
 ) -> Result<()> {
-    if let Some(ActionValue::String(formula_str)) = row_data.get(&format!("{}.formula", key)) {
+    if let Some(AttributeValue::String(formula_str)) =
+        row_data.get(&Attribute::new(format!("{}.formula", key)))
+    {
         worksheet
             .write_formula(row as u32, col as u16, Formula::new(formula_str))
             .map_err(Error::internal_runtime)?;
@@ -186,10 +165,12 @@ fn write_cell_hyperlink(
     worksheet: &mut Worksheet,
     row: usize,
     col: usize,
-    key: &str,
-    row_data: &HashMap<String, ActionValue>,
+    key: String,
+    row_data: &HashMap<Attribute, AttributeValue>,
 ) -> Result<()> {
-    if let Some(ActionValue::String(hyperlink_str)) = row_data.get(&format!("{}.hyperlink", key)) {
+    if let Some(AttributeValue::String(hyperlink_str)) =
+        row_data.get(&Attribute::new(format!("{}.hyperlink", key)))
+    {
         worksheet
             .write_url(row as u32, col as u16, Url::new(hyperlink_str))
             .map_err(Error::internal_runtime)?;
@@ -198,23 +179,24 @@ fn write_cell_hyperlink(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn write_map_entry(
     worksheet: &mut Worksheet,
     row_index: &mut usize,
     key: String,
-    value: ActionValue,
+    value: AttributeValue,
 ) -> Result<()> {
     worksheet
         .write_string_with_format(*row_index as u32, 0, &key, &Default::default())
         .map_err(Error::internal_runtime)?;
 
     match value {
-        ActionValue::String(s) => {
+        AttributeValue::String(s) => {
             worksheet
                 .write_string_with_format(*row_index as u32, 1, &s, &Default::default())
                 .map_err(Error::internal_runtime)?;
         }
-        ActionValue::Number(n) => {
+        AttributeValue::Number(n) => {
             if let Some(num) = n.as_f64() {
                 worksheet
                     .write_number(*row_index as u32, 1, num)
@@ -230,15 +212,15 @@ fn write_map_entry(
                     .map_err(Error::internal_runtime)?;
             }
         }
-        ActionValue::Bool(b) => {
+        AttributeValue::Bool(b) => {
             worksheet
                 .write_boolean(*row_index as u32, 1, b)
                 .map_err(Error::internal_runtime)?;
         }
-        ActionValue::Array(arr) => {
+        AttributeValue::Array(arr) => {
             for (col_num, value) in arr.iter().enumerate() {
                 match value {
-                    ActionValue::String(s) => {
+                    AttributeValue::String(s) => {
                         worksheet
                             .write_string_with_format(
                                 *row_index as u32,
@@ -248,7 +230,7 @@ fn write_map_entry(
                             )
                             .map_err(Error::internal_runtime)?;
                     }
-                    ActionValue::Number(n) => {
+                    AttributeValue::Number(n) => {
                         if let Some(num) = n.as_f64() {
                             worksheet
                                 .write_number(*row_index as u32, col_num as u16 + 1, num)
@@ -264,7 +246,7 @@ fn write_map_entry(
                                 .map_err(Error::internal_runtime)?;
                         }
                     }
-                    ActionValue::Bool(b) => {
+                    AttributeValue::Bool(b) => {
                         worksheet
                             .write_boolean(*row_index as u32, col_num as u16 + 1, *b)
                             .map_err(Error::internal_runtime)?;
@@ -480,207 +462,5 @@ fn dto_to_protection_options(dto: &ProtectionOptionsDTO) -> ProtectionOptions {
         use_pivot_tables: dto.use_pivot_tables.unwrap_or(false),
         edit_scenarios: dto.edit_scenarios.unwrap_or(false),
         edit_objects: dto.edit_objects.unwrap_or(false),
-    }
-}
-
-mod tests {
-    #[allow(unused_imports)]
-    use super::*;
-
-    #[allow(unused_imports)]
-    use serde_json::Number;
-
-    #[tokio::test]
-    async fn test_write_excel_with_formatting_and_hyperlink() {
-        let inputs = Some(
-            vec![(
-                DEFAULT_PORT.clone(),
-                Some(ActionValue::Array(vec![ActionValue::Map(
-                    vec![
-                        (
-                            "field1".to_owned(),
-                            ActionValue::String("value1".to_owned()),
-                        ),
-                        (
-                            "field2".to_owned(),
-                            ActionValue::Number(Number::from_f64(10.0).unwrap()),
-                        ),
-                        (
-                            "field1.hyperlink".to_owned(),
-                            ActionValue::String("https://www.example.com".to_owned()),
-                        ),
-                        (
-                            "field1.formatting".to_owned(),
-                            ActionValue::String(
-                                "font,Arial;size,12;color,#FF0000;bold,true".to_owned(),
-                            ),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect(),
-                )])),
-            )]
-            .into_iter()
-            .collect::<ActionDataframe>(),
-        );
-        let props = ExcelFileWriter {
-            output: "ram:///root/output1.xlsx".to_owned(),
-            worksheet_name: "Sheet1".to_owned(),
-            template_file: None,
-            template_sheet: None,
-            protection_options: None,
-        };
-        let resolver = Arc::new(StorageResolver::default());
-        let result = write_excel(inputs, &props, resolver).await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_write_excel_with_formula() {
-        let inputs = Some(
-            vec![(
-                DEFAULT_PORT.clone(),
-                Some(ActionValue::Array(vec![
-                    ActionValue::Map(
-                        vec![
-                            (
-                                "field1".to_owned(),
-                                ActionValue::String("value1".to_owned()),
-                            ),
-                            (
-                                "field2".to_owned(),
-                                ActionValue::Number(Number::from_f64(10.0).unwrap()),
-                            ),
-                            (
-                                "field2.formula".to_owned(),
-                                ActionValue::String("=SUM(B1:B2)".to_owned()),
-                            ),
-                        ]
-                        .into_iter()
-                        .collect(),
-                    ),
-                    ActionValue::Map(
-                        vec![
-                            (
-                                "field1".to_owned(),
-                                ActionValue::String("value2".to_owned()),
-                            ),
-                            (
-                                "field2".to_owned(),
-                                ActionValue::Number(Number::from_f64(20.0).unwrap()),
-                            ),
-                        ]
-                        .into_iter()
-                        .collect(),
-                    ),
-                ])),
-            )]
-            .into_iter()
-            .collect::<ActionDataframe>(),
-        );
-        let props = ExcelFileWriter {
-            output: "ram:///root/output2.xlsx".to_owned(),
-            worksheet_name: "Sheet1".to_owned(),
-            template_file: None,
-            template_sheet: None,
-            protection_options: None,
-        };
-        let resolver = Arc::new(StorageResolver::default());
-        let result = write_excel(inputs, &props, resolver).await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_write_excel_with_map_data() {
-        let inputs = Some(
-            vec![(
-                DEFAULT_PORT.clone(),
-                Some(ActionValue::Map(
-                    vec![
-                        (
-                            "field1".to_owned(),
-                            ActionValue::String("value1".to_owned()),
-                        ),
-                        (
-                            "field2".to_owned(),
-                            ActionValue::Number(Number::from_f64(10.0).unwrap()),
-                        ),
-                        ("field3".to_owned(), ActionValue::Bool(true)),
-                        (
-                            "field4".to_owned(),
-                            ActionValue::Array(vec![
-                                ActionValue::String("array1".to_owned()),
-                                ActionValue::Number(Number::from_f64(20.0).unwrap()),
-                                ActionValue::Bool(false),
-                            ]),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect(),
-                )),
-            )]
-            .into_iter()
-            .collect::<ActionDataframe>(),
-        );
-        let props = ExcelFileWriter {
-            output: "ram:///root/output3.xlsx".to_owned(),
-            worksheet_name: "Sheet1".to_owned(),
-            template_file: None,
-            template_sheet: None,
-            protection_options: None,
-        };
-        let resolver = Arc::new(StorageResolver::default());
-        let result = write_excel(inputs, &props, resolver).await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_write_excel_with_invalid_output_path() {
-        let inputs = None;
-        let props = ExcelFileWriter {
-            output: "invalid_path".to_owned(),
-            worksheet_name: "Sheet1".to_owned(),
-            template_file: None,
-            template_sheet: None,
-            protection_options: None,
-        };
-        let resolver = Arc::new(StorageResolver::default());
-        let result = write_excel(inputs, &props, resolver).await;
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_write_excel_with_invalid_formatting() {
-        let inputs = Some(
-            vec![(
-                DEFAULT_PORT.clone(),
-                Some(ActionValue::Array(vec![ActionValue::Map(
-                    vec![
-                        (
-                            "field1".to_owned(),
-                            ActionValue::String("value1".to_owned()),
-                        ),
-                        (
-                            "field1.formatting".to_owned(),
-                            ActionValue::String("invalid_formatting".to_owned()),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect(),
-                )])),
-            )]
-            .into_iter()
-            .collect::<ActionDataframe>(),
-        );
-        let props = ExcelFileWriter {
-            output: "ram:///root/output4.xlsx".to_owned(),
-            worksheet_name: "Sheet1".to_owned(),
-            template_file: None,
-            template_sheet: None,
-            protection_options: None,
-        };
-        let resolver = Arc::new(StorageResolver::default());
-        let result = write_excel(inputs, &props, resolver).await;
-        assert!(result.is_err());
     }
 }

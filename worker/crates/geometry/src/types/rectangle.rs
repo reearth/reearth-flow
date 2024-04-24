@@ -11,15 +11,15 @@ use super::no_value::NoValue;
 use super::polygon::Polygon;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash)]
-pub struct Rect<T: CoordNum = f64, Z: CoordNum = NoValue> {
+pub struct Rectangle<T: CoordNum = f64, Z: CoordNum = NoValue> {
     min: Coordinate<T, Z>,
     max: Coordinate<T, Z>,
 }
 
-pub type Rect2D<T> = Rect<T>;
-pub type Rect3D<T> = Rect<T, T>;
+pub type Rectangle2D<T> = Rectangle<T>;
+pub type Rectangle3D<T> = Rectangle<T, T>;
 
-impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
+impl<T: CoordNum, Z: CoordNum> Rectangle<T, Z> {
     pub fn new<C>(c1: C, c2: C) -> Self
     where
         C: Into<Coordinate<T, Z>>,
@@ -139,27 +139,27 @@ impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
     }
 }
 
-impl<T: CoordNum> Rect<T> {
-    pub fn split_x(self) -> [Rect<T>; 2] {
+impl<T: CoordNum> Rectangle<T> {
+    pub fn split_x(self) -> [Rectangle<T>; 2] {
         let two = T::one() + T::one();
         let mid_x = self.min().x + self.width() / two;
         [
-            Rect::new(self.min(), coord! { x: mid_x, y: self.max().y, }),
-            Rect::new(coord! { x: mid_x, y: self.min().y }, self.max()),
+            Rectangle::new(self.min(), coord! { x: mid_x, y: self.max().y, }),
+            Rectangle::new(coord! { x: mid_x, y: self.min().y }, self.max()),
         ]
     }
 
-    pub fn split_y(self) -> [Rect<T>; 2] {
+    pub fn split_y(self) -> [Rectangle<T>; 2] {
         let two = T::one() + T::one();
         let mid_y = self.min().y + self.height() / two;
         [
-            Rect::new(self.min(), coord! { x: self.max().x, y: mid_y, }),
-            Rect::new(coord! { x: self.min().x, y: mid_y, }, self.max()),
+            Rectangle::new(self.min(), coord! { x: self.max().x, y: mid_y, }),
+            Rectangle::new(coord! { x: self.min().x, y: mid_y, }, self.max()),
         ]
     }
 }
 
-impl<T, Z> Rect<T, Z>
+impl<T, Z> Rectangle<T, Z>
 where
     T: CoordNum,
     Z: CoordNum + One + NumOps,
@@ -176,7 +176,7 @@ where
 
 static RECT_INVALID_BOUNDS_ERROR: &str = "Failed to create Rect: 'min' coordinate's x/y value must be smaller or equal to the 'max' x/y value";
 
-impl<T> RelativeEq for Rect<T, T>
+impl<T> RelativeEq for Rectangle<T, T>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
 {
@@ -204,7 +204,7 @@ where
     }
 }
 
-impl<T> AbsDiffEq for Rect<T, T>
+impl<T> AbsDiffEq for Rectangle<T, T>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum,
     T::Epsilon: Copy,
@@ -236,22 +236,22 @@ mod test {
 
     #[test]
     fn rect() {
-        let rect = Rect::new((10, 10, 10), (20, 20, 20));
+        let rect = Rectangle::new((10, 10, 10), (20, 20, 20));
         assert_eq!(rect.min, coord! { x: 10, y: 10, z: 10});
         assert_eq!(rect.max, coord! { x: 20, y: 20, z: 20});
 
-        let rect = Rect::new((20, 20), (10, 10));
+        let rect = Rectangle::new((20, 20), (10, 10));
         assert_eq!(rect.min, coord! { x: 10, y: 10 });
         assert_eq!(rect.max, coord! { x: 20, y: 20 });
 
-        let rect = Rect::new((10, 20), (20, 10));
+        let rect = Rectangle::new((10, 20), (20, 10));
         assert_eq!(rect.min, coord! { x: 10, y: 10 });
         assert_eq!(rect.max, coord! { x: 20, y: 20 });
     }
 
     #[test]
     fn rect_width() {
-        let rect = Rect::new((10, 10), (20, 20));
+        let rect = Rectangle::new((10, 10), (20, 20));
         assert_eq!(rect.width(), 10);
     }
 }

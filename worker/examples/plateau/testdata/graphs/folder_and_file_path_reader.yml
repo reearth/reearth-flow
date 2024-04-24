@@ -11,9 +11,9 @@ nodes:
       extractArchive: true
 
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cb
-    name: EntityFilter01
+    name: FeatureFilter01
     type: action
-    action: EntityFilter
+    action: FeatureFilter
     with:
       conditions:
         - expr: |
@@ -29,9 +29,9 @@ nodes:
         env.get("path")
 
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cd
-    name: EntityFilter02
+    name: FeatureFilter02
     type: action
-    action: EntityFilter
+    action: FeatureFilter
     with:
       conditions:
         - expr: |
@@ -39,9 +39,9 @@ nodes:
           outputPort: default
 
   - id: b1a91180-ab88-4c1a-aab5-48c242a218ce
-    name: EntityCounter01
+    name: FeatureCounter01
     type: action
-    action: EntityCounter
+    action: FeatureCounter
     with:
       countStart: 1
       groupBy:

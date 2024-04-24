@@ -76,6 +76,7 @@ impl ActionRunner {
                         .into_iter()
                         .collect::<serde_json::Map<_, _>>(),
                 ));
+            let input = input.unwrap_or_default();
             match action_run {
                 Ok(action_run) => action_run
                     .run(ctx, input)
@@ -134,12 +135,9 @@ impl ActionRunner {
 fn convert_dataframe(dataframe: &ActionDataframe) -> HashMap<String, serde_json::Value> {
     dataframe
         .iter()
-        .filter_map(|(k, v)| match v {
-            Some(v) => {
-                let value: serde_json::Value = v.clone().into();
-                Some((k.clone().into_inner(), value))
-            }
-            None => None,
+        .map(|(k, v)| {
+            let value: serde_json::Value = v.clone().into();
+            (k.clone().into_inner(), value)
         })
         .collect::<HashMap<String, serde_json::Value>>()
 }

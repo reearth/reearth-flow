@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use async_recursion::async_recursion;
 use petgraph::graph::NodeIndex;
+use reearth_flow_action::Dataframe;
 use reearth_flow_workflow::graph::NodeAction;
 use reearth_flow_workflow::workflow::Parameter;
 use reearth_flow_workflow::workflow::WorkflowParameter;
@@ -182,7 +183,7 @@ impl DagExecutor {
                     let data = dfs.entry(to_ix).or_default();
                     let value = match data_frame.get(&from_port).cloned() {
                         Some(df) => df.clone(),
-                        None => None,
+                        None => Dataframe::new(vec![]),
                     };
                     data.insert(to_port, value);
                     let finish_all_ports = data.keys().cloned().collect::<Vec<_>>();

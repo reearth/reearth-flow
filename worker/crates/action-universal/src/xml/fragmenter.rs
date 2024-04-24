@@ -1,5 +1,6 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
+use reearth_flow_action::{Attribute, Dataframe, Feature};
 use reearth_flow_common::collection;
 use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
@@ -7,8 +8,7 @@ use reearth_flow_common::xml::{self, XmlDocument};
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error::Error, utils::convert_dataframe_to_scope_params, ActionContext, ActionDataframe,
-    ActionResult, ActionValue, Result, SyncAction,
+    error::Error, ActionContext, ActionDataframe, ActionResult, AttributeValue, Result, SyncAction,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -29,24 +29,52 @@ pub struct XmlFragment {
 }
 
 impl XmlFragment {
-    fn to_hashmap(fragment: XmlFragment) -> HashMap<String, ActionValue> {
+    fn to_hashmap(fragment: XmlFragment) -> HashMap<Attribute, AttributeValue> {
         let mut map = HashMap::new();
-        map.insert("xmlId".to_string(), ActionValue::String(fragment.xml_id));
         map.insert(
-            "fragment".to_string(),
-            ActionValue::String(fragment.fragment),
+            Attribute::new("xmlId"),
+            AttributeValue::String(fragment.xml_id),
         );
         map.insert(
-            "matchedTag".to_string(),
-            ActionValue::String(fragment.matched_tag),
+            Attribute::new("fragment"),
+            AttributeValue::String(fragment.fragment),
+        );
+        map.insert(
+            Attribute::new("matchedTag"),
+            AttributeValue::String(fragment.matched_tag),
         );
         if let Some(xml_parent_id) = fragment.xml_parent_id {
             map.insert(
-                "xmlParentId".to_string(),
-                ActionValue::String(xml_parent_id),
+                Attribute::new("xmlParentId"),
+                AttributeValue::String(xml_parent_id),
             );
         }
         map
+    }
+}
+
+impl From<XmlFragment> for Feature {
+    fn from(fragment: XmlFragment) -> Self {
+        let mut map = HashMap::new();
+        map.insert(
+            Attribute::new("xmlId"),
+            AttributeValue::String(fragment.xml_id),
+        );
+        map.insert(
+            Attribute::new("fragment"),
+            AttributeValue::String(fragment.fragment),
+        );
+        map.insert(
+            Attribute::new("matchedTag"),
+            AttributeValue::String(fragment.matched_tag),
+        );
+        if let Some(xml_parent_id) = fragment.xml_parent_id {
+            map.insert(
+                Attribute::new("xmlParentId"),
+                AttributeValue::String(xml_parent_id),
+            );
+        }
+        Feature::new_with_attributes(map)
     }
 }
 
@@ -62,8 +90,7 @@ pub enum XmlFragmenter {
 
 #[typetag::serde(name = "XMLFragmenter")]
 impl SyncAction for XmlFragmenter {
-    fn run(&self, ctx: ActionContext, inputs: Option<ActionDataframe>) -> ActionResult {
-        let inputs = inputs.ok_or(Error::input("No input dataframe"))?;
+    fn run(&self, ctx: ActionContext, inputs: ActionDataframe) -> ActionResult {
         match self {
             XmlFragmenter::Url { property } => url(ctx, inputs, property),
         }
@@ -76,7 +103,6 @@ pub(super) fn url(
     props: &PropertySchema,
 ) -> Result<ActionDataframe> {
     let expr_engine = Arc::clone(&ctx.expr_engine);
-    let params = convert_dataframe_to_scope_params(&inputs);
     let elements_to_match_ast = expr_engine
         .compile(props.elements_to_match.as_str())
         .map_err(Error::internal_runtime)?;
@@ -86,108 +112,75 @@ pub(super) fn url(
 
     let mut output = ActionDataframe::new();
     for (port, data) in inputs {
-        let data = match data {
-            Some(data) => data,
-            None => continue,
-        };
-        let processed_data = match data {
-            ActionValue::Array(data) => {
-                let result = collection::par_map(&data, |row| {
-                    action_value_to_fragment(
-                        &ctx,
-                        row,
-                        &props.attribute,
-                        &elements_to_match_ast,
-                        &elements_to_exclude_ast,
-                        &params,
-                    )
-                    .unwrap_or_default()
-                });
-                ActionValue::Array(result.into_iter().flatten().collect())
-            }
-            ActionValue::Map(_) => {
-                let result = action_value_to_fragment(
-                    &ctx,
-                    &data,
-                    &props.attribute,
-                    &elements_to_match_ast,
-                    &elements_to_exclude_ast,
-                    &params,
-                )?;
-                ActionValue::Array(result)
-            }
-            _ => data,
-        };
-        output.insert(port, Some(processed_data));
+        let result = collection::par_map(&data.features, |row| {
+            action_value_to_fragment(
+                &ctx,
+                row,
+                &props.attribute,
+                &elements_to_match_ast,
+                &elements_to_exclude_ast,
+            )
+            .unwrap_or_default()
+        });
+        let result = result.into_iter().flatten().collect::<Vec<Feature>>();
+        output.insert(port, Dataframe::new(result));
     }
     Ok(output)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn action_value_to_fragment(
     ctx: &ActionContext,
-    row: &ActionValue,
+    row: &Feature,
     attribute: &String,
     elements_to_match_ast: &rhai::AST,
     elements_to_exclude_ast: &rhai::AST,
-    params: &HashMap<String, ActionValue>,
-) -> Result<Vec<ActionValue>> {
-    let mut result = Vec::<ActionValue>::new();
+) -> Result<Vec<Feature>> {
+    let mut result = Vec::<Feature>::new();
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let expr_engine = Arc::clone(&ctx.expr_engine);
 
-    match row {
-        ActionValue::Map(row) => {
-            let scope = expr_engine.new_scope();
-            for (k, v) in params {
-                scope.set(k, v.clone().into());
-            }
-            for (k, v) in row {
-                scope.set(k, v.clone().into());
-            }
-            let elements_to_match = scope
-                .eval_ast::<rhai::Array>(elements_to_match_ast)
-                .map_err(Error::internal_runtime)?;
-            let elements_to_match = elements_to_match
-                .iter()
-                .map(|v| v.clone().into_string().unwrap_or_default())
-                .collect::<Vec<String>>();
-            if elements_to_match.is_empty() {
-                return Ok(result);
-            }
+    let scope = expr_engine.new_scope();
+    for (k, v) in &row.attributes {
+        scope.set(k.clone().into_inner().as_str(), v.clone().into());
+    }
+    let elements_to_match = scope
+        .eval_ast::<rhai::Array>(elements_to_match_ast)
+        .map_err(Error::internal_runtime)?;
+    let elements_to_match = elements_to_match
+        .iter()
+        .map(|v| v.clone().into_string().unwrap_or_default())
+        .collect::<Vec<String>>();
+    if elements_to_match.is_empty() {
+        return Ok(result);
+    }
 
-            let elements_to_exclude = scope
-                .eval_ast::<rhai::Array>(elements_to_exclude_ast)
-                .map_err(Error::internal_runtime)?;
-            let elements_to_exclude = elements_to_exclude
-                .iter()
-                .map(|v| v.clone().into_string().unwrap_or_default())
-                .collect::<Vec<String>>();
+    let elements_to_exclude = scope
+        .eval_ast::<rhai::Array>(elements_to_exclude_ast)
+        .map_err(Error::internal_runtime)?;
+    let elements_to_exclude = elements_to_exclude
+        .iter()
+        .map(|v| v.clone().into_string().unwrap_or_default())
+        .collect::<Vec<String>>();
 
-            let url = match row.get(attribute) {
-                Some(ActionValue::String(url)) => {
-                    Uri::from_str(url).map_err(Error::internal_runtime)?
-                }
-                _ => return Err(Error::internal_runtime("No url found")),
-            };
-            let storage = storage_resolver
-                .resolve(&url)
-                .map_err(Error::internal_runtime)?;
-            let bytes = storage
-                .get_sync(&url.path())
-                .map_err(Error::internal_runtime)?;
-            let raw_xml = String::from_utf8(bytes.to_vec()).map_err(Error::internal_runtime)?;
-            ctx.action_log(format!("Parsing XML document: {:?} ...", url));
-            let document = xml::parse(raw_xml.as_str()).map_err(Error::internal_runtime)?;
+    let url = match row.get(attribute) {
+        Some(AttributeValue::String(url)) => Uri::from_str(url).map_err(Error::internal_runtime)?,
+        _ => return Err(Error::internal_runtime("No url found")),
+    };
+    let storage = storage_resolver
+        .resolve(&url)
+        .map_err(Error::internal_runtime)?;
+    let bytes = storage
+        .get_sync(&url.path())
+        .map_err(Error::internal_runtime)?;
+    let raw_xml = String::from_utf8(bytes.to_vec()).map_err(Error::internal_runtime)?;
+    ctx.action_log(format!("Parsing XML document: {:?} ...", url));
+    let document = xml::parse(raw_xml.as_str()).map_err(Error::internal_runtime)?;
 
-            let fragments = generate_fragment(&document, &elements_to_match, &elements_to_exclude)?;
-            for fragment in fragments {
-                let mut value = row.clone();
-                value.extend(XmlFragment::to_hashmap(fragment));
-                result.push(ActionValue::Map(value));
-            }
-        }
-        _ => return Ok(result),
+    let fragments = generate_fragment(&document, &elements_to_match, &elements_to_exclude)?;
+    for fragment in fragments {
+        let mut value = row.attributes.clone();
+        value.extend(XmlFragment::to_hashmap(fragment));
+        result.push(row.with_attributes(value));
     }
     Ok(result)
 }
@@ -292,6 +285,5 @@ fn generate_fragment(
             });
         }
     }
-
     Ok(result)
 }
