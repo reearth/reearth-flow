@@ -1,7 +1,9 @@
 import { DiscIcon, GearIcon, DoubleArrowRightIcon, PlayIcon } from "@radix-ui/react-icons";
+import { useState } from "react";
 import { NodeProps } from "reactflow";
 
 import { IconButton, ReaderIcon, TransformerIcon } from "@flow/components";
+import { useDoubleClick } from "@flow/hooks";
 import { NodeData } from "@flow/types";
 
 import { getPropsFrom } from "../utils";
@@ -17,6 +19,9 @@ export type GeneralNodeProps = NodeProps<NodeData> & {
 const typeIconClasses = "w-[10px] h-[100%]";
 
 const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, selected, ...props }) => {
+  const [hovered, setHovered] = useState(false);
+
+  const [_, handleDoubleClick] = useDoubleClick(undefined, () => console.log("double click"));
   // console.log("D", data);
   // const onChange = useCallback(
   //   (evt: any) => {
@@ -34,7 +39,10 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
   const metaProps = getPropsFrom(data.status);
 
   return (
-    <>
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onDoubleClick={handleDoubleClick}>
       <div
         className={`flex relative w-[150px] z-[1001] rounded-sm bg-zinc-800 ${singular ? "h-[30px]" : "h-[25px]"}`}
         style={{ zIndex: 1001 }}>
@@ -59,7 +67,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
         inputs={data.inputs}
         outputs={data.outputs}
         nodeActionArea={
-          selected && (
+          hovered && (
             <div className="absolute flex items-center bg-zinc-800 rounded-b border-t border-zinc-700 right-[50%] translate-x-1/2">
               <IconButton size="icon" icon={<DoubleArrowRightIcon className="" />} />
               <IconButton size="icon" icon={<PlayIcon className="" />} />
@@ -68,7 +76,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
           )
         }
       />
-    </>
+    </div>
   );
 };
 

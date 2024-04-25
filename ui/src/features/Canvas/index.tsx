@@ -65,7 +65,7 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
 export default function Canvas({ workflow, leftArea }: CanvasProps) {
   const reactFlowInstance = useReactFlow();
   console.log("reactFlowInstance", reactFlowInstance);
-  console.log("reactFlowInstance to object", reactFlowInstance.toObject());
+  // console.log("reactFlowInstance to object", reactFlowInstance.toObject());
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(workflow?.id ?? "");
 
@@ -90,7 +90,7 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
 
   const [hoveredDetails, setHoveredDetails] = useState<Node | Edge | undefined>();
 
-  const { onDragOver, onDrop, setReactFlowInstance } = useDnd({ setNodes });
+  const { onDragOver, onDrop } = useDnd({ setNodes });
 
   const onNodesChange: OnNodesChange = useCallback(
     changes => {
@@ -112,18 +112,13 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
 
   const handleNodeHover = useCallback(
     (e: MouseEvent, node?: Node) => {
-      if (
-        e.type === "mouseleave" &&
-        hoveredDetails &&
-        !selected.nodes.length &&
-        !selected.edges.length
-      ) {
+      if (e.type === "mouseleave" && hoveredDetails) {
         setHoveredDetails(undefined);
       } else {
         setHoveredDetails(node);
       }
     },
-    [hoveredDetails, selected],
+    [hoveredDetails],
   );
 
   const handleEdgeHover = useCallback(
@@ -161,13 +156,13 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
         //   [-1000, -1000],
         //   [1000, 1000],
         // ]}
+        // onInit={setReactFlowInstance}
         selectNodesOnDrag={false}
         selectionMode={SelectionMode["Partial"]}
         nodes={nodes}
         nodeTypes={nodeTypes}
         edges={edges}
         edgeTypes={edgeTypes}
-        onInit={setReactFlowInstance}
         defaultEdgeOptions={defaultEdgeOptions}
         connectionLineComponent={CustomConnectionLine}
         connectionLineStyle={connectionLineStyle}

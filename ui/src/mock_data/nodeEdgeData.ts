@@ -29,7 +29,6 @@ export const initialNodes: Node[] = [
   {
     id: "2",
     type: "transformer",
-    selected: true,
     data: {
       name: "Transformer Node 2",
       inputs: ["input1"],
