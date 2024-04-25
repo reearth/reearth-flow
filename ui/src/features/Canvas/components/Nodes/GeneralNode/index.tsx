@@ -68,7 +68,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
         outputs={data.outputs}
         nodeActionArea={
           hovered && (
-            <div className="absolute flex items-center bg-zinc-800 rounded-b border-t border-zinc-700 right-[50%] translate-x-1/2">
+            <div className="absolute flex items-center bg-zinc-800 rounded-b right-[50%] translate-x-1/2">
               <IconButton size="icon" icon={<DoubleArrowRightIcon className="" />} />
               <IconButton size="icon" icon={<PlayIcon className="" />} />
               <IconButton size="icon" icon={<GearIcon className="" />} />
