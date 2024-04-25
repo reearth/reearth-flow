@@ -26,7 +26,6 @@ import {
   connectionLineStyle,
   Toolbox,
 } from "@flow/features/Canvas/components";
-import { useDialogType } from "@flow/stores";
 
 import { edgeTypes } from "./components/CustomEdge";
 import useDnd from "./useDnd";
@@ -36,6 +35,7 @@ import "reactflow/dist/style.css";
 type CanvasProps = {
   leftArea?: React.ReactNode;
   workflow?: {
+    id: string;
     nodes?: Node[];
     edges?: Edge[];
   };
@@ -67,10 +67,18 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
   console.log("reactFlowInstance", reactFlowInstance);
   console.log("reactFlowInstance to object", reactFlowInstance.toObject());
 
+  const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(workflow?.id ?? "");
+
   const [nodes, setNodes] = useNodesState(workflow?.nodes ?? []);
   const [edges, setEdges] = useEdgesState(workflow?.edges ?? []);
 
-  const [currentDialogType, setDialogType] = useDialogType();
+  useEffect(() => {
+    if (workflow?.id !== currentWorkflowId) {
+      setNodes(workflow?.nodes ?? []);
+      setEdges(workflow?.edges ?? []);
+      setCurrentWorkflowId(workflow?.id ?? "");
+    }
+  }, [currentWorkflowId, workflow, setNodes, setEdges]);
 
   const selected = useMemo(() => {
     const selectedNodes = nodes.filter(node => node.selected);
@@ -139,13 +147,6 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
       setEdges(workflow.edges ?? []);
     }
   }, [workflow, setNodes, setEdges]);
-
-  useEffect(() => {
-    console.log("hi");
-    if (!workflow && currentDialogType !== "welcome-init") {
-      setDialogType("welcome-init");
-    }
-  }, []); // eslint-disable-line
 
   return (
     <div className="flex-1 m-1 rounded-sm relative">

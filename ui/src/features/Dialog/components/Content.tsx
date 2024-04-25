@@ -3,6 +3,7 @@ import { DialogType, useCurrentProject } from "@flow/stores";
 
 import useInits from "./inits/useInits";
 import useInstructions from "./instructions/useInstructions";
+import useSearches from "./searches/useSearches";
 import useSettings from "./settings/useSettings";
 
 export type DialogContentType = {
@@ -14,34 +15,41 @@ export type DialogContentType = {
 
 type Props = {
   tab: DialogType;
+  position?: "center" | "top";
   onTabChange: (tab: DialogType) => void;
 };
 
-const DialogContent: React.FC<Props> = ({ tab, onTabChange }) => {
+const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
   const [currentProject] = useCurrentProject();
   const inits = useInits();
+  const searches = useSearches();
   const settings = useSettings();
   const instructions = useInstructions();
 
   const content = tab?.includes("init")
     ? inits
-    : tab?.includes("settings")
-      ? settings
-      : tab?.includes("instructions")
-        ? instructions
-        : null;
+    : tab?.includes("search")
+      ? searches
+      : tab?.includes("settings")
+        ? settings
+        : tab?.includes("instructions")
+          ? instructions
+          : null;
 
   const disableClickaway = tab.includes("settings") || (tab === "welcome-init" && !currentProject);
 
   return content ? (
     <DialogContentPrimitive
-      size={tab === "welcome-init" ? "2xl" : undefined}
-      hideCloseButton={tab === "welcome-init"}
+      className={`${tab === "canvas-search" ? "p-2" : undefined}`}
+      size={tab === "welcome-init" ? "2xl" : tab === "canvas-search" ? "md" : undefined}
+      position={position}
+      hideCloseButton={tab === "welcome-init" || tab === "canvas-search"}
+      overlayBgClass={tab === "canvas-search" ? "bg-black/30" : undefined}
       onPointerDownOutside={e => disableClickaway && e.preventDefault()}
       onEscapeKeyDown={e => disableClickaway && e.preventDefault()}>
       <div className="flex">
         {content.length > 1 && (
-          <div className="flex flex-col pr-8 py-6 border-r border-zinc-800">
+          <div className={`flex flex-col pr-8 py-6 border-r border-zinc-800`}>
             {content.map(c => (
               <IconButton
                 key={c.id}

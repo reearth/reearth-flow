@@ -26,7 +26,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
   //   [data],
   // );
   console.log("props: ", props);
-  console.log("data: ", data);
+  // console.log("data: ", data);
 
   const singular =
     (!data.inputs || data.inputs.length === 1) && (!data.outputs || data.outputs.length === 1);

@@ -34,6 +34,7 @@ const DialogContent = forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     size?: "sm" | "md" | "lg" | "xl" | "2xl";
+    position?: "center" | "top";
     overlayBgClass?: string;
     hideCloseButton?: boolean;
   }
@@ -43,6 +44,7 @@ const DialogContent = forwardRef<
       className,
       children,
       size,
+      position = "center",
       overlayBgClass,
       hideCloseButton,
       onOpenAutoFocus,
@@ -68,6 +70,7 @@ const DialogContent = forwardRef<
                   : size === "2xl"
                     ? "max-w-[900px]"
                     : undefined,
+          position === "top" ? "top-[35%]" : position === "center" ? "top-[40%]" : undefined,
           className,
         )}
         onOpenAutoFocus={e => (onOpenAutoFocus ? onOpenAutoFocus(e) : e.preventDefault())}

@@ -1,4 +1,5 @@
-import { DiscIcon, GroupIcon, Pencil2Icon, ResetIcon } from "@radix-ui/react-icons";
+import { DiscIcon, GroupIcon, Pencil2Icon } from "@radix-ui/react-icons";
+import { Redo, Undo } from "lucide-react";
 import { type DragEvent } from "react";
 
 import { IconButton, ReaderIcon, TransformerIcon } from "@flow/components";
@@ -59,12 +60,12 @@ const Toolbox: React.FC<Props> = ({ className, onRedo, onUndo }) => {
     {
       id: "undo",
       name: t("Undo last action"),
-      icon: <ResetIcon />,
+      icon: <Undo className="h-4 w-4 stroke-1" />,
     },
     {
       id: "redo",
       name: t("Redo action"),
-      icon: <ResetIcon style={{ transform: "scale(-1,1)" }} />,
+      icon: <Redo className="h-4 w-4 stroke-1" />,
     },
   ];
 
