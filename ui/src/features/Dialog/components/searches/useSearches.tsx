@@ -11,7 +11,7 @@ export default (): DialogContentType[] => {
   return [
     {
       id: "canvas-search",
-      title: t("CANVAS Re:Earth Flow!"),
+      title: t("Canvas search"),
       icon: <StarIcon />,
       component: <CanvasSearch />,
     },
