@@ -1,10 +1,8 @@
 import {
-  DoubleArrowRightIcon,
   DownloadIcon,
   EnterFullScreenIcon,
   ExitFullScreenIcon,
   Link2Icon,
-  PlayIcon,
   ZoomInIcon,
   ZoomOutIcon,
 } from "@radix-ui/react-icons";
@@ -58,19 +56,6 @@ export default function ActionBar() {
           tooltipOffset={tooltipOffset}
           icon={<CenterIcon />}
           onClick={() => fitView({ duration: 400, padding: 0.5 })}
-        />
-        <div className="border-l border-zinc-700 mx-3" />
-      </div>
-      <div className="flex align-middle">
-        <IconButton
-          tooltipText={t("Incrementally run workflow")}
-          tooltipOffset={tooltipOffset}
-          icon={<DoubleArrowRightIcon />}
-        />
-        <IconButton
-          tooltipText={t("Run workflow")}
-          tooltipOffset={tooltipOffset}
-          icon={<PlayIcon />}
         />
         <div className="border-l border-zinc-700 mx-3" />
       </div>

@@ -1,4 +1,4 @@
-import { Edge, Node } from "reactflow";
+import { Edge as ReactFlowEdge, Node as ReactFlowNode } from "reactflow";
 
 export type Workspace = {
   id: string;
@@ -24,3 +24,24 @@ export type Workflow = {
   nodes?: Node[];
   edges?: Edge[];
 };
+
+export type Status = "success" | "failure" | "active" | "idle"; // other options: pending, warning, loading
+
+export type NodeData = {
+  name?: string;
+  inputs?: string[];
+  outputs?: string[];
+  status?: Status;
+  // transformer
+  transformerId?: string;
+  // batch
+  content?: string;
+};
+
+export type Node = ReactFlowNode<NodeData>;
+
+export type EdgeData = {
+  status?: Status;
+};
+
+export type Edge = ReactFlowEdge<EdgeData>;

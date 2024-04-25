@@ -1,10 +1,12 @@
-import { Dispatch, DragEvent, SetStateAction, useCallback, useState } from "react";
-import { Node } from "reactflow";
+import { Dispatch, DragEvent, SetStateAction, useCallback } from "react";
+import { Node, useReactFlow } from "reactflow";
+
+import { useRandomId } from "@flow/hooks";
 
 import { baseBatchNode } from "./components/Nodes/BatchNode";
 
 export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) => {
-  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const reactFlowInstance = useReactFlow();
 
   const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -30,13 +32,13 @@ export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) =>
         y: event.clientY,
       });
 
-      let newNode: Node;
+      let newNode: Node; // TODO: stronger typing
 
       newNode = {
-        id: createRandomId(),
+        id: useRandomId(),
         type,
         position,
-        data: { name: `New ${type} node`, inputs: ["source"], outputs: ["target"] },
+        data: { name: `New ${type} node`, inputs: ["source"], outputs: ["target"], status: "idle" },
       };
 
       if (type === "batch") {
@@ -55,17 +57,5 @@ export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) =>
     [reactFlowInstance, setNodes],
   );
 
-  return { onDragOver, onDrop, setReactFlowInstance };
+  return { onDragOver, onDrop };
 };
-
-function createRandomId(length = 10): string {
-  let result = "";
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const charactersLength = characters.length;
-
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-
-  return result;
-}

@@ -19,7 +19,7 @@ export const baseBatchNode = {
 
 const minSize = { width: 250, height: 150 };
 
-const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, ...props }) => {
+const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected, ...props }) => {
   const [width, _setWidth] = useState(data.width ?? initialSize.width);
   const [height, _setHeight] = useState(data.height ?? initialSize.height);
   // const onChange = useCallback(
@@ -34,7 +34,7 @@ const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, ...props }) => {
   console.log("ADS props: ", props);
   return (
     <>
-      {props.selected && (
+      {selected && (
         // <NodeResizeControl
         //   minWidth={width < minSize.width ? minSize.width : width}
         //   minHeight={height < minSize.height ? minSize.height : height}
@@ -47,7 +47,8 @@ const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, ...props }) => {
         <NodeResizer
           lineStyle={{
             background: "none",
-            borderColor: "rgba(255, 255, 0, 0.8)",
+            borderColor: "transparent",
+            // borderColor: "rgba(255, 255, 0, 0.8)",
             zIndex: 0,
             // borderRadius: "4px",
             // padding: 2,
@@ -70,8 +71,10 @@ const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, ...props }) => {
         />
       )}
       {/* <div className={`bg-orange-400/60 w-[${width}px] h-[${height}px]`} style={{ width, height }}> */}
-      <div className={`bg-yellow-200/20 rounded-b-sm h-full z-0 relative`}>
-        <div className="bg-yellow-200/50 py-1 px-2 rounded-t-sm absolute -top-[32px] left-0 right-0">
+      <div
+        className={`bg-yellow-200/20 rounded-b-sm h-full z-0 relative border-l border-r border-b border-transparent ${selected ? "border-yellow-200/50" : undefined}`}>
+        <div
+          className={`bg-yellow-200/50 py-1 px-2 rounded-t-sm absolute -top-[33px] -left-[0.8px] -right-[0.8px] border-t border-l border-r border-transparent ${selected ? "border-yellow-200/50" : undefined}`}>
           <p>{data.name}</p>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { Project, Workspace } from "@flow/types";
 
 export type DialogType =
   | "welcome-init"
+  | "canvas-search"
   | "account-settings"
   | "workspaces-settings"
   | "workflow-settings"

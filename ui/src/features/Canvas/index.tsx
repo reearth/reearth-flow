@@ -12,10 +12,10 @@ import ReactFlow, {
   Background,
   BackgroundVariant,
   DefaultEdgeOptions,
-  ReactFlowProvider,
   useNodesState,
   useEdgesState,
   SelectionMode,
+  useReactFlow,
 } from "reactflow";
 
 import ActionBar from "@flow/features/Actionbar";
@@ -26,8 +26,8 @@ import {
   connectionLineStyle,
   Toolbox,
 } from "@flow/features/Canvas/components";
-import { useDialogType } from "@flow/stores";
 
+import { edgeTypes } from "./components/CustomEdge";
 import useDnd from "./useDnd";
 
 import "reactflow/dist/style.css";
@@ -35,6 +35,7 @@ import "reactflow/dist/style.css";
 type CanvasProps = {
   leftArea?: React.ReactNode;
   workflow?: {
+    id: string;
     nodes?: Node[];
     edges?: Edge[];
   };
@@ -48,7 +49,7 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
   // stroke style for unsure (normal) state: rgb(234, 179, 8) bg-yellow-500
   // stroke style for success state: rgb(22, 163, 74) bg-green (after running workflow)
   // stroke style for error state: "#7f1d1d" (after running workflow)
-  style: { strokeWidth: 2, stroke: "rgb(234, 179, 8)" },
+  // style: { strokeWidth: 2, stroke: "rgb(234, 179, 8)" },
   // type: "floating",
   //   markerEnd: {
   //     type: MarkerType.ArrowClosed,
@@ -62,10 +63,22 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
 };
 
 export default function Canvas({ workflow, leftArea }: CanvasProps) {
+  const reactFlowInstance = useReactFlow();
+  console.log("reactFlowInstance", reactFlowInstance);
+  // console.log("reactFlowInstance to object", reactFlowInstance.toObject());
+
+  const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(workflow?.id ?? "");
+
   const [nodes, setNodes] = useNodesState(workflow?.nodes ?? []);
   const [edges, setEdges] = useEdgesState(workflow?.edges ?? []);
 
-  const [currentDialogType, setDialogType] = useDialogType();
+  useEffect(() => {
+    if (workflow?.id !== currentWorkflowId) {
+      setNodes(workflow?.nodes ?? []);
+      setEdges(workflow?.edges ?? []);
+      setCurrentWorkflowId(workflow?.id ?? "");
+    }
+  }, [currentWorkflowId, workflow, setNodes, setEdges]);
 
   const selected = useMemo(() => {
     const selectedNodes = nodes.filter(node => node.selected);
@@ -77,7 +90,7 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
 
   const [hoveredDetails, setHoveredDetails] = useState<Node | Edge | undefined>();
 
-  const { onDragOver, onDrop, setReactFlowInstance } = useDnd({ setNodes });
+  const { onDragOver, onDrop } = useDnd({ setNodes });
 
   const onNodesChange: OnNodesChange = useCallback(
     changes => {
@@ -130,73 +143,65 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
     }
   }, [workflow, setNodes, setEdges]);
 
-  useEffect(() => {
-    console.log("hi");
-    if (!workflow && currentDialogType !== "welcome-init") {
-      setDialogType("welcome-init");
-    }
-  }, []); // eslint-disable-line
-
   return (
     <div className="flex-1 m-1 rounded-sm relative">
-      <ReactFlowProvider>
-        <ReactFlow
-          // snapToGrid
-          // minZoom={0.7}
-          // maxZoom={1}
-          // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
-          // panOnDrag={false}
-          // nodeDragThreshold={60}
-          // edgeTypes={edgeTypes}
-          // translateExtent={[
-          //   [-1000, -1000],
-          //   [1000, 1000],
-          // ]}
-          selectionMode={SelectionMode["Partial"]}
-          nodes={nodes}
-          nodeTypes={nodeTypes}
-          edges={edges}
-          onInit={setReactFlowInstance}
-          defaultEdgeOptions={defaultEdgeOptions}
-          connectionLineComponent={CustomConnectionLine}
-          connectionLineStyle={connectionLineStyle}
-          snapGrid={[30, 30]}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeMouseEnter={handleNodeHover}
-          onNodeMouseLeave={handleNodeHover}
-          onEdgeMouseEnter={handleEdgeHover}
-          onEdgeMouseLeave={handleEdgeHover}
-          onConnect={onConnect}
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-          fitViewOptions={{ padding: 0.5 }}
-          fitView
-          panOnScroll
-          proOptions={{ hideAttribution: true }}>
-          {/* <MiniMap
+      <ReactFlow
+        // snapToGrid
+        // minZoom={0.7}
+        // maxZoom={1}
+        // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
+        // panOnDrag={false}
+        // nodeDragThreshold={60}
+        // translateExtent={[
+        //   [-1000, -1000],
+        //   [1000, 1000],
+        // ]}
+        // onInit={setReactFlowInstance}
+        selectNodesOnDrag={false}
+        selectionMode={SelectionMode["Partial"]}
+        nodes={nodes}
+        nodeTypes={nodeTypes}
+        edges={edges}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        connectionLineComponent={CustomConnectionLine}
+        connectionLineStyle={connectionLineStyle}
+        snapGrid={[30, 30]}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeMouseEnter={handleNodeHover}
+        onNodeMouseLeave={handleNodeHover}
+        onEdgeMouseEnter={handleEdgeHover}
+        onEdgeMouseLeave={handleEdgeHover}
+        onConnect={onConnect}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        fitViewOptions={{ padding: 0.5 }}
+        fitView
+        panOnScroll
+        proOptions={{ hideAttribution: true }}>
+        {/* <MiniMap
           className="bg-zinc-900"
           nodeColor="purple"
           maskStrokeColor="red"
           maskStrokeWidth={3}
         /> */}
-          <Background variant={BackgroundVariant["Lines"]} gap={30} color="rgb(39 39 42)" />
-        </ReactFlow>
-        <div className="absolute top-1 right-1">
-          <ActionBar />
+        <Background variant={BackgroundVariant["Lines"]} gap={30} color="rgb(39 39 42)" />
+      </ReactFlow>
+      <div className="absolute top-1 right-1">
+        <ActionBar />
+      </div>
+      {leftArea && (
+        <div className="absolute left-1 top-1 bottom-1 flex flex-shrink-0 gap-2">
+          {leftArea}
+          <Toolbox className="self-start" />
         </div>
-        {leftArea && (
-          <div className="absolute left-1 top-1 bottom-1 flex flex-shrink-0 gap-2">
-            {leftArea}
-            <Toolbox className="self-start" />
-          </div>
-        )}
-        <Infobar
-          className="absolute bottom-1 left-[50%] translate-x-[-50%]"
-          hoveredDetails={hoveredDetails}
-        />
-        {/* <BottomPanel className="absolute right-1 bottom-1" /> */}
-      </ReactFlowProvider>
+      )}
+      <Infobar
+        className="absolute bottom-1 left-[50%] translate-x-[-50%]"
+        hoveredDetails={hoveredDetails}
+      />
+      {/* <BottomPanel className="absolute right-1 bottom-1" /> */}
     </div>
   );
 }

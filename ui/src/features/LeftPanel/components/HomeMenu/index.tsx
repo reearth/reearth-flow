@@ -1,7 +1,6 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -9,11 +8,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   FlowLogo,
+  IconButton,
 } from "@flow/components";
 import { config } from "@flow/config";
 import { useOpenLink } from "@flow/hooks";
@@ -32,15 +33,22 @@ const HomeMenu: React.FC<Props> = () => {
   const handleGithubPageOpen = useOpenLink(githubRepoUrl ?? "");
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center [&>div]:data-[state=open]:bg-red-900">
-        <FlowLogo wrapperClassName="justify-start bg-opacity-75 py-1.5 px-2 rounded-md hover:bg-opacity-100 transition-colors" />
-        <ChevronDown className="ml-2" size="12px" />
-      </DropdownMenuTrigger>
+      <div className="flex justify-between items-center">
+        <DropdownMenuTrigger className="flex justify-between items-center rounded py-1.5 px-2 bg-red-900/80 border border-transparent transition-colors hover:bg-transparent hover:border-red-900">
+          <FlowLogo wrapperClassName="justify-start bg-opacity-75 rounded-md hover:bg-opacity-100 transition-colors" />
+          <ChevronDown className="ml-2" size="12px" />
+        </DropdownMenuTrigger>
+        <div>
+          <IconButton
+            variant="ghost"
+            size="icon"
+            icon={<Search className="stroke-1" />}
+            onClick={() => setDialogType("canvas-search")}
+          />
+        </div>
+      </div>
       <DropdownMenuContent sideOffset={4} align="start" alignOffset={5} className="w-[275px]">
-        <DropdownMenuLabel className="flex gap-2 text-zinc-400 justify-between items-center">
-          <Button variant="ghost" onClick={() => setDialogType("welcome-init")}>
-            Home
-          </Button>
+        <DropdownMenuLabel className="flex gap-2 text-zinc-400 justify-end items-center">
           <p>
             {t("Re:Earth Flow v")}
             {config()?.version ?? "X.X.X"}
@@ -48,6 +56,11 @@ const HomeMenu: React.FC<Props> = () => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-zinc-800" />
         <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => setDialogType("welcome-init")}>
+            {t("Home")}
+            <DropdownMenuShortcut>⇧⌘H</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="bg-zinc-800" />
           <AccountSetting />
           <WorkspacesSetting />
           <WorkflowSetting />

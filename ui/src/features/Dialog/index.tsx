@@ -26,7 +26,11 @@ const Dialog: React.FC = () => {
     dialogType && (
       <DialogContext.Provider value={dialogContext}>
         <DialogWrapper open={!!dialogType} onOpenChange={o => !o && setDialogType(undefined)}>
-          <DialogContent tab={dialogType} onTabChange={handleDialogTypeChange} />
+          <DialogContent
+            tab={dialogType}
+            position={dialogType === "canvas-search" ? "top" : undefined}
+            onTabChange={handleDialogTypeChange}
+          />
         </DialogWrapper>
       </DialogContext.Provider>
     )
