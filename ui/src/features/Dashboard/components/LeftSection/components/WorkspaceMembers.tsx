@@ -12,6 +12,7 @@ const WorkspaceMembers: React.FC<Props> = () => {
   return (
     currentWorkspace?.members && (
       <div className="flex flex-col gap-2 overflow-auto">
+        <p className="font-thin">Team</p>
         {currentWorkspace.members.map(member => (
           <div
             className="flex justify-between border border-zinc-600 text-zinc-400 rounded py-1 px-2"

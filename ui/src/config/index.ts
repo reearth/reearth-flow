@@ -1,5 +1,6 @@
 export type Config = {
   version?: string;
+  brandName?: string;
   githubRepoUrl?: string;
   tosUrl?: string;
   documentationUrl?: string;

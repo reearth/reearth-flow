@@ -75,31 +75,33 @@ const Toolbox: React.FC<Props> = ({ className, onRedo, onUndo }) => {
   };
 
   return (
-    <div
-      className={`flex flex-col flex-wrap bg-zinc-800 border border-zinc-600/60 rounded-md text-zinc-400 transition-all ${className}`}>
-      {availableTools.map(tool => (
-        <IconButton
-          key={tool.id}
-          className={`dndnode-${tool.id}`}
-          tooltipPosition="right"
-          tooltipText={tool.name}
-          icon={tool.icon}
-          onDragStart={event => onDragStart(event, tool.id)}
-          draggable
-        />
-      ))}
-      {availableActions && <div className="w-full border-t border-zinc-700 my-2" />}
-      {availableActions.map(action => (
-        <IconButton
-          key={action.id}
-          tooltipPosition="right"
-          tooltipText={action.name}
-          icon={action.icon}
-          onClick={() =>
-            action.id === "redo" ? onRedo?.() : action.id === "undo" ? onUndo?.() : undefined
-          }
-        />
-      ))}
+    <div className="bg-zinc-800">
+      <div
+        className={`flex flex-col flex-wrap bg-zinc-700/40 border border-zinc-700 rounded-md text-zinc-400 transition-all ${className}`}>
+        {availableTools.map(tool => (
+          <IconButton
+            key={tool.id}
+            className={`dndnode-${tool.id}`}
+            tooltipPosition="right"
+            tooltipText={tool.name}
+            icon={tool.icon}
+            onDragStart={event => onDragStart(event, tool.id)}
+            draggable
+          />
+        ))}
+        {availableActions && <div className="w-full border-t border-zinc-700 my-2" />}
+        {availableActions.map(action => (
+          <IconButton
+            key={action.id}
+            tooltipPosition="right"
+            tooltipText={action.name}
+            icon={action.icon}
+            onClick={() =>
+              action.id === "redo" ? onRedo?.() : action.id === "undo" ? onUndo?.() : undefined
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 };

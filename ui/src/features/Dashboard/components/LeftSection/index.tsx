@@ -20,7 +20,7 @@ const LeftSection: React.FC = () => {
   const handleDocumentationPageOpen = useOpenLink(documentationUrl ?? "");
 
   return (
-    <div className="flex flex-col justify-between gap-6 bg-zinc-700/40 m-2 p-4 border border-zinc-700 rounded-lg w-[280px]">
+    <div className="flex flex-col justify-between gap-6 bg-zinc-700 bg-opacity-50 border border-zinc-700 m-2 p-4 rounded-lg w-[280px]">
       <div className="flex flex-col gap-2">
         <WorkspaceNavigation />
         <Button className="flex gap-2 self-start" variant="outline" size="sm">

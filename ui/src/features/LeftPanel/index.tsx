@@ -64,7 +64,7 @@ const LeftPanel: React.FC<Props> = ({ className, data }) => {
       component: data && (
         <Tree
           data={treeContent}
-          className="flex-shrink-0 w-full h-[60vh] text-zinc-300 bg-zinc-900/30 border border-zinc-900 rounded"
+          className="flex-shrink-0 w-full h-[60vh] text-zinc-300 bg-zinc-900/70 rounded"
           // initialSlelectedItemId="1"
           onSelectChange={item => setContent(item?.name ?? "")}
           // folderIcon={Folder}
@@ -75,7 +75,7 @@ const LeftPanel: React.FC<Props> = ({ className, data }) => {
   ];
   return (
     <VerticalPanel
-      className={`bg-zinc-800 bg-opacity-75 rounded-md backdrop-blur-md ${className}`}
+      className={`bg-zinc-800 border border-zinc-700 rounded-md backdrop-blur-md ${className}`}
       isOpen={!!isPanelOpen}
       togglePosition="end-right"
       panelContents={panelContents}

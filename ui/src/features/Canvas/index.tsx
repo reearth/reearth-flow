@@ -186,7 +186,12 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
           maskStrokeColor="red"
           maskStrokeWidth={3}
         /> */}
-        <Background variant={BackgroundVariant["Lines"]} gap={30} color="rgb(39 39 42)" />
+        <Background
+          className="bg-zinc-800"
+          variant={BackgroundVariant["Lines"]}
+          gap={30}
+          color="rgba(63, 63, 70, 0.5)"
+        />
       </ReactFlow>
       <div className="absolute top-1 right-1">
         <ActionBar />

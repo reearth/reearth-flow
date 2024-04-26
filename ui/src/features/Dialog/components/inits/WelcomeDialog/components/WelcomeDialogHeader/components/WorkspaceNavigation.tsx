@@ -1,4 +1,4 @@
-import { ChevronRightIcon, PersonIcon } from "@radix-ui/react-icons";
+import { ChevronRightIcon } from "@radix-ui/react-icons";
 import { ChevronDown } from "lucide-react";
 
 import {
@@ -7,9 +7,6 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
 } from "@flow/components";
 import { cn } from "@flow/lib/utils";
 import { workspaces } from "@flow/mock_data/workspaceData";
@@ -26,12 +23,10 @@ const WorkspaceNavigation: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 border-b border-zinc-700 pb-2 mb-2">
       <DropdownMenu>
         <DropdownMenuTrigger className="flex items-center px-2 -mx-2 rounded-md hover:bg-zinc-800 first:[data-state=open]:bg-zinc-800">
-          <p className="text-xl uppercase font-bold truncate max-w-[350px]">
-            {currentWorkspace?.name}
-          </p>
+          <p className="text-xl uppercase font-extralight truncate">{currentWorkspace?.name}</p>
           <ChevronDown className="ml-2" size="12px" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -59,7 +54,7 @@ const WorkspaceNavigation: React.FC = () => {
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Tooltip>
+      {/* <Tooltip>
         <TooltipTrigger className="self-end">
           <p className="flex font-thin items-center bg-zinc-800/80 px-1 rounded-md">
             {currentWorkspace?.members?.length} <PersonIcon />
@@ -70,7 +65,7 @@ const WorkspaceNavigation: React.FC = () => {
             {currentWorkspace?.members?.map(member => <p key={member.id}>{member.name}</p>)}
           </div>
         </TooltipContent>
-      </Tooltip>
+      </Tooltip> */}
     </div>
   );
 };

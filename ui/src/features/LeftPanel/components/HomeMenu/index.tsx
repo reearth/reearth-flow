@@ -1,3 +1,5 @@
+import { DashboardIcon } from "@radix-ui/react-icons";
+import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, Search } from "lucide-react";
 
 import {
@@ -8,7 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
+  // DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -29,6 +31,7 @@ const HomeMenu: React.FC<Props> = () => {
   const [, setDialogType] = useDialogType();
   const t = useT();
   const githubRepoUrl = config()?.githubRepoUrl;
+  const navigate = useNavigate({ from: "/project/$projectId" });
 
   const handleGithubPageOpen = useOpenLink(githubRepoUrl ?? "");
   return (
@@ -56,9 +59,10 @@ const HomeMenu: React.FC<Props> = () => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-zinc-800" />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => setDialogType("welcome-init")}>
-            {t("Home")}
-            <DropdownMenuShortcut>⇧⌘H</DropdownMenuShortcut>
+          <DropdownMenuItem className="gap-2" onClick={() => navigate({ to: "/dashboard" })}>
+            <DashboardIcon />
+            {t("Dashboard")}
+            {/* <DropdownMenuShortcut>⇧⌘H</DropdownMenuShortcut> */}
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-zinc-800" />
           <AccountSetting />
