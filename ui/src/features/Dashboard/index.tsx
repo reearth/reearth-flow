@@ -29,7 +29,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
       <div className="border-t border-zinc-700 w-full" />
-      <div className="h-[calc(100%-8px)] m-2 flex">
+      <div className="h-[calc(100%-9px)] m-[8px] flex">
         <LeftSection />
         <MainSection />
       </div>

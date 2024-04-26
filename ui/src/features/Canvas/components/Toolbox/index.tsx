@@ -75,9 +75,8 @@ const Toolbox: React.FC<Props> = ({ className, onRedo, onUndo }) => {
   };
 
   return (
-    <div className="bg-zinc-800">
-      <div
-        className={`flex flex-col flex-wrap bg-zinc-700/40 border border-zinc-700 rounded-md text-zinc-400 transition-all ${className}`}>
+    <div className={`bg-zinc-800 ${className}`}>
+      <div className="flex flex-col flex-wrap bg-zinc-700/40 border border-zinc-700 rounded-md text-zinc-400 transition-all">
         {availableTools.map(tool => (
           <IconButton
             key={tool.id}

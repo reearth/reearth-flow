@@ -197,7 +197,7 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
         <ActionBar />
       </div>
       {leftArea && (
-        <div className="absolute left-1 top-1 bottom-1 flex flex-shrink-0 gap-2">
+        <div className="absolute left-1 top-1 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
           {leftArea}
           <Toolbox className="self-start" />
         </div>
