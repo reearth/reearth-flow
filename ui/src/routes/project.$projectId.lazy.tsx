@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import BottomPanel from "@flow/features/BottomPanel";
@@ -15,6 +15,7 @@ function Editor() {
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
   const [currentProject, setCurrentProject] = useCurrentProject();
   const [, setDialogType] = useDialogType();
+  const navigate = useNavigate({ from: "project/$projectId" });
 
   // temp solution to avoid welcome screen. Replace with tansack query
   const projectIdFromUrl = new URLSearchParams(window.location.search).get("p") ?? "";
@@ -25,10 +26,17 @@ function Editor() {
       if (newProject) {
         setCurrentProject(newProject);
       } else {
-        setDialogType("welcome-init");
+        navigate({ to: "/dashboard" });
       }
     }
-  }, [currentWorkspace, currentProject, projectIdFromUrl, setCurrentProject, setDialogType]);
+  }, [
+    currentWorkspace,
+    currentProject,
+    projectIdFromUrl,
+    navigate,
+    setCurrentProject,
+    setDialogType,
+  ]);
 
   useEffect(() => {
     if (!currentWorkspace) {

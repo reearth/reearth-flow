@@ -3,11 +3,10 @@ import { PlusIcon } from "lucide-react";
 
 import { Button } from "@flow/components";
 import { config } from "@flow/config";
-import { WorkspaceNavigation } from "@flow/features/Dialog/components/inits/WelcomeDialog/components/WelcomeDialogHeader/components/WorkspaceNavigation";
 import { useOpenLink } from "@flow/hooks";
 import { useT } from "@flow/providers";
 
-import { WorkspaceMembers } from "./components";
+import { WorkspaceMembers, WorkspaceNavigation } from "./components";
 
 const LeftSection: React.FC = () => {
   const t = useT();
