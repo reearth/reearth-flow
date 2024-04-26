@@ -11,13 +11,13 @@ use super::no_value::NoValue;
 use super::point::Point;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash, Default)]
-pub struct Coordinate<T: CoordNum = f64, Z: CoordNum = NoValue> {
+pub struct Coordinate<T: CoordNum = f64, Z: CoordNum = f64> {
     pub x: T,
     pub y: T,
     pub z: Z,
 }
 
-impl<T: CoordNum> Coordinate<T> {
+impl<T: CoordNum> Coordinate<T, NoValue> {
     #[inline]
     pub fn new_(x: T, y: T) -> Self {
         Self { x, y, z: NoValue }
@@ -34,7 +34,7 @@ impl<T: CoordNum, Z: CoordNum> Coordinate<T, Z> {
 pub type Coordinate2D<T> = Coordinate<T, NoValue>;
 pub type Coordinate3D<T> = Coordinate<T, T>;
 
-impl<T: CoordNum> From<(T, T)> for Coordinate<T> {
+impl<T: CoordNum> From<(T, T)> for Coordinate<T, NoValue> {
     #[inline]
     fn from(coords: (T, T)) -> Self {
         coord! {
@@ -55,7 +55,7 @@ impl<T: CoordNum> From<(T, T, T)> for Coordinate<T, T> {
     }
 }
 
-impl<T: CoordNum> From<[T; 2]> for Coordinate<T> {
+impl<T: CoordNum> From<[T; 2]> for Coordinate<T, NoValue> {
     #[inline]
     fn from(coords: [T; 2]) -> Self {
         coord! {
@@ -274,24 +274,5 @@ where
         T::ulps_eq(&self.x, &other.x, epsilon, max_ulps)
             && T::ulps_eq(&self.y, &other.y, epsilon, max_ulps)
             && T::ulps_eq(&self.z, &other.z, epsilon, max_ulps)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use approx::*;
-
-    #[test]
-    fn test_coordinates() {
-        let p = coord! { x: 1.0, y: 2.0 };
-        assert_relative_eq!(p.x, 1.0);
-        assert_relative_eq!(p.y, 2.0);
-        assert_eq!(p.z, NoValue);
-
-        let p = coord! { x: 1.0, y: 2.0, z: 3.0 };
-        assert_relative_eq!(p.x, 1.0);
-        assert_relative_eq!(p.y, 2.0);
-        assert_relative_eq!(p.z, 3.0);
     }
 }

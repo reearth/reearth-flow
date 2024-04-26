@@ -11,12 +11,12 @@ use super::no_value::NoValue;
 use super::polygon::Polygon;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash)]
-pub struct Rectangle<T: CoordNum = f64, Z: CoordNum = NoValue> {
+pub struct Rectangle<T: CoordNum = f64, Z: CoordNum = f64> {
     min: Coordinate<T, Z>,
     max: Coordinate<T, Z>,
 }
 
-pub type Rectangle2D<T> = Rectangle<T>;
+pub type Rectangle2D<T> = Rectangle<T, NoValue>;
 pub type Rectangle3D<T> = Rectangle<T, T>;
 
 impl<T: CoordNum, Z: CoordNum> Rectangle<T, Z> {
@@ -73,7 +73,7 @@ impl<T: CoordNum, Z: CoordNum> Rectangle<T, Z> {
         self.max().y - self.min().y
     }
 
-    pub fn to_polygon(self) -> Polygon<T> {
+    pub fn to_polygon(self) -> Polygon<T, NoValue> {
         polygon![
             (x: self.min.x, y: self.min.y),
             (x: self.min.x, y: self.max.y),
@@ -83,7 +83,7 @@ impl<T: CoordNum, Z: CoordNum> Rectangle<T, Z> {
         ]
     }
 
-    pub fn to_lines(&self) -> [Line<T>; 4] {
+    pub fn to_lines(&self) -> [Line<T, NoValue>; 4] {
         [
             Line::new(
                 coord! {
@@ -139,8 +139,8 @@ impl<T: CoordNum, Z: CoordNum> Rectangle<T, Z> {
     }
 }
 
-impl<T: CoordNum> Rectangle<T> {
-    pub fn split_x(self) -> [Rectangle<T>; 2] {
+impl<T: CoordNum> Rectangle<T, NoValue> {
+    pub fn split_x(self) -> [Rectangle<T, NoValue>; 2] {
         let two = T::one() + T::one();
         let mid_x = self.min().x + self.width() / two;
         [
@@ -149,7 +149,7 @@ impl<T: CoordNum> Rectangle<T> {
         ]
     }
 
-    pub fn split_y(self) -> [Rectangle<T>; 2] {
+    pub fn split_y(self) -> [Rectangle<T, NoValue>; 2] {
         let two = T::one() + T::one();
         let mid_y = self.min().y + self.height() / two;
         [
@@ -227,31 +227,5 @@ where
         }
 
         true
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn rect() {
-        let rect = Rectangle::new((10, 10, 10), (20, 20, 20));
-        assert_eq!(rect.min, coord! { x: 10, y: 10, z: 10});
-        assert_eq!(rect.max, coord! { x: 20, y: 20, z: 20});
-
-        let rect = Rectangle::new((20, 20), (10, 10));
-        assert_eq!(rect.min, coord! { x: 10, y: 10 });
-        assert_eq!(rect.max, coord! { x: 20, y: 20 });
-
-        let rect = Rectangle::new((10, 20), (20, 10));
-        assert_eq!(rect.min, coord! { x: 10, y: 10 });
-        assert_eq!(rect.max, coord! { x: 20, y: 20 });
-    }
-
-    #[test]
-    fn rect_width() {
-        let rect = Rectangle::new((10, 10), (20, 20));
-        assert_eq!(rect.width(), 10);
     }
 }

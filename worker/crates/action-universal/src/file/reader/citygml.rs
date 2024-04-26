@@ -3,23 +3,14 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use nusamai_citygml::{
-    object::{Map, Object, ObjectStereotype},
-    CityGmlElement, CityGmlReader, Envelope, GeometryStore, ParseError, SubTreeReader, Value,
-};
+use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader};
 use nusamai_plateau::{appearance::AppearanceStore, models, Entity};
 use quick_xml::NsReader;
-use reearth_flow_action::{error::Error, ActionContext, AttributeValue, Result};
+use reearth_flow_action::{error::Error, geometry::Geometry, ActionContext, Result};
 use reearth_flow_common::uri::Uri;
 use url::Url;
 
-enum Parent {
-    Feature { id: String, typename: String },
-    Data { typename: String }, // Data stereotype does not have an id
-    Object { id: String, typename: String },
-}
-
-pub(crate) async fn read_citygml(input_path: Uri, ctx: ActionContext) -> Result<AttributeValue> {
+pub(crate) async fn read_citygml(input_path: Uri, ctx: ActionContext) -> Result<Vec<Geometry>> {
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     ctx.action_log(format!("Parsing CityGML file: {:?} ...", input_path));
@@ -42,18 +33,11 @@ pub(crate) async fn read_citygml(input_path: Uri, ctx: ActionContext) -> Result<
         .start_root(&mut xml_reader)
         .map_err(Error::internal_runtime)?;
     let entities = parse_tree_reader(&mut st, base_url).map_err(Error::internal_runtime)?;
-    let mut flattened_entities = Vec::new();
+    let mut result = Vec::<Geometry>::new();
     for entity in entities {
-        flatten_entity(
-            entity.root,
-            entity.geometry_store,
-            entity.appearance_store,
-            &mut flattened_entities,
-            &None,
-        );
+        result.push(entity.try_into()?);
     }
-    let values = serde_json::to_value(flattened_entities).map_err(Error::internal_runtime)?;
-    Ok(values.into())
+    Ok(result)
 }
 
 fn parse_tree_reader<R: BufRead>(
@@ -116,120 +100,4 @@ fn parse_tree_reader<R: BufRead>(
         }
     }
     Ok(entities)
-}
-
-fn flatten_entity(
-    value: Value,
-    geom_store: Arc<RwLock<GeometryStore>>,
-    appearance_store: Arc<RwLock<AppearanceStore>>,
-    out: &mut Vec<Entity>,
-    parent: &Option<Parent>,
-) -> Option<Value> {
-    match value {
-        Value::Object(mut obj) => {
-            let new_parent = match &obj.stereotype {
-                ObjectStereotype::Feature { id, .. } => Some(Parent::Feature {
-                    id: id.to_string(),
-                    typename: obj.typename.to_string(),
-                }),
-                ObjectStereotype::Data => Some(Parent::Data {
-                    typename: obj.typename.to_string(),
-                }),
-                ObjectStereotype::Object { id, .. } => Some(Parent::Object {
-                    id: id.to_string(),
-                    typename: obj.typename.to_string(),
-                }),
-            };
-
-            // Attributes
-            let mut new_attribs = Map::default();
-            for (key, value) in obj.attributes.drain(..) {
-                if let Some(v) = flatten_entity(
-                    value,
-                    geom_store.clone(),
-                    appearance_store.clone(),
-                    out,
-                    &new_parent,
-                ) {
-                    new_attribs.insert(key, v);
-                }
-            }
-            obj.attributes = new_attribs;
-
-            if is_flatten_target(&obj) {
-                // set parent id and type to attributes
-                if let Some(parent) = parent {
-                    match parent {
-                        Parent::Feature { id, typename } => {
-                            obj.attributes
-                                .insert("parentId".to_string(), Value::String(id.to_string()));
-                            obj.attributes.insert(
-                                "parentType".to_string(),
-                                Value::String(typename.to_string()),
-                            );
-                        }
-                        Parent::Data { typename } => {
-                            obj.attributes.insert(
-                                "parentType".to_string(),
-                                Value::String(typename.to_string()),
-                            );
-                        }
-                        Parent::Object { id, typename } => {
-                            obj.attributes
-                                .insert("parentId".to_string(), Value::String(id.to_string()));
-                            obj.attributes.insert(
-                                "parentType".to_string(),
-                                Value::String(typename.to_string()),
-                            );
-                        }
-                    }
-                }
-                out.push(Entity {
-                    root: Value::Object(obj),
-                    base_url: url::Url::parse("file:///dummy").expect("should be valid"),
-                    geometry_store: geom_store.clone(),
-                    appearance_store: appearance_store.clone(),
-                });
-                return None;
-            }
-
-            Some(Value::Object(obj))
-        }
-        Value::Array(mut arr) => {
-            let mut new_arr = Vec::with_capacity(arr.len());
-            for value in arr.drain(..) {
-                if let Some(v) = flatten_entity(
-                    value,
-                    geom_store.clone(),
-                    appearance_store.clone(),
-                    out,
-                    parent,
-                ) {
-                    new_arr.push(v)
-                }
-            }
-            if new_arr.is_empty() {
-                None
-            } else {
-                Some(Value::Array(new_arr))
-            }
-        }
-        _ => Some(value),
-    }
-}
-
-fn is_flatten_target(obj: &Object) -> bool {
-    if obj.typename == "gen:genericAttribute" {
-        return false;
-    }
-    match obj.stereotype {
-        ObjectStereotype::Feature { .. } => {
-            !obj.typename.ends_with("Surface")
-                && !obj.typename.ends_with(":Window")
-                && !obj.typename.ends_with(":Door")
-                && !obj.typename.ends_with("TrafficArea")
-        }
-        ObjectStereotype::Data => true,
-        ObjectStereotype::Object { .. } => true,
-    }
 }

@@ -1,10 +1,9 @@
 use std::borrow::Cow;
 
 use super::{
-    geometry::Geometry2D, geometry_collection::GeometryCollection2D, line::Line2D,
-    line_string::LineString2D, multi_line_string::MultiLineString2D, multi_point::MultiPoint2D,
-    multi_polygon::MultiPolygon2D, point::Point2D, polygon::Polygon2D, rectangle::Rectangle2D,
-    triangle::Triangle2D,
+    geometry::Geometry2D, line::Line2D, line_string::LineString2D,
+    multi_line_string::MultiLineString2D, multi_point::MultiPoint2D, multi_polygon::MultiPolygon2D,
+    point::Point2D, polygon::Polygon2D, rectangle::Rectangle2D, triangle::Triangle2D,
 };
 
 pub enum GeometryCow2D<'a> {
@@ -15,7 +14,6 @@ pub enum GeometryCow2D<'a> {
     MultiPoint(Cow<'a, MultiPoint2D<f64>>),
     MultiLineString(Cow<'a, MultiLineString2D<f64>>),
     MultiPolygon(Cow<'a, MultiPolygon2D<f64>>),
-    GeometryCollection(Cow<'a, GeometryCollection2D<f64>>),
     Rectangle(Cow<'a, Rectangle2D<f64>>),
     Triangle(Cow<'a, Triangle2D<f64>>),
 }
@@ -30,9 +28,6 @@ impl<'a> From<&'a Geometry2D<f64>> for GeometryCow2D<'a> {
             Geometry2D::MultiPoint(g) => GeometryCow2D::MultiPoint(Cow::Borrowed(g)),
             Geometry2D::MultiLineString(g) => GeometryCow2D::MultiLineString(Cow::Borrowed(g)),
             Geometry2D::MultiPolygon(g) => GeometryCow2D::MultiPolygon(Cow::Borrowed(g)),
-            Geometry2D::GeometryCollection(g) => {
-                GeometryCow2D::GeometryCollection(Cow::Borrowed(g))
-            }
             Geometry2D::Rectangle(g) => GeometryCow2D::Rectangle(Cow::Borrowed(g)),
             Geometry2D::Triangle(g) => GeometryCow2D::Triangle(Cow::Borrowed(g)),
         }
@@ -78,12 +73,6 @@ impl<'a> From<&'a MultiLineString2D<f64>> for GeometryCow2D<'a> {
 impl<'a> From<&'a MultiPolygon2D<f64>> for GeometryCow2D<'a> {
     fn from(multi_polygon: &'a MultiPolygon2D<f64>) -> Self {
         GeometryCow2D::MultiPolygon(Cow::Borrowed(multi_polygon))
-    }
-}
-
-impl<'a> From<&'a GeometryCollection2D<f64>> for GeometryCow2D<'a> {
-    fn from(geometry_collection: &'a GeometryCollection2D<f64>) -> Self {
-        GeometryCow2D::GeometryCollection(Cow::Borrowed(geometry_collection))
     }
 }
 

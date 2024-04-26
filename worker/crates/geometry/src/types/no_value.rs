@@ -2,9 +2,9 @@ use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
 use num_traits::{Num, NumCast, One, ToPrimitive, Zero};
+use serde::{Deserialize, Serialize};
 
-#[derive(Eq, PartialEq, PartialOrd, Clone, Copy, Debug, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize, Eq, PartialEq, PartialOrd, Clone, Copy, Debug, Hash, Default)]
 pub struct NoValue;
 
 impl Add for NoValue {
