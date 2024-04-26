@@ -1,6 +1,7 @@
 import { NavigationMenu, NavigationMenuList } from "@flow/components";
 
-import { UserNavigation } from "./components/UserNavigation";
+import { UserNavigation } from "../../../../../../Dashboard/components/UserNavigation";
+
 import { WorkspaceNavigation } from "./components/WorkspaceNavigation";
 
 const WelcomeDialogHeader: React.FC = () => {

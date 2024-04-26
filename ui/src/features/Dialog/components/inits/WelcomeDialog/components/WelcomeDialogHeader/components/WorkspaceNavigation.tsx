@@ -1,6 +1,5 @@
 import { ChevronRightIcon, PersonIcon } from "@radix-ui/react-icons";
 import { ChevronDown } from "lucide-react";
-import { useContext } from "react";
 
 import {
   DropdownMenu,
@@ -12,15 +11,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@flow/components";
-import { DialogContext } from "@flow/features/Dialog";
 import { cn } from "@flow/lib/utils";
+import { workspaces } from "@flow/mock_data/workspaceData";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import { Workspace } from "@flow/types";
 
 const WorkspaceNavigation: React.FC = () => {
-  const dialogContext = useContext(DialogContext);
-
-  const workspaces = dialogContext?.workspaces;
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
   const [, setCurrentProject] = useCurrentProject();
 
@@ -30,7 +26,7 @@ const WorkspaceNavigation: React.FC = () => {
   };
 
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-col gap-4">
       <DropdownMenu>
         <DropdownMenuTrigger className="flex items-center px-2 -mx-2 rounded-md hover:bg-zinc-800 first:[data-state=open]:bg-zinc-800">
           <p className="text-xl uppercase font-bold truncate max-w-[350px]">
@@ -64,7 +60,7 @@ const WorkspaceNavigation: React.FC = () => {
         </DropdownMenuContent>
       </DropdownMenu>
       <Tooltip>
-        <TooltipTrigger className="self-center">
+        <TooltipTrigger className="self-end">
           <p className="flex font-thin items-center bg-zinc-800/80 px-1 rounded-md">
             {currentWorkspace?.members?.length} <PersonIcon />
           </p>
