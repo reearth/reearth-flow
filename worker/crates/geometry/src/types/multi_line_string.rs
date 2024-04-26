@@ -12,9 +12,9 @@ use super::line_string::LineString;
 use super::no_value::NoValue;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
-pub struct MultiLineString<T: CoordNum = f64, Z: CoordNum = NoValue>(pub Vec<LineString<T, Z>>);
+pub struct MultiLineString<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<LineString<T, Z>>);
 
-pub type MultiLineString2D<T> = MultiLineString<T>;
+pub type MultiLineString2D<T> = MultiLineString<T, NoValue>;
 pub type MultiLineString3D<T> = MultiLineString<T, T>;
 
 impl<T: CoordNum, Z: CoordNum> MultiLineString<T, Z> {
@@ -147,11 +147,11 @@ mod test {
 
     #[test]
     fn test_iter() {
-        let multi: Vec<LineString<i32>> = vec![
+        let multi: Vec<LineString<i32, NoValue>> = vec![
             line_string![(x: 0, y: 0), (x: 2, y: 0), (x: 1, y: 2), (x:0, y:0)],
             line_string![(x: 10, y: 10), (x: 12, y: 10), (x: 11, y: 12), (x:10, y:10)],
         ];
-        let multi: MultiLineString<i32> = MultiLineString::new(multi);
+        let multi: MultiLineString<i32, NoValue> = MultiLineString::new(multi);
 
         let mut first = true;
         for p in &multi {

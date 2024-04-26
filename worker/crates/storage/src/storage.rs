@@ -113,6 +113,7 @@ impl Storage {
             payload: GetResultPayload::Stream(Box::pin(OpendalReader { inner: r })),
             range: (0..meta.size),
             meta,
+            attributes: Default::default(),
         })
     }
 

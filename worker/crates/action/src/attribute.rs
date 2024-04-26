@@ -4,16 +4,40 @@ use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 
 use bytes::Bytes;
-use reearth_flow_common::uri::Uri;
+use nutype::nutype;
 use rhai::serde::from_dynamic;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
 
 use reearth_flow_common::str::base64_encode;
+use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml::XmlXpathValue;
 
 use crate::error;
 use crate::Result;
+
+#[nutype(
+    sanitize(trim),
+    derive(
+        Debug,
+        Clone,
+        Eq,
+        PartialEq,
+        PartialOrd,
+        Ord,
+        AsRef,
+        Serialize,
+        Deserialize,
+        Hash
+    )
+)]
+pub struct Attribute(String);
+
+impl Attribute {
+    pub fn inner(&self) -> String {
+        self.clone().into_inner()
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AttributeValue {

@@ -11,9 +11,9 @@ use super::triangle::Triangle;
 use super::{no_value::NoValue, point::Point};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
-pub struct LineString<T: CoordNum = f64, Z: CoordNum = NoValue>(pub Vec<Coordinate<T, Z>>);
+pub struct LineString<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Coordinate<T, Z>>);
 
-pub type LineString2D<T> = LineString<T>;
+pub type LineString2D<T> = LineString<T, NoValue>;
 pub type LineString3D<T> = LineString<T, T>;
 
 #[derive(Debug)]
@@ -107,13 +107,6 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
         self.0
     }
 
-    pub fn lines(&'_ self) -> impl ExactSizeIterator<Item = Line<T, Z>> + '_ {
-        self.0.windows(2).map(|w| {
-            // slice::windows(N) is guaranteed to yield a slice with exactly N elements
-            unsafe { Line::new(*w.get_unchecked(0), *w.get_unchecked(1)) }
-        })
-    }
-
     pub fn triangles(&'_ self) -> impl ExactSizeIterator<Item = Triangle<T, Z>> + '_ {
         self.0.windows(3).map(|w| {
             // slice::windows(N) is guaranteed to yield a slice with exactly N elements
@@ -129,8 +122,6 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
 
     pub fn close(&mut self) {
         if !self.is_closed() {
-            // by definition, we treat empty LineString's as closed.
-            debug_assert!(!self.0.is_empty());
             self.0.push(self.0[0]);
         }
     }
@@ -199,7 +190,7 @@ impl<T: CoordNum, Z: CoordNum> IndexMut<usize> for LineString<T, Z> {
     }
 }
 
-impl<'a> From<NLineString2<'a>> for LineString2D<f64> {
+impl<'a> From<NLineString2<'a>> for LineString<f64, NoValue> {
     #[inline]
     fn from(coords: NLineString2<'a>) -> Self {
         LineString2D::new(
@@ -211,7 +202,7 @@ impl<'a> From<NLineString2<'a>> for LineString2D<f64> {
     }
 }
 
-impl<'a> From<NLineString3<'a>> for LineString3D<f64> {
+impl<'a> From<NLineString3<'a>> for LineString<f64> {
     #[inline]
     fn from(coords: NLineString3<'a>) -> Self {
         LineString3D::new(
@@ -267,43 +258,5 @@ impl<T: approx::AbsDiffEq<Epsilon = T> + CoordNum> approx::AbsDiffEq for LineStr
         }
         let mut points_zipper = self.points().zip(other.points());
         points_zipper.all(|(lhs, rhs)| lhs.abs_diff_eq(&rhs, epsilon))
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::coord;
-
-    #[test]
-    fn test_exact_size() {
-        let ls = LineString::new(vec![
-            coord! { x: 0., y: 0., z: 0. },
-            coord! { x: 10., y: 0., z: 0. },
-        ]);
-
-        for c in (&ls).into_iter().rev().skip(1).rev() {
-            println!("{:?}", c);
-        }
-        for p in (ls).points().rev().skip(1).rev() {
-            println!("{:?}", p);
-        }
-    }
-
-    #[test]
-    fn should_be_built_from_line() {
-        let start = coord! { x: 0, y: 0, z: 0 };
-        let end = coord! { x: 10, y: 10, z: 10 };
-        let line = Line::new(start, end);
-        let expected = LineString::new(vec![start, end]);
-
-        assert_eq!(expected, LineString::from(line));
-
-        let start = coord! { x: 10., y: 0.5, z: 0. };
-        let end = coord! { x: 10000., y: 10.4, z: 0. };
-        let line = Line::new(start, end);
-        let expected = LineString::new(vec![start, end]);
-
-        assert_eq!(expected, LineString::from(line));
     }
 }

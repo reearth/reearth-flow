@@ -8,6 +8,7 @@ use std::str::FromStr;
 
 use serde::de::Error;
 use serde::{Deserialize, Serialize, Serializer};
+use url::Url;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -278,6 +279,14 @@ impl FromStr for Uri {
 
     fn from_str(uri_str: &str) -> crate::Result<Self> {
         Uri::parse_str(uri_str)
+    }
+}
+
+impl TryFrom<Url> for Uri {
+    type Error = crate::Error;
+
+    fn try_from(url: Url) -> crate::Result<Self> {
+        Self::parse_str(url.to_string().as_str())
     }
 }
 
