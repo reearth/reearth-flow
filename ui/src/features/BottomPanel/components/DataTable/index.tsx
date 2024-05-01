@@ -1,7 +1,7 @@
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
 
-import { Button, Checkbox, DataTable as Table } from "@flow/components";
+import { Checkbox, DataTable as Table } from "@flow/components";
+import { points } from "@flow/mock_data/pointData";
 
 export type Payment = {
   id: string;
@@ -10,147 +10,101 @@ export type Payment = {
   email: string;
 };
 
-const columns: ColumnDef<Payment>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={value => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={value => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-  },
-  {
-    accessorKey: "email",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Email
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-  },
-  {
-    accessorKey: "amount",
-    header: () => <div className="text-right">Amount</div>,
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"));
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount);
+type Fire = {
+  ACQ_DATE: string;
+  ACQ_TIME: string;
+  BRIGHT_TI4: number;
+  BRIGHT_TI5: number;
+  CONFIDENCE: string;
+  DAYNIGHT: string;
+  FRP: number;
+  LATITUDE: number;
+  LONGITUDE: number;
+  SATELLITE: string;
+  SCAN: number;
+  TRACK: number;
+  VERSION: string;
+};
 
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
+const columns: ColumnDef<Fire>[] = [
+  // {
+  //   id: "select",
+  //   header: ({ table }) => (
+  //     <Checkbox
+  //       checked={
+  //         table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
+  //       }
+  //       onCheckedChange={value => table.toggleAllPageRowsSelected(!!value)}
+  //       aria-label="Select all"
+  //     />
+  //   ),
+  //   cell: ({ row }) => (
+  //     <Checkbox
+  //       checked={row.getIsSelected()}
+  //       onCheckedChange={value => row.toggleSelected(!!value)}
+  //       aria-label="Select row"
+  //     />
+  //   ),
+  //   enableSorting: false,
+  //   enableHiding: false,
+  // },
+  {
+    accessorKey: "ACQ_DATE",
+    header: "ACQ_DATE",
+  },
+  {
+    accessorKey: "ACQ_TIME",
+    header: "ACQ_TIME",
+  },
+  {
+    accessorKey: "BRIGHT_TI4",
+    header: "BRIGHT_TI4",
+  },
+  {
+    accessorKey: "BRIGHT_TI5",
+    header: "BRIGHT_TI5",
+  },
+  {
+    accessorKey: "CONFIDENCE",
+    header: "CONFIDENCE",
+  },
+  {
+    accessorKey: "DAYNIGHT",
+    header: "DAYNIGHT",
+  },
+  {
+    accessorKey: "FRP",
+    header: "FRP",
+  },
+  {
+    accessorKey: "LATITUDE",
+    header: "LATITUDE",
+  },
+  {
+    accessorKey: "LONGITUDE",
+    header: "LONGITUDE",
+  },
+  {
+    accessorKey: "SATELLITE",
+    header: "SATELLITE",
+  },
+  {
+    accessorKey: "SCAN",
+    header: "SCAN",
+  },
+  {
+    accessorKey: "TRACK",
+    header: "TRACK",
+  },
+  {
+    accessorKey: "VERSION",
+    header: "VERSION",
   },
 ];
-const data: Payment[] = [
-  {
-    id: "m5gr84i9",
-    amount: 316,
-    status: "success",
-    email: "ken99@yahoo.com",
-  },
-  {
-    id: "3u1reuv4",
-    amount: 242,
-    status: "success",
-    email: "Abe45@gmail.com",
-  },
-  {
-    id: "derv1ws0",
-    amount: 837,
-    status: "processing",
-    email: "Monserrat44@gmail.com",
-  },
-  {
-    id: "5kma53ae",
-    amount: 874,
-    status: "success",
-    email: "Silas22@gmail.com",
-  },
-  {
-    id: "bhqecj4p",
-    amount: 721,
-    status: "failed",
-    email: "carmella@hotmail.com",
-  },
-  {
-    id: "m5gr84i9",
-    amount: 316,
-    status: "success",
-    email: "ken99@yahoo.com",
-  },
-  {
-    id: "3u1reuv4",
-    amount: 242,
-    status: "success",
-    email: "Abe45@gmail.com",
-  },
-  {
-    id: "derv1ws0",
-    amount: 837,
-    status: "processing",
-    email: "Monserrat44@gmail.com",
-  },
-  {
-    id: "5kma53ae",
-    amount: 874,
-    status: "success",
-    email: "Silas22@gmail.com",
-  },
-  {
-    id: "bhqecj4p",
-    amount: 721,
-    status: "failed",
-    email: "carmella@hotmail.com",
-  },
-  {
-    id: "5kma53ae",
-    amount: 874,
-    status: "success",
-    email: "Silas22@gmail.com",
-  },
-  {
-    id: "bhqecj4p",
-    amount: 721,
-    status: "failed",
-    email: "carmella@hotmail.com",
-  },
-  {
-    id: "5kma53ae",
-    amount: 874,
-    status: "success",
-    email: "Silas22@gmail.com",
-  },
-  {
-    id: "bhqecj4p",
-    amount: 721,
-    status: "failed",
-    email: "carmella@hotmail.com",
-  },
-];
+const data: Fire[] = points;
 
 const DataTable: React.FC = () => {
+  console.log("fires ", points);
   return (
     <div className="container mx-auto py-10 overflow-auto w-6/12">
       <Table columns={columns} data={data} selectColumns showFiltering />
