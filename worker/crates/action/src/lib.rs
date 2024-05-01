@@ -11,14 +11,18 @@ pub use crate::feature::Feature;
 
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
+use error::Error;
 use nutype::nutype;
 use once_cell::sync::Lazy;
 
 pub use attribute::{Attribute, AttributeValue};
 use reearth_flow_action_log::{action_log, ActionLogger};
-use reearth_flow_common::uri::Uri;
+use reearth_flow_common::{
+    collection,
+    uri::{Uri, PROTOCOL_SEPARATOR},
+};
 use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_storage::resolve::StorageResolver;
+use reearth_flow_storage::{resolve::StorageResolver, storage::Storage};
 use reearth_flow_workflow::id::Id;
 
 pub static DEFAULT_PORT: Lazy<Port> = Lazy::new(|| Port::new("default"));
@@ -129,6 +133,41 @@ impl ActionContext {
         action_log!(
             parent: &self.root_span, &self.logger, "{}", msg
         );
+    }
+
+    pub fn resolve_uri(&self, uri: &Uri) -> Result<Arc<Storage>> {
+        self.storage_resolver
+            .resolve(uri)
+            .map_err(Error::internal_runtime)
+    }
+
+    pub fn get_contents_by_uris(
+        &self,
+        base_path: String,
+        uris: &[String],
+    ) -> HashMap<String, String> {
+        collection::par_map(uris, |row| {
+            let target = if !row.contains(PROTOCOL_SEPARATOR) && !row.starts_with('/') {
+                format!("{}/{}", base_path, row)
+            } else {
+                row.clone()
+            };
+            let Ok(target) = Uri::from_str(target.as_str()) else {
+                return (row.to_string(), "".to_string());
+            };
+            let Ok(storage) = self.storage_resolver.resolve(&target) else {
+                return (row.to_string(), "".to_string());
+            };
+            let Ok(bytes) = storage.get_sync(target.path().as_path()) else {
+                return (row.to_string(), "".to_string());
+            };
+            let Ok(contents) = String::from_utf8(bytes.to_vec()) else {
+                return (row.to_string(), "".to_string());
+            };
+            (row.to_string(), contents)
+        })
+        .into_iter()
+        .collect::<HashMap<_, _>>()
     }
 
     pub async fn get_expr_path<T: AsRef<str> + std::fmt::Display>(&self, path: &T) -> Result<Uri> {

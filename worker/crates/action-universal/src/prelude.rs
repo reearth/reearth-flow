@@ -16,5 +16,6 @@ pub use crate::file::writer::FileWriter;
 pub use crate::plateau::UdxFolderExtractor;
 pub use crate::rhai_caller::RhaiCaller;
 pub use crate::xml::fragmenter::XmlFragmenter;
+pub use crate::xml::validator::XmlValidator;
 pub use crate::xml::xpath_extractor::XmlXPathExtractor;
 pub use crate::zip_extractor::ZipExtractor;
