@@ -72,7 +72,7 @@ impl FromStr for Protocol {
     }
 }
 
-const PROTOCOL_SEPARATOR: &str = "://";
+pub const PROTOCOL_SEPARATOR: &str = "://";
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Uri {
