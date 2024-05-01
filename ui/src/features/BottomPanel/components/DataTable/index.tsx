@@ -152,8 +152,8 @@ const data: Payment[] = [
 
 const DataTable: React.FC = () => {
   return (
-    <div className="container mx-auto py-10">
-      <Table columns={columns} data={data} selectColumns showFiltering showPagination />
+    <div className="container mx-auto py-10 overflow-auto w-6/12">
+      <Table columns={columns} data={data} selectColumns showFiltering />
     </div>
   );
 };
