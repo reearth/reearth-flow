@@ -100,7 +100,7 @@ function DataTable<TData, TValue>({
           </DropdownMenu>
         )}
       </div>
-      <div className="rounded-md border">
+      <div className="rounded-md border border-zinc-700">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
