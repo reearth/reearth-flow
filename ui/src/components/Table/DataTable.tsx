@@ -5,7 +5,6 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
@@ -27,7 +26,6 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   selectColumns?: boolean;
-  showPagination?: boolean;
   showFiltering?: boolean;
 }
 
@@ -35,7 +33,6 @@ function DataTable<TData, TValue>({
   columns,
   data,
   selectColumns = false,
-  showPagination = false,
   showFiltering = false,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
@@ -48,8 +45,6 @@ function DataTable<TData, TValue>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    // Pagination
-    getPaginationRowModel: showPagination ? getPaginationRowModel() : undefined,
     // Sorting
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
@@ -143,24 +138,6 @@ function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      {showPagination && (
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}>
-            {t("Previous")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}>
-            {t("Next")}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

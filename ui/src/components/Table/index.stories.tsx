@@ -122,19 +122,6 @@ export const SelectRows: Story = {
   },
 };
 
-export const ShowPagination: Story = {
-  args: {
-    ...commonArgs,
-    data: [...Array(100).keys()].map(_ => ({
-      amount: Math.floor(Math.random() * 300),
-      email: Math.random().toString(36).slice(2, 7) + "@mail.com",
-      id: Math.random().toString(36).slice(2, 7),
-      status: ["success", "failure", "pending", "canceled"][Math.floor(Math.random() * 4)],
-    })),
-    showPagination: true,
-  },
-};
-
 export const ShowFiltering: Story = {
   args: {
     ...commonArgs,
@@ -158,7 +145,6 @@ export const AllOptions: Story = {
       status: ["success", "failure", "pending", "canceled"][Math.floor(Math.random() * 4)],
     })),
     showFiltering: true,
-    showPagination: true,
     selectColumns: true,
   },
 };
