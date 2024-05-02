@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
     error::Error, ActionContext, ActionDataframe, ActionResult, AsyncAction, Attribute,
-    AttributeValue, Dataframe, Feature, DEFAULT_PORT,
+    AttributeValue, Dataframe, DEFAULT_PORT,
 };
 use serde_json::Number;
 
@@ -24,27 +24,21 @@ impl AsyncAction for AttributeStringLengthCalculator {
         let lens = dataframe
             .features
             .into_iter()
-            .map(|x| {
+            .map(|mut x| {
                 if let Some(AttributeValue::String(src)) =
                     x.attributes.get(&Attribute::new(&self.source_attribute))
                 {
-                    Feature::new_with_attributes(
-                        vec![(
-                            Attribute::new(self.string_length_attribute.clone()),
-                            AttributeValue::Number(Number::from(src.len())),
-                        )]
-                        .into_iter()
-                        .collect(),
-                    )
+                    x.attributes.insert(
+                        Attribute::new(self.string_length_attribute.clone()),
+                        AttributeValue::Number(Number::from(src.len())),
+                    );
+                    x
                 } else {
-                    Feature::new_with_attributes(
-                        vec![(
-                            Attribute::new(self.string_length_attribute.clone()),
-                            AttributeValue::Number(Number::from(0)),
-                        )]
-                        .into_iter()
-                        .collect(),
-                    )
+                    x.attributes.insert(
+                        Attribute::new(self.string_length_attribute.clone()),
+                        AttributeValue::Number(Number::from(0)),
+                    );
+                    x
                 }
             })
             .collect::<Vec<_>>();
