@@ -17,10 +17,7 @@ use once_cell::sync::Lazy;
 
 pub use attribute::{Attribute, AttributeValue};
 use reearth_flow_action_log::{action_log, ActionLogger};
-use reearth_flow_common::{
-    collection,
-    uri::{Uri, PROTOCOL_SEPARATOR},
-};
+use reearth_flow_common::uri::{Uri, PROTOCOL_SEPARATOR};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::{resolve::StorageResolver, storage::Storage};
 use reearth_flow_workflow::id::Id;
@@ -146,28 +143,32 @@ impl ActionContext {
         base_path: String,
         uris: &[String],
     ) -> HashMap<String, String> {
-        collection::par_map(uris, |row| {
-            let target = if !row.contains(PROTOCOL_SEPARATOR) && !row.starts_with('/') {
-                format!("{}/{}", base_path, row)
-            } else {
-                row.clone()
-            };
-            let Ok(target) = Uri::from_str(target.as_str()) else {
-                return (row.to_string(), "".to_string());
-            };
-            let Ok(storage) = self.storage_resolver.resolve(&target) else {
-                return (row.to_string(), "".to_string());
-            };
-            let Ok(bytes) = storage.get_sync(target.path().as_path()) else {
-                return (row.to_string(), "".to_string());
-            };
-            let Ok(contents) = String::from_utf8(bytes.to_vec()) else {
-                return (row.to_string(), "".to_string());
-            };
-            (row.to_string(), contents)
-        })
-        .into_iter()
-        .collect::<HashMap<_, _>>()
+        uris.iter()
+            .map(|row| {
+                let target = if !row.contains(PROTOCOL_SEPARATOR) && !row.starts_with('/') {
+                    format!("{}/{}", base_path, row)
+                } else {
+                    row.clone()
+                };
+                let Ok(target) = Uri::from_str(target.as_str()) else {
+                    return (row.to_string(), "".to_string());
+                };
+                let Ok(storage) = self.storage_resolver.resolve(&target) else {
+                    return (row.to_string(), "".to_string());
+                };
+                let bytes = match storage.get_sync(target.path().as_path()) {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        println!("Error: {}", e);
+                        return (row.to_string(), "".to_string());
+                    }
+                };
+                let Ok(contents) = String::from_utf8(bytes.to_vec()) else {
+                    return (row.to_string(), "".to_string());
+                };
+                (row.to_string(), contents)
+            })
+            .collect::<HashMap<_, _>>()
     }
 
     pub async fn get_expr_path<T: AsRef<str> + std::fmt::Display>(&self, path: &T) -> Result<Uri> {

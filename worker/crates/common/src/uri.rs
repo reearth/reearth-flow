@@ -18,6 +18,7 @@ pub enum Protocol {
     Ram = 2,
     Google = 3,
     Http = 4,
+    Https = 5,
 }
 
 impl Protocol {
@@ -26,12 +27,16 @@ impl Protocol {
             Protocol::File => "file",
             Protocol::Ram => "ram",
             Protocol::Google => "gs",
-            Protocol::Http => "https",
+            Protocol::Http => "http",
+            Protocol::Https => "https",
         }
     }
 
     pub fn is_file(&self) -> bool {
-        matches!(&self, Protocol::File | Protocol::Ram | Protocol::Http)
+        matches!(
+            &self,
+            Protocol::File | Protocol::Ram | Protocol::Http | Protocol::Https
+        )
     }
 
     pub fn is_file_storage(&self) -> bool {
@@ -47,7 +52,8 @@ impl Protocol {
             Protocol::File => "file://",
             Protocol::Ram => "ram://",
             Protocol::Google => "gs://",
-            Protocol::Http => "https://",
+            Protocol::Http => "http://",
+            Protocol::Https => "https://",
         }
     }
 }
@@ -66,7 +72,8 @@ impl FromStr for Protocol {
             "file" => Ok(Protocol::File),
             "ram" => Ok(Protocol::Ram),
             "gs" => Ok(Protocol::Google),
-            "https" => Ok(Protocol::Http),
+            "http" => Ok(Protocol::Http),
+            "https" => Ok(Protocol::Https),
             _ => Err(crate::Error::Uri(format!("Unknown protocol: {}", protocol))),
         }
     }
