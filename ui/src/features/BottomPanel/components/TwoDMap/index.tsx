@@ -1,29 +1,42 @@
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
-// import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { CoreVisualizer } from "@reearth/core";
 
-type Props = {
-  className?: string;
-};
+import fires from "@flow/mock_data/fires.json";
 
-const TwoDMap: React.FC<Props> = ({ className }) => {
+type Props = {};
+
+const TwoDMap: React.FC<Props> = () => {
   return (
-    <MapContainer
-      className={className}
-      style={{ width: "100%", height: "100%" }}
-      center={[51.505, -0.09]}
-      zoom={13}
-      scrollWheelZoom={false}>
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    <div className="relative w-6/12">
+      <CoreVisualizer
+        ready={true}
+        engine="cesium"
+        sceneProperty={{
+          tiles: [
+            {
+              id: "default",
+              tile_type: "default",
+            },
+          ],
+        }}
+        layers={[
+          {
+            id: "marker",
+            type: "simple",
+            data: {
+              type: "geojson",
+              value: fires,
+            },
+            marker: {
+              imageColor: {
+                expression: {
+                  conditions: [["true", "color('#FF0000')"]],
+                },
+              },
+            },
+          },
+        ]}
       />
-      <Marker position={[51.505, -0.09]}>
-        <Popup>
-          A pretty CSS3 popup. <br /> Easily customizable.
-        </Popup>
-      </Marker>
-    </MapContainer>
+    </div>
   );
 };
 

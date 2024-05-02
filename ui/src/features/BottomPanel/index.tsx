@@ -26,13 +26,11 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ className }) => {
       component: (
         <div className="flex flex-1 h-[210px]">
           <DataTable />
-          <TwoDMap className="flex-1" />
+          <TwoDMap />
         </div>
       ),
     },
   ];
-
-  // backdrop-filter: blur(10px);
 
   return (
     <HorizontalPanel

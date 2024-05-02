@@ -104,7 +104,6 @@ const columns: ColumnDef<Fire>[] = [
 const data: Fire[] = points;
 
 const DataTable: React.FC = () => {
-  console.log("fires ", points);
   return (
     <div className="container mx-auto py-10 overflow-auto w-6/12">
       <Table columns={columns} data={data} selectColumns showFiltering />

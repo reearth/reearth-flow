@@ -4,12 +4,13 @@ import { resolve } from "path";
 import react from "@vitejs/plugin-react";
 import { readEnv } from "read-env";
 import { Plugin, UserConfig, defineConfig, loadEnv } from "vite";
+import cesium from "vite-plugin-cesium";
 
 import pkg from "./package.json";
 
 export default defineConfig({
   envPrefix: "FLOW_",
-  plugins: [react(), config()],
+  plugins: [react(), config(), cesium()],
   resolve: {
     alias: [{ find: "@flow", replacement: resolve(__dirname, "./src") }],
   },
