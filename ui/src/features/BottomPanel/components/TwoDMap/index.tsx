@@ -4,7 +4,7 @@ import fires from "@flow/mock_data/fires.json";
 
 type Props = {};
 
-const TwoDMap: React.FC<Props> = () => {
+const Map: React.FC<Props> = () => {
   return (
     <div className="relative w-6/12">
       <CoreVisualizer
@@ -40,4 +40,4 @@ const TwoDMap: React.FC<Props> = () => {
   );
 };
 
-export { TwoDMap };
+export { Map };
