@@ -50,12 +50,21 @@ const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
 
   const handleSelection = useCallback(
     (content: PanelContent) => {
+      // Close panel if already open
+      if (content.id === selected?.id && isOpen) {
+        handleToggle();
+        return;
+      }
+
+      // Switch panels
       setSelected(content);
+
+      // Open if closed
       if (!isOpen) {
         handleToggle();
       }
     },
-    [isOpen, handleToggle],
+    [isOpen, handleToggle, selected],
   );
 
   useEffect(() => {
@@ -65,7 +74,7 @@ const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
   }, [selected, panelContents]);
 
   return (
-    <div className={classes} onClick={handleToggle}>
+    <div className={classes}>
       <div id="edge" className="flex gap-1 items-center h-[36px]">
         {arrowPosition === "start" && <ArrowButton direction={arrowDirection} />}
         <div className="flex gap-1 items-center justify-center flex-1 h-[100%]">
