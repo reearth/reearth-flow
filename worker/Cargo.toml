@@ -70,6 +70,7 @@ hashbrown = "0.14.3"
 indexmap = "2.2.6"
 itertools = "0.12.1"
 jsonpath_lib = "0.3.0"
+libxml = "0.3.3"
 nutype = {version = "0.4.2", features = ["serde"]}
 object_store = "0.10.0"
 once_cell = "1.19.0"
