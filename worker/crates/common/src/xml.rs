@@ -21,7 +21,7 @@ pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
             ParserOptions {
                 recover: true,
                 no_def_dtd: true,
-                no_error: false,
+                no_error: true,
                 no_warning: false,
                 pedantic: false,
                 no_blanks: false,
@@ -111,15 +111,18 @@ pub fn parse_schema_locations(document: &XmlDocument) -> crate::Result<HashSet<S
 }
 
 pub fn create_xml_schema_validation_context(
-    schema: String,
+    schema_location: String,
 ) -> crate::Result<XmlSchemaValidationContext> {
-    let mut xsd_parser = XmlSchemaParserContext::from_buffer(schema.as_bytes());
+    let mut xsd_parser = XmlSchemaParserContext::from_file(schema_location.as_str());
     XmlSchemaValidationContext::from_parser(&mut xsd_parser)
         .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {:?}", e)))
 }
 
-pub fn validate_document_by_schema(document: &XmlDocument, schema: String) -> crate::Result<bool> {
-    let mut xsd_validator = create_xml_schema_validation_context(schema)?;
+pub fn validate_document_by_schema(
+    document: &XmlDocument,
+    schema_location: String,
+) -> crate::Result<bool> {
+    let mut xsd_validator = create_xml_schema_validation_context(schema_location)?;
     validate_document_by_schema_context(document, &mut xsd_validator)
 }
 
