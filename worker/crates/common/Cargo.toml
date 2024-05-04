@@ -12,7 +12,7 @@ version.workspace = true
 
 [dependencies]
 async-recursion.workspace = true
-base64 = "0.22.0"
+base64 = "0.22.1"
 bytes.workspace = true
 colorsys.workspace = true
 futures.workspace = true
