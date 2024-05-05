@@ -176,7 +176,7 @@ impl ActionContext {
         let path = self
             .expr_engine
             .eval_scope::<String>(path.as_ref(), &scope)
-            .map_or_else(|_| path.to_string(), |v| v);
+            .unwrap_or_else(|_| path.to_string());
         Uri::from_str(path.as_str()).map_err(error::Error::input)
     }
 }
