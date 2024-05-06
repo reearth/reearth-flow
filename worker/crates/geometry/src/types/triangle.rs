@@ -11,13 +11,13 @@ use super::polygon::Polygon;
 use super::traits::Surface;
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Hash, Eq, PartialEq)]
-pub struct Triangle<T: CoordNum = f64, Z: CoordNum = NoValue>(
+pub struct Triangle<T: CoordNum = f64, Z: CoordNum = f64>(
     pub Coordinate<T, Z>,
     pub Coordinate<T, Z>,
     pub Coordinate<T, Z>,
 );
 
-pub type Triangle2D<T> = Triangle<T>;
+pub type Triangle2D<T> = Triangle<T, NoValue>;
 pub type Triangle3D<T> = Triangle<T, T>;
 
 impl<T: CoordNum, Z: CoordNum> Triangle<T, Z> {
@@ -30,16 +30,18 @@ impl<T: CoordNum, Z: CoordNum> Triangle<T, Z> {
         [self.0, self.1, self.2]
     }
 
-    pub fn to_lines(&self) -> [Line<T, Z>; 3] {
+    pub fn to_polygon(self) -> Polygon<T, Z> {
+        polygon![self.0, self.1, self.2, self.0]
+    }
+}
+
+impl<T: CoordNum> Triangle<T, NoValue> {
+    pub fn to_lines(&self) -> [Line<T, NoValue>; 3] {
         [
             Line::new(self.0, self.1),
             Line::new(self.1, self.2),
             Line::new(self.2, self.0),
         ]
-    }
-
-    pub fn to_polygon(self) -> Polygon<T, Z> {
-        polygon![self.0, self.1, self.2, self.0]
     }
 }
 

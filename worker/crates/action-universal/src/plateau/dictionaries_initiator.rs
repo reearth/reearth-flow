@@ -136,7 +136,7 @@ impl AsyncAction for DictionariesInitiator {
                         )))
                     }
                 };
-                if codelists_map.get(dir_codelists).is_none() {
+                if !codelists_map.contains_key(dir_codelists) {
                     let dir = Uri::from_str(dir_codelists).map_err(|e| {
                         error::Error::input(format!("Cannot parse uri with error = {:?}", e))
                     })?;

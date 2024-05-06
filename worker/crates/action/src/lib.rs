@@ -1,22 +1,26 @@
+mod attribute;
 pub mod dataframe;
 pub mod error;
+pub mod feature;
+pub mod geometry;
 pub mod types;
 pub mod utils;
-mod value;
 
-pub use crate::dataframe::{Attribute, Dataframe, Feature};
+pub use crate::dataframe::Dataframe;
+pub use crate::feature::Feature;
 
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
+use error::Error;
 use nutype::nutype;
 use once_cell::sync::Lazy;
 
+pub use attribute::{Attribute, AttributeValue};
 use reearth_flow_action_log::{action_log, ActionLogger};
-use reearth_flow_common::uri::Uri;
+use reearth_flow_common::uri::{Uri, PROTOCOL_SEPARATOR};
 use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_storage::resolve::StorageResolver;
+use reearth_flow_storage::{resolve::StorageResolver, storage::Storage};
 use reearth_flow_workflow::id::Id;
-pub use value::AttributeValue;
 
 pub static DEFAULT_PORT: Lazy<Port> = Lazy::new(|| Port::new("default"));
 pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
@@ -128,12 +132,51 @@ impl ActionContext {
         );
     }
 
+    pub fn resolve_uri(&self, uri: &Uri) -> Result<Arc<Storage>> {
+        self.storage_resolver
+            .resolve(uri)
+            .map_err(Error::internal_runtime)
+    }
+
+    pub fn get_contents_by_uris(
+        &self,
+        base_path: String,
+        uris: &[String],
+    ) -> HashMap<String, String> {
+        uris.iter()
+            .map(|row| {
+                let target = if !row.contains(PROTOCOL_SEPARATOR) && !row.starts_with('/') {
+                    format!("{}/{}", base_path, row)
+                } else {
+                    row.clone()
+                };
+                let Ok(target) = Uri::from_str(target.as_str()) else {
+                    return (row.to_string(), "".to_string());
+                };
+                let Ok(storage) = self.storage_resolver.resolve(&target) else {
+                    return (row.to_string(), "".to_string());
+                };
+                let bytes = match storage.get_sync(target.path().as_path()) {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        println!("Error: {}", e);
+                        return (row.to_string(), "".to_string());
+                    }
+                };
+                let Ok(contents) = String::from_utf8(bytes.to_vec()) else {
+                    return (row.to_string(), "".to_string());
+                };
+                (row.to_string(), contents)
+            })
+            .collect::<HashMap<_, _>>()
+    }
+
     pub async fn get_expr_path<T: AsRef<str> + std::fmt::Display>(&self, path: &T) -> Result<Uri> {
         let scope = self.expr_engine.new_scope();
         let path = self
             .expr_engine
             .eval_scope::<String>(path.as_ref(), &scope)
-            .map_or_else(|_| path.to_string(), |v| v);
+            .unwrap_or_else(|_| path.to_string());
         Uri::from_str(path.as_str()).map_err(error::Error::input)
     }
 }

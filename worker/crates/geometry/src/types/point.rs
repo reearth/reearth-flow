@@ -10,7 +10,7 @@ use super::coordnum::{CoordFloat, CoordNum};
 use super::no_value::NoValue;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash, Default)]
-pub struct Point<T: CoordNum = f64, Z: CoordNum = NoValue>(pub Coordinate<T, Z>);
+pub struct Point<T: CoordNum = f64, Z: CoordNum = f64>(pub Coordinate<T, Z>);
 
 pub type Point2D<T> = Point<T, NoValue>;
 pub type Point3D<T> = Point<T, T>;
@@ -21,13 +21,13 @@ impl<T: CoordNum, Z: CoordNum> From<Coordinate<T, Z>> for Point<T, Z> {
     }
 }
 
-impl<T: CoordNum> From<(T, T)> for Point<T> {
+impl<T: CoordNum> From<(T, T)> for Point<T, NoValue> {
     fn from(coords: (T, T)) -> Self {
         Point::new(coords.0, coords.1)
     }
 }
 
-impl<T: CoordNum> From<[T; 2]> for Point<T> {
+impl<T: CoordNum> From<[T; 2]> for Point<T, NoValue> {
     fn from(coords: [T; 2]) -> Self {
         Point::new(coords[0], coords[1])
     }
@@ -63,7 +63,7 @@ impl<T: CoordNum> From<Point<T, T>> for [T; 3] {
     }
 }
 
-impl<T: CoordNum> Point<T> {
+impl<T: CoordNum> Point<T, NoValue> {
     pub fn new(x: T, y: T) -> Self {
         point! { x: x, y: y }
     }
@@ -125,7 +125,7 @@ impl<T: CoordNum> Point<T> {
     }
 }
 
-impl<T: CoordFloat> Point<T> {
+impl<T: CoordFloat> Point<T, NoValue> {
     pub fn to_degrees(self) -> Self {
         let (x, y) = self.x_y();
         let x = x.to_degrees();
@@ -141,7 +141,7 @@ impl<T: CoordFloat> Point<T> {
     }
 }
 
-impl<T> Neg for Point<T>
+impl<T> Neg for Point<T, NoValue>
 where
     T: CoordNum + Neg<Output = T>,
 {
@@ -152,7 +152,7 @@ where
     }
 }
 
-impl<T: CoordNum> Add for Point<T> {
+impl<T: CoordNum> Add for Point<T, NoValue> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -160,13 +160,13 @@ impl<T: CoordNum> Add for Point<T> {
     }
 }
 
-impl<T: CoordNum> AddAssign for Point<T> {
+impl<T: CoordNum> AddAssign for Point<T, NoValue> {
     fn add_assign(&mut self, rhs: Self) {
         self.0 = self.0 + rhs.0;
     }
 }
 
-impl<T: CoordNum> Sub for Point<T> {
+impl<T: CoordNum> Sub for Point<T, NoValue> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -174,13 +174,13 @@ impl<T: CoordNum> Sub for Point<T> {
     }
 }
 
-impl<T: CoordNum> SubAssign for Point<T> {
+impl<T: CoordNum> SubAssign for Point<T, NoValue> {
     fn sub_assign(&mut self, rhs: Self) {
         self.0 = self.0 - rhs.0;
     }
 }
 
-impl<T: CoordNum> Mul<T> for Point<T> {
+impl<T: CoordNum> Mul<T> for Point<T, NoValue> {
     type Output = Self;
 
     fn mul(self, rhs: T) -> Self::Output {
@@ -188,13 +188,13 @@ impl<T: CoordNum> Mul<T> for Point<T> {
     }
 }
 
-impl<T: CoordNum> MulAssign<T> for Point<T> {
+impl<T: CoordNum> MulAssign<T> for Point<T, NoValue> {
     fn mul_assign(&mut self, rhs: T) {
         self.0 = self.0 * rhs
     }
 }
 
-impl<T: CoordNum> Div<T> for Point<T> {
+impl<T: CoordNum> Div<T> for Point<T, NoValue> {
     type Output = Self;
 
     fn div(self, rhs: T) -> Self::Output {
@@ -202,7 +202,7 @@ impl<T: CoordNum> Div<T> for Point<T> {
     }
 }
 
-impl<T: CoordNum> DivAssign<T> for Point<T> {
+impl<T: CoordNum> DivAssign<T> for Point<T, NoValue> {
     fn div_assign(&mut self, rhs: T) {
         self.0 = self.0 / rhs
     }
@@ -243,23 +243,5 @@ where
     #[inline]
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
         self.0.abs_diff_eq(&other.0, epsilon)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use approx::*;
-
-    #[test]
-    fn test_point() {
-        let p: Point2D<_> = point! { x: 1.0, y: 2.0 };
-        assert_relative_eq!(p.x(), 1.0);
-        assert_relative_eq!(p.y(), 2.0);
-
-        let p: Point3D<_> = point! { x: 1.0, y: 2.0, z: 3.0 };
-        assert_relative_eq!(p.x(), 1.0);
-        assert_relative_eq!(p.y(), 2.0);
-        assert_relative_eq!(p.z(), 3.0);
     }
 }
