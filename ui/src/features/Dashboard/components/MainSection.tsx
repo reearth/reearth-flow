@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
+import projectImage from "@flow/assets/project-screenshot.png";
 import {
   Card,
   CardContent,
@@ -36,15 +37,15 @@ const MainSection: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-auto py-4 px-4">
         {projects?.map(p => (
           <Card
-            className={`cursor-pointer border border-transparent ${currentProject && currentProject.id === p.id ? "border-zinc-600" : "hover:border-zinc-700"}`}
+            className={`cursor-pointer bg-zinc-700/30 border border-transparent ${currentProject && currentProject.id === p.id ? "border-zinc-600" : "hover:border-zinc-600"}`}
             key={p.id}
             onClick={() => handleProjectSelect(p)}>
-            <CardHeader className="p-4">
-              <CardTitle>{p.name}</CardTitle>
+            <CardHeader className="p-3">
+              <CardTitle className="truncate font-extralight">{p.name}</CardTitle>
               {p.description && <CardDescription>{p.description}</CardDescription>}
             </CardHeader>
             <CardContent className="p-0">
-              <div className="w-full h-[180px] bg-[url('@flow/assets/project-screenshot.png')] bg-cover bg-center" />
+              <img src={projectImage} />
             </CardContent>
             <CardFooter className="p-2 flex justify-center">
               <p className="font-thin text-xs">Modified on: 2024/04/26</p>

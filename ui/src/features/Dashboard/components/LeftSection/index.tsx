@@ -1,4 +1,3 @@
-import { PersonIcon } from "@radix-ui/react-icons";
 import { PlusIcon } from "lucide-react";
 
 import { Button } from "@flow/components";
@@ -6,7 +5,7 @@ import { config } from "@flow/config";
 import { useOpenLink } from "@flow/hooks";
 import { useT } from "@flow/providers";
 
-import { WorkspaceMembers, WorkspaceNavigation } from "./components";
+import { WorkspaceMembers } from "./components";
 
 const LeftSection: React.FC = () => {
   const t = useT();
@@ -19,28 +18,21 @@ const LeftSection: React.FC = () => {
   const handleDocumentationPageOpen = useOpenLink(documentationUrl ?? "");
 
   return (
-    <div className="flex flex-col justify-between gap-6 bg-zinc-700 bg-opacity-50 border border-zinc-700 m-2 p-4 rounded-lg w-[280px]">
+    <div className="flex flex-col justify-between gap-6 border border-zinc-700 m-2 p-4 rounded-lg w-[280px]">
       <div className="flex flex-col gap-2">
-        <WorkspaceNavigation />
-        <Button className="flex gap-2 self-start" variant="outline" size="sm">
-          <PlusIcon className="w-3" />
-          {t("New Project")}
-        </Button>
-        <Button className="flex gap-2 self-start" variant="outline" size="sm">
-          <PlusIcon className="w-3" />
-          {t("New Workspace")}
-        </Button>
-        <Button className="flex gap-2 self-start" variant="outline" size="sm">
-          <div className="flex">
+        {/* <WorkspaceNavigation className="border-b border-zinc-700 pb-2 mb-2" /> */}
+        <div className="flex gap-2 py-2">
+          <Button className="flex flex-1 gap-1 font-extralight" variant="outline" size="sm">
             <PlusIcon className="w-3" />
-            <PersonIcon className="w-3" />
-          </div>
-          {t("Add member")}
-        </Button>
+            {t("Project")}
+          </Button>
+          <Button className="flex flex-1 gap-1 font-extralight" variant="outline" size="sm">
+            <PlusIcon className="w-3" />
+            {t("Workspace")}
+          </Button>
+        </div>
       </div>
-      <div className="flex-1">
-        <WorkspaceMembers />
-      </div>
+      <WorkspaceMembers />
       <div>
         {githubRepoUrl && (
           <p

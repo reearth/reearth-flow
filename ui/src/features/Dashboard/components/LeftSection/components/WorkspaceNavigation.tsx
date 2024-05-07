@@ -13,7 +13,11 @@ import { workspaces } from "@flow/mock_data/workspaceData";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import { Workspace } from "@flow/types";
 
-const WorkspaceNavigation: React.FC = () => {
+type Props = {
+  className?: string;
+};
+
+const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
   const [, setCurrentProject] = useCurrentProject();
 
@@ -23,10 +27,10 @@ const WorkspaceNavigation: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4 border-b border-zinc-700 pb-2 mb-2">
+    <div className={`flex flex-col gap-4  ${className}`}>
       <DropdownMenu>
         <DropdownMenuTrigger className="flex items-center px-2 -mx-2 rounded-md hover:bg-zinc-800 first:[data-state=open]:bg-zinc-800">
-          <p className="text-xl uppercase font-extralight truncate">{currentWorkspace?.name}</p>
+          <p className="text-xl uppercase font-thin truncate">{currentWorkspace?.name}</p>
           <ChevronDown className="ml-2" size="12px" />
         </DropdownMenuTrigger>
         <DropdownMenuContent

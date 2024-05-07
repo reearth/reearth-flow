@@ -32,7 +32,7 @@ function config(): Plugin {
 
       const configRes = JSON.stringify(
         {
-          version: JSON.stringify(pkg.version),
+          version: pkg.version,
           ...remoteConfig,
           ...readEnv("FLOW", {
             source: envs,
