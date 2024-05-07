@@ -34,8 +34,8 @@ const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
           <ChevronDown className="ml-2" size="12px" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="max-w-[300px] min-w-[150px] bg-zinc-900 border-none"
-          align="start">
+          className="max-w-[300px] min-w-[150px] bg-zinc-800 border"
+          align="center">
           {/* <DropdownMenuLabel>Workspaces</DropdownMenuLabel> */}
           {/* <div className="bg-zinc-800 h-[1px]" /> */}
           <DropdownMenuGroup className="max-h-[300px] overflow-scroll">

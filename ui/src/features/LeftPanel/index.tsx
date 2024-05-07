@@ -97,15 +97,6 @@ const LeftPanel: React.FC<Props> = ({ className, data }) => {
 
   const panelContents: PanelContent[] = [
     {
-      id: "home-menu",
-      icon: <FlowLogo />,
-      component: <HomeMenu />,
-    },
-    {
-      id: "space",
-      component: <div className="border-zinc-700/50 border-t-[1px] w-[100%]" />,
-    },
-    {
       id: "navigator",
       // title: t("Canvas"),
       icon: <FileIcon />,
@@ -125,7 +116,11 @@ const LeftPanel: React.FC<Props> = ({ className, data }) => {
     <VerticalPanel
       className={`bg-zinc-800 border border-zinc-700 rounded-md backdrop-blur-md ${className}`}
       isOpen={!!isPanelOpen}
-      togglePosition="end-right"
+      headerContent={{
+        id: "home-menu",
+        icon: <FlowLogo />,
+        component: <HomeMenu />,
+      }}
       panelContents={panelContents}
       onPanelToggle={handlePanelToggle}
     />
