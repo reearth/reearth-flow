@@ -17,11 +17,13 @@ import { Project } from "@flow/types";
 const MainSection: React.FC = () => {
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
   const [currentProject, setCurrentProject] = useCurrentProject();
-  const navigate = useNavigate({ from: "/dashboard" });
+  const navigate = useNavigate({ from: "/workspace/$workspaceId" });
 
   const handleProjectSelect = (p: Project) => {
-    setCurrentProject(p);
-    navigate({ to: `/project/${p.id}` });
+    if (currentWorkspace) {
+      setCurrentProject(p);
+      navigate({ to: `/workspace/${currentWorkspace.id}/project/${p.id}` });
+    }
   };
 
   const projects = currentWorkspace?.projects;

@@ -3,13 +3,14 @@ import { useEffect } from "react";
 
 import { Loading } from "@flow/components";
 import { useTimeoutOnLoad } from "@flow/hooks";
+import { workspaces } from "@flow/mock_data/workspaceData";
 
 const LoadingScreen: React.FC = () => {
   const { running: isLoading } = useTimeoutOnLoad(1000);
   const navigate = useNavigate({ from: "/" });
   useEffect(() => {
     if (!isLoading) {
-      navigate({ to: "/dashboard" });
+      navigate({ to: `/workspace/${workspaces[0].id}` });
     }
   }, [isLoading, navigate]);
   return <Loading show={isLoading} />;

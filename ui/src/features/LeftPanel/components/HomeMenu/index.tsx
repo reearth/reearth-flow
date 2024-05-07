@@ -21,7 +21,7 @@ import {
 import { config } from "@flow/config";
 import { useOpenLink } from "@flow/hooks";
 import { useT } from "@flow/providers";
-import { useDialogType } from "@flow/stores";
+import { useCurrentWorkspace, useDialogType } from "@flow/stores";
 
 import { AccountSetting, KeyboardSetting, WorkflowSetting, WorkspacesSetting } from "./components";
 
@@ -31,6 +31,7 @@ const HomeMenu: React.FC<Props> = () => {
   const [, setDialogType] = useDialogType();
   const t = useT();
   const githubRepoUrl = config()?.githubRepoUrl;
+  const [currentWorkspace] = useCurrentWorkspace();
   const navigate = useNavigate({ from: "/project/$projectId" });
 
   const handleGithubPageOpen = useOpenLink(githubRepoUrl ?? "");
@@ -51,7 +52,9 @@ const HomeMenu: React.FC<Props> = () => {
           </DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-zinc-800" />
           <DropdownMenuGroup>
-            <DropdownMenuItem className="gap-2" onClick={() => navigate({ to: "/dashboard" })}>
+            <DropdownMenuItem
+              className="gap-2"
+              onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}` })}>
               <DashboardIcon />
               {t("Dashboard")}
               {/* <DropdownMenuShortcut>⇧⌘H</DropdownMenuShortcut> */}

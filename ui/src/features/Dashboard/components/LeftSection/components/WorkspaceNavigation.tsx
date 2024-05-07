@@ -1,4 +1,5 @@
 import { ChevronRightIcon } from "@radix-ui/react-icons";
+import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
 
 import {
@@ -20,10 +21,12 @@ type Props = {
 const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
   const [, setCurrentProject] = useCurrentProject();
+  const navigate = useNavigate({ from: "/workspace/$workspaceId" });
 
   const handleWorkspaceChange = (workspace: Workspace) => {
     setCurrentProject(undefined);
     setCurrentWorkspace(workspace);
+    navigate({ to: `/workspace/${workspace.id}` });
   };
 
   return (

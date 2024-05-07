@@ -16,28 +16,43 @@ import { Route as rootRoute } from './routes/__root'
 
 // Create Virtual Routes
 
-const DashboardLazyImport = createFileRoute('/dashboard')()
+const WorkspaceLazyImport = createFileRoute('/workspace')()
 const IndexLazyImport = createFileRoute('/')()
-const ProjectProjectIdLazyImport = createFileRoute('/project/$projectId')()
+const WorkspaceWorkspaceIdLazyImport = createFileRoute(
+  '/workspace/$workspaceId',
+)()
+const WorkspaceWorkspaceIdProjectProjectIdLazyImport = createFileRoute(
+  '/workspace/$workspaceId/project/$projectId',
+)()
 
 // Create/Update Routes
 
-const DashboardLazyRoute = DashboardLazyImport.update({
-  path: '/dashboard',
+const WorkspaceLazyRoute = WorkspaceLazyImport.update({
+  path: '/workspace',
   getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/dashboard.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/workspace.lazy').then((d) => d.Route))
 
 const IndexLazyRoute = IndexLazyImport.update({
   path: '/',
   getParentRoute: () => rootRoute,
 } as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
 
-const ProjectProjectIdLazyRoute = ProjectProjectIdLazyImport.update({
-  path: '/project/$projectId',
-  getParentRoute: () => rootRoute,
+const WorkspaceWorkspaceIdLazyRoute = WorkspaceWorkspaceIdLazyImport.update({
+  path: '/$workspaceId',
+  getParentRoute: () => WorkspaceLazyRoute,
 } as any).lazy(() =>
-  import('./routes/project.$projectId.lazy').then((d) => d.Route),
+  import('./routes/workspace.$workspaceId.lazy').then((d) => d.Route),
 )
+
+const WorkspaceWorkspaceIdProjectProjectIdLazyRoute =
+  WorkspaceWorkspaceIdProjectProjectIdLazyImport.update({
+    path: '/workspace/$workspaceId/project/$projectId',
+    getParentRoute: () => rootRoute,
+  } as any).lazy(() =>
+    import('./routes/workspace_.$workspaceId.project.$projectId.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 // Populate the FileRoutesByPath interface
 
@@ -47,12 +62,16 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexLazyImport
       parentRoute: typeof rootRoute
     }
-    '/dashboard': {
-      preLoaderRoute: typeof DashboardLazyImport
+    '/workspace': {
+      preLoaderRoute: typeof WorkspaceLazyImport
       parentRoute: typeof rootRoute
     }
-    '/project/$projectId': {
-      preLoaderRoute: typeof ProjectProjectIdLazyImport
+    '/workspace/$workspaceId': {
+      preLoaderRoute: typeof WorkspaceWorkspaceIdLazyImport
+      parentRoute: typeof WorkspaceLazyImport
+    }
+    '/workspace/$workspaceId/project/$projectId': {
+      preLoaderRoute: typeof WorkspaceWorkspaceIdProjectProjectIdLazyImport
       parentRoute: typeof rootRoute
     }
   }
@@ -62,8 +81,8 @@ declare module '@tanstack/react-router' {
 
 export const routeTree = rootRoute.addChildren([
   IndexLazyRoute,
-  DashboardLazyRoute,
-  ProjectProjectIdLazyRoute,
+  WorkspaceLazyRoute.addChildren([WorkspaceWorkspaceIdLazyRoute]),
+  WorkspaceWorkspaceIdProjectProjectIdLazyRoute,
 ])
 
 /* prettier-ignore-end */

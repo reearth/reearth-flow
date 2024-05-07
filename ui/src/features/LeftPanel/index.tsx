@@ -66,7 +66,7 @@ const LeftPanel: React.FC<Props> = ({ className, data }) => {
   ];
   return (
     <VerticalPanel
-      className={`bg-zinc-800 border border-zinc-700 rounded-md backdrop-blur-md ${className}`}
+      className={`bg-zinc-800 border-r border-zinc-700 ${className}`}
       isOpen={!!isPanelOpen}
       headerContent={{
         id: "home-menu",
