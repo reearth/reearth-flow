@@ -16,7 +16,7 @@ const Dashboard: React.FC = () => {
             <div className="flex bg-red-800/50 p-2 rounded">
               <FlowLogo />
             </div>
-            <h1 className="text-lg font-thin select-none">
+            <h1 className="text-md font-extralight select-none">
               {config()?.brandName ??
                 t("Re:Earth Flow") + (config()?.version && ` ${config()?.version}`)}
             </h1>

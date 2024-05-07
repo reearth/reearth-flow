@@ -33,7 +33,7 @@ const MainSection: React.FC = () => {
   }, [currentWorkspace, setCurrentWorkspace]);
 
   return (
-    <div className="flex flex-col justify-between gap-2 flex-1 border border-zinc-700 m-2 rounded-lg">
+    <div className="flex flex-col flex-1 border border-zinc-700 m-2 rounded-lg">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-auto py-4 px-4">
         {projects?.map(p => (
           <Card
@@ -53,7 +53,11 @@ const MainSection: React.FC = () => {
           </Card>
         ))}
       </div>
-      <p className="font-extralight self-center pb-2">Total Projects: {projects?.length ?? 0}</p>
+      <div className="border-t border-zinc-700">
+        <p className="font-extralight text-center py-1 border-t">
+          Total Projects: {projects?.length ?? 0}
+        </p>
+      </div>
     </div>
   );
 };

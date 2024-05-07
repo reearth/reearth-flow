@@ -45,54 +45,6 @@ const LeftPanel: React.FC<Props> = ({ className, data }) => {
           // icon: Disc,
         })),
     },
-    {
-      id: "transformer5",
-      name: "Transformers",
-      icon: Zap,
-      children: data?.nodes
-        ?.filter(n => n.type === "transformer")
-        .map(n => ({
-          id: n.id,
-          name: n.data.name ?? "untitled",
-          // icon: Disc,
-        })),
-    },
-    {
-      id: "transformer3",
-      name: "Transformers",
-      icon: Zap,
-      children: data?.nodes
-        ?.filter(n => n.type === "transformer")
-        .map(n => ({
-          id: n.id,
-          name: n.data.name ?? "untitled",
-          // icon: Disc,
-        })),
-    },
-    {
-      id: "transformer2",
-      name: "Transformers",
-      icon: Zap,
-      children: data?.nodes
-        ?.filter(n => n.type === "transformer")
-        .map(n => ({
-          id: n.id,
-          name: n.data.name ?? "untitled",
-          // icon: Disc,
-        })),
-    },
-    {
-      id: "transformer4",
-      name: "Transformers",
-      icon: Zap,
-      children: data?.nodes
-        ?.filter(n => n.type === "transformer")
-        .map(n => ({
-          id: n.id,
-          name: n.data.name ?? "untitled",
-          // icon: Disc,
-        })),
-    },
   ];
 
   const panelContents: PanelContent[] = [

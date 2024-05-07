@@ -37,7 +37,7 @@ const HomeMenu: React.FC<Props> = () => {
   return (
     <div className="flex justify-between items-center">
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex justify-between items-center rounded py-1.5 px-2 transition-colors group">
+        <DropdownMenuTrigger className="flex justify-between items-center rounded px-2 transition-colors group">
           <FlowLogo wrapperClassName="justify-start bg-opacity-75 bg-red-800/50 p-2 rounded transition-colors border border-transparent group-hover:bg-transparent group-hover:border-red-900" />
           <ChevronDown className="ml-2 group-hover:text-zinc-200" size="12px" />
         </DropdownMenuTrigger>

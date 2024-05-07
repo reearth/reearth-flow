@@ -29,22 +29,23 @@ const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
   return (
     <div className={`flex flex-col gap-4  ${className}`}>
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center px-2 -mx-2 rounded-md hover:bg-zinc-800 first:[data-state=open]:bg-zinc-800">
-          <p className="text-xl uppercase font-thin truncate">{currentWorkspace?.name}</p>
+        <DropdownMenuTrigger className="flex items-center px-2 -mx-2 rounded-md hover:bg-zinc-700/50">
+          <p className="text-md uppercase font-thin truncate">{currentWorkspace?.name}</p>
           <ChevronDown className="ml-2" size="12px" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="max-w-[300px] min-w-[150px] bg-zinc-800 border"
+          sideOffset={10}
           align="center">
           {/* <DropdownMenuLabel>Workspaces</DropdownMenuLabel> */}
           {/* <div className="bg-zinc-800 h-[1px]" /> */}
-          <DropdownMenuGroup className="max-h-[300px] overflow-scroll">
+          <DropdownMenuGroup className="max-h-[300px] overflow-auto">
             {workspaces?.map(workspace => (
               <DropdownMenuItem
                 key={workspace.id}
                 className={cn(
                   "rounded-md mr-1 mt-1 mb-1 pl-0",
-                  currentWorkspace?.id === workspace.id ? "bg-zinc-800/50" : undefined,
+                  currentWorkspace?.id === workspace.id ? "bg-zinc-700/50" : undefined,
                 )}
                 onClick={() => handleWorkspaceChange(workspace)}>
                 <div className="flex items-center justify-center w-[15px] h-[15px] mr-1">
