@@ -17,7 +17,7 @@ export const Route = createRootRoute({
           </ReactFlowProvider>
         </TooltipProvider>
       </I18nProvider>
-      <TanStackRouterDevtools />
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   ),
 });
