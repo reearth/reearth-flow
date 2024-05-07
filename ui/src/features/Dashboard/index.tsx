@@ -1,11 +1,6 @@
-import { useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-
 import { FlowLogo, NavigationMenu, NavigationMenuList } from "@flow/components";
 import { config } from "@flow/config";
-import { workspaces } from "@flow/mock_data/workspaceData";
 import { useT } from "@flow/providers";
-import { useCurrentWorkspace } from "@flow/stores";
 
 import { LeftSection, MainSection } from "./components";
 import { WorkspaceNavigation } from "./components/LeftSection/components";
@@ -13,19 +8,6 @@ import { UserNavigation } from "./components/UserNavigation";
 
 const Dashboard: React.FC = () => {
   const t = useT();
-  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
-  const navigate = useNavigate({ from: "/workspace" });
-
-  const workspaceIdFromUrl = new URLSearchParams(window.location.search).get("workspace") ?? "";
-
-  console.log("WorkspaceIdFromUrl", workspaceIdFromUrl);
-
-  useEffect(() => {
-    if (!currentWorkspace && workspaceIdFromUrl) {
-      setCurrentWorkspace(workspaces[0]);
-      navigate({ to: `/workspace/${workspaces[0].id}` });
-    }
-  }, [currentWorkspace, workspaceIdFromUrl, navigate, setCurrentWorkspace]);
 
   return (
     <div className="[&>*]:dark relative bg-zinc-800 pt-16 text-zinc-300 h-[100vh]">

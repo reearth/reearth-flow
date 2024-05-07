@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 
-import Dashboard from "@flow/features/Dashboard";
+import { LoadingScreen } from "@flow/features/LoadingScreen";
 
 export const Route = createLazyFileRoute("/workspace")({
-  component: () => <Dashboard />,
+  component: () => <LoadingScreen />,
 });
