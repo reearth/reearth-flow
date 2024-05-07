@@ -2522,6 +2522,7 @@ dependencies = [
  "nutype",
  "once_cell",
  "quick-xml",
+ "rayon",
  "reearth-flow-action",
  "reearth-flow-action-log",
  "reearth-flow-common",

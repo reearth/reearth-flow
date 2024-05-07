@@ -1,6 +1,6 @@
 pub use crate::attribute::*;
 pub use crate::color_converter::ColorConverter;
-pub use crate::dataframe::transformer::DataframeTransformer;
+pub use crate::dataframe::*;
 pub use crate::excel::writer::ExcelFileWriter;
 pub use crate::feature::*;
 pub use crate::file::*;

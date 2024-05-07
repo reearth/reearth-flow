@@ -3,6 +3,8 @@ use std::{
     str::FromStr,
 };
 
+use rayon::iter::IntoParallelRefIterator;
+use rayon::prelude::*;
 use reearth_flow_common::{
     uri::{Uri, PROTOCOL_SEPARATOR},
     xml::{self, XmlDocument, XmlNamespace},
@@ -47,36 +49,61 @@ impl SyncAction for XmlValidator {
         let targets = &input.features;
         let mut success = Vec::<Feature>::new();
         let mut failed = Vec::<Feature>::new();
-        let mut schema_store = HashMap::<String, xml::XmlSchemaValidationContext>::new();
-        for feature in targets {
-            let xml_content = self.get_xml_content(&ctx, feature)?;
-            let Ok(document) = xml::parse(xml_content) else {
-                failed.push(feature.clone());
-                continue;
-            };
-            let Ok(_) = xml::get_root_node(&document) else {
-                failed.push(feature.clone());
-                continue;
-            };
-            match self.validation_type {
-                ValidationType::Syntax => {
-                    success.push(feature.clone());
-                    continue;
-                }
-                ValidationType::SyntaxAndNamespace => {
-                    let root_node =
-                        xml::get_root_node(&document).map_err(Error::internal_runtime)?;
-                    if XmlValidator::recursive_check_namespace(
-                        &root_node,
-                        &root_node.get_namespace_declarations(),
-                    ) {
-                        success.push(feature.clone());
-                    } else {
+
+        match self.validation_type {
+            ValidationType::Syntax => {
+                for feature in targets {
+                    let xml_content = self.get_xml_content(&ctx, feature)?;
+                    let Ok(document) = xml::parse(xml_content) else {
                         failed.push(feature.clone());
-                    }
-                    continue;
+                        continue;
+                    };
+                    let Ok(_) = xml::get_root_node(&document) else {
+                        failed.push(feature.clone());
+                        continue;
+                    };
+                    success.push(feature.clone());
                 }
-                ValidationType::SyntaxAndSchema => {
+            }
+            ValidationType::SyntaxAndNamespace => {
+                let result = targets
+                    .par_iter()
+                    .map(|feature| {
+                        ctx.action_log(format!("Validating feature: {:?}", feature));
+                        let xml_content = self.get_xml_content(&ctx, feature).unwrap();
+                        let Ok(document) = xml::parse(xml_content) else {
+                            return (false, feature.clone());
+                        };
+                        let Ok(root_node) = xml::get_root_node(&document) else {
+                            return (false, feature.clone());
+                        };
+                        if XmlValidator::recursive_check_namespace(
+                            &root_node,
+                            &root_node.get_namespace_declarations(),
+                        ) {
+                            (true, feature.clone())
+                        } else {
+                            (false, feature.clone())
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                for (result, feature) in result {
+                    if result {
+                        success.push(feature);
+                    } else {
+                        failed.push(feature);
+                    }
+                }
+            }
+            ValidationType::SyntaxAndSchema => {
+                let mut schema_store = HashMap::<String, xml::XmlSchemaValidationContext>::new();
+                for feature in targets {
+                    ctx.action_log(format!("Validating feature: {:?}", feature));
+                    let xml_content = self.get_xml_content(&ctx, feature)?;
+                    let Ok(document) = xml::parse(xml_content) else {
+                        failed.push(feature.clone());
+                        continue;
+                    };
                     if let Ok(true) = self.check_schema(feature, &ctx, &document, &mut schema_store)
                     {
                         success.push(feature.clone());
@@ -101,7 +128,18 @@ impl XmlValidator {
                 .get(&self.attribute)
                 .and_then(|v| {
                     if let AttributeValue::String(s) = v {
-                        Some(s.to_string())
+                        match Uri::from_str(s) {
+                            Ok(uri) => {
+                                if uri.is_dir() {
+                                    Some(uri.to_string())
+                                } else if let Some(parent) = uri.parent() {
+                                    Some(parent.to_string())
+                                } else {
+                                    Some("".to_string())
+                                }
+                            }
+                            Err(_) => None,
+                        }
                     } else {
                         None
                     }

@@ -31,6 +31,7 @@ nusamai-plateau.workspace = true
 nutype.workspace = true
 once_cell.workspace = true
 quick-xml.workspace = true
+rayon.workspace = true
 regex.workspace = true
 rhai.workspace = true
 rust_xlsxwriter.workspace = true
