@@ -36,3 +36,7 @@ yaml-include = "0.7.0"
 [[example]]
 name = "attribute_reader"
 path = "plateau/attribute_reader.rs"
+
+[[example]]
+name = "xml_validator"
+path = "plateau/xml_validator.rs"
