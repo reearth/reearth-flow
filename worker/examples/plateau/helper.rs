@@ -15,7 +15,7 @@ use reearth_flow_workflow::workflow::Workflow;
 use reearth_flow_workflow_runner::dag::DagExecutor;
 
 pub(crate) fn init_execute_runner(workflow: &str) -> DagExecutor {
-    env::set_var("RAYON_NUM_THREADS", "4");
+    env::set_var("RAYON_NUM_THREADS", "6");
     setup_logging_and_tracing();
     let job_id = uuid::Uuid::new_v4();
     let dataframe_state_uri = {
@@ -32,6 +32,18 @@ pub(crate) fn init_execute_runner(workflow: &str) -> DagExecutor {
         let _ = fs::create_dir_all(Path::new(p.as_str()));
         Uri::for_test(format!("file://{}", p).as_str())
     };
+
+    let storage_resolver = Arc::new(StorageResolver::new());
+    let state = Arc::new(State::new(&dataframe_state_uri, &storage_resolver).unwrap());
+    let workflow = create_workflow(workflow);
+    let log_factory = Arc::new(LoggerFactory::new(
+        create_root_logger(action_log_uri.path()),
+        action_log_uri.path(),
+    ));
+    DagExecutor::new(job_id, &workflow, storage_resolver, state, log_factory).unwrap()
+}
+
+pub fn create_workflow(workflow: &str) -> Workflow {
     let current_dir = env::current_dir()
         .unwrap()
         .to_str()
@@ -45,17 +57,9 @@ pub(crate) fn init_execute_runner(workflow: &str) -> DagExecutor {
             .join(workflow),
     );
     let path = absolute_path.unwrap();
-
     let yaml = Transformer::new(path, false).unwrap();
-    let storage_resolver = Arc::new(StorageResolver::new());
     let yaml = yaml.to_string();
-    let state = Arc::new(State::new(&dataframe_state_uri, &storage_resolver).unwrap());
-    let workflow = Workflow::try_from_str(yaml.as_str()).unwrap();
-    let log_factory = Arc::new(LoggerFactory::new(
-        create_root_logger(action_log_uri.path()),
-        action_log_uri.path(),
-    ));
-    DagExecutor::new(job_id, &workflow, storage_resolver, state, log_factory).unwrap()
+    Workflow::try_from_str(yaml.as_str()).unwrap()
 }
 
 pub fn setup_logging_and_tracing() {

@@ -101,7 +101,7 @@ impl DagExecutor {
         let workflow_name = self.workflow_name.clone();
         info!(parent: &self.root_span, "Start workflow = {:?}", workflow_name);
         let start = Instant::now();
-        let res = self.run_dag(&self.entry_dag).await?;
+        let res = self.run_dag(&self.entry_dag, None).await?;
         let duration = start.elapsed();
         info!(
             parent: &self.root_span,
@@ -112,13 +112,22 @@ impl DagExecutor {
     }
 
     #[async_recursion]
-    pub async fn run_dag(&self, dag: &Dag) -> crate::Result<ActionDataframe> {
+    pub async fn run_dag(
+        &self,
+        dag: &Dag,
+        input: Option<ActionDataframe>,
+    ) -> crate::Result<ActionDataframe> {
         let mut dfs: HashMap<NodeIndex, ActionDataframe> = HashMap::new();
         let entry_node_ids = dag
             .entry_nodes()
             .iter()
             .map(|n| dag.node_index(n).unwrap())
             .collect::<Vec<_>>();
+        if input.is_some() {
+            entry_node_ids.iter().for_each(|ix| {
+                dfs.insert(*ix, input.clone().unwrap());
+            });
+        }
         let mut ready = VecDeque::from_iter(entry_node_ids);
         while !ready.is_empty() {
             let mut results = vec![];
@@ -162,7 +171,7 @@ impl DagExecutor {
                                     "Failed to get sub graph with id = {:?}",
                                     sub_graph_id
                                 )))?;
-                        let res = self.run_dag(sub_dag).await?;
+                        let res = self.run_dag(sub_dag, input).await?;
                         results.push((ix, res));
                     }
                 }
