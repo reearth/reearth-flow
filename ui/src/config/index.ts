@@ -13,10 +13,14 @@ declare global {
   }
 }
 
+const defaultConfig: Config = {
+  version: "X.X.X",
+};
+
 export default async function loadConfig() {
   if (window.FLOW_CONFIG) return;
 
-  window.FLOW_CONFIG = {};
+  window.FLOW_CONFIG = defaultConfig;
 
   const config: Config = {
     ...(await (await fetch("/flow_config.json")).json()),
@@ -25,6 +29,6 @@ export default async function loadConfig() {
   window.FLOW_CONFIG = config;
 }
 
-export function config(): Config | undefined {
-  return window.FLOW_CONFIG;
+export function config(): Config {
+  return window.FLOW_CONFIG ?? {};
 }

@@ -9,9 +9,7 @@ import { WorkspaceMembers } from "./components";
 
 const LeftSection: React.FC = () => {
   const t = useT();
-  const githubRepoUrl = config()?.githubRepoUrl;
-  const tosUrl = config()?.tosUrl;
-  const documentationUrl = config()?.documentationUrl;
+  const { githubRepoUrl, tosUrl, documentationUrl } = config();
 
   const handleGithubPageOpen = useOpenLink(githubRepoUrl ?? "");
   const handleTosPageOpen = useOpenLink(tosUrl ?? "");
