@@ -37,4 +37,4 @@ const Dialog: React.FC = () => {
   );
 };
 
-export { Dialog };
+export default Dialog;

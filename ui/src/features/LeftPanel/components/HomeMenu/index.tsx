@@ -1,3 +1,5 @@
+import { DashboardIcon } from "@radix-ui/react-icons";
+import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, Search } from "lucide-react";
 
 import {
@@ -8,7 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
+  // DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -19,7 +21,7 @@ import {
 import { config } from "@flow/config";
 import { useOpenLink } from "@flow/hooks";
 import { useT } from "@flow/providers";
-import { useDialogType } from "@flow/stores";
+import { useCurrentWorkspace, useDialogType } from "@flow/stores";
 
 import { AccountSetting, KeyboardSetting, WorkflowSetting, WorkspacesSetting } from "./components";
 
@@ -29,70 +31,76 @@ const HomeMenu: React.FC<Props> = () => {
   const [, setDialogType] = useDialogType();
   const t = useT();
   const githubRepoUrl = config()?.githubRepoUrl;
+  const [currentWorkspace] = useCurrentWorkspace();
+  const navigate = useNavigate({ from: "/project/$projectId" });
 
   const handleGithubPageOpen = useOpenLink(githubRepoUrl ?? "");
   return (
-    <DropdownMenu>
-      <div className="flex justify-between items-center">
-        <DropdownMenuTrigger className="flex justify-between items-center rounded py-1.5 px-2 bg-red-900/80 border border-transparent transition-colors hover:bg-transparent hover:border-red-900">
-          <FlowLogo wrapperClassName="justify-start bg-opacity-75 rounded-md hover:bg-opacity-100 transition-colors" />
-          <ChevronDown className="ml-2" size="12px" />
+    <div className="flex justify-between items-center">
+      <DropdownMenu>
+        <DropdownMenuTrigger className="flex justify-between items-center rounded px-2 transition-colors group">
+          <FlowLogo wrapperClassName="justify-start bg-opacity-75 bg-red-800/50 p-2 rounded transition-colors border border-transparent group-hover:bg-transparent group-hover:border-red-900" />
+          <ChevronDown className="ml-2 group-hover:text-zinc-200" size="12px" />
         </DropdownMenuTrigger>
-        <div>
-          <IconButton
-            variant="ghost"
-            size="icon"
-            icon={<Search className="stroke-1" />}
-            onClick={() => setDialogType("canvas-search")}
-          />
-        </div>
-      </div>
-      <DropdownMenuContent sideOffset={4} align="start" alignOffset={5} className="w-[275px]">
-        <DropdownMenuLabel className="flex gap-2 text-zinc-400 justify-end items-center">
-          <p>
-            {t("Re:Earth Flow v")}
-            {config()?.version ?? "X.X.X"}
-          </p>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator className="bg-zinc-800" />
-        <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => setDialogType("welcome-init")}>
-            {t("Home")}
-            <DropdownMenuShortcut>⇧⌘H</DropdownMenuShortcut>
-          </DropdownMenuItem>
+
+        <DropdownMenuContent sideOffset={4} align="start" alignOffset={5} className="w-[275px]">
+          <DropdownMenuLabel className="flex gap-2 text-zinc-400 justify-end items-center">
+            <p>
+              {t("Re:Earth Flow v")}
+              {config()?.version ?? "X.X.X"}
+            </p>
+          </DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-zinc-800" />
-          <AccountSetting />
-          <WorkspacesSetting />
-          <WorkflowSetting />
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator className="bg-zinc-800" />
-        <DropdownMenuGroup>
-          <KeyboardSetting />
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Invite users</DropdownMenuSubTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent sideOffset={2}>
-                <DropdownMenuItem>Email</DropdownMenuItem>
-                <DropdownMenuItem>Message</DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-zinc-800" />
-                <DropdownMenuItem>More...</DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator className="bg-zinc-800" />
-        {githubRepoUrl && (
-          <DropdownMenuItem onClick={handleGithubPageOpen}>{t("GitHub")}</DropdownMenuItem>
-        )}
-        <DropdownMenuItem disabled>{t("Support (coming soon)")}</DropdownMenuItem>
-        {/* <DropdownMenuItem disabled>API</DropdownMenuItem> */}
-        <DropdownMenuSeparator className="bg-zinc-800" />
-        <DropdownMenuItem>
-          Log out
-          {/* <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut> */}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              className="gap-2"
+              onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}` })}>
+              <DashboardIcon />
+              {t("Dashboard")}
+              {/* <DropdownMenuShortcut>⇧⌘H</DropdownMenuShortcut> */}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-zinc-800" />
+            <AccountSetting />
+            <WorkspacesSetting />
+            <WorkflowSetting />
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator className="bg-zinc-800" />
+          <DropdownMenuGroup>
+            <KeyboardSetting />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Invite users</DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent sideOffset={2}>
+                  <DropdownMenuItem>Email</DropdownMenuItem>
+                  <DropdownMenuItem>Message</DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-zinc-800" />
+                  <DropdownMenuItem>More...</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator className="bg-zinc-800" />
+          {githubRepoUrl && (
+            <DropdownMenuItem onClick={handleGithubPageOpen}>{t("GitHub")}</DropdownMenuItem>
+          )}
+          <DropdownMenuItem disabled>{t("Support (coming soon)")}</DropdownMenuItem>
+          {/* <DropdownMenuItem disabled>API</DropdownMenuItem> */}
+          <DropdownMenuSeparator className="bg-zinc-800" />
+          <DropdownMenuItem>
+            Log out
+            {/* <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut> */}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <div>
+        <IconButton
+          variant="ghost"
+          size="icon"
+          icon={<Search className="stroke-1" />}
+          onClick={() => setDialogType("canvas-search")}
+        />
+      </div>
+    </div>
   );
 };
 

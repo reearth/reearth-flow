@@ -49,22 +49,13 @@ const LeftPanel: React.FC<Props> = ({ className, data }) => {
 
   const panelContents: PanelContent[] = [
     {
-      id: "home-menu",
-      icon: <FlowLogo />,
-      component: <HomeMenu />,
-    },
-    {
-      id: "space",
-      component: <div className="border-zinc-700/50 border-t-[1px] w-[100%]" />,
-    },
-    {
       id: "navigator",
       // title: t("Canvas"),
       icon: <FileIcon />,
       component: data && (
         <Tree
           data={treeContent}
-          className="flex-shrink-0 w-full h-[60vh] text-zinc-300 bg-zinc-900/30 border border-zinc-900 rounded"
+          className="flex-shrink-0 w-full text-zinc-300 rounded truncate"
           // initialSlelectedItemId="1"
           onSelectChange={item => setContent(item?.name ?? "")}
           // folderIcon={Folder}
@@ -75,9 +66,13 @@ const LeftPanel: React.FC<Props> = ({ className, data }) => {
   ];
   return (
     <VerticalPanel
-      className={`bg-zinc-800 bg-opacity-75 rounded-md backdrop-blur-md ${className}`}
+      className={`bg-zinc-800 border-r border-zinc-700 ${className}`}
       isOpen={!!isPanelOpen}
-      togglePosition="end-right"
+      headerContent={{
+        id: "home-menu",
+        icon: <FlowLogo />,
+        component: <HomeMenu />,
+      }}
       panelContents={panelContents}
       onPanelToggle={handlePanelToggle}
     />

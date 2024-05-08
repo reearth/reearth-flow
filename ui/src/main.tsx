@@ -1,19 +1,17 @@
+import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { createRoot } from "react-dom/client";
 
-import App from "./App.tsx";
-import "./index.css";
 import loadConfig from "./config";
+import { routeTree } from "./routeTree.gen.ts";
+
+import "./index.css";
+
+const router = createRouter({ routeTree });
 
 loadConfig().finally(async () => {
   const element = document.getElementById("root");
   if (!element) throw new Error("root element is not found");
 
   const root = createRoot(element);
-  root.render(<App />);
+  root.render(<RouterProvider router={router} />);
 });
-
-// ReactDOM.createRoot(document.getElementById("root")!).render(
-//   <React.StrictMode>
-//     <App />
-//   </React.StrictMode>,
-// );
