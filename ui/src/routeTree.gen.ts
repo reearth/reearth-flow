@@ -46,10 +46,10 @@ const WorkspaceWorkspaceIdLazyRoute = WorkspaceWorkspaceIdLazyImport.update({
 
 const WorkspaceWorkspaceIdProjectProjectIdLazyRoute =
   WorkspaceWorkspaceIdProjectProjectIdLazyImport.update({
-    path: '/project/$projectId',
-    getParentRoute: () => WorkspaceWorkspaceIdLazyRoute,
+    path: '/workspace/$workspaceId/project/$projectId',
+    getParentRoute: () => rootRoute,
   } as any).lazy(() =>
-    import('./routes/workspace_.$workspaceId.project.$projectId.lazy').then(
+    import('./routes/workspace_.$workspaceId_.project.$projectId.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -72,7 +72,7 @@ declare module '@tanstack/react-router' {
     }
     '/workspace/$workspaceId/project/$projectId': {
       preLoaderRoute: typeof WorkspaceWorkspaceIdProjectProjectIdLazyImport
-      parentRoute: typeof WorkspaceWorkspaceIdLazyImport
+      parentRoute: typeof rootRoute
     }
   }
 }
@@ -82,9 +82,8 @@ declare module '@tanstack/react-router' {
 export const routeTree = rootRoute.addChildren([
   IndexLazyRoute,
   WorkspaceLazyRoute,
-  WorkspaceWorkspaceIdLazyRoute.addChildren([
-    WorkspaceWorkspaceIdProjectProjectIdLazyRoute,
-  ]),
+  WorkspaceWorkspaceIdLazyRoute,
+  WorkspaceWorkspaceIdProjectProjectIdLazyRoute,
 ])
 
 /* prettier-ignore-end */
