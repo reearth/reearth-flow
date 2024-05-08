@@ -1,7 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
 
-import projectImage from "@flow/assets/project-screenshot.png";
+import projectImage from "@flow/assets/project-screenshot.png"; // TODO: replace with actual project image
 import {
   Card,
   CardContent,
@@ -10,12 +9,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@flow/components";
-import { workspaces } from "@flow/mock_data/workspaceData";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
-import { Project } from "@flow/types";
+import type { Project } from "@flow/types";
 
 const MainSection: React.FC = () => {
-  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
+  const [currentWorkspace] = useCurrentWorkspace();
   const [currentProject, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
 
@@ -27,12 +25,6 @@ const MainSection: React.FC = () => {
   };
 
   const projects = currentWorkspace?.projects;
-
-  useEffect(() => {
-    if (!currentWorkspace) {
-      setCurrentWorkspace(workspaces[0]);
-    }
-  }, [currentWorkspace, setCurrentWorkspace]);
 
   return (
     <div className="flex flex-col flex-1 justify-between border border-zinc-700 m-2 rounded-lg">
