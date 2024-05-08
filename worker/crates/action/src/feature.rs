@@ -6,11 +6,17 @@ use serde::{Deserialize, Serialize};
 pub use crate::attribute::AttributeValue;
 use crate::{geometry::Geometry, Attribute};
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feature {
     pub id: uuid::Uuid,
     pub attributes: HashMap<Attribute, AttributeValue>,
     pub geometry: Option<Geometry>,
+}
+
+impl Default for Feature {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Display for Feature {

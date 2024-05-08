@@ -73,6 +73,13 @@ pub fn collect_text_value(xpath_value: &XmlXpathValue) -> String {
     }
 }
 
+pub fn get_node_prefix(node: &XmlNode) -> String {
+    match node.get_namespace() {
+        Some(ns) => ns.get_prefix(),
+        None => "".to_string(),
+    }
+}
+
 pub fn get_node_tag(node: &XmlNode) -> String {
     match node.get_namespace() {
         Some(ns) => format!("{}:{}", ns.get_prefix(), node.get_name()).to_string(),
@@ -134,6 +141,28 @@ pub fn validate_document_by_schema_context(
         Ok(_) => Ok(true),
         Err(_) => Ok(false),
     }
+}
+
+pub fn find_nodes_by_xpath(
+    ctx: &XmlContext,
+    xpath: &str,
+    node: &XmlNode,
+) -> crate::Result<Vec<XmlNode>> {
+    let result = ctx
+        .node_evaluate(xpath, node)
+        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
+    let result = result
+        .get_nodes_as_vec()
+        .into_iter()
+        .filter(|node| {
+            if let Some(node_type) = node.get_type() {
+                node_type == XmlNodeType::ElementNode
+            } else {
+                false
+            }
+        })
+        .collect::<Vec<_>>();
+    Ok(result)
 }
 
 #[cfg(test)]
