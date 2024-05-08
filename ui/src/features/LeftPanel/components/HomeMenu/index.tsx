@@ -30,7 +30,7 @@ type Props = {};
 const HomeMenu: React.FC<Props> = () => {
   const [, setDialogType] = useDialogType();
   const t = useT();
-  const githubRepoUrl = config()?.githubRepoUrl;
+  const { githubRepoUrl, brandName, version } = config();
   const [currentWorkspace] = useCurrentWorkspace();
   const navigate = useNavigate({ from: "/project/$projectId" });
 
@@ -46,8 +46,8 @@ const HomeMenu: React.FC<Props> = () => {
         <DropdownMenuContent sideOffset={4} align="start" alignOffset={5} className="w-[275px]">
           <DropdownMenuLabel className="flex gap-2 text-zinc-400 justify-end items-center">
             <p>
-              {t("Re:Earth Flow v")}
-              {config()?.version ?? "X.X.X"}
+              {brandName ?? t("Re:Earth Flow v")}
+              {version}
             </p>
           </DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-zinc-800" />

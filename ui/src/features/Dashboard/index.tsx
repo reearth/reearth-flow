@@ -8,6 +8,7 @@ import { UserNavigation } from "./components/UserNavigation";
 
 const Dashboard: React.FC = () => {
   const t = useT();
+  const { brandName, version } = config();
 
   return (
     <div className="[&>*]:dark relative bg-zinc-800 pt-16 text-zinc-300 h-[100vh]">
@@ -18,8 +19,7 @@ const Dashboard: React.FC = () => {
               <FlowLogo />
             </div>
             <h1 className="text-md font-extralight select-none">
-              {config()?.brandName ??
-                t("Re:Earth Flow") + (config()?.version && ` ${config()?.version}`)}
+              {brandName ?? t("Re:Earth Flow")} {version ?? "X.X.X"}
             </h1>
           </div>
           <div id="dashboard-middle" className="absolute left-0 right-0 flex justify-center">
