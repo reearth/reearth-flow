@@ -1,3 +1,4 @@
 *           @reearth/flow-codeowners
 
 /ui/        @KaWaite
+/api/       @pyshx
