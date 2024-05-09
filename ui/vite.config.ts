@@ -11,6 +11,16 @@ import pkg from "./package.json";
 export default defineConfig({
   envPrefix: "FLOW_",
   plugins: [react(), TanStackRouterVite(), config()],
+  build: {
+    target: "esnext",
+    assetsDir: "static", // avoid conflicts with backend asset endpoints
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, "index.html"),
+      },
+    },
+    minify: "esbuild",
+  },
   resolve: {
     alias: [{ find: "@flow", replacement: resolve(__dirname, "./src") }],
   },
