@@ -65,7 +65,6 @@ pub trait CharacterData: Node {
 
 pub trait Comment: CharacterData {}
 
-///
 pub trait Document: Node {
     fn doc_type(&self) -> Option<Self::NodeRef>;
 

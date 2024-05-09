@@ -31,45 +31,47 @@ export default function ActionBar() {
   }, []);
 
   return (
-    <div className="flex rounded-md border-none bg-zinc-800 p-1 m-1">
-      <div className="flex justify-end align-middle flex-1">
-        <IconButton
-          tooltipText={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
-          tooltipOffset={tooltipOffset}
-          icon={isFullscreen ? <ExitFullScreenIcon /> : <EnterFullScreenIcon />}
-          onClick={handleFullscreenToggle}
-        />
-        <IconButton
-          tooltipText={t("Zoom out")}
-          tooltipOffset={tooltipOffset}
-          icon={<ZoomOutIcon />}
-          onClick={() => zoomOut({ duration: 400 })}
-        />
-        <IconButton
-          tooltipText={t("Zoom in")}
-          tooltipOffset={tooltipOffset}
-          icon={<ZoomInIcon />}
-          onClick={() => zoomIn({ duration: 400 })}
-        />
-        <IconButton
-          tooltipText={t("All nodes in viewport")}
-          tooltipOffset={tooltipOffset}
-          icon={<CenterIcon />}
-          onClick={() => fitView({ duration: 400, padding: 0.5 })}
-        />
-        <div className="border-l border-zinc-700 mx-3" />
-      </div>
-      <div className="flex align-middle">
-        <IconButton
-          tooltipText={t("Publish workflow")}
-          tooltipOffset={tooltipOffset}
-          icon={<Link2Icon />}
-        />
-        <IconButton
-          tooltipText={t("Download workflow")}
-          tooltipOffset={tooltipOffset}
-          icon={<DownloadIcon />}
-        />
+    <div className="bg-zinc-800">
+      <div className="flex rounded-md bg-zinc-700/40 border border-zinc-700 p-1 m-1">
+        <div className="flex justify-end align-middle flex-1">
+          <IconButton
+            tooltipText={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
+            tooltipOffset={tooltipOffset}
+            icon={isFullscreen ? <ExitFullScreenIcon /> : <EnterFullScreenIcon />}
+            onClick={handleFullscreenToggle}
+          />
+          <IconButton
+            tooltipText={t("Zoom out")}
+            tooltipOffset={tooltipOffset}
+            icon={<ZoomOutIcon />}
+            onClick={() => zoomOut({ duration: 400 })}
+          />
+          <IconButton
+            tooltipText={t("Zoom in")}
+            tooltipOffset={tooltipOffset}
+            icon={<ZoomInIcon />}
+            onClick={() => zoomIn({ duration: 400 })}
+          />
+          <IconButton
+            tooltipText={t("All nodes in viewport")}
+            tooltipOffset={tooltipOffset}
+            icon={<CenterIcon />}
+            onClick={() => fitView({ duration: 400, padding: 0.5 })}
+          />
+          <div className="border-l border-zinc-700 mx-3" />
+        </div>
+        <div className="flex align-middle">
+          <IconButton
+            tooltipText={t("Publish workflow")}
+            tooltipOffset={tooltipOffset}
+            icon={<Link2Icon />}
+          />
+          <IconButton
+            tooltipText={t("Download workflow")}
+            tooltipOffset={tooltipOffset}
+            icon={<DownloadIcon />}
+          />
+        </div>
       </div>
     </div>
   );

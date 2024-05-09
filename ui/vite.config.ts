@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
+import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 import react from "@vitejs/plugin-react";
 import { readEnv } from "read-env";
 import { Plugin, UserConfig, defineConfig, loadEnv } from "vite";
@@ -9,7 +10,7 @@ import pkg from "./package.json";
 
 export default defineConfig({
   envPrefix: "FLOW_",
-  plugins: [react(), config()],
+  plugins: [react(), TanStackRouterVite(), config()],
   resolve: {
     alias: [{ find: "@flow", replacement: resolve(__dirname, "./src") }],
   },
@@ -31,7 +32,7 @@ function config(): Plugin {
 
       const configRes = JSON.stringify(
         {
-          version: JSON.stringify(pkg.version),
+          version: pkg.version,
           ...remoteConfig,
           ...readEnv("FLOW", {
             source: envs,

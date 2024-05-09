@@ -46,58 +46,14 @@ mod tests {
     use reearth_flow_action::{Attribute, AttributeValue, Feature, DEFAULT_PORT};
     use rstest::*;
     use std::collections::HashMap;
+    use uuid::uuid;
 
     #[fixture]
     async fn inputs() -> Vec<Feature> {
         vec![
-            Feature::new_with_attributes(HashMap::from([
-                (
-                    Attribute::new("name"),
-                    AttributeValue::String("Alice".to_string()),
-                ),
-                (
-                    Attribute::new("age"),
-                    AttributeValue::Number(serde_json::Number::from(25)),
-                ),
-            ])),
-            Feature::new_with_attributes(HashMap::from([
-                (
-                    Attribute::new("name"),
-                    AttributeValue::String("Bob".to_string()),
-                ),
-                (
-                    Attribute::new("age"),
-                    AttributeValue::Number(serde_json::Number::from(25)),
-                ),
-            ])),
-            Feature::new_with_attributes(HashMap::from([
-                (
-                    Attribute::new("name"),
-                    AttributeValue::String("Bob".to_string()),
-                ),
-                (
-                    Attribute::new("age"),
-                    AttributeValue::Number(serde_json::Number::from(25)),
-                ),
-            ])),
-        ]
-    }
-
-    #[fixture]
-    async fn expected() -> Vec<Vec<Feature>> {
-        vec![
-            vec![Feature::new_with_attributes(HashMap::from([
-                (
-                    Attribute::new("name"),
-                    AttributeValue::String("Alice".to_string()),
-                ),
-                (
-                    Attribute::new("age"),
-                    AttributeValue::Number(serde_json::Number::from(25)),
-                ),
-            ]))],
-            vec![
-                Feature::new_with_attributes(HashMap::from([
+            Feature::new_with_id_and_attributes(
+                uuid!("2830de29-b6bd-4783-9a89-042a587c2b4a"),
+                HashMap::from([
                     (
                         Attribute::new("name"),
                         AttributeValue::String("Alice".to_string()),
@@ -106,8 +62,11 @@ mod tests {
                         Attribute::new("age"),
                         AttributeValue::Number(serde_json::Number::from(25)),
                     ),
-                ])),
-                Feature::new_with_attributes(HashMap::from([
+                ]),
+            ),
+            Feature::new_with_id_and_attributes(
+                uuid!("2830de29-b6bd-4783-9a89-042a587c2b4b"),
+                HashMap::from([
                     (
                         Attribute::new("name"),
                         AttributeValue::String("Bob".to_string()),
@@ -116,7 +75,67 @@ mod tests {
                         Attribute::new("age"),
                         AttributeValue::Number(serde_json::Number::from(25)),
                     ),
-                ])),
+                ]),
+            ),
+            Feature::new_with_id_and_attributes(
+                uuid!("2830de29-b6bd-4783-9a89-042a587c2b4c"),
+                HashMap::from([
+                    (
+                        Attribute::new("name"),
+                        AttributeValue::String("Bob".to_string()),
+                    ),
+                    (
+                        Attribute::new("age"),
+                        AttributeValue::Number(serde_json::Number::from(25)),
+                    ),
+                ]),
+            ),
+        ]
+    }
+
+    #[fixture]
+    async fn expected() -> Vec<Vec<Feature>> {
+        vec![
+            vec![Feature::new_with_id_and_attributes(
+                uuid!("2830de29-b6bd-4783-9a89-042a587c2b4a"),
+                HashMap::from([
+                    (
+                        Attribute::new("name"),
+                        AttributeValue::String("Alice".to_string()),
+                    ),
+                    (
+                        Attribute::new("age"),
+                        AttributeValue::Number(serde_json::Number::from(25)),
+                    ),
+                ]),
+            )],
+            vec![
+                Feature::new_with_id_and_attributes(
+                    uuid!("2830de29-b6bd-4783-9a89-042a587c2b4a"),
+                    HashMap::from([
+                        (
+                            Attribute::new("name"),
+                            AttributeValue::String("Alice".to_string()),
+                        ),
+                        (
+                            Attribute::new("age"),
+                            AttributeValue::Number(serde_json::Number::from(25)),
+                        ),
+                    ]),
+                ),
+                Feature::new_with_id_and_attributes(
+                    uuid!("2830de29-b6bd-4783-9a89-042a587c2b4b"),
+                    HashMap::from([
+                        (
+                            Attribute::new("name"),
+                            AttributeValue::String("Bob".to_string()),
+                        ),
+                        (
+                            Attribute::new("age"),
+                            AttributeValue::Number(serde_json::Number::from(25)),
+                        ),
+                    ]),
+                ),
             ],
         ]
     }

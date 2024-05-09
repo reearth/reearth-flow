@@ -8,6 +8,7 @@ use std::str::FromStr;
 
 use serde::de::Error;
 use serde::{Deserialize, Serialize, Serializer};
+use url::Url;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -17,6 +18,7 @@ pub enum Protocol {
     Ram = 2,
     Google = 3,
     Http = 4,
+    Https = 5,
 }
 
 impl Protocol {
@@ -25,12 +27,16 @@ impl Protocol {
             Protocol::File => "file",
             Protocol::Ram => "ram",
             Protocol::Google => "gs",
-            Protocol::Http => "https",
+            Protocol::Http => "http",
+            Protocol::Https => "https",
         }
     }
 
     pub fn is_file(&self) -> bool {
-        matches!(&self, Protocol::File | Protocol::Ram | Protocol::Http)
+        matches!(
+            &self,
+            Protocol::File | Protocol::Ram | Protocol::Http | Protocol::Https
+        )
     }
 
     pub fn is_file_storage(&self) -> bool {
@@ -46,7 +52,8 @@ impl Protocol {
             Protocol::File => "file://",
             Protocol::Ram => "ram://",
             Protocol::Google => "gs://",
-            Protocol::Http => "https://",
+            Protocol::Http => "http://",
+            Protocol::Https => "https://",
         }
     }
 }
@@ -65,13 +72,14 @@ impl FromStr for Protocol {
             "file" => Ok(Protocol::File),
             "ram" => Ok(Protocol::Ram),
             "gs" => Ok(Protocol::Google),
-            "https" => Ok(Protocol::Http),
+            "http" => Ok(Protocol::Http),
+            "https" => Ok(Protocol::Https),
             _ => Err(crate::Error::Uri(format!("Unknown protocol: {}", protocol))),
         }
     }
 }
 
-const PROTOCOL_SEPARATOR: &str = "://";
+pub const PROTOCOL_SEPARATOR: &str = "://";
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Uri {
@@ -278,6 +286,14 @@ impl FromStr for Uri {
 
     fn from_str(uri_str: &str) -> crate::Result<Self> {
         Uri::parse_str(uri_str)
+    }
+}
+
+impl TryFrom<Url> for Uri {
+    type Error = crate::Error;
+
+    fn try_from(url: Url) -> crate::Result<Self> {
+        Self::parse_str(url.to_string().as_str())
     }
 }
 

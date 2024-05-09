@@ -7,15 +7,18 @@ export type Workspace = {
   projects: Project[] | undefined;
 };
 
-export type Project = {
-  id: string;
-  name: string;
-  workflows: Workflow[] | undefined;
-};
-
 export type Member = {
   id: string;
   name: string;
+  // status?: "online" | "offline"; // "away" | "idle" ??
+  // role: "reader" | "writer" | "admin";
+};
+
+export type Project = {
+  id: string;
+  name: string;
+  description?: string;
+  workflows: Workflow[] | undefined;
 };
 
 export type Workflow = {

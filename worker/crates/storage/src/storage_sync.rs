@@ -4,6 +4,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::task::Context;
 use std::task::Poll;
+use std::time::Duration;
 
 use bytes::Bytes;
 use futures::Stream;
@@ -11,6 +12,7 @@ use object_store::ObjectMeta;
 use object_store::Result;
 use opendal::BlockingReader;
 use opendal::Metakey;
+use reearth_flow_common::uri::Protocol;
 use reearth_flow_common::uri::Uri;
 
 use crate::storage::format_object_store_error;
@@ -64,24 +66,52 @@ impl Storage {
     }
 
     pub fn get_sync(&self, location: &Path) -> Result<Bytes> {
-        let p = location.to_str().ok_or(object_store::Error::InvalidPath {
-            source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
-            },
-        })?;
-        let mut r = self
-            .inner
-            .blocking()
-            .reader(p)
-            .map_err(|err| format_object_store_error(err, p))?;
+        match self.base_uri.protocol() {
+            Protocol::Http | Protocol::Https => {
+                let result = location.to_str().unwrap();
+                let url = format!("{}{}", self.base_uri, result);
+                let client = reqwest::blocking::Client::builder()
+                    .timeout(Duration::from_secs(1))
+                    .build()
+                    .map_err(|err| object_store::Error::Generic {
+                        store: "HttpError",
+                        source: Box::new(err),
+                    })?;
+                let res =
+                    client
+                        .get(url.clone())
+                        .send()
+                        .map_err(|err| object_store::Error::Generic {
+                            store: "HttpError",
+                            source: Box::new(err),
+                        })?;
+                let buf = res.bytes().map_err(|err| object_store::Error::Generic {
+                    store: "HttpError",
+                    source: Box::new(err),
+                })?;
+                Ok(buf)
+            }
+            _ => {
+                let p = location.to_str().ok_or(object_store::Error::InvalidPath {
+                    source: object_store::path::Error::InvalidPath {
+                        path: format!("{:?}", location).into(),
+                    },
+                })?;
+                let mut r = self
+                    .inner
+                    .blocking()
+                    .reader(p)
+                    .map_err(|err| format_object_store_error(err, p))?;
 
-        let mut buf = Vec::new();
-        r.read_to_end(&mut buf)
-            .map_err(|err| object_store::Error::Generic {
-                store: "IoError",
-                source: Box::new(err),
-            })?;
-        Ok(Bytes::from(buf))
+                let mut buf = Vec::new();
+                r.read_to_end(&mut buf)
+                    .map_err(|err| object_store::Error::Generic {
+                        store: "IoError",
+                        source: Box::new(err),
+                    })?;
+                Ok(Bytes::from(buf))
+            }
+        }
     }
 
     pub fn exists_sync(&self, location: &Path) -> Result<bool> {
