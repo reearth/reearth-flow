@@ -1,54 +1,60 @@
-use regex::{escape, Regex};
+use std::{collections::HashMap, ops::Not};
+
+use regex::RegexBuilder;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_action::{
-    error::Error, ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue,
-    Dataframe, Feature,
+    error::Error, ActionContext, ActionDataframe, ActionResult, AsyncAction, Attribute,
+    AttributeValue, Dataframe, Feature, Port, DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeStringSearcher {
     search_in: String,
-    contains_regular_expression: bool,
+    contains_regular_expression: String,
+    matched_result: String,
+    case_sensitive: bool,
 }
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "AttributeStringSearcher")]
 impl AsyncAction for AttributeStringSearcher {
     async fn run(&self, _ctx: ActionContext, inputs: ActionDataframe) -> ActionResult {
-        let re = if self.contains_regular_expression {
-            Regex::new(&self.search_in)
-                .map_err(|e| Error::input(format!("Invalid regex pattern with error: {:?}", e)))
-        } else {
-            Regex::new(&escape(&self.search_in))
-                .map_err(|e| Error::input(format!("Invalid regex pattern with error: {:?}", e)))
-        }?;
-        let output = inputs
-            .iter()
-            .map(|(k, v)| {
-                (
-                    k.clone(),
-                    Dataframe::new(
-                        v.features
-                            .iter()
-                            .flat_map(|v| search(v, &re))
-                            .collect::<Vec<_>>(),
-                    ),
-                )
-            })
-            .collect();
+        let re = RegexBuilder::new(&self.contains_regular_expression)
+            .case_insensitive(self.case_sensitive.not())
+            .build()
+            .map_err(|e| Error::input(format!("Invalid regex pattern with error: {:?}", e)))?;
+        let dataframe = inputs
+            .get(&DEFAULT_PORT)
+            .ok_or(Error::input("no default"))?;
+        let mut matched: Vec<Feature> = vec![];
+        let mut not_matched: Vec<Feature> = vec![];
+        for x in dataframe.features.clone() {
+            if let Some(v) = x.get(&self.search_in) {
+                match v {
+                    AttributeValue::String(s) => {
+                        if let Some(m) = re.find(s) {
+                            let mut new_line = x.attributes.clone();
+                            new_line.insert(
+                                Attribute::new(self.matched_result.to_string()),
+                                AttributeValue::String(m.as_str().to_string()),
+                            );
+                            matched.push(Feature::new_with_attributes(new_line));
+                        } else {
+                            not_matched.push(x);
+                        }
+                    }
+                    _ => not_matched.push(x),
+                }
+            } else {
+                not_matched.push(x)
+            }
+        }
+        let output = HashMap::from([
+            (Port::new("Matched"), Dataframe::new(matched)),
+            (Port::new("NotMatched"), Dataframe::new(not_matched)),
+        ]);
         Ok(output)
-    }
-}
-
-fn search(v: &Feature, re: &Regex) -> Option<Feature> {
-    if v.attributes.iter().any(|(_, v)| match v {
-        AttributeValue::String(s) => re.is_match(s),
-        _ => false,
-    }) {
-        Some(v.clone())
-    } else {
-        None
     }
 }
