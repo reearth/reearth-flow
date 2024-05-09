@@ -7,7 +7,8 @@ use reearth_flow_common::csv::Delimiter;
 
 use super::{citygml, csv, json, text};
 use reearth_flow_action::{
-    ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue, Result, DEFAULT_PORT,
+    ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue, Dataframe, Result,
+    DEFAULT_PORT,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -55,7 +56,7 @@ pub enum FileReader {
 impl AsyncAction for FileReader {
     async fn run(&self, ctx: ActionContext, _inputs: ActionDataframe) -> ActionResult {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let results = match self {
+        let results: Dataframe = match self {
             Self::Csv {
                 common_property,
                 property,
@@ -63,7 +64,7 @@ impl AsyncAction for FileReader {
                 let input_path = get_input_path(&ctx, common_property).await?;
                 let result =
                     csv::read_csv(Delimiter::Comma, input_path, property, storage_resolver).await?;
-                AttributeValue::Array(result)
+                AttributeValue::Array(result).into()
             }
             Self::Tsv {
                 common_property,
@@ -72,22 +73,22 @@ impl AsyncAction for FileReader {
                 let input_path = get_input_path(&ctx, common_property).await?;
                 let result =
                     csv::read_csv(Delimiter::Tab, input_path, property, storage_resolver).await?;
-                AttributeValue::Array(result)
+                AttributeValue::Array(result).into()
             }
             Self::Text { common_property } => {
                 let input_path = get_input_path(&ctx, common_property).await?;
-                text::read_text(input_path, storage_resolver).await?
+                text::read_text(input_path, storage_resolver).await?.into()
             }
             Self::Json { common_property } => {
                 let input_path = get_input_path(&ctx, common_property).await?;
-                json::read_json(input_path, storage_resolver).await?
+                json::read_json(input_path, storage_resolver).await?.into()
             }
             Self::CityGML { common_property } => {
                 let input_path = get_input_path(&ctx, common_property).await?;
-                citygml::read_citygml(input_path, ctx).await?
+                citygml::read_citygml(input_path, ctx).await?.into()
             }
         };
-        let output = ActionDataframe::from([(DEFAULT_PORT.clone(), results.into())]);
+        let output = ActionDataframe::from([(DEFAULT_PORT.clone(), results)]);
         Ok(output)
     }
 }

@@ -5,7 +5,6 @@ use approx::{AbsDiffEq, RelativeEq};
 use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
-use super::geometry_collection::GeometryCollection;
 use super::line::Line;
 use super::line_string::LineString;
 use super::multi_line_string::MultiLineString;
@@ -27,7 +26,6 @@ pub enum Geometry<T: CoordNum = f64, Z: CoordNum = NoValue> {
     MultiPoint(MultiPoint<T, Z>),
     MultiLineString(MultiLineString<T, Z>),
     MultiPolygon(MultiPolygon<T, Z>),
-    GeometryCollection(GeometryCollection<T, Z>),
     Rectangle(Rectangle<T, Z>),
     Triangle(Triangle<T, Z>),
 }
@@ -125,7 +123,6 @@ fn inner_type_name<T: CoordNum, Z: CoordNum>(geometry: Geometry<T, Z>) -> &'stat
         Geometry::MultiPoint(_) => type_name::<MultiPoint<T, Z>>(),
         Geometry::MultiLineString(_) => type_name::<MultiLineString<T, Z>>(),
         Geometry::MultiPolygon(_) => type_name::<MultiPolygon<T, Z>>(),
-        Geometry::GeometryCollection(_) => type_name::<GeometryCollection<T, Z>>(),
         Geometry::Rectangle(_) => type_name::<Rectangle<T, Z>>(),
         Geometry::Triangle(_) => type_name::<Triangle<T, Z>>(),
     }
@@ -164,9 +161,6 @@ where
             (Geometry::MultiPolygon(g1), Geometry::MultiPolygon(g2)) => {
                 g1.relative_eq(g2, epsilon, max_relative)
             }
-            (Geometry::GeometryCollection(g1), Geometry::GeometryCollection(g2)) => {
-                g1.relative_eq(g2, epsilon, max_relative)
-            }
             (Geometry::Rectangle(g1), Geometry::Rectangle(g2)) => {
                 g1.relative_eq(g2, epsilon, max_relative)
             }
@@ -197,9 +191,6 @@ impl<T: AbsDiffEq<Epsilon = T> + CoordNum> AbsDiffEq for Geometry<T, T> {
                 g1.abs_diff_eq(g2, epsilon)
             }
             (Geometry::MultiPolygon(g1), Geometry::MultiPolygon(g2)) => g1.abs_diff_eq(g2, epsilon),
-            (Geometry::GeometryCollection(g1), Geometry::GeometryCollection(g2)) => {
-                g1.abs_diff_eq(g2, epsilon)
-            }
             (Geometry::Rectangle(g1), Geometry::Rectangle(g2)) => g1.abs_diff_eq(g2, epsilon),
             (Geometry::Triangle(g1), Geometry::Triangle(g2)) => g1.abs_diff_eq(g2, epsilon),
             (_, _) => false,

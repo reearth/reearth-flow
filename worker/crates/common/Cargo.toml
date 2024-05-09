@@ -12,12 +12,12 @@ version.workspace = true
 
 [dependencies]
 async-recursion.workspace = true
-base64 = "0.22.0"
+base64 = "0.22.1"
 bytes.workspace = true
 colorsys.workspace = true
 futures.workspace = true
 home = "0.5.9"
-libxml = "0.3.3"
+libxml.workspace = true
 petgraph.workspace = true
 rayon.workspace = true
 serde.workspace = true

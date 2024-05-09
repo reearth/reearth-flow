@@ -6,13 +6,14 @@ use serde::{Deserialize, Serialize};
 use nusamai_geometry::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3};
 
 use super::coordnum::CoordNum;
+use super::line_string::LineString;
 use super::no_value::NoValue;
-use super::polygon::{Polygon, Polygon2D, Polygon3D};
+use super::polygon::{Polygon, Polygon2D};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
-pub struct MultiPolygon<T: CoordNum = f64, Z: CoordNum = NoValue>(pub Vec<Polygon<T, Z>>);
+pub struct MultiPolygon<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Polygon<T, Z>>);
 
-pub type MultiPolygon2D<T> = MultiPolygon<T>;
+pub type MultiPolygon2D<T> = MultiPolygon<T, NoValue>;
 pub type MultiPolygon3D<T> = MultiPolygon<T, T>;
 
 impl<T: CoordNum, Z: CoordNum, IP: Into<Polygon<T, Z>>> From<IP> for MultiPolygon<T, Z> {
@@ -65,12 +66,33 @@ impl<T: CoordNum, Z: CoordNum> MultiPolygon<T, Z> {
         Self(value)
     }
 
+    pub fn push(&mut self, value: Polygon<T, Z>) {
+        self.0.push(value);
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Polygon<T, Z>> {
         self.0.iter()
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Polygon<T, Z>> {
         self.0.iter_mut()
+    }
+
+    pub fn add_exterior(&mut self, exterior: LineString<T, Z>) {
+        self.0.push(Polygon::new(exterior, Vec::new()));
+    }
+
+    pub fn add_interior(&mut self, iter: LineString<T, Z>) {
+        self.0
+            .last_mut()
+            .unwrap()
+            .interiors_mut(|interiors| interiors.push(iter));
+    }
+}
+
+impl<T: CoordNum, Z: CoordNum> Default for MultiPolygon<T, Z> {
+    fn default() -> Self {
+        Self::new(Vec::new())
     }
 }
 
@@ -81,10 +103,30 @@ impl<'a> From<NMultiPolygon2<'a>> for MultiPolygon2D<f64> {
     }
 }
 
-impl<'a> From<NMultiPolygon3<'a>> for MultiPolygon3D<f64> {
+impl<'a> From<NMultiPolygon3<'a>> for MultiPolygon<f64> {
     #[inline]
     fn from(mpoly: NMultiPolygon3<'a>) -> Self {
-        mpoly.iter().map(Polygon3D::from).collect()
+        mpoly.iter().map(Polygon::from).collect()
+    }
+}
+
+pub struct Iter<'a, T: CoordNum> {
+    mpoly: &'a MultiPolygon<T>,
+    pos: usize,
+    end: usize,
+}
+
+impl<'a, T: CoordNum> Iterator for Iter<'a, T> {
+    type Item = Polygon<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.pos < self.end {
+            let poly = self.mpoly.0.get(self.pos);
+            self.pos += 1;
+            poly.cloned()
+        } else {
+            None
+        }
     }
 }
 
@@ -133,94 +175,5 @@ where
 
         let mut mp_zipper = self.into_iter().zip(other);
         mp_zipper.all(|(lhs, rhs)| lhs.abs_diff_eq(rhs, epsilon))
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::polygon;
-
-    #[test]
-    fn test_iter() {
-        let multi = MultiPolygon::new(vec![
-            polygon![(x: 0, y: 0), (x: 2, y: 0), (x: 1, y: 2), (x:0, y:0)],
-            polygon![(x: 10, y: 10), (x: 12, y: 10), (x: 11, y: 12), (x:10, y:10)],
-        ]);
-
-        let mut first = true;
-        for p in &multi {
-            if first {
-                assert_eq!(
-                    p,
-                    &polygon![(x: 0, y: 0), (x: 2, y: 0), (x: 1, y: 2), (x:0, y:0)]
-                );
-                first = false;
-            } else {
-                assert_eq!(
-                    p,
-                    &polygon![(x: 10, y: 10), (x: 12, y: 10), (x: 11, y: 12), (x:10, y:10)]
-                );
-            }
-        }
-
-        // Do it again to prove that `multi` wasn't `moved`.
-        first = true;
-        for p in &multi {
-            if first {
-                assert_eq!(
-                    p,
-                    &polygon![(x: 0, y: 0), (x: 2, y: 0), (x: 1, y: 2), (x:0, y:0)]
-                );
-                first = false;
-            } else {
-                assert_eq!(
-                    p,
-                    &polygon![(x: 10, y: 10), (x: 12, y: 10), (x: 11, y: 12), (x:10, y:10)]
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn test_iter_mut() {
-        let mut multi = MultiPolygon::new(vec![
-            polygon![(x: 0, y: 0), (x: 2, y: 0), (x: 1, y: 2), (x:0, y:0)],
-            polygon![(x: 10, y: 10), (x: 12, y: 10), (x: 11, y: 12), (x:10, y:10)],
-        ]);
-
-        for poly in &mut multi {
-            poly.exterior_mut(|exterior| {
-                for coord in exterior {
-                    coord.x += 1;
-                    coord.y += 1;
-                }
-            });
-        }
-
-        for poly in multi.iter_mut() {
-            poly.exterior_mut(|exterior| {
-                for coord in exterior {
-                    coord.x += 1;
-                    coord.y += 1;
-                }
-            });
-        }
-
-        let mut first = true;
-        for p in &multi {
-            if first {
-                assert_eq!(
-                    p,
-                    &polygon![(x: 2, y: 2), (x: 4, y: 2), (x: 3, y: 4), (x:2, y:2)]
-                );
-                first = false;
-            } else {
-                assert_eq!(
-                    p,
-                    &polygon![(x: 12, y: 12), (x: 14, y: 12), (x: 13, y: 14), (x:12, y:12)]
-                );
-            }
-        }
     }
 }

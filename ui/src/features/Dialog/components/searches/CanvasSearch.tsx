@@ -40,7 +40,11 @@ const CanvasSearch: React.FC = () => {
 
   return (
     <Command className={commandClasses} shouldFilter={false}>
-      <CommandInput placeholder={t("search workflow...")} onValueChange={setSearchValue} />
+      <CommandInput
+        placeholder={t("search workflow...")}
+        autoFocus
+        onValueChange={setSearchValue}
+      />
       <CommandList className="border-none">
         {searchValue.length ? (
           <>

@@ -4,6 +4,7 @@ export function generateTeam(numberOfMembers: number) {
     team.push({
       id: i.toString(),
       name: `Member ${i}`,
+      status: i % 2 === 0 ? "online" : "offline",
     });
   }
   return team;
