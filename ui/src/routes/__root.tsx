@@ -7,6 +7,7 @@ import Dialog from "@flow/features/Dialog";
 import { workspaces } from "@flow/mock_data/workspaceData";
 import { I18nProvider, QueryClientProvider, TooltipProvider } from "@flow/providers";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
+import NotFoundPage from "@flow/features/NotFoundPage";
 
 const TanStackQueryDevtools = lazy(() =>
   import("@tanstack/react-query-devtools/build/modern/production.js").then(d => ({
@@ -58,4 +59,5 @@ const RootRoute: React.FC = () => {
 
 export const Route = createRootRoute({
   component: RootRoute,
+  notFoundComponent: () => <NotFoundPage />,
 });

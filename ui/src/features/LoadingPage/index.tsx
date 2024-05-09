@@ -5,7 +5,7 @@ import { Loading } from "@flow/components";
 import { useTimeoutOnLoad } from "@flow/hooks";
 import { workspaces } from "@flow/mock_data/workspaceData";
 
-const LoadingScreen: React.FC = () => {
+const LoadingPage: React.FC = () => {
   const { running: isLoading } = useTimeoutOnLoad(1000);
   const navigate = useNavigate({ from: "/" });
   useEffect(() => {
@@ -16,4 +16,4 @@ const LoadingScreen: React.FC = () => {
   return <Loading show={isLoading} />;
 };
 
-export { LoadingScreen };
+export { LoadingPage };
