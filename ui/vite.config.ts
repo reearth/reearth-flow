@@ -10,7 +10,7 @@ import pkg from "./package.json";
 
 export default defineConfig({
   envPrefix: "FLOW_",
-  plugins: [TanStackRouterVite(), react(), config()],
+  plugins: [react(), TanStackRouterVite(), config()],
   resolve: {
     alias: [{ find: "@flow", replacement: resolve(__dirname, "./src") }],
   },

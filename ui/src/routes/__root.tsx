@@ -1,15 +1,30 @@
 import { createRootRoute, Outlet, useParams } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+import { lazy } from "react";
 import { ReactFlowProvider } from "reactflow";
 
+import { config } from "@flow/config";
 import Dialog from "@flow/features/Dialog";
 import { workspaces } from "@flow/mock_data/workspaceData";
-import { I18nProvider, TooltipProvider } from "@flow/providers";
+import { I18nProvider, QueryClientProvider, TooltipProvider } from "@flow/providers";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
+
+const TanStackQueryDevtools = lazy(() =>
+  import("@tanstack/react-query-devtools/build/modern/production.js").then(d => ({
+    default: d.ReactQueryDevtools,
+  })),
+);
+
+const TanStackRouterDevtools = lazy(() =>
+  import("@tanstack/router-devtools").then(d => ({
+    default: d.TanStackRouterDevtools,
+  })),
+);
 
 const RootRoute: React.FC = () => {
   const [currentProject, setCurrentProject] = useCurrentProject();
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
+
+  const { devMode } = config();
 
   const { projectId, workspaceId } = useParams({ strict: false });
 
@@ -22,7 +37,7 @@ const RootRoute: React.FC = () => {
   }
 
   return (
-    <>
+    <QueryClientProvider>
       <I18nProvider>
         <TooltipProvider>
           <ReactFlowProvider>
@@ -31,8 +46,13 @@ const RootRoute: React.FC = () => {
           </ReactFlowProvider>
         </TooltipProvider>
       </I18nProvider>
-      <TanStackRouterDevtools position="bottom-right" />
-    </>
+      {devMode && (
+        <>
+          <TanStackQueryDevtools initialIsOpen={false} />
+          <TanStackRouterDevtools />
+        </>
+      )}
+    </QueryClientProvider>
   );
 };
 
