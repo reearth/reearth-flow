@@ -28,38 +28,29 @@ impl AsyncAction for ThreeDimentionBoxReplacer {
         let input = inputs
             .get(&DEFAULT_PORT)
             .ok_or(Error::input("No Default Port"))?;
-        let mut result = Vec::<Feature>::new();
-        for feature in input.features.iter() {
-            ctx.action_log(&format!("Processing feature: {}", feature.id));
-            let attributes = &feature.attributes;
-            let Some(min_x) = parse_f64(attributes.get(&self.min_x)) else {
-                continue;
-            };
-            let Some(min_y) = parse_f64(attributes.get(&self.min_y)) else {
-                continue;
-            };
-            let Some(min_z) = parse_f64(attributes.get(&self.min_z)) else {
-                continue;
-            };
-            let Some(max_x) = parse_f64(attributes.get(&self.max_x)) else {
-                continue;
-            };
-            let Some(max_y) = parse_f64(attributes.get(&self.max_y)) else {
-                continue;
-            };
-            let Some(max_z) = parse_f64(attributes.get(&self.max_z)) else {
-                continue;
-            };
-            let min = Point::new_(min_x, min_y, min_z);
-            let max = Point::new_(max_x, max_y, max_z);
-            let rectangle = Rectangle::new(min, max);
-            let geometry = Geometry::with_value(GeometryValue::FlowGeometry(
-                FlowGeometry::Rectangle(rectangle),
-            ));
-            let mut feature = feature.clone();
-            feature.geometry = Some(geometry);
-            result.push(feature);
-        }
+        let result = input
+            .features
+            .iter()
+            .flat_map(|feature| {
+                ctx.action_log(format!("Processing  feature: {}", feature.id));
+                let attributes = &feature.attributes;
+                let min_x = parse_f64(attributes.get(&self.min_x))?;
+                let min_y = parse_f64(attributes.get(&self.min_y))?;
+                let min_z = parse_f64(attributes.get(&self.min_z))?;
+                let max_x = parse_f64(attributes.get(&self.max_x))?;
+                let max_y = parse_f64(attributes.get(&self.max_y))?;
+                let max_z = parse_f64(attributes.get(&self.max_z))?;
+                let min = Point::new_(min_x, min_y, min_z);
+                let max = Point::new_(max_x, max_y, max_z);
+                let rectangle = Rectangle::new(min, max);
+                let geometry = Geometry::with_value(GeometryValue::FlowGeometry(
+                    FlowGeometry::Rectangle(rectangle),
+                ));
+                let mut feature = feature.clone();
+                feature.geometry = Some(geometry);
+                Some(feature)
+            })
+            .collect::<Vec<Feature>>();
         Ok(ActionDataframe::from([(
             DEFAULT_PORT.to_owned(),
             Dataframe::new(result),
@@ -68,8 +59,9 @@ impl AsyncAction for ThreeDimentionBoxReplacer {
 }
 
 fn parse_f64(value: Option<&AttributeValue>) -> Option<f64> {
-    let Some(AttributeValue::Number(min_x)) = value else {
-        return None;
-    };
-    min_x.as_f64()
+    if let Some(AttributeValue::Number(min_x)) = value {
+        min_x.as_f64()
+    } else {
+        None
+    }
 }
