@@ -1,0 +1,69 @@
+id: b7396083-17d0-47dd-be86-83caf6c5ac63
+name: domain_of_definition_validator
+nodes:
+  - id: d72a788d-f9fa-4c4d-b7dd-dd131839accd
+    name: FeatureTransformer01
+    type: action
+    action: FeatureTransformer
+    with:
+      transforms:
+        - expr: |
+            env.get("__all") + #{
+              meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("cityGmlPath")))
+            }
+          targetPort: default
+
+  - id: 747d2fa3-2527-4324-b630-92fba84a548c
+    name: PLATEAU.DomainOfDefinitionValidator01
+    type: action
+    action: PLATEAU.DomainOfDefinitionValidator
+
+  - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
+    name: FeatureFilter01
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("flag") == "Summary"
+          outputPort: summary
+        - expr: |
+            env.get("flag") == "CodeValidation"
+          outputPort: code_validation
+        - expr: |
+            env.get("flag") == "ExtentsValidation"
+          outputPort: extents_validation
+        - expr: |
+            env.get("flag") == "GMLID_NotWellFormed"
+          outputPort: gml_id_not_well_formed
+        - expr: |
+            env.get("flag") == "GMLID_NotUnique"
+          outputPort: gml_id_not_unique
+        - expr: |
+            env.get("flag") == "XLink_NoReference"
+          outputPort: xlink_no_reference
+        - expr: |
+            env.get("flag") == "XLink_InvalidObjectType"
+          outputPort: xLink_invalid_object_type
+        - expr: |
+            env.get("flag") == "InvalidLodXGeometry"
+          outputPort: invalid_lod_x_geometry
+
+
+
+edges:
+  - id: afa36141-5b6a-4d2b-8a75-bf184f961378
+    from: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
+    to: cc7d973e-a2eb-4db9-9879-a27154098001
+    fromPort: default
+    toPort: default
+  - id: d661eff9-2ee3-4735-ab36-ac2c662464fd
+    from: cc7d973e-a2eb-4db9-9879-a27154098001
+    to: b90a3d22-7aaf-4e1c-9e27-d9f01b75d82d
+    fromPort: default
+    toPort: default
+  - id: 3891c30f-a2b8-4993-bfe7-4f8e631fed9d
+    from: b90a3d22-7aaf-4e1c-9e27-d9f01b75d82d
+    to: 53c4f2fd-8d0f-40b0-8dca-42e6c68ae62b
+    fromPort: default
+    toPort: default

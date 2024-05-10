@@ -4,6 +4,7 @@ pub use crate::dataframe::*;
 pub use crate::excel::writer::ExcelFileWriter;
 pub use crate::feature::*;
 pub use crate::file::*;
+pub use crate::geometry::*;
 pub use crate::plateau::*;
 pub use crate::rhai_caller::RhaiCaller;
 pub use crate::xml::*;

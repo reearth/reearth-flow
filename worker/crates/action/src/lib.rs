@@ -51,11 +51,27 @@ pub struct Port(String);
 #[typetag::serde(tag = "action", content = "with")]
 pub trait AsyncAction: Send + Sync {
     async fn run(&self, ctx: ActionContext, input: ActionDataframe) -> ActionResult;
+
+    fn input_ports(&self) -> Vec<Port> {
+        vec![DEFAULT_PORT.clone()]
+    }
+
+    fn output_ports(&self) -> Vec<Port> {
+        vec![DEFAULT_PORT.clone()]
+    }
 }
 
 #[typetag::serde(tag = "action", content = "with")]
 pub trait SyncAction: Send + Sync {
     fn run(&self, ctx: ActionContext, input: ActionDataframe) -> ActionResult;
+
+    fn input_ports(&self) -> Vec<Port> {
+        vec![DEFAULT_PORT.clone()]
+    }
+
+    fn output_ports(&self) -> Vec<Port> {
+        vec![DEFAULT_PORT.clone()]
+    }
 }
 
 #[derive(Debug, Clone)]
