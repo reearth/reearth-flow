@@ -18,7 +18,7 @@ use super::triangle::Triangle;
 use crate::error::Error;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
-pub enum Geometry<T: CoordNum = f64, Z: CoordNum = NoValue> {
+pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
     Point(Point<T, Z>),
     Line(Line<T, Z>),
     LineString(LineString<T, Z>),
@@ -30,7 +30,7 @@ pub enum Geometry<T: CoordNum = f64, Z: CoordNum = NoValue> {
     Triangle(Triangle<T, Z>),
 }
 
-pub type Geometry2D<T> = Geometry<T>;
+pub type Geometry2D<T> = Geometry<T, NoValue>;
 pub type Geometry3D<T> = Geometry<T, T>;
 
 impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for Geometry<T, Z> {

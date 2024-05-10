@@ -6,15 +6,23 @@ use nusamai_projection::crs::EpsgCode;
 use reearth_flow_common::uri::Uri;
 use serde::{Deserialize, Serialize};
 
+use reearth_flow_geometry::types::geometry::Geometry as FlowGeometry;
 use reearth_flow_geometry::types::multi_polygon::{MultiPolygon, MultiPolygon2D};
 
 use crate::error::Error;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum GeometryValue {
+    Null,
+    CityGmlGeometry(CityGmlGeometry),
+    FlowGeometry(FlowGeometry),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Geometry {
     pub id: String,
-    pub epsg: EpsgCode,
-    pub entity: GeometryEntity,
+    pub epsg: Option<EpsgCode>,
+    pub value: GeometryValue,
     pub attributes: Option<serde_json::Value>,
 }
 
@@ -60,7 +68,7 @@ impl TryFrom<Entity> for Geometry {
             GeometryType::Tin => unimplemented!(),
         });
 
-        let mut geometry_entity = GeometryEntity::new(
+        let mut geometry_entity = CityGmlGeometry::new(
             geometry_features,
             Some(mpoly.into()),
             apperance
@@ -153,7 +161,7 @@ impl TryFrom<Entity> for Geometry {
         Ok(Geometry::new(
             id.to_string(),
             epsg,
-            geometry_entity,
+            GeometryValue::CityGmlGeometry(geometry_entity),
             Some(attributes),
         ))
     }
@@ -163,8 +171,8 @@ impl Default for Geometry {
     fn default() -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
-            epsg: nusamai_projection::crs::EPSG_JGD2011_GEOGRAPHIC_3D,
-            entity: GeometryEntity::new(Vec::new(), None, Vec::new(), Vec::new()),
+            epsg: None,
+            value: GeometryValue::Null,
             attributes: None,
         }
     }
@@ -174,14 +182,23 @@ impl Geometry {
     pub fn new(
         id: String,
         epsg: EpsgCode,
-        entity: GeometryEntity,
+        value: GeometryValue,
         attributes: Option<serde_json::Value>,
     ) -> Self {
         Self {
             id,
-            epsg,
-            entity,
+            epsg: Some(epsg),
+            value,
             attributes,
+        }
+    }
+
+    pub fn with_value(value: GeometryValue) -> Self {
+        Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            epsg: None,
+            value,
+            attributes: None,
         }
     }
 }
@@ -249,7 +266,7 @@ impl Appearance {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct GeometryEntity {
+pub struct CityGmlGeometry {
     pub features: Vec<GeometryFeature>,
     pub polygons: Option<MultiPolygon<f64>>,
     materials: Vec<Material>,
@@ -259,7 +276,7 @@ pub struct GeometryEntity {
     pub polygon_uv: Option<MultiPolygon2D<f64>>,
 }
 
-impl GeometryEntity {
+impl CityGmlGeometry {
     pub fn new(
         features: Vec<GeometryFeature>,
         polygons: Option<MultiPolygon<f64>>,
