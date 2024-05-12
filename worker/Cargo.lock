@@ -2527,6 +2527,7 @@ dependencies = [
  "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
+ "reearth-flow-geometry",
  "reearth-flow-storage",
  "reearth-flow-workflow",
  "reearth-flow-xml",

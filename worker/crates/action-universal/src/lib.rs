@@ -4,6 +4,7 @@ mod dataframe;
 mod excel;
 mod feature;
 mod file;
+mod geometry;
 mod plateau;
 pub mod prelude;
 mod rhai_caller;
