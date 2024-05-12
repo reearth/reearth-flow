@@ -27,18 +27,20 @@ nodes:
         - attribute: _length
           method: convert
           value: |
-            @CurrentAttribute()+1
+            env.get("_length") + 1
         - attribute: file
           method: convert
           value: |
-            @Substring(@Value(_udx_dirs),@Value(_length))/@Value(_gml_filename)
+            let dir = env.get("_udx_dirs").sub_string(env.get("_length"));
+            let file = env.get("_gml_filename");
+            dir + "/" + file
 
 
 edges:
   - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
     from: b1a91180-ab88-4c1a-aab5-48c242a218ca
     to: b1a91180-ab88-4c1a-aab5-48c242a218cb
-    fromPort: default
+    fromPort: matched
     toPort: default
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491763
     from: b1a91180-ab88-4c1a-aab5-48c242a218cb

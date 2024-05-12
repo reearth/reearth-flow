@@ -52,8 +52,8 @@ impl AsyncAction for AttributeStringSearcher {
             }
         }
         let output = HashMap::from([
-            (Port::new("Matched"), Dataframe::new(matched)),
-            (Port::new("NotMatched"), Dataframe::new(not_matched)),
+            (Port::new("matched"), Dataframe::new(matched)),
+            (Port::new("notMatched"), Dataframe::new(not_matched)),
         ]);
         Ok(output)
     }
