@@ -24,17 +24,46 @@ nodes:
     action: AttributeManager
     with:
       operations:
-        - attribute: _length
-          method: convert
-          value: |
-            env.get("_length") + 1
-        - attribute: file
-          method: convert
-          value: |
-            let dir = env.get("_udx_dirs").sub_string(env.get("_length"));
-            let file = env.get("_gml_filename");
-            dir + "/" + file
+      - attribute: _folder_package
+        mthod: rename
+        value: type
+      - attribute: _max_lod
+        mthod: rename
+        value: maxLod
+      - attribute: _length
+        method: convert
+        value: |
+          env.get("_length") + 1
+      - attribute: file
+        method: convert
+        value: |
+          let dir = env.get("_udx_dirs").sub_string(env.get("_length"));
+          let file = env.get("_gml_filename");
+          dir + "/" + file
+      - attribute: _folder_root
+        mthod: remove
+      - attribute: _udx_dir
+        mthod: remove
+      - attribute: _gml_path
+        mthod: remove
+      - attribute: _gml_filename
+        mthod: remove
+      - attribute: _meshcode
+        mthod: remove
+      - attribute: _city_code
+        mthod: remove
+      - attribute: _city_name
+        mthod: remove
+      - attribute: _feature_types
+        mthod: remove
 
+  - id: b1a91180-ab88-4c1a-aab5-48c242a218cd
+    name: FileWriter01
+    type: action
+    action: FileWriter
+    with:
+      format: csv
+      output: maxLod
 
 edges:
   - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
@@ -45,5 +74,10 @@ edges:
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491763
     from: b1a91180-ab88-4c1a-aab5-48c242a218cb
     to: b1a91180-ab88-4c1a-aab5-48c242a218cc
+    fromPort: default
+    toPort: default
+  - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
+    from: b1a91180-ab88-4c1a-aab5-48c242a218cc
+    to: b1a91180-ab88-4c1a-aab5-48c242a218cd
     fromPort: default
     toPort: default
