@@ -1,0 +1,47 @@
+id: c6863b71-953b-4d15-af56-396fc93fc617
+name: max_lod_extractor
+nodes:
+  - id: b1a91180-ab88-4c1a-aab5-48c242a218ca
+    name: AttributeStringSearcher01
+    type: action
+    action: AttributeStringSearcher
+    with:
+      searchIn: _gml_filename
+      containsRegularExpression: "^\\d+"
+      caseSensitive: false
+
+  - id: b1a91180-ab88-4c1a-aab5-48c242a218cb
+    name: AttributeStringLengthCalculator01
+    type: action
+    action: AttributeStringLengthCalculator
+    with:
+      sourceAttribute: _folder_package
+      stringLengthAttribute: _length
+
+  - id: b1a91180-ab88-4c1a-aab5-48c242a218cc
+    name: AttributeManager01
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: _length
+          method: convert
+          value: |
+            @CurrentAttribute()+1
+        - attribute: file
+          method: convert
+          value: |
+            @Substring(@Value(_udx_dirs),@Value(_length))/@Value(_gml_filename)
+
+
+edges:
+  - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
+    from: b1a91180-ab88-4c1a-aab5-48c242a218ca
+    to: b1a91180-ab88-4c1a-aab5-48c242a218cb
+    fromPort: default
+    toPort: default
+  - id: 2379a497-9e4e-40fb-8361-d2eeeb491763
+    from: b1a91180-ab88-4c1a-aab5-48c242a218cb
+    to: b1a91180-ab88-4c1a-aab5-48c242a218cc
+    fromPort: default
+    toPort: default
