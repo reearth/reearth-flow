@@ -14,7 +14,7 @@ type Props = {
 };
 
 const LeftPanel: React.FC<Props> = ({ className, data }) => {
-  const [isPanelOpen, handlePanelToggle] = useStateManager<boolean>(true);
+  const [isPanelOpen, handlePanelToggle] = useStateManager<boolean>(false);
 
   const [_content, setContent] = useState("Admin Page");
 

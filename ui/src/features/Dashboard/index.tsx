@@ -43,4 +43,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export {Dashboard};
+export { Dashboard };

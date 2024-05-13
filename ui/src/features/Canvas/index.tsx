@@ -26,6 +26,9 @@ import {
   connectionLineStyle,
   Toolbox,
 } from "@flow/features/Canvas/components";
+import LeftPanel from "@flow/features/LeftPanel";
+import RightPanel from "@flow/features/RightPanel";
+import type { Workflow } from "@flow/types";
 
 import { edgeTypes } from "./components/CustomEdge";
 import useDnd from "./useDnd";
@@ -33,12 +36,7 @@ import useDnd from "./useDnd";
 import "reactflow/dist/style.css";
 
 type CanvasProps = {
-  leftArea?: React.ReactNode;
-  workflow?: {
-    id: string;
-    nodes?: Node[];
-    edges?: Edge[];
-  };
+  workflow?: Workflow;
 };
 
 // const edgeTypes: EdgeTypes = {
@@ -62,7 +60,7 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
   // animated: true,
 };
 
-export default function Canvas({ workflow, leftArea }: CanvasProps) {
+export default function Canvas({ workflow }: CanvasProps) {
   const reactFlowInstance = useReactFlow();
   console.log("reactFlowInstance", reactFlowInstance);
   // console.log("reactFlowInstance to object", reactFlowInstance.toObject());
@@ -145,7 +143,7 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
 
   return (
     <div className="flex flex-1 relative">
-      {leftArea}
+      <LeftPanel data={workflow} />
       <div className="relative flex flex-1">
         <ReactFlow
           // snapToGrid
@@ -198,17 +196,16 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
         <div className="absolute top-1 right-1">
           <ActionBar />
         </div>
-        {leftArea && (
-          <div className="absolute left-1 top-1 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
-            <Toolbox className="self-start" />
-          </div>
-        )}
+        <div className="absolute left-1 top-1 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
+          <Toolbox className="self-start" />
+        </div>
         <Infobar
           className="absolute bottom-1 left-[50%] translate-x-[-50%]"
           hoveredDetails={hoveredDetails}
         />
       </div>
-      {/* <BottomPanel className="absolute right-1 bottom-1" /> */}
+      {/* <div className="absolute right-1 top-1 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto"> */}
+      <RightPanel selected={selected.nodes} />
     </div>
   );
 }

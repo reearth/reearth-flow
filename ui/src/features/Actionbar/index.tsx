@@ -6,29 +6,18 @@ import {
   ZoomInIcon,
   ZoomOutIcon,
 } from "@radix-ui/react-icons";
-import { useCallback, useState } from "react";
 import { useReactFlow } from "reactflow";
 
 import { CenterIcon, IconButton } from "@flow/components";
+import { useFullscreen } from "@flow/hooks";
 import { useT } from "@flow/providers";
-import { checkIsFullscreen, closeFullscreen, openFullscreen } from "@flow/utils";
 
 const tooltipOffset = 6;
 
 export default function ActionBar() {
   const t = useT();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const handleFullscreenToggle = useCallback(() => {
-    const isFullscreen = checkIsFullscreen();
-    if (isFullscreen) {
-      closeFullscreen();
-    } else {
-      openFullscreen();
-    }
-    setIsFullscreen(!isFullscreen);
-  }, []);
+  const { isFullscreen, handleFullscreenToggle } = useFullscreen();
 
   return (
     <div className="bg-zinc-800">
