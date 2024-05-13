@@ -190,10 +190,10 @@ export default function Canvas({ workflow }: CanvasProps) {
           maskStrokeWidth={3}
         /> */}
           <Background
-            className="bg-zinc-800"
+            className="bg-zinc-900/50"
             variant={BackgroundVariant["Lines"]}
             gap={30}
-            color="rgba(63, 63, 70, 0.5)"
+            color="rgba(63, 63, 70, 0.3)"
           />
         </ReactFlow>
         <div className="absolute top-1 right-1">

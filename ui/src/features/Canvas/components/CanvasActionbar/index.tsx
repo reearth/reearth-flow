@@ -18,8 +18,8 @@ export default function CanvasActionBar() {
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
 
   return (
-    <div className="bg-zinc-800">
-      <div className="flex rounded-md bg-zinc-700/40 border border-zinc-700 p-1 m-1">
+    <div className="bg-zinc-800 rounded-md border border-zinc-700 m-1">
+      <div className="flex rounded-md bg-zinc-900/50 p-1">
         <div className="flex flex-col justify-end align-middle flex-1">
           <IconButton
             className="w-[30px] h-[30px]"

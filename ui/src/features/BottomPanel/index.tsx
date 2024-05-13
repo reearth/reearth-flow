@@ -34,7 +34,7 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ className }) => {
 
   return (
     <HorizontalPanel
-      className={`bg-zinc-900 cursor-pointer backdrop-blur-md ${className}`}
+      className={`bg-zinc-900 border-t border-zinc-700 cursor-pointer backdrop-blur-md ${className}`}
       isOpen={!!isPanelOpen}
       panelContents={panelContents}
       onToggle={handlePanelToggle}

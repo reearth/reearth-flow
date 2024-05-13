@@ -9,8 +9,8 @@ export default function ActionBar() {
   const t = useT();
 
   return (
-    <div className="bg-zinc-800">
-      <div className="flex rounded-md bg-zinc-700/40 border border-zinc-700 p-1 m-1">
+    <div className="bg-zinc-800 rounded-md m-1 border border-zinc-700">
+      <div className="flex rounded-md bg-zinc-900/50 p-1">
         <div className="flex align-middle">
           {/* <IconButton
             tooltipText={t("Publish workflow")}
