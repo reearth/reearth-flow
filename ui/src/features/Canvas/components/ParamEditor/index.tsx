@@ -55,7 +55,6 @@ const ParamEditor: React.FC<Props> = ({
   console.log("reactFlowInstance", nodeId);
 
   const handleFitView = () => fitView({ nodes: [{ id: nodeId }], duration: 400 });
-  //   reactFlowInstance.fitView({ nodes: [{ id: nodeId }] });
 
   return (
     <div>

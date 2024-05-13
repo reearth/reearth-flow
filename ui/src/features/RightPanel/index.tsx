@@ -13,7 +13,7 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
   return (
     <div
       id="right-panel"
-      className="bg-zinc-800 border-l border-zinc-700 py-4 pl-4 pr-2 absolute right-0 h-full w-[400px]"
+      className="bg-zinc-900 border-l border-zinc-700 py-4 pl-4 pr-2 absolute right-0 h-full"
       style={{
         transform: `translateX(${node ? "0" : "100%"})`,
         transitionDuration: node ? "500ms" : "300ms",

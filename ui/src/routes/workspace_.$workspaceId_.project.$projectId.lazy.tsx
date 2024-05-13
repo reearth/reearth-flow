@@ -1,7 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import BottomPanel from "@flow/features/BottomPanel";
 import Canvas from "@flow/features/Canvas";
 import { workspaces } from "@flow/mock_data/workspaceData";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
@@ -32,7 +31,7 @@ function Editor() {
       <div className="flex flex-1">
         <div className="flex flex-col flex-1 p-0">
           <Canvas workflow={currentProject?.workflows?.[0]} />
-          <BottomPanel />
+          {/* <BottomPanel /> */}
         </div>
       </div>
     </div>
