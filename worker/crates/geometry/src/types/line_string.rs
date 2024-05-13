@@ -120,6 +120,12 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
         })
     }
 
+    pub fn translate_z(&mut self, height: Z) {
+        for coordinate in &mut self.0 {
+            coordinate.z = coordinate.z.add(height);
+        }
+    }
+
     pub fn close(&mut self) {
         if !self.is_closed() {
             self.0.push(self.0[0]);

@@ -47,7 +47,7 @@ impl<T: CoordNum, Z: CoordNum> Rectangle<T, Z> {
         }
     }
 
-    pub fn min(self) -> Coordinate<T, Z> {
+    pub fn min(&self) -> Coordinate<T, Z> {
         self.min
     }
 
@@ -56,7 +56,7 @@ impl<T: CoordNum, Z: CoordNum> Rectangle<T, Z> {
         self.assert_valid_bounds();
     }
 
-    pub fn max(self) -> Coordinate<T, Z> {
+    pub fn max(&self) -> Coordinate<T, Z> {
         self.max
     }
 
@@ -65,64 +65,72 @@ impl<T: CoordNum, Z: CoordNum> Rectangle<T, Z> {
         self.assert_valid_bounds();
     }
 
-    pub fn width(self) -> T {
+    pub fn width(&self) -> T {
         self.max().x - self.min().x
     }
 
-    pub fn height(self) -> T {
+    pub fn height(&self) -> T {
         self.max().y - self.min().y
     }
 
-    pub fn to_polygon(self) -> Polygon<T, NoValue> {
+    pub fn to_polygon(&self) -> Polygon<T, Z> {
         polygon![
-            (x: self.min.x, y: self.min.y),
-            (x: self.min.x, y: self.max.y),
-            (x: self.max.x, y: self.max.y),
-            (x: self.max.x, y: self.min.y),
-            (x: self.min.x, y: self.min.y),
+            (x: self.min.x, y: self.min.y, z: self.min.z),
+            (x: self.min.x, y: self.max.y, z: self.min.z),
+            (x: self.max.x, y: self.max.y, z: self.min.z),
+            (x: self.max.x, y: self.min.y, z: self.min.z),
+            (x: self.min.x, y: self.min.y, z: self.min.z),
         ]
     }
 
-    pub fn to_lines(&self) -> [Line<T, NoValue>; 4] {
+    pub fn to_lines(&self) -> [Line<T, Z>; 4] {
         [
-            Line::new(
+            Line::new_(
                 coord! {
                     x: self.min.x,
                     y: self.min.y,
+                    z: self.min.z,
                 },
                 coord! {
                     x: self.min.x,
                     y: self.max.y,
+                    z: self.min.z,
                 },
             ),
-            Line::new(
+            Line::new_(
                 coord! {
                     x: self.min.x,
                     y: self.max.y,
+                    z: self.min.z,
                 },
                 coord! {
                     x: self.max.x,
                     y: self.max.y,
+                    z: self.min.z,
                 },
             ),
-            Line::new(
+            Line::new_(
                 coord! {
                     x: self.max.x,
                     y: self.max.y,
+                    z: self.min.z,
                 },
                 coord! {
                     x: self.max.x,
                     y: self.min.y,
+                    z: self.min.z,
                 },
             ),
-            Line::new(
+            Line::new_(
                 coord! {
                     x: self.max.x,
                     y: self.min.y,
+                    z: self.min.z,
                 },
                 coord! {
                     x: self.min.x,
                     y: self.min.y,
+                    z: self.min.z,
                 },
             ),
         ]

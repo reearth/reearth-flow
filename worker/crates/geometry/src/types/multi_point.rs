@@ -9,9 +9,9 @@ use super::no_value::NoValue;
 use super::point::Point;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
-pub struct MultiPoint<T: CoordNum = f64, Z: CoordNum = NoValue>(pub Vec<Point<T, Z>>);
+pub struct MultiPoint<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Point<T, Z>>);
 
-pub type MultiPoint2D<T> = MultiPoint<T>;
+pub type MultiPoint2D<T> = MultiPoint<T, NoValue>;
 pub type MultiPoint3D<T> = MultiPoint<T, T>;
 
 impl<T: CoordNum, Z: CoordNum, IP: Into<Point<T, Z>>> From<IP> for MultiPoint<T, Z> {
