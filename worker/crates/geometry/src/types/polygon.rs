@@ -3,9 +3,11 @@ use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
+use super::face::Face;
 use super::line_string::LineString;
 use super::no_value::NoValue;
 use super::rectangle::Rectangle;
+use super::solid::Solid;
 use super::traits::Surface;
 use super::triangle::Triangle;
 
@@ -72,6 +74,73 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
         new_interior.close();
         self.interiors.push(new_interior);
     }
+
+    /// Extrudes the polygon along the Z-axis by a specified distance.
+    pub fn extrude(&self, height: Z) -> Solid<T, Z> {
+        let mut top_exterior = self.exterior.clone();
+        let mut top_interiors = self.interiors.clone();
+
+        // Change the z-value of a vertex to generate a top surface.
+        top_exterior.translate_z(height);
+        for top_interior in &mut top_interiors {
+            top_interior.translate_z(height);
+        }
+
+        let bottom_faces = to_faces(&self.exterior, &self.interiors);
+        let top_faces = to_faces(&top_exterior, &top_interiors);
+
+        let side_faces = to_side_faces(
+            &self.exterior,
+            &top_exterior,
+            &self.interiors,
+            &top_interiors,
+        );
+        Solid::new(bottom_faces, top_faces, side_faces)
+    }
+}
+
+fn to_faces<T: CoordNum, Z: CoordNum>(
+    exterior: &LineString<T, Z>,
+    interiors: &[LineString<T, Z>],
+) -> Vec<Face<T, Z>> {
+    let mut faces = vec![Face::new(exterior.coords().cloned().collect::<Vec<_>>())];
+    for interior in interiors.iter() {
+        faces.push(Face::new(interior.coords().cloned().collect::<Vec<_>>()));
+    }
+    faces
+}
+
+fn create_side_walls<T: CoordNum, Z: CoordNum>(
+    bottom: &LineString<T, Z>,
+    top: &LineString<T, Z>,
+) -> Vec<Face<T, Z>> {
+    let bottom_coords = bottom.coords().cloned().collect::<Vec<_>>();
+    let top_coords = top.coords().cloned().collect::<Vec<_>>();
+    bottom_coords
+        .iter()
+        .zip(bottom_coords.iter().skip(1))
+        .zip(top_coords.iter().zip(top_coords.iter().skip(1)))
+        .map(|((bottom_start, bottom_end), (top_start, top_end))| {
+            Face::new(vec![*bottom_start, *bottom_end, *top_end, *top_start])
+        })
+        .collect()
+}
+
+fn to_side_faces<T: CoordNum, Z: CoordNum>(
+    bottom_exterior: &LineString<T, Z>,
+    top_exterior: &LineString<T, Z>,
+    bottom_interiors: &[LineString<T, Z>],
+    top_interiors: &[LineString<T, Z>],
+) -> Vec<Face<T, Z>> {
+    let mut faces = Vec::new();
+    // Outer perimeter wall
+    faces.extend(create_side_walls(bottom_exterior, top_exterior));
+
+    // Inner perimeter wall
+    for (bottom, top) in bottom_interiors.iter().zip(top_interiors) {
+        faces.extend(create_side_walls(bottom, top));
+    }
+    faces
 }
 
 impl<T: CoordNum> From<Rectangle<T>> for Polygon<T, NoValue> {
