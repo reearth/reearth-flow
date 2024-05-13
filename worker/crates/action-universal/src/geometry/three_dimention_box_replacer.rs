@@ -32,7 +32,7 @@ impl AsyncAction for ThreeDimentionBoxReplacer {
             .features
             .iter()
             .flat_map(|feature| {
-                ctx.action_log(format!("Processing  feature: {}", feature.id));
+                ctx.action_log(format!("Processing feature: {}", feature.id));
                 let attributes = &feature.attributes;
                 let min_x = parse_f64(attributes.get(&self.min_x))?;
                 let min_y = parse_f64(attributes.get(&self.min_y))?;

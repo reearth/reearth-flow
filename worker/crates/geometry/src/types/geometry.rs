@@ -14,6 +14,7 @@ use super::no_value::NoValue;
 use super::point::Point;
 use super::polygon::Polygon;
 use super::rectangle::Rectangle;
+use super::solid::Solid;
 use super::triangle::Triangle;
 use crate::error::Error;
 
@@ -28,6 +29,7 @@ pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
     MultiPolygon(MultiPolygon<T, Z>),
     Rectangle(Rectangle<T, Z>),
     Triangle(Triangle<T, Z>),
+    Solid(Solid<T, Z>),
 }
 
 pub type Geometry2D<T> = Geometry<T, NoValue>;
@@ -82,6 +84,12 @@ impl<T: CoordNum, Z: CoordNum> From<Triangle<T, Z>> for Geometry<T, Z> {
     }
 }
 
+impl<T: CoordNum, Z: CoordNum> From<Solid<T, Z>> for Geometry<T, Z> {
+    fn from(x: Solid<T, Z>) -> Self {
+        Self::Solid(x)
+    }
+}
+
 macro_rules! try_from_geometry_impl {
     ($($type: ident),+ $(,)? ) => {
         $(
@@ -125,6 +133,7 @@ fn inner_type_name<T: CoordNum, Z: CoordNum>(geometry: Geometry<T, Z>) -> &'stat
         Geometry::MultiPolygon(_) => type_name::<MultiPolygon<T, Z>>(),
         Geometry::Rectangle(_) => type_name::<Rectangle<T, Z>>(),
         Geometry::Triangle(_) => type_name::<Triangle<T, Z>>(),
+        Geometry::Solid(_) => type_name::<Solid<T, Z>>(),
     }
 }
 
