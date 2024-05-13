@@ -1,66 +1,57 @@
 import {
-  DownloadIcon,
   EnterFullScreenIcon,
   ExitFullScreenIcon,
-  Link2Icon,
   ZoomInIcon,
   ZoomOutIcon,
 } from "@radix-ui/react-icons";
-import { useCallback, useState } from "react";
 import { useReactFlow } from "reactflow";
 
 import { CenterIcon, IconButton } from "@flow/components";
+import { useFullscreen } from "@flow/hooks";
 import { useT } from "@flow/providers";
-import { checkIsFullscreen, closeFullscreen, openFullscreen } from "@flow/utils";
 
 const tooltipOffset = 6;
 
-export default function ActionBar() {
+export default function CanvasActionBar() {
   const t = useT();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const handleFullscreenToggle = useCallback(() => {
-    const isFullscreen = checkIsFullscreen();
-    if (isFullscreen) {
-      closeFullscreen();
-    } else {
-      openFullscreen();
-    }
-    setIsFullscreen(!isFullscreen);
-  }, []);
+  const { isFullscreen, handleFullscreenToggle } = useFullscreen();
 
   return (
-    <div className="bg-zinc-800">
-      <div className="flex rounded-md bg-zinc-700/40 border border-zinc-700 p-1 m-1">
-        <div className="flex justify-end align-middle flex-1">
+    <div className="bg-zinc-800 rounded-md border border-zinc-700 m-1">
+      <div className="flex rounded-md bg-zinc-900/50 p-1">
+        <div className="flex flex-col justify-end align-middle flex-1">
           <IconButton
-            tooltipText={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
-            tooltipOffset={tooltipOffset}
-            icon={isFullscreen ? <ExitFullScreenIcon /> : <EnterFullScreenIcon />}
-            onClick={handleFullscreenToggle}
-          />
-          <IconButton
-            tooltipText={t("Zoom out")}
-            tooltipOffset={tooltipOffset}
-            icon={<ZoomOutIcon />}
-            onClick={() => zoomOut({ duration: 400 })}
-          />
-          <IconButton
+            className="w-[30px] h-[30px]"
             tooltipText={t("Zoom in")}
             tooltipOffset={tooltipOffset}
             icon={<ZoomInIcon />}
             onClick={() => zoomIn({ duration: 400 })}
           />
           <IconButton
+            className="w-[30px] h-[30px]"
+            tooltipText={t("Zoom out")}
+            tooltipOffset={tooltipOffset}
+            icon={<ZoomOutIcon />}
+            onClick={() => zoomOut({ duration: 400 })}
+          />
+          <IconButton
+            className="w-[30px] h-[30px]"
             tooltipText={t("All nodes in viewport")}
             tooltipOffset={tooltipOffset}
             icon={<CenterIcon />}
             onClick={() => fitView({ duration: 400, padding: 0.5 })}
           />
-          <div className="border-l border-zinc-700 mx-3" />
+          <IconButton
+            className="w-[30px] h-[30px]"
+            tooltipText={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
+            tooltipOffset={tooltipOffset}
+            icon={isFullscreen ? <ExitFullScreenIcon /> : <EnterFullScreenIcon />}
+            onClick={handleFullscreenToggle}
+          />
+          {/* <div className="border-l border-zinc-700 mx-3" /> */}
         </div>
-        <div className="flex align-middle">
+        {/* <div className="flex align-middle">
           <IconButton
             tooltipText={t("Publish workflow")}
             tooltipOffset={tooltipOffset}
@@ -71,7 +62,7 @@ export default function ActionBar() {
             tooltipOffset={tooltipOffset}
             icon={<DownloadIcon />}
           />
-        </div>
+        </div> */}
       </div>
     </div>
   );

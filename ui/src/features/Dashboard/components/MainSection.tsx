@@ -27,7 +27,7 @@ const MainSection: React.FC = () => {
   const projects = currentWorkspace?.projects;
 
   return (
-    <div className="flex flex-col flex-1 justify-between border border-zinc-700 m-2 rounded-lg">
+    <div className="flex flex-col flex-1 justify-between border border-zinc-700 rounded-lg bg-zinc-900/50">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-auto py-4 px-4">
         {projects?.map(p => (
           <Card
@@ -47,7 +47,7 @@ const MainSection: React.FC = () => {
           </Card>
         ))}
       </div>
-      <div className="border-t border-zinc-700">
+      <div className="border-t border-zinc-700 bg-zinc-900/50 rounded-b-lg">
         <p className="font-extralight text-center py-1 border-t">
           Total Projects: {projects?.length ?? 0}
         </p>
