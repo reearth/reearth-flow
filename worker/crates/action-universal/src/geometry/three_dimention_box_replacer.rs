@@ -1,6 +1,6 @@
 use reearth_flow_action::geometry::{Geometry, GeometryValue};
+use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_geometry::types::geometry::Geometry as FlowGeometry;
-use reearth_flow_geometry::types::point::Point;
 use reearth_flow_geometry::types::rectangle::Rectangle;
 use serde::{Deserialize, Serialize};
 
@@ -40,11 +40,11 @@ impl AsyncAction for ThreeDimentionBoxReplacer {
                 let max_x = parse_f64(attributes.get(&self.max_x))?;
                 let max_y = parse_f64(attributes.get(&self.max_y))?;
                 let max_z = parse_f64(attributes.get(&self.max_z))?;
-                let min = Point::new_(min_x, min_y, min_z);
-                let max = Point::new_(max_x, max_y, max_z);
+                let min = Coordinate::new__(min_x, min_y, min_z);
+                let max = Coordinate::new__(max_x, max_y, max_z);
                 let rectangle = Rectangle::new(min, max);
                 let geometry = Geometry::with_value(GeometryValue::FlowGeometry(
-                    FlowGeometry::Rectangle(rectangle),
+                    FlowGeometry::Polygon(rectangle.to_polygon()),
                 ));
                 let mut feature = feature.clone();
                 feature.geometry = Some(geometry);

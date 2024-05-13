@@ -26,10 +26,10 @@ impl<T: CoordNum> Line<T, NoValue> {
     }
 }
 
-impl<T: CoordNum> Line<T, T> {
+impl<T: CoordNum, Z: CoordNum> Line<T, Z> {
     pub fn new_<C>(start: C, end: C) -> Self
     where
-        C: Into<Coordinate<T, T>>,
+        C: Into<Coordinate<T, Z>>,
     {
         Self {
             start: start.into(),
