@@ -2519,6 +2519,7 @@ dependencies = [
  "itertools",
  "nusamai-citygml",
  "nusamai-plateau",
+ "nusamai-projection",
  "nutype",
  "once_cell",
  "quick-xml",
