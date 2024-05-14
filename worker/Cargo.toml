@@ -46,7 +46,6 @@ reearth-flow-macros = {path = "crates/macros"}
 reearth-flow-state = {path = "crates/state"}
 reearth-flow-storage = {path = "crates/storage"}
 reearth-flow-telemetry = {path = "crates/telemetry"}
-reearth-flow-workflow = {path = "crates/workflow"}
 reearth-flow-workflow-cli = {path = "crates/cli"}
 reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
 reearth-flow-xml = {path = "crates/xml"}
@@ -59,6 +58,7 @@ nusamai-projection = {git = "https://github.com/reearth/plateau-gis-converter"}
 async-recursion = "1.1.1"
 async-trait = "0.1.80"
 async_zip = {version = "0.0.17", features = ["full"]}
+bincode = {version = "2.0.0-rc.3", features = ["derive"]}
 bytes = {version = "1.6.0", features = ["serde"]}
 color-eyre = "0.6.3"
 colorsys = "0.6.7"

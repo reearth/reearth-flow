@@ -20,7 +20,7 @@ use reearth_flow_action_log::{action_log, ActionLogger};
 use reearth_flow_common::uri::{Uri, PROTOCOL_SEPARATOR};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::{resolve::StorageResolver, storage::Storage};
-use reearth_flow_workflow::id::Id;
+use uuid::Uuid;
 
 pub static DEFAULT_PORT: Lazy<Port> = Lazy::new(|| Port::new("default"));
 pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
@@ -76,9 +76,9 @@ pub trait SyncAction: Send + Sync {
 
 #[derive(Debug, Clone)]
 pub struct ActionContext {
-    pub job_id: Id,
-    pub workflow_id: Id,
-    pub node_id: Id,
+    pub job_id: Uuid,
+    pub workflow_id: Uuid,
+    pub node_id: Uuid,
     pub node_name: String,
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
@@ -107,9 +107,9 @@ impl Default for ActionContext {
 impl ActionContext {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        job_id: Id,
-        workflow_id: Id,
-        node_id: Id,
+        job_id: Uuid,
+        workflow_id: Uuid,
+        node_id: Uuid,
         node_name: String,
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
