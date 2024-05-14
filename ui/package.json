@@ -1,9 +1,10 @@
 {
   "name": "@reearth/flow-web",
-  "private": true,
   "version": "0.0.1",
-  "type": "module",
+  "repository": "https://github.com/reearth/reearth-flow.git",
   "license": "APACHE-2.0",
+  "type": "module",
+  "private": true,
   "scripts": {
     "start": "yarn && vite",
     "serve": "vite preview",

@@ -12,8 +12,9 @@ use reearth_flow_action_log::span;
 use reearth_flow_action_universal::prelude::*;
 use reearth_flow_common::serde as serde_utils;
 use reearth_flow_state::State;
-use reearth_flow_workflow::graph::NodeAction;
-use reearth_flow_workflow::workflow::WorkflowParameter;
+
+use crate::types::graph::NodeAction;
+use crate::types::graph::WorkflowParameter;
 
 pub static ERROR_PATTERN: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^unknown variant `.+`, expected one of .+$").unwrap());

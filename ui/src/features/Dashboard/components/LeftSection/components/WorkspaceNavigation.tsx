@@ -1,8 +1,9 @@
-import { ChevronRightIcon } from "@radix-ui/react-icons";
+import { ChevronRightIcon, PlusIcon } from "@radix-ui/react-icons";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
 
 import {
+  ButtonWithTooltip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -30,11 +31,13 @@ const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
   };
 
   return (
-    <div className={`flex flex-col gap-4  ${className}`}>
+    <div className={`flex justify-center gap-4 ${className}`}>
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center px-2 -mx-2 rounded-md hover:bg-zinc-700/50">
+        <DropdownMenuTrigger className="flex items-center px-2 -mx-2 rounded-md max-w-[30vw] hover:bg-zinc-700/50">
           <p className="text-md uppercase font-thin truncate">{currentWorkspace?.name}</p>
-          <ChevronDown className="ml-2" size="12px" />
+          <div className="ml-2">
+            <ChevronDown size="12px" />
+          </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="max-w-[300px] min-w-[150px] bg-zinc-800 border"
@@ -62,18 +65,13 @@ const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-      {/* <Tooltip>
-        <TooltipTrigger className="self-end">
-          <p className="flex font-thin items-center bg-zinc-800/80 px-1 rounded-md">
-            {currentWorkspace?.members?.length} <PersonIcon />
-          </p>
-        </TooltipTrigger>
-        <TooltipContent className="flex flex-col gap-1 max-h-[160px]" side="bottom" align="start">
-          <div className="overflow-scroll">
-            {currentWorkspace?.members?.map(member => <p key={member.id}>{member.name}</p>)}
-          </div>
-        </TooltipContent>
-      </Tooltip> */}
+      <ButtonWithTooltip
+        className="bg-zinc-800 hover:bg-zinc-700"
+        variant="outline"
+        size="icon"
+        tooltipText="asdlfjalskdfj">
+        <PlusIcon />
+      </ButtonWithTooltip>
     </div>
   );
 };

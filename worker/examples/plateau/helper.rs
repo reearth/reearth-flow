@@ -11,8 +11,8 @@ use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_workflow::workflow::Workflow;
 use reearth_flow_workflow_runner::dag::DagExecutor;
+use reearth_flow_workflow_runner::types::graph::Workflow;
 
 pub(crate) fn init_execute_runner(workflow: &str) -> DagExecutor {
     env::set_var("RAYON_NUM_THREADS", "6");
