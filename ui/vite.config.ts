@@ -11,7 +11,7 @@ import pkg from "./package.json";
 
 export default defineConfig({
   envPrefix: "FLOW_",
-  plugins: [react(), TanStackRouterVite(), config(), cesium()],
+  plugins: [react(), cesium(), TanStackRouterVite(), config()],
   build: {
     target: "esnext",
     assetsDir: "static", // avoid conflicts with backend asset endpoints
