@@ -337,7 +337,7 @@ impl SummaryResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct XmlAttributeExtractor;
+pub struct XmlAttributeExtractor {}
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "PLATEAU.XMLAttributeExtractor")]

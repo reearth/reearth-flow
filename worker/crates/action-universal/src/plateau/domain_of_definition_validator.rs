@@ -5,13 +5,13 @@ use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 use reearth_flow_action::{
-    error, ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue, Result,
-    DEFAULT_PORT,
+    error, ActionContext, ActionDataframe, ActionResult, AsyncAction, AttributeValue, Dataframe,
+    Result, DEFAULT_PORT,
 };
 use reearth_flow_action::{Attribute, Feature};
 use reearth_flow_common::uri::Uri;
-use reearth_flow_common::xml;
 use reearth_flow_common::xml::{XmlContext, XmlNode};
+use reearth_flow_common::{collection, xml};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_storage::storage::Storage;
 use regex::Regex;
@@ -269,7 +269,7 @@ struct Envelope {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct DomainOfDefinitionValidator;
+pub struct DomainOfDefinitionValidator {}
 
 #[async_trait::async_trait]
 #[typetag::serde(name = "PLATEAU.DomainOfDefinitionValidator")]
@@ -287,210 +287,19 @@ impl AsyncAction for DomainOfDefinitionValidator {
             .await
             .map_err(error::Error::internal_runtime)?;
         let mut gml_ids = HashMap::<String, Vec<HashMap<String, String>>>::new();
-        let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let mut result = Vec::<Feature>::new();
-        for feature in input.features.iter() {
-            let package = feature
-                .attributes
-                .get(&Attribute::new("package"))
-                .ok_or(error::Error::input("package key empty"))?;
-            let AttributeValue::String(package) = package else {
-                return Err(error::Error::input("package value not string"));
-            };
-            let mut pattern = "^".to_string();
-            pattern.push_str(package);
-            pattern.push_str(r"_[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$");
-            let gml_id_pattern = Regex::new(pattern.as_str()).unwrap();
-            let valid_feature_types = PACKAGE_TO_VALID_FEATURE_TYPES
-                .get(package.as_str())
-                .map(|v| v.iter().map(|s| s.to_string()).collect::<Vec<_>>())
-                .unwrap_or_default();
-
-            let city_gml_path = feature
-                .attributes
-                .get(&Attribute::new("cityGmlPath"))
-                .ok_or(error::Error::input("cityGmlPath key empty"))?;
-            let city_gml_uri =
-                Uri::from_str(&city_gml_path.to_string()).map_err(error::Error::input)?;
-            let storage = storage_resolver
-                .resolve(&city_gml_uri)
-                .map_err(error::Error::input)?;
-            let xml_content = {
-                let result = storage
-                    .get(city_gml_uri.path().as_path())
-                    .await
-                    .map_err(error::Error::internal_runtime)?;
-                result
-                    .bytes()
-                    .await
-                    .map_err(error::Error::internal_runtime)?
-            };
-
-            let mut response = ValidateResponse::default();
-
-            let xml_document = xml::parse(xml_content).map_err(error::Error::internal_runtime)?;
-            let root_node =
-                xml::get_root_node(&xml_document).map_err(error::Error::internal_runtime)?;
-            let xml_ctx =
-                xml::create_context(&xml_document).map_err(error::Error::internal_runtime)?;
-            let envelopes = xml::find_nodes_by_xpath(&xml_ctx, ".//gml:Envelope", &root_node)
-                .map_err(|_| {
-                    error::Error::internal_runtime("Failed to evaluate xpath".to_string())
-                })?;
-            response.envelope =
-                parse_envelope(envelopes).map_err(error::Error::internal_runtime)?;
-
-            let members =
-                xml::find_nodes_by_xpath(&xml_ctx, ".//core:cityObjectMember/*", &root_node)
-                    .map_err(|_| {
-                        error::Error::internal_runtime("Failed to evaluate xpath".to_string())
-                    })?;
-            for member in members.iter() {
-                ctx.action_log(&format!("Processing member node: {}", member.get_name()));
-                let process_result = process_member_node(
-                    &xml_ctx,
-                    &codelists,
-                    feature,
-                    member,
-                    &valid_feature_types,
-                    &mut response,
-                    &mut gml_ids,
-                    &gml_id_pattern,
-                    Arc::clone(&storage_resolver),
-                )?;
-                result.extend(process_result);
-            }
-            // On the city object group model T03: Extracting unreferenced xlink:href
-
-            let members = xml::find_nodes_by_xpath(
-                &xml_ctx,
-                ".//core:cityObjectMember/grp:CityObjectGroup",
-                &root_node,
-            )
-            .map_err(|_| error::Error::internal_runtime("Failed to evaluate xpath".to_string()))?;
-            for member in members.iter() {
-                let feture_type = member.get_name();
-                let gml_id = member
-                    .get_attribute_node("gml:id")
-                    .map(|n| n.get_content())
-                    .unwrap_or_default();
-                let xlinks = xml::find_nodes_by_xpath(&xml_ctx, ".//*[@xlink:href]", &root_node)
-                    .map_err(|_| {
-                        error::Error::internal_runtime("Failed to evaluate xpath".to_string())
-                    })?;
-                for xlink in xlinks {
-                    let xlink_href = xlink
-                        .get_attribute_node("xlink:href")
-                        .map(|n| n.get_content())
-                        .unwrap_or_default();
-                    if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
-                        let mut result_feature = feature.clone();
-                        result_feature.insert(
-                            "flag",
-                            AttributeValue::String("XLink_NoReference".to_string()),
-                        );
-                        result_feature
-                            .insert("tag", AttributeValue::String(xml::get_node_tag(&xlink)));
-                        result_feature.insert(
-                            "xpath",
-                            AttributeValue::String(get_xpath(&xlink, Some(member), None)),
-                        );
-                        result_feature
-                            .insert("featureType", AttributeValue::String(feture_type.clone()));
-                        result_feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
-                        result.push(result_feature);
-                        response.xlink_has_no_reference_num += 1;
-                    }
+        let feature_results = collection::par_map(&input.features, |feature| {
+            process_feature(&ctx, &codelists, feature).unwrap_or((Vec::new(), HashMap::new()))
+        });
+        for (features, gml_id) in feature_results {
+            result.extend(features);
+            for (k, v) in gml_id.iter() {
+                if let std::collections::hash_map::Entry::Vacant(e) = gml_ids.entry(k.to_string()) {
+                    e.insert(v.clone());
+                } else {
+                    gml_ids.get_mut(k).unwrap().extend(v.clone());
                 }
             }
-            let mut result_feature = feature.clone();
-            let envelope = &response.envelope;
-            result_feature.insert("flag", AttributeValue::String("Summary".to_string()));
-            result_feature.insert("srsName", AttributeValue::String(envelope.srs_name.clone()));
-            result_feature.insert(
-                "invalidFeatureTypesNum",
-                AttributeValue::Number(Number::from(response.invalid_feature_types_num)),
-            );
-            result_feature.insert(
-                "invalidFeatureTypesDetail",
-                AttributeValue::Map(
-                    response
-                        .invalid_feature_types
-                        .iter()
-                        .map(|(k, v)| (k.clone(), AttributeValue::Number(Number::from(*v))))
-                        .collect::<HashMap<_, _>>(),
-                ),
-            );
-            result_feature.insert(
-                "correctCodeValues",
-                AttributeValue::Number(Number::from(response.correct_code_values)),
-            );
-            result_feature.insert(
-                "inCorrectCodeValue",
-                AttributeValue::Number(Number::from(response.code_value_errors)),
-            );
-            result_feature.insert(
-                "inCorrectCodeSpace",
-                AttributeValue::Number(Number::from(response.code_space_errors)),
-            );
-            result_feature.insert(
-                "inCorrectCodeSpace",
-                AttributeValue::Bool(
-                    envelope.srs_name == VALID_SRS_NAME_6697
-                        || envelope.srs_name == VALID_SRS_NAME_6668
-                        || (package == "unf"
-                            && VALID_SRS_NAME_FOR_UNF.contains(&envelope.srs_name.as_str())),
-                ),
-            );
-            result_feature.insert(
-                "correctExtents",
-                AttributeValue::Number(Number::from(response.correct_extents)),
-            );
-            result_feature.insert(
-                "inCorrectExtents",
-                AttributeValue::Number(Number::from(response.incorrect_extents)),
-            );
-            result_feature.insert(
-                "lowerLatitude",
-                AttributeValue::Number(Number::from_f64(envelope.lower_x).unwrap()),
-            );
-            result_feature.insert(
-                "lowerLongitude",
-                AttributeValue::Number(Number::from_f64(envelope.lower_y).unwrap()),
-            );
-            result_feature.insert(
-                "lowerElevation",
-                AttributeValue::Number(Number::from_f64(envelope.lower_z).unwrap()),
-            );
-            result_feature.insert(
-                "upperLatitude",
-                AttributeValue::Number(Number::from_f64(envelope.upper_x).unwrap()),
-            );
-            result_feature.insert(
-                "upperLongitude",
-                AttributeValue::Number(Number::from_f64(envelope.upper_y).unwrap()),
-            );
-            result_feature.insert(
-                "upperElevation",
-                AttributeValue::Number(Number::from_f64(envelope.upper_z).unwrap()),
-            );
-            result_feature.insert(
-                "gmlIdNotWellformed",
-                AttributeValue::Number(Number::from(response.gml_id_not_well_formed_num)),
-            );
-            result_feature.insert(
-                "xlinkHasNoReference",
-                AttributeValue::Number(Number::from(response.xlink_has_no_reference_num)),
-            );
-            result_feature.insert(
-                "xlinkInvalidObjectType",
-                AttributeValue::Number(Number::from(response.xlink_invalid_object_type_num)),
-            );
-            result_feature.insert(
-                "invalidLodXGeometry",
-                AttributeValue::Number(Number::from(response.invalid_lod_x_geometry_num)),
-            );
-            result.push(result_feature);
         }
         let mut dup_id = 0;
         for (gml_id, attributes) in gml_ids {
@@ -518,9 +327,205 @@ impl AsyncAction for DomainOfDefinitionValidator {
         }
         Ok(ActionDataframe::from([(
             DEFAULT_PORT.clone(),
-            input.clone(),
+            Dataframe::new(result),
         )]))
     }
+}
+
+#[allow(clippy::type_complexity)]
+fn process_feature(
+    ctx: &ActionContext,
+    codelists: &HashMap<String, HashMap<String, String>>,
+    feature: &Feature,
+) -> Result<(Vec<Feature>, HashMap<String, Vec<HashMap<String, String>>>)> {
+    let mut gml_ids = HashMap::<String, Vec<HashMap<String, String>>>::new();
+    let storage_resolver = Arc::clone(&ctx.storage_resolver);
+    let mut result = Vec::<Feature>::new();
+    let package = feature
+        .attributes
+        .get(&Attribute::new("package"))
+        .ok_or(error::Error::input("package key empty"))?;
+    let AttributeValue::String(package) = package else {
+        return Err(error::Error::input("package value not string"));
+    };
+    let mut pattern = "^".to_string();
+    pattern.push_str(package);
+    pattern.push_str(r"_[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$");
+    let gml_id_pattern = Regex::new(pattern.as_str()).unwrap();
+    let valid_feature_types = PACKAGE_TO_VALID_FEATURE_TYPES
+        .get(package.as_str())
+        .map(|v| v.iter().map(|s| s.to_string()).collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    let city_gml_path = feature
+        .attributes
+        .get(&Attribute::new("cityGmlPath"))
+        .ok_or(error::Error::input("cityGmlPath key empty"))?;
+
+    ctx.action_log(format!(
+        "Processing feature: city gml path = {:?}",
+        city_gml_path
+    ));
+    let city_gml_uri = Uri::from_str(&city_gml_path.to_string()).map_err(error::Error::input)?;
+    let storage = storage_resolver
+        .resolve(&city_gml_uri)
+        .map_err(error::Error::input)?;
+    let xml_content = storage
+        .get_sync(city_gml_uri.path().as_path())
+        .map_err(error::Error::internal_runtime)?;
+    let mut response = ValidateResponse::default();
+
+    let xml_document = xml::parse(xml_content).map_err(error::Error::internal_runtime)?;
+    let root_node = xml::get_root_node(&xml_document).map_err(error::Error::internal_runtime)?;
+    let xml_ctx = xml::create_context(&xml_document).map_err(error::Error::internal_runtime)?;
+    let envelopes = xml::find_nodes_by_xpath(&xml_ctx, ".//gml:Envelope", &root_node)
+        .map_err(|_| error::Error::internal_runtime("Failed to evaluate xpath".to_string()))?;
+    response.envelope = parse_envelope(envelopes).map_err(error::Error::internal_runtime)?;
+
+    let members = xml::find_nodes_by_xpath(&xml_ctx, ".//core:cityObjectMember/*", &root_node)
+        .map_err(|_| error::Error::internal_runtime("Failed to evaluate xpath".to_string()))?;
+    for member in members.iter() {
+        let process_result = process_member_node(
+            &xml_ctx,
+            codelists,
+            feature,
+            member,
+            &valid_feature_types,
+            &mut response,
+            &mut gml_ids,
+            &gml_id_pattern,
+            Arc::clone(&storage_resolver),
+        )?;
+        result.extend(process_result);
+    }
+    // On the city object group model T03: Extracting unreferenced xlink:href
+
+    let members = xml::find_nodes_by_xpath(
+        &xml_ctx,
+        ".//core:cityObjectMember/grp:CityObjectGroup",
+        &root_node,
+    )
+    .map_err(|_| error::Error::internal_runtime("Failed to evaluate xpath".to_string()))?;
+    for member in members.iter() {
+        let feture_type = member.get_name();
+        let gml_id = member
+            .get_attribute_node("gml:id")
+            .map(|n| n.get_content())
+            .unwrap_or_default();
+        let xlinks = xml::find_nodes_by_xpath(&xml_ctx, ".//*[@xlink:href]", &root_node)
+            .map_err(|_| error::Error::internal_runtime("Failed to evaluate xpath".to_string()))?;
+        for xlink in xlinks {
+            let xlink_href = xlink
+                .get_attribute_node("xlink:href")
+                .map(|n| n.get_content())
+                .unwrap_or_default();
+            if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
+                let mut result_feature = feature.clone();
+                result_feature.insert(
+                    "flag",
+                    AttributeValue::String("XLink_NoReference".to_string()),
+                );
+                result_feature.insert("tag", AttributeValue::String(xml::get_node_tag(&xlink)));
+                result_feature.insert(
+                    "xpath",
+                    AttributeValue::String(get_xpath(&xlink, Some(member), None)),
+                );
+                result_feature.insert("featureType", AttributeValue::String(feture_type.clone()));
+                result_feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
+                result.push(result_feature);
+                response.xlink_has_no_reference_num += 1;
+            }
+        }
+    }
+    let mut result_feature = feature.clone();
+    let envelope = &response.envelope;
+    result_feature.insert("flag", AttributeValue::String("Summary".to_string()));
+    result_feature.insert("srsName", AttributeValue::String(envelope.srs_name.clone()));
+    result_feature.insert(
+        "invalidFeatureTypesNum",
+        AttributeValue::Number(Number::from(response.invalid_feature_types_num)),
+    );
+    result_feature.insert(
+        "invalidFeatureTypesDetail",
+        AttributeValue::Map(
+            response
+                .invalid_feature_types
+                .iter()
+                .map(|(k, v)| (k.clone(), AttributeValue::Number(Number::from(*v))))
+                .collect::<HashMap<_, _>>(),
+        ),
+    );
+    result_feature.insert(
+        "correctCodeValues",
+        AttributeValue::Number(Number::from(response.correct_code_values)),
+    );
+    result_feature.insert(
+        "inCorrectCodeValue",
+        AttributeValue::Number(Number::from(response.code_value_errors)),
+    );
+    result_feature.insert(
+        "inCorrectCodeSpace",
+        AttributeValue::Number(Number::from(response.code_space_errors)),
+    );
+    result_feature.insert(
+        "inCorrectCodeSpace",
+        AttributeValue::Bool(
+            envelope.srs_name == VALID_SRS_NAME_6697
+                || envelope.srs_name == VALID_SRS_NAME_6668
+                || (package == "unf"
+                    && VALID_SRS_NAME_FOR_UNF.contains(&envelope.srs_name.as_str())),
+        ),
+    );
+    result_feature.insert(
+        "correctExtents",
+        AttributeValue::Number(Number::from(response.correct_extents)),
+    );
+    result_feature.insert(
+        "inCorrectExtents",
+        AttributeValue::Number(Number::from(response.incorrect_extents)),
+    );
+    result_feature.insert(
+        "lowerLatitude",
+        AttributeValue::Number(Number::from_f64(envelope.lower_x).unwrap()),
+    );
+    result_feature.insert(
+        "lowerLongitude",
+        AttributeValue::Number(Number::from_f64(envelope.lower_y).unwrap()),
+    );
+    result_feature.insert(
+        "lowerElevation",
+        AttributeValue::Number(Number::from_f64(envelope.lower_z).unwrap()),
+    );
+    result_feature.insert(
+        "upperLatitude",
+        AttributeValue::Number(Number::from_f64(envelope.upper_x).unwrap()),
+    );
+    result_feature.insert(
+        "upperLongitude",
+        AttributeValue::Number(Number::from_f64(envelope.upper_y).unwrap()),
+    );
+    result_feature.insert(
+        "upperElevation",
+        AttributeValue::Number(Number::from_f64(envelope.upper_z).unwrap()),
+    );
+    result_feature.insert(
+        "gmlIdNotWellformed",
+        AttributeValue::Number(Number::from(response.gml_id_not_well_formed_num)),
+    );
+    result_feature.insert(
+        "xlinkHasNoReference",
+        AttributeValue::Number(Number::from(response.xlink_has_no_reference_num)),
+    );
+    result_feature.insert(
+        "xlinkInvalidObjectType",
+        AttributeValue::Number(Number::from(response.xlink_invalid_object_type_num)),
+    );
+    result_feature.insert(
+        "invalidLodXGeometry",
+        AttributeValue::Number(Number::from(response.invalid_lod_x_geometry_num)),
+    );
+    result.push(result_feature);
+    Ok((result, gml_ids))
 }
 
 fn parse_envelope(envelopes: Vec<XmlNode>) -> Result<Envelope> {
@@ -956,9 +961,10 @@ fn process_member_node(
     }
     // L-frn-01: Validation of geometric object types described as lod{0-4}Geometry.
     for lod in 0..4 {
-        let mut xpath = ".//{*}lod".to_string();
+        let mut xpath = ".//*[local-name()='lod".to_string();
         xpath.push_str(lod.to_string().as_str());
-        xpath.push_str("Geometry");
+        xpath.push_str("Geometry']");
+
         let children = xml::find_nodes_by_xpath(xml_ctx, &xpath, member)
             .map_err(|_| error::Error::internal_runtime("Failed to evaluate xpath".to_string()))?;
         for child in children {
@@ -967,7 +973,12 @@ fn process_member_node(
             };
             let parent_tag = xml::get_node_tag(&parent);
             let gml_tag = {
-                let gml = xml::find_nodes_by_xpath(xml_ctx, "./gml*", &child).map_err(|_| {
+                let gml = xml::find_nodes_by_xpath(
+                    xml_ctx,
+                    "./*[namespace-uri()='http://www.opengis.net/gml']",
+                    &child,
+                )
+                .map_err(|_| {
                     error::Error::internal_runtime("Failed to evaluate xpath".to_string())
                 })?;
                 if gml.is_empty() {

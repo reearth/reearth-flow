@@ -29,27 +29,25 @@ nodes:
           outputPort: summary
         - expr: |
             env.get("flag") == "CodeValidation"
-          outputPort: code_validation
+          outputPort: codeValidation
         - expr: |
             env.get("flag") == "ExtentsValidation"
-          outputPort: extents_validation
+          outputPort: extentsValidation
         - expr: |
             env.get("flag") == "GMLID_NotWellFormed"
-          outputPort: gml_id_not_well_formed
+          outputPort: gmlIdNotWellFormed
         - expr: |
             env.get("flag") == "GMLID_NotUnique"
-          outputPort: gml_id_not_unique
+          outputPort: gmlIdNotUnique
         - expr: |
             env.get("flag") == "XLink_NoReference"
-          outputPort: xlink_no_reference
+          outputPort: xlinkNoReference
         - expr: |
             env.get("flag") == "XLink_InvalidObjectType"
-          outputPort: xLink_invalid_object_type
+          outputPort: xLinkInvalidObjectType
         - expr: |
             env.get("flag") == "InvalidLodXGeometry"
-          outputPort: invalid_lod_x_geometry
-
-
+          outputPort: invalidLodXGeometry
 
 edges:
   - id: afa36141-5b6a-4d2b-8a75-bf184f961378
