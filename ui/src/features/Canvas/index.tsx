@@ -24,6 +24,7 @@ import {
   CustomConnectionLine,
   connectionLineStyle,
   Toolbox,
+  Breadcrumb,
 } from "@flow/features/Canvas/components";
 import CanvasActionBar from "@flow/features/Canvas/components/CanvasActionbar";
 import LeftPanel from "@flow/features/LeftPanel";
@@ -196,14 +197,15 @@ export default function Canvas({ workflow }: CanvasProps) {
             color="rgba(63, 63, 70, 0.3)"
           />
         </ReactFlow>
+        <Breadcrumb />
+        <div className="absolute left-2 top-10 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
+          <Toolbox className="self-start" />
+        </div>
         <div className="absolute top-1 right-1">
           <ActionBar />
         </div>
         <div className="absolute bottom-12 right-2">
           <CanvasActionBar />
-        </div>
-        <div className="absolute left-2 top-2 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
-          <Toolbox className="self-start" />
         </div>
         <Infobar
           className="absolute bottom-1 left-[50%] translate-x-[-50%]"
