@@ -24,10 +24,10 @@ const WorkspaceMembers: React.FC<Props> = () => {
             {t("Member")}
           </Button>
         </div>
-        <div className="flex flex-col gap-2 overflow-auto bg-zinc-800/50 p-2 rounded">
+        <div className="flex flex-col gap-2 overflow-auto p-2 rounded">
           {currentWorkspace.members.map(member => (
             <div
-              className="flex justify-between bg-zinc-700/30 border border-zinc-600/75 text-zinc-300 rounded py-1 px-2"
+              className="flex justify-between items-center bg-zinc-700/30 border border-zinc-600/75 text-zinc-300 rounded py-1 px-2"
               key={member.id}>
               <div className="flex gap-2 items-center truncate">
                 <div>
@@ -37,6 +37,15 @@ const WorkspaceMembers: React.FC<Props> = () => {
                   {member.name}
                 </p>
               </div>
+              <p key={member.id} className="font-thin text-sm truncate text-center">
+                {member.role === "admin"
+                  ? "Admin"
+                  : member.role === "writer"
+                    ? "Writer"
+                    : member.role === "reader"
+                      ? "Reader"
+                      : "Unknown"}
+              </p>
             </div>
           ))}
         </div>

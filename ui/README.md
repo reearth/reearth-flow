@@ -7,7 +7,7 @@ Frontend to build and setup workflows to calculate and convert various types of 
 - React 18
 - TypeScript 5
 - Vite 5
-- Storybook 7
+- Storybook 8
 - Yarn 4
 
 ### Install prerequisites
@@ -15,7 +15,7 @@ Frontend to build and setup workflows to calculate and convert various types of 
 ```console
 yarn
 
-yarn dev
+yarn start
 // or
 yarn storybook
 ```

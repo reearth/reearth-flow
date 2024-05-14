@@ -12,3 +12,7 @@ export * from "./FileTree";
 export * from "./Carousel";
 export * from "./Avatar";
 export * from "./NavigationMenu";
+export * from "./Tabs";
+export * from "./Label";
+export * from "./Input";
+export * from "./Select";

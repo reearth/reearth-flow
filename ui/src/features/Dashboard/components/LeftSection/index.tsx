@@ -16,7 +16,7 @@ const LeftSection: React.FC = () => {
   const handleDocumentationPageOpen = useOpenLink(documentationUrl ?? "");
 
   return (
-    <div className="flex flex-col justify-between gap-6 border border-zinc-700 m-2 p-4 rounded-lg w-[280px]">
+    <div className="flex flex-col justify-between gap-6 border border-zinc-700 p-4 rounded-lg w-[280px] bg-zinc-900/50">
       <div className="flex flex-col gap-2">
         {/* <WorkspaceNavigation className="border-b border-zinc-700 pb-2 mb-2" /> */}
         <div className="flex gap-2 py-2">
