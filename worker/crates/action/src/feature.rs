@@ -6,12 +6,17 @@ use serde::{Deserialize, Serialize};
 pub use crate::attribute::AttributeValue;
 use crate::{geometry::Geometry, Attribute};
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feature {
-    #[serde(rename = "_id")]
     pub id: uuid::Uuid,
     pub attributes: HashMap<Attribute, AttributeValue>,
     pub geometry: Option<Geometry>,
+}
+
+impl Default for Feature {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Display for Feature {
@@ -76,21 +81,10 @@ impl From<AttributeValue> for Feature {
         };
         let attributes = attributes
             .iter()
-            .flat_map(|(k, v)| {
-                if k == "_id" {
-                    None
-                } else {
-                    Some((Attribute::new(k.to_string()), v.clone()))
-                }
-            })
+            .map(|(k, v)| (Attribute::new(k.to_string()), v.clone()))
             .collect::<HashMap<_, _>>();
-        let id = if let Some(AttributeValue::String(id)) = attributes.get(&Attribute::new("_id")) {
-            uuid::Uuid::parse_str(id).unwrap_or_else(|_| uuid::Uuid::new_v4())
-        } else {
-            uuid::Uuid::new_v4()
-        };
         Self {
-            id,
+            id: uuid::Uuid::new_v4(),
             attributes,
             geometry: None,
         }
@@ -111,13 +105,10 @@ impl From<Feature> for AttributeValue {
 
 impl From<Feature> for HashMap<String, AttributeValue> {
     fn from(v: Feature) -> Self {
-        let mut attributes = v
-            .attributes
+        v.attributes
             .iter()
             .map(|(k, v)| (k.clone().into_inner(), v.clone()))
-            .collect::<HashMap<_, _>>();
-        attributes.insert("_id".to_string(), AttributeValue::String(v.id.to_string()));
-        attributes
+            .collect::<HashMap<_, _>>()
     }
 }
 
@@ -135,15 +126,11 @@ impl From<serde_json::Value> for Feature {
         };
         let attributes = attributes
             .iter()
-            .flat_map(|(k, v)| {
-                if k == "_id" {
-                    None
-                } else {
-                    Some((
-                        Attribute::new(k.to_string()),
-                        AttributeValue::from(v.clone()),
-                    ))
-                }
+            .map(|(k, v)| {
+                (
+                    Attribute::new(k.to_string()),
+                    AttributeValue::from(v.clone()),
+                )
             })
             .collect::<HashMap<_, _>>();
         let id = if let Some(serde_json::Value::String(id)) = v.get(&"id".to_string()) {

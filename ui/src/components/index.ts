@@ -1,4 +1,5 @@
 export * from "./buttons";
+export * from "./Card";
 export * from "./collapsiblePanels";
 export * from "./DropdownMenu";
 export * from "./icons";
@@ -12,5 +13,8 @@ export * from "./Carousel";
 export * from "./Avatar";
 export * from "./NavigationMenu";
 export * from "./Table";
-export * from "./Input";
 export * from "./Checkbox";
+export * from "./Tabs";
+export * from "./Label";
+export * from "./Input";
+export * from "./Select";

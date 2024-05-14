@@ -101,15 +101,15 @@ impl SchemaDef {
     }
 }
 
-static GEN_ATTR_TYPES: Lazy<HashMap<&'static str, String>> = Lazy::new(|| {
+static GEN_ATTR_TYPES: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     HashMap::from([
-        ("gen:stringAttribute", "string".to_string()),
-        ("gen:intAttribute", "int".to_string()),
-        ("gen:doubleAttribute", "double".to_string()),
-        ("gen:dateAttribute", "date".to_string()),
-        ("gen:uriAttribute", "uri".to_string()),
-        ("gen:measureAttribute", "measure".to_string()),
-        ("gen:genericAttributeSet", "attributeSet".to_string()),
+        ("gen:stringAttribute", "string"),
+        ("gen:intAttribute", "int"),
+        ("gen:doubleAttribute", "double"),
+        ("gen:dateAttribute", "date"),
+        ("gen:uriAttribute", "uri"),
+        ("gen:measureAttribute", "measure"),
+        ("gen:genericAttributeSet", "attributeSet"),
     ])
 });
 
@@ -846,10 +846,9 @@ fn walk_node(
     let ctx = xml::create_context(document).map_err(|e| {
         error::Error::internal_runtime(format!("Cannot create context with error = {:?}", e))
     })?;
-    let nodes = ctx.node_evaluate("./*", parent).map_err(|e| {
+    let nodes = xml::find_nodes_by_xpath(&ctx, "./*", parent).map_err(|e| {
         error::Error::internal_runtime(format!("Cannot evaluate xml with error = {:?}", e))
     })?;
-    let nodes = nodes.get_nodes_as_vec();
     let mut lod_count = LodCount::new();
     let mut result = Attributes::new();
 
@@ -1048,18 +1047,17 @@ fn walk_node(
 fn walk_generic_node(document: &XmlDocument, node: &XmlNode) -> Result<Vec<GenericAttribute>> {
     let tag = xml::get_node_tag(node);
     let typ = match GEN_ATTR_TYPES.get(tag.as_str()) {
-        Some(typ) => typ.clone(),
-        None => "unknown".to_string(),
+        Some(typ) => typ,
+        None => "unknown",
     };
     let mut result = Vec::new();
     if tag == *GENERIC_TAG_SET {
         let ctx = xml::create_context(document).map_err(|e| {
             error::Error::internal_runtime(format!("Cannot create context with error = {:?}", e))
         })?;
-        let nodes = ctx.node_evaluate("./*", node).map_err(|e| {
+        let children = xml::find_nodes_by_xpath(&ctx, "./*", node).map_err(|e| {
             error::Error::internal_runtime(format!("Cannot evaluate xml with error = {:?}", e))
         })?;
-        let children = nodes.get_nodes_as_vec();
         let mut attribute_set = Vec::new();
         for child in children {
             let attributes = walk_generic_node(document, &child).map_err(|e| {
@@ -1087,10 +1085,9 @@ fn walk_generic_node(document: &XmlDocument, node: &XmlNode) -> Result<Vec<Gener
         let ctx = xml::create_context(document).map_err(|e| {
             error::Error::internal_runtime(format!("Cannot create context with error = {:?}", e))
         })?;
-        let nodes = ctx.node_evaluate("./gen:value", node).map_err(|e| {
+        let nodes = xml::find_nodes_by_xpath(&ctx, "./gen:value", node).map_err(|e| {
             error::Error::internal_runtime(format!("Cannot evaluate xml with error = {:?}", e))
         })?;
-        let nodes = nodes.get_nodes_as_vec();
         let value = nodes.first().ok_or(error::Error::input("No Value"))?;
         result.push(GenericAttribute {
             r#type: typ.to_string(),
@@ -1112,33 +1109,27 @@ fn get_address(document: &XmlDocument, node: &XmlNode) -> Result<String> {
     let ctx = xml::create_context(document).map_err(|e| {
         error::Error::internal_runtime(format!("Cannot create context with error = {:?}", e))
     })?;
-    let nodes = ctx
-        .node_evaluate(".//xAL:LocalityName", node)
-        .map_err(|e| {
-            error::Error::internal_runtime(format!("Cannot evaluate xml with error = {:?}", e))
-        })?;
+    let nodes = xml::find_nodes_by_xpath(&ctx, ".//xAL:LocalityName", node).map_err(|e| {
+        error::Error::internal_runtime(format!("Cannot evaluate xml with error = {:?}", e))
+    })?;
     let mut result = Vec::<String>::new();
-    let nodes = nodes.get_nodes_as_vec();
     nodes.iter().for_each(|node| {
         result.push(node.get_content());
     });
-    let nodes = ctx
-        .node_evaluate(".//xAL:DependentLocality", node)
-        .map_err(|e| {
-            error::Error::internal_runtime(format!("Cannot evaluate xml with error = {:?}", e))
-        })?;
-    let nodes = nodes.get_nodes_as_vec();
+    let nodes = xml::find_nodes_by_xpath(&ctx, ".//xAL:DependentLocality", node).map_err(|e| {
+        error::Error::internal_runtime(format!("Cannot evaluate xml with error = {:?}", e))
+    })?;
     for node in nodes {
         let attribute_node = node.get_attribute_node("Type");
         match attribute_node {
             Some(attribute_node) if attribute_node.get_content() == "district" => {
-                let nodes = ctx.node_evaluate("./*", &attribute_node).map_err(|e| {
-                    error::Error::internal_runtime(format!(
-                        "Cannot evaluate xml with error = {:?}",
-                        e
-                    ))
-                })?;
-                let nodes = nodes.get_nodes_as_vec();
+                let nodes =
+                    xml::find_nodes_by_xpath(&ctx, "./*", &attribute_node).map_err(|e| {
+                        error::Error::internal_runtime(format!(
+                            "Cannot evaluate xml with error = {:?}",
+                            e
+                        ))
+                    })?;
                 nodes.iter().for_each(|node| {
                     result.push(node.get_content());
                 });

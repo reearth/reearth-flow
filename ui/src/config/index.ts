@@ -1,5 +1,7 @@
 export type Config = {
   version?: string;
+  brandName?: string;
+  devMode?: boolean;
   githubRepoUrl?: string;
   tosUrl?: string;
   documentationUrl?: string;
@@ -12,18 +14,28 @@ declare global {
   }
 }
 
+const defaultConfig: Config = {
+  version: "X.X.X",
+  brandName: "Re:Earth Flow",
+};
+
 export default async function loadConfig() {
   if (window.FLOW_CONFIG) return;
 
-  window.FLOW_CONFIG = {};
+  window.FLOW_CONFIG = defaultConfig;
 
   const config: Config = {
+    ...defaultConfig,
     ...(await (await fetch("/flow_config.json")).json()),
   };
+
+  if (window.FLOW_CONFIG.brandName) {
+    document.title = window.FLOW_CONFIG.brandName + " v" + config.version;
+  }
 
   window.FLOW_CONFIG = config;
 }
 
-export function config(): Config | undefined {
-  return window.FLOW_CONFIG;
+export function config(): Config {
+  return window.FLOW_CONFIG ?? {};
 }

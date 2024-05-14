@@ -760,6 +760,7 @@ impl EntityReference for RefNode {}
 
 // ------------------------------------------------------------------------------------------------
 
+#[allow(clippy::assigning_clones)]
 impl Node for RefNode {
     type NodeRef = RefNode;
 

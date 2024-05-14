@@ -15,9 +15,14 @@ reearth-flow-action-log.workspace = true
 reearth-flow-action.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
+reearth-flow-geometry.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-workflow.workspace = true
 reearth-flow-xml.workspace = true
+
+nusamai-citygml.workspace = true
+nusamai-plateau.workspace = true
+nusamai-projection.workspace = true
 
 async-trait.workspace = true
 async_zip.workspace = true
@@ -26,11 +31,10 @@ csv.workspace = true
 directories.workspace = true
 futures.workspace = true
 itertools.workspace = true
-nusamai-citygml.workspace = true
-nusamai-plateau.workspace = true
 nutype.workspace = true
 once_cell.workspace = true
 quick-xml.workspace = true
+rayon.workspace = true
 regex.workspace = true
 rhai.workspace = true
 rust_xlsxwriter.workspace = true

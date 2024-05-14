@@ -18,6 +18,7 @@ pub(crate) fn resolve_operator(uri: &Uri) -> Result<Operator> {
         Protocol::Ram => build_operator(init_memory_operator()),
         Protocol::Google => build_operator(init_gcs_operator(uri)),
         Protocol::Http => build_operator(init_http_operator(uri)),
+        Protocol::Https => build_operator(init_https_operator(uri)),
     }
 }
 
@@ -64,10 +65,18 @@ fn init_memory_operator() -> impl Builder {
     services::Memory::default()
 }
 
+fn init_https_operator(uri: &Uri) -> impl Builder {
+    let mut builder = services::Http::default();
+    debug!("init_https_operator: {}", uri.root());
+    builder.endpoint(&format!("https://{}", uri.root()));
+    builder.root("/");
+    builder
+}
+
 fn init_http_operator(uri: &Uri) -> impl Builder {
     let mut builder = services::Http::default();
     debug!("init_http_operator: {}", uri.root());
-    builder.endpoint(&format!("https://{}", uri.root()));
+    builder.endpoint(&format!("http://{}", uri.root()));
     builder.root("/");
     builder
 }

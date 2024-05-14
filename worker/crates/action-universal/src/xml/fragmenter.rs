@@ -220,11 +220,8 @@ fn generate_fragment(
     };
     let ctx = xml::create_context(document).map_err(Error::internal_runtime)?;
     let root = xml::get_root_node(document).map_err(Error::internal_runtime)?;
-    let results = ctx
-        .node_evaluate(&xpath, &root)
+    let mut nodes = xml::find_nodes_by_xpath(&ctx, &xpath, &root)
         .map_err(|_| Error::internal_runtime("Failed to evaluate xpath".to_string()))?;
-    let mut nodes = results.get_nodes_as_vec();
-
     let mut result = Vec::<XmlFragment>::new();
     let mut fragments = HashMap::<String, String>::new();
     for node in nodes.iter_mut() {

@@ -18,7 +18,6 @@ import ReactFlow, {
   useReactFlow,
 } from "reactflow";
 
-import ActionBar from "@flow/features/Actionbar";
 import {
   Infobar,
   nodeTypes,
@@ -26,19 +25,21 @@ import {
   connectionLineStyle,
   Toolbox,
 } from "@flow/features/Canvas/components";
+import CanvasActionBar from "@flow/features/Canvas/components/CanvasActionbar";
+import LeftPanel from "@flow/features/LeftPanel";
+import RightPanel from "@flow/features/RightPanel";
+import type { Workflow } from "@flow/types";
 
+import BottomPanel from "../BottomPanel";
+
+import ActionBar from "./components/Actionbar";
 import { edgeTypes } from "./components/CustomEdge";
 import useDnd from "./useDnd";
 
 import "reactflow/dist/style.css";
 
 type CanvasProps = {
-  leftArea?: React.ReactNode;
-  workflow?: {
-    id: string;
-    nodes?: Node[];
-    edges?: Edge[];
-  };
+  workflow?: Workflow;
 };
 
 // const edgeTypes: EdgeTypes = {
@@ -62,7 +63,7 @@ const defaultEdgeOptions: DefaultEdgeOptions = {
   // animated: true,
 };
 
-export default function Canvas({ workflow, leftArea }: CanvasProps) {
+export default function Canvas({ workflow }: CanvasProps) {
   const reactFlowInstance = useReactFlow();
   console.log("reactFlowInstance", reactFlowInstance);
   // console.log("reactFlowInstance to object", reactFlowInstance.toObject());
@@ -144,64 +145,74 @@ export default function Canvas({ workflow, leftArea }: CanvasProps) {
   }, [workflow, setNodes, setEdges]);
 
   return (
-    <div className="flex-1 m-1 rounded-sm relative">
-      <ReactFlow
-        // snapToGrid
-        // minZoom={0.7}
-        // maxZoom={1}
-        // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
-        // panOnDrag={false}
-        // nodeDragThreshold={60}
-        // translateExtent={[
-        //   [-1000, -1000],
-        //   [1000, 1000],
-        // ]}
-        // onInit={setReactFlowInstance}
-        selectNodesOnDrag={false}
-        selectionMode={SelectionMode["Partial"]}
-        nodes={nodes}
-        nodeTypes={nodeTypes}
-        edges={edges}
-        edgeTypes={edgeTypes}
-        defaultEdgeOptions={defaultEdgeOptions}
-        connectionLineComponent={CustomConnectionLine}
-        connectionLineStyle={connectionLineStyle}
-        snapGrid={[30, 30]}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeMouseEnter={handleNodeHover}
-        onNodeMouseLeave={handleNodeHover}
-        onEdgeMouseEnter={handleEdgeHover}
-        onEdgeMouseLeave={handleEdgeHover}
-        onConnect={onConnect}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        fitViewOptions={{ padding: 0.5 }}
-        fitView
-        panOnScroll
-        proOptions={{ hideAttribution: true }}>
-        {/* <MiniMap
+    <div className="flex flex-1">
+      <LeftPanel data={workflow} />
+      <div className="relative flex flex-col flex-1">
+        <ReactFlow
+          // snapToGrid
+          // minZoom={0.7}
+          // maxZoom={1}
+          // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
+          // panOnDrag={false}
+          // nodeDragThreshold={60}
+          // translateExtent={[
+          //   [-1000, -1000],
+          //   [1000, 1000],
+          // ]}
+          // onInit={setReactFlowInstance}
+          selectNodesOnDrag={false}
+          selectionMode={SelectionMode["Partial"]}
+          nodes={nodes}
+          nodeTypes={nodeTypes}
+          edges={edges}
+          edgeTypes={edgeTypes}
+          defaultEdgeOptions={defaultEdgeOptions}
+          connectionLineComponent={CustomConnectionLine}
+          connectionLineStyle={connectionLineStyle}
+          snapGrid={[30, 30]}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeMouseEnter={handleNodeHover}
+          onNodeMouseLeave={handleNodeHover}
+          onEdgeMouseEnter={handleEdgeHover}
+          onEdgeMouseLeave={handleEdgeHover}
+          onConnect={onConnect}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          fitViewOptions={{ padding: 0.5 }}
+          fitView
+          panOnScroll
+          proOptions={{ hideAttribution: true }}>
+          {/* <MiniMap
           className="bg-zinc-900"
           nodeColor="purple"
           maskStrokeColor="red"
           maskStrokeWidth={3}
         /> */}
-        <Background variant={BackgroundVariant["Lines"]} gap={30} color="rgb(39 39 42)" />
-      </ReactFlow>
-      <div className="absolute top-1 right-1">
-        <ActionBar />
-      </div>
-      {leftArea && (
-        <div className="absolute left-1 top-1 bottom-1 flex flex-shrink-0 gap-2">
-          {leftArea}
+          <Background
+            className="bg-zinc-900/50"
+            variant={BackgroundVariant["Lines"]}
+            gap={30}
+            color="rgba(63, 63, 70, 0.3)"
+          />
+        </ReactFlow>
+        <div className="absolute top-1 right-1">
+          <ActionBar />
+        </div>
+        <div className="absolute bottom-12 right-2">
+          <CanvasActionBar />
+        </div>
+        <div className="absolute left-2 top-2 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
           <Toolbox className="self-start" />
         </div>
-      )}
-      <Infobar
-        className="absolute bottom-1 left-[50%] translate-x-[-50%]"
-        hoveredDetails={hoveredDetails}
-      />
-      {/* <BottomPanel className="absolute right-1 bottom-1" /> */}
+        <Infobar
+          className="absolute bottom-1 left-[50%] translate-x-[-50%]"
+          hoveredDetails={hoveredDetails}
+        />
+        <BottomPanel />
+      </div>
+      {/* <div className="absolute right-1 top-1 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto"> */}
+      <RightPanel selected={selected.nodes} />
     </div>
   );
 }
