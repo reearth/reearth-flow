@@ -198,7 +198,7 @@ export default function Canvas({ workflow }: CanvasProps) {
           />
         </ReactFlow>
         <Breadcrumb />
-        <div className="absolute left-2 top-10 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
+        <div className="absolute left-2 top-2 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
           <Toolbox className="self-start" />
         </div>
         <div className="absolute top-1 right-1">
@@ -208,12 +208,11 @@ export default function Canvas({ workflow }: CanvasProps) {
           <CanvasActionBar />
         </div>
         <Infobar
-          className="absolute bottom-1 left-[50%] translate-x-[-50%]"
+          className="absolute bottom-[42px] left-[50%] translate-x-[-50%]"
           hoveredDetails={hoveredDetails}
         />
         <BottomPanel />
       </div>
-      {/* <div className="absolute right-1 top-1 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto"> */}
       <RightPanel selected={selected.nodes} />
     </div>
   );

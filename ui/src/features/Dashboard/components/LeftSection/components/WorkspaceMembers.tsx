@@ -1,29 +1,15 @@
 import { PersonIcon } from "@radix-ui/react-icons";
-import { PlusIcon } from "lucide-react";
 
-import { Button } from "@flow/components";
-import { useT } from "@flow/providers";
 import { useCurrentWorkspace } from "@flow/stores";
 
 type Props = {};
 
 const WorkspaceMembers: React.FC<Props> = () => {
-  const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
   return (
     currentWorkspace?.members && (
-      <div className="flex flex-col flex-1 gap-4 overflow-auto">
-        <div className="flex gap-1 justify-between">
-          <p className="text-lg font-extralight">Team</p>
-          <Button className="flex gap-2 self-start font-extralight" variant="outline" size="sm">
-            <div className="flex items-center">
-              <PlusIcon className="w-3" />
-              <PersonIcon className="w-3" />
-            </div>
-            {t("Member")}
-          </Button>
-        </div>
+      <div className="flex flex-col flex-1 gap-4 overflow-auto max-h-[80%]">
         <div className="flex flex-col gap-2 overflow-auto p-2 rounded">
           {currentWorkspace.members.map(member => (
             <div

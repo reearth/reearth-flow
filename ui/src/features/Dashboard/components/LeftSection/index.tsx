@@ -1,6 +1,7 @@
+import { GitHubLogoIcon, PersonIcon } from "@radix-ui/react-icons";
 import { PlusIcon } from "lucide-react";
 
-import { Button } from "@flow/components";
+import { ButtonWithTooltip } from "@flow/components";
 import { config } from "@flow/config";
 import { useOpenLink } from "@flow/hooks";
 import { useT } from "@flow/providers";
@@ -16,40 +17,45 @@ const LeftSection: React.FC = () => {
   const handleDocumentationPageOpen = useOpenLink(documentationUrl ?? "");
 
   return (
-    <div className="flex flex-col justify-between gap-6 border border-zinc-700 p-4 rounded-lg w-[280px] bg-zinc-900/50">
-      <div className="flex flex-col gap-2">
-        {/* <WorkspaceNavigation className="border-b border-zinc-700 pb-2 mb-2" /> */}
-        <div className="flex gap-2 py-2">
-          <Button className="flex flex-1 gap-1 font-extralight" variant="outline" size="sm">
+    <div className="flex flex-col justify-between gap-6 border border-zinc-700 rounded-lg w-[280px] bg-zinc-900/50">
+      <div className="flex gap-1 justify-between p-4 border-b border-zinc-700">
+        <p className="text-lg font-extralight">{t("Members")}</p>
+        <ButtonWithTooltip
+          className="flex gap-2 self-start font-extralight bg-zinc-800 hover:bg-zinc-700"
+          variant="outline"
+          tooltipPosition="top"
+          tooltipText={t("Add a team member")}>
+          <div className="flex items-center">
             <PlusIcon className="w-3" />
-            {t("Project")}
-          </Button>
-          <Button className="flex flex-1 gap-1 font-extralight" variant="outline" size="sm">
-            <PlusIcon className="w-3" />
-            {t("Workspace")}
-          </Button>
-        </div>
+            <PersonIcon className="w-3" />
+          </div>
+        </ButtonWithTooltip>
       </div>
-      <WorkspaceMembers />
-      <div>
+      <div className="px-4 h-full overflow-auto">
+        <WorkspaceMembers />
+      </div>
+      <div className="px-4 pb-4">
         {githubRepoUrl && (
-          <p
-            className="font-extralight px-2 -mx-2 w-[95%] py-1 -my-1 cursor-pointer rounded-md hover:text-zinc-100 hover:bg-zinc-800 truncate"
-            onClick={handleGithubPageOpen}>
-            {t("Documentation")}
-          </p>
+          <div className="flex gap-2 items-center">
+            <GitHubLogoIcon />
+            <p
+              className="font-extralight px-2 -mx-2 w-[95%] py-1 -my-1 cursor-pointer rounded-md hover:text-zinc-100 hover:bg-zinc-800 truncate"
+              onClick={handleGithubPageOpen}>
+              {t("Github")}
+            </p>
+          </div>
         )}
         {tosUrl && (
           <p
             className="font-extralight px-2 -mx-2 w-[95%] py-1 cursor-pointer rounded-md hover:text-zinc-100 hover:bg-zinc-800 truncate"
-            onClick={handleTosPageOpen}>
-            {t("Github")}
+            onClick={handleDocumentationPageOpen}>
+            {t("Documentation")}
           </p>
         )}
         {documentationUrl && (
           <p
             className="font-extralight px-2 -mx-2 w-[95%] py-1 cursor-pointer rounded-md hover:text-zinc-100 hover:bg-zinc-800 truncate text-wrap"
-            onClick={handleDocumentationPageOpen}>
+            onClick={handleTosPageOpen}>
             {t("Terms of Service")}
           </p>
         )}

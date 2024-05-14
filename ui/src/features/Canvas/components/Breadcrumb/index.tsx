@@ -16,22 +16,24 @@ const Breadcrumb: React.FC = () => {
   }, [isHovered]);
 
   return (
-    <div
-      className="absolute top-0 left-0 py-1 px-2 flex items-center gap-3 bg-zinc-900 border-b border-r border-zinc-700 rounded-br-md cursor-default select-none"
-      onMouseLeave={() => setIsHovered(undefined)}>
-      <p
-        className={`font-extralight text-zinc-400 max-w-[100px] truncate transition-all delay-0 duration-500 ${isHovered?.includes("workspace") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
-        onMouseEnter={() => setIsHovered(h => [...(h ?? []), "workspace"])}>
-        {currentWorkspace?.name}
-      </p>
-      <p className="font-extralight text-zinc-500">
-        <ChevronRightIcon />
-      </p>
-      <p
-        className={`font-extralight text-zinc-400 max-w-[100px] truncate transition-all delay-0 duration-500 ${isHovered?.includes("project") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
-        onMouseEnter={() => setIsHovered(h => [...(h ?? []), "project"])}>
-        {currentProject?.name}
-      </p>
+    <div className="absolute top-0 left-0 right-0 flex flex-shrink-0 justify-center pointer-events-none [&>*]:pointer-events-auto">
+      <div
+        className="py-1 px-2 flex items-center gap-3 rounded-br-md cursor-default select-none"
+        onMouseLeave={() => setIsHovered(undefined)}>
+        <p
+          className={`font-extralight text-zinc-400 max-w-[100px] truncate transition-all delay-0 duration-500 ${isHovered?.includes("workspace") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
+          onMouseEnter={() => setIsHovered(h => [...(h ?? []), "workspace"])}>
+          {currentWorkspace?.name}
+        </p>
+        <p className="font-extralight text-zinc-500">
+          <ChevronRightIcon />
+        </p>
+        <p
+          className={`font-extralight text-zinc-400 max-w-[100px] truncate transition-all delay-0 duration-500 ${isHovered?.includes("project") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
+          onMouseEnter={() => setIsHovered(h => [...(h ?? []), "project"])}>
+          {currentProject?.name}
+        </p>
+      </div>
     </div>
   );
 };
