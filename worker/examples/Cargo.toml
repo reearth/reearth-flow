@@ -40,3 +40,7 @@ path = "plateau/attribute_reader.rs"
 [[example]]
 name = "xml_validator"
 path = "plateau/xml_validator.rs"
+
+[[example]]
+name = "domain_of_definition_validator"
+path = "plateau/domain_of_definition_validator.rs"
