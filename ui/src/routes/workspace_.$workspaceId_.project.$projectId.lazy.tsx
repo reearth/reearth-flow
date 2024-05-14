@@ -12,7 +12,7 @@ function Editor() {
 
   return (
     <div className="flex flex-col bg-zinc-900 text-zinc-300 h-screen">
-      <Canvas workflow={currentProject?.workflows?.[0]} />
+      <Canvas workflow={currentProject?.workflow} />
     </div>
   );
 }

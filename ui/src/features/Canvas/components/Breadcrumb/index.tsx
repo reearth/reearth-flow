@@ -1,3 +1,4 @@
+import { ChevronRightIcon } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
 
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
@@ -16,14 +17,16 @@ const Breadcrumb: React.FC = () => {
 
   return (
     <div
-      className="absolute top-0 left-0 py-1 px-2 flex gap-3 bg-zinc-900 border-b border-r border-zinc-700 rounded-br-md cursor-default select-none"
+      className="absolute top-0 left-0 py-1 px-2 flex items-center gap-3 bg-zinc-900 border-b border-r border-zinc-700 rounded-br-md cursor-default select-none"
       onMouseLeave={() => setIsHovered(undefined)}>
       <p
         className={`font-extralight text-zinc-400 max-w-[100px] truncate transition-all delay-0 duration-500 ${isHovered?.includes("workspace") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
         onMouseEnter={() => setIsHovered(h => [...(h ?? []), "workspace"])}>
         {currentWorkspace?.name}
       </p>
-      <p className="font-extralight text-zinc-500">&gt;</p>
+      <p className="font-extralight text-zinc-500">
+        <ChevronRightIcon />
+      </p>
       <p
         className={`font-extralight text-zinc-400 max-w-[100px] truncate transition-all delay-0 duration-500 ${isHovered?.includes("project") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
         onMouseEnter={() => setIsHovered(h => [...(h ?? []), "project"])}>

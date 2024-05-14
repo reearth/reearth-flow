@@ -4,5 +4,5 @@ export type Project = {
   id: string;
   name: string;
   description?: string;
-  workflows: Workflow[] | undefined;
+  workflow: Workflow | undefined;
 };
