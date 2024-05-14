@@ -6,9 +6,6 @@ use std::time::Instant;
 use async_recursion::async_recursion;
 use petgraph::graph::NodeIndex;
 use reearth_flow_action::Dataframe;
-use reearth_flow_workflow::graph::NodeAction;
-use reearth_flow_workflow::workflow::Parameter;
-use reearth_flow_workflow::workflow::WorkflowParameter;
 use tokio::task::JoinSet;
 use tracing::{info, info_span};
 
@@ -17,7 +14,11 @@ use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_workflow::{graph::Node, id::Id, workflow::Workflow};
+
+use crate::types::graph::NodeAction;
+use crate::types::graph::Parameter;
+use crate::types::graph::WorkflowParameter;
+use crate::types::graph::{Id, Node, Workflow};
 
 use super::dag_impl::Dag;
 use crate::action_runner::ActionRunner;

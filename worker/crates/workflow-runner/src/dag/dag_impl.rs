@@ -7,9 +7,9 @@ use petgraph::Direction;
 use tracing::info;
 
 use reearth_flow_action::Port;
-use reearth_flow_workflow::graph::Node;
-use reearth_flow_workflow::id::Id;
 
+use crate::types::graph::Id;
+use crate::types::graph::Node;
 use crate::Error;
 
 pub(super) type NodeId = Id;
@@ -105,7 +105,7 @@ pub struct Dag {
 }
 
 impl Dag {
-    pub fn from_graph(graph: &reearth_flow_workflow::graph::Graph) -> crate::Result<Self> {
+    pub fn from_graph(graph: &crate::types::graph::Graph) -> crate::Result<Self> {
         let mut dag = Self {
             id: graph.id,
             graph: DiGraph::<NodeType, EdgeType>::new(),
