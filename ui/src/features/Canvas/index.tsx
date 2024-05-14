@@ -146,7 +146,7 @@ export default function Canvas({ workflow }: CanvasProps) {
   }, [workflow, setNodes, setEdges]);
 
   return (
-    <div className="flex flex-1">
+    <div className="flex flex-1 relative">
       <LeftPanel data={workflow} />
       <div className="relative flex flex-col flex-1">
         <ReactFlow
