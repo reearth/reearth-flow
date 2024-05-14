@@ -1,3 +1,3 @@
 export * from "./DataTable";
-export * from "./Map";
+export * from "./TwoDMap";
 export * from "./Console";
