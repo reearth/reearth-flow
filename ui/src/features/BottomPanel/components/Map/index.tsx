@@ -7,7 +7,7 @@ type Props = {};
 const Map: React.FC<Props> = () => {
   return (
     <div className="relative w-6/12">
-      <CoreVisualizer
+      {/* <CoreVisualizer
         ready={true}
         engine="cesium"
         sceneProperty={{
@@ -35,7 +35,8 @@ const Map: React.FC<Props> = () => {
             },
           },
         ]}
-      />
+      /> */}
+      Map here. This is not working for some reason. Build failes with @reearth/core.
     </div>
   );
 };
