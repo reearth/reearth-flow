@@ -42,7 +42,7 @@ const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
 
   const classes = [
     baseClasses,
-    isOpen ? maxHeight ?? "h-64" : minHeight ?? "h-[36px]",
+    isOpen ? maxHeight ?? "h-100" : minHeight ?? "h-[36px]",
     className,
   ].reduce((acc, cur) => (cur ? `${acc} ${cur}` : acc));
 
