@@ -77,7 +77,7 @@ function DataTable<TData, TValue>({
         {selectColumns && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
+              <Button variant="outline" size="sm" className="ml-auto">
                 {t("Columns")}
               </Button>
             </DropdownMenuTrigger>
