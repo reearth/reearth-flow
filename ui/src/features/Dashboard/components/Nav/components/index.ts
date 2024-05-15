@@ -1,2 +1,2 @@
-export * from "./WorkspaceMembers";
 export * from "./WorkspaceNavigation";
+export * from "./UserNavigation";

@@ -18,7 +18,7 @@ const LeftSection: React.FC = () => {
 
   return (
     <div className="flex flex-col justify-between gap-6 border border-zinc-700 rounded-lg w-[280px] bg-zinc-900/50">
-      <div className="flex gap-1 justify-between p-4 border-b border-zinc-700">
+      <div className="flex gap-1 justify-between items-center py-2 px-4 border-b border-zinc-700">
         <p className="text-lg font-extralight">{t("Members")}</p>
         <ButtonWithTooltip
           className="flex gap-2 self-start font-extralight bg-zinc-800 hover:bg-zinc-700"
