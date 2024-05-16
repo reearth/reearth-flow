@@ -19,13 +19,12 @@ type CanvasAction = "undo" | "redo";
 type Action = ToolboxItem<CanvasAction>;
 
 type Props = {
-  className?: string;
   undoDisabled?: boolean;
   onRedo?: () => void;
   onUndo?: () => void;
 };
 
-const Toolbox: React.FC<Props> = ({ className, onRedo, onUndo }) => {
+const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
   const t = useT();
 
   const availableTools: Tool[] = [
@@ -75,31 +74,33 @@ const Toolbox: React.FC<Props> = ({ className, onRedo, onUndo }) => {
   };
 
   return (
-    <div className={`bg-zinc-800 ${className}`}>
-      <div className="flex flex-col flex-wrap bg-zinc-900/50 border border-zinc-700 rounded-md text-zinc-400 transition-all">
-        {availableTools.map(tool => (
-          <IconButton
-            key={tool.id}
-            className={`dndnode-${tool.id}`}
-            tooltipPosition="right"
-            tooltipText={tool.name}
-            icon={tool.icon}
-            onDragStart={event => onDragStart(event, tool.id)}
-            draggable
-          />
-        ))}
-        {availableActions && <div className="w-full border-t border-zinc-700 my-2" />}
-        {availableActions.map(action => (
-          <IconButton
-            key={action.id}
-            tooltipPosition="right"
-            tooltipText={action.name}
-            icon={action.icon}
-            onClick={() =>
-              action.id === "redo" ? onRedo?.() : action.id === "undo" ? onUndo?.() : undefined
-            }
-          />
-        ))}
+    <div className="absolute left-2 top-2 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
+      <div className="bg-zinc-800 self-start">
+        <div className="flex flex-col flex-wrap bg-zinc-900/50 border border-zinc-700 rounded-md text-zinc-400 transition-all">
+          {availableTools.map(tool => (
+            <IconButton
+              key={tool.id}
+              className={`dndnode-${tool.id}`}
+              tooltipPosition="right"
+              tooltipText={tool.name}
+              icon={tool.icon}
+              onDragStart={event => onDragStart(event, tool.id)}
+              draggable
+            />
+          ))}
+          {availableActions && <div className="w-full border-t border-zinc-700 my-2" />}
+          {availableActions.map(action => (
+            <IconButton
+              key={action.id}
+              tooltipPosition="right"
+              tooltipText={action.name}
+              icon={action.icon}
+              onClick={() =>
+                action.id === "redo" ? onRedo?.() : action.id === "undo" ? onUndo?.() : undefined
+              }
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

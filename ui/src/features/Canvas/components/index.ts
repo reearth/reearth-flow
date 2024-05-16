@@ -5,3 +5,4 @@ export * from "./Infobar";
 export * from "./CanvasActionbar";
 export * from "./Actionbar";
 export * from "./Breadcrumb";
+export * from "./CanvasTabs";

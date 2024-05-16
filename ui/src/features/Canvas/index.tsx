@@ -25,10 +25,12 @@ import {
   connectionLineStyle,
   Toolbox,
   Breadcrumb,
+  CanvasTabs,
 } from "@flow/features/Canvas/components";
 import CanvasActionBar from "@flow/features/Canvas/components/CanvasActionbar";
 import LeftPanel from "@flow/features/LeftPanel";
 import RightPanel from "@flow/features/RightPanel";
+import { customTransformers } from "@flow/mock_data/customTransformer";
 import type { Workflow } from "@flow/types";
 
 import BottomPanel from "../BottomPanel";
@@ -199,28 +201,10 @@ export default function Canvas({ workflow }: CanvasProps) {
             />
           </ReactFlow>
           <Breadcrumb />
-          <div className="absolute left-2 top-2 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
-            <Toolbox className="self-start" />
-          </div>
-          {/* START tabs for custom transformer support */}
-          <div className="absolute left-1 bottom-0 flex gap-1">
-            <div className="w-28 px-2 py-0.5 bg-zinc-700 text-zinc-300 rounded-t-md cursor-pointer">
-              <p className="text-xs text-center truncate">Main</p>
-            </div>
-            <div className="w-28 px-2 py-0.5 bg-zinc-700/50 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-300 rounded-t-md cursor-pointer">
-              <p className="text-xs text-center truncate">custom trans</p>
-            </div>
-            <div className="w-28 px-2 py-0.5 bg-zinc-700/50 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-300 rounded-t-md cursor-pointer">
-              <p className="text-xs text-center truncate">My long named custom transformer</p>
-            </div>
-          </div>
-          {/* END tabs for custom transformer support */}
-          <div className="absolute top-1 right-1">
-            <ActionBar />
-          </div>
-          <div className="absolute bottom-2 right-2">
-            <CanvasActionBar />
-          </div>
+          <Toolbox />
+          <CanvasTabs customTransformers={customTransformers} />
+          <ActionBar />
+          <CanvasActionBar />
           <Infobar
             className="absolute bottom-2 left-[50%] translate-x-[-50%]"
             hoveredDetails={hoveredDetails}
