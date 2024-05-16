@@ -24,7 +24,7 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ className }) => {
       icon: <PreviewIcon />,
       description: t("Preview data"),
       component: (
-        <div className="flex flex-1 h-[210px]">
+        <div className="flex flex-1 h-[400px]">
           <DataTable />
           <Map />
         </div>

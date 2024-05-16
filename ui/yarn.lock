@@ -2374,6 +2374,33 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@radix-ui/react-checkbox@npm:1.0.4":
+  version: 1.0.4
+  resolution: "@radix-ui/react-checkbox@npm:1.0.4"
+  dependencies:
+    "@babel/runtime": "npm:^7.13.10"
+    "@radix-ui/primitive": "npm:1.0.1"
+    "@radix-ui/react-compose-refs": "npm:1.0.1"
+    "@radix-ui/react-context": "npm:1.0.1"
+    "@radix-ui/react-presence": "npm:1.0.1"
+    "@radix-ui/react-primitive": "npm:1.0.3"
+    "@radix-ui/react-use-controllable-state": "npm:1.0.1"
+    "@radix-ui/react-use-previous": "npm:1.0.1"
+    "@radix-ui/react-use-size": "npm:1.0.1"
+  peerDependencies:
+    "@types/react": "*"
+    "@types/react-dom": "*"
+    react: ^16.8 || ^17.0 || ^18.0
+    react-dom: ^16.8 || ^17.0 || ^18.0
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    "@types/react-dom":
+      optional: true
+  checksum: 10c0/a4bd259a7e15ad88f72524190ddcc2db0688d439aad954e06d0adf6038b2e17397ed8ae0ea26ab09bf6981f1b9dd883904b2b7e74b307b5c6b1a3765d27fe737
+  languageName: node
+  linkType: hard
+
 "@radix-ui/react-collapsible@npm:1.0.3":
   version: 1.0.3
   resolution: "@radix-ui/react-collapsible@npm:1.0.3"
@@ -3322,6 +3349,7 @@ __metadata:
   dependencies:
     "@radix-ui/react-accordion": "npm:1.1.2"
     "@radix-ui/react-avatar": "npm:1.0.4"
+    "@radix-ui/react-checkbox": "npm:1.0.4"
     "@radix-ui/react-dialog": "npm:1.0.5"
     "@radix-ui/react-dropdown-menu": "npm:2.0.6"
     "@radix-ui/react-icons": "npm:1.3.0"
@@ -3346,6 +3374,7 @@ __metadata:
     "@tanstack/react-query": "npm:5.35.1"
     "@tanstack/react-query-devtools": "npm:5.35.1"
     "@tanstack/react-router": "npm:1.31.24"
+    "@tanstack/react-table": "npm:8.16.0"
     "@tanstack/router-devtools": "npm:1.31.24"
     "@tanstack/router-vite-plugin": "npm:1.31.18"
     "@types/leaflet": "npm:1.9.12"
@@ -4425,6 +4454,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/react-table@npm:8.16.0":
+  version: 8.16.0
+  resolution: "@tanstack/react-table@npm:8.16.0"
+  dependencies:
+    "@tanstack/table-core": "npm:8.16.0"
+  peerDependencies:
+    react: ">=16.8"
+    react-dom: ">=16.8"
+  checksum: 10c0/e6b05af777592fdd56055e753f4c626b14ed9ba4818c84411adc4e552d2b05474bfac4ca8f505ce9b2ffa36023a489b41297f25216124a4b6150852ac83708d8
+  languageName: node
+  linkType: hard
+
 "@tanstack/router-devtools@npm:1.31.24":
   version: 1.31.24
   resolution: "@tanstack/router-devtools@npm:1.31.24"
@@ -4478,6 +4519,13 @@ __metadata:
   version: 0.1.3
   resolution: "@tanstack/store@npm:0.1.3"
   checksum: 10c0/e56b2576cd963a7c4ca945fb16f2adf6692143aff1fb62c7a6739c7c004c3e3848d66d6838109f56236ee8988c69d3c807389db39011c59a53abc761df1b9ac0
+  languageName: node
+  linkType: hard
+
+"@tanstack/table-core@npm:8.16.0":
+  version: 8.16.0
+  resolution: "@tanstack/table-core@npm:8.16.0"
+  checksum: 10c0/fda4d47d40f61d1c226ecb47051afdcd49faa0b2c6ea2bd5ce138822794b8e0c4ca118aa03a15e1e2bc3882c57c901d5e90067a0c49e3e42a61267b004527434
   languageName: node
   linkType: hard
 
@@ -6476,7 +6524,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:>=13.7.0":
+"@types/node@npm:*":
   version: 20.12.12
   resolution: "@types/node@npm:20.12.12"
   dependencies:
@@ -7966,25 +8014,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cesium-dnd@npm:1.1.0":
-  version: 1.1.0
-  resolution: "cesium-dnd@npm:1.1.0"
-  peerDependencies:
-    cesium: "*"
-  checksum: 10c0/e20001fb628f6c877e1aca2a4deddbcac2339abd0b17e1fd1a735aa68a00849b495b9437f673d802903110f79ba1644c4b7e820b8e77608b1203dc04cdde18e1
-  languageName: node
-  linkType: hard
-
-"cesium@npm:1.117.0":
-  version: 1.117.0
-  resolution: "cesium@npm:1.117.0"
-  dependencies:
-    "@cesium/engine": "npm:^9.1.0"
-    "@cesium/widgets": "npm:^6.1.0"
-  checksum: 10c0/a474542a7fbe764cfed6474541721674f8c5283e13ec37a03a74dafc8ecb4d54520a96c10965ca912c1267dc8bd192db6fac9f444ef945877de6566b7c363f59
-  languageName: node
-  linkType: hard
-
 "chai@npm:^4.3.10":
   version: 4.4.1
   resolution: "chai@npm:4.4.1"
@@ -9382,9 +9411,9 @@ __metadata:
   linkType: hard
 
 "electron-to-chromium@npm:^1.4.668":
-  version: 1.4.768
-  resolution: "electron-to-chromium@npm:1.4.768"
-  checksum: 10c0/c22bbc29c2054a0f9c21d6fb710b74eabb82093e079d904c2b74d92c3d0cdc577171c58692ba7bab81e5926302ccdd8f67bb12dd20e96f3edbfc2f4ee841c426
+  version: 1.4.767
+  resolution: "electron-to-chromium@npm:1.4.767"
+  checksum: 10c0/b1d217091a7bc1a24560c8de6703d18bcf0e952bbf12a3f1c470b5306d5446b2493be5edb1c6b8e43ff3c1feadde8d5a3e1a50b0acd542bae2fc260402fef79b
   languageName: node
   linkType: hard
 
@@ -13817,7 +13846,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"picocolors@npm:^1.0.0, picocolors@npm:^1.0.1":
+"picocolors@npm:^1.0.0":
   version: 1.0.1
   resolution: "picocolors@npm:1.0.1"
   checksum: 10c0/c63cdad2bf812ef0d66c8db29583802355d4ca67b9285d846f390cc15c2f6ccb94e8cb7eb6a6e97fc5990a6d3ad4ae42d86c84d3146e667c739a4234ed50d400
@@ -13887,22 +13916,6 @@ __metadata:
     mlly: "npm:^1.7.0"
     pathe: "npm:^1.1.2"
   checksum: 10c0/c7d167935de7207479e5829086040d70bea289f31fc1331f17c83e996a4440115c9deba2aa96de839ea66e1676d083c9ca44b33886f87bffa6b49740b67b6fcb
-  languageName: node
-  linkType: hard
-
-"pmtiles@npm:2.7.0":
-  version: 2.7.0
-  resolution: "pmtiles@npm:2.7.0"
-  dependencies:
-    fflate: "npm:^0.7.3"
-  checksum: 10c0/7c4ec45e0f017b3e4d13ef49151e342c22b3a08d431473f1fbc59810d946187aeab3ce5b4147298c7f84ceb4eb5ace5e2339ad7bdd4570fa88b18867abc924d6
-  languageName: node
-  linkType: hard
-
-"point-in-polygon@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "point-in-polygon@npm:1.1.0"
-  checksum: 10c0/de00419585ee25555d97585b7a23eeb2464a87ef29404264bee55654ca2ecab5a5a99d33e689c07d045faf80091e838f44a1fd130bdd6134493df53114947343
   languageName: node
   linkType: hard
 
