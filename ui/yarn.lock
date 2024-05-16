@@ -6524,7 +6524,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*":
+"@types/node@npm:*, @types/node@npm:>=13.7.0":
   version: 20.12.12
   resolution: "@types/node@npm:20.12.12"
   dependencies:
@@ -8011,6 +8011,25 @@ __metadata:
   version: 1.0.30001618
   resolution: "caniuse-lite@npm:1.0.30001618"
   checksum: 10c0/2e33e5e854fb6365566e2ff5ba866c877cd08ca278a2c06b9bc3346a884fc1336a0674c2a0003e7ee7a1a64e90f167ec4ad08ea14d12da5926017c92c99f82a5
+  languageName: node
+  linkType: hard
+
+"cesium-dnd@npm:1.1.0":
+  version: 1.1.0
+  resolution: "cesium-dnd@npm:1.1.0"
+  peerDependencies:
+    cesium: "*"
+  checksum: 10c0/e20001fb628f6c877e1aca2a4deddbcac2339abd0b17e1fd1a735aa68a00849b495b9437f673d802903110f79ba1644c4b7e820b8e77608b1203dc04cdde18e1
+  languageName: node
+  linkType: hard
+
+"cesium@npm:1.117.0":
+  version: 1.117.0
+  resolution: "cesium@npm:1.117.0"
+  dependencies:
+    "@cesium/engine": "npm:^9.1.0"
+    "@cesium/widgets": "npm:^6.1.0"
+  checksum: 10c0/a474542a7fbe764cfed6474541721674f8c5283e13ec37a03a74dafc8ecb4d54520a96c10965ca912c1267dc8bd192db6fac9f444ef945877de6566b7c363f59
   languageName: node
   linkType: hard
 
@@ -13846,7 +13865,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"picocolors@npm:^1.0.0":
+"picocolors@npm:^1.0.0, picocolors@npm:^1.0.1":
   version: 1.0.1
   resolution: "picocolors@npm:1.0.1"
   checksum: 10c0/c63cdad2bf812ef0d66c8db29583802355d4ca67b9285d846f390cc15c2f6ccb94e8cb7eb6a6e97fc5990a6d3ad4ae42d86c84d3146e667c739a4234ed50d400
@@ -13916,6 +13935,22 @@ __metadata:
     mlly: "npm:^1.7.0"
     pathe: "npm:^1.1.2"
   checksum: 10c0/c7d167935de7207479e5829086040d70bea289f31fc1331f17c83e996a4440115c9deba2aa96de839ea66e1676d083c9ca44b33886f87bffa6b49740b67b6fcb
+  languageName: node
+  linkType: hard
+
+"pmtiles@npm:2.7.0":
+  version: 2.7.0
+  resolution: "pmtiles@npm:2.7.0"
+  dependencies:
+    fflate: "npm:^0.7.3"
+  checksum: 10c0/7c4ec45e0f017b3e4d13ef49151e342c22b3a08d431473f1fbc59810d946187aeab3ce5b4147298c7f84ceb4eb5ace5e2339ad7bdd4570fa88b18867abc924d6
+  languageName: node
+  linkType: hard
+
+"point-in-polygon@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "point-in-polygon@npm:1.1.0"
+  checksum: 10c0/de00419585ee25555d97585b7a23eeb2464a87ef29404264bee55654ca2ecab5a5a99d33e689c07d045faf80091e838f44a1fd130bdd6134493df53114947343
   languageName: node
   linkType: hard
 
