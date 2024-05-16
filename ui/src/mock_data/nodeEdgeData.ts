@@ -1,5 +1,5 @@
-import { baseBatchNode } from "@flow/features/Canvas/components/Nodes/BatchNode";
-import { initialSize } from "@flow/features/Canvas/components/Nodes/NoteNode";
+import { baseBatchNode } from "@flow/features/Editor/components/Nodes/BatchNode";
+import { initialSize } from "@flow/features/Editor/components/Nodes/NoteNode";
 import { Edge, Node } from "@flow/types";
 
 export const initialNodes: Node[] = [

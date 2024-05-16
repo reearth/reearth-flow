@@ -12,6 +12,7 @@ import {
 } from "@flow/components";
 import { cn } from "@flow/lib/utils";
 import { workspaces } from "@flow/mock_data/workspaceData";
+import { useT } from "@flow/providers";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import { Workspace } from "@flow/types";
 
@@ -20,6 +21,7 @@ type Props = {
 };
 
 const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
+  const t = useT();
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
   const [, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
@@ -63,13 +65,19 @@ const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
               </DropdownMenuItem>
             ))}
           </DropdownMenuGroup>
+          {/* <DropdownMenuLabel className="flex">
+            <Button className="flex flex-1 gap-2" variant="outline" size="sm">
+              <PlusCircledIcon />
+              <p>New workspace</p>
+            </Button>
+          </DropdownMenuLabel> */}
         </DropdownMenuContent>
       </DropdownMenu>
       <ButtonWithTooltip
         className="bg-zinc-800 hover:bg-zinc-700"
         variant="outline"
         size="icon"
-        tooltipText="asdlfjalskdfj">
+        tooltipText={t("Create new workspace")}>
         <PlusIcon />
       </ButtonWithTooltip>
     </div>

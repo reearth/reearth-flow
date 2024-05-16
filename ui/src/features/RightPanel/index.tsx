@@ -1,7 +1,6 @@
-// import { Button } from "@flow/components";
 import { Node } from "@flow/types";
 
-import { ParamEditor } from "../Canvas/components/ParamEditor";
+import { ParamEditor } from "../Editor/components/ParamEditor";
 
 type Props = {
   selected?: Node[];
@@ -13,7 +12,7 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
   return (
     <div
       id="right-panel"
-      className="bg-zinc-900 border-l border-zinc-700 py-4 pl-4 pr-2 absolute right-0 h-full w-[350px]"
+      className="bg-zinc-900 border-l border-zinc-700 py-4 pl-4 pr-2 fixed right-0 h-full w-[350px] transition-all"
       style={{
         transform: `translateX(${node ? "0" : "100%"})`,
         transitionDuration: node ? "500ms" : "300ms",

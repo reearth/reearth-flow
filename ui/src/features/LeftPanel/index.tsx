@@ -1,8 +1,11 @@
+import { TransformIcon } from "@radix-ui/react-icons";
 import { Link, useParams } from "@tanstack/react-router";
-import { Database, Disc, Zap, AlignCenter, Cog, LucideFileImage } from "lucide-react";
+import { Database, Disc, Zap, AlignCenter, Cog, Search } from "lucide-react";
 import { useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
+import { useT } from "@flow/providers";
+import { useDialogType } from "@flow/stores";
 import { Workflow } from "@flow/types";
 
 // import HomeMenu from "./components/HomeMenu";
@@ -14,11 +17,14 @@ type Props = {
 };
 
 const LeftPanel: React.FC<Props> = ({ data }) => {
+  const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [isPanelOpen, setPanelOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<Tab>("navigator");
 
   const [_content, setContent] = useState("Admin Page");
+
+  const [, setDialogType] = useDialogType();
 
   const treeContent: TreeDataItem[] = [
     ...(data?.nodes
@@ -37,7 +43,7 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
       })) ?? []),
     {
       id: "transformer",
-      name: "Transformers",
+      name: t("Transformers"),
       icon: Zap,
       children: data?.nodes
         ?.filter(n => n.type === "transformer")
@@ -52,7 +58,7 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
   const tabContents: { id: Tab; title: string; component: React.ReactNode }[] = [
     {
       id: "navigator",
-      title: "Canvas Navigation",
+      title: t("Canvas Navigation"),
       component: data && (
         <Tree
           data={treeContent}
@@ -66,10 +72,25 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
     },
     {
       id: "assets",
-      title: "Assets",
+      title: t("Transformer list"),
       component: (
-        <div>
-          <p>Assets</p>
+        <div className="flex flex-col gap-2 px-1">
+          <div className="flex gap-2 items-center">
+            <Zap className="w-[15px] h-[15px] stroke-1" />
+            <p className="text-sm font-extralight">Transformer</p>
+          </div>
+          <div className="flex gap-2 items-center">
+            <Zap className="w-[15px] h-[15px] stroke-1" />
+            <p className="text-sm font-extralight">Transformer</p>
+          </div>
+          <div className="flex gap-2 items-center">
+            <Zap className="w-[15px] h-[15px] stroke-1" />
+            <p className="text-sm font-extralight">Transformer</p>
+          </div>
+          <div className="flex gap-2 items-center">
+            <Zap className="w-[15px] h-[15px] stroke-1" />
+            <p className="text-sm font-extralight">Transformer</p>
+          </div>
         </div>
       ),
     },
@@ -89,17 +110,18 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
   return (
     <>
       <div
-        className="absolute left-12 z-10 flex flex-1 flex-col gap-3 py-2 h-full w-[300px] bg-zinc-900 border-r border-zinc-700 transition-all overflow-auto"
+        className="absolute left-12 z-10 flex flex-1 flex-col gap-3 h-full w-[300px] bg-zinc-900 border-r border-zinc-700 transition-all overflow-auto"
         style={{
           transform: `translateX(${isPanelOpen ? "0" : "-100%"})`,
           transitionDuration: isPanelOpen ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
-        <div className="flex flex-col gap-2 pt-2 px-2">
-          <div>Navigation</div>
+        <div className="flex flex-col gap-2 px-4 py-2 border-b border-zinc-700/50">
+          <p className="text-lg font-extralight">
+            {tabContents?.find(tc => tc.id === selectedTab)?.title}
+          </p>
         </div>
-        <div className="border-zinc-700/50 border-t-[1px] w-[100%] pb-2" />
         <div className="flex flex-col gap-2 overflow-auto">
           {/* {content.title && <p className="text-md">{content.title}</p>} */}
           {tabContents?.find(tc => tc.id === selectedTab)?.component}
@@ -111,22 +133,26 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
             to={`/workspace/${workspaceId}`}
             className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full border border-red-900 text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base hover:bg-red-900">
             <FlowLogo className="h-4 w-4 transition-all group-hover:scale-110" />
-            <span className="sr-only">Home</span>
+            <span className="sr-only">{t("Dashboard")}</span>
           </Link>
           <IconButton
-            className={`flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-zinc-300 md:h-8 md:w-8 ${selectedTab === "navigator" && "bg-zinc-700 text-zinc-300"}`}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:text-zinc-300 md:h-8 md:w-8 ${selectedTab === "navigator" && "bg-zinc-700 text-zinc-300"}`}
             icon={<AlignCenter className="h-5 w-5" />}
             onClick={() => handleTabChange("navigator")}
           />
           <IconButton
-            className={`flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-zinc-300 md:h-8 md:w-8 ${selectedTab === "assets" && "bg-zinc-700 text-zinc-300"}`}
-            icon={<LucideFileImage className="h-5 w-5 stroke-1" />}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:text-zinc-300 md:h-8 md:w-8 ${selectedTab === "assets" && "bg-zinc-700 text-zinc-300"}`}
+            icon={<TransformIcon className="h-5 w-5 stroke-1" />}
             onClick={() => handleTabChange("assets")}
           />
         </nav>
         <nav className="mt-auto flex flex-col items-center gap-4 px-2 py-2">
+          <Search
+            className="stroke-1 text-zinc-400 cursor-pointer hover:text-zinc-300"
+            onClick={() => setDialogType("canvas-search")}
+          />
           <Link
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-zinc-300 md:h-8 md:w-8"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:text-zinc-300 md:h-8 md:w-8"
             to={"/settings"}>
             <Cog className="h-5 w-5" />
             <span className="sr-only">Settings</span>

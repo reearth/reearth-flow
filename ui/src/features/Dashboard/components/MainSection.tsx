@@ -11,10 +11,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@flow/components";
+import { useT } from "@flow/providers";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import type { Project } from "@flow/types";
 
 const MainSection: React.FC = () => {
+  const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
   const [currentProject, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
@@ -30,8 +32,8 @@ const MainSection: React.FC = () => {
 
   return (
     <div className="flex flex-col flex-1 justify-between border border-zinc-700 rounded-lg bg-zinc-900/50">
-      <div className="flex gap-2 justify-between items-center px-10 py-4 border-b border-zinc-700">
-        <p className="text-lg font-extralight">Projects</p>
+      <div className="flex gap-2 justify-between items-center py-2 px-4 border-b border-zinc-700">
+        <p className="text-lg font-extralight">{t("Projects")}</p>
         <Button
           className="flex gap-1 font-extralight bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-300"
           variant="outline">
@@ -60,7 +62,7 @@ const MainSection: React.FC = () => {
         </div>
         <div className="border-t border-zinc-700 bg-zinc-900/50 rounded-b-lg">
           <p className="font-extralight text-center py-1 border-t">
-            Total Projects: {projects?.length ?? 0}
+            {t("Total Projects")}: {projects?.length ?? 0}
           </p>
         </div>
       </div>
