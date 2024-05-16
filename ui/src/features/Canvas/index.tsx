@@ -205,10 +205,7 @@ export default function Canvas({ workflow }: CanvasProps) {
           <CanvasTabs editingCustomTransformers={customTransformers} />
           <ActionBar />
           <CanvasActionBar />
-          <Infobar
-            className="absolute bottom-2 left-[50%] translate-x-[-50%]"
-            hoveredDetails={hoveredDetails}
-          />
+          <Infobar hoveredDetails={hoveredDetails} />
         </div>
         <BottomPanel />
       </div>
