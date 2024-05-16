@@ -1,6 +1,6 @@
 const LogConsole: React.FC = () => {
   return (
-    <div className="bg-zinc-900 text-yellow-600 text-xs h-[210px] w-[100%] overflow-scroll rounded-md p-1">
+    <div className="bg-zinc-900 text-yellow-600 text-xs h-[400px] w-[100%] overflow-scroll rounded-md p-1">
       <ol>
         <li>.....aaaasldfkjasldfkjsf....aslkdfjalskdfjasldfkjsdfa123.....</li>
         <li>

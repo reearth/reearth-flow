@@ -17,9 +17,7 @@ const ButtonWithTooltip: React.FC<ButtonWithTooltipProps> = ({
 }) => (
   <Tooltip>
     <TooltipTrigger asChild>
-      <div className="h-full">
-        <Button {...props}>{children}</Button>
-      </div>
+      <Button {...props}>{children}</Button>
     </TooltipTrigger>
     <TooltipContent side={tooltipPosition} sideOffset={tooltipOffset}>
       <p>{tooltipText}</p>
