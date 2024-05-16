@@ -1,5 +1,5 @@
 import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { IconButton } from "..";
 
@@ -46,6 +46,7 @@ const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
     className,
   ].reduce((acc, cur) => (cur ? `${acc} ${cur}` : acc));
 
+  // TODO: Not worry too much about this code. It'll be refactored/updated in the maximize view PR
   const handleSelection = useCallback(
     (content: PanelContent) => {
       if (content.id !== selected?.id) {
