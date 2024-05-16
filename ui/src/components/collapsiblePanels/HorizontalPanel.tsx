@@ -55,16 +55,13 @@ const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
         }
       } else {
         onToggle?.(!isOpen);
+        if (content.id === selected?.id) {
+          setSelected(undefined);
+        }
       }
     },
     [isOpen, onToggle, selected],
   );
-
-  useEffect(() => {
-    if (!selected) {
-      setSelected(panelContents?.[0]);
-    }
-  }, [selected, panelContents]);
 
   return (
     <div className={classes}>
