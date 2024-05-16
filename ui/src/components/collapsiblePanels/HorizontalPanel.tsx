@@ -46,25 +46,18 @@ const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
     className,
   ].reduce((acc, cur) => (cur ? `${acc} ${cur}` : acc));
 
-  const handleToggle = useCallback(() => onToggle?.(!isOpen), [isOpen, onToggle]);
-
   const handleSelection = useCallback(
     (content: PanelContent) => {
-      // Close panel if already open
-      if (content.id === selected?.id && isOpen) {
-        handleToggle();
-        return;
-      }
-
-      // Switch panels
-      setSelected(content);
-
-      // Open if closed
-      if (!isOpen) {
-        handleToggle();
+      if (content.id !== selected?.id) {
+        setSelected(content);
+        if (!isOpen) {
+          onToggle?.(true);
+        }
+      } else {
+        onToggle?.(!isOpen);
       }
     },
-    [isOpen, handleToggle, selected],
+    [isOpen, onToggle, selected],
   );
 
   useEffect(() => {
@@ -75,20 +68,17 @@ const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
 
   return (
     <div className={classes}>
-      <div id="edge" className="flex gap-1 items-center h-[36px]">
-        {arrowPosition === "start" && <ArrowButton direction={arrowDirection} />}
-        <div className="flex gap-1 items-center justify-center flex-1 h-[100%]">
-          {panelContents?.map(content => (
-            <IconButton
-              key={content.id}
-              className={`w-[55px] h-[80%] ${selected?.id === content.id ? "text-white bg-zinc-800" : undefined}`}
-              icon={content.icon}
-              tooltipText={content.description}
-              tooltipPosition="top"
-              onClick={() => handleSelection(content)}
-            />
-          ))}
-        </div>
+      <div className="flex gap-1 items-center justify-center h-[36px]">
+        {panelContents?.map(content => (
+          <IconButton
+            key={content.id}
+            className={`w-[55px] h-[80%] ${selected?.id === content.id ? "text-white bg-zinc-800" : undefined}`}
+            icon={content.icon}
+            tooltipText={content.description}
+            tooltipPosition="top"
+            onClick={() => handleSelection(content)}
+          />
+        ))}
       </div>
       <div id="content" className="flex flex-1 bg-zinc-800">
         {isOpen && (
