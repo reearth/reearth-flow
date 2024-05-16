@@ -20,7 +20,7 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/providers";
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../Table";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
