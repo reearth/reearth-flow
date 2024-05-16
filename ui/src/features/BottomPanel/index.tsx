@@ -2,7 +2,7 @@ import { HorizontalPanel, OutputIcon, PreviewIcon, type PanelContent } from "@fl
 import { useStateManager } from "@flow/hooks";
 import { useT } from "@flow/providers";
 
-import { DataTable, LogConsole, TwoDMap } from "./components";
+import { DataTable, LogConsole, Map } from "./components";
 
 export type BottomPanelProps = {
   className?: string;
@@ -26,7 +26,7 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ className }) => {
       component: (
         <div className="flex flex-1 h-[400px]">
           <DataTable />
-          <TwoDMap className="flex-1" />
+          <Map />
         </div>
       ),
     },
