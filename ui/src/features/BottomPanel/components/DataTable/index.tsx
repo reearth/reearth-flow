@@ -1,15 +1,10 @@
 import { ColumnDef } from "@tanstack/react-table";
 
-import { Checkbox, DataTable as Table } from "@flow/components";
+import { DataTable as Table } from "@flow/components";
 import { points } from "@flow/mock_data/pointData";
 
-export type Payment = {
-  id: string;
-  amount: number;
-  status: "pending" | "processing" | "success" | "failed";
-  email: string;
-};
-
+// TODO: This is just placeholder code at the moment
+// In production this will either be infered dynamically or a fixed type based on the API implementation.
 type Fire = {
   ACQ_DATE: string;
   ACQ_TIME: string;
