@@ -148,69 +148,84 @@ export default function Canvas({ workflow }: CanvasProps) {
   return (
     <div className="flex flex-1 relative">
       <LeftPanel data={workflow} />
-      <div className="relative flex flex-col flex-1">
-        <ReactFlow
-          // snapToGrid
-          // minZoom={0.7}
-          // maxZoom={1}
-          // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
-          // panOnDrag={false}
-          // nodeDragThreshold={60}
-          // translateExtent={[
-          //   [-1000, -1000],
-          //   [1000, 1000],
-          // ]}
-          // onInit={setReactFlowInstance}
-          selectNodesOnDrag={false}
-          selectionMode={SelectionMode["Partial"]}
-          nodes={nodes}
-          nodeTypes={nodeTypes}
-          edges={edges}
-          edgeTypes={edgeTypes}
-          defaultEdgeOptions={defaultEdgeOptions}
-          connectionLineComponent={CustomConnectionLine}
-          connectionLineStyle={connectionLineStyle}
-          snapGrid={[30, 30]}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeMouseEnter={handleNodeHover}
-          onNodeMouseLeave={handleNodeHover}
-          onEdgeMouseEnter={handleEdgeHover}
-          onEdgeMouseLeave={handleEdgeHover}
-          onConnect={onConnect}
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-          fitViewOptions={{ padding: 0.5 }}
-          fitView
-          panOnScroll
-          proOptions={{ hideAttribution: true }}>
-          {/* <MiniMap
+      <div className="flex flex-col flex-1">
+        <div className="relative flex flex-col flex-1">
+          <ReactFlow
+            // snapToGrid
+            // minZoom={0.7}
+            // maxZoom={1}
+            // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
+            // panOnDrag={false}
+            // nodeDragThreshold={60}
+            // translateExtent={[
+            //   [-1000, -1000],
+            //   [1000, 1000],
+            // ]}
+            // onInit={setReactFlowInstance}
+            selectNodesOnDrag={false}
+            selectionMode={SelectionMode["Partial"]}
+            nodes={nodes}
+            nodeTypes={nodeTypes}
+            edges={edges}
+            edgeTypes={edgeTypes}
+            defaultEdgeOptions={defaultEdgeOptions}
+            connectionLineComponent={CustomConnectionLine}
+            connectionLineStyle={connectionLineStyle}
+            snapGrid={[30, 30]}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeMouseEnter={handleNodeHover}
+            onNodeMouseLeave={handleNodeHover}
+            onEdgeMouseEnter={handleEdgeHover}
+            onEdgeMouseLeave={handleEdgeHover}
+            onConnect={onConnect}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            fitViewOptions={{ padding: 0.5 }}
+            fitView
+            panOnScroll
+            proOptions={{ hideAttribution: true }}>
+            {/* <MiniMap
           className="bg-zinc-900"
           nodeColor="purple"
           maskStrokeColor="red"
           maskStrokeWidth={3}
         /> */}
-          <Background
-            className="bg-zinc-900/50"
-            variant={BackgroundVariant["Lines"]}
-            gap={30}
-            color="rgba(63, 63, 70, 0.3)"
+            <Background
+              className="bg-zinc-900/50"
+              variant={BackgroundVariant["Lines"]}
+              gap={30}
+              color="rgba(63, 63, 70, 0.3)"
+            />
+          </ReactFlow>
+          <Breadcrumb />
+          <div className="absolute left-2 top-2 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
+            <Toolbox className="self-start" />
+          </div>
+          {/* START tabs for custom transformer support */}
+          <div className="absolute left-1 bottom-0 flex gap-1">
+            <div className="w-28 px-2 py-0.5 bg-zinc-700 text-zinc-300 rounded-t-md cursor-pointer">
+              <p className="text-xs text-center truncate">Main</p>
+            </div>
+            <div className="w-28 px-2 py-0.5 bg-zinc-700/50 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-300 rounded-t-md cursor-pointer">
+              <p className="text-xs text-center truncate">custom trans</p>
+            </div>
+            <div className="w-28 px-2 py-0.5 bg-zinc-700/50 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-300 rounded-t-md cursor-pointer">
+              <p className="text-xs text-center truncate">My long named custom transformer</p>
+            </div>
+          </div>
+          {/* END tabs for custom transformer support */}
+          <div className="absolute top-1 right-1">
+            <ActionBar />
+          </div>
+          <div className="absolute bottom-2 right-2">
+            <CanvasActionBar />
+          </div>
+          <Infobar
+            className="absolute bottom-2 left-[50%] translate-x-[-50%]"
+            hoveredDetails={hoveredDetails}
           />
-        </ReactFlow>
-        <Breadcrumb />
-        <div className="absolute left-2 top-2 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
-          <Toolbox className="self-start" />
         </div>
-        <div className="absolute top-1 right-1">
-          <ActionBar />
-        </div>
-        <div className="absolute bottom-12 right-2">
-          <CanvasActionBar />
-        </div>
-        <Infobar
-          className="absolute bottom-[42px] left-[50%] translate-x-[-50%]"
-          hoveredDetails={hoveredDetails}
-        />
         <BottomPanel />
       </div>
       <RightPanel selected={selected.nodes} />
