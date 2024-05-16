@@ -202,7 +202,7 @@ export default function Canvas({ workflow }: CanvasProps) {
           </ReactFlow>
           <Breadcrumb />
           <Toolbox />
-          <CanvasTabs customTransformers={customTransformers} />
+          <CanvasTabs editingCustomTransformers={customTransformers} />
           <ActionBar />
           <CanvasActionBar />
           <Infobar
