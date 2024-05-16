@@ -1,5 +1,5 @@
 import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { IconButton } from "..";
 
@@ -42,44 +42,41 @@ const HorizontalPanel: React.FC<HorizontalPanelProps> = ({
 
   const classes = [
     baseClasses,
-    isOpen ? maxHeight ?? "h-64" : minHeight ?? "h-[36px]",
+    isOpen ? maxHeight ?? "h-100" : minHeight ?? "h-[36px]",
     className,
   ].reduce((acc, cur) => (cur ? `${acc} ${cur}` : acc));
 
-  const handleToggle = useCallback(() => onToggle?.(!isOpen), [isOpen, onToggle]);
-
+  // TODO: Not worry too much about this code. It'll be refactored/updated in the maximize view PR
   const handleSelection = useCallback(
     (content: PanelContent) => {
-      setSelected(content);
-      if (!isOpen) {
-        handleToggle();
+      if (content.id !== selected?.id) {
+        setSelected(content);
+        if (!isOpen) {
+          onToggle?.(true);
+        }
+      } else {
+        onToggle?.(!isOpen);
+        if (content.id === selected?.id) {
+          setSelected(undefined);
+        }
       }
     },
-    [isOpen, handleToggle],
+    [isOpen, onToggle, selected],
   );
 
-  useEffect(() => {
-    if (!selected) {
-      setSelected(panelContents?.[0]);
-    }
-  }, [selected, panelContents]);
-
   return (
-    <div className={classes} onClick={handleToggle}>
-      <div id="edge" className="flex gap-1 items-center h-[36px]">
-        {arrowPosition === "start" && <ArrowButton direction={arrowDirection} />}
-        <div className="flex gap-1 items-center justify-center flex-1 h-[100%]">
-          {panelContents?.map(content => (
-            <IconButton
-              key={content.id}
-              className={`w-[55px] h-[80%] ${selected?.id === content.id ? "text-white bg-zinc-800" : undefined}`}
-              icon={content.icon}
-              tooltipText={content.description}
-              tooltipPosition="top"
-              onClick={() => handleSelection(content)}
-            />
-          ))}
-        </div>
+    <div className={classes}>
+      <div className="flex gap-1 items-center justify-center h-[36px]">
+        {panelContents?.map(content => (
+          <IconButton
+            key={content.id}
+            className={`w-[55px] h-[80%] ${selected?.id === content.id ? "text-white bg-zinc-800" : undefined}`}
+            icon={content.icon}
+            tooltipText={content.description}
+            tooltipPosition="top"
+            onClick={() => handleSelection(content)}
+          />
+        ))}
       </div>
       <div id="content" className="flex flex-1 bg-zinc-800">
         {isOpen && (
