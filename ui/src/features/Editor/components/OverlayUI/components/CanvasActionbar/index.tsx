@@ -12,7 +12,7 @@ import { useT } from "@flow/providers";
 
 const tooltipOffset = 6;
 
-export default function CanvasActionBar() {
+const CanvasActionBar = () => {
   const t = useT();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
@@ -68,4 +68,6 @@ export default function CanvasActionBar() {
       </div>
     </div>
   );
-}
+};
+
+export { CanvasActionBar };

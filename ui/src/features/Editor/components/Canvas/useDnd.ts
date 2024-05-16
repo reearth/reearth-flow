@@ -3,7 +3,7 @@ import { Node, useReactFlow } from "reactflow";
 
 import { useRandomId } from "@flow/hooks";
 
-import { baseBatchNode } from "./components/Nodes/BatchNode";
+import { baseBatchNode } from "../Nodes/BatchNode";
 
 export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) => {
   const reactFlowInstance = useReactFlow();

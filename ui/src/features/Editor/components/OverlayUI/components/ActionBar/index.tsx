@@ -5,7 +5,7 @@ import { useT } from "@flow/providers";
 
 const tooltipOffset = 6;
 
-export default function ActionBar() {
+const ActionBar = () => {
   const t = useT();
 
   return (
@@ -43,4 +43,6 @@ export default function ActionBar() {
       </div>
     </div>
   );
-}
+};
+
+export { ActionBar };

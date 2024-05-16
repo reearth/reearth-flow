@@ -1,7 +1,6 @@
-// import { Button } from "@flow/components";
 import { Node } from "@flow/types";
 
-import { ParamEditor } from "../Canvas/components/ParamEditor";
+import { ParamEditor } from "../Editor/components/ParamEditor";
 
 type Props = {
   selected?: Node[];
