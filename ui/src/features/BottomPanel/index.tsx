@@ -34,7 +34,7 @@ const BottomPanel: React.FC = () => {
       icon: <PreviewIcon />,
       description: t("Preview data"),
       component: (
-        <div className={`flex flex-1`}>
+        <div className="flex flex-1">
           <DataTable />
           <Map />
         </div>
@@ -63,12 +63,11 @@ const BottomPanel: React.FC = () => {
 
   return (
     <div
-      // className={`flex flex-col box-content transition-width duration-300 ease-in-out bg-zinc-900 border-t border-zinc-700 backdrop-blur-md ${isPanelOpen ? (windowSize === "max" ? "h-full" : "h-[400px]") : "h-[36px]"}`}>
-      className={`flex flex-col box-content transition-width duration-300 ease-in-out bg-zinc-900 border-t border-zinc-700 backdrop-blur-md`}
+      className="flex flex-col box-content transition-width duration-300 ease-in-out bg-zinc-900 border-t border-zinc-700 backdrop-blur-md"
       style={{
         height: isPanelOpen ? (windowSize === "max" ? "100vh" : "400px") : "36px",
       }}>
-      <div id="edge" className="flex gap-1 items-center h-[36px]">
+      <div id="edge" className="flex gap-1 items-center h-[36px] relative">
         <div className="flex gap-1 items-center justify-center flex-1 h-[100%]">
           {panelContents?.map(content => (
             <IconButton
@@ -81,28 +80,32 @@ const BottomPanel: React.FC = () => {
             />
           ))}
         </div>
-        {windowSize === "min" && (
-          <IconButton
-            className={`w-[55px] h-[80%]`}
-            icon={<EnterFullScreenIcon />}
-            tooltipText={"Enter full screen"}
-            tooltipPosition="top"
-            onClick={() => setWindowSize("max")}
-          />
-        )}
-        {windowSize === "max" && (
-          <IconButton
-            className={`w-[55px] h-[80%]`}
-            icon={<ExitFullScreenIcon />}
-            tooltipText={"Enter full screen"}
-            tooltipPosition="top"
-            onClick={() => setWindowSize("min")}
-          />
+        {isPanelOpen && (
+          <div className="fixed right-0 h-[36px] flex items-center">
+            {windowSize === "min" && (
+              <IconButton
+                className="w-[55px] h-[80%]"
+                icon={<EnterFullScreenIcon />}
+                tooltipText={"Enter full screen"}
+                tooltipPosition="top"
+                onClick={() => setWindowSize("max")}
+              />
+            )}
+            {windowSize === "max" && (
+              <IconButton
+                className="w-[55px] h-[80%]"
+                icon={<ExitFullScreenIcon />}
+                tooltipText={"Enter full screen"}
+                tooltipPosition="top"
+                onClick={() => setWindowSize("min")}
+              />
+            )}
+          </div>
         )}
       </div>
       <div
         id="content"
-        className={`flex flex-1 bg-zinc-800}`}
+        className="flex flex-1 bg-zinc-800"
         style={{
           height: isPanelOpen
             ? windowSize === "max"
@@ -111,7 +114,12 @@ const BottomPanel: React.FC = () => {
             : "0",
         }}>
         {panelContents.map(p => (
-          <div className={`flex-1 p-1 ${selected?.id === p.id ? "flex" : "hidden"}`} key={p.id}>
+          <div
+            className="flex-1 p-1"
+            style={{
+              display: selected?.id === p.id ? "flex" : "none",
+            }}
+            key={p.id}>
             {p.component}
           </div>
         ))}
