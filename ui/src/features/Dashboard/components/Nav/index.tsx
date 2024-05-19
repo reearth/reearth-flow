@@ -4,12 +4,16 @@ import { useT } from "@flow/providers";
 
 import { UserNavigation, WorkspaceNavigation } from "./components";
 
-const Nav: React.FC = () => {
+type Props = {
+  className?: string;
+};
+
+const Nav: React.FC<Props> = ({ className }) => {
   const t = useT();
   const { brandName, version } = config();
   return (
-    <div className="absolute left-0 right-0 top-0">
-      <div className="relative flex justify-between items-center gap-4 h-14 px-4 bg-zinc-900/50">
+    <div className={`bg-zinc-900/50 border border-zinc-700 rounded-lg ${className}`}>
+      <div className="relative flex justify-between items-center gap-4 h-14 px-4">
         <div className="flex gap-2 items-center">
           <div className="flex bg-red-800/50 p-2 rounded">
             <FlowLogo />

@@ -61,7 +61,7 @@ const MainSection: React.FC = () => {
           ))}
         </div>
         <div className="border-t border-zinc-700 bg-zinc-900/50 rounded-b-lg">
-          <p className="font-extralight text-center py-1 border-t">
+          <p className="font-extralight text-center py-1">
             {t("Total Projects")}: {projects?.length ?? 0}
           </p>
         </div>
