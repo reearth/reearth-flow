@@ -40,7 +40,6 @@ func TestCreateProject(t *testing.T) {
 		Value("data").Object().
 		Value("createProject").Object().
 		Value("project").Object().
-		// ValueEqual("id", pId.String()).
-		ValueEqual("name", "test").
-		ValueEqual("description", "abc")
+		HasValue("name", "test").
+		HasValue("description", "abc")
 }

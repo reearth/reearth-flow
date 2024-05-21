@@ -34,7 +34,7 @@ func TestCreateWorkspace(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-	o.Value("data").Object().Value("createWorkspace").Object().Value("workspace").Object().Value("name").String().Equal("test")
+	o.Value("data").Object().Value("createWorkspace").Object().Value("workspace").Object().Value("name").String().IsEqual("test")
 }
 
 func TestDeleteWorkspace(t *testing.T) {
@@ -58,7 +58,7 @@ func TestDeleteWorkspace(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-	o.Value("data").Object().Value("deleteWorkspace").Object().Value("workspaceId").String().Equal(wId1.String())
+	o.Value("data").Object().Value("deleteWorkspace").Object().Value("workspaceId").String().IsEqual(wId1.String())
 
 	_, err = r.Workspace.FindByID(context.Background(), wId1)
 	assert.Equal(t, rerror.ErrNotFound, err)
@@ -76,7 +76,7 @@ func TestDeleteWorkspace(t *testing.T) {
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
 
-	o.Value("errors").Array().First().Object().Value("message").Equal("input: deleteWorkspace operation denied")
+	o.Value("errors").Array().Value(0).Object().Value("message").IsEqual("input: deleteWorkspace operation denied")
 }
 
 func TestUpdateWorkspace(t *testing.T) {
@@ -104,7 +104,7 @@ func TestUpdateWorkspace(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-	o.Value("data").Object().Value("updateWorkspace").Object().Value("workspace").Object().Value("name").String().Equal("updated")
+	o.Value("data").Object().Value("updateWorkspace").Object().Value("workspace").Object().Value("name").String().IsEqual("updated")
 
 	w, err = r.Workspace.FindByID(context.Background(), wId1)
 	assert.Nil(t, err)
@@ -123,7 +123,7 @@ func TestUpdateWorkspace(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-	o.Value("errors").Array().First().Object().Value("message").Equal("input: updateWorkspace not found")
+	o.Value("errors").Array().Value(0).Object().Value("message").IsEqual("input: updateWorkspace not found")
 }
 
 func TestAddMemberToWorkspace(t *testing.T) {
@@ -170,7 +170,7 @@ func TestAddMemberToWorkspace(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object().
-		Value("errors").Array().First().Object().Value("message").Equal("input: addMemberToWorkspace user already joined")
+		Value("errors").Array().Value(0).Object().Value("message").IsEqual("input: addMemberToWorkspace user already joined")
 }
 
 func TestRemoveMemberFromWorkspace(t *testing.T) {
@@ -208,7 +208,7 @@ func TestRemoveMemberFromWorkspace(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-	o.Value("errors").Array().First().Object().Value("message").Equal("input: removeMemberFromWorkspace target user does not exist in the workspace")
+	o.Value("errors").Array().Value(0).Object().Value("message").IsEqual("input: removeMemberFromWorkspace target user does not exist in the workspace")
 }
 
 func TestUpdateMemberOfWorkspace(t *testing.T) {
@@ -253,5 +253,5 @@ func TestUpdateMemberOfWorkspace(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-	o.Value("errors").Array().First().Object().Value("message").Equal("input: updateMemberOfWorkspace operation denied")
+	o.Value("errors").Array().Value(0).Object().Value("message").IsEqual("input: updateMemberOfWorkspace operation denied")
 }

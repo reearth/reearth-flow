@@ -19,7 +19,6 @@ var (
 	uName  = "e2e"
 	wID    = accountdomain.NewWorkspaceID()
 	pID    = id.NewProjectID()
-	pAlias = "PROJECT_ALIAS"
 
 	now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 )
