@@ -1,4 +1,0 @@
-{
-  "go.testEnvFile": "${workspaceRoot}/.env",
-  "go.lintTool": "golangci-lint",
-}
