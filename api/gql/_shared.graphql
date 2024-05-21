@@ -1,0 +1,50 @@
+scalar Upload
+scalar Any
+scalar DateTime
+scalar URL
+scalar Lang
+scalar FileSize
+scalar Cursor
+
+# Meta Type
+
+interface Node {
+  id: ID!
+}
+
+enum NodeType {
+  ASSET
+  PROJECT
+  USER
+  WORKSPACE
+}
+
+# Pagination
+
+type PageInfo {
+  startCursor: Cursor
+  endCursor: Cursor
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+}
+
+input Pagination{
+  first: Int
+  last: Int
+  after: Cursor
+  before: Cursor
+}
+
+# Query & Mutation
+
+type Query {
+  node(id: ID!, type: NodeType!): Node
+  nodes(id: [ID!]!, type: NodeType!): [Node]!
+}
+
+type Mutation
+
+schema {
+  query: Query
+  mutation: Mutation
+}
