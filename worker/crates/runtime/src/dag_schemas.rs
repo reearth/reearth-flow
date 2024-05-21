@@ -45,7 +45,7 @@ pub struct SchemaNodeType {
     pub handle: NodeHandle,
     pub name: String,
     pub node: Node,
-    pub kind: NodeKind,
+    pub kind: Option<NodeKind>,
     pub with: Option<HashMap<String, serde_json::Value>>,
 }
 
@@ -54,7 +54,7 @@ impl SchemaNodeType {
         id: NodeId,
         name: String,
         node: Node,
-        kind: NodeKind,
+        kind: Option<NodeKind>,
         with: Option<HashMap<String, serde_json::Value>>,
     ) -> Self {
         Self {
@@ -71,11 +71,11 @@ impl SchemaNodeType {
 pub struct SchemaEdgeType {
     pub from: Port,
     pub to: Port,
-    pub edge_kind: SchemaEdgeKind,
+    pub edge_kind: Option<SchemaEdgeKind>,
 }
 
 impl SchemaEdgeType {
-    pub fn new(from: Port, to: Port, edge_kind: SchemaEdgeKind) -> Self {
+    pub fn new(from: Port, to: Port, edge_kind: Option<SchemaEdgeKind>) -> Self {
         Self {
             from,
             to,
@@ -143,6 +143,10 @@ impl DagSchemas {
             };
             let subgraph = other_graph_schemas.get(sub_graph_id).unwrap();
             entry_graph.add_subgraph_after_node(node.handle.id, &global_params, subgraph);
+            let Some(target_node) = entry_graph.node_index_by_node_id(node.handle.id) else {
+                continue;
+            };
+            entry_graph.graph.remove_node(*target_node);
         }
         entry_graph
     }
@@ -159,7 +163,6 @@ impl DagSchemas {
         };
         let mut node_mappings = HashMap::<NodeIndex, NodeKind>::new();
         graph.nodes.iter().for_each(|node| {
-            let kind = action_mappings.get(node.action()).unwrap();
             let mut with = HashMap::new();
             if let Some(global_params) = global_params {
                 global_params.iter().for_each(|(k, v)| {
@@ -171,6 +174,15 @@ impl DagSchemas {
                     with.insert(k.clone(), v.clone());
                 });
             }
+            let kind = match node {
+                Node::Action { .. } => {
+                    let Some(kind) = action_mappings.get(node.action()) else {
+                        panic!("Action not found: {}", node.action());
+                    };
+                    Some(kind.clone())
+                }
+                Node::SubGraph { .. } => None,
+            };
             let index = dag.add_node(SchemaNodeType::new(
                 node.id(),
                 node.name().to_string(),
@@ -178,19 +190,26 @@ impl DagSchemas {
                 kind.clone(),
                 Some(with),
             ));
-            node_mappings.insert(index, kind.clone());
+            if let Some(kind) = kind {
+                node_mappings.insert(index, kind.clone());
+            };
         });
         for edge in graph.edges.iter() {
             let from_node_index = dag.node_index_by_node_id(edge.from).unwrap();
-            let from_node_kind = node_mappings.get(from_node_index).unwrap();
+            let from_node_kind = node_mappings.get(from_node_index);
             let to_node_index = dag.node_index_by_node_id(edge.to).unwrap();
             dag.connect(
                 &Endpoint::new(*from_node_index, Port::new(edge.from_port.clone())),
                 &Endpoint::new(*to_node_index, Port::new(edge.to_port.clone())),
-                if let NodeKind::Source(_) = from_node_kind {
-                    SchemaEdgeKind::FromSource
-                } else {
-                    SchemaEdgeKind::FromProcessor
+                match from_node_kind {
+                    Some(from_node_kind) => {
+                        if let NodeKind::Source(_) = from_node_kind {
+                            Some(SchemaEdgeKind::FromSource)
+                        } else {
+                            Some(SchemaEdgeKind::FromProcessor)
+                        }
+                    }
+                    _ => None,
                 },
             );
         }
@@ -281,7 +300,7 @@ impl DagSchemas {
         &mut self,
         from: &Endpoint,
         to: &Endpoint,
-        edge_kind: SchemaEdgeKind,
+        edge_kind: Option<SchemaEdgeKind>,
     ) -> EdgeIndex {
         self.connect_with_index(from.node, &from.port, to.node, &to.port, edge_kind)
     }
@@ -292,7 +311,7 @@ impl DagSchemas {
         from_port: &Port,
         to_node_index: NodeIndex,
         to_port: &Port,
-        edge_kind: SchemaEdgeKind,
+        edge_kind: Option<SchemaEdgeKind>,
     ) -> EdgeIndex {
         self.graph.add_edge(
             from_node_index,
@@ -401,7 +420,7 @@ impl DagSchemas {
                             SchemaEdgeType::new(
                                 DEFAULT_PORT.clone(),
                                 DEFAULT_PORT.clone(),
-                                SchemaEdgeKind::FromProcessor,
+                                Some(SchemaEdgeKind::FromProcessor),
                             ),
                         );
                     }
@@ -450,7 +469,7 @@ impl DagSchemas {
                             SchemaEdgeType::new(
                                 old_edge.from.clone(),
                                 old_edge.to.clone(),
-                                SchemaEdgeKind::FromProcessor,
+                                Some(SchemaEdgeKind::FromProcessor),
                             ),
                         );
                     }
@@ -468,7 +487,10 @@ fn collect_ancestor_sources_recursive(
     for edge in dag.graph().edges_directed(node_index, Direction::Incoming) {
         let source_node_index = edge.source();
         let source_node = &dag.graph()[source_node_index];
-        if matches!(source_node.kind, NodeKind::Source(_)) {
+        let Some(ref kind) = source_node.kind else {
+            continue;
+        };
+        if matches!(kind, NodeKind::Source(_)) {
             sources.insert(source_node.handle.clone());
         }
         collect_ancestor_sources_recursive(dag, source_node_index, sources);

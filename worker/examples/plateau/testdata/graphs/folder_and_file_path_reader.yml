@@ -48,6 +48,13 @@ nodes:
         - udxDirs
       outputAttribute: fileIndex
 
+  - id: cd896e30-7f0e-4c12-90ed-9471ff6049bf
+    name: Router
+    type: action
+    action: Router
+    with:
+      routingPort: default
+
 edges:
   - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
     from: b1a91180-ab88-4c1a-aab5-48c242a218ca
@@ -67,5 +74,10 @@ edges:
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491766
     from: b1a91180-ab88-4c1a-aab5-48c242a218cd
     to: b1a91180-ab88-4c1a-aab5-48c242a218ce
+    fromPort: default
+    toPort: default
+  - id: 80462b53-a06a-4e0b-bed8-07dcda744a55
+    from: b1a91180-ab88-4c1a-aab5-48c242a218ce
+    to: cd896e30-7f0e-4c12-90ed-9471ff6049bf
     fromPort: default
     toPort: default
