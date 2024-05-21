@@ -1,6 +1,4 @@
 {
-  "rust-analyzer.linkedProjects": [
-    "./worker/crates/action-universal/Cargo.toml",
-    "./worker/crates/action-universal/Cargo.toml"
-  ]
+  "go.testEnvFile": "${workspaceRoot}/.env",
+  "go.lintTool": "golangci-lint",
 }
