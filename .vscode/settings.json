@@ -1,6 +1,0 @@
-{
-  "rust-analyzer.linkedProjects": [
-    "./worker/crates/action-universal/Cargo.toml",
-    "./worker/crates/action-universal/Cargo.toml"
-  ]
-}
