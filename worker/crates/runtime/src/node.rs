@@ -347,6 +347,7 @@ impl ProcessorFactory for RouterFactory {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Router {
     routing_port: String,
 }

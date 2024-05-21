@@ -1,5 +1,7 @@
+use helper::execute;
+
 mod helper;
 
 fn main() {
-    helper::execute("domain_of_definition_validator.yml");
+    execute("attribute_reader.yml");
 }

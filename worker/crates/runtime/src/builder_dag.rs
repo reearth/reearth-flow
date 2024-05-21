@@ -7,11 +7,11 @@ use std::{
 use petgraph::graph::NodeIndex;
 
 use crate::{
-    dag_schemas::{DagSchemas, SchemaEdgeType},
+    dag_schemas::{DagSchemas, EdgeHavePorts, SchemaEdgeKind},
     errors::ExecutionError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{GraphId, NodeHandle, NodeId, NodeKind as DagNodeKind, Processor, Sink, Source},
+    node::{GraphId, NodeHandle, NodeId, NodeKind as DagNodeKind, Port, Processor, Sink, Source},
 };
 
 #[derive(Debug, Clone)]
@@ -59,9 +59,36 @@ pub enum NodeKind {
     Sink(Box<dyn Sink>),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EdgeType {
+    pub from: Port,
+    pub to: Port,
+    pub edge_kind: SchemaEdgeKind,
+}
+
+impl EdgeType {
+    pub fn new(from: Port, to: Port, edge_kind: SchemaEdgeKind) -> Self {
+        Self {
+            from,
+            to,
+            edge_kind,
+        }
+    }
+}
+
+impl EdgeHavePorts for EdgeType {
+    fn from_port(&self) -> Port {
+        self.from.to_owned()
+    }
+
+    fn to_port(&self) -> Port {
+        self.to.to_owned()
+    }
+}
+
 pub struct BuilderDag {
     pub(crate) id: GraphId,
-    graph: petgraph::graph::DiGraph<NodeType, SchemaEdgeType>,
+    graph: petgraph::graph::DiGraph<NodeType, EdgeType>,
     event_hub: EventHub,
 }
 
@@ -88,14 +115,17 @@ impl BuilderDag {
 
         // Build the sinks and load checkpoint.
         let event_hub = EventHub::new(event_hub_capacity);
-        let mut graph = petgraph::graph::DiGraph::<NodeType, SchemaEdgeType>::new();
+        let mut graph = petgraph::graph::DiGraph::<NodeType, EdgeType>::new();
         let mut source_id_to_sinks = HashMap::<NodeHandle, Vec<NodeIndex>>::new();
         let mut node_index_map: HashMap<NodeIndex, NodeIndex> = HashMap::new();
         let mut source_states = HashMap::new();
         for (node_index, node) in nodes.iter_mut().enumerate() {
             if let Some(node) = node {
                 let handle = node.handle.clone();
-                let DagNodeKind::Sink(sink) = node.kind.clone() else {
+                let Some(ref kind) = node.kind else {
+                    continue;
+                };
+                let DagNodeKind::Sink(sink) = kind.clone() else {
                     continue;
                 };
                 let sources = std::mem::take(&mut affecting_sources[node_index]);
@@ -144,7 +174,10 @@ impl BuilderDag {
                 continue;
             };
             let node_index = NodeIndex::new(node_index);
-            let node = match node.kind {
+            let Some(ref kind) = node.kind else {
+                continue;
+            };
+            let node = match kind {
                 DagNodeKind::Source(source) => {
                     let source = source
                         .build(
@@ -203,7 +236,11 @@ impl BuilderDag {
             graph.add_edge(
                 node_index_map[&edge.source()],
                 node_index_map[&edge.target()],
-                edge.weight,
+                EdgeType::new(
+                    edge.weight.from,
+                    edge.weight.to,
+                    edge.weight.edge_kind.unwrap(),
+                ),
             );
         }
 
@@ -214,13 +251,13 @@ impl BuilderDag {
         })
     }
 
-    pub fn graph(&self) -> &petgraph::graph::DiGraph<NodeType, SchemaEdgeType> {
+    pub fn graph(&self) -> &petgraph::graph::DiGraph<NodeType, EdgeType> {
         &self.graph
     }
 
     pub fn into_graph_and_event_hub(
         self,
-    ) -> (petgraph::graph::DiGraph<NodeType, SchemaEdgeType>, EventHub) {
+    ) -> (petgraph::graph::DiGraph<NodeType, EdgeType>, EventHub) {
         (self.graph, self.event_hub)
     }
 }

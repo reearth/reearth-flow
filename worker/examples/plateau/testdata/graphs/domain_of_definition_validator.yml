@@ -6,12 +6,11 @@ nodes:
     type: action
     action: FeatureTransformer
     with:
-      transforms:
+      transformers:
         - expr: |
             env.get("__all") + #{
               meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("cityGmlPath")))
             }
-          targetPort: default
 
   - id: 747d2fa3-2527-4324-b630-92fba84a548c
     name: PLATEAU.DomainOfDefinitionValidator01

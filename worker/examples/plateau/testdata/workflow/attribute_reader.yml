@@ -11,42 +11,5 @@ with:
   addNsprefixToFeatureTypes: true
   extractDmGeometryAsXmlFragment: false
 graphs:
-  - id: 64931277-3a82-4a1c-88bc-9b54fe172518
-    name: attribute_reader
-    nodes:
-      - id: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
-        name: FileReader01
-        type: action
-        action: FileReader
-        with:
-          format: json
-          dataset: https://raw.githubusercontent.com/reearth/reearth-flow/main/worker/tests/fixture/testdata/feature/filter/filter.json
-
-      - id: cc7d973e-a2eb-4db9-9879-a27154098001
-        name: FeatureSorter01
-        type: action
-        action: FeatureSorter
-        with:
-          sortBy:
-            - attribute: population
-              order: ascending
-
-      - id: b90a3d22-7aaf-4e1c-9e27-d9f01b75d82d
-        name: FileWriter01
-        type: action
-        action: FileWriter
-        with:
-          format: json
-          output: file:///Users/miseyu/git/src/github.com/reearth/reearth-flow/worker/piyo.json
-
-    edges:
-      - id: afa36141-5b6a-4d2b-8a75-bf184f961378
-        from: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
-        to: cc7d973e-a2eb-4db9-9879-a27154098001
-        fromPort: default
-        toPort: default
-      - id: d661eff9-2ee3-4735-ab36-ac2c662464fd
-        from: cc7d973e-a2eb-4db9-9879-a27154098001
-        to: b90a3d22-7aaf-4e1c-9e27-d9f01b75d82d
-        fromPort: default
-        toPort: default
+  - !include ../graphs/attribute_reader.yml
+  - !include ../graphs/folder_and_file_path_reader.yml
