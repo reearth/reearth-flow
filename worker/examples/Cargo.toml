@@ -21,7 +21,6 @@ reearth-flow-eval-expr.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-workflow-runner.workspace = true
-reearth-flow-workflow.workspace = true
 
 bytes.workspace = true
 directories.workspace = true
@@ -40,3 +39,7 @@ path = "plateau/attribute_reader.rs"
 [[example]]
 name = "xml_validator"
 path = "plateau/xml_validator.rs"
+
+[[example]]
+name = "domain_of_definition_validator"
+path = "plateau/domain_of_definition_validator.rs"

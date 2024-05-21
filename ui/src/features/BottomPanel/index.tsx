@@ -2,7 +2,7 @@ import { HorizontalPanel, OutputIcon, PreviewIcon, type PanelContent } from "@fl
 import { useStateManager } from "@flow/hooks";
 import { useT } from "@flow/providers";
 
-import { DataTable, LogConsole, TwoDMap } from "./components";
+import { DataTable, LogConsole, Map } from "./components";
 
 export type BottomPanelProps = {
   className?: string;
@@ -24,9 +24,9 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ className }) => {
       icon: <PreviewIcon />,
       description: t("Preview data"),
       component: (
-        <div className="flex flex-1 h-full">
+        <div className="flex flex-1 h-[400px]">
           <DataTable />
-          <TwoDMap className="flex-1" />
+          <Map />
         </div>
       ),
     },
@@ -34,7 +34,7 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ className }) => {
 
   return (
     <HorizontalPanel
-      className={`bg-zinc-900 cursor-pointer backdrop-blur-md ${className}`}
+      className={`bg-zinc-900 border-t border-zinc-700 backdrop-blur-md ${className}`}
       isOpen={!!isPanelOpen}
       panelContents={panelContents}
       onToggle={handlePanelToggle}

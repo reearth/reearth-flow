@@ -1,10 +1,13 @@
+import { Role } from "@flow/types";
+
 export function generateTeam(numberOfMembers: number) {
   const team = [];
   for (let i = 0; i < numberOfMembers; i++) {
     team.push({
       id: i.toString(),
       name: `Member ${i}`,
-      status: i % 2 === 0 ? "online" : "offline",
+      // status: i % 2 === 0 ? "online" : "offline",
+      role: (i % 2 === 0 ? "writer" : "admin") as Role,
     });
   }
   return team;

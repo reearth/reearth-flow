@@ -3,8 +3,8 @@ use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve;
-use reearth_flow_workflow::workflow::Workflow;
 use reearth_flow_workflow_runner::dag::dag_impl::Dag;
+use reearth_flow_workflow_runner::types::graph::Workflow;
 
 pub fn build_dot_command() -> Command {
     Command::new("dot")

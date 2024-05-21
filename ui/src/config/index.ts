@@ -17,6 +17,7 @@ declare global {
 const defaultConfig: Config = {
   version: "X.X.X",
   brandName: "Re:Earth Flow",
+  githubRepoUrl: "https://github.com/reearth/reearth-flow",
 };
 
 export default async function loadConfig() {
