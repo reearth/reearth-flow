@@ -15,7 +15,7 @@
 # Editor
 .idea
 
-# reearth
+# reearth-flow
 /dist
 /reearth
 /reearth-backend

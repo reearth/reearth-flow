@@ -11,88 +11,48 @@ import (
 	"github.com/spf13/afero"
 )
 
-type WebHandler struct {
-	Disabled    bool
-	AppDisabled bool
-	WebConfig   map[string]any
-	AuthConfig  *config.AuthConfig
-	HostPattern string
-	Title       string
-	FaviconURL  string
-	FS          afero.Fs
-}
+type WebConfig map[string]any
 
-func (w *WebHandler) Handler(e *echo.Echo) {
-	if w.Disabled {
+func Web(e *echo.Echo, wc WebConfig, ac *config.AuthConfig, disabled bool, fs afero.Fs) {
+	if disabled {
 		return
 	}
 
-	if w.FS == nil {
-		w.FS = afero.NewOsFs()
+	if fs == nil {
+		fs = afero.NewOsFs()
 	}
-
-	if _, err := w.FS.Stat("web"); err != nil {
-		return // web won't be delivered
-	}
-
-	// favicon
-	var faviconPath string
-	var err error
-	if w.FaviconURL != "" {
-		faviconPath = "/favicon.ico"
-	}
-
-	// fs
-	hfs, err := NewRewriteHTMLFS(w.FS, "web", w.Title, faviconPath)
-	if err != nil {
-		log.Errorf("web: failed to init fs: %v", err)
+	if _, err := fs.Stat("web"); err != nil {
 		return
 	}
 
 	log.Infof("web: web directory will be delivered")
 
-	cfg := map[string]any{}
-	if w.AuthConfig != nil {
-		if w.AuthConfig.ISS != "" {
-			cfg["auth0Domain"] = strings.TrimSuffix(w.AuthConfig.ISS, "/")
+	config := map[string]string{}
+	if ac != nil {
+		if ac.ISS != "" {
+			config["auth0Domain"] = strings.TrimSuffix(ac.ISS, "/")
 		}
-		if w.AuthConfig.ClientID != nil {
-			cfg["auth0ClientId"] = *w.AuthConfig.ClientID
+		if ac.ClientID != nil {
+			config["auth0ClientId"] = *ac.ClientID
 		}
-		if len(w.AuthConfig.AUD) > 0 {
-			cfg["auth0Audience"] = w.AuthConfig.AUD[0]
+		if len(ac.AUD) > 0 {
+			config["auth0Audience"] = ac.AUD[0]
 		}
-	}
-	if w.HostPattern != "" {
-		cfg["published"] = w.hostWithSchema()
 	}
 
-	for k, v := range w.WebConfig {
-		cfg[k] = v
+	for k, v := range wc {
+		config[k] = v.(string)
 	}
 
-	static := middleware.StaticWithConfig(middleware.StaticConfig{
+	e.GET("/reearth_config.json", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, config)
+	})
+
+	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
 		Root:       "web",
 		Index:      "index.html",
 		Browse:     false,
 		HTML5:      true,
-		Filesystem: hfs,
-	})
-	notFound := func(c echo.Context) error { return echo.ErrNotFound }
-
-	e.GET("/flow_config.json", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, cfg)
-	})
-
-	e.GET("/index.html", func(c echo.Context) error {
-		return c.Redirect(http.StatusPermanentRedirect, "/")
-	})
-	e.GET("*", notFound, static)
-}
-
-func (w *WebHandler) hostWithSchema() string {
-	if strings.HasPrefix(w.HostPattern, "http://") || strings.HasPrefix(w.HostPattern, "https://") {
-		return w.HostPattern
-	}
-	return "https://" + w.HostPattern
+		Filesystem: afero.NewHttpFs(fs),
+	}))
 }

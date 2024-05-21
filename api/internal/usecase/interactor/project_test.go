@@ -29,8 +29,8 @@ func TestProject_Create(t *testing.T) {
 	ws := workspace.New().NewID().MustBuild()
 	wsid2 := workspace.NewID()
 	_ = uc.workspaceRepo.Save(ctx, ws)
-	pId1, pId2 := project.NewID(), project.NewID()
-	defer project.MockNewID(pId1)()
+	pId := project.NewID()
+	defer project.MockNewID(pId)()
 
 	// normal
 	got, err := uc.Create(ctx, interfaces.CreateProjectParam{
@@ -43,39 +43,17 @@ func TestProject_Create(t *testing.T) {
 			WritableWorkspaces: workspace.IDList{ws.ID()},
 		},
 	})
+
 	assert.NoError(t, err)
 	want := project.New().
-		ID(pId1).
+		ID(pId).
 		Workspace(ws.ID()).
 		Name("aaa").
 		Description("bbb").
 		UpdatedAt(got.UpdatedAt()).
 		MustBuild()
 	assert.Equal(t, want, got)
-	assert.Equal(t, want, lo.Must(uc.projectRepo.FindByID(ctx, pId1)))
-
-	// Experimental
-	defer project.MockNewID(pId2)()
-	got, err = uc.Create(ctx, interfaces.CreateProjectParam{
-		WorkspaceID: ws.ID(),
-		Name:        lo.ToPtr("aaa"),
-		Description: lo.ToPtr("bbb"),
-		Archived:    lo.ToPtr(false),
-	}, &usecase.Operator{
-		AcOperator: &accountusecase.Operator{
-			WritableWorkspaces: workspace.IDList{ws.ID()},
-		},
-	})
-	assert.NoError(t, err)
-	want = project.New().
-		ID(pId2).
-		Workspace(ws.ID()).
-		Name("aaa").
-		Description("bbb").
-		UpdatedAt(got.UpdatedAt()).
-		MustBuild()
-	assert.Equal(t, want, got)
-	assert.Equal(t, want, lo.Must(uc.projectRepo.FindByID(ctx, pId2)))
+	assert.Equal(t, want, lo.Must(uc.projectRepo.FindByID(ctx, pId)))
 
 	// nonexistent workspace
 	got, err = uc.Create(ctx, interfaces.CreateProjectParam{

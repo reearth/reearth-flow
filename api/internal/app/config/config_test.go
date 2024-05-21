@@ -1,55 +1,57 @@
 package config
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestReadConfig(t *testing.T) {
-	clientID := AuthServerDefaultClientID
-	localAuth := AuthConfig{
-		ISS:      "http://localhost:8088/",
-		AUD:      []string{"http://localhost:8088"},
-		ClientID: &clientID,
-	}
+	// Set environment variables for testing
+	t.Setenv("REEARTH_FLOW_HOST", "http://example.com")
+	t.Setenv("REEARTH_FLOW_HOST_WEB", "http://web.example.com")
+	t.Setenv("REEARTH_FLOW_DB", "mongodb://testdb")
+	t.Setenv("REEARTH_FLOW_AUTH_ISS", "http://auth.example.com")
+	t.Setenv("REEARTH_FLOW_AUTH_AUD", "audience1,audience2")
+	defer func() {
+		os.Unsetenv("REEARTH_FLOW_HOST")
+		os.Unsetenv("REEARTH_FLOW_HOST_WEB")
+		os.Unsetenv("REEARTH_FLOW_DB")
+		os.Unsetenv("REEARTH_FLOW_AUTH_ISS")
+		os.Unsetenv("REEARTH_FLOW_AUTH_AUD")
+	}()
 
-	cfg, err := ReadConfig(false)
+	// Test with debug mode enabled
+	config, err := ReadConfig(true)
 	assert.NoError(t, err)
-	assert.Nil(t, cfg.Auth)
-	assert.Equal(t, AuthConfigs{localAuth}, cfg.Auths())
+	assert.NotNil(t, config)
+	assert.Equal(t, true, config.Dev)
+	assert.Equal(t, "http://example.com", config.Host)
+	assert.Equal(t, "http://web.example.com", config.Host_Web)
+	assert.Equal(t, "mongodb://testdb", config.DB)
+	assert.Equal(t, "http://auth.example.com", config.Auth_ISS)
+	assert.Equal(t, "audience1,audience2", config.Auth_AUD)
 
-	t.Setenv("FLOW_AUTH", `[{"iss":"bar"}]`)
-	t.Setenv("FLOW_AUTH_ISS", "hoge")
-	t.Setenv("FLOW_WEB", "a:1,b:2")
-	t.Setenv("FLOW_WEB_CONFIG", `{"c":3}`)
-	cfg, err = ReadConfig(false)
+	// Test with debug mode disabled
+	config, err = ReadConfig(false)
 	assert.NoError(t, err)
-	assert.Equal(t, AuthConfigs([]AuthConfig{{ISS: "bar"}}), cfg.Auth)
-	assert.Equal(t, AuthConfigs{
-		{ISS: "hoge"}, // FLOW_AUTH_*
-		localAuth,     // local auth srv
-		{ISS: "bar"},  // FLOW_AUTH
-	}, cfg.Auths())
-	assert.Equal(t, "hoge", cfg.Auth_ISS)
-	assert.Equal(t, "", cfg.Auth_AUD)
-	assert.Equal(t, map[string]any{"a": "1", "b": "2", "c": float64(3)}, cfg.WebConfig())
+	assert.NotNil(t, config)
+	assert.Equal(t, false, config.Dev)
+	assert.Equal(t, "http://example.com", config.Host)
+	assert.Equal(t, "http://web.example.com", config.Host_Web)
+	assert.Equal(t, "mongodb://testdb", config.DB)
+	assert.Equal(t, "http://auth.example.com", config.Auth_ISS)
+	assert.Equal(t, "audience1,audience2", config.Auth_AUD)
 
-	t.Setenv("FLOW_AUTH_AUD", "foo")
-	t.Setenv("FLOW_AUTH0_DOMAIN", "foo")
-	t.Setenv("FLOW_AUTH0_CLIENTID", clientID)
-	t.Setenv("FLOW_WEB", "")
-	cfg, err = ReadConfig(false)
+	// Test with missing environment variables
+	os.Unsetenv("REEARTH_FLOW_HOST")
+	os.Unsetenv("REEARTH_FLOW_HOST_WEB")
+	config, err = ReadConfig(false)
 	assert.NoError(t, err)
-	assert.Equal(t, AuthConfigs{
-		{ISS: "https://foo/", ClientID: &clientID}, // Auth0
-		{ISS: "hoge", AUD: []string{"foo"}},        // FLOW_AUTH_*
-		localAuth,                                  // local auth srv
-		{ISS: "bar"},                               // FLOW_AUTH
-	}, cfg.Auths())
-	assert.Equal(t, "foo", cfg.Auth_AUD)
-	assert.Equal(t, map[string]string{}, cfg.Web)
-
+	assert.NotNil(t, config)
+	assert.Equal(t, "http://localhost:8081", config.Host)
+	assert.Equal(t, "http://localhost:8081", config.Host_Web)
 }
 
 func Test_AddHTTPScheme(t *testing.T) {

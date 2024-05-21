@@ -34,7 +34,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	e.Logger = logger
 	e.Use(
 		middleware.Recover(),
-		otelecho.Middleware("reearth"),
+		otelecho.Middleware("reearth-flow"),
 		echo.WrapMiddleware(appx.RequestIDMiddleware()),
 		logger.AccessLogger(),
 		middleware.Gzip(),
@@ -104,15 +104,8 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	}
 
 	serveFiles(e, cfg.Gateways.File)
-	(&WebHandler{
-		Disabled:    cfg.Config.Web_Disabled,
-		AppDisabled: cfg.Config.Web_App_Disabled,
-		WebConfig:   cfg.Config.WebConfig(),
-		AuthConfig:  cfg.Config.AuthForWeb(),
-		Title:       cfg.Config.Web_Title,
-		FaviconURL:  cfg.Config.Web_FaviconURL,
-		FS:          nil,
-	}).Handler(e)
+
+	Web(e, cfg.Config.WebConfig(), cfg.Config.AuthForWeb(), cfg.Config.Web_Disabled, nil)
 
 	return e
 }
@@ -144,7 +137,7 @@ func allowedOrigins(cfg *ServerConfig) []string {
 	}
 	origins := append([]string{}, cfg.Config.Origins...)
 	if cfg.Debug {
-		origins = append(origins, "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8088")
+		origins = append(origins, "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8081")
 	}
 	return origins
 }

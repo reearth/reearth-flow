@@ -18,7 +18,7 @@ import (
 )
 
 func Start(debug bool, version string) {
-	log.Infof("flow %s", version)
+	log.Infof("reerath-flow %s", version)
 
 	ctx := context.Background()
 
@@ -73,7 +73,7 @@ type ServerConfig struct {
 func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {
 	port := cfg.Config.Port
 	if port == "" {
-		port = "8088"
+		port = "8081"
 	}
 
 	host := cfg.Config.ServerHost

@@ -19,5 +19,6 @@ func ToProject(p *project.Project) *Project {
 		Name:              p.Name(),
 		Description:       p.Description(),
 		UpdatedAt:         p.UpdatedAt(),
+		WorkspaceID:       IDFrom(p.Workspace()),
 	}
 }
