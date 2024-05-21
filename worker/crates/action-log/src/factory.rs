@@ -5,7 +5,7 @@ use slog::{o, Logger};
 use crate::action::action_logger;
 use crate::split::split_logger;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct LoggerFactory {
     parent: Logger,
     root_path: PathBuf,

@@ -12,20 +12,12 @@ const RED_COLOR: Color = Color::TrueColor {
 };
 
 fn main() -> Result<()> {
-    tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(main_impl())
-}
-
-async fn main_impl() -> Result<()> {
     let about_text = about_text();
     let app = build_cli().about(about_text).version("0.1.0");
     let matches = app.get_matches();
     let command = CliCommand::parse_cli_args(matches)?;
     logger::setup_logging_and_tracing(command.default_log_level(), true)?;
-    let return_code: i32 = if let Err(err) = command.execute().await {
+    let return_code: i32 = if let Err(err) = command.execute() {
         eprintln!("{} Command failed: {:?}\n", "✘".color(RED_COLOR), err);
         1
     } else {
