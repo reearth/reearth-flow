@@ -25,30 +25,30 @@ jobs:
             .github/workflows/deploy_ui_nightly.yml
             CHANGELOG.md
 
-      # - name: changed files for api
-      #   id: api
-      #   uses: tj-actions/changed-files@v41
-      #   with:
-      #     files: |
-      #       api
-      #       .github/workflows/ci.yml
-      #       .github/workflows/ci_api.yml
-      #       .github/workflows/build_api.yml
-      #       .github/workflows/deploy_api_nightly.yml
-      #       CHANGELOG.md
+      - name: changed files for api
+        id: api
+        uses: tj-actions/changed-files@v41
+        with:
+          files: |
+            api
+            .github/workflows/ci.yml
+            .github/workflows/ci_api.yml
+            .github/workflows/build_api.yml
+            .github/workflows/deploy_api_nightly.yml
+            CHANGELOG.md
   ci-ui:
     needs: prepare
     if: needs.prepare.outputs.ui == 'true'
     uses: ./.github/workflows/ci_ui.yml
-  # ci-api:
-  #   needs: prepare
-  #   if: needs.prepare.outputs.api == 'true'
-  #   uses: ./.github/workflows/ci_api.yml
+  ci-api:
+    needs: prepare
+    if: needs.prepare.outputs.api == 'true'
+    uses: ./.github/workflows/ci_api.yml
   ci:
     runs-on: ubuntu-latest
     needs:
       - ci-ui
-      # - ci-api
+      - ci-api
     if: '!failure()'
     steps:
       - run: echo OK

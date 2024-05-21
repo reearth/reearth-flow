@@ -2,13 +2,11 @@ package project
 
 import (
 	"errors"
-	"regexp"
 	"time"
 )
 
 var (
 	ErrInvalidAlias error = errors.New("invalid alias")
-	aliasRegexp           = regexp.MustCompile("^[a-zA-Z0-9_-]{5,32}$")
 )
 
 type Project struct {

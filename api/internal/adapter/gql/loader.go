@@ -64,15 +64,3 @@ func (l Loaders) OrdinaryDataLoaders(ctx context.Context) *DataLoaders {
 		User:      l.User.OrdinaryDataLoader(ctx),
 	}
 }
-
-func single[T any](d []T, e []error) (t T, err error) {
-	if len(e) > 0 {
-		err = e[0]
-		return
-	}
-	if len(d) > 0 {
-		t = d[0]
-		return
-	}
-	return
-}
