@@ -36,18 +36,21 @@ panic = "abort"
 strip = true
 
 [workspace.dependencies]
-reearth-flow-action = {path = "crates/action"}
 reearth-flow-action-log = {path = "crates/action-log"}
-reearth-flow-action-universal = {path = "crates/action-universal"}
+reearth-flow-action-processor = {path = "crates/action-processor"}
+reearth-flow-action-sink = {path = "crates/action-sink"}
+reearth-flow-action-source = {path = "crates/action-source"}
+reearth-flow-cli = {path = "crates/cli"}
 reearth-flow-common = {path = "crates/common"}
 reearth-flow-eval-expr = {path = "crates/eval-expr"}
 reearth-flow-geometry = {path = "crates/geometry"}
 reearth-flow-macros = {path = "crates/macros"}
+reearth-flow-runner = {path = "crates/runner"}
+reearth-flow-runtime = {path = "crates/runtime"}
 reearth-flow-state = {path = "crates/state"}
 reearth-flow-storage = {path = "crates/storage"}
 reearth-flow-telemetry = {path = "crates/telemetry"}
-reearth-flow-workflow-cli = {path = "crates/cli"}
-reearth-flow-workflow-runner = {path = "crates/workflow-runner"}
+reearth-flow-types = {path = "crates/types"}
 reearth-flow-xml = {path = "crates/xml"}
 
 nusamai-citygml = {git = "https://github.com/reearth/plateau-gis-converter", features = ["serde", "serde_json"]}
@@ -58,7 +61,6 @@ nusamai-projection = {git = "https://github.com/reearth/plateau-gis-converter"}
 async-recursion = "1.1.1"
 async-trait = "0.1.80"
 async_zip = {version = "0.0.17", features = ["full"]}
-bincode = {version = "2.0.0-rc.3", features = ["derive"]}
 bytes = {version = "1.6.0", features = ["serde"]}
 color-eyre = "0.6.3"
 colorsys = "0.6.7"
@@ -81,7 +83,7 @@ opentelemetry-semantic-conventions = "0.14.0"
 opentelemetry-stdout = {version = "0.3.0", default-features = false, features = ["trace", "metrics"]}
 opentelemetry_sdk = {version = "0.22.1", default-features = false, features = ["trace", "rt-tokio", "metrics"]}
 parking_lot = "0.12.2"
-petgraph = "0.6.4"
+petgraph = "0.6.5"
 pretty_assertions = "1.4.0"
 quick-xml = "0.31.0"
 rand = "0.8.5"

@@ -17,6 +17,9 @@ pub enum Error {
 
     #[error("XMLUtilError: {0}")]
     Xml(String),
+
+    #[error("DirError: {0}")]
+    Dir(String),
 }
 
 impl Error {
@@ -43,6 +46,10 @@ impl Error {
     pub fn xml<T: ToString>(message: T) -> Self {
         Self::Xml(message.to_string())
     }
+
+    pub fn dir<T: ToString>(message: T) -> Self {
+        Self::Dir(message.to_string())
+    }
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -50,6 +57,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub mod collection;
 pub mod color;
 pub mod csv;
+pub mod dir;
 pub mod fs;
 pub mod serde;
 pub mod str;

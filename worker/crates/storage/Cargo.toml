@@ -26,3 +26,4 @@ tokio-stream.workspace = true
 tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
+parking_lot.workspace = true

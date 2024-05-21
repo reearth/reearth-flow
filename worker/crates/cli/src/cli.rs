@@ -43,10 +43,10 @@ impl CliCommand {
         }
     }
 
-    pub async fn execute(self) -> crate::Result<()> {
+    pub fn execute(self) -> crate::Result<()> {
         match self {
-            CliCommand::Run(subcommand) => subcommand.execute().await,
-            CliCommand::Dot(subcommand) => subcommand.execute().await,
+            CliCommand::Run(subcommand) => subcommand.execute(),
+            CliCommand::Dot(subcommand) => subcommand.execute(),
         }
     }
 }

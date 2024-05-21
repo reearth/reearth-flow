@@ -1,6 +1,8 @@
 use std::{env, fs, path::Path, sync::Arc};
 
 use directories::ProjectDirs;
+use reearth_flow_runner::runner::Runner;
+use reearth_flow_types::Workflow;
 use tracing::Level;
 use tracing_subscriber::fmt::time::UtcTime;
 use tracing_subscriber::prelude::*;
@@ -9,22 +11,12 @@ use yaml_include::Transformer;
 
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
 use reearth_flow_common::uri::Uri;
-use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_workflow_runner::dag::DagExecutor;
-use reearth_flow_workflow_runner::types::graph::Workflow;
 
-pub(crate) fn init_execute_runner(workflow: &str) -> DagExecutor {
+pub(crate) fn execute(workflow: &str) {
     env::set_var("RAYON_NUM_THREADS", "6");
     setup_logging_and_tracing();
     let job_id = uuid::Uuid::new_v4();
-    let dataframe_state_uri = {
-        let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
-        let p = p.data_dir().to_str().unwrap();
-        let p = format!("{}/dataframe/{}", p, job_id);
-        let _ = fs::create_dir_all(Path::new(p.as_str()));
-        Uri::for_test(format!("file://{}", p).as_str())
-    };
     let action_log_uri = {
         let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
         let p = p.data_dir().to_str().unwrap();
@@ -34,13 +26,17 @@ pub(crate) fn init_execute_runner(workflow: &str) -> DagExecutor {
     };
 
     let storage_resolver = Arc::new(StorageResolver::new());
-    let state = Arc::new(State::new(&dataframe_state_uri, &storage_resolver).unwrap());
     let workflow = create_workflow(workflow);
-    let log_factory = Arc::new(LoggerFactory::new(
+    let logger_factory = Arc::new(LoggerFactory::new(
         create_root_logger(action_log_uri.path()),
         action_log_uri.path(),
     ));
-    DagExecutor::new(job_id, &workflow, storage_resolver, state, log_factory).unwrap()
+    Runner::run(
+        job_id.to_string(),
+        workflow,
+        logger_factory,
+        storage_resolver,
+    );
 }
 
 pub fn create_workflow(workflow: &str) -> Workflow {
@@ -59,7 +55,7 @@ pub fn create_workflow(workflow: &str) -> Workflow {
     let path = absolute_path.unwrap();
     let yaml = Transformer::new(path, false).unwrap();
     let yaml = yaml.to_string();
-    Workflow::try_from_str(yaml.as_str()).unwrap()
+    Workflow::try_from_str(yaml.as_str())
 }
 
 pub fn setup_logging_and_tracing() {
