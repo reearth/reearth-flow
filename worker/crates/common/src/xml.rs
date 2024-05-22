@@ -1,6 +1,8 @@
 use std::collections::HashSet;
+use std::marker::PhantomData;
 
 use libxml::parser::{Parser, ParserOptions};
+use libxml::schemas::SchemaValidationContext;
 use libxml::tree::document;
 use libxml::xpath::Context;
 
@@ -11,7 +13,14 @@ pub type XmlNode = libxml::tree::Node;
 pub type XmlNamespace = libxml::tree::Namespace;
 pub type XmlNodeType = libxml::tree::NodeType;
 pub type XmlSchemaParserContext = libxml::schemas::SchemaParserContext;
-pub type XmlSchemaValidationContext = libxml::schemas::SchemaValidationContext;
+
+pub struct XmlSchemaValidationContext {
+    inner: parking_lot::RwLock<SchemaValidationContext>,
+    _marker: PhantomData<*mut ()>,
+}
+
+unsafe impl Send for XmlSchemaValidationContext {}
+unsafe impl Sync for XmlSchemaValidationContext {}
 
 pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
     let parser = Parser::default();
@@ -121,8 +130,12 @@ pub fn create_xml_schema_validation_context(
     schema_location: String,
 ) -> crate::Result<XmlSchemaValidationContext> {
     let mut xsd_parser = XmlSchemaParserContext::from_file(schema_location.as_str());
-    XmlSchemaValidationContext::from_parser(&mut xsd_parser)
-        .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {:?}", e)))
+    let ctx = SchemaValidationContext::from_parser(&mut xsd_parser)
+        .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {:?}", e)))?;
+    Ok(XmlSchemaValidationContext {
+        inner: parking_lot::RwLock::new(ctx),
+        _marker: PhantomData,
+    })
 }
 
 pub fn validate_document_by_schema(
@@ -137,7 +150,7 @@ pub fn validate_document_by_schema_context(
     document: &XmlDocument,
     xsd_validator: &mut XmlSchemaValidationContext,
 ) -> crate::Result<bool> {
-    match xsd_validator.validate_document(document) {
+    match xsd_validator.inner.write().validate_document(document) {
         Ok(_) => Ok(true),
         Err(_) => Ok(false),
     }
@@ -227,11 +240,15 @@ mod tests {
         let root = values.first().unwrap();
         let ctx = create_context(&document).unwrap();
         let result = ctx
-            .node_evaluate("//*[(name()='gml:description' or name()='gml:name')]", root)
+            .node_evaluate("//*[name()='gml:Definition']", root)
             .unwrap();
         let result = result.get_nodes_as_vec();
         for node in result {
             let tag = get_node_tag(&node);
+            println!(
+                "gml id: {:?}",
+                node.get_attribute_ns("id", "http://www.opengis.net/gml")
+            );
             println!("tag: {}", tag);
         }
     }

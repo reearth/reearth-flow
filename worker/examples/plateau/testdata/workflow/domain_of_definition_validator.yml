@@ -7,6 +7,7 @@ with:
   cityCode: "11234"
   schemaJson: !include ../config/schema.txt
 graphs:
+  - !include ../graphs/domain_of_definition_validator.yml
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
     nodes:
@@ -38,9 +39,9 @@ graphs:
             env.get("path")
 
       - id: 747d2fa3-2527-4324-b630-92fba84a548c
-        name: PLATEAU.DomainOfDefinitionValidator01
-        type: action
-        action: PLATEAU.DomainOfDefinitionValidator
+        name: PLATEAU.DomainOfDefinitionValidator_01
+        type: subGraph
+        subGraphId: b7396083-17d0-47dd-be86-83caf6c5ac63
 
     edges:
       - id: 0e260272-8ec3-432c-85e9-bc3e5e87ec2f
