@@ -3,6 +3,7 @@ use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use nusamai_citygml::GML31_NS;
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
@@ -320,6 +321,10 @@ pub struct DomainOfDefinitionValidatorParam {
 impl Processor for DomainOfDefinitionValidator {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
+    fn num_threads(&self) -> usize {
+        6
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -487,8 +492,7 @@ fn process_feature(
     for member in members.iter() {
         let feture_type = member.get_name();
         let gml_id = member
-            .get_attribute_node("gml:id")
-            .map(|n| n.get_content())
+            .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
             .unwrap_or_default();
         let xlinks =
             xml::find_nodes_by_xpath(&xml_ctx, ".//*[@xlink:href]", &root_node).map_err(|e| {
@@ -499,8 +503,7 @@ fn process_feature(
             })?;
         for xlink in xlinks {
             let xlink_href = xlink
-                .get_attribute_node("xlink:href")
-                .map(|n| n.get_content())
+                .get_attribute_ns("href", "http://www.w3.org/1999/xlink")
                 .unwrap_or_default();
             if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
                 let mut result_feature = feature.clone();
@@ -683,10 +686,13 @@ fn process_member_node(
 ) -> crate::errors::Result<Vec<Feature>> {
     let mut base_feature = feature.clone();
     let mut result = Vec::<Feature>::new();
-    let gml_id = member
-        .get_attribute_node("gml:id")
-        .map(|n| n.get_content())
-        .unwrap_or_default();
+    let Some(gml_id) =
+        member.get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
+    else {
+        return Err(ProcessorError::DomainOfDefinitionValidator(
+            "Failed to get gml id".to_string(),
+        ));
+    };
     base_feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
     let feature_type = if XML_NAMESPACES.contains_key(xml::get_node_prefix(member).as_str()) {
         let name = member.get_name();
@@ -743,8 +749,7 @@ fn process_member_node(
         })?;
     for gml_id_child in gml_id_children {
         let gml_id = gml_id_child
-            .get_attribute_node("gml:id")
-            .map(|n| n.get_content())
+            .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
             .unwrap_or_default();
         let tag = xml::get_node_tag(&gml_id_child);
         gml_ids.insert(
@@ -797,7 +802,9 @@ fn process_member_node(
         let code = codelists.get(&code_space_path.to_string());
         let code_value = code_space_member.get_content();
         let mut valid = false;
+        let mut exists_code_list = false;
         if let Some(code) = code {
+            exists_code_list = true;
             if code.contains_key(code_value.as_str()) {
                 valid = true;
                 response.correct_code_values += 1;
@@ -809,6 +816,7 @@ fn process_member_node(
         }
         if !valid {
             let mut result_feature = base_feature.clone();
+            result_feature.insert("existsCodeList", AttributeValue::Bool(exists_code_list));
             result_feature.insert("flag", AttributeValue::String("CodeValidation".to_string()));
             result_feature.insert(
                 "tag",
@@ -971,9 +979,7 @@ fn process_member_node(
         .iter()
         .filter(|&child| xml::get_node_tag(child) != "core:CityObjectGroup")
     {
-        let Some(xlink_href) = child
-            .get_attribute_node("xlink:href")
-            .map(|n| n.get_content())
+        let Some(xlink_href) = child.get_attribute_ns("href", "http://www.w3.org/1999/xlink")
         else {
             continue;
         };
@@ -1005,10 +1011,12 @@ fn process_member_node(
                         },
                     )?;
                 gml_id_children.iter().for_each(|gml_id_node| {
-                    let Some(gml_id) = gml_id_node.get_attribute_node("gml:id") else {
+                    let Some(gml_id) = gml_id_node.get_attribute_ns(
+                        "id",
+                        std::str::from_utf8(GML31_NS.into_inner()).unwrap(),
+                    ) else {
                         return;
                     };
-                    let gml_id = gml_id.get_content();
                     if response.external_file_to_gml_ids.contains_key(gml_path) {
                         response
                             .external_file_to_gml_ids
@@ -1161,7 +1169,9 @@ fn process_member_node(
                     AttributeValue::String("InvalidLodXGeometry".to_string()),
                 );
                 result_feature.insert("parentTag", AttributeValue::String(parent_tag));
-                if let Some(gml_id) = parent.get_attribute_node("gml:id").map(|n| n.get_content()) {
+                if let Some(gml_id) = parent
+                    .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
+                {
                     result_feature.insert("gmlId", AttributeValue::String(gml_id));
                 } else {
                     result_feature.insert("gmlId", AttributeValue::String("".to_string()));

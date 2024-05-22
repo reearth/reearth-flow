@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 use std::hash::Hash;
 
 use petgraph::dot::Dot;
@@ -40,13 +41,23 @@ pub enum SchemaEdgeKind {
     FromProcessor,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SchemaNodeType {
     pub handle: NodeHandle,
     pub name: String,
     pub node: Node,
     pub kind: Option<NodeKind>,
     pub with: Option<HashMap<String, serde_json::Value>>,
+}
+
+impl Debug for SchemaNodeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "SchemaNodeType(id = {}, name = {})",
+            self.handle.id, self.name
+        )
+    }
 }
 
 impl SchemaNodeType {
