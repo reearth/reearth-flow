@@ -322,7 +322,7 @@ impl Processor for DomainOfDefinitionValidator {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
-        6
+        25
     }
 
     fn process(
@@ -518,6 +518,9 @@ fn process_feature(
                 );
                 result_feature.insert("featureType", AttributeValue::String(feture_type.clone()));
                 result_feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
+                fw.send(
+                    ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()),
+                );
                 result.push(result_feature);
                 response.xlink_has_no_reference_num += 1;
             }
@@ -610,6 +613,7 @@ fn process_feature(
         "invalidLodXGeometry",
         AttributeValue::Number(Number::from(response.invalid_lod_x_geometry_num)),
     );
+    fw.send(ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()));
     result.push(result_feature);
     Ok((result, gml_ids))
 }

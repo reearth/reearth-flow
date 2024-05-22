@@ -70,8 +70,8 @@ pub enum ExecutionError {
     DuplicateInput { node: NodeHandle, port: Port },
     #[error("Cannot send to channel")]
     CannotSendToChannel,
-    #[error("Cannot receive from channel")]
-    CannotReceiveFromChannel,
+    #[error("Cannot receive from channel: {0}")]
+    CannotReceiveFromChannel(String),
     #[error("Cannot spawn worker thread: {0}")]
     CannotSpawnWorkerThread(#[source] std::io::Error),
     #[error("Invalid source name {0}")]
