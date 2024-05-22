@@ -2784,6 +2784,7 @@ dependencies = [
  "parking_lot",
  "petgraph",
  "pretty_assertions",
+ "rayon",
  "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-eval-expr",

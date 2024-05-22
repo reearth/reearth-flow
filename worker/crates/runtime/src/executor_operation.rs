@@ -155,4 +155,5 @@ pub struct ExecutorOptions {
     pub channel_buffer_sz: usize,
     pub event_hub_capacity: usize,
     pub error_threshold: Option<u32>,
+    pub thread_pool_size: usize,
 }

@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use rhai::Dynamic;
@@ -105,7 +105,7 @@ impl Processor for FeatureTransformer {
         for transformer in &self.transformers {
             new_feature = mapper(&new_feature, &transformer.expr, expr_engine.clone());
         }
-        fw.send(ctx.new_with_feature_and_port(new_feature, REJECTED_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 

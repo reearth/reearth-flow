@@ -240,11 +240,15 @@ mod tests {
         let root = values.first().unwrap();
         let ctx = create_context(&document).unwrap();
         let result = ctx
-            .node_evaluate("//*[(name()='gml:description' or name()='gml:name')]", root)
+            .node_evaluate("//*[name()='gml:Definition']", root)
             .unwrap();
         let result = result.get_nodes_as_vec();
         for node in result {
             let tag = get_node_tag(&node);
+            println!(
+                "gml id: {:?}",
+                node.get_attribute_ns("id", "http://www.opengis.net/gml")
+            );
             println!("tag: {}", tag);
         }
     }

@@ -13,6 +13,7 @@ use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 
+#[allow(dead_code)]
 pub(crate) fn execute(workflow: &str) {
     env::set_var("RAYON_NUM_THREADS", "6");
     setup_logging_and_tracing();
