@@ -10,6 +10,10 @@ import cesium from "vite-plugin-cesium";
 import pkg from "./package.json";
 
 export default defineConfig({
+  server: {
+    // TODO: Doing to test auth0. This needs to be removed and 5173 to be added in auth0 by Red(maybe).
+    port: 3000,
+  },
   envPrefix: "FLOW_",
   plugins: [react(), TanStackRouterVite(), cesium(), config()],
   build: {
