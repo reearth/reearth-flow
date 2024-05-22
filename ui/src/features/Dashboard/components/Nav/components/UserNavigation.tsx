@@ -1,6 +1,7 @@
 import { KeyboardIcon, PersonIcon } from "@radix-ui/react-icons";
 import { LogOut } from "lucide-react";
 
+import { useAuth } from "@flow/auth";
 import {
   Avatar,
   AvatarFallback,
@@ -17,6 +18,10 @@ import { useDialogType } from "@flow/stores";
 const UserNavigation: React.FC = () => {
   const t = useT();
   const [, setDialogType] = useDialogType();
+  const user = useAuth();
+  const handleLogout = user.logout;
+  console.log(user);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
@@ -47,7 +52,7 @@ const UserNavigation: React.FC = () => {
           <p>{t("Keyboard shortcuts")}</p>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="gap-2">
+        <DropdownMenuItem onClick={handleLogout} className="gap-2">
           <LogOut className="w-[15px] h-[15px] stroke-1" />
           <p>{t("Log out")}</p>
         </DropdownMenuItem>
