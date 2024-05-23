@@ -11,6 +11,7 @@ use rhai::Dynamic;
 
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_types::{Expr, Feature};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -19,8 +20,23 @@ use super::errors::AttributeProcessorError;
 #[derive(Debug, Clone, Default)]
 pub struct AttributeManagerFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for AttributeManagerFactory {
+    fn name(&self) -> &str {
+        "AttributeManager"
+    }
+
+    fn description(&self) -> &str {
+        "Manages attributes"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(AttributeManagerParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Attribute"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -29,7 +45,7 @@ impl ProcessorFactory for AttributeManagerFactory {
         vec![DEFAULT_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         ctx: NodeContext,
         _event_hub: EventHub,
@@ -66,13 +82,13 @@ pub struct AttributeManager {
     operations: Vec<Operate>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeManagerParam {
     operations: Vec<Operation>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct Operation {
     pub(super) attribute: String,
@@ -80,7 +96,7 @@ pub(super) struct Operation {
     pub(super) value: Option<Expr>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) enum Method {
     Convert,
