@@ -2,6 +2,7 @@ pub mod cli;
 pub mod dot;
 pub mod logger;
 pub mod run;
+pub mod schema;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

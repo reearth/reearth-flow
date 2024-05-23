@@ -29,7 +29,8 @@ use crate::error::Result;
         AsRef,
         Serialize,
         Deserialize,
-        Hash
+        Hash,
+        JsonSchema
     )
 )]
 pub struct Attribute(String);

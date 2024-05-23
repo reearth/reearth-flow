@@ -9,6 +9,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{AttributeValue, Feature};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_common::uri::Uri;
@@ -21,8 +22,23 @@ use super::excel::write_excel;
 #[derive(Debug, Clone, Default)]
 pub struct FileWriterSinkFactory;
 
-#[async_trait::async_trait]
 impl SinkFactory for FileWriterSinkFactory {
+    fn name(&self) -> &str {
+        "FileWriter"
+    }
+
+    fn description(&self) -> &str {
+        "Writes features to a file"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(FileWriterParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["File"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -31,7 +47,7 @@ impl SinkFactory for FileWriterSinkFactory {
         Ok(())
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -58,7 +74,7 @@ impl SinkFactory for FileWriterSinkFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FileWriterParam {
     format: Format,
@@ -72,7 +88,7 @@ pub struct FileWriter {
     pub(super) buffer: Vec<Feature>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 enum Format {
     #[serde(rename = "csv")]
     Csv,

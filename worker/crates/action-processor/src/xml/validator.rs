@@ -19,6 +19,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -30,8 +31,23 @@ static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 #[derive(Debug, Clone, Default)]
 pub struct XmlValidatorFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for XmlValidatorFactory {
+    fn name(&self) -> &str {
+        "XMLValidator"
+    }
+
+    fn description(&self) -> &str {
+        "Validates XML content"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(XmlValidatorParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["PLATEAU"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -40,7 +56,7 @@ impl ProcessorFactory for XmlValidatorFactory {
         vec![SUCCESS_PORT.clone(), FAILED_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -69,14 +85,14 @@ impl ProcessorFactory for XmlValidatorFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum XmlInputType {
     File,
     Text,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum ValidationType {
     Syntax,
@@ -84,7 +100,7 @@ enum ValidationType {
     SyntaxAndSchema,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct XmlValidatorParam {
     attribute: Attribute,

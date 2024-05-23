@@ -22,11 +22,10 @@ reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
-async-recursion.workspace = true
 crossbeam = "0.8.4"
 directories.workspace = true
-futures = "0.3.30"
-futures-util = "0.3.30"
+futures.workspace = true
+futures-util.workspace = true
 once_cell.workspace = true
 opentelemetry.workspace = true
 petgraph.workspace = true

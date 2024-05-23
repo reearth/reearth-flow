@@ -138,7 +138,6 @@ impl BuilderDag {
                         node.node.action().to_string(),
                         node.with.clone(),
                     )
-                    .await
                     .map_err(ExecutionError::Factory)?;
 
                 let state = sink.get_source_state().map_err(ExecutionError::Sink)?;
@@ -217,7 +216,6 @@ impl BuilderDag {
                             node.node.action().to_string(),
                             node.with.clone(),
                         )
-                        .await
                         .map_err(ExecutionError::Factory)?;
                     NodeType {
                         handle: node.handle,

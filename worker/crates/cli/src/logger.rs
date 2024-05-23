@@ -3,15 +3,7 @@ use tracing_subscriber::fmt::time::UtcTime;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 
-use reearth_flow_telemetry::{init_metrics, init_tracing};
-
-pub fn setup_logging_and_tracing(level: Level, ansi_colors: bool) -> crate::Result<()> {
-    let metrics_provider =
-        init_metrics("reearth-flow-worker".to_string()).map_err(crate::Error::init)?;
-    let tracer = init_tracing("reearth-flow-worker".to_string()).map_err(crate::Error::init)?;
-    let otel_trace_layer = tracing_opentelemetry::layer().with_tracer(tracer);
-    let otel_metrics_layer = tracing_opentelemetry::MetricsLayer::new(metrics_provider);
-
+pub fn setup_logging_and_tracing(level: Level, ansi_colors: bool) {
     let env_filter = EnvFilter::builder()
         .with_default_directive(level.into())
         .from_env_lossy()
@@ -25,15 +17,11 @@ pub fn setup_logging_and_tracing(level: Level, ansi_colors: bool) -> crate::Resu
             )
             .expect("Time format invalid."),
         ));
-    registry
+    let _ = registry
         .with(
             tracing_subscriber::fmt::layer()
                 .event_format(event_format)
                 .with_ansi(ansi_colors),
         )
-        .with(otel_trace_layer)
-        .with(otel_metrics_layer)
-        .try_init()
-        .map_err(crate::Error::init)?;
-    Ok(())
+        .try_init();
 }
