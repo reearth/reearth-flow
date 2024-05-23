@@ -76,12 +76,12 @@ impl SchemaCliCommand {
                         factory.description().to_string(),
                         parameter,
                         true,
+                        vec![],
                         factory
                             .get_output_ports()
                             .iter()
                             .map(|p| p.to_string())
                             .collect(),
-                        vec![],
                         factory.categories().iter().map(|c| c.to_string()).collect(),
                     )
                 }
@@ -100,12 +100,12 @@ impl SchemaCliCommand {
                         parameter,
                         true,
                         factory
-                            .get_output_ports()
+                            .get_input_ports()
                             .iter()
                             .map(|p| p.to_string())
                             .collect(),
                         factory
-                            .get_input_ports()
+                            .get_output_ports()
                             .iter()
                             .map(|p| p.to_string())
                             .collect(),
@@ -126,12 +126,12 @@ impl SchemaCliCommand {
                         factory.description().to_string(),
                         parameter,
                         true,
-                        vec![],
                         factory
                             .get_input_ports()
                             .iter()
                             .map(|p| p.to_string())
                             .collect(),
+                        vec![],
                         factory.categories().iter().map(|c| c.to_string()).collect(),
                     )
                 }

@@ -90,6 +90,8 @@ pub enum ExecutionError {
     Sink(#[source] BoxedError),
     #[error("State of {0} is not consistent across sinks")]
     SourceStateConflict(NodeHandle),
+    #[error("Action name mismatch for node {0}: {1} != {2}")]
+    ActionNameMismatch(String, String, String),
     #[error("Checkpoint writer thread panicked")]
     CheckpointWriterThreadPanicked,
     #[error("Failed to serialize record writer: {0}")]

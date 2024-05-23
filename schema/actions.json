@@ -1,94 +1,6 @@
 {
   "actions": [
     {
-      "name": "PLATEAU.UDXFolderExtractor",
-      "type": "processor",
-      "description": "Extracts UDX folders from cityGML path",
-      "parameter": null,
-      "builtin": true,
-      "inputPorts": [
-        "default",
-        "rejected"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "PLATEAU"
-      ]
-    },
-    {
-      "name": "FeatureFilter",
-      "type": "processor",
-      "description": "Filters features based on conditions",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Condition": {
-            "properties": {
-              "expr": {
-                "$ref": "#/definitions/Expr"
-              },
-              "outputPort": {
-                "$ref": "#/definitions/Port"
-              }
-            },
-            "required": [
-              "expr",
-              "outputPort"
-            ],
-            "type": "object"
-          },
-          "Expr": {
-            "type": "string"
-          },
-          "Port": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "conditions": {
-            "items": {
-              "$ref": "#/definitions/Condition"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "conditions"
-        ],
-        "title": "FeatureFilterParam",
-        "type": "object"
-      },
-      "builtin": true,
-      "inputPorts": [
-        "rejected"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "Feature"
-      ]
-    },
-    {
-      "name": "PLATEAU.DomainOfDefinitionValidator",
-      "type": "processor",
-      "description": "Validates domain of definition of CityGML features",
-      "parameter": null,
-      "builtin": true,
-      "inputPorts": [
-        "default",
-        "rejected"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "PLATEAU"
-      ]
-    },
-    {
       "name": "Extruder",
       "type": "processor",
       "description": "Extrudes a polygon by a distance",
@@ -122,66 +34,9 @@
       ]
     },
     {
-      "name": "XMLValidator",
+      "name": "AttributeKeeper",
       "type": "processor",
-      "description": "Validates XML content",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
-          "ValidationType": {
-            "enum": [
-              "syntax",
-              "syntaxAndNamespace",
-              "syntaxAndSchema"
-            ],
-            "type": "string"
-          },
-          "XmlInputType": {
-            "enum": [
-              "file",
-              "text"
-            ],
-            "type": "string"
-          }
-        },
-        "properties": {
-          "attribute": {
-            "$ref": "#/definitions/Attribute"
-          },
-          "inputType": {
-            "$ref": "#/definitions/XmlInputType"
-          },
-          "validationType": {
-            "$ref": "#/definitions/ValidationType"
-          }
-        },
-        "required": [
-          "attribute",
-          "inputType",
-          "validationType"
-        ],
-        "title": "XmlValidatorParam",
-        "type": "object"
-      },
-      "builtin": true,
-      "inputPorts": [
-        "success",
-        "failed"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "PLATEAU"
-      ]
-    },
-    {
-      "name": "FeatureCounter",
-      "type": "processor",
-      "description": "Counts features",
+      "description": "Keeps only specified attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "definitions": {
@@ -190,39 +45,86 @@
           }
         },
         "properties": {
-          "countStart": {
-            "format": "int64",
-            "type": "integer"
-          },
-          "groupBy": {
+          "keepAttributes": {
             "items": {
               "$ref": "#/definitions/Attribute"
             },
-            "type": [
-              "array",
-              "null"
-            ]
-          },
-          "outputAttribute": {
-            "type": "string"
+            "type": "array"
           }
         },
         "required": [
-          "countStart",
-          "outputAttribute"
+          "keepAttributes"
         ],
-        "title": "FeatureCounterParam",
+        "title": "AttributeKeeper",
         "type": "object"
       },
       "builtin": true,
       "inputPorts": [
-        "rejected"
+        "default"
       ],
       "outputPorts": [
         "default"
       ],
       "categories": [
-        "Feature"
+        "Attribute"
+      ]
+    },
+    {
+      "name": "FileWriter",
+      "type": "sink",
+      "description": "Writes features to a file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Format": {
+            "enum": [
+              "csv",
+              "tsv",
+              "json",
+              "json"
+            ],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "format": {
+            "$ref": "#/definitions/Format"
+          },
+          "output": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "output"
+        ],
+        "title": "FileWriterParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "PLATEAU.DictionariesInitiator",
+      "type": "processor",
+      "description": "Initializes dictionaries for PLATEAU",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
       ]
     },
     {
@@ -264,12 +166,12 @@
       },
       "builtin": true,
       "inputPorts": [
-        "merged",
-        "unmerged"
-      ],
-      "outputPorts": [
         "requestor",
         "supplier"
+      ],
+      "outputPorts": [
+        "merged",
+        "unmerged"
       ],
       "categories": [
         "Feature"
@@ -334,9 +236,100 @@
       ]
     },
     {
-      "name": "AttributeKeeper",
+      "name": "PLATEAU.UDXFolderExtractor",
       "type": "processor",
-      "description": "Keeps only specified attributes",
+      "description": "Extracts UDX folders from cityGML path",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "XMLValidator",
+      "type": "processor",
+      "description": "Validates XML content",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "ValidationType": {
+            "enum": [
+              "syntax",
+              "syntaxAndNamespace",
+              "syntaxAndSchema"
+            ],
+            "type": "string"
+          },
+          "XmlInputType": {
+            "enum": [
+              "file",
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "attribute": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "inputType": {
+            "$ref": "#/definitions/XmlInputType"
+          },
+          "validationType": {
+            "$ref": "#/definitions/ValidationType"
+          }
+        },
+        "required": [
+          "attribute",
+          "inputType",
+          "validationType"
+        ],
+        "title": "XmlValidatorParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "success",
+        "failed"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU.XMLAttributeExtractor",
+      "type": "processor",
+      "description": "Extracts attributes from XML fragments based on a schema definition",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "AttributeDuplicateFilter",
+      "type": "processor",
+      "description": "Filters features by duplicate attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "definitions": {
@@ -345,7 +338,7 @@
           }
         },
         "properties": {
-          "keepAttributes": {
+          "filterBy": {
             "items": {
               "$ref": "#/definitions/Attribute"
             },
@@ -353,9 +346,9 @@
           }
         },
         "required": [
-          "keepAttributes"
+          "filterBy"
         ],
-        "title": "AttributeKeeper",
+        "title": "AttributeDuplicateFilterParam",
         "type": "object"
       },
       "builtin": true,
@@ -367,6 +360,90 @@
       ],
       "categories": [
         "Attribute"
+      ]
+    },
+    {
+      "name": "CoordinateSystemSetter",
+      "type": "processor",
+      "description": "Sets the coordinate system of a feature",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "epsgCode": {
+            "format": "uint16",
+            "minimum": 0.0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "epsgCode"
+        ],
+        "title": "CoordinateSystemSetter",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "FeatureFilter",
+      "type": "processor",
+      "description": "Filters features based on conditions",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Condition": {
+            "properties": {
+              "expr": {
+                "$ref": "#/definitions/Expr"
+              },
+              "outputPort": {
+                "$ref": "#/definitions/Port"
+              }
+            },
+            "required": [
+              "expr",
+              "outputPort"
+            ],
+            "type": "object"
+          },
+          "Expr": {
+            "type": "string"
+          },
+          "Port": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "conditions": {
+            "items": {
+              "$ref": "#/definitions/Condition"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "conditions"
+        ],
+        "title": "FeatureFilterParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "rejected"
+      ],
+      "categories": [
+        "Feature"
       ]
     },
     {
@@ -387,212 +464,11 @@
         "type": "object"
       },
       "builtin": true,
-      "inputPorts": [],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": []
-    },
-    {
-      "name": "PLATEAU.XMLAttributeExtractor",
-      "type": "processor",
-      "description": "Extracts attributes from XML fragments based on a schema definition",
-      "parameter": null,
-      "builtin": true,
-      "inputPorts": [
-        "default",
-        "rejected"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "PLATEAU"
-      ]
-    },
-    {
-      "name": "ThreeDimentionBoxReplacer",
-      "type": "processor",
-      "description": "Extrudes a polygon by a distance",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "maxX": {
-            "$ref": "#/definitions/Attribute"
-          },
-          "maxY": {
-            "$ref": "#/definitions/Attribute"
-          },
-          "maxZ": {
-            "$ref": "#/definitions/Attribute"
-          },
-          "minX": {
-            "$ref": "#/definitions/Attribute"
-          },
-          "minY": {
-            "$ref": "#/definitions/Attribute"
-          },
-          "minZ": {
-            "$ref": "#/definitions/Attribute"
-          }
-        },
-        "required": [
-          "maxX",
-          "maxY",
-          "maxZ",
-          "minX",
-          "minY",
-          "minZ"
-        ],
-        "title": "ThreeDimentionBoxReplacer",
-        "type": "object"
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
-      "name": "XMLFragmenter",
-      "type": "processor",
-      "description": "Fragment XML",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
-            "type": "string"
-          }
-        },
-        "oneOf": [
-          {
-            "properties": {
-              "attribute": {
-                "$ref": "#/definitions/Attribute"
-              },
-              "elementsToExclude": {
-                "$ref": "#/definitions/Expr"
-              },
-              "elementsToMatch": {
-                "$ref": "#/definitions/Expr"
-              },
-              "source": {
-                "enum": [
-                  "url"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "attribute",
-              "elementsToExclude",
-              "elementsToMatch",
-              "source"
-            ],
-            "type": "object"
-          }
-        ],
-        "title": "XmlFragmenterParam"
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "XML"
-      ]
-    },
-    {
-      "name": "FileWriter",
-      "type": "sink",
-      "description": "Writes features to a file",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Format": {
-            "enum": [
-              "csv",
-              "tsv",
-              "json",
-              "json"
-            ],
-            "type": "string"
-          }
-        },
-        "properties": {
-          "format": {
-            "$ref": "#/definitions/Format"
-          },
-          "output": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "format",
-          "output"
-        ],
-        "title": "FileWriterParam",
-        "type": "object"
-      },
-      "builtin": true,
-      "inputPorts": [],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "File"
-      ]
-    },
-    {
-      "name": "FilePathExtractor",
-      "type": "source",
-      "description": "Extracts files from a directory or an archive",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "extractArchive": {
-            "type": "boolean"
-          },
-          "sourceDataset": {
-            "$ref": "#/definitions/Expr"
-          }
-        },
-        "required": [
-          "extractArchive",
-          "sourceDataset"
-        ],
-        "title": "FilePathExtractor",
-        "type": "object"
-      },
-      "builtin": true,
       "inputPorts": [
         "default"
       ],
       "outputPorts": [],
-      "categories": [
-        "File"
-      ]
+      "categories": []
     },
     {
       "name": "FileReader",
@@ -698,48 +574,89 @@
         "title": "FileReader"
       },
       "builtin": true,
-      "inputPorts": [
+      "inputPorts": [],
+      "outputPorts": [
         "default"
       ],
-      "outputPorts": [],
       "categories": [
         "File"
       ]
     },
     {
-      "name": "FeatureTransformer",
-      "type": "processor",
-      "description": "Transforms features by expressions",
+      "name": "FilePathExtractor",
+      "type": "source",
+      "description": "Extracts files from a directory or an archive",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "definitions": {
           "Expr": {
             "type": "string"
-          },
-          "Transform": {
-            "properties": {
-              "expr": {
-                "$ref": "#/definitions/Expr"
-              }
-            },
-            "required": [
-              "expr"
-            ],
-            "type": "object"
           }
         },
         "properties": {
-          "transformers": {
-            "items": {
-              "$ref": "#/definitions/Transform"
-            },
-            "type": "array"
+          "extractArchive": {
+            "type": "boolean"
+          },
+          "sourceDataset": {
+            "$ref": "#/definitions/Expr"
           }
         },
         "required": [
-          "transformers"
+          "extractArchive",
+          "sourceDataset"
         ],
-        "title": "FeatureTransformerParam",
+        "title": "FilePathExtractor",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "ThreeDimentionBoxReplacer",
+      "type": "processor",
+      "description": "Replaces a three dimention box with a polygon.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "maxX": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "maxY": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "maxZ": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "minX": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "minY": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "minZ": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "maxX",
+          "maxY",
+          "maxZ",
+          "minX",
+          "minY",
+          "minZ"
+        ],
+        "title": "ThreeDimentionBoxReplacer",
         "type": "object"
       },
       "builtin": true,
@@ -750,7 +667,62 @@
         "default"
       ],
       "categories": [
-        "Feature"
+        "Geometry"
+      ]
+    },
+    {
+      "name": "XMLFragmenter",
+      "type": "processor",
+      "description": "Fragment XML",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "attribute": {
+                "$ref": "#/definitions/Attribute"
+              },
+              "elementsToExclude": {
+                "$ref": "#/definitions/Expr"
+              },
+              "elementsToMatch": {
+                "$ref": "#/definitions/Expr"
+              },
+              "source": {
+                "enum": [
+                  "url"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "attribute",
+              "elementsToExclude",
+              "elementsToMatch",
+              "source"
+            ],
+            "type": "object"
+          }
+        ],
+        "title": "XmlFragmenterParam"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "XML"
       ]
     },
     {
@@ -824,39 +796,39 @@
       ]
     },
     {
-      "name": "PLATEAU.DictionariesInitiator",
+      "name": "FeatureTransformer",
       "type": "processor",
-      "description": "Initializes dictionaries for PLATEAU",
-      "parameter": null,
-      "builtin": true,
-      "inputPorts": [
-        "default",
-        "rejected"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "PLATEAU"
-      ]
-    },
-    {
-      "name": "CoordinateSystemSetter",
-      "type": "processor",
-      "description": "Sets the coordinate system of a feature",
+      "description": "Transforms features by expressions",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "Transform": {
+            "properties": {
+              "expr": {
+                "$ref": "#/definitions/Expr"
+              }
+            },
+            "required": [
+              "expr"
+            ],
+            "type": "object"
+          }
+        },
         "properties": {
-          "epsgCode": {
-            "format": "uint16",
-            "minimum": 0.0,
-            "type": "integer"
+          "transformers": {
+            "items": {
+              "$ref": "#/definitions/Transform"
+            },
+            "type": "array"
           }
         },
         "required": [
-          "epsgCode"
+          "transformers"
         ],
-        "title": "CoordinateSystemSetter",
+        "title": "FeatureTransformerParam",
         "type": "object"
       },
       "builtin": true,
@@ -867,13 +839,13 @@
         "default"
       ],
       "categories": [
-        "Geometry"
+        "Feature"
       ]
     },
     {
-      "name": "AttributeDuplicateFilter",
+      "name": "FeatureCounter",
       "type": "processor",
-      "description": "Filters features by duplicate attributes",
+      "description": "Counts features",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "definitions": {
@@ -882,17 +854,28 @@
           }
         },
         "properties": {
-          "filterBy": {
+          "countStart": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "groupBy": {
             "items": {
               "$ref": "#/definitions/Attribute"
             },
-            "type": "array"
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "outputAttribute": {
+            "type": "string"
           }
         },
         "required": [
-          "filterBy"
+          "countStart",
+          "outputAttribute"
         ],
-        "title": "AttributeDuplicateFilterParam",
+        "title": "FeatureCounterParam",
         "type": "object"
       },
       "builtin": true,
@@ -900,10 +883,27 @@
         "default"
       ],
       "outputPorts": [
-        "default"
+        "rejected"
       ],
       "categories": [
-        "Attribute"
+        "Feature"
+      ]
+    },
+    {
+      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "type": "processor",
+      "description": "Validates domain of definition of CityGML features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
       ]
     },
     {
