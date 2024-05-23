@@ -20,17 +20,19 @@ const UserNavigation: React.FC = () => {
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
 
+  console.log(user);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
         <div className="flex gap-2 mr-2">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user?.picture && "https://github.com/KaWaite.png"} />
-            <AvatarFallback>{user?.name && "User"}</AvatarFallback>
+            <AvatarImage src={user?.picture ? user.picture : "https://github.com/KaWaite.png"} />
+            <AvatarFallback>{user?.name ? user.name : "User"}</AvatarFallback>
           </Avatar>
           <div className="self-center">
             <p className="text-zinc-400 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
-              {user?.name && "User"}
+              {user?.name ? user.name : "User"}
             </p>
           </div>
         </div>
