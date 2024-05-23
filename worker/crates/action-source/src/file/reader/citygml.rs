@@ -26,20 +26,20 @@ pub(crate) async fn read_citygml(
     input_path: Uri,
     ctx: NodeContext,
     sender: Sender<(Port, IngestionMessage)>,
-) -> Result<(), crate::errors::UniversalSourceError> {
+) -> Result<(), crate::errors::SourceError> {
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let storage = storage_resolver
         .resolve(&input_path)
-        .map_err(|e| crate::errors::UniversalSourceError::FileReader(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
     let result = storage
         .get(input_path.path().as_path())
         .await
-        .map_err(|e| crate::errors::UniversalSourceError::FileReader(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
     let byte = result
         .bytes()
         .await
-        .map_err(|e| crate::errors::UniversalSourceError::FileReader(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
     let cursor = Cursor::new(byte);
     let buf_reader = BufReader::new(cursor);
 
@@ -49,10 +49,10 @@ pub(crate) async fn read_citygml(
     let mut citygml_reader = CityGmlReader::new(context);
     let mut st = citygml_reader
         .start_root(&mut xml_reader)
-        .map_err(|e| crate::errors::UniversalSourceError::FileReader(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
     parse_tree_reader(&mut st, base_url, sender)
         .await
-        .map_err(|e| crate::errors::UniversalSourceError::FileReader(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
     Ok(())
 }
 
@@ -60,7 +60,7 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
     st: &mut SubTreeReader<'a, 'b, R>,
     base_url: Url,
     sender: Sender<(Port, IngestionMessage)>,
-) -> Result<(), crate::errors::UniversalSourceError> {
+) -> Result<(), crate::errors::SourceError> {
     let mut entities = Vec::new();
     let mut global_appearances = AppearanceStore::default();
 
@@ -106,7 +106,7 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
             ))),
         }
     })
-    .map_err(|e| crate::errors::UniversalSourceError::FileReader(format!("{:?}", e)))?;
+    .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
     for entity in entities {
         {
             let geom_store = entity.geometry_store.read().unwrap();
@@ -118,7 +118,7 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
         }
         let geometry: Geometry = entity
             .try_into()
-            .map_err(|e| crate::errors::UniversalSourceError::FileReader(format!("{:?}", e)))?;
+            .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
         let feature: Feature = geometry.into();
         sender
             .send((
@@ -126,7 +126,7 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
-            .map_err(|e| crate::errors::UniversalSourceError::FileReader(format!("{:?}", e)))?;
+            .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
     }
     Ok(())
 }

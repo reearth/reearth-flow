@@ -17,6 +17,7 @@ impl Runner {
         storage_resolver: Arc<StorageResolver>,
     ) {
         let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(30)
             .enable_all()
             .build()
             .unwrap();

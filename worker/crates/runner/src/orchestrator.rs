@@ -38,6 +38,7 @@ impl Orchestrator {
             channel_buffer_sz: 10,
             event_hub_capacity: 10,
             error_threshold: None,
+            thread_pool_size: 30,
         };
         let expr_engine = Engine::new();
         if let Some(with) = &workflow.with {

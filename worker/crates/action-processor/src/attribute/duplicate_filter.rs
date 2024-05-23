@@ -11,7 +11,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
+use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct AttributeDuplicateFilterFactory;
@@ -35,19 +35,19 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: AttributeDuplicateFilterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::AttributeDuplicateFilterFactory(format!(
+                AttributeProcessorError::DuplicateFilterFactory(format!(
                     "Failed to serialize with: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::AttributeDuplicateFilterFactory(format!(
+                AttributeProcessorError::DuplicateFilterFactory(format!(
                     "Failed to deserialize with: {}",
                     e
                 ))
             })?
         } else {
-            return Err(ProcessorError::AttributeDuplicateFilterFactory(
+            return Err(AttributeProcessorError::DuplicateFilterFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());

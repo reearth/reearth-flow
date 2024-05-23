@@ -59,6 +59,7 @@ pub mod color;
 pub mod csv;
 pub mod dir;
 pub mod fs;
+pub mod future;
 pub mod serde;
 pub mod str;
 pub mod uri;

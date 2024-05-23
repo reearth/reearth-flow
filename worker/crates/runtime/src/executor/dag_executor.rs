@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::thread::{self, Builder};
@@ -50,7 +51,7 @@ impl DagExecutor {
         })
     }
 
-    pub async fn start<F: Send + 'static + Future + Unpin>(
+    pub async fn start<F: Send + 'static + Future + Unpin + Debug + Clone>(
         self,
         shutdown: F,
         runtime: Arc<Runtime>,
@@ -78,7 +79,7 @@ impl DagExecutor {
             ctx,
             &mut execution_dag,
             &self.options,
-            shutdown,
+            shutdown.clone(),
             runtime.clone(),
         )
         .await;
@@ -96,8 +97,14 @@ impl DagExecutor {
                         Arc::clone(&logger),
                         Arc::clone(&kv_store),
                     );
-                    let processor_node =
-                        ProcessorNode::new(ctx, &mut execution_dag, node_index).await;
+                    let processor_node = ProcessorNode::new(
+                        ctx,
+                        &mut execution_dag,
+                        node_index,
+                        shutdown.clone(),
+                        runtime.clone(),
+                    )
+                    .await;
                     join_handles.push(start_processor(processor_node)?);
                 }
                 NodeKind::Sink(_) => {
@@ -140,7 +147,7 @@ impl DagExecutorJoinHandle {
     }
 }
 
-fn start_source<F: Send + 'static + Future + Unpin>(
+fn start_source<F: Send + 'static + Future + Unpin + Debug>(
     source: SourceNode<F>,
 ) -> Result<JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
     let handle = Builder::new()
@@ -163,8 +170,8 @@ fn start_source<F: Send + 'static + Future + Unpin>(
     Ok(handle)
 }
 
-fn start_processor(
-    processor: ProcessorNode,
+fn start_processor<F: Send + 'static + Future + Unpin + Debug>(
+    processor: ProcessorNode<F>,
 ) -> Result<JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
     Builder::new()
         .name(processor.handle().to_string())

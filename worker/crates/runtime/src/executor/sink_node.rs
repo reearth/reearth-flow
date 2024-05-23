@@ -19,7 +19,7 @@ use crate::{
 };
 
 use super::execution_dag::ExecutionDag;
-use super::{name::Name, receiver_loop::ReceiverLoop};
+use super::receiver_loop::ReceiverLoop;
 
 const DEFAULT_FLUSH_INTERVAL: Duration = Duration::from_millis(20);
 
@@ -143,7 +143,7 @@ impl SinkNode {
     fn flush(&mut self) -> Result<(), ExecutionError> {
         self.sink
             .flush_batch()
-            .map_err(|_| ExecutionError::CannotReceiveFromChannel)?;
+            .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)))?;
         self.ops_since_flush = 0;
         self.flush_scheduler_sender
             .send(self.max_flush_interval)
@@ -152,12 +152,6 @@ impl SinkNode {
             node: self.node_handle.clone(),
         });
         Ok(())
-    }
-}
-
-impl Name for SinkNode {
-    fn name(&self) -> Cow<str> {
-        Cow::Owned(self.node_handle.to_string())
     }
 }
 
@@ -204,7 +198,7 @@ impl<'a> Select<'a> {
             msg.recv(&self.op_receivers[index])
                 .map(|op| ReceiverMsg::Op(index, op))
         };
-        res.map_err(|_| ExecutionError::CannotReceiveFromChannel)
+        res.map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)))
     }
 }
 
@@ -259,12 +253,12 @@ impl ReceiverLoop for SinkNode {
     fn on_op(&mut self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
         self.sink
             .process(ctx)
-            .map_err(|_| ExecutionError::CannotReceiveFromChannel)
+            .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)))
     }
 
     fn on_terminate(&mut self, ctx: NodeContext) -> Result<(), ExecutionError> {
         self.sink
             .finish(ctx)
-            .map_err(|_| ExecutionError::CannotReceiveFromChannel)
+            .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)))
     }
 }

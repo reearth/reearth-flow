@@ -12,7 +12,7 @@ use reearth_flow_types::{Expr, Geometry, GeometryValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
+use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct ExtruderFactory;
@@ -36,13 +36,16 @@ impl ProcessorFactory for ExtruderFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: ExtruderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::ExtruderFactory(format!("Failed to serialize with: {}", e))
+                GeometryProcessorError::ExtruderFactory(format!("Failed to serialize with: {}", e))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::ExtruderFactory(format!("Failed to deserialize with: {}", e))
+                GeometryProcessorError::ExtruderFactory(format!(
+                    "Failed to deserialize with: {}",
+                    e
+                ))
             })?
         } else {
-            return Err(ProcessorError::ExtruderFactory(
+            return Err(GeometryProcessorError::ExtruderFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -52,7 +55,7 @@ impl ProcessorFactory for ExtruderFactory {
         let expr = &params.distance;
         let template_ast = expr_engine
             .compile(expr.as_ref())
-            .map_err(|e| ProcessorError::ExtruderFactory(format!("{:?}", e)))?;
+            .map_err(|e| GeometryProcessorError::ExtruderFactory(format!("{:?}", e)))?;
         let process = Extruder {
             distance: template_ast,
         };
@@ -86,17 +89,20 @@ impl Processor for Extruder {
             scope.set(k.inner().as_str(), v.clone().into());
         }
         let Ok(height) = scope.eval_ast::<f64>(&self.distance) else {
-            return Err(ProcessorError::Extruder("Failed to evaluate distance".to_string()).into());
+            return Err(GeometryProcessorError::Extruder(
+                "Failed to evaluate distance".to_string(),
+            )
+            .into());
         };
         let Some(geometry) = &feature.geometry else {
-            return Err(ProcessorError::Extruder("Missing geometry".to_string()).into());
+            return Err(GeometryProcessorError::Extruder("Missing geometry".to_string()).into());
         };
         let geometry = geometry.clone();
         let GeometryValue::FlowGeometry(flow_geometry) = &geometry.value else {
-            return Err(ProcessorError::Extruder("Invalid geometry".to_string()).into());
+            return Err(GeometryProcessorError::Extruder("Invalid geometry".to_string()).into());
         };
         let FlowGeometry::Polygon(polygon) = flow_geometry else {
-            return Err(ProcessorError::Extruder("Invalid geometry".to_string()).into());
+            return Err(GeometryProcessorError::Extruder("Invalid geometry".to_string()).into());
         };
         let solid = polygon.extrude(height);
         let geometry = Geometry {

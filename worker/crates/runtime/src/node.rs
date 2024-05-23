@@ -154,6 +154,7 @@ impl Clone for Box<dyn Sink> {
 }
 
 pub trait SourceFactory: Send + Sync + Debug + SourceFactoryClone {
+    fn name(&self) -> &str;
     fn get_output_ports(&self) -> Vec<Port>;
     fn build(
         &self,
@@ -240,6 +241,9 @@ impl Clone for Box<dyn ProcessorFactory> {
 
 pub trait Processor: Send + Sync + Debug + ProcessorClone {
     fn initialize(&mut self, ctx: NodeContext);
+    fn num_threads(&self) -> usize {
+        2
+    }
     fn process(
         &mut self,
         ctx: ExecutorContext,

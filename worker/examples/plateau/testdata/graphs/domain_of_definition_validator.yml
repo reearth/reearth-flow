@@ -50,17 +50,12 @@ nodes:
 
 edges:
   - id: afa36141-5b6a-4d2b-8a75-bf184f961378
-    from: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
-    to: cc7d973e-a2eb-4db9-9879-a27154098001
+    from: d72a788d-f9fa-4c4d-b7dd-dd131839accd
+    to: 747d2fa3-2527-4324-b630-92fba84a548c
     fromPort: default
     toPort: default
   - id: d661eff9-2ee3-4735-ab36-ac2c662464fd
-    from: cc7d973e-a2eb-4db9-9879-a27154098001
-    to: b90a3d22-7aaf-4e1c-9e27-d9f01b75d82d
-    fromPort: default
-    toPort: default
-  - id: 3891c30f-a2b8-4993-bfe7-4f8e631fed9d
-    from: b90a3d22-7aaf-4e1c-9e27-d9f01b75d82d
-    to: 53c4f2fd-8d0f-40b0-8dca-42e6c68ae62b
+    from: 747d2fa3-2527-4324-b630-92fba84a548c
+    to: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     fromPort: default
     toPort: default

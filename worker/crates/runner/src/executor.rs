@@ -2,6 +2,7 @@ use once_cell::sync::Lazy;
 use reearth_flow_action_processor::mapping::ACTION_MAPPINGS as PROCESSOR_MAPPINGS;
 use reearth_flow_action_sink::mapping::ACTION_MAPPINGS as SINK_MAPPINGS;
 use reearth_flow_action_source::mapping::ACTION_MAPPINGS as SOURCE_MAPPINGS;
+use reearth_flow_common::future::SharedFuture;
 use reearth_flow_runtime::{
     executor::dag_executor::DagExecutor,
     executor_operation::{ExecutorOptions, NodeContext},
@@ -58,7 +59,7 @@ pub fn run_dag_executor(
     shutdown: ShutdownReceiver,
 ) -> Result<(), OrchestrationError> {
     let join_handle = runtime.block_on(dag_executor.start(
-        Box::pin(shutdown.create_shutdown_future()),
+        SharedFuture::new(Box::pin(shutdown.create_shutdown_future())),
         runtime.clone(),
         ctx.expr_engine.clone(),
         ctx.storage_resolver.clone(),

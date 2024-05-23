@@ -11,7 +11,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
+use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct AttributeAggregatorFactory;
@@ -35,19 +35,19 @@ impl ProcessorFactory for AttributeAggregatorFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: AttributeAggregatorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::AttributeAggregatorFactory(format!(
+                AttributeProcessorError::AggregatorFactory(format!(
                     "Failed to serialize with: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::AttributeAggregatorFactory(format!(
+                AttributeProcessorError::AggregatorFactory(format!(
                     "Failed to deserialize with: {}",
                     e
                 ))
             })?
         } else {
-            return Err(ProcessorError::AttributeAggregatorFactory(
+            return Err(AttributeProcessorError::AggregatorFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());

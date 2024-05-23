@@ -6,14 +6,14 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use rhai::Dynamic;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
+use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct FeatureTransformerFactory;
@@ -37,19 +37,19 @@ impl ProcessorFactory for FeatureTransformerFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: FeatureTransformerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::FeatureTransformerFactory(format!(
+                FeatureProcessorError::TransformerFactory(format!(
                     "Failed to serialize with: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::FeatureTransformerFactory(format!(
+                FeatureProcessorError::TransformerFactory(format!(
                     "Failed to deserialize with: {}",
                     e
                 ))
             })?
         } else {
-            return Err(ProcessorError::FeatureTransformerFactory(
+            return Err(FeatureProcessorError::TransformerFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -61,7 +61,7 @@ impl ProcessorFactory for FeatureTransformerFactory {
             let expr = &condition.expr;
             let template_ast = expr_engine
                 .compile(expr.as_ref())
-                .map_err(|e| ProcessorError::FeatureTransformerFactory(format!("{:?}", e)))?;
+                .map_err(|e| FeatureProcessorError::TransformerFactory(format!("{:?}", e)))?;
             transformers.push(CompiledTransform { expr: template_ast });
         }
         let process = FeatureTransformer { transformers };
@@ -105,7 +105,7 @@ impl Processor for FeatureTransformer {
         for transformer in &self.transformers {
             new_feature = mapper(&new_feature, &transformer.expr, expr_engine.clone());
         }
-        fw.send(ctx.new_with_feature_and_port(new_feature, REJECTED_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 
