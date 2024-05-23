@@ -15,7 +15,7 @@ use reearth_flow_types::AttributeValue;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
+use super::errors::FeatureProcessorError;
 
 #[derive(Debug)]
 struct AtomicCounterMap {
@@ -77,13 +77,13 @@ impl ProcessorFactory for FeatureCounterFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: FeatureCounterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::FeatureCounterFactory(format!("Failed to serialize with: {}", e))
+                FeatureProcessorError::CounterFactory(format!("Failed to serialize with: {}", e))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::FeatureCounterFactory(format!("Failed to deserialize with: {}", e))
+                FeatureProcessorError::CounterFactory(format!("Failed to deserialize with: {}", e))
             })?
         } else {
-            return Err(ProcessorError::FeatureCounterFactory(
+            return Err(FeatureProcessorError::CounterFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());

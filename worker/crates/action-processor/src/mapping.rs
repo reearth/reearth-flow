@@ -6,20 +6,22 @@ use reearth_flow_runtime::node::NodeKind;
 use crate::{
     attribute::{
         aggregator::AttributeAggregatorFactory, duplicate_filter::AttributeDuplicateFilterFactory,
-        manager::AttributeManagerFactory,
+        keeper::AttributeKeeperFactory, manager::AttributeManagerFactory,
     },
     feature::{
         counter::FeatureCounterFactory, filter::FeatureFilterFactory, merger::FeatureMergerFactory,
         sorter::FeatureSorterFactory, transformer::FeatureTransformerFactory,
     },
-    geometry::extruder::ExtruderFactory,
+    geometry::{
+        coordinate_system_setter::CoordinateSystemSetterFactory, extruder::ExtruderFactory,
+        three_dimention_box_replacer::ThreeDimentionBoxReplacerFactory,
+    },
     plateau::{
         dictionaries_initiator::DictionariesInitiatorFactory,
         domain_of_definition_validator::DomainOfDefinitionValidatorFactory,
         udx_folder_extractor::UdxFolderExtractorFactory,
         xml_attribute_extractor::XmlAttributeExtractorFactory,
     },
-    universal::UniversalProcessorFactory,
     xml::{fragmenter::XmlFragmenterFactory, validator::XmlValidatorFactory},
 };
 
@@ -27,7 +29,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     HashMap::from([
         (
             "AttributeKeeper".to_string(),
-            NodeKind::Processor(Box::<UniversalProcessorFactory>::default()),
+            NodeKind::Processor(Box::<AttributeKeeperFactory>::default()),
         ),
         (
             "AttributeManager".to_string(),
@@ -71,7 +73,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         ),
         (
             "CoordinateSystemSetter".to_string(),
-            NodeKind::Processor(Box::<UniversalProcessorFactory>::default()),
+            NodeKind::Processor(Box::<CoordinateSystemSetterFactory>::default()),
         ),
         (
             "Extruder".to_string(),
@@ -79,7 +81,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         ),
         (
             "ThreeDimentionBoxReplacer".to_string(),
-            NodeKind::Processor(Box::<UniversalProcessorFactory>::default()),
+            NodeKind::Processor(Box::<ThreeDimentionBoxReplacerFactory>::default()),
         ),
         (
             "PLATEAU.UDXFolderExtractor".to_string(),

@@ -4,14 +4,13 @@ use reearth_flow_common::{csv::Delimiter, uri::Uri};
 use reearth_flow_runtime::{
     errors::BoxedError,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port},
+    node::{IngestionMessage, Port, Source},
 };
 use reearth_flow_types::Expr;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 
 use super::{citygml, csv, json};
-use crate::universal::UniversalSource;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -49,8 +48,7 @@ pub enum FileReader {
 }
 
 #[async_trait::async_trait]
-#[typetag::serde(name = "FileReader")]
-impl UniversalSource for FileReader {
+impl Source for FileReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -131,7 +129,7 @@ fn get_input_path(
         .unwrap_or_else(|_| path.to_string());
     let uri = Uri::from_str(path.as_str());
     let Ok(uri) = uri else {
-        return Err(Box::new(crate::errors::UniversalSourceError::FileReader(
+        return Err(Box::new(crate::errors::SourceError::FileReader(
             "Invalid path".to_string(),
         )));
     };

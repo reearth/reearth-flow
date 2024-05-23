@@ -16,7 +16,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::{ProcessorError, Result};
+use super::errors::{Result, XmlProcessorError};
 
 #[derive(Debug, Clone, Default)]
 pub struct XmlFragmenterFactory;
@@ -40,13 +40,13 @@ impl ProcessorFactory for XmlFragmenterFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: XmlFragmenterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::XmlFragmenterFactory(format!("Failed to serialize with: {}", e))
+                XmlProcessorError::FragmenterFactory(format!("Failed to serialize with: {}", e))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::XmlFragmenterFactory(format!("Failed to deserialize with: {}", e))
+                XmlProcessorError::FragmenterFactory(format!("Failed to deserialize with: {}", e))
             })?
         } else {
-            return Err(ProcessorError::XmlFragmenterFactory(
+            return Err(XmlProcessorError::FragmenterFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -56,7 +56,7 @@ impl ProcessorFactory for XmlFragmenterFactory {
         let elements_to_match_ast = expr_engine
             .compile(property.elements_to_match.as_str())
             .map_err(|e| {
-                ProcessorError::XmlFragmenterFactory(format!(
+                XmlProcessorError::FragmenterFactory(format!(
                     "Failed to comple expr engine with {:?}",
                     e
                 ))
@@ -64,7 +64,7 @@ impl ProcessorFactory for XmlFragmenterFactory {
         let elements_to_exclude_ast = expr_engine
             .compile(property.elements_to_exclude.as_str())
             .map_err(|e| {
-                ProcessorError::XmlFragmenterFactory(format!(
+                XmlProcessorError::FragmenterFactory(format!(
                     "Failed to comple expr engine with {:?}",
                     e
                 ))
@@ -218,7 +218,7 @@ fn action_value_to_fragment(
     let elements_to_match = scope
         .eval_ast::<rhai::Array>(elements_to_match_ast)
         .map_err(|e| {
-            ProcessorError::XmlFragmenter(format!("Failed expr engine error with {:?}", e))
+            XmlProcessorError::Fragmenter(format!("Failed expr engine error with {:?}", e))
         })?;
     let elements_to_match = elements_to_match
         .iter()
@@ -231,7 +231,7 @@ fn action_value_to_fragment(
     let elements_to_exclude = scope
         .eval_ast::<rhai::Array>(elements_to_exclude_ast)
         .map_err(|e| {
-            ProcessorError::XmlFragmenter(format!("Failed expr engine error with {:?}", e))
+            XmlProcessorError::Fragmenter(format!("Failed expr engine error with {:?}", e))
         })?;
     let elements_to_exclude = elements_to_exclude
         .iter()
@@ -240,20 +240,20 @@ fn action_value_to_fragment(
 
     let url = match row.get(attribute) {
         Some(AttributeValue::String(url)) => {
-            Uri::from_str(url).map_err(|e| ProcessorError::XmlFragmenter(format!("{:?}", e)))?
+            Uri::from_str(url).map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?
         }
-        _ => return Err(ProcessorError::XmlFragmenter("No url found".to_string())),
+        _ => return Err(XmlProcessorError::Fragmenter("No url found".to_string())),
     };
     let storage = storage_resolver
         .resolve(&url)
-        .map_err(|e| ProcessorError::XmlFragmenter(format!("{:?}", e)))?;
+        .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?;
     let bytes = storage
         .get_sync(&url.path())
-        .map_err(|e| ProcessorError::XmlFragmenter(format!("{:?}", e)))?;
+        .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?;
     let raw_xml = String::from_utf8(bytes.to_vec())
-        .map_err(|e| ProcessorError::XmlFragmenter(format!("{:?}", e)))?;
+        .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?;
     let document = xml::parse(raw_xml.as_str())
-        .map_err(|e| ProcessorError::XmlFragmenter(format!("{:?}", e)))?;
+        .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?;
 
     let fragments = generate_fragment(&document, &elements_to_match, &elements_to_exclude)?;
     for fragment in fragments {
@@ -298,17 +298,17 @@ fn generate_fragment(
         }
     };
     let ctx = xml::create_context(document)
-        .map_err(|e| ProcessorError::XmlFragmenter(format!("{:?}", e)))?;
+        .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?;
     let root = xml::get_root_node(document)
-        .map_err(|e| ProcessorError::XmlFragmenter(format!("{:?}", e)))?;
+        .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?;
     let mut nodes = xml::find_nodes_by_xpath(&ctx, &xpath, &root)
-        .map_err(|_| ProcessorError::XmlFragmenter("Failed to evaluate xpath".to_string()))?;
+        .map_err(|_| XmlProcessorError::Fragmenter("Failed to evaluate xpath".to_string()))?;
     let mut result = Vec::<XmlFragment>::new();
     let mut fragments = HashMap::<String, String>::new();
     for node in nodes.iter_mut() {
         let node_type = node
             .get_type()
-            .ok_or(ProcessorError::XmlFragmenter("No node type".to_string()))?;
+            .ok_or(XmlProcessorError::Fragmenter("No node type".to_string()))?;
         if node_type == xml::XmlNodeType::ElementNode {
             let tag = xml::get_node_tag(node);
             let key = format!("{:?}", node);
@@ -323,14 +323,14 @@ fn generate_fragment(
                                 ns.get_href().as_str(),
                             )
                             .map_err(|e| {
-                                ProcessorError::XmlFragmenter(format!(
+                                XmlProcessorError::Fragmenter(format!(
                                     "Failed to set namespace with {:?}",
                                     e
                                 ))
                             });
                     }
                     xml::node_to_xml_string(document, node)
-                        .map_err(|e| ProcessorError::XmlFragmenter(format!("{:?}", e)))?
+                        .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?
                 }
             };
             let xml_id = to_hash(&fragment);
@@ -347,7 +347,7 @@ fn generate_fragment(
                                 ns.get_href().as_str(),
                             )
                             .map_err(|e| {
-                                ProcessorError::XmlFragmenter(format!(
+                                XmlProcessorError::Fragmenter(format!(
                                     "Failed to set namespace with {:?}",
                                     e
                                 ))

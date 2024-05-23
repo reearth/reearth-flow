@@ -2,13 +2,12 @@ use std::borrow::Cow;
 
 use crossbeam::channel::{Receiver, Select};
 
-use super::name::Name;
 use crate::{
     errors::ExecutionError,
     executor_operation::{ExecutorContext, ExecutorOperation, NodeContext},
 };
 
-pub trait ReceiverLoop: Name {
+pub trait ReceiverLoop {
     /// Returns input channels to this node. Will be called exactly once in [`receiver_loop`].
     fn receivers(&mut self) -> Vec<Receiver<ExecutorOperation>>;
     /// Returns the name of the receiver at `index`. Used for logging.
