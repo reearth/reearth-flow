@@ -58,7 +58,7 @@ pub struct SchemaCliCommand;
 
 impl SchemaCliCommand {
     pub fn execute(&self) -> crate::Result<()> {
-        let actions = ACTION_MAPPINGS
+        let mut actions = ACTION_MAPPINGS
             .clone()
             .values()
             .map(|v| match v {
@@ -137,6 +137,7 @@ impl SchemaCliCommand {
                 }
             })
             .collect::<Vec<_>>();
+        actions.sort_by(|a, b| a.name.cmp(&b.name));
         let root = RootActionSchema { actions };
         println!("{}", serde_json::to_string_pretty(&root).unwrap());
         Ok(())
