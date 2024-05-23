@@ -1,0 +1,23 @@
+version: "3"
+services:
+  reearth-flow-api:
+    image: reearth/reearth-flow:latest
+    environment:
+      REEARTH_DB: mongodb://reearth-flow-mongo
+    ports:
+      - "8081:8080"
+    # env_file:
+    #  - ./.env
+    links:
+      - reearth-flow-mongo
+    depends_on:
+      - reearth-flow-mongo
+    volumes:
+      - ./data:/reearth-flow/data
+  reearth-flow-mongo:
+    image: mongo:6-focal
+    ports:
+      - 12345:12345
+    volumes:
+      - ./mongo:/data/db
+    command: mongod --port 12345

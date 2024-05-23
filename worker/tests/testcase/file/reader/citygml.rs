@@ -1,10 +1,8 @@
-use reearth_flow_action::Port;
+use crate::helper::execute;
 
-use crate::helper::init_test_runner;
-
-#[tokio::test]
-async fn test_run() {
-    let executor = init_test_runner(
+#[test]
+fn test_run() {
+    execute(
         "file/reader/citygml",
         vec![
             "codelists/Common_districtsAndZonesType.xml",
@@ -12,10 +10,5 @@ async fn test_run() {
             "codelists/Common_validType.xml",
             "udx/urf/533834_urf_6668_sigaidev_op.gml",
         ],
-    )
-    .await;
-    let result = executor.start().await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
-    let _default_port = result.get(&Port::new("default")).unwrap();
+    );
 }

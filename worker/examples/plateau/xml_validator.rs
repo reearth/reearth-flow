@@ -1,8 +1,17 @@
+use helper::create_workflow;
+use reearth_flow_runner::executor::ACTION_MAPPINGS;
+use reearth_flow_runtime::dag_schemas::DagSchemas;
+
 mod helper;
 
-#[tokio::main]
-async fn main() {
-    let runner = helper::init_execute_runner("xml_validator.yml");
-    let result = runner.start().await;
-    assert!(result.is_ok());
+fn main() {
+    let workflow = create_workflow("domain_of_definition_validator.yml");
+    let dag = DagSchemas::from_graphs(
+        workflow.entry_graph_id,
+        workflow.graphs,
+        ACTION_MAPPINGS.clone(),
+        workflow.with,
+    );
+    let dot = dag.to_dot();
+    println!("{}", dot);
 }

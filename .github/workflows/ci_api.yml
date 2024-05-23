@@ -1,0 +1,50 @@
+name: ci-api
+on:
+  workflow_call:
+env:
+  GO_VERSION: "1.22"
+
+jobs:
+  ci-api-lint:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'v')
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: set up
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.55
+          args: --timeout=10m
+          working-directory: api
+
+  ci-api-test:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:6-focal
+        ports:
+          - 12345:12345
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: set up
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: api/go.sum
+      - name: test
+        run: go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic -timeout 10m
+        env:
+          REEARTH_FLOW_DB: mongodb://localhost
+        working-directory: api
+      - name: Send coverage report
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: api

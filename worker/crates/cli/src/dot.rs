@@ -1,10 +1,11 @@
 use clap::{Arg, ArgMatches, Command};
+use reearth_flow_runner::executor::ACTION_MAPPINGS;
+use reearth_flow_runtime::dag_schemas::DagSchemas;
+use reearth_flow_types::Workflow;
 use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve;
-use reearth_flow_workflow_runner::dag::dag_impl::Dag;
-use reearth_flow_workflow_runner::types::graph::Workflow;
 
 pub fn build_dot_command() -> Command {
     Command::new("dot")
@@ -36,23 +37,24 @@ impl DotCliCommand {
         Ok(DotCliCommand { workflow_uri })
     }
 
-    pub async fn execute(&self) -> crate::Result<()> {
+    pub fn execute(&self) -> crate::Result<()> {
         debug!(args = ?self, "dot");
         let storage_resolver = resolve::StorageResolver::new();
         let storage = storage_resolver
             .resolve(&self.workflow_uri)
             .map_err(crate::Error::init)?;
-        let result = storage
-            .get(self.workflow_uri.path().as_path())
-            .await
+        let content = storage
+            .get_sync(self.workflow_uri.path().as_path())
             .map_err(crate::Error::init)?;
-        let content = result.bytes().await.map_err(crate::Error::init)?;
         let json = String::from_utf8(content.to_vec()).map_err(crate::Error::init)?;
-        let workflow = Workflow::try_from_str(&json).map_err(crate::Error::init)?;
-        for graph in workflow.graphs.iter() {
-            let dag = Dag::from_graph(graph).map_err(crate::Error::init)?;
-            println!("{}", dag.to_dot());
-        }
+        let workflow = Workflow::try_from_str(&json);
+        let dag = DagSchemas::from_graphs(
+            workflow.entry_graph_id,
+            workflow.graphs,
+            ACTION_MAPPINGS.clone(),
+            None,
+        );
+        println!("{}", dag.to_dot());
         Ok(())
     }
 }
