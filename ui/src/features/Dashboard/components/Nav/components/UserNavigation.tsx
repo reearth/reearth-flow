@@ -20,8 +20,6 @@ const UserNavigation: React.FC = () => {
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
 
-  console.log(user);
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
