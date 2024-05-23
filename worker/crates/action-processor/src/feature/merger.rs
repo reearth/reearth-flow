@@ -9,6 +9,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -22,8 +23,23 @@ static UNMERGED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unmerged"));
 #[derive(Debug, Clone, Default)]
 pub struct FeatureMergerFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for FeatureMergerFactory {
+    fn name(&self) -> &str {
+        "FeatureMerger"
+    }
+
+    fn description(&self) -> &str {
+        "Merges features by attributes"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(FeatureMergerParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Feature"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![REQUESTOR_PORT.clone(), SUPPLIER_PORT.clone()]
     }
@@ -32,7 +48,7 @@ impl ProcessorFactory for FeatureMergerFactory {
         vec![MERGED_PORT.clone(), UNMERGED_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -68,17 +84,17 @@ pub struct FeatureMerger {
     supplier_buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureMergerParam {
     join: Join,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Join {
-    requestor: String,
-    supplier: String,
+    requestor: Attribute,
+    supplier: Attribute,
 }
 
 impl Processor for FeatureMerger {
@@ -96,10 +112,7 @@ impl Processor for FeatureMerger {
             }
             port if port == SUPPLIER_PORT.clone() => {
                 let feature = ctx.feature;
-                if let Some(value) = feature
-                    .attributes
-                    .get(&Attribute::new(&self.params.join.supplier))
-                {
+                if let Some(value) = feature.attributes.get(&self.params.join.supplier) {
                     match self.supplier_buffer.entry(value.clone()) {
                         Entry::Occupied(entry) => {
                             entry.into_mut().push(feature);
@@ -123,7 +136,7 @@ impl Processor for FeatureMerger {
         for request_feature in self.request_features.iter() {
             let request_value = request_feature
                 .attributes
-                .get(&Attribute::new(&self.params.join.requestor))
+                .get(&self.params.join.requestor)
                 .ok_or(FeatureProcessorError::Merger(
                     "No Requestor Value".to_string(),
                 ))?;

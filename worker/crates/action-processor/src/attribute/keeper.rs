@@ -7,6 +7,8 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_types::Attribute;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -15,8 +17,23 @@ use super::errors::AttributeProcessorError;
 #[derive(Debug, Clone, Default)]
 pub struct AttributeKeeperFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for AttributeKeeperFactory {
+    fn name(&self) -> &str {
+        "AttributeKeeper"
+    }
+
+    fn description(&self) -> &str {
+        "Keeps only specified attributes"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(AttributeKeeper))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Attribute"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -24,7 +41,8 @@ impl ProcessorFactory for AttributeKeeperFactory {
     fn get_output_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
-    async fn build(
+
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -48,10 +66,10 @@ impl ProcessorFactory for AttributeKeeperFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeKeeper {
-    keep_attributes: Vec<String>,
+    keep_attributes: Vec<Attribute>,
 }
 
 impl Processor for AttributeKeeper {
@@ -64,7 +82,7 @@ impl Processor for AttributeKeeper {
         let feature = &ctx.feature;
         let processed_data = feature
             .iter()
-            .filter(|(key, _)| self.keep_attributes.contains(&key.inner()))
+            .filter(|(key, _)| self.keep_attributes.contains(key))
             .map(|(key, value)| (key.clone(), value.clone()))
             .collect::<HashMap<_, _>>();
         fw.send(ctx.new_with_feature_and_port(

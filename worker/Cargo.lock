@@ -842,6 +842,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 
 [[package]]
+name = "dyn-clone"
+version = "1.0.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
+
+[[package]]
 name = "either"
 version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2527,6 +2533,7 @@ dependencies = [
  "reearth-flow-types",
  "regex",
  "rhai",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror",
@@ -2557,6 +2564,7 @@ dependencies = [
  "reearth-flow-types",
  "regex",
  "rust_xlsxwriter",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror",
@@ -2592,6 +2600,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-types",
  "regex",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror",
@@ -2621,10 +2630,11 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-telemetry",
  "reearth-flow-types",
+ "schemars",
+ "serde",
+ "serde_json",
  "thiserror",
  "time",
- "tokio",
- "tokio-stream",
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
@@ -2673,8 +2683,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
- "tokio",
- "tokio-stream",
  "tracing",
  "tracing-subscriber",
 ]
@@ -2715,8 +2723,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
- "tokio",
- "tokio-stream",
  "tracing",
  "tracing-subscriber",
 ]
@@ -2735,7 +2741,6 @@ dependencies = [
 name = "reearth-flow-runner"
 version = "0.1.0"
 dependencies = [
- "async-recursion",
  "bytes",
  "crossbeam",
  "directories",
@@ -2770,7 +2775,6 @@ dependencies = [
 name = "reearth-flow-runtime"
 version = "0.1.0"
 dependencies = [
- "async-recursion",
  "async-stream",
  "async-trait",
  "bytes",
@@ -2793,6 +2797,7 @@ dependencies = [
  "reearth-flow-types",
  "regex",
  "rmp-serde",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror",
@@ -2902,6 +2907,7 @@ dependencies = [
  "reearth-flow-geometry",
  "reearth-flow-storage",
  "rhai",
+ "schemars",
  "serde",
  "serde_json",
  "strum",
@@ -3357,6 +3363,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "schemars"
+version = "0.8.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0218ceea14babe24a4a5836f86ade86c1effbc198164e619194cb5069187e29"
+dependencies = [
+ "dyn-clone",
+ "schemars_derive",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "schemars_derive"
+version = "0.8.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ed5a1ccce8ff962e31a165d41f6e2a2dd1245099dc4d594f5574a86cd90f4d3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde_derive_internals",
+ "syn 2.0.65",
+]
+
+[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3432,6 +3462,17 @@ name = "serde_derive"
 version = "1.0.202"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6048858004bcff69094cd972ed40a32500f153bd3be9f716b2eed2e8217c4838"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.65",
+]
+
+[[package]]
+name = "serde_derive_internals"
+version = "0.29.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18d26a20a969b9e3fdf2fc2d9f21eda6c40e2de84c9408bb5d3b05d499aae711"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -11,10 +11,10 @@ pub fn build_dot_command() -> Command {
     Command::new("dot")
         .about("Show dot graph.")
         .long_about("Show dot graph.")
-        .arg(workflow_cli_arg())
+        .arg(dot_cli_arg())
 }
 
-fn workflow_cli_arg() -> Arg {
+fn dot_cli_arg() -> Arg {
     Arg::new("workflow")
         .long("workflow")
         .help("Workflow file location")

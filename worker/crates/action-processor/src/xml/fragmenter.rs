@@ -12,7 +12,8 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -21,8 +22,23 @@ use super::errors::{Result, XmlProcessorError};
 #[derive(Debug, Clone, Default)]
 pub struct XmlFragmenterFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for XmlFragmenterFactory {
+    fn name(&self) -> &str {
+        "XMLFragmenter"
+    }
+
+    fn description(&self) -> &str {
+        "Fragment XML"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(XmlFragmenterParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["XML"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -31,7 +47,7 @@ impl ProcessorFactory for XmlFragmenterFactory {
         vec![DEFAULT_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         ctx: NodeContext,
         _event_hub: EventHub,
@@ -54,7 +70,7 @@ impl ProcessorFactory for XmlFragmenterFactory {
         let XmlFragmenterParam::Url { property } = &params;
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let elements_to_match_ast = expr_engine
-            .compile(property.elements_to_match.as_str())
+            .compile(property.elements_to_match.to_string().as_str())
             .map_err(|e| {
                 XmlProcessorError::FragmenterFactory(format!(
                     "Failed to comple expr engine with {:?}",
@@ -62,7 +78,7 @@ impl ProcessorFactory for XmlFragmenterFactory {
                 ))
             })?;
         let elements_to_exclude_ast = expr_engine
-            .compile(property.elements_to_exclude.as_str())
+            .compile(property.elements_to_exclude.to_string().as_str())
             .map_err(|e| {
                 XmlProcessorError::FragmenterFactory(format!(
                     "Failed to comple expr engine with {:?}",
@@ -85,15 +101,15 @@ pub struct XmlFragmenter {
     elements_to_exclude_ast: rhai::AST,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PropertySchema {
-    pub(super) elements_to_match: String,
-    pub(super) elements_to_exclude: String,
-    pub(super) attribute: String,
+    pub(super) elements_to_match: Expr,
+    pub(super) elements_to_exclude: Expr,
+    pub(super) attribute: Attribute,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "source", rename_all = "camelCase")]
 pub enum XmlFragmenterParam {
     #[serde(rename = "url")]
@@ -203,7 +219,7 @@ impl Processor for XmlFragmenter {
 fn action_value_to_fragment(
     ctx: &ExecutorContext,
     row: &Feature,
-    attribute: &String,
+    attribute: &Attribute,
     elements_to_match_ast: &rhai::AST,
     elements_to_exclude_ast: &rhai::AST,
 ) -> Result<Vec<Feature>> {

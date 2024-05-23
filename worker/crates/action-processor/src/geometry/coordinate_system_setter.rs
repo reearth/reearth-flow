@@ -10,6 +10,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::Geometry;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -98,8 +99,23 @@ static _SUPPORT_EPSG_CODE: Lazy<Vec<EpsgCode>> = Lazy::new(|| {
 #[derive(Debug, Clone, Default)]
 pub struct CoordinateSystemSetterFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for CoordinateSystemSetterFactory {
+    fn name(&self) -> &str {
+        "CoordinateSystemSetter"
+    }
+
+    fn description(&self) -> &str {
+        "Sets the coordinate system of a feature"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(CoordinateSystemSetter))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Geometry"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -107,7 +123,7 @@ impl ProcessorFactory for CoordinateSystemSetterFactory {
     fn get_output_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -137,7 +153,7 @@ impl ProcessorFactory for CoordinateSystemSetterFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CoordinateSystemSetter {
     epsg_code: EpsgCode,

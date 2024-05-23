@@ -277,8 +277,23 @@ struct Envelope {
 #[derive(Debug, Clone, Default)]
 pub struct DomainOfDefinitionValidatorFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
+    fn name(&self) -> &str {
+        "PLATEAU.DomainOfDefinitionValidator"
+    }
+
+    fn description(&self) -> &str {
+        "Validates domain of definition of CityGML features"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        None
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["PLATEAU"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -287,7 +302,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,

@@ -10,6 +10,7 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use rhai::Dynamic;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -18,8 +19,23 @@ use super::errors::FeatureProcessorError;
 #[derive(Debug, Clone, Default)]
 pub struct FeatureTransformerFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for FeatureTransformerFactory {
+    fn name(&self) -> &str {
+        "FeatureTransformer"
+    }
+
+    fn description(&self) -> &str {
+        "Transforms features by expressions"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(FeatureTransformerParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Feature"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -28,7 +44,7 @@ impl ProcessorFactory for FeatureTransformerFactory {
         vec![DEFAULT_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         ctx: NodeContext,
         _event_hub: EventHub,
@@ -74,13 +90,13 @@ pub struct FeatureTransformer {
     transformers: Vec<CompiledTransform>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureTransformerParam {
     transformers: Vec<Transform>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Transform {
     expr: Expr,

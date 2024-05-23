@@ -25,6 +25,18 @@ impl SourceFactory for FileReaderFactory {
         "FileReader"
     }
 
+    fn description(&self) -> &str {
+        "Reads features from a file"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(FileReader))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["File"]
+    }
+
     fn get_output_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }

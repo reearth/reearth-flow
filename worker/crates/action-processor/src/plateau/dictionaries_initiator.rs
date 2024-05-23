@@ -30,8 +30,23 @@ struct Schema {
 #[derive(Debug, Clone, Default)]
 pub struct DictionariesInitiatorFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for DictionariesInitiatorFactory {
+    fn name(&self) -> &str {
+        "PLATEAU.DictionariesInitiator"
+    }
+
+    fn description(&self) -> &str {
+        "Initializes dictionaries for PLATEAU"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        None
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["PLATEAU"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -40,7 +55,7 @@ impl ProcessorFactory for DictionariesInitiatorFactory {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
