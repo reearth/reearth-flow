@@ -1,16 +1,26 @@
-import { HorizontalPanel, OutputIcon, PreviewIcon, type PanelContent } from "@flow/components";
+import { EnterFullScreenIcon, ExitFullScreenIcon } from "@radix-ui/react-icons";
+import { useCallback, useState } from "react";
+
+import { OutputIcon, PreviewIcon, IconButton } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
 import { useT } from "@flow/providers";
 
 import { DataTable, LogConsole, Map } from "./components";
 
-export type BottomPanelProps = {
-  className?: string;
+type PanelContent = {
+  id: string;
+  component: React.ReactNode;
+  title?: string;
+  description?: string;
+  icon?: React.ReactNode;
 };
 
-const BottomPanel: React.FC<BottomPanelProps> = ({ className }) => {
+type WindowSize = "min" | "max";
+
+const BottomPanel: React.FC = () => {
   const [isPanelOpen, handlePanelToggle] = useStateManager(false);
   const t = useT();
+  const [windowSize, setWindowSize] = useState<WindowSize>("min");
 
   const panelContents: PanelContent[] = [
     {
@@ -24,7 +34,7 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ className }) => {
       icon: <PreviewIcon />,
       description: t("Preview data"),
       component: (
-        <div className="flex flex-1 h-[400px]">
+        <div className="flex flex-1">
           <DataTable />
           <Map />
         </div>
@@ -32,13 +42,86 @@ const BottomPanel: React.FC<BottomPanelProps> = ({ className }) => {
     },
   ];
 
+  const [selected, setSelected] = useState<PanelContent>(panelContents?.[0]);
+
+  const handleSelection = useCallback(
+    (content: PanelContent) => {
+      if (content.id !== selected?.id) {
+        setSelected(content);
+        if (!isPanelOpen) {
+          handlePanelToggle?.(true);
+        }
+      } else {
+        handlePanelToggle?.(!isPanelOpen);
+      }
+    },
+    [isPanelOpen, handlePanelToggle, selected],
+  );
+
   return (
-    <HorizontalPanel
-      className={`bg-zinc-900 border-t border-zinc-700 backdrop-blur-md ${className}`}
-      isOpen={!!isPanelOpen}
-      panelContents={panelContents}
-      onToggle={handlePanelToggle}
-    />
+    <div
+      className="flex flex-col box-content transition-width duration-300 ease-in-out bg-zinc-900 border-t border-zinc-700 backdrop-blur-md"
+      style={{
+        height: isPanelOpen ? (windowSize === "max" ? "100vh" : "400px") : "36px",
+      }}>
+      <div id="edge" className="flex gap-1 items-center h-[36px] relative">
+        <div className="flex gap-1 items-center justify-center flex-1 h-[100%]">
+          {panelContents?.map(content => (
+            <IconButton
+              key={content.id}
+              className={`w-[55px] h-[80%] ${isPanelOpen && selected?.id === content.id ? "text-white bg-zinc-800" : undefined}`}
+              icon={content.icon}
+              tooltipText={content.description}
+              tooltipPosition="top"
+              onClick={() => handleSelection(content)}
+            />
+          ))}
+        </div>
+        {isPanelOpen && (
+          <div className="fixed right-0 h-[36px] flex items-center">
+            {windowSize === "min" && (
+              <IconButton
+                className="w-[55px] h-[80%]"
+                icon={<EnterFullScreenIcon />}
+                tooltipText={"Enter full screen"}
+                tooltipPosition="top"
+                onClick={() => setWindowSize("max")}
+              />
+            )}
+            {windowSize === "max" && (
+              <IconButton
+                className="w-[55px] h-[80%]"
+                icon={<ExitFullScreenIcon />}
+                tooltipText={"Enter full screen"}
+                tooltipPosition="top"
+                onClick={() => setWindowSize("min")}
+              />
+            )}
+          </div>
+        )}
+      </div>
+      <div
+        id="content"
+        className="flex flex-1 bg-zinc-800"
+        style={{
+          height: isPanelOpen
+            ? windowSize === "max"
+              ? "calc(100vh - 36px)"
+              : "calc(400px - 36px)"
+            : "0",
+        }}>
+        {panelContents.map(p => (
+          <div
+            className="flex-1 p-1"
+            style={{
+              display: selected?.id === p.id ? "flex" : "none",
+            }}
+            key={p.id}>
+            {p.component}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 

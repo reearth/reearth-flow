@@ -1,6 +1,5 @@
 export * from "./buttons";
 export * from "./Card";
-export * from "./collapsiblePanels";
 export * from "./DropdownMenu";
 export * from "./icons";
 export * from "./Loading";
