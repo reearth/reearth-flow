@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 import { useAuthenticationRequired } from "./useAuth";
 
 export { AuthProvider } from "./authProvider";
-export { useAuth, useCleanUrl, useAuthenticationRequired } from "./useAuth";
+export { useAuth, useAuthenticationRequired } from "./useAuth";
 
 const AuthenticationRequiredPage: React.FC<{ children?: ReactNode }> = ({ children }) => {
   const [isAuthenticated] = useAuthenticationRequired(); // TODO: show error

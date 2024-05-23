@@ -15,7 +15,6 @@ const Auth0Wrapper = ({ children }: { children: ReactNode }) => {
 
 export const AuthProvider: React.FC<{ children?: ReactNode }> = ({ children }) => {
   const [authInfo] = useState(() => {
-    // TODO: The below function currently does nothing as of now. Related to multiTenant
     logInToTenant(); // note that it includes side effect
     return getAuthInfo();
   });

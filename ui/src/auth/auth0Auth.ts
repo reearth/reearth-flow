@@ -18,7 +18,6 @@ export const useAuth0Auth = (): AuthHook => {
   } = useAuth0();
 
   return {
-    // TODO: check whether e2eAccessToken is required?
     isAuthenticated: !!e2eAccessToken() || (isAuthenticated && !error),
     isLoading,
     error: error?.message ?? null,

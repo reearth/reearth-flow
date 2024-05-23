@@ -7,5 +7,6 @@ export type AuthHook = {
   getAccessToken: () => Promise<string>;
   login: () => void;
   logout: () => void;
+  // TODO: Get the user from the API
   user: User | undefined;
 };

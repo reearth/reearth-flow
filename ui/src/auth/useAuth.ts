@@ -3,22 +3,9 @@ import { useContext, useEffect, useState } from "react";
 import { useAuth0Auth } from "./auth0Auth";
 import { AuthContext } from "./authProvider";
 
-export const errorKey = "reeartherror";
+export const errorKey = "flowerror";
 
-// TODO: Not used yet
-export const useAuth = () => {
-  let auth = useContext(AuthContext);
-
-  if (!auth) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    auth = useAuth0Auth();
-  }
-
-  return auth;
-};
-
-// TODO: Not used yet
-export function useCleanUrl(): [string | undefined, boolean] {
+function useCleanUrl(): [string | undefined, boolean] {
   const { isAuthenticated, isLoading } = useAuth();
   const [error, setError] = useState<string>();
   const [done, setDone] = useState(false);
@@ -47,6 +34,17 @@ export function useCleanUrl(): [string | undefined, boolean] {
 
   return [error, done];
 }
+
+export const useAuth = () => {
+  let auth = useContext(AuthContext);
+
+  if (!auth) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    auth = useAuth0Auth();
+  }
+
+  return auth;
+};
 
 export function useAuthenticationRequired(): [boolean, string | undefined] {
   const { isAuthenticated, isLoading, error: authError, login, logout } = useAuth();

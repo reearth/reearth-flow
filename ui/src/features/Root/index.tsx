@@ -1,6 +1,7 @@
 import { Outlet, useParams } from "@tanstack/react-router";
 import { ReactFlowProvider } from "reactflow";
 
+import { AuthProvider, AuthenticatedPage } from "@flow/auth";
 import Dialog from "@flow/features/Dialog";
 import { workspaces } from "@flow/mock_data/workspaceData";
 import { I18nProvider, QueryClientProvider, TooltipProvider } from "@flow/providers";
@@ -38,22 +39,26 @@ const RootRoute: React.FC = () => {
   }
 
   return (
-    <QueryClientProvider>
-      <I18nProvider>
-        <TooltipProvider>
-          <ReactFlowProvider>
-            <Dialog />
-            <Outlet />
-          </ReactFlowProvider>
-        </TooltipProvider>
-      </I18nProvider>
-      {/* {devMode && (
+    <AuthProvider>
+      <QueryClientProvider>
+        <I18nProvider>
+          <TooltipProvider>
+            <ReactFlowProvider>
+              <AuthenticatedPage>
+                <Dialog />
+                <Outlet />
+              </AuthenticatedPage>
+            </ReactFlowProvider>
+          </TooltipProvider>
+        </I18nProvider>
+        {/* {devMode && (
           <>
             <TanStackQueryDevtools initialIsOpen={false} />
             <TanStackRouterDevtools />
           </>
         )} */}
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </AuthProvider>
   );
 };
 
