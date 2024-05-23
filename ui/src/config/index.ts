@@ -27,7 +27,6 @@ const defaultConfig: Config = {
   version: "X.X.X",
   brandName: "Re:Earth Flow",
   githubRepoUrl: "https://github.com/reearth/reearth-flow",
-  // TODO: Double check if this is the right place
 };
 
 export default async function loadConfig() {

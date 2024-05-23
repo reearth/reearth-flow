@@ -4,11 +4,18 @@ import { e2eAccessToken, logOutFromTenant } from "@flow/config";
 
 import type { AuthHook } from "./authHook";
 
-export const errorKey = "reeartherror";
+export const errorKey = "flowerror";
 
 export const useAuth0Auth = (): AuthHook => {
-  const { isAuthenticated, error, isLoading, loginWithRedirect, logout, getAccessTokenSilently } =
-    useAuth0();
+  const {
+    isAuthenticated,
+    error,
+    isLoading,
+    loginWithRedirect,
+    logout,
+    getAccessTokenSilently,
+    user,
+  } = useAuth0();
 
   return {
     // TODO: check whether e2eAccessToken is required?
@@ -30,5 +37,7 @@ export const useAuth0Auth = (): AuthHook => {
         },
       });
     },
+    // TODO: Need to fix type here
+    user: user,
   };
 };
