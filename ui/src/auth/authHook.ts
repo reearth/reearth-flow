@@ -1,9 +1,4 @@
-type User = {
-  email: string;
-  name: string;
-  nickname: string;
-  picture: string;
-};
+import { User } from "@auth0/auth0-react";
 
 export type AuthHook = {
   isAuthenticated: boolean;

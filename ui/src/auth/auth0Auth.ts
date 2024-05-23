@@ -37,7 +37,6 @@ export const useAuth0Auth = (): AuthHook => {
         },
       });
     },
-    // TODO: Need to fix type here
     user: user,
   };
 };
