@@ -42,7 +42,7 @@ const BottomPanel: React.FC = () => {
     },
   ];
 
-  const [selected, setSelected] = useState<PanelContent | undefined>(panelContents?.[0]);
+  const [selected, setSelected] = useState<PanelContent>(panelContents?.[0]);
 
   const handleSelection = useCallback(
     (content: PanelContent) => {
@@ -53,9 +53,6 @@ const BottomPanel: React.FC = () => {
         }
       } else {
         handlePanelToggle?.(!isPanelOpen);
-        if (content.id === selected?.id) {
-          setSelected(undefined);
-        }
       }
     },
     [isPanelOpen, handlePanelToggle, selected],
@@ -72,7 +69,7 @@ const BottomPanel: React.FC = () => {
           {panelContents?.map(content => (
             <IconButton
               key={content.id}
-              className={`w-[55px] h-[80%] ${selected?.id === content.id ? "text-white bg-zinc-800" : undefined}`}
+              className={`w-[55px] h-[80%] ${isPanelOpen && selected?.id === content.id ? "text-white bg-zinc-800" : undefined}`}
               icon={content.icon}
               tooltipText={content.description}
               tooltipPosition="top"
