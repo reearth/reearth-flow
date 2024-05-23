@@ -26,7 +26,7 @@ impl ProcessorFactory for ThreeDimentionBoxReplacerFactory {
     }
 
     fn description(&self) -> &str {
-        "Extrudes a polygon by a distance"
+        "Replaces a three dimention box with a polygon."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
