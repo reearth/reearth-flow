@@ -11,7 +11,7 @@ use reearth_flow_types::Expr;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
+use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct FeatureFilterFactory;
@@ -35,13 +35,13 @@ impl ProcessorFactory for FeatureFilterFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: FeatureFilterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::FeatureFilterFactory(format!("Failed to serialize with: {}", e))
+                FeatureProcessorError::FilterFactory(format!("Failed to serialize with: {}", e))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::FeatureFilterFactory(format!("Failed to deserialize with: {}", e))
+                FeatureProcessorError::FilterFactory(format!("Failed to deserialize with: {}", e))
             })?
         } else {
-            return Err(ProcessorError::FeatureFilterFactory(
+            return Err(FeatureProcessorError::FilterFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -53,7 +53,7 @@ impl ProcessorFactory for FeatureFilterFactory {
             let expr = &condition.expr;
             let template_ast = expr_engine
                 .compile(expr.as_ref())
-                .map_err(|e| ProcessorError::FeatureFilterFactory(format!("{:?}", e)))?;
+                .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?;
             let output_port = &condition.output_port;
             conditions.push(CompiledCondition {
                 expr: template_ast,

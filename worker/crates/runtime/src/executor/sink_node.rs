@@ -19,7 +19,7 @@ use crate::{
 };
 
 use super::execution_dag::ExecutionDag;
-use super::{name::Name, receiver_loop::ReceiverLoop};
+use super::receiver_loop::ReceiverLoop;
 
 const DEFAULT_FLUSH_INTERVAL: Duration = Duration::from_millis(20);
 
@@ -152,12 +152,6 @@ impl SinkNode {
             node: self.node_handle.clone(),
         });
         Ok(())
-    }
-}
-
-impl Name for SinkNode {
-    fn name(&self) -> Cow<str> {
-        Cow::Owned(self.node_handle.to_string())
     }
 }
 

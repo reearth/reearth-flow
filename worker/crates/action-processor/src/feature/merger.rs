@@ -12,7 +12,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
+use super::errors::FeatureProcessorError;
 
 static REQUESTOR_PORT: Lazy<Port> = Lazy::new(|| Port::new("requestor"));
 static SUPPLIER_PORT: Lazy<Port> = Lazy::new(|| Port::new("supplier"));
@@ -41,13 +41,13 @@ impl ProcessorFactory for FeatureMergerFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: FeatureMergerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::FeatureMergerFactory(format!("Failed to serialize with: {}", e))
+                FeatureProcessorError::MergerFactory(format!("Failed to serialize with: {}", e))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::FeatureMergerFactory(format!("Failed to deserialize with: {}", e))
+                FeatureProcessorError::MergerFactory(format!("Failed to deserialize with: {}", e))
             })?
         } else {
-            return Err(ProcessorError::FeatureMergerFactory(
+            return Err(FeatureProcessorError::MergerFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -124,7 +124,7 @@ impl Processor for FeatureMerger {
             let request_value = request_feature
                 .attributes
                 .get(&Attribute::new(&self.params.join.requestor))
-                .ok_or(ProcessorError::FeatureMerger(
+                .ok_or(FeatureProcessorError::Merger(
                     "No Requestor Value".to_string(),
                 ))?;
             let Some(supplier_features) = self.supplier_buffer.get(request_value) else {

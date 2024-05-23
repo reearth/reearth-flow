@@ -11,7 +11,7 @@ use reearth_flow_types::Feature;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
+use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct FeatureSorterFactory;
@@ -35,13 +35,13 @@ impl ProcessorFactory for FeatureSorterFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: FeatureSorterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::FeatureSorterFactory(format!("Failed to serialize with: {}", e))
+                FeatureProcessorError::SorterFactory(format!("Failed to serialize with: {}", e))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::FeatureSorterFactory(format!("Failed to deserialize with: {}", e))
+                FeatureProcessorError::SorterFactory(format!("Failed to deserialize with: {}", e))
             })?
         } else {
-            return Err(ProcessorError::FeatureSorterFactory(
+            return Err(FeatureProcessorError::SorterFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());

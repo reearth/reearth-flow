@@ -25,7 +25,7 @@ use crate::{
 };
 
 use super::receiver_loop::init_select;
-use super::{execution_dag::ExecutionDag, name::Name, receiver_loop::ReceiverLoop};
+use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
 
 /// A processor in the execution DAG.
 #[derive(Debug)]
@@ -128,12 +128,6 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
 
     pub fn handle(&self) -> &NodeHandle {
         &self.node_handle
-    }
-}
-
-impl<F: Future + Unpin + Debug> Name for ProcessorNode<F> {
-    fn name(&self) -> Cow<str> {
-        Cow::Owned(self.node_handle.to_string())
     }
 }
 

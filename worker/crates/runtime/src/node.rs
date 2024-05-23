@@ -154,6 +154,7 @@ impl Clone for Box<dyn Sink> {
 }
 
 pub trait SourceFactory: Send + Sync + Debug + SourceFactoryClone {
+    fn name(&self) -> &str;
     fn get_output_ports(&self) -> Vec<Port>;
     fn build(
         &self,

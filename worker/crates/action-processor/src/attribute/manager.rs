@@ -14,7 +14,7 @@ use reearth_flow_types::{Expr, Feature};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
+use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct AttributeManagerFactory;
@@ -38,16 +38,16 @@ impl ProcessorFactory for AttributeManagerFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: AttributeManagerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::AttributeManagerFactory(format!("Failed to serialize with: {}", e))
+                AttributeProcessorError::ManagerFactory(format!("Failed to serialize with: {}", e))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::AttributeManagerFactory(format!(
+                AttributeProcessorError::ManagerFactory(format!(
                     "Failed to deserialize with: {}",
                     e
                 ))
             })?
         } else {
-            return Err(ProcessorError::AttributeManagerFactory(
+            return Err(AttributeProcessorError::ManagerFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
