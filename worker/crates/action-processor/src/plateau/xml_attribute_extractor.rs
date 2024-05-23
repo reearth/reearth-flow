@@ -377,8 +377,23 @@ impl SummaryResponse {
 #[derive(Debug, Clone, Default)]
 pub struct XmlAttributeExtractorFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for XmlAttributeExtractorFactory {
+    fn name(&self) -> &str {
+        "PLATEAU.XMLAttributeExtractor"
+    }
+
+    fn description(&self) -> &str {
+        "Extracts attributes from XML fragments based on a schema definition"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        None
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["PLATEAU"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -387,7 +402,7 @@ impl ProcessorFactory for XmlAttributeExtractorFactory {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,

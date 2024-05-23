@@ -13,7 +13,8 @@ use nutype::nutype;
         AsRef,
         Serialize,
         Deserialize,
-        Hash
+        Hash,
+        JsonSchema
     )
 )]
 pub struct Expr(String);

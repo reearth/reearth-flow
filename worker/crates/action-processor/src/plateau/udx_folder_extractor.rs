@@ -51,8 +51,23 @@ impl From<Response> for HashMap<Attribute, AttributeValue> {
 #[derive(Debug, Clone, Default)]
 pub struct UdxFolderExtractorFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for UdxFolderExtractorFactory {
+    fn name(&self) -> &str {
+        "PLATEAU.UDXFolderExtractor"
+    }
+
+    fn description(&self) -> &str {
+        "Extracts UDX folders from cityGML path"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        None
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["PLATEAU"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -61,7 +76,7 @@ impl ProcessorFactory for UdxFolderExtractorFactory {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         ctx: NodeContext,
         _event_hub: EventHub,

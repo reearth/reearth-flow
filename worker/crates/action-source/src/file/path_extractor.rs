@@ -12,6 +12,7 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_storage::storage::Storage;
 use reearth_flow_types::{AttributeValue, Expr, Feature, FilePath};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::Sender;
@@ -24,6 +25,18 @@ pub struct FilePathExtractorFactory;
 impl SourceFactory for FilePathExtractorFactory {
     fn name(&self) -> &str {
         "FilePathExtractor"
+    }
+
+    fn description(&self) -> &str {
+        "Extracts files from a directory or an archive"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(FilePathExtractor))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["File"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -139,7 +152,7 @@ pub async fn extract(
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FilePathExtractor {
     source_dataset: Expr,

@@ -7,18 +7,19 @@ use reearth_flow_runtime::{
     node::{IngestionMessage, Port, Source},
 };
 use reearth_flow_types::Expr;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 
 use super::{citygml, csv, json};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CommonPropertySchema {
     pub(super) dataset: Expr,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "format")]
 pub enum FileReader {
     #[serde(rename = "csv")]

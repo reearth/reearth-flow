@@ -7,7 +7,8 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::Feature;
+use reearth_flow_types::{Attribute, Feature};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -16,8 +17,23 @@ use super::errors::FeatureProcessorError;
 #[derive(Debug, Clone, Default)]
 pub struct FeatureSorterFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for FeatureSorterFactory {
+    fn name(&self) -> &str {
+        "FeatureSorter"
+    }
+
+    fn description(&self) -> &str {
+        "Sorts features by attributes"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(FeatureSorterParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Feature"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -26,7 +42,7 @@ impl ProcessorFactory for FeatureSorterFactory {
         vec![DEFAULT_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -60,20 +76,20 @@ pub struct FeatureSorter {
     buffer: Vec<Feature>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureSorterParam {
     sort_by: Vec<SortBy>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct SortBy {
-    attribute: String,
+    attribute: Attribute,
     order: Order,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 enum Order {
     #[serde(rename = "ascending")]
     Asc,
@@ -108,8 +124,8 @@ impl Processor for FeatureSorter {
                 .map(|sort_by| {
                     let attribute = &sort_by.attribute;
                     let order = &sort_by.order;
-                    let a = a.get(attribute);
-                    let b = b.get(attribute);
+                    let a = a.attributes.get(attribute);
+                    let b = b.attributes.get(attribute);
                     match (a, b) {
                         (Some(a), Some(b)) => {
                             if *order == Order::Asc {

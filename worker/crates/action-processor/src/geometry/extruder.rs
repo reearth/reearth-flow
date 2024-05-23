@@ -9,6 +9,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Expr, Geometry, GeometryValue};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -17,8 +18,23 @@ use super::errors::GeometryProcessorError;
 #[derive(Debug, Clone, Default)]
 pub struct ExtruderFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for ExtruderFactory {
+    fn name(&self) -> &str {
+        "Extruder"
+    }
+
+    fn description(&self) -> &str {
+        "Extrudes a polygon by a distance"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(ExtruderParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Geometry"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -27,7 +43,7 @@ impl ProcessorFactory for ExtruderFactory {
         vec![DEFAULT_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         ctx: NodeContext,
         _event_hub: EventHub,
@@ -68,7 +84,7 @@ pub struct Extruder {
     distance: rhai::AST,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtruderParam {
     distance: Expr,

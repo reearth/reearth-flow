@@ -4,10 +4,11 @@ use reearth_flow_common::{csv::Delimiter, uri::Uri};
 use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{AttributeValue, Feature};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CsvPropertySchema {
     pub(super) offset: Option<usize>,

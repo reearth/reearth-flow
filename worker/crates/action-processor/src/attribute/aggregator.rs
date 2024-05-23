@@ -8,6 +8,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -16,8 +17,23 @@ use super::errors::AttributeProcessorError;
 #[derive(Debug, Clone, Default)]
 pub struct AttributeAggregatorFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for AttributeAggregatorFactory {
+    fn name(&self) -> &str {
+        "AttributeAggregator"
+    }
+
+    fn description(&self) -> &str {
+        "Aggregates features by attributes"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(AttributeAggregatorParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Attribute"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -26,7 +42,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
         vec![DEFAULT_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -67,20 +83,20 @@ pub struct AttributeAggregator {
     buffer: Vec<Feature>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeAggregatorParam {
     aggregations: Vec<Aggregation>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Aggregation {
     attribute: Attribute,
     method: Method,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 pub(super) enum Method {
     #[serde(rename = "max")]
     Max,

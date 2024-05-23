@@ -33,6 +33,7 @@ opentelemetry.workspace = true
 petgraph.workspace = true
 quick-xml.workspace = true
 regex.workspace = true
+schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

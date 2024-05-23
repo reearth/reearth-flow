@@ -1,0 +1,970 @@
+{
+  "actions": [
+    {
+      "name": "PLATEAU.UDXFolderExtractor",
+      "type": "processor",
+      "description": "Extracts UDX folders from cityGML path",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default",
+        "rejected"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "FeatureFilter",
+      "type": "processor",
+      "description": "Filters features based on conditions",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Condition": {
+            "properties": {
+              "expr": {
+                "$ref": "#/definitions/Expr"
+              },
+              "outputPort": {
+                "$ref": "#/definitions/Port"
+              }
+            },
+            "required": [
+              "expr",
+              "outputPort"
+            ],
+            "type": "object"
+          },
+          "Expr": {
+            "type": "string"
+          },
+          "Port": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "conditions": {
+            "items": {
+              "$ref": "#/definitions/Condition"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "conditions"
+        ],
+        "title": "FeatureFilterParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "rejected"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "type": "processor",
+      "description": "Validates domain of definition of CityGML features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default",
+        "rejected"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "Extruder",
+      "type": "processor",
+      "description": "Extrudes a polygon by a distance",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "distance": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "required": [
+          "distance"
+        ],
+        "title": "ExtruderParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "XMLValidator",
+      "type": "processor",
+      "description": "Validates XML content",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "ValidationType": {
+            "enum": [
+              "syntax",
+              "syntaxAndNamespace",
+              "syntaxAndSchema"
+            ],
+            "type": "string"
+          },
+          "XmlInputType": {
+            "enum": [
+              "file",
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "attribute": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "inputType": {
+            "$ref": "#/definitions/XmlInputType"
+          },
+          "validationType": {
+            "$ref": "#/definitions/ValidationType"
+          }
+        },
+        "required": [
+          "attribute",
+          "inputType",
+          "validationType"
+        ],
+        "title": "XmlValidatorParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "success",
+        "failed"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "FeatureCounter",
+      "type": "processor",
+      "description": "Counts features",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "countStart": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "groupBy": {
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "outputAttribute": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "countStart",
+          "outputAttribute"
+        ],
+        "title": "FeatureCounterParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "rejected"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FeatureMerger",
+      "type": "processor",
+      "description": "Merges features by attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Join": {
+            "properties": {
+              "requestor": {
+                "$ref": "#/definitions/Attribute"
+              },
+              "supplier": {
+                "$ref": "#/definitions/Attribute"
+              }
+            },
+            "required": [
+              "requestor",
+              "supplier"
+            ],
+            "type": "object"
+          }
+        },
+        "properties": {
+          "join": {
+            "$ref": "#/definitions/Join"
+          }
+        },
+        "required": [
+          "join"
+        ],
+        "title": "FeatureMergerParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "merged",
+        "unmerged"
+      ],
+      "outputPorts": [
+        "requestor",
+        "supplier"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FeatureSorter",
+      "type": "processor",
+      "description": "Sorts features by attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Order": {
+            "enum": [
+              "ascending",
+              "descending"
+            ],
+            "type": "string"
+          },
+          "SortBy": {
+            "properties": {
+              "attribute": {
+                "$ref": "#/definitions/Attribute"
+              },
+              "order": {
+                "$ref": "#/definitions/Order"
+              }
+            },
+            "required": [
+              "attribute",
+              "order"
+            ],
+            "type": "object"
+          }
+        },
+        "properties": {
+          "sortBy": {
+            "items": {
+              "$ref": "#/definitions/SortBy"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sortBy"
+        ],
+        "title": "FeatureSorterParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "AttributeKeeper",
+      "type": "processor",
+      "description": "Keeps only specified attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "keepAttributes": {
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "keepAttributes"
+        ],
+        "title": "AttributeKeeper",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "Router",
+      "type": "processor",
+      "description": "Action for last port forwarding for sub-workflows.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "routingPort": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "routingPort"
+        ],
+        "title": "Router",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": []
+    },
+    {
+      "name": "PLATEAU.XMLAttributeExtractor",
+      "type": "processor",
+      "description": "Extracts attributes from XML fragments based on a schema definition",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default",
+        "rejected"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "ThreeDimentionBoxReplacer",
+      "type": "processor",
+      "description": "Extrudes a polygon by a distance",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "maxX": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "maxY": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "maxZ": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "minX": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "minY": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "minZ": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "maxX",
+          "maxY",
+          "maxZ",
+          "minX",
+          "minY",
+          "minZ"
+        ],
+        "title": "ThreeDimentionBoxReplacer",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "XMLFragmenter",
+      "type": "processor",
+      "description": "Fragment XML",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "attribute": {
+                "$ref": "#/definitions/Attribute"
+              },
+              "elementsToExclude": {
+                "$ref": "#/definitions/Expr"
+              },
+              "elementsToMatch": {
+                "$ref": "#/definitions/Expr"
+              },
+              "source": {
+                "enum": [
+                  "url"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "attribute",
+              "elementsToExclude",
+              "elementsToMatch",
+              "source"
+            ],
+            "type": "object"
+          }
+        ],
+        "title": "XmlFragmenterParam"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "XML"
+      ]
+    },
+    {
+      "name": "FileWriter",
+      "type": "sink",
+      "description": "Writes features to a file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Format": {
+            "enum": [
+              "csv",
+              "tsv",
+              "json",
+              "json"
+            ],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "format": {
+            "$ref": "#/definitions/Format"
+          },
+          "output": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "output"
+        ],
+        "title": "FileWriterParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "FilePathExtractor",
+      "type": "source",
+      "description": "Extracts files from a directory or an archive",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "extractArchive": {
+            "type": "boolean"
+          },
+          "sourceDataset": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "required": [
+          "extractArchive",
+          "sourceDataset"
+        ],
+        "title": "FilePathExtractor",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "FileReader",
+      "type": "source",
+      "description": "Reads features from a file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "enum": [
+                  "csv"
+                ],
+                "type": "string"
+              },
+              "offset": {
+                "format": "uint",
+                "minimum": 0.0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "enum": [
+                  "tsv"
+                ],
+                "type": "string"
+              },
+              "offset": {
+                "format": "uint",
+                "minimum": 0.0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "enum": [
+                  "json"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "enum": [
+                  "citygml"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "type": "object"
+          }
+        ],
+        "title": "FileReader"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "FeatureTransformer",
+      "type": "processor",
+      "description": "Transforms features by expressions",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "Transform": {
+            "properties": {
+              "expr": {
+                "$ref": "#/definitions/Expr"
+              }
+            },
+            "required": [
+              "expr"
+            ],
+            "type": "object"
+          }
+        },
+        "properties": {
+          "transformers": {
+            "items": {
+              "$ref": "#/definitions/Transform"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "transformers"
+        ],
+        "title": "FeatureTransformerParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "AttributeManager",
+      "type": "processor",
+      "description": "Manages attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "Method": {
+            "enum": [
+              "convert",
+              "create",
+              "rename",
+              "remove"
+            ],
+            "type": "string"
+          },
+          "Operation": {
+            "properties": {
+              "attribute": {
+                "type": "string"
+              },
+              "method": {
+                "$ref": "#/definitions/Method"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "attribute",
+              "method"
+            ],
+            "type": "object"
+          }
+        },
+        "properties": {
+          "operations": {
+            "items": {
+              "$ref": "#/definitions/Operation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "operations"
+        ],
+        "title": "AttributeManagerParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "PLATEAU.DictionariesInitiator",
+      "type": "processor",
+      "description": "Initializes dictionaries for PLATEAU",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default",
+        "rejected"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "CoordinateSystemSetter",
+      "type": "processor",
+      "description": "Sets the coordinate system of a feature",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "epsgCode": {
+            "format": "uint16",
+            "minimum": 0.0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "epsgCode"
+        ],
+        "title": "CoordinateSystemSetter",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "AttributeDuplicateFilter",
+      "type": "processor",
+      "description": "Filters features by duplicate attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "filterBy": {
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "filterBy"
+        ],
+        "title": "AttributeDuplicateFilterParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "AttributeAggregator",
+      "type": "processor",
+      "description": "Aggregates features by attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Aggregation": {
+            "properties": {
+              "attribute": {
+                "$ref": "#/definitions/Attribute"
+              },
+              "method": {
+                "$ref": "#/definitions/Method"
+              }
+            },
+            "required": [
+              "attribute",
+              "method"
+            ],
+            "type": "object"
+          },
+          "Attribute": {
+            "type": "string"
+          },
+          "Method": {
+            "enum": [
+              "max",
+              "min",
+              "sum",
+              "avg"
+            ],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "aggregations": {
+            "items": {
+              "$ref": "#/definitions/Aggregation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "aggregations"
+        ],
+        "title": "AttributeAggregatorParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    }
+  ]
+}
