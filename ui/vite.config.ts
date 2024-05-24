@@ -10,6 +10,9 @@ import cesium from "vite-plugin-cesium";
 import pkg from "./package.json";
 
 export default defineConfig({
+  server: {
+    port: 3000,
+  },
   envPrefix: "FLOW_",
   plugins: [react(), TanStackRouterVite(), cesium(), config()],
   build: {
