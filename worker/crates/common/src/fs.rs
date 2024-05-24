@@ -51,6 +51,20 @@ where
     copy_tree_inner(src.as_ref().to_path_buf(), dest.as_ref().to_path_buf()).await
 }
 
+pub fn get_dir_size(path: &Path) -> std::io::Result<u64> {
+    let mut total = 0;
+    for entry in std::fs::read_dir(path)? {
+        let entry = entry?;
+        let metadata = entry.metadata()?;
+        if metadata.is_file() {
+            total += metadata.len();
+        } else if metadata.is_dir() {
+            total += get_dir_size(&entry.path())?;
+        }
+    }
+    Ok(total)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

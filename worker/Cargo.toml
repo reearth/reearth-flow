@@ -61,6 +61,7 @@ nusamai-projection = {git = "https://github.com/reearth/plateau-gis-converter"}
 async-trait = "0.1.80"
 async_zip = {version = "0.0.17", features = ["full"]}
 bytes = {version = "1.6.0", features = ["serde"]}
+chrono = {version = "0.4.38", features = ["serde"]}
 color-eyre = "0.6.3"
 colorsys = "0.6.7"
 crossbeam = "0.8.4"
@@ -93,12 +94,12 @@ regex = "1.10.4"
 rhai = {version = "1.18.0", features = ["internals", "sync", "serde"]}
 rstest = "0.19.0"
 rust_xlsxwriter = "0.64.2"
+schemars = "0.8.20"
 serde = {version = "1.0.200", features = ["derive"]}
 serde_derive = "1.0.200"
 serde_json = {version = "1.0.116", features = ["arbitrary_precision"]}
 serde_with = "3.8.1"
 serde_yaml = "0.9.34"
-schemars = "0.8.20"
 sha2 = "0.10.8"
 slog = {version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"]}
 strum = "0.26.2"

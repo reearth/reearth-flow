@@ -20,10 +20,10 @@ reearth-flow-types.workspace = true
 
 async-stream = "0.3.5"
 async-trait.workspace = true
-chrono = {version = "0.4.38", features = ["serde"]}
+chrono.workspace = true
 crossbeam.workspace = true
-futures = "0.3.30"
-futures-util = "0.3.30"
+futures.workspace = true
+futures-util.workspace = true
 nutype.workspace = true
 once_cell.workspace = true
 opentelemetry.workspace = true

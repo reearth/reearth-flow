@@ -25,6 +25,7 @@ nusamai-projection.workspace = true
 async-trait.workspace = true
 async_zip.workspace = true
 bytes.workspace = true
+chrono.workspace = true
 directories.workspace = true
 futures.workspace = true
 hashbrown.workspace = true

@@ -13,6 +13,7 @@ use reearth_flow_common::str::base64_encode;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml::XmlXpathValue;
 
+use crate::datetime::DateTime;
 use crate::error;
 use crate::error::Result;
 
@@ -47,6 +48,7 @@ pub enum AttributeValue {
     Bool(bool),
     Number(Number),
     String(String),
+    DateTime(DateTime),
     Array(Vec<AttributeValue>),
     Bytes(Bytes),
     Map(HashMap<String, AttributeValue>),
@@ -59,6 +61,7 @@ impl PartialEq for AttributeValue {
             (&AttributeValue::Bool(v0), &AttributeValue::Bool(v1)) if v0 == v1 => true,
             (&AttributeValue::Number(v0), &AttributeValue::Number(v1)) if v0 == v1 => true,
             (&AttributeValue::String(v0), &AttributeValue::String(v1)) if v0 == v1 => true,
+            (&AttributeValue::DateTime(v0), &AttributeValue::DateTime(v1)) if v0 == v1 => true,
             (&AttributeValue::Array(v0), &AttributeValue::Array(v1)) if v0 == v1 => true,
             (&AttributeValue::Bytes(v0), &AttributeValue::Bytes(v1)) if v0 == v1 => true,
             (&AttributeValue::Map(v0), &AttributeValue::Map(v1)) if v0 == v1 => true,
@@ -76,6 +79,7 @@ impl Ord for AttributeValue {
                 compare_numbers(v0, v1).unwrap()
             }
             (&AttributeValue::String(v0), &AttributeValue::String(v1)) => v0.cmp(v1),
+            (&AttributeValue::DateTime(v0), &AttributeValue::DateTime(v1)) => v0.cmp(v1),
             (&AttributeValue::Array(v0), &AttributeValue::Array(v1)) => v0.cmp(v1),
             (&AttributeValue::Bytes(v0), &AttributeValue::Bytes(v1)) => v0.cmp(v1),
             (v0, v1) => v0.discriminant().cmp(&v1.discriminant()),
@@ -93,6 +97,7 @@ impl AttributeValue {
             AttributeValue::Array(..) => 4,
             AttributeValue::Bytes(..) => 5,
             AttributeValue::Map(..) => 6,
+            AttributeValue::DateTime(..) => 7,
         }
     }
 
@@ -136,6 +141,7 @@ impl Display for AttributeValue {
             AttributeValue::Array(v) => write!(f, "{:?}", v),
             AttributeValue::Bytes(v) => write!(f, "{:?}", v),
             AttributeValue::Map(v) => write!(f, "{:?}", v),
+            AttributeValue::DateTime(v) => write!(f, "{}", v),
         }
     }
 }
@@ -146,7 +152,13 @@ impl From<serde_json::Value> for AttributeValue {
             serde_json::Value::Null => AttributeValue::Null,
             serde_json::Value::Bool(v) => AttributeValue::Bool(v),
             serde_json::Value::Number(v) => AttributeValue::Number(v),
-            serde_json::Value::String(v) => AttributeValue::String(v),
+            serde_json::Value::String(v) => {
+                if let Ok(v) = DateTime::try_from(v.as_str()) {
+                    AttributeValue::DateTime(DateTime(v.into()))
+                } else {
+                    AttributeValue::String(v)
+                }
+            }
             serde_json::Value::Array(v) => {
                 AttributeValue::Array(v.into_iter().map(AttributeValue::from).collect::<Vec<_>>())
             }
@@ -166,6 +178,7 @@ impl From<AttributeValue> for serde_json::Value {
             AttributeValue::Bool(v) => serde_json::Value::Bool(v),
             AttributeValue::Number(v) => serde_json::Value::Number(v),
             AttributeValue::String(v) => serde_json::Value::String(v),
+            AttributeValue::DateTime(v) => serde_json::Value::String(v.to_string()),
             AttributeValue::Array(v) => serde_json::Value::Array(
                 v.into_iter()
                     .map(serde_json::Value::from)
@@ -198,7 +211,13 @@ impl From<nusamai_citygml::Value> for AttributeValue {
             }
             nusamai_citygml::Value::Boolean(v) => AttributeValue::Bool(v),
             nusamai_citygml::Value::Uri(v) => AttributeValue::String(v.value().to_string()),
-            nusamai_citygml::Value::Date(v) => AttributeValue::String(v.to_string()),
+            nusamai_citygml::Value::Date(v) => {
+                if let Ok(v) = DateTime::try_from(v.to_string()) {
+                    AttributeValue::DateTime(v)
+                } else {
+                    AttributeValue::String(v.to_string())
+                }
+            }
             nusamai_citygml::Value::Point(v) => AttributeValue::Map(
                 vec![
                     (
@@ -334,6 +353,10 @@ impl Hash for AttributeValue {
                     k.hash(state);
                     v.hash(state);
                 }
+            }
+            AttributeValue::DateTime(dt) => {
+                "DateTime".hash(state);
+                dt.hash(state);
             }
         }
     }

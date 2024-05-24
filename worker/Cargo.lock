@@ -2515,6 +2515,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
+ "chrono",
  "nusamai-citygml",
  "nusamai-plateau",
  "nusamai-projection",
@@ -2890,6 +2891,7 @@ dependencies = [
  "async-trait",
  "async_zip",
  "bytes",
+ "chrono",
  "directories",
  "futures",
  "hashbrown 0.14.5",

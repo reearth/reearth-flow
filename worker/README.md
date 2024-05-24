@@ -45,3 +45,8 @@ $ cargo run -- run --workflow ${workflow_path}
 ```console
 $ cargo make example
 ```
+
+### Run generate action documentation
+```console
+$ cargo make doc-action
+```
