@@ -114,7 +114,13 @@ impl DagExecutor {
                         Arc::clone(&logger),
                         Arc::clone(&kv_store),
                     );
-                    let sink_node = SinkNode::new(ctx, &mut execution_dag, node_index);
+                    let sink_node = SinkNode::new(
+                        ctx,
+                        &mut execution_dag,
+                        node_index,
+                        shutdown.clone(),
+                        runtime.clone(),
+                    );
                     join_handles.push(start_sink(sink_node)?);
                 }
             }
@@ -182,7 +188,9 @@ fn start_processor<F: Send + 'static + Future + Unpin + Debug>(
         .map_err(ExecutionError::CannotSpawnWorkerThread)
 }
 
-fn start_sink(sink: SinkNode) -> Result<JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
+fn start_sink<F: Send + 'static + Future + Unpin + Debug>(
+    sink: SinkNode<F>,
+) -> Result<JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
     Builder::new()
         .name(sink.handle().to_string())
         .spawn(|| {
