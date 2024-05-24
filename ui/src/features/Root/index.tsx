@@ -1,8 +1,9 @@
 import { Outlet, useParams } from "@tanstack/react-router";
 import { ReactFlowProvider } from "reactflow";
 
-import { AuthProvider, AuthenticatedPage } from "@flow/auth";
+import AuthenticatedPage from "@flow/features/AuthenticatedPage";
 import Dialog from "@flow/features/Dialog";
+import { AuthProvider } from "@flow/lib/auth";
 import { workspaces } from "@flow/mock_data/workspaceData";
 import { I18nProvider, QueryClientProvider, TooltipProvider } from "@flow/providers";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";

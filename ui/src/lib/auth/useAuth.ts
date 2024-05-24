@@ -1,9 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 
-import { useAuth0Auth } from "./auth0Auth";
-import { AuthContext } from "./authProvider";
-
-export const errorKey = "flowerror";
+import { errorKey, AuthContext, useAuth0Auth } from ".";
 
 function useCleanUrl(): [string | undefined, boolean] {
   const { isAuthenticated, isLoading } = useAuth();

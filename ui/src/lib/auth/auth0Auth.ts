@@ -2,9 +2,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 
 import { e2eAccessToken, logOutFromTenant } from "@flow/config";
 
-import type { AuthHook } from "./authHook";
-
-export const errorKey = "flowerror";
+import { errorKey, AuthHook } from ".";
 
 export const useAuth0Auth = (): AuthHook => {
   const {

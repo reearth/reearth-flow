@@ -45,5 +45,4 @@ export function config(): Config {
   return window.FLOW_CONFIG ?? {};
 }
 
-// Export everything from authInfo
 export * from "./authInfo";

@@ -3,8 +3,7 @@ import React, { createContext, ReactNode, useState } from "react";
 
 import { getAuthInfo, getSignInCallbackUrl, logInToTenant } from "@flow/config";
 
-import { useAuth0Auth } from "./auth0Auth";
-import type { AuthHook } from "./authHook";
+import { useAuth0Auth, AuthHook } from "./";
 
 export const AuthContext = createContext<AuthHook | null>(null);
 
