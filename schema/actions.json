@@ -97,6 +97,40 @@
       ]
     },
     {
+      "name": "AttributeFilePathInfoExtractor",
+      "type": "processor",
+      "description": "Extracts file path information from attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "attribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "attribute"
+        ],
+        "title": "AttributeFilePathInfoExtractor",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "AttributeKeeper",
       "type": "processor",
       "description": "Keeps only specified attributes",

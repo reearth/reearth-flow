@@ -35,8 +35,8 @@ impl Orchestrator {
     ) -> Result<(), OrchestrationError> {
         let executor = Executor {};
         let options = ExecutorOptions {
-            channel_buffer_sz: 10,
-            event_hub_capacity: 10,
+            channel_buffer_sz: 20,
+            event_hub_capacity: 20,
             error_threshold: None,
             thread_pool_size: 30,
         };
