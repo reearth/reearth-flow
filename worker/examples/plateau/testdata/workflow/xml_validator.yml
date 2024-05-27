@@ -3,9 +3,15 @@ id: a7fc8f35-b84f-496b-a2cb-65be3bfec285
 name: "PLATEAU.XMLValidator"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
-  cityGmlPath: https://assets.cms.plateau.reearth.io/assets/ab/73d159-7d5a-4fd7-a48a-cc585157d03f/11234_yashio-shi_city_2023_citygml_1_op.zip
+  cityGmlPath: file:///Users/miseyu/Documents/fme/11234_yashio-shi_city_2023_citygml_1_op/udx/bldg/53395648_bldg_6697_op.gml
   cityCode: "11234"
   schemaJson: !include ../config/schema.txt
+  targetPackages:
+    - bldg
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+  codelistsPath: file:///Users/miseyu/Documents/fme/11234_yashio-shi_city_2023_citygml_1_op/codelists
+  schemasPath: file:///Users/miseyu/Documents/fme/11234_yashio-shi_city_2023_citygml_1_op/schemas
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point

@@ -1,5 +1,5 @@
 mod helper;
 
 fn main() {
-    helper::execute("attribute_reader.yml");
+    helper::execute("xml_validator.yml");
 }

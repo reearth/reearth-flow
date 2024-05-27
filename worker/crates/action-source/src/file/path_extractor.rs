@@ -198,7 +198,7 @@ impl Source for FilePathExtractor {
                 .await
                 .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?;
             extract(bytes, root_output_path, root_output_storage, sender).await?;
-        } else {
+        } else if source_dataset.is_dir() {
             let storage = ctx
                 .storage_resolver
                 .resolve(&source_dataset)
@@ -221,6 +221,16 @@ impl Source for FilePathExtractor {
                         crate::errors::SourceError::FilePathExtractor(format!("{:?}", e))
                     })?;
             }
+        } else {
+            let attribute_value = AttributeValue::try_from(FilePath::try_from(source_dataset)?)?;
+            let feature = Feature::from(attribute_value);
+            sender
+                .send((
+                    DEFAULT_PORT.clone(),
+                    IngestionMessage::OperationEvent { feature },
+                ))
+                .await
+                .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?;
         }
         Ok(())
     }

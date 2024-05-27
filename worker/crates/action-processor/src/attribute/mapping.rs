@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
-use reearth_flow_runtime::node::NodeKind;
+use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
     aggregator::AttributeAggregatorFactory, duplicate_filter::AttributeDuplicateFilterFactory,
@@ -10,26 +10,15 @@ use super::{
 };
 
 pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
-    HashMap::from([
-        (
-            "AttributeKeeper".to_string(),
-            NodeKind::Processor(Box::<AttributeKeeperFactory>::default()),
-        ),
-        (
-            "AttributeManager".to_string(),
-            NodeKind::Processor(Box::<AttributeManagerFactory>::default()),
-        ),
-        (
-            "AttributeAggregator".to_string(),
-            NodeKind::Processor(Box::<AttributeAggregatorFactory>::default()),
-        ),
-        (
-            "AttributeDuplicateFilter".to_string(),
-            NodeKind::Processor(Box::<AttributeDuplicateFilterFactory>::default()),
-        ),
-        (
-            "AttributeFilePathInfoExtractor".to_string(),
-            NodeKind::Processor(Box::<AttributeFilePathInfoExtractorFactory>::default()),
-        ),
-    ])
+    let factories: Vec<Box<dyn ProcessorFactory>> = vec![
+        Box::<AttributeKeeperFactory>::default(),
+        Box::<AttributeManagerFactory>::default(),
+        Box::<AttributeAggregatorFactory>::default(),
+        Box::<AttributeDuplicateFilterFactory>::default(),
+        Box::<AttributeFilePathInfoExtractorFactory>::default(),
+    ];
+    factories
+        .into_iter()
+        .map(|f| (f.name().to_string(), NodeKind::Processor(f)))
+        .collect::<HashMap<_, _>>()
 });
