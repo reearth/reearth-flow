@@ -28,6 +28,55 @@ use super::errors::{Result, XmlProcessorError};
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+struct ValidationResult {
+    error_type: String,
+    message: String,
+    line: Option<i32>,
+    col: Option<i32>,
+}
+
+impl ValidationResult {
+    fn new(error_type: &str, message: &str) -> Self {
+        ValidationResult {
+            error_type: error_type.to_string(),
+            message: message.to_string(),
+            line: None,
+            col: None,
+        }
+    }
+
+    fn new_with_line_and_col(
+        error_type: &str,
+        message: &str,
+        line: Option<i32>,
+        col: Option<i32>,
+    ) -> Self {
+        ValidationResult {
+            error_type: error_type.to_string(),
+            message: message.to_string(),
+            line,
+            col,
+        }
+    }
+}
+
+impl From<ValidationResult> for HashMap<String, AttributeValue> {
+    fn from(result: ValidationResult) -> Self {
+        let mut map = HashMap::new();
+        map.insert(
+            "errorType".to_string(),
+            AttributeValue::String(result.error_type),
+        );
+        map.insert(
+            "message".to_string(),
+            AttributeValue::String(result.message),
+        );
+        map
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct XmlValidatorFactory;
 
@@ -134,11 +183,27 @@ impl Processor for XmlValidator {
                 let feature = &ctx.feature;
                 let xml_content = self.get_xml_content(&ctx, feature)?;
                 let Ok(document) = xml::parse(xml_content) else {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
+                    let mut feature = feature.clone();
+                    feature.attributes.insert(
+                        Attribute::new("xmlError"),
+                        AttributeValue::Array(vec![AttributeValue::Map(
+                            ValidationResult::new("SyntaxError", "Invalid document structure")
+                                .into(),
+                        )]),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
                     return Ok(());
                 };
                 let Ok(_) = xml::get_root_node(&document) else {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
+                    let mut feature = feature.clone();
+                    feature.attributes.insert(
+                        Attribute::new("xmlError"),
+                        AttributeValue::Array(vec![AttributeValue::Map(
+                            ValidationResult::new("SyntaxError", "Invalid document structure")
+                                .into(),
+                        )]),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
                     return Ok(());
                 };
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
@@ -146,37 +211,98 @@ impl Processor for XmlValidator {
             ValidationType::SyntaxAndNamespace => {
                 let feature = &ctx.feature;
                 let xml_content = self.get_xml_content(&ctx, feature).unwrap();
-                let Ok(document) = xml::parse(xml_content) else {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
-                    return Ok(());
+                let document = match xml::parse(xml_content) {
+                    Ok(doc) => doc,
+                    Err(_) => {
+                        let mut feature = feature.clone();
+                        feature.attributes.insert(
+                            Attribute::new("xmlError"),
+                            AttributeValue::Array(vec![AttributeValue::Map(
+                                ValidationResult::new("SyntaxError", "Invalid document structure")
+                                    .into(),
+                            )]),
+                        );
+                        fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
+                        return Ok(());
+                    }
                 };
-                let Ok(root_node) = xml::get_root_node(&document) else {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
-                    return Ok(());
+                let root_node = match xml::get_root_node(&document) {
+                    Ok(node) => node,
+                    Err(_) => {
+                        let mut feature = feature.clone();
+                        feature.attributes.insert(
+                            Attribute::new("xmlError"),
+                            AttributeValue::Array(vec![AttributeValue::Map(
+                                ValidationResult::new("SyntaxError", "Invalid document structure")
+                                    .into(),
+                            )]),
+                        );
+                        fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
+                        return Ok(());
+                    }
                 };
-                if XmlValidator::recursive_check_namespace(
-                    &root_node,
-                    &root_node.get_namespace_declarations(),
-                ) {
+                let result =
+                    recursive_check_namespace(&root_node, &root_node.get_namespace_declarations());
+                if result.is_empty() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
-                    return Ok(());
                 } else {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
-                    return Ok(());
+                    let mut feature = feature.clone();
+                    feature.attributes.insert(
+                        Attribute::new("xmlError"),
+                        AttributeValue::Array(
+                            result
+                                .into_iter()
+                                .map(|r| AttributeValue::Map(r.into()))
+                                .collect::<Vec<_>>(),
+                        ),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
                 }
             }
             ValidationType::SyntaxAndSchema => {
                 let feature = &ctx.feature;
                 let xml_content = self.get_xml_content(&ctx, feature)?;
                 let Ok(document) = xml::parse(xml_content) else {
+                    let mut feature = feature.clone();
+                    feature.attributes.insert(
+                        Attribute::new("xmlError"),
+                        AttributeValue::Array(vec![AttributeValue::Map(
+                            ValidationResult::new("SyntaxError", "Invalid document structure")
+                                .into(),
+                        )]),
+                    );
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
                     return Ok(());
                 };
-                if let Ok(true) = self.check_schema(feature, &ctx, &document) {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
+                if let Ok(result) = self.check_schema(feature, &ctx, &document) {
+                    if result.is_empty() {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()),
+                        );
+                    } else {
+                        let mut feature = feature.clone();
+                        feature.attributes.insert(
+                            Attribute::new("xmlError"),
+                            AttributeValue::Array(
+                                result
+                                    .into_iter()
+                                    .map(|r| AttributeValue::Map(r.into()))
+                                    .collect::<Vec<_>>(),
+                            ),
+                        );
+                        fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
+                    }
                     return Ok(());
                 } else {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FAILED_PORT.clone()));
+                    let mut feature = feature.clone();
+                    feature.attributes.insert(
+                        Attribute::new("xmlError"),
+                        AttributeValue::Array(vec![AttributeValue::Map(
+                            ValidationResult::new("SyntaxError", "Invalid document structure")
+                                .into(),
+                        )]),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
                 }
             }
         }
@@ -269,38 +395,12 @@ impl XmlValidator {
         }
     }
 
-    fn recursive_check_namespace(node: &xml::XmlNode, namespaces: &Vec<XmlNamespace>) -> bool {
-        let result = match node.get_namespace() {
-            Some(ns) => namespaces.iter().any(|n| n.get_prefix() == ns.get_prefix()),
-            None => {
-                let tag = xml::get_node_tag(node);
-                if tag.contains(':') {
-                    let prefix = tag.split(':').collect::<Vec<&str>>()[0];
-                    namespaces.iter().any(|n| n.get_prefix() == prefix)
-                } else {
-                    true
-                }
-            }
-        };
-        node.get_child_nodes()
-            .iter()
-            .filter(|n| {
-                if let Some(typ) = n.get_type() {
-                    typ == xml::XmlNodeType::ElementNode
-                } else {
-                    false
-                }
-            })
-            .all(|n| XmlValidator::recursive_check_namespace(n, namespaces))
-            && result
-    }
-
     fn check_schema(
         &self,
         feature: &Feature,
         _ctx: &ExecutorContext,
         document: &XmlDocument,
-    ) -> Result<bool> {
+    ) -> Result<Vec<ValidationResult>> {
         let schema_locations = xml::parse_schema_locations(document)
             .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
         let target_locations = schema_locations
@@ -330,16 +430,83 @@ impl XmlValidator {
             }
         }
         let mut store = self.schema_store.write();
+        let mut result = Vec::new();
         for location in schema_locations {
             let location_store = store.get_mut(&location);
             let schema_context = match location_store {
                 Some(ctx) => ctx,
                 None => continue,
             };
-            if xml::validate_document_by_schema_context(document, schema_context).is_err() {
-                return Ok(false);
+            match xml::validate_document_by_schema_context(document, schema_context) {
+                Ok(r) => {
+                    r.iter().for_each(|v| {
+                        let message = v.message.clone().unwrap_or_default();
+                        result.push(ValidationResult::new_with_line_and_col(
+                            "SchemaError",
+                            &message,
+                            v.line,
+                            v.col,
+                        ));
+                    });
+                }
+                Err(e) => {
+                    result.push(ValidationResult::new(
+                        "SchemaError",
+                        &format!("{:?}", e).to_string(),
+                    ));
+                }
             }
         }
-        Ok(true)
+        Ok(result)
     }
+}
+
+fn recursive_check_namespace(
+    node: &xml::XmlNode,
+    namespaces: &Vec<XmlNamespace>,
+) -> Vec<ValidationResult> {
+    let mut result = Vec::new();
+    match node.get_namespace() {
+        Some(ns) => {
+            if !namespaces.iter().any(|n| n.get_prefix() == ns.get_prefix()) {
+                result.push(ValidationResult::new(
+                    "NamespaceError",
+                    format!("No namespace declaration for {}", ns.get_prefix()).as_str(),
+                ));
+            }
+        }
+        None => {
+            let tag = xml::get_node_tag(node);
+            if tag.contains(':') {
+                let prefix = tag.split(':').collect::<Vec<&str>>()[0];
+                if !namespaces.iter().any(|n| n.get_prefix() == prefix) {
+                    result.push(ValidationResult::new(
+                        "NamespaceError",
+                        format!("No namespace declaration for {}", prefix).as_str(),
+                    ));
+                }
+            } else {
+                result.push(ValidationResult::new(
+                    "NamespaceError",
+                    "No namespace declaration",
+                ));
+            }
+        }
+    };
+    let child_node = node.get_child_nodes();
+    let child_nodes = child_node
+        .iter()
+        .filter(|n| {
+            if let Some(typ) = n.get_type() {
+                typ == xml::XmlNodeType::ElementNode
+            } else {
+                false
+            }
+        })
+        .collect::<Vec<_>>();
+    for child in child_nodes {
+        let mut child_result = recursive_check_namespace(child, namespaces);
+        result.append(&mut child_result);
+    }
+    result
 }

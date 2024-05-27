@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
+use libxml::error::StructuredError;
 use libxml::parser::{Parser, ParserOptions};
 use libxml::schemas::SchemaValidationContext;
 use libxml::tree::document;
@@ -28,11 +29,11 @@ pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
         .parse_string_with_options(
             xml,
             ParserOptions {
-                recover: true,
+                recover: false,
                 no_def_dtd: true,
                 no_error: true,
                 no_warning: false,
-                pedantic: false,
+                pedantic: true,
                 no_blanks: false,
                 no_net: false,
                 no_implied: false,
@@ -141,7 +142,7 @@ pub fn create_xml_schema_validation_context(
 pub fn validate_document_by_schema(
     document: &XmlDocument,
     schema_location: String,
-) -> crate::Result<bool> {
+) -> crate::Result<Vec<StructuredError>> {
     let mut xsd_validator = create_xml_schema_validation_context(schema_location)?;
     validate_document_by_schema_context(document, &mut xsd_validator)
 }
@@ -149,10 +150,10 @@ pub fn validate_document_by_schema(
 pub fn validate_document_by_schema_context(
     document: &XmlDocument,
     xsd_validator: &mut XmlSchemaValidationContext,
-) -> crate::Result<bool> {
+) -> crate::Result<Vec<StructuredError>> {
     match xsd_validator.inner.write().validate_document(document) {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
+        Ok(_) => Ok(vec![]),
+        Err(e) => Ok(e),
     }
 }
 

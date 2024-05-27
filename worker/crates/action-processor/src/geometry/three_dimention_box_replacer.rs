@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use reearth_flow_geometry::types::{
-    coordinate::Coordinate, geometry::Geometry as FlowGeometry, rectangle::Rectangle,
+    coordinate::Coordinate, geometry::Geometry3D as FlowGeometry3D, rectangle::Rectangle,
 };
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -103,9 +103,9 @@ impl Processor for ThreeDimentionBoxReplacer {
         let min = Coordinate::new__(min_x, min_y, min_z);
         let max = Coordinate::new__(max_x, max_y, max_z);
         let rectangle = Rectangle::new(min, max);
-        let geometry = Geometry::with_value(GeometryValue::FlowGeometry(FlowGeometry::Polygon(
-            rectangle.to_polygon(),
-        )));
+        let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(
+            FlowGeometry3D::Polygon(rectangle.to_polygon()),
+        ));
         let mut feature = ctx.feature.clone();
         feature.geometry = Some(geometry);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));

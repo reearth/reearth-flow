@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use reearth_flow_geometry::types::geometry::Geometry as FlowGeometry;
+use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -114,15 +114,15 @@ impl Processor for Extruder {
             return Err(GeometryProcessorError::Extruder("Missing geometry".to_string()).into());
         };
         let geometry = geometry.clone();
-        let GeometryValue::FlowGeometry(flow_geometry) = &geometry.value else {
+        let GeometryValue::FlowGeometry3D(flow_geometry) = &geometry.value else {
             return Err(GeometryProcessorError::Extruder("Invalid geometry".to_string()).into());
         };
-        let FlowGeometry::Polygon(polygon) = flow_geometry else {
+        let FlowGeometry3D::Polygon(polygon) = flow_geometry else {
             return Err(GeometryProcessorError::Extruder("Invalid geometry".to_string()).into());
         };
         let solid = polygon.extrude(height);
         let geometry = Geometry {
-            value: GeometryValue::FlowGeometry(FlowGeometry::Solid(solid)),
+            value: GeometryValue::FlowGeometry3D(FlowGeometry3D::Solid(solid)),
             ..geometry
         };
         let mut feature = feature.clone();
