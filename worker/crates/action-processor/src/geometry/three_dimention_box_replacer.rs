@@ -1,18 +1,81 @@
+use std::collections::HashMap;
+
 use reearth_flow_geometry::types::{
     coordinate::Coordinate, geometry::Geometry as FlowGeometry, rectangle::Rectangle,
 };
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
+    event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
-    node::DEFAULT_PORT,
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Geometry, GeometryValue};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use crate::universal::UniversalProcessor;
+use super::errors::GeometryProcessorError;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone, Default)]
+pub struct ThreeDimentionBoxReplacerFactory;
+
+impl ProcessorFactory for ThreeDimentionBoxReplacerFactory {
+    fn name(&self) -> &str {
+        "ThreeDimentionBoxReplacer"
+    }
+
+    fn description(&self) -> &str {
+        "Replaces a three dimention box with a polygon."
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(ThreeDimentionBoxReplacer))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Geometry"]
+    }
+
+    fn get_input_ports(&self) -> Vec<Port> {
+        vec![DEFAULT_PORT.clone()]
+    }
+
+    fn get_output_ports(&self) -> Vec<Port> {
+        vec![DEFAULT_PORT.clone()]
+    }
+
+    fn build(
+        &self,
+        _ctx: NodeContext,
+        _event_hub: EventHub,
+        _action: String,
+        with: Option<HashMap<String, Value>>,
+    ) -> Result<Box<dyn Processor>, BoxedError> {
+        let processor: ThreeDimentionBoxReplacer = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                GeometryProcessorError::ThreeDimentionBoxReplacer(format!(
+                    "Failed to serialize with: {}",
+                    e
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                GeometryProcessorError::ThreeDimentionBoxReplacer(format!(
+                    "Failed to deserialize with: {}",
+                    e
+                ))
+            })?
+        } else {
+            return Err(GeometryProcessorError::ThreeDimentionBoxReplacer(
+                "Missing required parameter `with`".to_string(),
+            )
+            .into());
+        };
+        Ok(Box::new(processor))
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreeDimentionBoxReplacer {
     min_x: Attribute,
@@ -23,8 +86,7 @@ pub struct ThreeDimentionBoxReplacer {
     max_z: Attribute,
 }
 
-#[typetag::serde(name = "ThreeDimentionBoxReplacer")]
-impl UniversalProcessor for ThreeDimentionBoxReplacer {
+impl Processor for ThreeDimentionBoxReplacer {
     fn initialize(&mut self, _ctx: NodeContext) {}
     fn process(
         &mut self,
@@ -63,15 +125,15 @@ impl UniversalProcessor for ThreeDimentionBoxReplacer {
     }
 }
 
-fn parse_f64(value: Option<&AttributeValue>) -> crate::errors::Result<f64> {
+fn parse_f64(value: Option<&AttributeValue>) -> super::errors::Result<f64> {
     if let Some(AttributeValue::Number(min_x)) = value {
         min_x
             .as_f64()
-            .ok_or(crate::errors::ProcessorError::ThreeDimentionBoxReplacer(
+            .ok_or(GeometryProcessorError::ThreeDimentionBoxReplacer(
                 "failed to parse f64".to_string(),
             ))
     } else {
-        Err(crate::errors::ProcessorError::ThreeDimentionBoxReplacer(
+        Err(GeometryProcessorError::ThreeDimentionBoxReplacer(
             "failed to parse f64".to_string(),
         ))
     }

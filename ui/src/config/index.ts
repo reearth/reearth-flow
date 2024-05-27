@@ -1,3 +1,13 @@
+import { AuthInfo } from "./authInfo";
+
+declare global {
+  let __APP_VERSION__: string;
+  interface Window {
+    FLOW_CONFIG?: Config;
+    FLOW_E2E_ACCESS_TOKEN?: string;
+  }
+}
+
 export type Config = {
   version?: string;
   brandName?: string;
@@ -5,14 +15,8 @@ export type Config = {
   githubRepoUrl?: string;
   tosUrl?: string;
   documentationUrl?: string;
-};
-
-declare global {
-  let __APP_VERSION__: string;
-  interface Window {
-    FLOW_CONFIG?: Config;
-  }
-}
+  multiTenant?: Record<string, AuthInfo>;
+} & AuthInfo;
 
 const defaultConfig: Config = {
   version: "X.X.X",
@@ -40,3 +44,5 @@ export default async function loadConfig() {
 export function config(): Config {
   return window.FLOW_CONFIG ?? {};
 }
+
+export * from "./authInfo";

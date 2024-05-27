@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use serde_json::{Number, Value};
 
-use crate::errors::ProcessorError;
+use super::errors::PlateauProcessorError;
 
 static VALID_SRS_NAME_6697: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
 static VALID_SRS_NAME_6668: &str = "http://www.opengis.net/def/crs/EPSG/0/6668";
@@ -277,8 +277,23 @@ struct Envelope {
 #[derive(Debug, Clone, Default)]
 pub struct DomainOfDefinitionValidatorFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
+    fn name(&self) -> &str {
+        "PLATEAU.DomainOfDefinitionValidator"
+    }
+
+    fn description(&self) -> &str {
+        "Validates domain of definition of CityGML features"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        None
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["PLATEAU"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -287,7 +302,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -322,7 +337,7 @@ impl Processor for DomainOfDefinitionValidator {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
-        25
+        20
     }
 
     fn process(
@@ -332,8 +347,10 @@ impl Processor for DomainOfDefinitionValidator {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         if self.codelists.is_none() {
-            let codelists = create_codelist(Arc::clone(&ctx.storage_resolver), feature)
-                .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            let codelists =
+                create_codelist(Arc::clone(&ctx.storage_resolver), feature).map_err(|e| {
+                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+                })?;
             self.codelists = Some(codelists);
         }
         let codelists = self.codelists.as_ref().unwrap();
@@ -399,15 +416,15 @@ fn process_feature(
     fw: &mut dyn ProcessorChannelForwarder,
     codelists: &HashMap<String, HashMap<String, String>>,
     feature: &Feature,
-) -> crate::errors::Result<(Vec<Feature>, HashMap<String, Vec<HashMap<String, String>>>)> {
+) -> super::errors::Result<(Vec<Feature>, HashMap<String, Vec<HashMap<String, String>>>)> {
     let mut gml_ids = HashMap::<String, Vec<HashMap<String, String>>>::new();
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let mut result = Vec::<Feature>::new();
     let package = feature.attributes.get(&Attribute::new("package")).ok_or(
-        ProcessorError::DomainOfDefinitionValidator("package key empty".to_string()),
+        PlateauProcessorError::DomainOfDefinitionValidator("package key empty".to_string()),
     )?;
     let AttributeValue::String(package) = package else {
-        return Err(ProcessorError::DomainOfDefinitionValidator(
+        return Err(PlateauProcessorError::DomainOfDefinitionValidator(
             "package value not string".to_string(),
         ));
     };
@@ -423,39 +440,39 @@ fn process_feature(
     let city_gml_path = feature
         .attributes
         .get(&Attribute::new("cityGmlPath"))
-        .ok_or(ProcessorError::DomainOfDefinitionValidator(
+        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
             "cityGmlPath key empty".to_string(),
         ))?;
 
     let city_gml_uri = Uri::from_str(&city_gml_path.to_string())
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let storage = storage_resolver
         .resolve(&city_gml_uri)
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let xml_content = storage
         .get_sync(city_gml_uri.path().as_path())
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let mut response = ValidateResponse::default();
 
     let xml_document = xml::parse(xml_content)
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let root_node = xml::get_root_node(&xml_document)
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let xml_ctx = xml::create_context(&xml_document)
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let envelopes =
         xml::find_nodes_by_xpath(&xml_ctx, ".//gml:Envelope", &root_node).map_err(|e| {
-            ProcessorError::DomainOfDefinitionValidator(format!(
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
                 "Failed to evaluate xpath with {:?}",
                 e
             ))
         })?;
     response.envelope = parse_envelope(envelopes)
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
 
     let members = xml::find_nodes_by_xpath(&xml_ctx, ".//core:cityObjectMember/*", &root_node)
         .map_err(|e| {
-            ProcessorError::DomainOfDefinitionValidator(format!(
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
                 "Failed to evaluate xpath with {:?}",
                 e
             ))
@@ -484,7 +501,7 @@ fn process_feature(
         &root_node,
     )
     .map_err(|e| {
-        ProcessorError::DomainOfDefinitionValidator(format!(
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
             "Failed to evaluate xpath with {:?}",
             e
         ))
@@ -496,7 +513,7 @@ fn process_feature(
             .unwrap_or_default();
         let xlinks =
             xml::find_nodes_by_xpath(&xml_ctx, ".//*[@xlink:href]", &root_node).map_err(|e| {
-                ProcessorError::DomainOfDefinitionValidator(format!(
+                PlateauProcessorError::DomainOfDefinitionValidator(format!(
                     "Failed to evaluate xpath with {:?}",
                     e
                 ))
@@ -618,12 +635,13 @@ fn process_feature(
     Ok((result, gml_ids))
 }
 
-fn parse_envelope(envelopes: Vec<XmlNode>) -> crate::errors::Result<Envelope> {
-    let envelop_node = envelopes
-        .first()
-        .ok_or(ProcessorError::DomainOfDefinitionValidator(
-            "Failed to get envelop node".to_string(),
-        ))?;
+fn parse_envelope(envelopes: Vec<XmlNode>) -> super::errors::Result<Envelope> {
+    let envelop_node =
+        envelopes
+            .first()
+            .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
+                "Failed to get envelop node".to_string(),
+            ))?;
     let srs_name = envelop_node
         .get_attribute_node("srsName")
         .map(|n| n.get_content())
@@ -632,13 +650,13 @@ fn parse_envelope(envelopes: Vec<XmlNode>) -> crate::errors::Result<Envelope> {
     let lower_corner = children
         .iter()
         .find(|n| xml::get_node_tag(n) == "gml:lowerCorner")
-        .ok_or(ProcessorError::DomainOfDefinitionValidator(
+        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
             "Failed to get lower corner node".to_string(),
         ))?;
     let upper_corner = children
         .iter()
         .find(|n| xml::get_node_tag(n) == "gml:upperCorner")
-        .ok_or(ProcessorError::DomainOfDefinitionValidator(
+        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
             "Failed to get upper corner node".to_string(),
         ))?;
     let mut response = Envelope {
@@ -650,26 +668,26 @@ fn parse_envelope(envelopes: Vec<XmlNode>) -> crate::errors::Result<Envelope> {
         let lower_corder_value = content.split_whitespace().collect::<Vec<_>>();
         response.lower_x = lower_corder_value[0]
             .parse()
-            .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
         response.lower_y = lower_corder_value[1]
             .parse()
-            .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
         response.lower_z = lower_corder_value[2]
             .parse()
-            .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     }
     {
         let content = upper_corner.get_content();
         let upper_corder_value = content.split_whitespace().collect::<Vec<_>>();
         response.upper_x = upper_corder_value[0]
             .parse()
-            .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
         response.upper_y = upper_corder_value[1]
             .parse()
-            .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
         response.upper_z = upper_corder_value[2]
             .parse()
-            .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     }
     Ok(response)
 }
@@ -687,13 +705,13 @@ fn process_member_node(
     all_gml_ids: &mut HashMap<String, Vec<HashMap<String, String>>>,
     gml_id_pattern: &Regex,
     storage_resolver: Arc<StorageResolver>,
-) -> crate::errors::Result<Vec<Feature>> {
+) -> super::errors::Result<Vec<Feature>> {
     let mut base_feature = feature.clone();
     let mut result = Vec::<Feature>::new();
     let Some(gml_id) =
         member.get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
     else {
-        return Err(ProcessorError::DomainOfDefinitionValidator(
+        return Err(PlateauProcessorError::DomainOfDefinitionValidator(
             "Failed to get gml id".to_string(),
         ));
     };
@@ -746,7 +764,7 @@ fn process_member_node(
     // 2. gml:id collection of lower-level elements
     let gml_id_children =
         xml::find_nodes_by_xpath(xml_ctx, ".//*[@gml:id]", member).map_err(|e| {
-            ProcessorError::DomainOfDefinitionValidator(format!(
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
                 "Failed to evaluate xpath with {:?}",
                 e
             ))
@@ -777,7 +795,7 @@ fn process_member_node(
     // L04: code definition area verification
     let code_space_children = xml::find_nodes_by_xpath(xml_ctx, ".//*[@codeSpace]", member)
         .map_err(|e| {
-            ProcessorError::DomainOfDefinitionValidator(format!(
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
                 "Failed to evaluate xpath with {:?}",
                 e
             ))
@@ -785,14 +803,14 @@ fn process_member_node(
     let city_gml_path = feature
         .attributes
         .get(&Attribute::new("cityGmlPath"))
-        .ok_or(ProcessorError::DomainOfDefinitionValidator(
+        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
             "cityGmlPath key empty".to_string(),
         ))?;
     let city_gml_uri = Uri::from_str(&city_gml_path.to_string())
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let base_dir = city_gml_uri
         .dir()
-        .ok_or(ProcessorError::DomainOfDefinitionValidator(
+        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
             "illegal city gml path".to_string(),
         ))?;
     for code_space_member in code_space_children {
@@ -802,7 +820,7 @@ fn process_member_node(
             .unwrap_or_default();
         let code_space_path = base_dir
             .join(Path::new(code_space.as_str()))
-            .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
         let code = codelists.get(&code_space_path.to_string());
         let code_value = code_space_member.get_content();
         let mut valid = false;
@@ -839,14 +857,14 @@ fn process_member_node(
     // L06: Geographical coverage verification
     let mut pos_children =
         xml::find_nodes_by_xpath(xml_ctx, ".//gml:pos", member).map_err(|e| {
-            ProcessorError::DomainOfDefinitionValidator(format!(
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
                 "Failed to evaluate xpath with {:?}",
                 e
             ))
         })?;
     let pos_list_children =
         xml::find_nodes_by_xpath(xml_ctx, ".//gml:posList", member).map_err(|e| {
-            ProcessorError::DomainOfDefinitionValidator(format!(
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
                 "Failed to evaluate xpath with {:?}",
                 e
             ))
@@ -861,10 +879,10 @@ fn process_member_node(
                 .iter()
                 .map(|v| {
                     v.parse().map_err(|e| {
-                        ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+                        PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
                     })
                 })
-                .collect::<crate::errors::Result<Vec<f64>>>()?,
+                .collect::<super::errors::Result<Vec<f64>>>()?,
         );
     }
     if !positions.is_empty() {
@@ -974,7 +992,7 @@ fn process_member_node(
     // T03: Extraction of xlink:hrefs with no referent or whose referent is not a valid geometry object
     let xlink_children =
         xml::find_nodes_by_xpath(xml_ctx, ".//*[@xlink:href]", member).map_err(|e| {
-            ProcessorError::DomainOfDefinitionValidator(format!(
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
                 "Failed to evaluate xpath with {:?}",
                 e
             ))
@@ -991,24 +1009,30 @@ fn process_member_node(
             let gml_path = caps.get(1).map(|m| m.as_str()).unwrap_or_default();
             let gml_id = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
             if !response.external_file_to_gml_ids.contains_key(gml_path) {
-                let gml_path_uri = Uri::from_str(gml_path)
-                    .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
-                let storage = storage_resolver
-                    .resolve(&gml_path_uri)
-                    .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+                let gml_path_uri = Uri::from_str(gml_path).map_err(|e| {
+                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+                })?;
+                let storage = storage_resolver.resolve(&gml_path_uri).map_err(|e| {
+                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+                })?;
                 let xml_content = storage
                     .get_sync(gml_path_uri.path().as_path())
-                    .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
-                let xml_document = xml::parse(xml_content)
-                    .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
-                let xml_ctx = xml::create_context(&xml_document)
-                    .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
-                let root_node = xml::get_root_node(&xml_document)
-                    .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+                    .map_err(|e| {
+                        PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+                    })?;
+                let xml_document = xml::parse(xml_content).map_err(|e| {
+                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+                })?;
+                let xml_ctx = xml::create_context(&xml_document).map_err(|e| {
+                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+                })?;
+                let root_node = xml::get_root_node(&xml_document).map_err(|e| {
+                    PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+                })?;
                 let gml_id_children =
                     xml::find_nodes_by_xpath(&xml_ctx, ".//*[@gml:id]", &root_node).map_err(
                         |e| {
-                            ProcessorError::DomainOfDefinitionValidator(format!(
+                            PlateauProcessorError::DomainOfDefinitionValidator(format!(
                                 "Failed to evaluate xpath with {:?}",
                                 e
                             ))
@@ -1111,7 +1135,7 @@ fn process_member_node(
         xpath.push_str("Geometry']");
 
         let children = xml::find_nodes_by_xpath(xml_ctx, &xpath, member).map_err(|e| {
-            ProcessorError::DomainOfDefinitionValidator(format!(
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
                 "Failed to evaluate xpath with {:?}",
                 e
             ))
@@ -1128,7 +1152,7 @@ fn process_member_node(
                     &child,
                 )
                 .map_err(|e| {
-                    ProcessorError::DomainOfDefinitionValidator(format!(
+                    PlateauProcessorError::DomainOfDefinitionValidator(format!(
                         "Failed to evaluate xpath with {:?}",
                         e
                     ))
@@ -1214,36 +1238,36 @@ fn get_xpath(node: &XmlNode, top: Option<&XmlNode>, tags: Option<Vec<String>>) -
 fn create_codelist(
     storage_resolver: Arc<StorageResolver>,
     first: &Feature,
-) -> crate::errors::Result<HashMap<String, HashMap<String, String>>> {
+) -> super::errors::Result<HashMap<String, HashMap<String, String>>> {
     let dir = first
         .attributes
         .get(&Attribute::new("dirCodelists"))
-        .ok_or(ProcessorError::DomainOfDefinitionValidator(
+        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
             "dirCodelists key empty".to_string(),
         ))?;
     let dir = Uri::from_str(&dir.to_string())
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let storage = storage_resolver
         .resolve(&dir)
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let exist = storage
         .exists_sync(dir.path().as_path())
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     if !exist {
-        return Err(ProcessorError::DomainOfDefinitionValidator(
+        return Err(PlateauProcessorError::DomainOfDefinitionValidator(
             "dirCodelists not found".to_string(),
         ));
     }
     let mut codelist = HashMap::new();
     let lists = storage
         .list_sync(Some(dir.path().as_path()), true)
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     for file in lists
         .iter()
         .filter(|f| f.is_file() && f.path().extension() == Some("xml".as_ref()))
     {
         let result = create_detail_codelist(Arc::clone(&storage), file)
-            .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
         codelist.insert(file.to_string(), result);
     }
     Ok(codelist)
@@ -1252,20 +1276,20 @@ fn create_codelist(
 fn create_detail_codelist(
     storage: Arc<Storage>,
     xml_path: &Uri,
-) -> crate::errors::Result<HashMap<String, String>> {
+) -> super::errors::Result<HashMap<String, String>> {
     let xml_content = storage
         .get_sync(xml_path.path().as_path())
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let xml_content = String::from_utf8(xml_content.to_vec())
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let xml_document = xml::parse(xml_content)
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let ctx = xml::create_context(&xml_document)
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let root = xml::get_root_node(&xml_document)
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let definitions = xml::find_nodes_by_xpath(&ctx, ".//gml:Definition", &root).map_err(|e| {
-        ProcessorError::DomainOfDefinitionValidator(format!(
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
             "Failed to evaluate xpath with {:?}",
             e
         ))

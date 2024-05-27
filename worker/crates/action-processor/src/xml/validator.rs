@@ -19,10 +19,11 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::{ProcessorError, Result};
+use super::errors::{Result, XmlProcessorError};
 
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
@@ -30,8 +31,23 @@ static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 #[derive(Debug, Clone, Default)]
 pub struct XmlValidatorFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for XmlValidatorFactory {
+    fn name(&self) -> &str {
+        "XMLValidator"
+    }
+
+    fn description(&self) -> &str {
+        "Validates XML content"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(XmlValidatorParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["PLATEAU"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -40,7 +56,7 @@ impl ProcessorFactory for XmlValidatorFactory {
         vec![SUCCESS_PORT.clone(), FAILED_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -49,13 +65,13 @@ impl ProcessorFactory for XmlValidatorFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: XmlValidatorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::XmlValidatorFactory(format!("Failed to serialize with: {}", e))
+                XmlProcessorError::ValidatorFactory(format!("Failed to serialize with: {}", e))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::XmlValidatorFactory(format!("Failed to deserialize with: {}", e))
+                XmlProcessorError::ValidatorFactory(format!("Failed to deserialize with: {}", e))
             })?
         } else {
-            return Err(ProcessorError::XmlValidatorFactory(
+            return Err(XmlProcessorError::ValidatorFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -69,14 +85,14 @@ impl ProcessorFactory for XmlValidatorFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum XmlInputType {
     File,
     Text,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum ValidationType {
     Syntax,
@@ -84,7 +100,7 @@ enum ValidationType {
     SyntaxAndSchema,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct XmlValidatorParam {
     attribute: Attribute,
@@ -215,12 +231,12 @@ impl XmlValidator {
                 let uri = feature
                     .attributes
                     .get(&self.params.attribute)
-                    .ok_or(ProcessorError::XmlValidator("Required Uri".to_string()))?;
+                    .ok_or(XmlProcessorError::Validator("Required Uri".to_string()))?;
                 let uri = match uri {
                     AttributeValue::String(s) => Uri::from_str(s)
-                        .map_err(|_| ProcessorError::XmlValidator("Invalid URI".to_string()))?,
+                        .map_err(|_| XmlProcessorError::Validator("Invalid URI".to_string()))?,
                     _ => {
-                        return Err(ProcessorError::XmlValidator(
+                        return Err(XmlProcessorError::Validator(
                             "Invalid Attribute".to_string(),
                         ))
                     }
@@ -228,22 +244,22 @@ impl XmlValidator {
                 let storage = ctx
                     .storage_resolver
                     .resolve(&uri)
-                    .map_err(|e| ProcessorError::XmlValidator(format!("{:?}", e)))?;
+                    .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
                 let content = storage
                     .get_sync(uri.path().as_path())
-                    .map_err(|e| ProcessorError::XmlValidator(format!("{:?}", e)))?;
+                    .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
                 String::from_utf8(content.to_vec())
-                    .map_err(|_| ProcessorError::XmlValidator("Invalid UTF-8".to_string()))
+                    .map_err(|_| XmlProcessorError::Validator("Invalid UTF-8".to_string()))
             }
             XmlInputType::Text => {
                 let content = feature
                     .attributes
                     .get(&self.params.attribute)
-                    .ok_or(ProcessorError::XmlValidator("No Attribute".to_string()))?;
+                    .ok_or(XmlProcessorError::Validator("No Attribute".to_string()))?;
                 let content = match content {
                     AttributeValue::String(s) => s,
                     _ => {
-                        return Err(ProcessorError::XmlValidator(
+                        return Err(XmlProcessorError::Validator(
                             "Invalid Attribute".to_string(),
                         ))
                     }
@@ -286,7 +302,7 @@ impl XmlValidator {
         document: &XmlDocument,
     ) -> Result<bool> {
         let schema_locations = xml::parse_schema_locations(document)
-            .map_err(|e| ProcessorError::XmlValidator(format!("{:?}", e)))?;
+            .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
         let target_locations = schema_locations
             .difference(&HashSet::from_iter(
                 self.schema_store.read().keys().cloned(),

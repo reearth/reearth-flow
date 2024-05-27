@@ -1,6 +1,5 @@
 pub mod dag_executor;
 pub mod execution_dag;
-pub mod name;
 pub mod node;
 pub mod processor_node;
 pub mod receiver_loop;

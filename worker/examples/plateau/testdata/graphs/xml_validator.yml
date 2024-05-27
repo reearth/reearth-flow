@@ -63,32 +63,32 @@ edges:
   - id: 433e7166-48de-4479-9039-63acdab6d3fa
     from: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
     to: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
-    fromPort: default
+    fromPort: success
     toPort: default
   - id: 3e8f6cb7-882b-4b81-9f70-eec8374221d0
     from: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
     to: 9293ff92-7cde-422d-a157-011d54b23cf0
-    fromPort: rejected
+    fromPort: failed
     toPort: default
   - id: 3e8f6cb7-882b-4b81-9f70-eec8374221d0
     from: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
     to: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
-    fromPort: rejected
+    fromPort: failed
     toPort: not_well_formed
   - id: 7a133f42-08d8-4e9c-8f88-d8ee9f2d3c1d
     from: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
     to: 14225ce7-1d9f-44bc-8b41-3aa06d4275cd
-    fromPort: default
+    fromPort: success
     toPort: default
   - id: aeba356e-a59a-4b4d-8c63-50da73b7664c
     from: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
     to: 6c235d0b-26fb-47dd-a3df-709fa961855c
-    fromPort: rejected
+    fromPort: failed
     toPort: default
   - id: 300b2fa9-d5e2-4145-9703-49189b4fe849
     from: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
     to: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
-    fromPort: rejected
+    fromPort: failed
     toPort: invalid
   - id: 8ba8930c-52b3-4074-b7f8-199b74405cbe
     from: 14225ce7-1d9f-44bc-8b41-3aa06d4275cd

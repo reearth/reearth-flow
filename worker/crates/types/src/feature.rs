@@ -206,7 +206,7 @@ impl Feature {
         Self {
             id: self.id,
             attributes,
-            geometry: None,
+            geometry: self.geometry.clone(),
         }
     }
 
@@ -214,7 +214,7 @@ impl Feature {
         Self {
             id: self.id,
             attributes,
-            geometry: None,
+            geometry: self.geometry,
         }
     }
 

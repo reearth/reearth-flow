@@ -1,15 +1,20 @@
+use std::collections::HashMap;
+
 use nusamai_projection::crs::*;
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
+    event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
-    node::DEFAULT_PORT,
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::Geometry;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use crate::universal::UniversalProcessor;
+use super::errors::GeometryProcessorError;
 
 static _SUPPORT_EPSG_CODE: Lazy<Vec<EpsgCode>> = Lazy::new(|| {
     vec![
@@ -91,14 +96,70 @@ static _SUPPORT_EPSG_CODE: Lazy<Vec<EpsgCode>> = Lazy::new(|| {
     ]
 });
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone, Default)]
+pub struct CoordinateSystemSetterFactory;
+
+impl ProcessorFactory for CoordinateSystemSetterFactory {
+    fn name(&self) -> &str {
+        "CoordinateSystemSetter"
+    }
+
+    fn description(&self) -> &str {
+        "Sets the coordinate system of a feature"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(CoordinateSystemSetter))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Geometry"]
+    }
+
+    fn get_input_ports(&self) -> Vec<Port> {
+        vec![DEFAULT_PORT.clone()]
+    }
+
+    fn get_output_ports(&self) -> Vec<Port> {
+        vec![DEFAULT_PORT.clone()]
+    }
+    fn build(
+        &self,
+        _ctx: NodeContext,
+        _event_hub: EventHub,
+        _action: String,
+        with: Option<HashMap<String, Value>>,
+    ) -> Result<Box<dyn Processor>, BoxedError> {
+        let processor: CoordinateSystemSetter = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                GeometryProcessorError::CoordinateSystemSetterFactory(format!(
+                    "Failed to serialize with: {}",
+                    e
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                GeometryProcessorError::CoordinateSystemSetterFactory(format!(
+                    "Failed to deserialize with: {}",
+                    e
+                ))
+            })?
+        } else {
+            return Err(GeometryProcessorError::CoordinateSystemSetterFactory(
+                "Missing required parameter `with`".to_string(),
+            )
+            .into());
+        };
+        Ok(Box::new(processor))
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CoordinateSystemSetter {
     epsg_code: EpsgCode,
 }
 
-#[typetag::serde(name = "CoordinateSystemSetter")]
-impl UniversalProcessor for CoordinateSystemSetter {
+impl Processor for CoordinateSystemSetter {
     fn initialize(&mut self, _ctx: NodeContext) {}
     fn process(
         &mut self,

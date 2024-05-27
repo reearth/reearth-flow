@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    fmt::Debug,
     mem::swap,
     sync::Arc,
     time::{Duration, Instant},
@@ -7,7 +8,9 @@ use std::{
 };
 
 use crossbeam::channel::{Receiver, Sender, TryRecvError};
+use futures::Future;
 use petgraph::graph::NodeIndex;
+use tokio::runtime::Runtime;
 
 use crate::{
     builder_dag::NodeKind,
@@ -19,7 +22,7 @@ use crate::{
 };
 
 use super::execution_dag::ExecutionDag;
-use super::{name::Name, receiver_loop::ReceiverLoop};
+use super::receiver_loop::ReceiverLoop;
 
 const DEFAULT_FLUSH_INTERVAL: Duration = Duration::from_millis(20);
 
@@ -78,7 +81,7 @@ impl FlushScheduler {
 
 /// A sink in the execution DAG.
 #[derive(Debug)]
-pub struct SinkNode {
+pub struct SinkNode<F> {
     /// Node handle in description DAG.
     node_handle: NodeHandle,
     /// Input node handles.
@@ -92,11 +95,24 @@ pub struct SinkNode {
     flush_scheduler_sender: Sender<Duration>,
     should_flush_receiver: Receiver<()>,
     event_sender: tokio::sync::broadcast::Sender<Event>,
-    pub error_manager: Arc<ErrorManager>,
+    #[allow(dead_code)]
+    error_manager: Arc<ErrorManager>,
+    /// The shutdown future.
+    #[allow(dead_code)]
+    shutdown: F,
+    /// The runtime to run the source in.
+    #[allow(dead_code)]
+    runtime: Arc<Runtime>,
 }
 
-impl SinkNode {
-    pub fn new(ctx: NodeContext, dag: &mut ExecutionDag, node_index: NodeIndex) -> Self {
+impl<F: Future + Unpin + Debug> SinkNode<F> {
+    pub fn new(
+        ctx: NodeContext,
+        dag: &mut ExecutionDag,
+        node_index: NodeIndex,
+        shutdown: F,
+        runtime: Arc<Runtime>,
+    ) -> Self {
         let node = dag.node_weight_mut(node_index);
         let Some(kind) = node.kind.take() else {
             panic!("Must pass in a node")
@@ -133,6 +149,8 @@ impl SinkNode {
             max_flush_interval,
             ops_since_flush: 0,
             error_manager: dag.error_manager().clone(),
+            shutdown,
+            runtime,
         }
     }
 
@@ -152,12 +170,6 @@ impl SinkNode {
             node: self.node_handle.clone(),
         });
         Ok(())
-    }
-}
-
-impl Name for SinkNode {
-    fn name(&self) -> Cow<str> {
-        Cow::Owned(self.node_handle.to_string())
     }
 }
 
@@ -208,7 +220,7 @@ impl<'a> Select<'a> {
     }
 }
 
-impl ReceiverLoop for SinkNode {
+impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
     fn receivers(&mut self) -> Vec<Receiver<ExecutorOperation>> {
         let mut result = vec![];
         swap(&mut self.receivers, &mut result);

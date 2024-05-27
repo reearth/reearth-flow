@@ -173,8 +173,8 @@ impl ExecutionDag {
             match senders.entry(edge.target()) {
                 Entry::Vacant(entry) => {
                     let port_mapping = [(
-                        edge.weight().output_port.clone(),
-                        vec![edge.weight().input_port.clone()],
+                        edge.weight().input_port.clone(),
+                        vec![edge.weight().output_port.clone()],
                     )]
                     .into_iter()
                     .collect();
@@ -186,8 +186,8 @@ impl ExecutionDag {
                 Entry::Occupied(mut entry) => {
                     insert_vec_element(
                         &mut entry.get_mut().port_mapping,
-                        edge.weight().output_port.clone(),
                         edge.weight().input_port.clone(),
+                        edge.weight().output_port.clone(),
                     );
                 }
             }

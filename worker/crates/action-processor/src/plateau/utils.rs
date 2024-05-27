@@ -5,7 +5,7 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
 use reearth_flow_storage::resolve::StorageResolver;
 
-use crate::errors::ProcessorError;
+use super::errors::PlateauProcessorError;
 
 use super::types::{Schema, SchemaFeature};
 
@@ -73,39 +73,41 @@ static COMMON_ITEMS: Lazy<Vec<SchemaFeature>> = Lazy::new(|| {
 pub(super) fn create_codelist_map(
     storage_resolver: Arc<StorageResolver>,
     dir: &Uri,
-) -> crate::errors::Result<HashMap<String, HashMap<String, String>>> {
+) -> super::errors::Result<HashMap<String, HashMap<String, String>>> {
     let storage = storage_resolver
         .resolve(dir)
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let mut codelist_map: HashMap<String, HashMap<String, String>> = HashMap::new();
     if storage
         .exists_sync(dir.path().as_path())
-        .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?
     {
         for f in storage
             .list_sync(Some(dir.path().as_path()), true)
-            .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?
         {
             if !f.is_file() || f.extension().is_none() || f.extension().unwrap() != "xml" {
                 continue;
             }
-            let bytes = storage
-                .get_sync(f.path().as_path())
-                .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
-            let text = String::from_utf8(bytes.to_vec())
-                .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
-            let document = xml::parse(text)
-                .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            let bytes = storage.get_sync(f.path().as_path()).map_err(|e| {
+                PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+            })?;
+            let text = String::from_utf8(bytes.to_vec()).map_err(|e| {
+                PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+            })?;
+            let document = xml::parse(text).map_err(|e| {
+                PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+            })?;
             let names = xml::evaluate(
                 &document,
                 "/gml:Dictionary/gml:dictionaryEntry/gml:Definition/gml:name/text()",
             )
-            .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
             let descriptions = xml::evaluate(
                 &document,
                 "/gml:Dictionary/gml:dictionaryEntry/gml:Definition/gml:description/text()",
             )
-            .map_err(|e| ProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
             let codelist = xml::collect_text_values(&names)
                 .into_iter()
                 .zip(xml::collect_text_values(&descriptions))
@@ -122,9 +124,9 @@ pub(super) fn create_codelist_map(
 pub(super) fn generate_xpath_to_properties(
     schema_json: String,
     dm_geom_to_xml: bool,
-) -> crate::errors::Result<HashMap<String, HashMap<String, SchemaFeature>>> {
+) -> super::errors::Result<HashMap<String, HashMap<String, SchemaFeature>>> {
     let schema: Schema = serde_json::from_str(&schema_json).map_err(|e| {
-        ProcessorError::DomainOfDefinitionValidator(format!(
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
             "Cannot parse schema with error = {:?}",
             e
         ))
@@ -181,7 +183,7 @@ fn create_xpath(
     key: String,
     xpath: String,
     item: &SchemaFeature,
-) -> crate::errors::Result<Vec<(String, SchemaFeature)>> {
+) -> super::errors::Result<Vec<(String, SchemaFeature)>> {
     let xpath = format!("{}/{}", xpath, item.name);
     let mut xpath_to_properties = Vec::<(String, SchemaFeature)>::new();
     match &item.children {

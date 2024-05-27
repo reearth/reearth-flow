@@ -8,16 +8,32 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
+use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct AttributeDuplicateFilterFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for AttributeDuplicateFilterFactory {
+    fn name(&self) -> &str {
+        "AttributeDuplicateFilter"
+    }
+
+    fn description(&self) -> &str {
+        "Filters features by duplicate attributes"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(AttributeDuplicateFilterParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Attribute"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -26,7 +42,7 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
         vec![DEFAULT_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -35,19 +51,19 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: AttributeDuplicateFilterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::AttributeDuplicateFilterFactory(format!(
+                AttributeProcessorError::DuplicateFilterFactory(format!(
                     "Failed to serialize with: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::AttributeDuplicateFilterFactory(format!(
+                AttributeProcessorError::DuplicateFilterFactory(format!(
                     "Failed to deserialize with: {}",
                     e
                 ))
             })?
         } else {
-            return Err(ProcessorError::AttributeDuplicateFilterFactory(
+            return Err(AttributeProcessorError::DuplicateFilterFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -67,7 +83,7 @@ pub struct AttributeDuplicateFilter {
     buffer: HashMap<AttributeValue, Feature>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeDuplicateFilterParam {
     filter_by: Vec<Attribute>,

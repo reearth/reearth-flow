@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .env
+flow-config.json
 
 # Editor directories and files
 .vscode/*

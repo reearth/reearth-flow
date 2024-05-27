@@ -12,9 +12,8 @@ use reearth_flow_types::{Attribute, AttributeValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
-
 use super::{
+    errors::PlateauProcessorError,
     types::SchemaFeature,
     utils::{create_codelist_map, generate_xpath_to_properties},
 };
@@ -31,8 +30,23 @@ struct Schema {
 #[derive(Debug, Clone, Default)]
 pub struct DictionariesInitiatorFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for DictionariesInitiatorFactory {
+    fn name(&self) -> &str {
+        "PLATEAU.DictionariesInitiator"
+    }
+
+    fn description(&self) -> &str {
+        "Initializes dictionaries for PLATEAU"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        None
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["PLATEAU"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -41,7 +55,7 @@ impl ProcessorFactory for DictionariesInitiatorFactory {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -50,36 +64,35 @@ impl ProcessorFactory for DictionariesInitiatorFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: DictionariesInitiatorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::DictionariesInitiatorFactory(format!(
+                PlateauProcessorError::DictionariesInitiatorFactory(format!(
                     "Failed to serialize with: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::DictionariesInitiatorFactory(format!(
+                PlateauProcessorError::DictionariesInitiatorFactory(format!(
                     "Failed to deserialize with: {}",
                     e
                 ))
             })?
         } else {
-            return Err(ProcessorError::DictionariesInitiatorFactory(
+            return Err(PlateauProcessorError::DictionariesInitiatorFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
         };
 
-        let xpath_to_properties =
-            {
-                let schema_json = params.schema_json.clone().ok_or(
-                    ProcessorError::DictionariesInitiatorFactory(
-                        "Missing required parameter `with`".to_string(),
-                    ),
-                )?;
-                let dm_geom_to_xml = params
-                    .extract_dm_geometry_as_xml_fragment
-                    .unwrap_or_default();
-                generate_xpath_to_properties(schema_json, dm_geom_to_xml)?
-            };
+        let xpath_to_properties = {
+            let schema_json = params.schema_json.clone().ok_or(
+                PlateauProcessorError::DictionariesInitiatorFactory(
+                    "Missing required parameter `with`".to_string(),
+                ),
+            )?;
+            let dm_geom_to_xml = params
+                .extract_dm_geometry_as_xml_fragment
+                .unwrap_or_default();
+            generate_xpath_to_properties(schema_json, dm_geom_to_xml)?
+        };
         let except_feature_types = params.except_feature_types.clone().unwrap_or_default();
         let process = DictionariesInitiator {
             params,
@@ -123,7 +136,7 @@ impl Processor for DictionariesInitiator {
         let dir_codelists = match feature.get(&Attribute::new("dirCodelists")) {
             Some(AttributeValue::String(dir)) => dir,
             v => {
-                return Err(ProcessorError::DictionariesInitiator(format!(
+                return Err(PlateauProcessorError::DictionariesInitiator(format!(
                     "No dirCodelists value with {:?}",
                     v
                 ))
@@ -132,7 +145,7 @@ impl Processor for DictionariesInitiator {
         };
         if !self.codelists_map.contains_key(dir_codelists) {
             let dir = Uri::from_str(dir_codelists).map_err(|e| {
-                ProcessorError::DictionariesInitiator(format!(
+                PlateauProcessorError::DictionariesInitiator(format!(
                     "Cannot parse uri with error = {:?}",
                     e
                 ))

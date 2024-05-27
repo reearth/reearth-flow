@@ -131,6 +131,13 @@ impl BuilderDag {
                 let sources = std::mem::take(&mut affecting_sources[node_index]);
                 let source = sources.into_iter().next().expect("sink must have a source");
                 let node_index = NodeIndex::new(node_index);
+                if sink.name() != node.node.action() {
+                    return Err(ExecutionError::ActionNameMismatch(
+                        node.handle.id.to_string(),
+                        sink.name().to_string(),
+                        node.node.action().to_string(),
+                    ));
+                }
                 let mut sink = sink
                     .build(
                         ctx.clone(),
@@ -138,7 +145,6 @@ impl BuilderDag {
                         node.node.action().to_string(),
                         node.with.clone(),
                     )
-                    .await
                     .map_err(ExecutionError::Factory)?;
 
                 let state = sink.get_source_state().map_err(ExecutionError::Sink)?;
@@ -179,6 +185,13 @@ impl BuilderDag {
             };
             let node = match kind {
                 DagNodeKind::Source(source) => {
+                    if source.name() != node.node.action() {
+                        return Err(ExecutionError::ActionNameMismatch(
+                            node.handle.id.to_string(),
+                            source.name().to_string(),
+                            node.node.action().to_string(),
+                        ));
+                    }
                     let source = source
                         .build(
                             ctx.clone(),
@@ -210,6 +223,13 @@ impl BuilderDag {
                     }
                 }
                 DagNodeKind::Processor(processor) => {
+                    if processor.name() != node.node.action() {
+                        return Err(ExecutionError::ActionNameMismatch(
+                            node.handle.id.to_string(),
+                            processor.name().to_string(),
+                            node.node.action().to_string(),
+                        ));
+                    }
                     let processor = processor
                         .build(
                             ctx.clone(),
@@ -217,7 +237,6 @@ impl BuilderDag {
                             node.node.action().to_string(),
                             node.with.clone(),
                         )
-                        .await
                         .map_err(ExecutionError::Factory)?;
                     NodeType {
                         handle: node.handle,

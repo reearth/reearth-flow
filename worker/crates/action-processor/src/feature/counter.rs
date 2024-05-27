@@ -11,11 +11,12 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::AttributeValue;
+use reearth_flow_types::{Attribute, AttributeValue};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::ProcessorError;
+use super::errors::FeatureProcessorError;
 
 #[derive(Debug)]
 struct AtomicCounterMap {
@@ -58,8 +59,23 @@ impl AtomicCounterMap {
 #[derive(Debug, Clone, Default)]
 pub struct FeatureCounterFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for FeatureCounterFactory {
+    fn name(&self) -> &str {
+        "FeatureCounter"
+    }
+
+    fn description(&self) -> &str {
+        "Counts features"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(FeatureCounterParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Feature"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -68,7 +84,7 @@ impl ProcessorFactory for FeatureCounterFactory {
         vec![REJECTED_PORT.clone()]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -77,13 +93,13 @@ impl ProcessorFactory for FeatureCounterFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: FeatureCounterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                ProcessorError::FeatureCounterFactory(format!("Failed to serialize with: {}", e))
+                FeatureProcessorError::CounterFactory(format!("Failed to serialize with: {}", e))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                ProcessorError::FeatureCounterFactory(format!("Failed to deserialize with: {}", e))
+                FeatureProcessorError::CounterFactory(format!("Failed to deserialize with: {}", e))
             })?
         } else {
-            return Err(ProcessorError::FeatureCounterFactory(
+            return Err(FeatureProcessorError::CounterFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -103,11 +119,11 @@ pub struct FeatureCounter {
     params: FeatureCounterParam,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCounterParam {
     count_start: i64,
-    group_by: Option<Vec<String>>,
+    group_by: Option<Vec<Attribute>>,
     output_attribute: String,
 }
 
@@ -132,7 +148,7 @@ impl Processor for FeatureCounter {
             let group_by = self.params.group_by.as_ref().unwrap();
             let key = group_by
                 .iter()
-                .map(|k| feature.get(k).unwrap().to_string())
+                .map(|k| feature.attributes.get(k).unwrap().to_string())
                 .collect::<Vec<_>>()
                 .join(",");
             let count = self.counter.increment(&key);

@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 use reearth_flow_types::Feature;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::Sender;
@@ -34,7 +35,8 @@ pub(super) type GraphId = uuid::Uuid;
         Serialize,
         Deserialize,
         Hash,
-        Display
+        Display,
+        JsonSchema
     )
 )]
 pub struct Port(String);
@@ -154,6 +156,16 @@ impl Clone for Box<dyn Sink> {
 }
 
 pub trait SourceFactory: Send + Sync + Debug + SourceFactoryClone {
+    fn name(&self) -> &str;
+    fn description(&self) -> &str {
+        ""
+    }
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema>;
+
+    fn categories(&self) -> &[&'static str] {
+        &[]
+    }
+
     fn get_output_ports(&self) -> Vec<Port>;
     fn build(
         &self,
@@ -206,11 +218,20 @@ pub enum SourceState {
 
 pub type SourceStates = HashMap<NodeHandle, SourceState>;
 
-#[async_trait::async_trait]
 pub trait ProcessorFactory: Send + Sync + Debug + ProcessorFactoryClone {
+    fn name(&self) -> &str;
+    fn description(&self) -> &str {
+        ""
+    }
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema>;
+
+    fn categories(&self) -> &[&'static str] {
+        &[]
+    }
+
     fn get_input_ports(&self) -> Vec<Port>;
     fn get_output_ports(&self) -> Vec<Port>;
-    async fn build(
+    fn build(
         &self,
         ctx: NodeContext,
         event_hub: EventHub,
@@ -257,11 +278,19 @@ pub trait Processor: Send + Sync + Debug + ProcessorClone {
     fn name(&self) -> &str;
 }
 
-#[async_trait::async_trait]
 pub trait SinkFactory: Send + Sync + Debug + SinkFactoryClone {
+    fn name(&self) -> &str;
+    fn description(&self) -> &str {
+        ""
+    }
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema>;
+
+    fn categories(&self) -> &[&'static str] {
+        &[]
+    }
     fn get_input_ports(&self) -> Vec<Port>;
     fn prepare(&self) -> Result<(), BoxedError>;
-    async fn build(
+    fn build(
         &self,
         ctx: NodeContext,
         event_hub: EventHub,
@@ -322,8 +351,19 @@ pub trait Sink: Send + Debug + SinkClone {
 #[derive(Debug, Clone, Default)]
 pub struct RouterFactory;
 
-#[async_trait::async_trait]
 impl ProcessorFactory for RouterFactory {
+    fn name(&self) -> &str {
+        "Router"
+    }
+
+    fn description(&self) -> &str {
+        "Action for last port forwarding for sub-workflows."
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(Router))
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
@@ -332,7 +372,7 @@ impl ProcessorFactory for RouterFactory {
         vec![]
     }
 
-    async fn build(
+    fn build(
         &self,
         _ctx: NodeContext,
         _event_hub: EventHub,
@@ -349,7 +389,7 @@ impl ProcessorFactory for RouterFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Router {
     routing_port: String,

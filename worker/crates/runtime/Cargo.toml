@@ -18,13 +18,12 @@ reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
-async-recursion.workspace = true
 async-stream = "0.3.5"
 async-trait.workspace = true
-chrono = {version = "0.4.38", features = ["serde"]}
-crossbeam = "0.8.4"
-futures = "0.3.30"
-futures-util = "0.3.30"
+chrono.workspace = true
+crossbeam.workspace = true
+futures.workspace = true
+futures-util.workspace = true
 nutype.workspace = true
 once_cell.workspace = true
 opentelemetry.workspace = true
@@ -33,6 +32,7 @@ petgraph.workspace = true
 rayon.workspace = true
 regex.workspace = true
 rmp-serde = "1.3.0"
+schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
