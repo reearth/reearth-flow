@@ -8,6 +8,8 @@ import { useT } from "@flow/providers";
 import { useDialogType } from "@flow/stores";
 import { Workflow } from "@flow/types";
 
+import { UserNavigation } from "../Dashboard/components/Nav/components";
+
 // import HomeMenu from "./components/HomeMenu";
 
 type Tab = "navigator" | "assets";
@@ -65,8 +67,8 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
           className="flex-shrink-0 w-full px-1 text-zinc-300 rounded truncate"
           // initialSlelectedItemId="1"
           onSelectChange={item => setContent(item?.name ?? "")}
-          // folderIcon={Folder}
-          // itemIcon={Database}
+        // folderIcon={Folder}
+        // itemIcon={Database}
         />
       ),
     },
@@ -127,7 +129,7 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
           {tabContents?.find(tc => tc.id === selectedTab)?.component}
         </div>
       </div>
-      <aside className="relative hidden h-full w-12 z-10 flex-col border-r border-zinc-700 bg-zinc-800 sm:flex">
+      <aside className="relative hidden h-full w-12 z-10 flex-col border-r border-zinc-700 bg-zinc-900 sm:flex">
         <nav className="flex flex-col items-center gap-4 px-2 sm:py-4">
           <Link
             to={`/workspace/${workspaceId}`}
@@ -150,6 +152,11 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
           <Search
             className="stroke-1 text-zinc-400 cursor-pointer hover:text-zinc-300"
             onClick={() => setDialogType("canvas-search")}
+          />
+          <UserNavigation
+            className="w-full flex justify-center"
+            iconOnly
+            dropdownPosition="right"
           />
           <Link
             className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:text-zinc-300 md:h-8 md:w-8"

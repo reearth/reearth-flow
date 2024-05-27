@@ -44,7 +44,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
       onMouseLeave={() => setHovered(false)}
       onDoubleClick={handleDoubleClick}>
       <div
-        className={`flex relative w-[150px] z-[1001] rounded-sm bg-zinc-800 ${singular ? "h-[30px]" : "h-[25px]"}`}
+        className={`flex relative w-[150px] z-[1001] rounded-sm bg-zinc-900 ${singular ? "h-[30px]" : "h-[25px]"}`}
         style={{ zIndex: 1001 }}>
         <div
           className={`flex justify-center w-4 rounded-l-sm border-t border-l border-b ${selected ? "border-zinc-400" : "border-zinc-700"} ${className}`}>
@@ -68,7 +68,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
         outputs={data.outputs}
         nodeActionArea={
           hovered && (
-            <div className="absolute flex items-center bg-zinc-800 rounded-b right-[50%] translate-x-1/2">
+            <div className="absolute flex items-center bg-zinc-900 rounded-b right-[50%] translate-x-1/2">
               <IconButton size="icon" icon={<DoubleArrowRightIcon className="" />} />
               <IconButton size="icon" icon={<PlayIcon className="" />} />
               <IconButton size="icon" icon={<GearIcon className="" />} />

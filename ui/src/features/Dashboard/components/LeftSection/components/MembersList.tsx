@@ -4,13 +4,13 @@ import { useCurrentWorkspace } from "@flow/stores";
 
 type Props = {};
 
-const WorkspaceMembers: React.FC<Props> = () => {
+const MembersList: React.FC<Props> = () => {
   const [currentWorkspace] = useCurrentWorkspace();
 
   return (
     currentWorkspace?.members && (
-      <div className="flex flex-col flex-1 gap-4 overflow-auto max-h-[80%]">
-        <div className="flex flex-col gap-2 overflow-auto p-2 rounded">
+      <div className="flex flex-col flex-1 gap-4 overflow-auto px-4 max-h-[80%]">
+        <div className="flex flex-col gap-2 overflow-auto rounded">
           {currentWorkspace.members.map(member => (
             <div
               className="flex justify-between items-center bg-zinc-700/30 border border-zinc-600/75 text-zinc-300 rounded py-1 px-2"
@@ -40,4 +40,4 @@ const WorkspaceMembers: React.FC<Props> = () => {
   );
 };
 
-export { WorkspaceMembers };
+export { MembersList };
