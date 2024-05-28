@@ -17,7 +17,9 @@
     "test": "vitest",
     "lint": "eslint . --ext ts,tsx",
     "eslint-debug": "eslint --debug",
-    "format": "eslint . --ext ts,tsx --fix"
+    "format": "eslint . --ext ts,tsx --fix",
+    "gql": "graphql-codegen",
+    "gql:watch": "graphql-codegen --watch"
   },
   "engines": {
     "node": ">=20.13.0"
@@ -50,6 +52,7 @@
     "clsx": "2.1.1",
     "cmdk": "1.0.0",
     "embla-carousel-react": "8.0.4",
+    "graphql": "16.8.1",
     "i18next": "23.11.3",
     "i18next-browser-languagedetector": "7.2.1",
     "jotai": "2.8.0",
@@ -67,6 +70,10 @@
     "use-resize-observer": "9.1.0"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "5.0.2",
+    "@graphql-codegen/client-preset": "4.2.6",
+    "@graphql-codegen/fragment-matcher": "5.0.2",
+    "@parcel/watcher": "2.4.1",
     "@storybook/addon-essentials": "8.0.10",
     "@storybook/addon-interactions": "8.0.10",
     "@storybook/addon-links": "8.0.10",
@@ -97,6 +104,7 @@
     "read-env": "2.0.0",
     "storybook": "8.0.10",
     "tailwindcss": "3.4.3",
+    "ts-node": "10.9.2",
     "typescript": "5.4.5",
     "vite": "5.1.4",
     "vite-plugin-cesium": "1.2.22",
