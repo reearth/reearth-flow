@@ -45,6 +45,14 @@ where
 {
     collection.par_iter().map(predict).collect::<Vec<_>>()
 }
+pub fn par_flat_map<T, F, PI>(collection: &[T], predict: F) -> Vec<PI::Item>
+where
+    T: Send + Sync + Clone,
+    F: Fn(&T) -> PI + Send + Sync,
+    PI: IntoParallelIterator,
+{
+    collection.par_iter().flat_map(predict).collect::<Vec<_>>()
+}
 
 pub async fn join_parallel<T: Send + 'static>(
     futs: impl IntoIterator<Item = impl Future<Output = T> + Send + 'static>,

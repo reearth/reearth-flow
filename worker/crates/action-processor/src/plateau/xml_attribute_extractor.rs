@@ -3,7 +3,7 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::Uri,
-    xml::{self, XmlDocument, XmlNode},
+    xml::{self, XmlDocument, XmlRoNode},
 };
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -474,7 +474,7 @@ impl Processor for XmlAttributeExtractor {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
-        4
+        20
     }
 
     fn process(
@@ -598,7 +598,7 @@ impl Processor for XmlAttributeExtractor {
                         e
                     ))
                 })?;
-                let all_node = all_node.get_nodes_as_vec();
+                let all_node = all_node.get_readonly_nodes_as_vec();
                 let root = all_node
                     .first()
                     .ok_or(PlateauProcessorError::XmlAttributeExtractor(
@@ -1051,7 +1051,7 @@ fn walk_node(
     codelists: &HashMap<String, HashMap<String, String>>,
     schema_def: &SchemaDef,
     document: &XmlDocument,
-    parent: &XmlNode,
+    parent: &XmlRoNode,
     xpath: String,
 ) -> super::errors::Result<(Attributes, LodCount)> {
     let ctx = xml::create_context(document).map_err(|e| {
@@ -1060,7 +1060,7 @@ fn walk_node(
             e
         ))
     })?;
-    let nodes = xml::find_nodes_by_xpath(&ctx, "./*", parent).map_err(|e| {
+    let nodes = xml::find_readonly_nodes_by_xpath(&ctx, "./*", parent).map_err(|e| {
         PlateauProcessorError::XmlAttributeExtractor(format!(
             "Cannot evaluate xml with error = {:?}",
             e
@@ -1070,7 +1070,7 @@ fn walk_node(
     let mut result = Attributes::new();
 
     for node in nodes {
-        let tag = xml::get_node_tag(&node);
+        let tag = xml::get_readonly_node_tag(&node);
         if let Some(cap) = LOD_PATTERN.captures(tag.as_str()) {
             let lod = cap.get(1).map(|lod| lod.as_str());
             if let Some(v) = lod {
@@ -1128,8 +1128,7 @@ fn walk_node(
         }
         match flag.as_str() {
             "fragment" => {
-                let mut node = node.clone();
-                let fragment = xml::node_to_xml_string(document, &mut node).map_err(|e| {
+                let fragment = xml::readonly_node_to_xml_string(document, &node).map_err(|e| {
                     PlateauProcessorError::XmlAttributeExtractor(format!(
                         "Cannot convert node to xml with error = {:?}",
                         e
@@ -1269,9 +1268,9 @@ fn walk_node(
 
 fn walk_generic_node(
     document: &XmlDocument,
-    node: &XmlNode,
+    node: &XmlRoNode,
 ) -> super::errors::Result<Vec<GenericAttribute>> {
-    let tag = xml::get_node_tag(node);
+    let tag = xml::get_readonly_node_tag(node);
     let typ = match GEN_ATTR_TYPES.get(tag.as_str()) {
         Some(typ) => typ,
         None => "unknown",
@@ -1284,7 +1283,7 @@ fn walk_generic_node(
                 e
             ))
         })?;
-        let children = xml::find_nodes_by_xpath(&ctx, "./*", node).map_err(|e| {
+        let children = xml::find_readonly_nodes_by_xpath(&ctx, "./*", node).map_err(|e| {
             PlateauProcessorError::XmlAttributeExtractor(format!(
                 "Cannot evaluate xml with error = {:?}",
                 e
@@ -1320,7 +1319,7 @@ fn walk_generic_node(
                 e
             ))
         })?;
-        let nodes = xml::find_nodes_by_xpath(&ctx, "./gen:value", node).map_err(|e| {
+        let nodes = xml::find_readonly_nodes_by_xpath(&ctx, "./gen:value", node).map_err(|e| {
             PlateauProcessorError::XmlAttributeExtractor(format!(
                 "Cannot evaluate xml with error = {:?}",
                 e
@@ -1347,35 +1346,37 @@ fn walk_generic_node(
     Ok(result)
 }
 
-fn get_address(document: &XmlDocument, node: &XmlNode) -> super::errors::Result<String> {
+fn get_address(document: &XmlDocument, node: &XmlRoNode) -> super::errors::Result<String> {
     let ctx = xml::create_context(document).map_err(|e| {
         PlateauProcessorError::XmlAttributeExtractor(format!(
             "Cannot create context with error = {:?}",
             e
         ))
     })?;
-    let nodes = xml::find_nodes_by_xpath(&ctx, ".//xAL:LocalityName", node).map_err(|e| {
-        PlateauProcessorError::XmlAttributeExtractor(format!(
-            "Cannot evaluate xml with error = {:?}",
-            e
-        ))
-    })?;
+    let nodes =
+        xml::find_readonly_nodes_by_xpath(&ctx, ".//xAL:LocalityName", node).map_err(|e| {
+            PlateauProcessorError::XmlAttributeExtractor(format!(
+                "Cannot evaluate xml with error = {:?}",
+                e
+            ))
+        })?;
     let mut result = Vec::<String>::new();
     nodes.iter().for_each(|node| {
         result.push(node.get_content());
     });
-    let nodes = xml::find_nodes_by_xpath(&ctx, ".//xAL:DependentLocality", node).map_err(|e| {
-        PlateauProcessorError::XmlAttributeExtractor(format!(
-            "Cannot evaluate xml with error = {:?}",
-            e
-        ))
-    })?;
+    let nodes =
+        xml::find_readonly_nodes_by_xpath(&ctx, ".//xAL:DependentLocality", node).map_err(|e| {
+            PlateauProcessorError::XmlAttributeExtractor(format!(
+                "Cannot evaluate xml with error = {:?}",
+                e
+            ))
+        })?;
     for node in nodes {
         let attribute_node = node.get_attribute_node("Type");
         match attribute_node {
             Some(attribute_node) if attribute_node.get_content() == "district" => {
-                let nodes =
-                    xml::find_nodes_by_xpath(&ctx, "./*", &attribute_node).map_err(|e| {
+                let nodes = xml::find_readonly_nodes_by_xpath(&ctx, "./*", &attribute_node)
+                    .map_err(|e| {
                         PlateauProcessorError::XmlAttributeExtractor(format!(
                             "Cannot evaluate xml with error = {:?}",
                             e

@@ -6,7 +6,8 @@ use nusamai_projection::crs::EpsgCode;
 use reearth_flow_common::uri::Uri;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_geometry::types::geometry::Geometry as FlowGeometry;
+use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
+use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
 use reearth_flow_geometry::types::multi_polygon::{MultiPolygon, MultiPolygon2D};
 
 use crate::error::Error;
@@ -15,7 +16,8 @@ use crate::error::Error;
 pub enum GeometryValue {
     Null,
     CityGmlGeometry(CityGmlGeometry),
-    FlowGeometry(FlowGeometry),
+    FlowGeometry2D(FlowGeometry2D),
+    FlowGeometry3D(FlowGeometry3D),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

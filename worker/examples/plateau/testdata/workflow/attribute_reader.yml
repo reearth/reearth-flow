@@ -3,15 +3,13 @@ id: 369bd41c-52f7-4aec-bc4a-8a62c8e41fcd
 name: "PLATEAU.AttributeReader"
 entryGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
 with:
-  cityGmlPath: file:///Users/miseyu/Documents/fme/11234_yashio-shi_city_2023_citygml_1_op/udx/bldg/53395655_bldg_6697_op.gml
+  cityGmlPath: https://assets.cms.plateau.reearth.io/assets/ab/73d159-7d5a-4fd7-a48a-cc585157d03f/11234_yashio-shi_city_2023_citygml_1_op.zip
   cityCode: "11234"
   schemaJson: !include ../config/schema.txt
   targetPackages:
     - bldg
   addNsprefixToFeatureTypes: true
   extractDmGeometryAsXmlFragment: false
-  codelistsPath: file:///Users/miseyu/Documents/fme/11234_yashio-shi_city_2023_citygml_1_op/codelists
-  schemasPath: file:///Users/miseyu/Documents/fme/11234_yashio-shi_city_2023_citygml_1_op/schemas
 graphs:
   - !include ../graphs/attribute_reader.yml
   - !include ../graphs/folder_and_file_path_reader.yml

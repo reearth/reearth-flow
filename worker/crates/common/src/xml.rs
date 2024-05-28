@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
+use libxml::error::StructuredError;
 use libxml::parser::{Parser, ParserOptions};
 use libxml::schemas::SchemaValidationContext;
 use libxml::tree::document;
@@ -10,6 +11,7 @@ pub type XmlDocument = document::Document;
 pub type XmlXpathValue = libxml::xpath::Object;
 pub type XmlContext = libxml::xpath::Context;
 pub type XmlNode = libxml::tree::Node;
+pub type XmlRoNode = libxml::readonly::RoNode;
 pub type XmlNamespace = libxml::tree::Namespace;
 pub type XmlNodeType = libxml::tree::NodeType;
 pub type XmlSchemaParserContext = libxml::schemas::SchemaParserContext;
@@ -22,17 +24,46 @@ pub struct XmlSchemaValidationContext {
 unsafe impl Send for XmlSchemaValidationContext {}
 unsafe impl Sync for XmlSchemaValidationContext {}
 
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct XmlRoNamespace {
+    pub prefix: String,
+    pub href: String,
+}
+
+impl From<XmlNamespace> for XmlRoNamespace {
+    fn from(ns: XmlNamespace) -> Self {
+        Self {
+            prefix: ns.get_prefix(),
+            href: ns.get_href(),
+        }
+    }
+}
+
+impl XmlRoNamespace {
+    pub fn new(prefix: String, href: String) -> Self {
+        Self { prefix, href }
+    }
+
+    pub fn get_prefix(&self) -> String {
+        self.prefix.clone()
+    }
+
+    pub fn get_href(&self) -> String {
+        self.href.clone()
+    }
+}
+
 pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
     let parser = Parser::default();
     parser
         .parse_string_with_options(
             xml,
             ParserOptions {
-                recover: true,
+                recover: false,
                 no_def_dtd: true,
                 no_error: true,
                 no_warning: false,
-                pedantic: false,
+                pedantic: true,
                 no_blanks: false,
                 no_net: false,
                 no_implied: false,
@@ -89,7 +120,21 @@ pub fn get_node_prefix(node: &XmlNode) -> String {
     }
 }
 
+pub fn get_readonly_node_prefix(node: &XmlRoNode) -> String {
+    match node.get_namespace() {
+        Some(ns) => ns.get_prefix(),
+        None => "".to_string(),
+    }
+}
+
 pub fn get_node_tag(node: &XmlNode) -> String {
+    match node.get_namespace() {
+        Some(ns) => format!("{}:{}", ns.get_prefix(), node.get_name()).to_string(),
+        None => node.get_name(),
+    }
+}
+
+pub fn get_readonly_node_tag(node: &XmlRoNode) -> String {
     match node.get_namespace() {
         Some(ns) => format!("{}:{}", ns.get_prefix(), node.get_name()).to_string(),
         None => node.get_name(),
@@ -102,9 +147,24 @@ pub fn get_root_node(document: &XmlDocument) -> crate::Result<XmlNode> {
         .ok_or(crate::Error::Xml("No root element".to_string()))
 }
 
+pub fn get_root_readonly_node(document: &XmlDocument) -> crate::Result<XmlRoNode> {
+    document
+        .get_root_readonly()
+        .ok_or(crate::Error::Xml("No root element".to_string()))
+}
+
 pub fn node_to_xml_string(document: &XmlDocument, node: &mut XmlNode) -> crate::Result<String> {
     let doc =
         parse(document.node_to_string(node)).map_err(|e| crate::Error::Xml(format!("{}", e)))?;
+    Ok(doc.to_string())
+}
+
+pub fn readonly_node_to_xml_string(
+    document: &XmlDocument,
+    node: &XmlRoNode,
+) -> crate::Result<String> {
+    let doc =
+        parse(document.ronode_to_string(node)).map_err(|e| crate::Error::Xml(format!("{}", e)))?;
     Ok(doc.to_string())
 }
 
@@ -141,7 +201,7 @@ pub fn create_xml_schema_validation_context(
 pub fn validate_document_by_schema(
     document: &XmlDocument,
     schema_location: String,
-) -> crate::Result<bool> {
+) -> crate::Result<Vec<StructuredError>> {
     let mut xsd_validator = create_xml_schema_validation_context(schema_location)?;
     validate_document_by_schema_context(document, &mut xsd_validator)
 }
@@ -149,10 +209,10 @@ pub fn validate_document_by_schema(
 pub fn validate_document_by_schema_context(
     document: &XmlDocument,
     xsd_validator: &mut XmlSchemaValidationContext,
-) -> crate::Result<bool> {
+) -> crate::Result<Vec<StructuredError>> {
     match xsd_validator.inner.write().validate_document(document) {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
+        Ok(_) => Ok(vec![]),
+        Err(e) => Ok(e),
     }
 }
 
@@ -166,6 +226,28 @@ pub fn find_nodes_by_xpath(
         .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
     let result = result
         .get_nodes_as_vec()
+        .into_iter()
+        .filter(|node| {
+            if let Some(node_type) = node.get_type() {
+                node_type == XmlNodeType::ElementNode
+            } else {
+                false
+            }
+        })
+        .collect::<Vec<_>>();
+    Ok(result)
+}
+
+pub fn find_readonly_nodes_by_xpath(
+    ctx: &XmlContext,
+    xpath: &str,
+    node: &XmlRoNode,
+) -> crate::Result<Vec<XmlRoNode>> {
+    let result = ctx
+        .node_evaluate_readonly(xpath, *node)
+        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
+    let result = result
+        .get_readonly_nodes_as_vec()
         .into_iter()
         .filter(|node| {
             if let Some(node_type) = node.get_type() {

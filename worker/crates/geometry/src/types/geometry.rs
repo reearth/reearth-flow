@@ -32,8 +32,8 @@ pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
     Solid(Solid<T, Z>),
 }
 
-pub type Geometry2D<T> = Geometry<T, NoValue>;
-pub type Geometry3D<T> = Geometry<T, T>;
+pub type Geometry2D<T = f64> = Geometry<T, NoValue>;
+pub type Geometry3D<T = f64> = Geometry<T, T>;
 
 impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for Geometry<T, Z> {
     fn from(x: Point<T, Z>) -> Self {
