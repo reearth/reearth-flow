@@ -15,7 +15,7 @@ use reearth_flow_storage::resolve::StorageResolver;
 
 #[allow(dead_code)]
 pub(crate) fn execute(workflow: &str) {
-    env::set_var("RAYON_NUM_THREADS", "6");
+    env::set_var("RAYON_NUM_THREADS", "10");
     setup_logging_and_tracing();
     let job_id = uuid::Uuid::new_v4();
     let action_log_uri = {
