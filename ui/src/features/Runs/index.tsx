@@ -2,6 +2,7 @@ import { PlayIcon } from "@radix-ui/react-icons";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { Button, FlowLogo } from "@flow/components";
+import { runs as mockRuns } from "@flow/mock_data/runsData";
 import { useT } from "@flow/providers";
 import { useCurrentWorkspace } from "@flow/stores";
 
@@ -23,6 +24,13 @@ const Runs: React.FC = () => {
     navigate({ to: `/workspace/${currentWorkspace?.id}/runs/${tab}` });
   };
 
+  const runs = mockRuns.filter(run => {
+    if (tab === "running") return run.status === "running";
+    if (tab === "queued") return run.status === "queued";
+    if (tab === "completed") return run.status === "completed" || run.status === "failed";
+    return true;
+  });
+
   const content = () => {
     switch (tab) {
       case "manual":
@@ -36,7 +44,7 @@ const Runs: React.FC = () => {
             </div>
             <div className="py-2 px-4">
               <div className="h-[70vh] overflow-auto">
-                <RunsTable />
+                <RunsTable runs={runs} />
               </div>
             </div>
           </>

@@ -1,84 +1,180 @@
-import { ColumnDef } from "@tanstack/react-table";
+import {
+  ColumnDef,
+  SortingState,
+  VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import { useState } from "react";
 
-import { DataTable as Table } from "@flow/components";
-import { points } from "@flow/mock_data/pointData";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  Button,
+  Input,
+} from "@flow/components";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@flow/components/Table";
+import { useT } from "@flow/providers";
+import { Run } from "@flow/types";
 
-// TODO: This is just placeholder code at the moment
-// In production this will either be infered dynamically or a fixed type based on the API implementation.
-type Fire = {
-  ACQ_DATE: string;
-  ACQ_TIME: string;
-  BRIGHT_TI4: number;
-  BRIGHT_TI5: number;
-  CONFIDENCE: string;
-  DAYNIGHT: string;
-  FRP: number;
-  LATITUDE: number;
-  LONGITUDE: number;
-  SATELLITE: string;
-  SCAN: number;
-  TRACK: number;
-  VERSION: string;
+type Props = {
+  runs: Run[];
 };
 
-const columns: ColumnDef<Fire>[] = [
-  {
-    accessorKey: "ACQ_DATE",
-    header: "ACQ_DATE",
-  },
-  {
-    accessorKey: "ACQ_TIME",
-    header: "ACQ_TIME",
-  },
-  {
-    accessorKey: "BRIGHT_TI4",
-    header: "BRIGHT_TI4",
-  },
-  {
-    accessorKey: "BRIGHT_TI5",
-    header: "BRIGHT_TI5",
-  },
-  {
-    accessorKey: "CONFIDENCE",
-    header: "CONFIDENCE",
-  },
-  {
-    accessorKey: "DAYNIGHT",
-    header: "DAYNIGHT",
-  },
-  {
-    accessorKey: "FRP",
-    header: "FRP",
-  },
-  {
-    accessorKey: "LATITUDE",
-    header: "LATITUDE",
-  },
-  {
-    accessorKey: "LONGITUDE",
-    header: "LONGITUDE",
-  },
-  {
-    accessorKey: "SATELLITE",
-    header: "SATELLITE",
-  },
-  {
-    accessorKey: "SCAN",
-    header: "SCAN",
-  },
-  {
-    accessorKey: "TRACK",
-    header: "TRACK",
-  },
-  {
-    accessorKey: "VERSION",
-    header: "VERSION",
-  },
-];
-const data: Fire[] = points;
+const RunsTable: React.FC<Props> = ({ runs }) => {
+  const t = useT();
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "completedAt", desc: true },
+    { id: "startedAt", desc: true },
+  ]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
+  const [globalFilter, setGlobalFilter] = useState("");
 
-const RunsTable: React.FC = () => {
-  return <Table columns={columns} data={data} selectColumns showFiltering />;
+  const columns: ColumnDef<Run>[] = [
+    {
+      accessorKey: "id",
+      header: t("ID"),
+      size: 20,
+      minSize: 10,
+      maxSize: 30,
+    },
+    {
+      accessorKey: "project.name",
+      header: t("Project Name"),
+      size: 10,
+    },
+    {
+      accessorKey: "status",
+      header: t("Status"),
+      size: 10,
+    },
+    {
+      accessorKey: "logs",
+      header: t("Logs"),
+      size: 10,
+    },
+    {
+      accessorKey: "startedAt",
+      header: t("Started At"),
+    },
+    {
+      accessorKey: "completedAt",
+      header: t("Completed At"),
+    },
+    {
+      accessorKey: "trigger",
+      header: t("Trigger"),
+    },
+  ];
+
+  const table = useReactTable({
+    data: runs,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    // Sorting
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    // Visibility
+    onColumnVisibilityChange: setColumnVisibility,
+    // Row selection
+    onRowSelectionChange: setRowSelection,
+    // Filtering
+    onGlobalFilterChange: setGlobalFilter,
+    getFilteredRowModel: getFilteredRowModel(),
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      globalFilter,
+    },
+  });
+
+  return (
+    <div>
+      <div className="flex items-center py-4 gap-4">
+        <Input
+          placeholder={t("Search") + "..."}
+          value={globalFilter ?? ""}
+          onChange={e => setGlobalFilter(String(e.target.value))}
+          className="max-w-sm"
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="ml-auto">
+              {t("Columns")}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {table
+              .getAllColumns()
+              .filter(column => column.getCanHide())
+              .map(column => {
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={value => column.toggleVisibility(!!value)}>
+                    {column.id}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <div className="rounded-md border border-zinc-700">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map(headerGroup => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map(header => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map(row => (
+                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  {t("No Results")}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
 };
 
 export { RunsTable };
