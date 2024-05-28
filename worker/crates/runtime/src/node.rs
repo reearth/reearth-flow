@@ -262,7 +262,7 @@ impl Clone for Box<dyn ProcessorFactory> {
 pub trait Processor: Send + Sync + Debug + ProcessorClone {
     fn initialize(&mut self, ctx: NodeContext);
     fn num_threads(&self) -> usize {
-        2
+        1
     }
     fn process(
         &mut self,

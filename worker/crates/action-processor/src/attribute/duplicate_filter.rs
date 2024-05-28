@@ -92,6 +92,10 @@ pub struct AttributeDuplicateFilterParam {
 impl Processor for AttributeDuplicateFilter {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
+    fn num_threads(&self) -> usize {
+        1
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,

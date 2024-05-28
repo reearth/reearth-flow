@@ -9,7 +9,7 @@ use std::{
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::{Uri, PROTOCOL_SEPARATOR},
-    xml::{self, XmlDocument, XmlNamespace},
+    xml::{self, XmlDocument, XmlRoNamespace},
 };
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -173,6 +173,11 @@ impl Debug for XmlValidator {
 
 impl Processor for XmlValidator {
     fn initialize(&mut self, _ctx: NodeContext) {}
+
+    fn num_threads(&self) -> usize {
+        20
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -226,7 +231,7 @@ impl Processor for XmlValidator {
                         return Ok(());
                     }
                 };
-                let root_node = match xml::get_root_node(&document) {
+                let root_node = match xml::get_root_readonly_node(&document) {
                     Ok(node) => node,
                     Err(_) => {
                         let mut feature = feature.clone();
@@ -241,8 +246,12 @@ impl Processor for XmlValidator {
                         return Ok(());
                     }
                 };
-                let result =
-                    recursive_check_namespace(&root_node, &root_node.get_namespace_declarations());
+                let namespaces: Vec<XmlRoNamespace> = root_node
+                    .get_namespace_declarations()
+                    .into_iter()
+                    .map(|ns| ns.into())
+                    .collect::<Vec<_>>();
+                let result = recursive_check_namespace(root_node, &namespaces);
                 if result.is_empty() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
                 } else {
@@ -462,8 +471,8 @@ impl XmlValidator {
 }
 
 fn recursive_check_namespace(
-    node: &xml::XmlNode,
-    namespaces: &Vec<XmlNamespace>,
+    node: xml::XmlRoNode,
+    namespaces: &Vec<XmlRoNamespace>,
 ) -> Vec<ValidationResult> {
     let mut result = Vec::new();
     match node.get_namespace() {
@@ -476,7 +485,7 @@ fn recursive_check_namespace(
             }
         }
         None => {
-            let tag = xml::get_node_tag(node);
+            let tag = xml::get_readonly_node_tag(&node);
             if tag.contains(':') {
                 let prefix = tag.split(':').collect::<Vec<&str>>()[0];
                 if !namespaces.iter().any(|n| n.get_prefix() == prefix) {
@@ -495,7 +504,7 @@ fn recursive_check_namespace(
     };
     let child_node = node.get_child_nodes();
     let child_nodes = child_node
-        .iter()
+        .into_iter()
         .filter(|n| {
             if let Some(typ) = n.get_type() {
                 typ == xml::XmlNodeType::ElementNode
@@ -505,8 +514,8 @@ fn recursive_check_namespace(
         })
         .collect::<Vec<_>>();
     for child in child_nodes {
-        let mut child_result = recursive_check_namespace(child, namespaces);
-        result.append(&mut child_result);
+        let child_result = recursive_check_namespace(child, namespaces);
+        result.extend(child_result);
     }
     result
 }
