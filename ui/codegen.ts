@@ -1,6 +1,7 @@
 import { CodegenConfig } from "@graphql-codegen/cli";
 
 const rootGQLDirectory = "src/lib/gql/__gen__/";
+const pluginsDirectory = `${rootGQLDirectory}/plugins`;
 
 const config: CodegenConfig = {
   schema: "../api/gql/*.graphql",
@@ -9,7 +10,9 @@ const config: CodegenConfig = {
   generates: {
     [rootGQLDirectory]: {
       preset: "client",
-      plugins: [],
+    },
+    [`${pluginsDirectory}/graphql-request.ts`]: {
+      plugins: ["typescript", "typescript-operations", "typescript-graphql-request"],
     },
   },
 };

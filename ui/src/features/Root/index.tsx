@@ -6,7 +6,7 @@ import Dialog from "@flow/features/Dialog";
 import { AuthProvider } from "@flow/lib/auth";
 import { workspaces } from "@flow/mock_data/workspaceData";
 import {
-  GraphQlClientProvider,
+  GraphQlSdkProvider,
   I18nProvider,
   QueryClientProvider,
   TooltipProvider,
@@ -51,10 +51,10 @@ const RootRoute: React.FC = () => {
           <TooltipProvider>
             <ReactFlowProvider>
               <AuthenticatedPage>
-                <GraphQlClientProvider>
+                <GraphQlSdkProvider>
                   <Dialog />
                   <Outlet />
-                </GraphQlClientProvider>
+                </GraphQlSdkProvider>
               </AuthenticatedPage>
             </ReactFlowProvider>
           </TooltipProvider>

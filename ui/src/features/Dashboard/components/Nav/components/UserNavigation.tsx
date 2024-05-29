@@ -20,10 +20,8 @@ const UserNavigation: React.FC = () => {
   const t = useT();
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
-
   const getMe = useMeQuery();
-
-  const data = getMe.data;
+  const data = getMe.data?.me;
 
   return (
     <DropdownMenu>
@@ -31,13 +29,11 @@ const UserNavigation: React.FC = () => {
         <div className="flex gap-2 mr-2">
           <Avatar className="h-8 w-8">
             <AvatarImage src={user?.picture} />
-            <AvatarFallback>
-              {data?.me?.name ? data?.me.name.charAt(0).toUpperCase() : "F"}
-            </AvatarFallback>
+            <AvatarFallback>{data?.name ? data?.name.charAt(0).toUpperCase() : "F"}</AvatarFallback>
           </Avatar>
           <div className="self-center">
             <p className="text-zinc-400 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
-              {data?.me?.name ? data?.me.name : "User"}
+              {data?.name ? data?.name : "User"}
             </p>
           </div>
         </div>
