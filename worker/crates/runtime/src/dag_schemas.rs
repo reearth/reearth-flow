@@ -9,7 +9,7 @@ use petgraph::Direction;
 
 use reearth_flow_types::workflow::{Graph, Node};
 
-use crate::node::{GraphId, NodeHandle, NodeId, NodeKind, Port, DEFAULT_PORT, ROUTING_PARAM_KEY};
+use crate::node::{EdgeId, GraphId, NodeHandle, NodeId, NodeKind, Port, ROUTING_PARAM_KEY};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Endpoint {
@@ -20,18 +20,6 @@ pub struct Endpoint {
 impl Endpoint {
     pub fn new(node: NodeIndex, port: Port) -> Self {
         Self { node, port }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Edge {
-    pub from: Endpoint,
-    pub to: Endpoint,
-}
-
-impl Edge {
-    pub fn new(from: Endpoint, to: Endpoint) -> Self {
-        Self { from, to }
     }
 }
 
@@ -80,14 +68,16 @@ impl SchemaNodeType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SchemaEdgeType {
+    pub id: EdgeId,
     pub from: Port,
     pub to: Port,
     pub edge_kind: Option<SchemaEdgeKind>,
 }
 
 impl SchemaEdgeType {
-    pub fn new(from: Port, to: Port, edge_kind: Option<SchemaEdgeKind>) -> Self {
+    pub fn new(id: EdgeId, from: Port, to: Port, edge_kind: Option<SchemaEdgeKind>) -> Self {
         Self {
+            id,
             from,
             to,
             edge_kind,
@@ -210,6 +200,7 @@ impl DagSchemas {
             let from_node_kind = node_mappings.get(from_node_index);
             let to_node_index = dag.node_index_by_node_id(edge.to).unwrap();
             dag.connect(
+                edge.id,
                 &Endpoint::new(*from_node_index, Port::new(edge.from_port.clone())),
                 &Endpoint::new(*to_node_index, Port::new(edge.to_port.clone())),
                 match from_node_kind {
@@ -309,15 +300,17 @@ impl DagSchemas {
 
     pub fn connect(
         &mut self,
+        id: EdgeId,
         from: &Endpoint,
         to: &Endpoint,
         edge_kind: Option<SchemaEdgeKind>,
     ) -> EdgeIndex {
-        self.connect_with_index(from.node, &from.port, to.node, &to.port, edge_kind)
+        self.connect_with_index(id, from.node, &from.port, to.node, &to.port, edge_kind)
     }
 
     pub fn connect_with_index(
         &mut self,
+        id: EdgeId,
         from_node_index: NodeIndex,
         from_port: &Port,
         to_node_index: NodeIndex,
@@ -327,7 +320,7 @@ impl DagSchemas {
         self.graph.add_edge(
             from_node_index,
             to_node_index,
-            SchemaEdgeType::new(from_port.clone(), to_port.clone(), edge_kind),
+            SchemaEdgeType::new(id, from_port.clone(), to_port.clone(), edge_kind),
         )
     }
 
@@ -373,9 +366,11 @@ impl DagSchemas {
         while let Some((_, next_node)) = next_nodes.next(&self.graph) {
             next_node_indices.push(next_node);
         }
-        let mut pre_node_indices = Vec::new();
+        let mut pre_node_indices = Vec::<(NodeIndex, SchemaEdgeType)>::new();
         while let Some((_, pre_node)) = pre_nodes.next(&self.graph) {
-            pre_node_indices.push(pre_node);
+            let edge = self.graph.find_edge(pre_node, *target_node).unwrap();
+            let target_edge = &self.graph()[edge];
+            pre_node_indices.push((pre_node, target_edge.clone()));
         }
 
         let mut next_old_edges = HashMap::<NodeIndex, SchemaEdgeType>::new();
@@ -390,7 +385,7 @@ impl DagSchemas {
                 remove_edges.push(edge);
             }
 
-            for pre_node in &pre_node_indices {
+            for (pre_node, _) in &pre_node_indices {
                 let edge = main_graph.find_edge(*pre_node, *target_node).unwrap();
                 remove_edges.push(edge);
             }
@@ -424,13 +419,14 @@ impl DagSchemas {
                 );
                 let new_node = main_graph.add_node(node_type);
                 if idx == 0 {
-                    for pre_node in &pre_node_indices {
+                    for (pre_node, edge) in &pre_node_indices {
                         main_graph.add_edge(
                             *pre_node,
                             new_node,
                             SchemaEdgeType::new(
-                                DEFAULT_PORT.clone(),
-                                DEFAULT_PORT.clone(),
+                                edge.id,
+                                edge.from.clone(),
+                                edge.to.clone(),
                                 Some(SchemaEdgeKind::FromProcessor),
                             ),
                         );
@@ -478,6 +474,7 @@ impl DagSchemas {
                             new,
                             *next_node,
                             SchemaEdgeType::new(
+                                old_edge.id,
                                 old_edge.from.clone(),
                                 old_edge.to.clone(),
                                 Some(SchemaEdgeKind::FromProcessor),

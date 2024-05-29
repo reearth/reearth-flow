@@ -21,6 +21,7 @@ pub static ROUTING_PARAM_KEY: &str = "routingPort";
 
 pub(super) type NodeId = uuid::Uuid;
 pub(super) type GraphId = uuid::Uuid;
+pub(super) type EdgeId = uuid::Uuid;
 
 #[nutype::nutype(
     sanitize(trim),

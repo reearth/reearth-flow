@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crossbeam::channel::Sender;
+use tokio::runtime::Runtime;
 
 use crate::channels::ProcessorChannelForwarder;
 use crate::error_manager::ErrorManager;
@@ -42,6 +43,8 @@ pub struct ChannelManager {
     feature_writers: HashMap<Port, Box<dyn FeatureWriter>>,
     senders: Vec<SenderWithPortMapping>,
     error_manager: Arc<ErrorManager>,
+    #[allow(dead_code)]
+    runtime: Arc<Runtime>,
 }
 
 impl ChannelManager {
@@ -55,6 +58,8 @@ impl ChannelManager {
                     return Ok(());
                 }
             }
+        } else {
+            println!("No writer for port: {:?}", ctx.port)
         }
 
         if let Some((last_sender, senders)) = self.senders.split_last() {
@@ -77,6 +82,15 @@ impl ChannelManager {
     }
 
     pub fn send_terminate(&self, ctx: NodeContext) -> Result<(), ExecutionError> {
+        let writers = self.feature_writers.values().cloned().collect::<Vec<_>>();
+        self.runtime.block_on(async {
+            for writer in writers {
+                let result = writer.flush().await;
+                if let Err(e) = result {
+                    println!("Failed to flush feature writer: {e}")
+                }
+            }
+        });
         self.send_non_op(ExecutorOperation::Terminate { ctx })
     }
 
@@ -89,12 +103,14 @@ impl ChannelManager {
         feature_writers: HashMap<Port, Box<dyn FeatureWriter>>,
         senders: Vec<SenderWithPortMapping>,
         error_manager: Arc<ErrorManager>,
+        runtime: Arc<Runtime>,
     ) -> Self {
         Self {
             owner,
             feature_writers,
             senders,
             error_manager,
+            runtime,
         }
     }
 }

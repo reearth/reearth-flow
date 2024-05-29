@@ -5,6 +5,7 @@ use std::{
 };
 
 use reearth_flow_common::collection::insert_vec_element;
+use reearth_flow_state::State;
 use tokio::sync::Mutex;
 
 use crate::{
@@ -58,6 +59,7 @@ impl ExecutionDag {
         builder_dag: BuilderDag,
         channel_buffer_sz: usize,
         error_threshold: Option<u32>,
+        state: Arc<State>,
     ) -> Result<Self, ExecutionError> {
         let graph_id = builder_dag.id;
         // We only create record writer once for every output port. Every `HashMap` in this `Vec` tracks if a node's output ports already have the record writer created.
@@ -75,22 +77,22 @@ impl ExecutionDag {
             let source_node_index = builder_dag_edge.source();
             let target_node_index = builder_dag_edge.target();
             let edge = &builder_dag_edge.weight;
+            let edge_id = edge.id;
             let output_port = edge.to_port();
+            let input_port = edge.from_port();
             let edge_kind = edge.edge_kind.clone();
 
             // Create or get feature writer.
-            let feature_writer =
-                match all_feature_writers[source_node_index.index()].entry(output_port.clone()) {
-                    Entry::Vacant(entry) => {
-                        let feature_writer = match &edge_kind {
-                            SchemaEdgeKind::FromSource => Some(create_feature_writer()),
-                            _ => None,
-                        };
-                        let feature_writer = Arc::new(Mutex::new(feature_writer));
-                        entry.insert(feature_writer).clone()
-                    }
-                    Entry::Occupied(entry) => Arc::clone(entry.get()),
-                };
+            let feature_writer = match all_feature_writers[source_node_index.index()]
+                .entry(input_port.clone())
+            {
+                Entry::Vacant(entry) => {
+                    let feature_writer = Some(create_feature_writer(edge_id, Arc::clone(&state)));
+                    let feature_writer = Arc::new(Mutex::new(feature_writer));
+                    entry.insert(feature_writer).clone()
+                }
+                Entry::Occupied(entry) => Arc::clone(entry.get()),
+            };
 
             // Create or get channel.
             let (sender, receiver) = match channels.entry((source_node_index, target_node_index)) {
@@ -212,7 +214,7 @@ impl ExecutionDag {
                 .edge_weight_mut(edge_index)
                 .expect("We don't modify graph structure, only modify the edge weight");
 
-            if let Entry::Vacant(entry) = feature_writers.entry(edge.output_port.clone()) {
+            if let Entry::Vacant(entry) = feature_writers.entry(edge.input_port.clone()) {
                 // This interior mutability is to work around `Arc`. Other parts of this function is correctly marked `mut`.
                 if let Some(record_writer) = edge.feature_writer.lock().await.take() {
                     entry.insert(record_writer);
