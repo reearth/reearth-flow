@@ -1,5 +1,4 @@
-import { GitHubLogoIcon, PersonIcon } from "@radix-ui/react-icons";
-import { PlusIcon } from "lucide-react";
+import { GithubLogo, UserPlus } from "@phosphor-icons/react";
 
 import { ButtonWithTooltip } from "@flow/components";
 import { config } from "@flow/config";
@@ -26,8 +25,7 @@ const MembersSection: React.FC = () => {
           tooltipPosition="top"
           tooltipText={t("Add a team member")}>
           <div className="flex items-center">
-            <PlusIcon className="w-3" />
-            <PersonIcon className="w-3" />
+            <UserPlus className="h-5 w-5" weight="thin" />
           </div>
         </ButtonWithTooltip>
       </div>
@@ -35,7 +33,9 @@ const MembersSection: React.FC = () => {
       <div className="px-4 pb-4">
         {githubRepoUrl && (
           <div className="flex gap-2 items-center">
-            <GitHubLogoIcon />
+            <div className="rounded-full border-[0.5px] border-zinc-400 p-[2px]">
+              <GithubLogo weight="thin" />
+            </div>
             <p
               className="font-extralight px-2 -mx-2 w-[95%] py-1 -my-1 cursor-pointer rounded-md hover:text-zinc-100 hover:bg-zinc-800 truncate"
               onClick={handleGithubPageOpen}>

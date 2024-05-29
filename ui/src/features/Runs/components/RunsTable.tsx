@@ -83,6 +83,7 @@ const RunsTable: React.FC<Props> = ({ runs }) => {
   const table = useReactTable({
     data: runs,
     columns,
+    enableRowSelection: true,
     getCoreRowModel: getCoreRowModel(),
     // Sorting
     onSortingChange: setSorting,
@@ -101,6 +102,8 @@ const RunsTable: React.FC<Props> = ({ runs }) => {
       globalFilter,
     },
   });
+
+  console.log(table.getRowModel().rows[0].getIsSelected());
 
   return (
     <div>
@@ -139,7 +142,7 @@ const RunsTable: React.FC<Props> = ({ runs }) => {
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map(header => {
                   return (
                     <TableHead key={header.id}>
@@ -155,7 +158,11 @@ const RunsTable: React.FC<Props> = ({ runs }) => {
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map(row => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer"
+                  data-state={row.getIsSelected() && "selected"}
+                  onSelect={s => console.log("S", s)}>
                   {row.getVisibleCells().map(cell => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

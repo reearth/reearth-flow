@@ -1,4 +1,4 @@
-import { CommitIcon, GearIcon, GroupIcon, PersonIcon } from "@radix-ui/react-icons";
+import { Gear, Graph, User, UsersThree } from "@phosphor-icons/react";
 
 import { useT } from "@flow/providers";
 
@@ -17,25 +17,25 @@ export default (): DialogContentType[] => {
     {
       id: "account-settings",
       title: t("Account settings"),
-      icon: <PersonIcon />,
+      icon: <User />,
       component: <AccountDialogContent />,
     },
     {
       id: "workspaces-settings",
       title: t("Workspaces settings"),
-      icon: <GroupIcon />,
+      icon: <UsersThree />,
       component: <WorkspacesDialogContent />,
     },
     {
       id: "workflow-settings",
       title: t("Workflow settings"),
-      icon: <CommitIcon />,
+      icon: <Graph />,
       component: <WorkflowDialogContent />,
     },
     {
       id: "general-settings",
       title: t("General settings"),
-      icon: <GearIcon />,
+      icon: <Gear />,
       component: <GeneralDialogContent />,
     },
   ];

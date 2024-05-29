@@ -1,4 +1,4 @@
-import { PlusIcon } from "@radix-ui/react-icons";
+import { Plus, UsersThree } from "@phosphor-icons/react";
 
 import { ButtonWithTooltip, FlowLogo } from "@flow/components";
 import { config } from "@flow/config";
@@ -28,11 +28,11 @@ const Nav: React.FC<Props> = ({ className }) => {
           <div className="flex justify-center gap-4 max-w-[40vw]">
             <WorkspaceNavigation />
             <ButtonWithTooltip
-              className="bg-zinc-800 hover:bg-zinc-700"
+              className="flex bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
               variant="outline"
-              size="icon"
               tooltipText={t("Create new workspace")}>
-              <PlusIcon />
+              <UsersThree className="w-5 h-5" weight="thin" />
+              <Plus className="w-2 h-2" />
             </ButtonWithTooltip>
           </div>
         </div>

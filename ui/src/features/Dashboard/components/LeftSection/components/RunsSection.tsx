@@ -1,4 +1,4 @@
-import { PlayIcon } from "@radix-ui/react-icons";
+import { Play } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { ButtonWithTooltip } from "@flow/components";
@@ -13,7 +13,7 @@ const RunsSection: React.FC = () => {
 
   const runningRuns = runs.filter(run => run.status === "running");
   const queuedRuns = runs.filter(run => run.status === "queued");
-  const completeRuns = runs.filter(run => run.status === "complete");
+  const completeRuns = runs.filter(run => run.status === "completed");
   const failedRuns = runs.filter(run => run.status === "failed");
 
   return (
@@ -27,7 +27,7 @@ const RunsSection: React.FC = () => {
           tooltipPosition="left"
           tooltipOffset={5}
           onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/manual` })}>
-          <PlayIcon />
+          <Play />
         </ButtonWithTooltip>
       </div>
       <div className="flex flex-col gap-1 p-4">
@@ -56,7 +56,7 @@ const RunsSection: React.FC = () => {
               <div className="flex justify-between">
                 <p className="font-thin text-sm text-green-500">{t("Successful: ")}</p>
                 <p className="font-thin text-sm">
-                  {completeRuns.filter(r => r.status === "complete").length}
+                  {completeRuns.filter(r => r.status === "completed").length}
                 </p>
               </div>
               <div className="flex justify-between">

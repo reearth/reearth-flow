@@ -1,11 +1,12 @@
 import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  EnterFullScreenIcon,
-  ExitFullScreenIcon,
-  ZoomInIcon,
-  ZoomOutIcon,
-} from "@radix-ui/react-icons";
+  ArrowLeft,
+  ArrowRight,
+  CornersIn,
+  CornersOut,
+  FrameCorners,
+  MagnifyingGlassMinus,
+  MagnifyingGlassPlus,
+} from "@phosphor-icons/react";
 import { useReactFlow } from "reactflow";
 
 import {
@@ -21,7 +22,6 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-  CenterIcon,
   IconButton,
   Input,
   Label,
@@ -62,37 +62,37 @@ const ParamEditor: React.FC<Props> = ({
         <div className="flex gap-2">
           <IconButton
             className={actionButtonClasses}
-            icon={<ArrowLeftIcon />}
+            icon={<ArrowLeft />}
             tooltipText="Previous selection"
           />
           <IconButton
             className={actionButtonClasses}
-            icon={<ArrowRightIcon />}
+            icon={<ArrowRight />}
             tooltipText="Next selection"
           />
         </div>
         <div className="flex gap-2">
           <IconButton
             className={actionButtonClasses}
-            icon={isFullscreen ? <ExitFullScreenIcon /> : <EnterFullScreenIcon />}
+            icon={isFullscreen ? <CornersIn /> : <CornersOut />}
             tooltipText={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
             onClick={handleFullscreenToggle}
           />
           <IconButton
             className={actionButtonClasses}
-            icon={<CenterIcon className="w-[14px]" />}
+            icon={<FrameCorners className="w-[14px]" />}
             tooltipText="Fit view to selection"
             onClick={handleFitView}
           />
           <IconButton
             className={actionButtonClasses}
-            icon={<ZoomOutIcon />}
+            icon={<MagnifyingGlassMinus />}
             tooltipText="Zoom out"
             onClick={() => zoomOut({ duration: 400 })}
           />
           <IconButton
             className={actionButtonClasses}
-            icon={<ZoomInIcon />}
+            icon={<MagnifyingGlassPlus />}
             tooltipText="Zoom in"
             onClick={() => zoomIn({ duration: 400 })}
           />
@@ -108,7 +108,7 @@ const ParamEditor: React.FC<Props> = ({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="params">
-          <Card className="bg-transparent text-zinc-300 border-zinc-700">
+          <Card className="bg-transparent text-zinc-300 font-extralight border-zinc-700">
             <CardHeader>
               <CardTitle>{t("Parameter Editor")}</CardTitle>
               <CardDescription>

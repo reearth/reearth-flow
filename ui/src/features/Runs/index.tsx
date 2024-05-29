@@ -1,4 +1,4 @@
-import { PlayIcon } from "@radix-ui/react-icons";
+import { Play } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { Button, FlowLogo } from "@flow/components";
@@ -79,7 +79,8 @@ const Runs: React.FC = () => {
               size="sm"
               variant="ghost"
               onClick={() => handleTabChange("manual")}>
-              <PlayIcon /> {t("Manual Run")}
+              <Play />
+              <p className="font-extralight">{t("Manual Run")}</p>
             </Button>
           </div>
           <div className="flex-1 w-[200px] bg-zinc-900/50 border border-zinc-700 rounded-lg">

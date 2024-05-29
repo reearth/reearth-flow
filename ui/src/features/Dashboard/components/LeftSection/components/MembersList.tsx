@@ -1,4 +1,4 @@
-import { PersonIcon } from "@radix-ui/react-icons";
+import { User } from "@phosphor-icons/react";
 
 import { useCurrentWorkspace } from "@flow/stores";
 
@@ -17,7 +17,7 @@ const MembersList: React.FC<Props> = () => {
               key={member.id}>
               <div className="flex gap-2 items-center truncate">
                 <div>
-                  <PersonIcon />
+                  <User weight="thin" />
                 </div>
                 <p key={member.id} className="font-thin truncate">
                   {member.name}

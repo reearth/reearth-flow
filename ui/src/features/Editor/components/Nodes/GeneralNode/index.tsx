@@ -1,8 +1,9 @@
-import { DiscIcon, GearIcon, DoubleArrowRightIcon, PlayIcon } from "@radix-ui/react-icons";
+import { Database, Disc, Lightning } from "@phosphor-icons/react";
+import { GearIcon, DoubleArrowRightIcon, PlayIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { NodeProps } from "reactflow";
 
-import { IconButton, ReaderIcon, TransformerIcon } from "@flow/components";
+import { IconButton } from "@flow/components";
 import { useDoubleClick } from "@flow/hooks";
 import { NodeData } from "@flow/types";
 
@@ -49,11 +50,11 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
         <div
           className={`flex justify-center w-4 rounded-l-sm border-t border-l border-b ${selected ? "border-zinc-400" : "border-zinc-700"} ${className}`}>
           {type === "reader" ? (
-            <ReaderIcon className={typeIconClasses} />
+            <Database className={typeIconClasses} />
           ) : type === "writer" ? (
-            <DiscIcon className={typeIconClasses} />
+            <Disc className={typeIconClasses} />
           ) : type === "transformer" ? (
-            <TransformerIcon className={typeIconClasses} />
+            <Lightning className={typeIconClasses} />
           ) : null}
         </div>
         <div

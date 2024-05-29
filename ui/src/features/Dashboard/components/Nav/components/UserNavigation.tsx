@@ -1,5 +1,4 @@
-import { KeyboardIcon, PersonIcon } from "@radix-ui/react-icons";
-import { LogOut } from "lucide-react";
+import { Keyboard, SignOut, User } from "@phosphor-icons/react";
 
 import {
   Avatar,
@@ -56,16 +55,16 @@ const UserNavigation: React.FC<Props> = ({
         sideOffset={dropdownOffset ?? 4}>
         {/* <DropdownMenuLabel>My Account</DropdownMenuLabel> */}
         <DropdownMenuItem className="gap-2" onClick={() => setDialogType("account-settings")}>
-          <PersonIcon />
+          <User />
           <p>{t("Account settings")}</p>
         </DropdownMenuItem>
         <DropdownMenuItem className="gap-2" onClick={() => setDialogType("keyboard-instructions")}>
-          <KeyboardIcon />
+          <Keyboard />
           <p>{t("Keyboard shortcuts")}</p>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="gap-2">
-          <LogOut className="w-[15px] h-[15px] stroke-1" />
+          <SignOut className="w-[15px] h-[15px] stroke-1" />
           <p>{t("Log out")}</p>
         </DropdownMenuItem>
       </DropdownMenuContent>
