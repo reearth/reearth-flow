@@ -3,6 +3,7 @@ use std::{fs, path::Path, str::FromStr, sync::Arc};
 use clap::{Arg, ArgMatches, Command};
 use directories::ProjectDirs;
 use reearth_flow_runner::runner::Runner;
+use reearth_flow_state::State;
 use reearth_flow_types::Workflow;
 use tracing::debug;
 
@@ -100,16 +101,26 @@ impl RunCliCommand {
             Some(uri) => Uri::from_str(uri).map_err(crate::Error::init)?,
             None => {
                 let p = ProjectDirs::from("reearth", "flow", "worker")
-                    .ok_or(crate::Error::init("No dataframe state uri provided"))?;
+                    .ok_or(crate::Error::init("No action log uri provided"))?;
                 let p = p
                     .data_dir()
                     .to_str()
-                    .ok_or(crate::Error::init("Invalid dataframe state uri"))?;
+                    .ok_or(crate::Error::init("Invalid action log uri"))?;
                 let p = format!("{}/action-log/{}", p, job_id);
                 fs::create_dir_all(Path::new(p.as_str())).map_err(crate::Error::init)?;
                 Uri::for_test(format!("file://{}", p).as_str())
             }
         };
+        let state_uri = {
+            let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
+            let p = p.data_dir().to_str().unwrap();
+            let p = format!("{}/feature-store/{}", p, job_id);
+            let _ = fs::create_dir_all(Path::new(p.as_str()));
+            Uri::for_test(format!("file://{}", p).as_str())
+        };
+
+        let state = Arc::new(State::new(&state_uri, &storage_resolver).unwrap());
+
         let logger_factory = Arc::new(LoggerFactory::new(
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
@@ -119,6 +130,7 @@ impl RunCliCommand {
             workflow,
             logger_factory,
             storage_resolver,
+            state,
         );
         Ok(())
     }

@@ -8,6 +8,7 @@ use std::time::Duration;
 use futures::Future;
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Graph;
 use tokio::runtime::Runtime;
@@ -51,6 +52,7 @@ impl DagExecutor {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn start<F: Send + 'static + Future + Unpin + Debug + Clone>(
         self,
         shutdown: F,
@@ -59,12 +61,14 @@ impl DagExecutor {
         storage_resolver: Arc<StorageResolver>,
         logger: Arc<LoggerFactory>,
         kv_store: Arc<Box<dyn crate::kvs::KvStore>>,
+        state: Arc<State>,
     ) -> Result<DagExecutorJoinHandle, ExecutionError> {
         // Construct execution dag.
         let mut execution_dag = ExecutionDag::new(
             self.builder_dag,
             self.options.channel_buffer_sz,
             self.options.error_threshold,
+            Arc::clone(&state),
         )?;
         let node_indexes = execution_dag.graph().node_indices().collect::<Vec<_>>();
 

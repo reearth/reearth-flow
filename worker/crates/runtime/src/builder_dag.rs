@@ -11,7 +11,9 @@ use crate::{
     errors::ExecutionError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{GraphId, NodeHandle, NodeId, NodeKind as DagNodeKind, Port, Processor, Sink, Source},
+    node::{
+        EdgeId, GraphId, NodeHandle, NodeId, NodeKind as DagNodeKind, Port, Processor, Sink, Source,
+    },
 };
 
 #[derive(Debug, Clone)]
@@ -61,14 +63,16 @@ pub enum NodeKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EdgeType {
+    pub id: EdgeId,
     pub from: Port,
     pub to: Port,
     pub edge_kind: SchemaEdgeKind,
 }
 
 impl EdgeType {
-    pub fn new(from: Port, to: Port, edge_kind: SchemaEdgeKind) -> Self {
+    pub fn new(id: EdgeId, from: Port, to: Port, edge_kind: SchemaEdgeKind) -> Self {
         Self {
+            id,
             from,
             to,
             edge_kind,
@@ -256,6 +260,7 @@ impl BuilderDag {
                 node_index_map[&edge.source()],
                 node_index_map[&edge.target()],
                 EdgeType::new(
+                    edge.weight.id,
                     edge.weight.from,
                     edge.weight.to,
                     edge.weight.edge_kind.unwrap(),

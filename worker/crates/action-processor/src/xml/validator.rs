@@ -160,7 +160,7 @@ pub struct XmlValidatorParam {
 #[derive(Clone)]
 pub struct XmlValidator {
     params: XmlValidatorParam,
-    schema_store: Arc<parking_lot::RwLock<HashMap<String, xml::XmlSchemaValidationContext>>>,
+    schema_store: Arc<parking_lot::RwLock<HashMap<Vec<String>, xml::XmlSchemaValidationContext>>>,
 }
 
 impl Debug for XmlValidator {
@@ -412,14 +412,23 @@ impl XmlValidator {
     ) -> Result<Vec<ValidationResult>> {
         let schema_locations = xml::parse_schema_locations(document)
             .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
-        let target_locations = schema_locations
-            .difference(&HashSet::from_iter(
-                self.schema_store.read().keys().cloned(),
-            ))
-            .cloned()
+        let already_keys = self.schema_store.read().keys().cloned().collect::<Vec<_>>();
+        let target_key = schema_locations.keys().cloned().collect::<HashSet<_>>();
+
+        let target = already_keys
+            .iter()
+            .filter(|key| {
+                let hash = key.iter().cloned().collect::<HashSet<_>>();
+                target_key.difference(&hash).count() == 0
+            })
             .collect::<Vec<_>>();
-        if !target_locations.is_empty() {
-            for location in target_locations {
+
+        let result = if target.is_empty() {
+            let mut combined_schema = String::from(
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">"#,
+            );
+            for (ns, location) in schema_locations {
                 let target = if !location.contains(PROTOCOL_SEPARATOR) && !location.starts_with('/')
                 {
                     format!("{}/{}", self.get_base_path(feature), location.clone())
@@ -429,44 +438,41 @@ impl XmlValidator {
                 if target.is_empty() {
                     continue;
                 }
-                let schema_context = match xml::create_xml_schema_validation_context(target) {
-                    Ok(ctx) => ctx,
-                    Err(_) => {
-                        continue;
-                    }
-                };
-                self.schema_store.write().insert(location, schema_context);
+                combined_schema.push_str(&format!(
+                    r#"<xs:import namespace="{}" schemaLocation="{}"/>"#,
+                    ns, target
+                ));
             }
-        }
-        let mut store = self.schema_store.write();
-        let mut result = Vec::new();
-        for location in schema_locations {
-            let location_store = store.get_mut(&location);
-            let schema_context = match location_store {
-                Some(ctx) => ctx,
-                None => continue,
-            };
-            match xml::validate_document_by_schema_context(document, schema_context) {
-                Ok(r) => {
-                    r.iter().for_each(|v| {
-                        let message = v.message.clone().unwrap_or_default();
-                        result.push(ValidationResult::new_with_line_and_col(
-                            "SchemaError",
-                            &message,
-                            v.line,
-                            v.col,
-                        ));
-                    });
-                }
-                Err(e) => {
-                    result.push(ValidationResult::new(
-                        "SchemaError",
-                        &format!("{:?}", e).to_string(),
-                    ));
-                }
-            }
-        }
-        Ok(result)
+            combined_schema.push_str("</xs:schema>");
+            let schema_context =
+                xml::create_xml_schema_validation_context_from_buffer(combined_schema.as_bytes())
+                    .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
+
+            let result = xml::validate_document_by_schema_context(document, &schema_context)
+                .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
+            self.schema_store
+                .write()
+                .insert(target_key.into_iter().collect(), schema_context);
+            result
+        } else {
+            let key = (*target.first().unwrap()).clone();
+            xml::validate_document_by_schema_context(
+                document,
+                self.schema_store.read().get(&key).unwrap(),
+            )
+            .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?
+        };
+        Ok(result
+            .into_iter()
+            .map(|err| {
+                ValidationResult::new_with_line_and_col(
+                    "SchemaError",
+                    err.message.unwrap_or_default().as_str(),
+                    err.line,
+                    err.col,
+                )
+            })
+            .collect::<Vec<_>>())
     }
 }
 
