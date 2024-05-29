@@ -12,6 +12,7 @@ export const GraphQlClientProvider = ({ children }: { children?: ReactNode }) =>
   const { getAccessToken } = useAuth();
 
   // TODO: What happens when the token expires?
+  // Maybe parse the token, if it's expired get the token again?
   useEffect(() => {
     if (graphQLClient) return;
     (async () => {
