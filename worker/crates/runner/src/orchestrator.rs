@@ -7,6 +7,7 @@ use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::executor_operation::{ExecutorOptions, NodeContext};
 use reearth_flow_runtime::kvs::create_kv_store;
 use reearth_flow_runtime::shutdown::ShutdownReceiver;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Workflow;
 use tokio::runtime::Runtime;
@@ -32,6 +33,7 @@ impl Orchestrator {
         shutdown: ShutdownReceiver,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
+        state: Arc<State>,
     ) -> Result<(), OrchestrationError> {
         let executor = Executor {};
         let options = ExecutorOptions {
@@ -56,7 +58,13 @@ impl Orchestrator {
         let runtime_clone = self.runtime.clone();
         let shutdown_clone = shutdown.clone();
         let pipeline_future = self.runtime.spawn_blocking(move || {
-            run_dag_executor(ctx.clone(), &runtime_clone, dag_executor, shutdown_clone)
+            run_dag_executor(
+                ctx.clone(),
+                &runtime_clone,
+                dag_executor,
+                shutdown_clone,
+                state,
+            )
         });
 
         let mut futures = FuturesUnordered::new();
@@ -75,6 +83,7 @@ impl Orchestrator {
         shutdown: ShutdownReceiver,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
+        state: Arc<State>,
     ) -> Result<(), OrchestrationError> {
         let pipeline_shutdown = shutdown.clone();
         self.run_apps(
@@ -83,6 +92,7 @@ impl Orchestrator {
             pipeline_shutdown,
             logger_factory,
             storage_resolver,
+            state,
         )
         .await
     }

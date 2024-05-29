@@ -2,6 +2,7 @@ use std::{env, fs, path::Path, sync::Arc};
 
 use directories::ProjectDirs;
 use reearth_flow_runner::runner::Runner;
+use reearth_flow_state::State;
 use reearth_flow_types::Workflow;
 use tracing::Level;
 use tracing_subscriber::fmt::time::UtcTime;
@@ -25,8 +26,15 @@ pub(crate) fn execute(workflow: &str) {
         let _ = fs::create_dir_all(Path::new(p.as_str()));
         Uri::for_test(format!("file://{}", p).as_str())
     };
-
+    let state_uri = {
+        let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
+        let p = p.data_dir().to_str().unwrap();
+        let p = format!("{}/feature-store/{}", p, job_id);
+        let _ = fs::create_dir_all(Path::new(p.as_str()));
+        Uri::for_test(format!("file://{}", p).as_str())
+    };
     let storage_resolver = Arc::new(StorageResolver::new());
+    let state = Arc::new(State::new(&state_uri, &storage_resolver).unwrap());
     let workflow = create_workflow(workflow);
     let logger_factory = Arc::new(LoggerFactory::new(
         create_root_logger(action_log_uri.path()),
@@ -37,6 +45,7 @@ pub(crate) fn execute(workflow: &str) {
         workflow,
         logger_factory,
         storage_resolver,
+        state,
     );
 }
 

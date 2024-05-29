@@ -1,6 +1,7 @@
 use std::{env, path::PathBuf, sync::Arc};
 
 use reearth_flow_runner::runner::Runner;
+use reearth_flow_state::State;
 use reearth_flow_types::Workflow;
 use rust_embed::RustEmbed;
 
@@ -37,7 +38,7 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) {
     }
     let workflow_file = WorkflowFiles::get(format!("{}.yaml", test_id).as_str()).unwrap();
     let workflow = std::str::from_utf8(workflow_file.data.as_ref()).unwrap();
-
+    let state = Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
     let logger_factory = Arc::new(LoggerFactory::new(
         reearth_flow_action_log::ActionLogger::root(
             reearth_flow_action_log::Discard,
@@ -51,5 +52,6 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) {
         workflow,
         logger_factory,
         storage_resolver,
+        state,
     );
 }

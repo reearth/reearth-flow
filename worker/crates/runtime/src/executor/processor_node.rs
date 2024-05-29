@@ -74,7 +74,6 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let NodeKind::Processor(mut processor) = kind else {
             panic!("Must pass in a processor node");
         };
-
         let (node_handles, receivers) = dag.collect_receivers(node_index);
 
         let senders = dag.collect_senders(node_index);
@@ -85,6 +84,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             record_writers,
             senders,
             dag.error_manager().clone(),
+            runtime.clone(),
         );
         let span = info_span!(
             "root",
