@@ -2,6 +2,7 @@ use core::fmt;
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Formatter},
+    path::Path,
     str::FromStr,
     sync::Arc,
 };
@@ -28,7 +29,7 @@ use super::errors::{Result, XmlProcessorError};
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 struct ValidationResult {
     error_type: String,
@@ -72,6 +73,14 @@ impl From<ValidationResult> for HashMap<String, AttributeValue> {
         map.insert(
             "message".to_string(),
             AttributeValue::String(result.message),
+        );
+        map.insert(
+            "line".to_string(),
+            AttributeValue::String(result.line.unwrap_or_default().to_string()),
+        );
+        map.insert(
+            "col".to_string(),
+            AttributeValue::String(result.col.unwrap_or_default().to_string()),
         );
         map
     }
@@ -157,10 +166,12 @@ pub struct XmlValidatorParam {
     validation_type: ValidationType,
 }
 
+type SchemaStore = HashMap<Vec<(String, String)>, xml::XmlSchemaValidationContext>;
+
 #[derive(Clone)]
 pub struct XmlValidator {
     params: XmlValidatorParam,
-    schema_store: Arc<parking_lot::RwLock<HashMap<Vec<String>, xml::XmlSchemaValidationContext>>>,
+    schema_store: Arc<parking_lot::RwLock<SchemaStore>>,
 }
 
 impl Debug for XmlValidator {
@@ -332,7 +343,7 @@ impl Processor for XmlValidator {
 }
 
 impl XmlValidator {
-    fn get_base_path(&self, feature: &Feature) -> String {
+    fn get_base_path(&self, feature: &Feature) -> Option<Uri> {
         match self.params.input_type {
             XmlInputType::File => feature
                 .attributes
@@ -342,11 +353,9 @@ impl XmlValidator {
                         match Uri::from_str(s) {
                             Ok(uri) => {
                                 if uri.is_dir() {
-                                    Some(uri.to_string())
-                                } else if let Some(parent) = uri.parent() {
-                                    Some(parent.to_string())
+                                    Some(uri)
                                 } else {
-                                    Some("".to_string())
+                                    uri.parent()
                                 }
                             }
                             Err(_) => None,
@@ -354,9 +363,8 @@ impl XmlValidator {
                     } else {
                         None
                     }
-                })
-                .unwrap_or("".to_string()),
-            XmlInputType::Text => "".to_string(),
+                }),
+            XmlInputType::Text => None,
         }
     }
 
@@ -412,26 +420,24 @@ impl XmlValidator {
     ) -> Result<Vec<ValidationResult>> {
         let schema_locations = xml::parse_schema_locations(document)
             .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
-        let already_keys = self.schema_store.read().keys().cloned().collect::<Vec<_>>();
-        let target_key = schema_locations.keys().cloned().collect::<HashSet<_>>();
 
-        let target = already_keys
-            .iter()
-            .filter(|key| {
-                let hash = key.iter().cloned().collect::<HashSet<_>>();
-                target_key.difference(&hash).count() == 0
-            })
-            .collect::<Vec<_>>();
-
-        let result = if target.is_empty() {
+        let result = if !self.schema_store.read().contains_key(&schema_locations) {
             let mut combined_schema = String::from(
                 r#"<?xml version="1.0" encoding="UTF-8"?>
                 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">"#,
             );
-            for (ns, location) in schema_locations {
+            for (ns, location) in schema_locations.iter() {
                 let target = if !location.contains(PROTOCOL_SEPARATOR) && !location.starts_with('/')
                 {
-                    format!("{}/{}", self.get_base_path(feature), location.clone())
+                    let base_path = self.get_base_path(feature);
+                    let Some(base_path) = base_path else {
+                        continue;
+                    };
+                    let joined = base_path.join(Path::new(location));
+                    let Ok(joined) = joined else {
+                        continue;
+                    };
+                    joined.path().to_str().unwrap().to_string()
                 } else {
                     location.clone()
                 };
@@ -452,17 +458,16 @@ impl XmlValidator {
                 .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
             self.schema_store
                 .write()
-                .insert(target_key.into_iter().collect(), schema_context);
+                .insert(schema_locations, schema_context);
             result
         } else {
-            let key = (*target.first().unwrap()).clone();
             xml::validate_document_by_schema_context(
                 document,
-                self.schema_store.read().get(&key).unwrap(),
+                self.schema_store.read().get(&schema_locations).unwrap(),
             )
             .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?
         };
-        Ok(result
+        let result = result
             .into_iter()
             .map(|err| {
                 ValidationResult::new_with_line_and_col(
@@ -472,7 +477,10 @@ impl XmlValidator {
                     err.col,
                 )
             })
-            .collect::<Vec<_>>())
+            .collect::<Vec<_>>();
+        let set: HashSet<_> = result.into_iter().collect();
+        let vec_without_duplicates: Vec<_> = set.into_iter().collect();
+        Ok(vec_without_duplicates)
     }
 }
 

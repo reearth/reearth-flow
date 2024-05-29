@@ -58,8 +58,6 @@ impl ChannelManager {
                     return Ok(());
                 }
             }
-        } else {
-            println!("No writer for port: {:?}", ctx.port)
         }
 
         if let Some((last_sender, senders)) = self.senders.split_last() {
