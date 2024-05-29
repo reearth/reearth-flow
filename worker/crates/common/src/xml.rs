@@ -168,7 +168,7 @@ pub fn readonly_node_to_xml_string(
     Ok(doc.to_string())
 }
 
-pub fn parse_schema_locations(document: &XmlDocument) -> crate::Result<HashMap<String, String>> {
+pub fn parse_schema_locations(document: &XmlDocument) -> crate::Result<Vec<(String, String)>> {
     let root = get_root_node(document)?;
     let mut schema_locations = Vec::new();
     let mut namespaces = HashMap::new();
@@ -181,16 +181,16 @@ pub fn parse_schema_locations(document: &XmlDocument) -> crate::Result<HashMap<S
         }
     }
 
-    let mut schema_locations_map = HashMap::new();
+    let mut result = Vec::<(String, String)>::new();
     for i in (0..schema_locations.len()).step_by(2) {
         if i + 1 < schema_locations.len() {
-            schema_locations_map.insert(
+            result.push((
                 schema_locations[i].to_string(),
                 schema_locations[i + 1].to_string(),
-            );
+            ));
         }
     }
-    Ok(schema_locations_map)
+    Ok(result)
 }
 
 pub fn create_xml_schema_validation_context(
@@ -291,8 +291,6 @@ pub fn find_readonly_nodes_by_xpath(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
-
     use super::*;
 
     #[test]
@@ -368,11 +366,6 @@ mod tests {
 
     #[test]
     fn test_parse_schema_locations() {
-        let a = HashSet::from(["4", "1"]);
-        let b = HashSet::from(["1", "4", "5"]);
-        let result = a.difference(&b);
-        println!("{:?}", result.count());
-
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
         <core:CityModel xmlns:brid="http://www.opengis.net/citygml/bridge/2.0" xmlns:tran="http://www.opengis.net/citygml/transportation/2.0" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/2.0" xmlns:wtr="http://www.opengis.net/citygml/waterbody/2.0" xmlns:sch="http://www.ascc.net/xml/schematron" xmlns:veg="http://www.opengis.net/citygml/vegetation/2.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:tun="http://www.opengis.net/citygml/tunnel/2.0" xmlns:tex="http://www.opengis.net/citygml/texturedsurface/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:app="http://www.opengis.net/citygml/appearance/2.0" xmlns:gen="http://www.opengis.net/citygml/generics/2.0" xmlns:dem="http://www.opengis.net/citygml/relief/2.0" xmlns:luse="http://www.opengis.net/citygml/landuse/2.0" xmlns:uro="https://www.geospatial.jp/iur/uro/3.0" xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0" xmlns:bldg="http://www.opengis.net/citygml/building/2.0" xmlns:smil20="http://www.w3.org/2001/SMIL20/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:smil20lang="http://www.w3.org/2001/SMIL20/Language" xmlns:pbase="http://www.opengis.net/citygml/profiles/base/2.0" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:grp="http://www.opengis.net/citygml/cityobjectgroup/2.0" xsi:schemaLocation="https://www.geospatial.jp/iur/uro/3.0 ../../schemas/iur/uro/3.0/urbanObject.xsd http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd http://www.opengis.net/citygml/landuse/2.0 http://schemas.opengis.net/citygml/landuse/2.0/landUse.xsd http://www.opengis.net/citygml/building/2.0 http://schemas.opengis.net/citygml/building/2.0/building.xsd http://www.opengis.net/citygml/transportation/2.0 http://schemas.opengis.net/citygml/transportation/2.0/transportation.xsd http://www.opengis.net/citygml/generics/2.0 http://schemas.opengis.net/citygml/generics/2.0/generics.xsd http://www.opengis.net/citygml/cityobjectgroup/2.0 http://schemas.opengis.net/citygml/cityobjectgroup/2.0/cityObjectGroup.xsd http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/base/gml.xsd http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml/appearance/2.0/appearance.xsd">
             <gml:boundedBy>
@@ -387,19 +380,10 @@ mod tests {
         let result = parse_schema_locations(&document).unwrap();
         assert_eq!(
             result,
-            HashMap::from([
+            vec![
                 (
-                    "http://www.opengis.net/citygml/generics/2.0".to_string(),
-                    "http://schemas.opengis.net/citygml/generics/2.0/generics.xsd".to_string()
-                ),
-                (
-                    "http://www.opengis.net/citygml/cityobjectgroup/2.0".to_string(),
-                    "http://schemas.opengis.net/citygml/cityobjectgroup/2.0/cityObjectGroup.xsd"
-                        .to_string()
-                ),
-                (
-                    "http://www.opengis.net/citygml/building/2.0".to_string(),
-                    "http://schemas.opengis.net/citygml/building/2.0/building.xsd".to_string()
+                    "https://www.geospatial.jp/iur/uro/3.0".to_string(),
+                    "../../schemas/iur/uro/3.0/urbanObject.xsd".to_string()
                 ),
                 (
                     "http://www.opengis.net/citygml/2.0".to_string(),
@@ -410,12 +394,8 @@ mod tests {
                     "http://schemas.opengis.net/citygml/landuse/2.0/landUse.xsd".to_string()
                 ),
                 (
-                    "http://www.opengis.net/gml".to_string(),
-                    "http://schemas.opengis.net/gml/3.1.1/base/gml.xsd".to_string()
-                ),
-                (
-                    "https://www.geospatial.jp/iur/uro/3.0".to_string(),
-                    "../../schemas/iur/uro/3.0/urbanObject.xsd".to_string()
+                    "http://www.opengis.net/citygml/building/2.0".to_string(),
+                    "http://schemas.opengis.net/citygml/building/2.0/building.xsd".to_string()
                 ),
                 (
                     "http://www.opengis.net/citygml/transportation/2.0".to_string(),
@@ -423,10 +403,23 @@ mod tests {
                         .to_string()
                 ),
                 (
+                    "http://www.opengis.net/citygml/generics/2.0".to_string(),
+                    "http://schemas.opengis.net/citygml/generics/2.0/generics.xsd".to_string()
+                ),
+                (
+                    "http://www.opengis.net/citygml/cityobjectgroup/2.0".to_string(),
+                    "http://schemas.opengis.net/citygml/cityobjectgroup/2.0/cityObjectGroup.xsd"
+                        .to_string()
+                ),
+                (
+                    "http://www.opengis.net/gml".to_string(),
+                    "http://schemas.opengis.net/gml/3.1.1/base/gml.xsd".to_string()
+                ),
+                (
                     "http://www.opengis.net/citygml/appearance/2.0".to_string(),
                     "http://schemas.opengis.net/citygml/appearance/2.0/appearance.xsd".to_string()
-                ),
-            ])
+                )
+            ]
         )
     }
 }
