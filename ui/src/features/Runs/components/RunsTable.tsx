@@ -1,5 +1,6 @@
 import {
   ColumnDef,
+  RowSelectionState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -8,7 +9,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   DropdownMenu,
@@ -31,9 +32,12 @@ import { Run } from "@flow/types";
 
 type Props = {
   runs: Run[];
+  rowSelection?: RowSelectionState;
+  selectedRun?: Run;
+  onRunSelect?: (run: Run) => void;
 };
 
-const RunsTable: React.FC<Props> = ({ runs }) => {
+const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([
     { id: "completedAt", desc: true },
@@ -83,7 +87,7 @@ const RunsTable: React.FC<Props> = ({ runs }) => {
   const table = useReactTable({
     data: runs,
     columns,
-    enableRowSelection: true,
+    enableMultiRowSelection: false,
     getCoreRowModel: getCoreRowModel(),
     // Sorting
     onSortingChange: setSorting,
@@ -103,11 +107,21 @@ const RunsTable: React.FC<Props> = ({ runs }) => {
     },
   });
 
-  console.log(table.getRowModel().rows[0].getIsSelected());
+  useEffect(() => {
+    console.log("Selected run", selectedRun);
+    if (rowSelection) {
+      const selected = table
+        ?.getRowModel()
+        .rows.filter(r => r.getIsSelected().valueOf())[0]?.original;
+      if (selected !== selectedRun) {
+        onRunSelect?.(selected);
+      }
+    }
+  }, [rowSelection, selectedRun, table, onRunSelect]);
 
   return (
-    <div>
-      <div className="flex items-center py-4 gap-4">
+    <div className="flex flex-col gap-4 py-4">
+      <div className="flex items-center gap-4">
         <Input
           placeholder={t("Search") + "..."}
           value={globalFilter ?? ""}
@@ -162,6 +176,7 @@ const RunsTable: React.FC<Props> = ({ runs }) => {
                   key={row.id}
                   className="cursor-pointer"
                   data-state={row.getIsSelected() && "selected"}
+                  onClick={() => row.toggleSelected()}
                   onSelect={s => console.log("S", s)}>
                   {row.getVisibleCells().map(cell => (
                     <TableCell key={cell.id}>

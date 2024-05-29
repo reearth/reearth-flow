@@ -1,11 +1,14 @@
 import { Play } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { useState } from "react";
 
 import { Button, FlowLogo } from "@flow/components";
 import { runs as mockRuns } from "@flow/mock_data/runsData";
 import { useT } from "@flow/providers";
 import { useCurrentWorkspace } from "@flow/stores";
+import { Run } from "@flow/types";
 
+import { LogConsole } from "../BottomPanel/components";
 import { UserNavigation, WorkspaceNavigation } from "../Dashboard/components/Nav/components";
 
 import { ManualRun, RunsTable } from "./components";
@@ -19,6 +22,8 @@ const Runs: React.FC = () => {
   const { tab } = useParams({ strict: false });
   const navigate = useNavigate();
   const [currentWorkspace] = useCurrentWorkspace();
+
+  const [selectedRun, selectRun] = useState<Run>();
 
   const handleTabChange = (tab: Tab) => {
     navigate({ to: `/workspace/${currentWorkspace?.id}/runs/${tab}` });
@@ -42,10 +47,25 @@ const Runs: React.FC = () => {
               <p className="text-xl font-thin">{t("Runs manager")}</p>
               <p className="font-thin text-zinc-400">({tab})</p>
             </div>
-            <div className="py-2 px-4">
-              <div className="h-[70vh] overflow-auto">
-                <RunsTable runs={runs} />
+            <div className="flex flex-col gap-4 py-2 px-4">
+              <div className="max-h-[30vh] overflow-auto rounded-md border border-zinc-700 px-2">
+                <RunsTable runs={runs} selectedRun={selectedRun} onRunSelect={selectRun} />
               </div>
+              {selectedRun && (
+                <div className="rounded-md border border-zinc-700 mx-4 text-zinc-300 font-thin">
+                  <div className="py-2 px-4 border-b border-zinc-700">
+                    <p className="text-xl">Meta data</p>
+                  </div>
+                  <div className="flex flex-col py-2 px-4">
+                    <p>ID: {selectedRun.id}</p>
+                    <p>Project Name: {selectedRun.project.name}</p>
+                    <p>Logs:</p>
+                    <div className="h-[30vh] overflow-auto">
+                      <LogConsole className="overflow-auto" />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         );
