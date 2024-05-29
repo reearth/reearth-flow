@@ -2757,18 +2757,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@graphql-codegen/fragment-matcher@npm:5.0.2":
-  version: 5.0.2
-  resolution: "@graphql-codegen/fragment-matcher@npm:5.0.2"
-  dependencies:
-    "@graphql-codegen/plugin-helpers": "npm:^5.0.3"
-    tslib: "npm:~2.6.0"
-  peerDependencies:
-    graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0
-  checksum: 10c0/53c4e316ee30135b524d187c127a2e4516c966e6ccf40ae87071d28d17c686647f1482e5d48cd3327311ef90bc3c0742ce161bbd35fc6dc393f0f61b343bd9ca
-  languageName: node
-  linkType: hard
-
 "@graphql-codegen/gql-tag-operations@npm:4.0.7":
   version: 4.0.7
   resolution: "@graphql-codegen/gql-tag-operations@npm:4.0.7"
@@ -2888,21 +2876,6 @@ __metadata:
   peerDependencies:
     graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0
   checksum: 10c0/f99f3fc9e2d75e7b33742f2fa0a0a08c4f59c5b1f732de6e2ba0b634b6987a777a9f3be58eb9a1e55b3106c90cdf4fef926abf7949868563c0af34a6ca258a78
-  languageName: node
-  linkType: hard
-
-"@graphql-codegen/typescript-react-query@npm:6.1.0":
-  version: 6.1.0
-  resolution: "@graphql-codegen/typescript-react-query@npm:6.1.0"
-  dependencies:
-    "@graphql-codegen/plugin-helpers": "npm:^3.0.0"
-    "@graphql-codegen/visitor-plugin-common": "npm:2.13.1"
-    auto-bind: "npm:~4.0.0"
-    change-case-all: "npm:1.0.15"
-    tslib: "npm:~2.6.0"
-  peerDependencies:
-    graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0
-  checksum: 10c0/fc4786ddc4a10520ac85c627e270a8ae1e1d84903ae691f2e8fc997cb4a4cc19c9d65c494a587cb19946f650c90e70128b8af6f0e3407ecc6fed1685a1bc68fd
   languageName: node
   linkType: hard
 
@@ -4940,11 +4913,9 @@ __metadata:
     "@auth0/auth0-react": "npm:2.2.4"
     "@graphql-codegen/cli": "npm:5.0.2"
     "@graphql-codegen/client-preset": "npm:4.2.6"
-    "@graphql-codegen/fragment-matcher": "npm:5.0.2"
     "@graphql-codegen/typescript": "npm:4.0.7"
     "@graphql-codegen/typescript-graphql-request": "npm:6.2.0"
     "@graphql-codegen/typescript-operations": "npm:4.2.1"
-    "@graphql-codegen/typescript-react-query": "npm:6.1.0"
     "@parcel/watcher": "npm:2.4.1"
     "@radix-ui/react-accordion": "npm:1.1.2"
     "@radix-ui/react-avatar": "npm:1.0.4"
