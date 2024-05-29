@@ -5,7 +5,12 @@ import AuthenticatedPage from "@flow/features/AuthenticatedPage";
 import Dialog from "@flow/features/Dialog";
 import { AuthProvider } from "@flow/lib/auth";
 import { workspaces } from "@flow/mock_data/workspaceData";
-import { I18nProvider, QueryClientProvider, TooltipProvider } from "@flow/providers";
+import {
+  GraphQlClientProvider,
+  I18nProvider,
+  QueryClientProvider,
+  TooltipProvider,
+} from "@flow/providers";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 // import { lazy } from "react";
 
@@ -46,8 +51,10 @@ const RootRoute: React.FC = () => {
           <TooltipProvider>
             <ReactFlowProvider>
               <AuthenticatedPage>
-                <Dialog />
-                <Outlet />
+                <GraphQlClientProvider>
+                  <Dialog />
+                  <Outlet />
+                </GraphQlClientProvider>
               </AuthenticatedPage>
             </ReactFlowProvider>
           </TooltipProvider>
