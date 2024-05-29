@@ -31,6 +31,7 @@ const UserNavigation: React.FC = () => {
   const getMe = useMeQuery();
 
   // Using plugin typescript-react-query
+  // Doesn't work because `Bad argument type. Starting with v5, only the "Object" form is allowed when calling query related functions.`
   const getMeQuery = useGetMeQuery(client);
 
   // Using plugin typescript-graphql-request
