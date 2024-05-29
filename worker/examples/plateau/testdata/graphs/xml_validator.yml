@@ -59,6 +59,20 @@ nodes:
     with:
       routingPort: summary
 
+  - id: abd4320c-aa7c-445a-af78-4c4f1f9a35c7
+    name: invalidRouter
+    type: action
+    action: Router
+    with:
+      routingPort: invalid
+
+  - id: 3c0724c6-263e-43b9-8532-e46c7584323a
+    name: notWellFormedRouter
+    type: action
+    action: Router
+    with:
+      routingPort: not_well_formed
+
 edges:
   - id: 433e7166-48de-4479-9039-63acdab6d3fa
     from: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
@@ -72,9 +86,9 @@ edges:
     toPort: default
   - id: 3e8f6cb7-882b-4b81-9f70-eec8374221d0
     from: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
-    to: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
+    to: 3c0724c6-263e-43b9-8532-e46c7584323a
     fromPort: failed
-    toPort: not_well_formed
+    toPort: default
   - id: 7a133f42-08d8-4e9c-8f88-d8ee9f2d3c1d
     from: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
     to: 14225ce7-1d9f-44bc-8b41-3aa06d4275cd
@@ -87,9 +101,9 @@ edges:
     toPort: default
   - id: 300b2fa9-d5e2-4145-9703-49189b4fe849
     from: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
-    to: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
+    to: abd4320c-aa7c-445a-af78-4c4f1f9a35c7
     fromPort: failed
-    toPort: invalid
+    toPort: default
   - id: 8ba8930c-52b3-4074-b7f8-199b74405cbe
     from: 14225ce7-1d9f-44bc-8b41-3aa06d4275cd
     to: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
@@ -104,4 +118,4 @@ edges:
     from: 6c235d0b-26fb-47dd-a3df-709fa961855c
     to: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
     fromPort: default
-    toPort: invalid
+    toPort: default

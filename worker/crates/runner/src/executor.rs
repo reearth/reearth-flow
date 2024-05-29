@@ -9,6 +9,7 @@ use reearth_flow_runtime::{
     node::{NodeKind, RouterFactory},
     shutdown::ShutdownReceiver,
 };
+use reearth_flow_state::State;
 use reearth_flow_types::workflow::Workflow;
 use std::{collections::HashMap, sync::Arc};
 use tokio::runtime::Runtime;
@@ -57,6 +58,7 @@ pub fn run_dag_executor(
     runtime: &Arc<Runtime>,
     dag_executor: DagExecutor,
     shutdown: ShutdownReceiver,
+    state: Arc<State>,
 ) -> Result<(), OrchestrationError> {
     let join_handle = runtime.block_on(dag_executor.start(
         SharedFuture::new(Box::pin(shutdown.create_shutdown_future())),
@@ -65,6 +67,7 @@ pub fn run_dag_executor(
         ctx.storage_resolver.clone(),
         ctx.logger.clone(),
         ctx.kv_store.clone(),
+        state,
     ));
     join_handle
         .unwrap()

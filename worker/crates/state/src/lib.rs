@@ -43,6 +43,18 @@ impl State {
             .map_err(|e| Error::new(ErrorKind::Other, e))
     }
 
+    pub fn save_sync<T>(&self, obj: &T, id: &str) -> Result<()>
+    where
+        for<'de> T: Serialize + Deserialize<'de>,
+    {
+        let s = self.object_to_string(obj)?;
+        let content = bytes::Bytes::from(s);
+        let p = self.id_to_location(id);
+        self.storage
+            .put_sync(p.as_path(), content)
+            .map_err(|e| Error::new(ErrorKind::Other, e))
+    }
+
     pub async fn get<T>(&self, id: &str) -> Result<T>
     where
         for<'de> T: Deserialize<'de>,

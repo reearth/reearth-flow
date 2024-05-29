@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_runtime::shutdown;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Workflow;
 
@@ -15,6 +16,7 @@ impl Runner {
         workflow: Workflow,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
+        state: Arc<State>,
     ) {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(30)
@@ -33,6 +35,7 @@ impl Runner {
                     shutdown_receiver,
                     logger_factory,
                     storage_resolver,
+                    state,
                 )
                 .await
                 .unwrap()
