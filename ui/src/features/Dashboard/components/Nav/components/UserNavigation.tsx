@@ -1,5 +1,6 @@
 import { KeyboardIcon, PersonIcon } from "@radix-ui/react-icons";
 import { LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import {
   Avatar,
@@ -13,6 +14,9 @@ import {
 } from "@flow/components";
 import { useMeQuery } from "@flow/lib/api";
 import { useAuth } from "@flow/lib/auth";
+import { useClient } from "@flow/lib/gql";
+import { useGetMeQuery } from "@flow/lib/gql/__gen__/plugins/generates";
+import { getSdk } from "@flow/lib/gql/__gen__/plugins/graphqlRequest";
 import { useT } from "@flow/providers";
 import { useDialogType } from "@flow/stores";
 
@@ -20,7 +24,28 @@ const UserNavigation: React.FC = () => {
   const t = useT();
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
-  const { data } = useMeQuery();
+  const client = useClient();
+  const [me, setMe] = useState();
+
+  // The normal way
+  const getMe = useMeQuery();
+
+  // Using plugin typescript-react-query
+  const getMeQuery = useGetMeQuery(client);
+
+  // Using plugin typescript-graphql-request
+  const sdk = getSdk(client);
+
+  useEffect(() => {
+    if (me != undefined) return;
+    (async () => {
+      const { data } = await sdk.GetMe();
+      setMe(data);
+      console.log(data);
+    })();
+  }, [me, sdk, setMe]);
+
+  const data = {};
 
   return (
     <DropdownMenu>
