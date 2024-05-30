@@ -1,4 +1,4 @@
-import { DownloadIcon, Link2Icon, PlayIcon, StopIcon } from "@radix-ui/react-icons";
+import { DownloadSimple, FloppyDiskBack, Play, Stop } from "@phosphor-icons/react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/providers";
@@ -21,22 +21,22 @@ const ActionBar = () => {
             <IconButton
               tooltipText={t("Run workflow")}
               tooltipOffset={tooltipOffset}
-              icon={<PlayIcon />}
+              icon={<Play />}
             />
             <IconButton
               tooltipText={t("Stop workflow")}
               tooltipOffset={tooltipOffset}
-              icon={<StopIcon />}
+              icon={<Stop />}
             />
             <IconButton
               tooltipText={t("Publish workflow")}
               tooltipOffset={tooltipOffset}
-              icon={<Link2Icon />}
+              icon={<FloppyDiskBack />}
             />
             <IconButton
               tooltipText={t("Download workflow")}
               tooltipOffset={tooltipOffset}
-              icon={<DownloadIcon />}
+              icon={<DownloadSimple />}
             />
           </div>
         </div>

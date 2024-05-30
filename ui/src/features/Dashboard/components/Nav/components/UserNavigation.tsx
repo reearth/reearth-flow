@@ -1,5 +1,4 @@
-import { KeyboardIcon, PersonIcon } from "@radix-ui/react-icons";
-import { LogOut } from "lucide-react";
+import { Keyboard, SignOut, User } from "@phosphor-icons/react";
 
 import {
   Avatar,
@@ -15,7 +14,19 @@ import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/providers";
 import { useDialogType } from "@flow/stores";
 
-const UserNavigation: React.FC = () => {
+type Props = {
+  className?: string;
+  iconOnly?: boolean;
+  dropdownPosition?: "left" | "right" | "bottom" | "top";
+  dropdownOffset?: number;
+};
+
+const UserNavigation: React.FC<Props> = ({
+  className,
+  iconOnly,
+  dropdownPosition,
+  dropdownOffset,
+}) => {
   const t = useT();
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
@@ -23,35 +34,37 @@ const UserNavigation: React.FC = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <div className="flex gap-2 mr-2">
+        <div className={`flex gap-2 mr-2 ${className}`}>
           <Avatar className="h-8 w-8">
             <AvatarImage src={user?.picture} />
-            <AvatarFallback>{user?.name ? user.name.charAt(0).toUpperCase() : "F"}</AvatarFallback>
+            <AvatarFallback>{user?.name ? user.name.charAt(0).toUpperCase() : "U"}</AvatarFallback>
           </Avatar>
-          <div className="self-center">
-            <p className="text-zinc-400 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
-              {user?.name ? user.name : "User"}
-            </p>
-          </div>
+          {!iconOnly && (
+            <div className="self-center">
+              <p className="text-zinc-400 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
+                {user?.name ? user.name : "User"}
+              </p>
+            </div>
+          )}
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="text-zinc-300 w-[200px]"
-        side="bottom"
+        side={dropdownPosition ?? "bottom"}
         align="end"
-        sideOffset={4}>
+        sideOffset={dropdownOffset ?? 4}>
         {/* <DropdownMenuLabel>My Account</DropdownMenuLabel> */}
         <DropdownMenuItem className="gap-2" onClick={() => setDialogType("account-settings")}>
-          <PersonIcon />
+          <User />
           <p>{t("Account settings")}</p>
         </DropdownMenuItem>
         <DropdownMenuItem className="gap-2" onClick={() => setDialogType("keyboard-instructions")}>
-          <KeyboardIcon />
+          <Keyboard />
           <p>{t("Keyboard shortcuts")}</p>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="gap-2">
-          <LogOut className="w-[15px] h-[15px] stroke-1" />
+          <SignOut className="w-[15px] h-[15px] stroke-1" />
           <p>{t("Log out")}</p>
         </DropdownMenuItem>
       </DropdownMenuContent>

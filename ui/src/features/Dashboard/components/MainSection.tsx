@@ -1,9 +1,9 @@
-import { CardStackPlusIcon } from "@radix-ui/react-icons";
+import { Graph, Plus } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
 import projectImage from "@flow/assets/project-screenshot.png"; // TODO: replace with actual project image
 import {
-  Button,
+  ButtonWithTooltip,
   Card,
   CardContent,
   CardDescription,
@@ -34,14 +34,16 @@ const MainSection: React.FC = () => {
     <div className="flex flex-col flex-1 justify-between border border-zinc-700 rounded-lg bg-zinc-900/50">
       <div className="flex gap-2 justify-between items-center py-2 px-4 border-b border-zinc-700">
         <p className="text-lg font-extralight">{t("Projects")}</p>
-        <Button
-          className="flex gap-1 font-extralight bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-300"
-          variant="outline">
-          <CardStackPlusIcon />
-        </Button>
+        <ButtonWithTooltip
+          className="flex bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
+          variant="outline"
+          tooltipText={t("Create new project")}>
+          <Graph className="w-5 h-5" weight="thin" />
+          <Plus className="w-2 h-2" />
+        </ButtonWithTooltip>
       </div>
       <div className="flex flex-col flex-1 justify-between overflow-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-auto py-8 px-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-auto p-8">
           {projects?.map(p => (
             <Card
               className={`cursor-pointer bg-zinc-700/30 border border-transparent ${currentProject && currentProject.id === p.id ? "border-zinc-600" : "hover:border-zinc-600"}`}
@@ -61,7 +63,7 @@ const MainSection: React.FC = () => {
           ))}
         </div>
         <div className="border-t border-zinc-700 bg-zinc-900/50 rounded-b-lg">
-          <p className="font-extralight text-center py-1 border-t">
+          <p className="font-extralight text-center py-1">
             {t("Total Projects")}: {projects?.length ?? 0}
           </p>
         </div>

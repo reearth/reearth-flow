@@ -1,5 +1,5 @@
+import { CaretRight, Icon } from "@phosphor-icons/react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import { ChevronRight, type LucideIcon } from "lucide-react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import useResizeObserver from "use-resize-observer";
 
@@ -8,7 +8,7 @@ import { cn } from "@flow/lib/utils";
 interface TreeDataItem {
   id: string;
   name: string;
-  icon?: LucideIcon;
+  icon?: Icon;
   children?: TreeDataItem[];
 }
 
@@ -17,8 +17,8 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   initialSlelectedItemId?: string;
   onSelectChange?: (item: TreeDataItem | undefined) => void;
   expandAll?: boolean;
-  folderIcon?: LucideIcon;
-  itemIcon?: LucideIcon;
+  folderIcon?: Icon;
+  itemIcon?: Icon;
 };
 
 const highlightClass =
@@ -108,8 +108,8 @@ type TreeItemProps = TreeProps & {
   selectedItemId?: string;
   handleSelectChange: (item: TreeDataItem | undefined) => void;
   expandedItemIds: string[];
-  FolderIcon?: LucideIcon;
-  ItemIcon?: LucideIcon;
+  FolderIcon?: Icon;
+  ItemIcon?: Icon;
 };
 
 const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
@@ -146,17 +146,23 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                         onClick={() => handleSelectChange(item)}>
                         {item.icon && (
                           <item.icon
-                            className="h-4 w-4 shrink-0 mr-2 text-zinc-300/60"
+                            className={cn(
+                              "h-4 w-4 shrink-0 mr-2 text-zinc-300",
+                              selectedItemId === item.id &&
+                                "text-zinc-foreground dark:before:border-0",
+                            )}
+                            weight="thin"
                             aria-hidden="true"
                           />
                         )}
                         {!item.icon && FolderIcon && (
                           <FolderIcon
-                            className="h-4 w-4 shrink-0 mr-2 text-zinc-300/60"
+                            className="h-4 w-4 shrink-0 mr-2 text-zinc-300"
+                            weight="thin"
                             aria-hidden="true"
                           />
                         )}
-                        <span className="text-xs truncate">{item.name}</span>
+                        <span className="text-xs font-extralight truncate">{item.name}</span>
                       </AccordionTrigger>
                       <AccordionContent className="pl-6 border-l border-zinc-700 ml-4">
                         <TreeItem
@@ -204,7 +210,7 @@ const Leaf = forwardRef<
   React.HTMLAttributes<HTMLDivElement> & {
     item: TreeDataItem;
     isSelected?: boolean;
-    Icon?: LucideIcon;
+    Icon?: Icon;
   }
 >(({ className, item, isSelected, Icon, ...props }, ref) => {
   return (
@@ -214,16 +220,23 @@ const Leaf = forwardRef<
         "flex items-center py-2 px-2 cursor-pointer \
         hover:before:opacity-100 before:absolute before:left-0 before:right-1 before:w-full before:opacity-0 before:bg-zinc-700/50 before:rounded-md before:h-[1.75rem] before:-z-10",
         className,
-        isSelected && highlightClass + " " + "text-zinc-foreground dark:before:border-0",
+        isSelected && highlightClass + " " + "text-zinc-300 dark:before:border-0",
       )}
       {...props}>
       {item.icon && (
-        <item.icon className="h-4 w-4 shrink-0 mr-2 text-zinc-300/60" aria-hidden="true" />
+        <item.icon
+          className={cn(
+            "h-4 w-4 shrink-0 mr-2 text-zinc-300",
+            isSelected && "text-zinc-foreground dark:before:border-0",
+          )}
+          weight="thin"
+          aria-hidden="true"
+        />
       )}
       {!item.icon && Icon && (
-        <Icon className="h-4 w-4 shrink-0 mr-2 text-zinc-300/60" aria-hidden="true" />
+        <Icon className="h-4 w-4 shrink-0 mr-2 text-zinc-300" weight="thin" aria-hidden="true" />
       )}
-      <span className="flex-grow text-xs truncate">{item.name}</span>
+      <span className="flex-grow text-xs font-extralight truncate">{item.name}</span>
     </div>
   );
 });
@@ -243,7 +256,7 @@ const AccordionTrigger = forwardRef<
       )}
       {...props}>
       {children}
-      <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-zinc-300/60 ml-auto" />
+      <CaretRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-zinc-300/60 ml-auto" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));
