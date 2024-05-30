@@ -15,9 +15,32 @@ export const GET_WORSPACES = graphql(`
   query GetWorkspaces {
     me {
       workspaces {
-        name
         id
+        name
+        members {
+          userId
+        }
         personal
+        assets(first: 5) {
+          nodes {
+            id
+          }
+          edges {
+            cursor
+          }
+          totalCount
+          pageInfo {
+            startCursor
+            endCursor
+            hasNextPage
+            hasPreviousPage
+          }
+        }
+        projects(first: 5) {
+          nodes {
+            id
+          }
+        }
       }
     }
   }

@@ -472,7 +472,7 @@ export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace
 export type GetWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetWorkspacesQuery = { __typename?: 'Query', me?: { __typename?: 'Me', workspaces: Array<{ __typename?: 'Workspace', name: string, id: string, personal: boolean }> } | null };
+export type GetWorkspacesQuery = { __typename?: 'Query', me?: { __typename?: 'Me', workspaces: Array<{ __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string }>, assets: { __typename?: 'AssetConnection', totalCount: number, nodes: Array<{ __typename?: 'Asset', id: string } | null>, edges: Array<{ __typename?: 'AssetEdge', cursor: any }>, pageInfo: { __typename?: 'PageInfo', startCursor?: any | null, endCursor?: any | null, hasNextPage: boolean, hasPreviousPage: boolean } }, projects: { __typename?: 'ProjectConnection', nodes: Array<{ __typename?: 'Project', id: string } | null> } }> } | null };
 
 export type UpdateWorkspaceMutationVariables = Exact<{
   input: UpdateWorkspaceInput;
@@ -512,9 +512,32 @@ export const GetWorkspacesDocument = gql`
     query GetWorkspaces {
   me {
     workspaces {
-      name
       id
+      name
+      members {
+        userId
+      }
       personal
+      assets(first: 5) {
+        nodes {
+          id
+        }
+        edges {
+          cursor
+        }
+        totalCount
+        pageInfo {
+          startCursor
+          endCursor
+          hasNextPage
+          hasPreviousPage
+        }
+      }
+      projects(first: 5) {
+        nodes {
+          id
+        }
+      }
     }
   }
 }
