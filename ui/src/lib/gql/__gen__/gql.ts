@@ -13,6 +13,10 @@ import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/
  * Therefore it is highly recommended to use the babel or swc plugin for production.
  */
 const documents = {
+    "\n  mutation CreateProject($input: CreateProjectInput!) {\n    createProject(input: $input) {\n      project {\n        id\n      }\n    }\n  }\n": types.CreateProjectDocument,
+    "\n  query GetProjects($workspaceId: ID!, $first: Int!) {\n    projects(workspaceId: $workspaceId, first: $first) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n    }\n  }\n": types.GetProjectsDocument,
+    "\n  mutation UpdateProject($input: UpdateProjectInput!) {\n    updateProject(input: $input) {\n      project {\n        id\n        name\n      }\n    }\n  }\n": types.UpdateProjectDocument,
+    "\n  mutation DeleteProject($input: DeleteProjectInput!) {\n    deleteProject(input: $input) {\n      projectId\n    }\n  }\n": types.DeleteProjectDocument,
     "\n  query GetMe {\n    me {\n      id\n      name\n      email\n      myWorkspaceId\n    }\n  }\n": types.GetMeDocument,
 };
 
@@ -30,6 +34,22 @@ const documents = {
  */
 export function graphql(source: string): unknown;
 
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateProject($input: CreateProjectInput!) {\n    createProject(input: $input) {\n      project {\n        id\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation CreateProject($input: CreateProjectInput!) {\n    createProject(input: $input) {\n      project {\n        id\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query GetProjects($workspaceId: ID!, $first: Int!) {\n    projects(workspaceId: $workspaceId, first: $first) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  query GetProjects($workspaceId: ID!, $first: Int!) {\n    projects(workspaceId: $workspaceId, first: $first) {\n      edges {\n        node {\n          id\n          name\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation UpdateProject($input: UpdateProjectInput!) {\n    updateProject(input: $input) {\n      project {\n        id\n        name\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateProject($input: UpdateProjectInput!) {\n    updateProject(input: $input) {\n      project {\n        id\n        name\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeleteProject($input: DeleteProjectInput!) {\n    deleteProject(input: $input) {\n      projectId\n    }\n  }\n"): (typeof documents)["\n  mutation DeleteProject($input: DeleteProjectInput!) {\n    deleteProject(input: $input) {\n      projectId\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

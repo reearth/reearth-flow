@@ -457,12 +457,79 @@ export type WorkspaceMember = {
   userId: Scalars['ID']['output'];
 };
 
+export type CreateProjectMutationVariables = Exact<{
+  input: CreateProjectInput;
+}>;
+
+
+export type CreateProjectMutation = { __typename?: 'Mutation', createProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string } } | null };
+
+export type GetProjectsQueryVariables = Exact<{
+  workspaceId: Scalars['ID']['input'];
+  first: Scalars['Int']['input'];
+}>;
+
+
+export type GetProjectsQuery = { __typename?: 'Query', projects: { __typename?: 'ProjectConnection', edges: Array<{ __typename?: 'ProjectEdge', node?: { __typename?: 'Project', id: string, name: string } | null }> } };
+
+export type UpdateProjectMutationVariables = Exact<{
+  input: UpdateProjectInput;
+}>;
+
+
+export type UpdateProjectMutation = { __typename?: 'Mutation', updateProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string, name: string } } | null };
+
+export type DeleteProjectMutationVariables = Exact<{
+  input: DeleteProjectInput;
+}>;
+
+
+export type DeleteProjectMutation = { __typename?: 'Mutation', deleteProject?: { __typename?: 'DeleteProjectPayload', projectId: string } | null };
+
 export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GetMeQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string } | null };
 
 
+export const CreateProjectDocument = gql`
+    mutation CreateProject($input: CreateProjectInput!) {
+  createProject(input: $input) {
+    project {
+      id
+    }
+  }
+}
+    `;
+export const GetProjectsDocument = gql`
+    query GetProjects($workspaceId: ID!, $first: Int!) {
+  projects(workspaceId: $workspaceId, first: $first) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}
+    `;
+export const UpdateProjectDocument = gql`
+    mutation UpdateProject($input: UpdateProjectInput!) {
+  updateProject(input: $input) {
+    project {
+      id
+      name
+    }
+  }
+}
+    `;
+export const DeleteProjectDocument = gql`
+    mutation DeleteProject($input: DeleteProjectInput!) {
+  deleteProject(input: $input) {
+    projectId
+  }
+}
+    `;
 export const GetMeDocument = gql`
     query GetMe {
   me {
@@ -481,6 +548,18 @@ const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationTy
 
 export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
   return {
+    CreateProject(variables: CreateProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateProjectMutation>(CreateProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateProject', 'mutation', variables);
+    },
+    GetProjects(variables: GetProjectsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectsQuery>(GetProjectsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjects', 'query', variables);
+    },
+    UpdateProject(variables: UpdateProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateProjectMutation>(UpdateProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateProject', 'mutation', variables);
+    },
+    DeleteProject(variables: DeleteProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<DeleteProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteProjectMutation>(DeleteProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteProject', 'mutation', variables);
+    },
     GetMe(variables?: GetMeQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetMeQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetMeQuery>(GetMeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetMe', 'query', variables);
     }
