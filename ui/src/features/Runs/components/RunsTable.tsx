@@ -108,7 +108,6 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
   });
 
   useEffect(() => {
-    console.log("Selected run", selectedRun);
     if (rowSelection) {
       const selected = table
         ?.getRowModel()

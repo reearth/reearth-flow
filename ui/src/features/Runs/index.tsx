@@ -8,10 +8,10 @@ import { useT } from "@flow/providers";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Run } from "@flow/types";
 
-import { LogConsole } from "../BottomPanel/components";
 import { UserNavigation, WorkspaceNavigation } from "../Dashboard/components/Nav/components";
 
-import { ManualRun, RunsTable } from "./components";
+import { ManualRun } from "./components";
+import { StatusContent } from "./components/StatusContent";
 
 type Status = "running" | "queued" | "completed";
 
@@ -26,6 +26,7 @@ const Runs: React.FC = () => {
   const [selectedRun, selectRun] = useState<Run>();
 
   const handleTabChange = (tab: Tab) => {
+    selectRun(undefined);
     navigate({ to: `/workspace/${currentWorkspace?.id}/runs/${tab}` });
   };
 
@@ -36,40 +37,10 @@ const Runs: React.FC = () => {
     return true;
   });
 
-  const content = () => {
-    switch (tab) {
-      case "manual":
-        return <ManualRun />;
-      default:
-        return (
-          <>
-            <div className="flex gap-2 items-center py-2 px-4 border-b border-zinc-700">
-              <p className="text-xl font-thin">{t("Runs manager")}</p>
-              <p className="font-thin text-zinc-400">({tab})</p>
-            </div>
-            <div className="flex flex-col gap-4 py-2 px-4">
-              <div className="max-h-[30vh] overflow-auto rounded-md border border-zinc-700 px-2">
-                <RunsTable runs={runs} selectedRun={selectedRun} onRunSelect={selectRun} />
-              </div>
-              {selectedRun && (
-                <div className="rounded-md border border-zinc-700 mx-4 text-zinc-300 font-thin">
-                  <div className="py-2 px-4 border-b border-zinc-700">
-                    <p className="text-xl">Meta data</p>
-                  </div>
-                  <div className="flex flex-col py-2 px-4">
-                    <p>ID: {selectedRun.id}</p>
-                    <p>Project Name: {selectedRun.project.name}</p>
-                    <p>Logs:</p>
-                    <div className="h-[30vh] overflow-auto">
-                      <LogConsole className="overflow-auto" />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        );
-    }
+  const statusLabels = {
+    completed: t("Completed"),
+    running: t("Running"),
+    queued: t("Queued"),
   };
 
   return (
@@ -125,7 +96,18 @@ const Runs: React.FC = () => {
           </div>
         </div>
         <div className="flex flex-col flex-1">
-          <div className="flex-1 bg-zinc-900/50 border border-zinc-700 rounded-lg">{content()}</div>
+          <div className="flex-1 bg-zinc-900/50 border border-zinc-700 rounded-lg">
+            {tab === "manual" ? (
+              <ManualRun />
+            ) : (
+              <StatusContent
+                label={statusLabels[tab as Status]}
+                runs={runs}
+                selectedRun={selectedRun}
+                onRunSelect={selectRun}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
