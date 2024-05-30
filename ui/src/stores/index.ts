@@ -1,6 +1,7 @@
 import { atom, useAtom } from "jotai";
 
-import { Project, Workspace } from "@flow/types";
+import { Workspace } from "@flow/lib/gql";
+import { Project } from "@flow/types";
 
 export type DialogType =
   | "canvas-search"

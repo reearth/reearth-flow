@@ -10,11 +10,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@flow/components";
+import { useGetWorkspaceQuery } from "@flow/lib/api";
+import { Workspace } from "@flow/lib/gql";
 import { cn } from "@flow/lib/utils";
-import { workspaces } from "@flow/mock_data/workspaceData";
 import { useT } from "@flow/providers";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
-import { Workspace } from "@flow/types";
 
 type Props = {
   className?: string;
@@ -26,11 +26,16 @@ const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
   const [, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
 
+  // TODO: This fails with proper workspaces
   const handleWorkspaceChange = (workspace: Workspace) => {
     setCurrentProject(undefined);
     setCurrentWorkspace(workspace);
     navigate({ to: `/workspace/${workspace.id}` });
   };
+
+  const { data } = useGetWorkspaceQuery();
+
+  const workspaces = data?.me?.workspaces;
 
   return (
     <div className={`flex justify-center gap-4 ${className}`}>
@@ -55,6 +60,7 @@ const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
                   "rounded-md mr-1 mt-1 mb-1 pl-0",
                   currentWorkspace?.id === workspace.id ? "bg-zinc-700/50" : undefined,
                 )}
+                // TODO: Fix TS error
                 onClick={() => handleWorkspaceChange(workspace)}>
                 <div className="flex items-center justify-center w-[15px] h-[15px] mr-1">
                   {currentWorkspace?.id === workspace.id && (
