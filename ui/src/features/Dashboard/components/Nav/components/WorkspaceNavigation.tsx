@@ -14,7 +14,7 @@ import { useGetWorkspaceQuery } from "@flow/lib/api";
 import { Workspace } from "@flow/lib/gql";
 import { cn } from "@flow/lib/utils";
 import { useT } from "@flow/providers";
-import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
+import { useCurrentProject, useCurrentWorkspace, useDialogType } from "@flow/stores";
 
 type Props = {
   className?: string;
@@ -25,6 +25,7 @@ const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
   const [, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
+  const [, setDialogType] = useDialogType();
 
   // TODO: This fails with proper workspaces
   const handleWorkspaceChange = (workspace: Workspace) => {
@@ -83,7 +84,8 @@ const WorkspaceNavigation: React.FC<Props> = ({ className }) => {
         className="bg-zinc-800 hover:bg-zinc-700"
         variant="outline"
         size="icon"
-        tooltipText={t("Create new workspace")}>
+        tooltipText={t("Create new workspace")}
+        onClick={() => setDialogType("add-workspace")}>
         <PlusIcon />
       </ButtonWithTooltip>
     </div>

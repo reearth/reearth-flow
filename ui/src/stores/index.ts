@@ -9,7 +9,8 @@ export type DialogType =
   | "workspaces-settings"
   | "workflow-settings"
   | "general-settings"
-  | "keyboard-instructions";
+  | "keyboard-instructions"
+  | "add-workspace";
 
 const dialogType = atom<DialogType | undefined>(undefined);
 export const useDialogType = () => useAtom(dialogType);

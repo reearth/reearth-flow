@@ -1,26 +1,22 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import {
-  CreateWorkspaceInput,
-  DeleteWorkspaceInput,
-  UpdateWorkspaceInput,
-  useGraphQLContext,
-} from "@flow/lib/gql";
+import { useGraphQLContext } from "@flow/lib/gql";
 
 // TODO: const graphQLContext = useGraphQLContext(); is repeated everywhere
 // graphQLContext?.[ACTION]({ input }) is also repeated everywhere
 
-export const useCreateWorkspaceQuery = (name: string) => {
+// TODO: Wite type definition for onSuccess and onError
+export const useCreateWorkspaceMutation = ({ onSuccess, onError }) => {
   const graphQLContext = useGraphQLContext();
-  const input: CreateWorkspaceInput = {
-    name,
-  };
-  const { data, ...rest } = useQuery({
-    queryKey: ["createWorkspace"],
-    queryFn: async () => graphQLContext?.CreateWorkspace({ input }),
+  return useMutation({
+    mutationFn: graphQLContext?.CreateWorkspace,
+    onSuccess: onSuccess,
+    onError: onError,
+    // TODO: use the function below to invalidate the query
+    // onSuccess: () => {
+    //   queryClient.invalidateQueries({ queryKey: ['getWorkspace'] })
+    // },
   });
-
-  return { data, ...rest };
 };
 
 export const useGetWorkspaceQuery = () => {
@@ -33,29 +29,17 @@ export const useGetWorkspaceQuery = () => {
   return { data, ...rest };
 };
 
-export const useUpdateWorkspaceQuery = (workspaceId: string, name: string) => {
+export const useUpdateWorkspaceMutation = () => {
   const graphQLContext = useGraphQLContext();
-  const input: UpdateWorkspaceInput = {
-    workspaceId,
-    name,
-  };
-  const { data, ...rest } = useQuery({
-    queryKey: ["updateWorkspace"],
-    queryFn: async () => graphQLContext?.UpdateWorkspace({ input }),
+  return useMutation({
+    mutationFn: graphQLContext?.UpdateWorkspace,
   });
-
-  return { data, ...rest };
 };
 
-export const useDeleteWorkspaceQuery = (workspaceId: string) => {
+export const useDeleteWorkspaceQuery = () => {
   const graphQLContext = useGraphQLContext();
-  const input: DeleteWorkspaceInput = {
-    workspaceId,
-  };
-  const { data, ...rest } = useQuery({
-    queryKey: ["deleteWorkspace"],
-    queryFn: async () => graphQLContext?.DeleteWorkspace({ input }),
-  });
 
-  return { data, ...rest };
+  return useMutation({
+    mutationFn: graphQLContext?.DeleteWorkspace,
+  });
 };

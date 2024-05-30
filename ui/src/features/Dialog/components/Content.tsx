@@ -4,6 +4,7 @@ import { DialogType } from "@flow/stores";
 import useInstructions from "./instructions/useInstructions";
 import useSearches from "./searches/useSearches";
 import useSettings from "./settings/useSettings";
+import useWorkspace from "./workspace/useWorkspace";
 
 export type DialogContentType = {
   id: DialogType;
@@ -22,14 +23,18 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
   const searches = useSearches();
   const settings = useSettings();
   const instructions = useInstructions();
+  const addWorkspace = useWorkspace();
 
+  // TODO: Isn't this very hackish?
   const content = tab?.includes("search")
     ? searches
     : tab?.includes("settings")
       ? settings
       : tab?.includes("instructions")
         ? instructions
-        : null;
+        : tab?.includes("workspace")
+          ? addWorkspace
+          : null;
 
   const disableClickaway = tab.includes("settings");
 
