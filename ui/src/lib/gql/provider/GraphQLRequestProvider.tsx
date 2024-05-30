@@ -1,17 +1,17 @@
 import { GraphQLClient } from "graphql-request";
-import { createContext, useState, ReactNode, useEffect } from "react";
+import { createContext, useState, ReactNode, useEffect, useContext } from "react";
 
-import { Loading } from "@flow/components";
+import { config } from "@flow/config";
 import { useAuth } from "@flow/lib/auth";
 import { Sdk, getSdk } from "@flow/lib/gql/";
 
-// TODO: is there any other way without exporting the context?
-const defaultSdk = getSdk(new GraphQLClient(""));
-export const GraphQlSdkContext = createContext(defaultSdk);
+export const GraphQLContext = createContext<Sdk | undefined>(undefined);
 
-export const GraphQlSdkProvider = ({ children }: { children?: ReactNode }) => {
+export const useGraphQLContext = () => useContext(GraphQLContext);
+
+export const GraphQLRequestProvider = ({ children }: { children?: ReactNode }) => {
   const [graphQLSdk, setGraphQLSdk] = useState<Sdk | undefined>();
-  const endpoint = `${window.FLOW_CONFIG?.api}/graphql`;
+  const endpoint = `${config().api}/graphql`;
   const { getAccessToken } = useAuth();
 
   // TODO: What happens when the token expires?
@@ -31,9 +31,9 @@ export const GraphQlSdkProvider = ({ children }: { children?: ReactNode }) => {
     })();
   }, [graphQLSdk, setGraphQLSdk, getAccessToken, endpoint]);
 
-  return graphQLSdk && children ? (
-    <GraphQlSdkContext.Provider value={graphQLSdk}>{children}</GraphQlSdkContext.Provider>
+  return graphQLSdk ? (
+    <GraphQLContext.Provider value={graphQLSdk}>{children}</GraphQLContext.Provider>
   ) : (
-    <Loading />
+    children
   );
 };

@@ -1,26 +1,21 @@
 import { Outlet, useParams } from "@tanstack/react-router";
+import { lazy } from "react";
 import { ReactFlowProvider } from "reactflow";
 
+import { config } from "@flow/config";
 import AuthenticatedPage from "@flow/features/AuthenticatedPage";
 import Dialog from "@flow/features/Dialog";
 import { AuthProvider } from "@flow/lib/auth";
+import { GraphQLProvider } from "@flow/lib/gql";
 import { workspaces } from "@flow/mock_data/workspaceData";
-import {
-  GraphQlSdkProvider,
-  I18nProvider,
-  QueryClientProvider,
-  TooltipProvider,
-} from "@flow/providers";
+import { I18nProvider, TooltipProvider } from "@flow/providers";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
-// import { lazy } from "react";
 
-// import { config } from "@flow/config";
-
-// const TanStackQueryDevtools = lazy(() =>
-//   import("@tanstack/react-query-devtools/build/modern/production.js").then(d => ({
-//     default: d.ReactQueryDevtools,
-//   })),
-// );
+const TanStackQueryDevtools = lazy(() =>
+  import("@tanstack/react-query-devtools/build/modern/production.js").then(d => ({
+    default: d.ReactQueryDevtools,
+  })),
+);
 
 // const TanStackRouterDevtools = lazy(() =>
 //   import("@tanstack/router-devtools").then(d => ({
@@ -32,7 +27,7 @@ const RootRoute: React.FC = () => {
   const [currentProject, setCurrentProject] = useCurrentProject();
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
 
-  // const { devMode } = config();
+  const { devMode } = config();
 
   const { projectId, workspaceId } = useParams({ strict: false });
 
@@ -46,26 +41,24 @@ const RootRoute: React.FC = () => {
 
   return (
     <AuthProvider>
-      <QueryClientProvider>
+      <GraphQLProvider>
         <I18nProvider>
           <TooltipProvider>
             <ReactFlowProvider>
               <AuthenticatedPage>
-                <GraphQlSdkProvider>
-                  <Dialog />
-                  <Outlet />
-                </GraphQlSdkProvider>
+                <Dialog />
+                <Outlet />
               </AuthenticatedPage>
             </ReactFlowProvider>
           </TooltipProvider>
         </I18nProvider>
-        {/* {devMode && (
+        {devMode && (
           <>
             <TanStackQueryDevtools initialIsOpen={false} />
-            <TanStackRouterDevtools />
+            {/* <TanStackRouterDevtools /> */}
           </>
-        )} */}
-      </QueryClientProvider>
+        )}
+      </GraphQLProvider>
     </AuthProvider>
   );
 };
