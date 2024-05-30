@@ -103,7 +103,7 @@ impl RunCliCommand {
                 let p = ProjectDirs::from("reearth", "flow", "worker")
                     .ok_or(crate::Error::init("No action log uri provided"))?;
                 let p = p
-                    .data_dir()
+                    .cache_dir()
                     .to_str()
                     .ok_or(crate::Error::init("Invalid action log uri"))?;
                 let p = format!("{}/action-log/{}", p, job_id);
@@ -113,7 +113,7 @@ impl RunCliCommand {
         };
         let state_uri = {
             let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
-            let p = p.data_dir().to_str().unwrap();
+            let p = p.cache_dir().to_str().unwrap();
             let p = format!("{}/feature-store/{}", p, job_id);
             let _ = fs::create_dir_all(Path::new(p.as_str()));
             Uri::for_test(format!("file://{}", p).as_str())
