@@ -10,6 +10,10 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
 } from "@flow/components";
 import { useT } from "@flow/providers";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
@@ -45,21 +49,29 @@ const MainSection: React.FC = () => {
       <div className="flex flex-col flex-1 justify-between overflow-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-auto p-8">
           {projects?.map(p => (
-            <Card
-              className={`cursor-pointer bg-zinc-700/30 border border-transparent ${currentProject && currentProject.id === p.id ? "border-zinc-600" : "hover:border-zinc-600"}`}
-              key={p.id}
-              onClick={() => handleProjectSelect(p)}>
-              <CardHeader className="p-3">
-                <CardTitle className="truncate font-extralight self-center">{p.name}</CardTitle>
-                {p.description && <CardDescription>{p.description}</CardDescription>}
-              </CardHeader>
-              <CardContent className="p-0">
-                <img src={projectImage} />
-              </CardContent>
-              <CardFooter className="p-2 flex justify-center">
-                <p className="font-thin text-xs">Modified on: 2024/04/26</p>
-              </CardFooter>
-            </Card>
+            <ContextMenu key={p.id}>
+              <ContextMenuTrigger>
+                <Card
+                  className={`cursor-pointer bg-zinc-700/30 border border-transparent ${currentProject && currentProject.id === p.id ? "border-zinc-600" : "hover:border-zinc-600"}`}
+                  key={p.id}
+                  onClick={() => handleProjectSelect(p)}>
+                  <CardHeader className="p-2">
+                    <CardTitle className="truncate font-thin self-center">{p.name}</CardTitle>
+                    {p.description && <CardDescription>{p.description}</CardDescription>}
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <img src={projectImage} />
+                  </CardContent>
+                  <CardFooter className="p-1 flex justify-center">
+                    <p className="font-thin text-xs">Modified on: 2024/04/26</p>
+                  </CardFooter>
+                </Card>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem>Edit</ContextMenuItem>
+                <ContextMenuItem>Delete Project</ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
           ))}
         </div>
         <div className="border-t border-zinc-700 bg-zinc-900/50 rounded-b-lg">

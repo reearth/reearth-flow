@@ -14,16 +14,16 @@ const MembersList: React.FC<Props> = () => {
           {currentWorkspace.members.map(member => (
             <div
               className="flex justify-between items-center bg-zinc-700/30 border border-zinc-600/75 text-zinc-300 rounded py-1 px-2"
-              key={member.id}>
+              key={member.userId}>
               <div className="flex gap-2 items-center truncate">
                 <div>
                   <User weight="thin" />
                 </div>
-                <p key={member.id} className="font-thin truncate">
-                  {member.name}
+                <p key={member.userId} className="font-thin truncate">
+                  {member.user.name}
                 </p>
               </div>
-              <p key={member.id} className="font-thin text-sm truncate text-center">
+              <p key={member.userId} className="font-thin text-sm truncate text-center">
                 {member.role === "admin"
                   ? "Admin"
                   : member.role === "writer"

@@ -6,4 +6,5 @@ export type Workspace = {
   name: string;
   members: Member[] | undefined;
   projects: Project[] | undefined;
+  personal?: boolean;
 };

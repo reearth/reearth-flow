@@ -27,8 +27,8 @@ export default (): DialogContentType[] => {
       component: <WorkspacesDialogContent />,
     },
     {
-      id: "workflow-settings",
-      title: t("Workflow settings"),
+      id: "project-settings",
+      title: t("Project settings"),
       icon: <Graph />,
       component: <WorkflowDialogContent />,
     },

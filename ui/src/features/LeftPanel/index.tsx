@@ -1,7 +1,6 @@
 import {
   Database,
   Disc,
-  Gear,
   HardDrive,
   Lightning,
   MagnifyingGlass,
@@ -17,7 +16,7 @@ import { Workflow } from "@flow/types";
 
 import { UserNavigation } from "../Dashboard/components/Nav/components";
 
-// import HomeMenu from "./components/HomeMenu";
+import { TransformerList, Resources, ProjectSettings } from "./components";
 
 type Tab = "navigator" | "transformer-list" | "resources";
 
@@ -84,51 +83,13 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
       id: "transformer-list",
       title: t("Transformer list"),
       icon: <Lightning className="h-5 w-5" weight="thin" />,
-      component: (
-        <div className="flex flex-col gap-2 px-1">
-          <div className="flex gap-2 items-center">
-            <Lightning className="w-[15px] h-[15px]" weight="thin" />
-            <p className="text-sm font-extralight">Transformer</p>
-          </div>
-          <div className="flex gap-2 items-center">
-            <Lightning className="w-[15px] h-[15px]" weight="thin" />
-            <p className="text-sm font-extralight">Transformer</p>
-          </div>
-          <div className="flex gap-2 items-center">
-            <Lightning className="w-[15px] h-[15px]" weight="thin" />
-            <p className="text-sm font-extralight">Transformer</p>
-          </div>
-          <div className="flex gap-2 items-center">
-            <Lightning className="w-[15px] h-[15px]" weight="thin" />
-            <p className="text-sm font-extralight">Transformer</p>
-          </div>
-        </div>
-      ),
+      component: <TransformerList />,
     },
     {
       id: "resources",
       title: "Resources",
       icon: <HardDrive className="h-5 w-5" weight="thin" />,
-      component: (
-        <div className="flex flex-col gap-2 px-1">
-          <div className="flex gap-2 items-center">
-            <HardDrive className="w-[15px] h-[15px]" weight="thin" />
-            <p className="text-sm font-extralight">resource</p>
-          </div>
-          <div className="flex gap-2 items-center">
-            <HardDrive className="w-[15px] h-[15px]" weight="thin" />
-            <p className="text-sm font-extralight">resource</p>
-          </div>
-          <div className="flex gap-2 items-center">
-            <HardDrive className="w-[15px] h-[15px]" weight="thin" />
-            <p className="text-sm font-extralight">resource</p>
-          </div>
-          <div className="flex gap-2 items-center">
-            <HardDrive className="w-[15px] h-[15px]" weight="thin" />
-            <p className="text-sm font-extralight">resource</p>
-          </div>
-        </div>
-      ),
+      component: <Resources />,
     },
   ];
 
@@ -190,12 +151,11 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
               iconOnly
               dropdownPosition="right"
             />
-            <Link
-              className="flex h-9 w-9 items-center justify-center rounded text-zinc-400 transition-colors hover:text-zinc-300 md:h-8 md:w-8"
-              to={"/settings"}>
-              <Gear className="h-5 w-5" weight="thin" />
-              <span className="sr-only">Settings</span>
-            </Link>
+            <ProjectSettings
+              className="flex items-center justify-center cursor-pointer rounded text-zinc-400 transition-colors hover:text-zinc-300 md:h-8 md:w-8"
+              dropdownPosition="right"
+              dropdownOffset={15}
+            />
           </nav>
         </div>
       </aside>
