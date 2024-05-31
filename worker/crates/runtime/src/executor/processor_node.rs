@@ -87,7 +87,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             runtime.clone(),
         );
         let span = info_span!(
-            "root",
+            "action",
             "otel.name" = processor.name(),
             "otel.kind" = "Processor Node",
             "workflow.id" = dag.id.to_string().as_str(),

@@ -1,4 +1,4 @@
-import { ChevronRightIcon } from "@radix-ui/react-icons";
+import { CaretRight } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
@@ -26,7 +26,7 @@ const Breadcrumb: React.FC = () => {
           {currentWorkspace?.name}
         </p>
         <p className="font-extralight text-zinc-500">
-          <ChevronRightIcon />
+          <CaretRight />
         </p>
         <p
           className={`font-extralight text-zinc-400 max-w-[100px] truncate transition-all delay-0 duration-500 ${isHovered?.includes("project") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
