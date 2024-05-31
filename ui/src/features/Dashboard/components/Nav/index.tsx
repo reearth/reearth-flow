@@ -13,6 +13,7 @@ type Props = {
 const Nav: React.FC<Props> = ({ className }) => {
   const t = useT();
   const { brandName, version } = config();
+
   return (
     <div className={`bg-zinc-900/50 border-b border-zinc-700 ${className}`}>
       <div className="relative flex justify-between items-center gap-4 h-14 px-4">
@@ -21,7 +22,7 @@ const Nav: React.FC<Props> = ({ className }) => {
             <FlowLogo className="h-5 w-5" />
           </div>
           <h1 className="text-md font-extralight select-none">
-            {brandName ?? t("Re:Earth Flow")} {version ?? "X.X.X"}
+            {brandName ?? "Re:Earth Flow"} {version ?? "X.X.X"}
           </h1>
         </div>
         <div id="dashboard-middle" className="absolute left-0 right-0 flex justify-center">

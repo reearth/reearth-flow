@@ -10,6 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@flow/components";
+import { config } from "@flow/config";
+import { useOpenLink } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/providers";
 import { useDialogType } from "@flow/stores";
@@ -30,6 +32,12 @@ const UserNavigation: React.FC<Props> = ({
   const t = useT();
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
+
+  const { githubRepoUrl, tosUrl, documentationUrl } = config();
+
+  const handleGithubPageOpen = useOpenLink(githubRepoUrl ?? "");
+  const handleTosPageOpen = useOpenLink(tosUrl ?? "");
+  const handleDocumentationPageOpen = useOpenLink(documentationUrl ?? "");
 
   return (
     <DropdownMenu>
@@ -55,13 +63,29 @@ const UserNavigation: React.FC<Props> = ({
         sideOffset={dropdownOffset ?? 4}>
         {/* <DropdownMenuLabel>My Account</DropdownMenuLabel> */}
         <DropdownMenuItem className="gap-2" onClick={() => setDialogType("account-settings")}>
-          <User />
+          <User weight="thin" />
           <p>{t("Account settings")}</p>
         </DropdownMenuItem>
         <DropdownMenuItem className="gap-2" onClick={() => setDialogType("keyboard-instructions")}>
-          <Keyboard />
+          <Keyboard weight="thin" />
           <p>{t("Keyboard shortcuts")}</p>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {githubRepoUrl && (
+          <DropdownMenuItem onClick={handleGithubPageOpen}>
+            <p>{t("Github")}</p>
+          </DropdownMenuItem>
+        )}
+        {tosUrl && (
+          <DropdownMenuItem onClick={handleTosPageOpen}>
+            <p>{t("Terms of Service")}</p>
+          </DropdownMenuItem>
+        )}
+        {documentationUrl && (
+          <DropdownMenuItem onClick={handleDocumentationPageOpen}>
+            <p>{t("Documentation")}</p>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="gap-2">
           <SignOut className="w-[15px] h-[15px] stroke-1" />
