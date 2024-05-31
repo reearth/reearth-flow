@@ -11,7 +11,7 @@ export const CREATE_WORKSPACE = graphql(`
 `);
 
 // TODO: Should this a fragment in GET_ME?
-export const GET_WORSPACES = graphql(`
+export const GET_WORKSPACES = graphql(`
   query GetWorkspaces {
     me {
       workspaces {
