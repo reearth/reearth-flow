@@ -5,4 +5,6 @@ export type Project = {
   name: string;
   description?: string;
   workflow: Workflow | undefined;
+  createdAt: string;
+  updatedAt?: string;
 };

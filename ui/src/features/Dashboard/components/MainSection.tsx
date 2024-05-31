@@ -55,21 +55,23 @@ const MainSection: React.FC = () => {
                   className={`cursor-pointer bg-zinc-700/30 border border-transparent ${currentProject && currentProject.id === p.id ? "border-zinc-600" : "hover:border-zinc-600"}`}
                   key={p.id}
                   onClick={() => handleProjectSelect(p)}>
-                  <CardHeader className="p-2">
+                  <CardHeader className="p-1">
                     <CardTitle className="truncate font-thin self-center">{p.name}</CardTitle>
                     {p.description && <CardDescription>{p.description}</CardDescription>}
                   </CardHeader>
                   <CardContent className="p-0">
                     <img src={projectImage} />
                   </CardContent>
-                  <CardFooter className="p-1 flex justify-center">
-                    <p className="font-thin text-xs">Modified on: 2024/04/26</p>
+                  <CardFooter className="p-0 flex justify-center">
+                    <p className="font-thin text-xs">
+                      {t("Modified:")} {p.updatedAt}
+                    </p>
                   </CardFooter>
                 </Card>
               </ContextMenuTrigger>
               <ContextMenuContent>
-                <ContextMenuItem>Edit</ContextMenuItem>
-                <ContextMenuItem>Delete Project</ContextMenuItem>
+                <ContextMenuItem>{t("Edit Details")}</ContextMenuItem>
+                <ContextMenuItem>{t("Delete Project")}</ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>
           ))}
