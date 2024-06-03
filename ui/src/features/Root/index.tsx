@@ -1,9 +1,14 @@
 import { Outlet, useParams } from "@tanstack/react-router";
 import { lazy } from "react";
+import { ReactFlowProvider } from "reactflow";
 
 import { config } from "@flow/config";
+import AuthenticatedPage from "@flow/features/AuthenticatedPage";
 import Dialog from "@flow/features/Dialog";
+import { AuthProvider } from "@flow/lib/auth";
+import { GraphQLProvider } from "@flow/lib/gql";
 import { workspaces } from "@flow/mock_data/workspaceData";
+import { I18nProvider, TooltipProvider } from "@flow/providers";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 
 const TanStackQueryDevtools = lazy(() =>
@@ -35,16 +40,26 @@ const RootRoute: React.FC = () => {
   }
 
   return (
-    <>
-      <Dialog />
-      <Outlet />
-      {devMode && (
-        <>
-          <TanStackQueryDevtools initialIsOpen={false} />
-          {/* <TanStackRouterDevtools /> */}
-        </>
-      )}
-    </>
+    <AuthProvider>
+      <GraphQLProvider>
+        <I18nProvider>
+          <TooltipProvider>
+            <ReactFlowProvider>
+              <AuthenticatedPage>
+                <Dialog />
+                <Outlet />
+                {devMode && (
+                  <>
+                    <TanStackQueryDevtools initialIsOpen={false} />
+                    {/* <TanStackRouterDevtools /> */}
+                  </>
+                )}
+              </AuthenticatedPage>
+            </ReactFlowProvider>
+          </TooltipProvider>
+        </I18nProvider>
+      </GraphQLProvider>
+    </AuthProvider>
   );
 };
 
