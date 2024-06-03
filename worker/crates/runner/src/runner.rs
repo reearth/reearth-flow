@@ -1,10 +1,11 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_runtime::shutdown;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Workflow;
+use tracing::{info, info_span};
 
 use crate::orchestrator::Orchestrator;
 
@@ -24,6 +25,15 @@ impl Runner {
             .build()
             .unwrap();
 
+        let start = Instant::now();
+        let span = info_span!(
+            "root",
+            "otel.name" = workflow.name.as_str(),
+            "otel.kind" = "runner",
+            "workflow.id" = workflow.id.to_string().as_str(),
+        );
+        let workflow_name = workflow.name.clone();
+        info!(parent: &span, "Start workflow = {:?}", workflow_name.as_str());
         let (_shutdown_sender, shutdown_receiver) = shutdown::new(&runtime);
         let runtime = Arc::new(runtime);
         let orchestraotr = Orchestrator::new(runtime.clone());
@@ -40,5 +50,6 @@ impl Runner {
                 .await
                 .unwrap()
         });
+        info!(parent: &span, "Finish workflow = {:?}, duration = {:?}", workflow_name.as_str(), start.elapsed());
     }
 }
