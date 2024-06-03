@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useGraphQLContext } from "@flow/lib/gql";
+import { CreateWorkspaceMutation, useGraphQLContext } from "@flow/lib/gql";
 
 import { graphql } from "../__gen__";
 
@@ -8,7 +8,7 @@ graphql(`
   mutation CreateWorkspace($input: CreateWorkspaceInput!) {
     createWorkspace(input: $input) {
       workspace {
-        name
+        id
       }
     }
   }
@@ -55,15 +55,21 @@ type mutationInput = {
   onError?: () => void;
 };
 
-export const useCreateWorkspaceMutation = ({ onSuccess, onError }: mutationInput) => {
+export const useCreateWorkspaceMutation = ({
+  onSuccess,
+  onError,
+}: {
+  onSuccess: (data: CreateWorkspaceMutation) => void;
+  onError: () => void;
+}) => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: graphQLContext?.CreateWorkspace,
     onError: onError,
-    onSuccess: () => {
+    onSuccess: data => {
       queryClient.invalidateQueries({ queryKey: [WorkspaceQueryKeys.GetWorkspace] });
-      onSuccess && onSuccess();
+      onSuccess && onSuccess(data);
     },
   });
 };

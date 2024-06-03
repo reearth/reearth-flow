@@ -19,7 +19,6 @@ const WorkspaceNavigation: React.FC = () => {
   const [, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate();
 
-  // TODO: This fails with proper workspaces
   const handleWorkspaceChange = (workspace: Workspace) => {
     setCurrentProject(undefined);
     setCurrentWorkspace(workspace);
