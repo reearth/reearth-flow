@@ -4,10 +4,6 @@
   "No Results": "",
   "Output log": "输出日志",
   "Preview data": "预览数据",
-  "Members": "",
-  "Add a team member": "",
-  "Documentation": "文档",
-  "Terms of Service": "服务条款",
   "Runs": "",
   "New Run": "",
   "Running: ": "",
@@ -29,6 +25,8 @@
   "Total Projects": "",
   "Account settings": "",
   "Keyboard shortcuts": "",
+  "Terms of Service": "服务条款",
+  "Documentation": "文档",
   "Log out": "",
   "Create new workspace": "",
   "This is a list of keyboard shortcuts that you can use to navigate the application.": "",
@@ -119,5 +117,6 @@
   "Remove selected": "",
   "Members Settings": "",
   "Add Members": "",
+  "Members": "",
   "General": ""
 }

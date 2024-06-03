@@ -4,10 +4,6 @@
   "No Results": "",
   "Output log": "Registro de salida",
   "Preview data": "Vista previa de datos",
-  "Members": "",
-  "Add a team member": "",
-  "Documentation": "",
-  "Terms of Service": "",
   "Runs": "",
   "New Run": "",
   "Running: ": "",
@@ -29,6 +25,8 @@
   "Total Projects": "",
   "Account settings": "",
   "Keyboard shortcuts": "",
+  "Terms of Service": "",
+  "Documentation": "",
   "Log out": "",
   "Create new workspace": "",
   "This is a list of keyboard shortcuts that you can use to navigate the application.": "",
@@ -119,5 +117,6 @@
   "Remove selected": "",
   "Members Settings": "",
   "Add Members": "",
+  "Members": "",
   "General": ""
 }
