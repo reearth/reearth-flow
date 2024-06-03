@@ -2926,18 +2926,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "reearth-flow-xml"
-version = "0.1.0"
-dependencies = [
- "quick-xml",
- "regex",
- "serde",
- "serde_json",
- "thiserror",
- "uuid",
-]
-
-[[package]]
 name = "regex"
 version = "1.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

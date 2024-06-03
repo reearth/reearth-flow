@@ -839,6 +839,24 @@
       ]
     },
     {
+      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "type": "processor",
+      "description": "Detect unmatched xlink for PLATEAU",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "summary",
+        "unMatchedXlinkFrom",
+        "unMatchedXlinkTo"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU.XMLAttributeExtractor",
       "type": "processor",
       "description": "Extracts attributes from XML fragments based on a schema definition",
@@ -849,7 +867,8 @@
       ],
       "outputPorts": [
         "default",
-        "rejected"
+        "summary",
+        "filePath"
       ],
       "categories": [
         "PLATEAU"
