@@ -10,8 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@flow/components";
-import { useMeQuery } from "@flow/lib/api";
 import { useAuth } from "@flow/lib/auth";
+import { useMeQuery } from "@flow/lib/gql";
 import { useT } from "@flow/providers";
 import { useDialogType } from "@flow/stores";
 
@@ -22,12 +22,7 @@ type Props = {
   dropdownOffset?: number;
 };
 
-const UserNavigation: React.FC<Props> = ({
-  className,
-  iconOnly,
-  dropdownPosition,
-  dropdownOffset,
-}) => {
+const UserNavigation: React.FC<Props> = ({ className, dropdownPosition, dropdownOffset }) => {
   const t = useT();
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
