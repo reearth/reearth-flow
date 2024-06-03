@@ -2,7 +2,7 @@ import { PlugsConnected, Toolbox, UsersThree } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 import { TopNavigation } from "../TopNavigation";
 

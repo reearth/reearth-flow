@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@flow/components";
 import { runs } from "@flow/mock_data/runsData";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
 const RunsSection: React.FC = () => {

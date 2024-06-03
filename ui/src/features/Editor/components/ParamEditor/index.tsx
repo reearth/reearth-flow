@@ -31,7 +31,7 @@ import {
   TabsTrigger,
 } from "@flow/components";
 import { useFullscreen } from "@flow/hooks";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import type { NodeData } from "@flow/types";
 
 type Props = {

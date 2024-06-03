@@ -2,7 +2,7 @@ import { PlugsConnected, Plus, Toolbox, UsersThree } from "@phosphor-icons/react
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@flow/components";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 const WorkspaceSection: React.FC = () => {
   const t = useT();

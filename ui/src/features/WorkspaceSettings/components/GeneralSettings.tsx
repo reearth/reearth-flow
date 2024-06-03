@@ -1,5 +1,5 @@
 import { Button, Input, Label } from "@flow/components";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
 const GeneralSettings: React.FC = () => {

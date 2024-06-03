@@ -2,7 +2,7 @@ import { Plus } from "@phosphor-icons/react";
 
 import { ButtonWithTooltip, FlowLogo } from "@flow/components";
 import { config } from "@flow/config";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 import { UserNavigation, WorkspaceNavigation } from "./components";
 

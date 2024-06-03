@@ -4,10 +4,6 @@
   "No Results": "No Results",
   "Output log": "出力ログ",
   "Preview data": "データのプレビュー",
-  "Members": "",
-  "Add a team member": "",
-  "Documentation": "ドキュメント",
-  "Terms of Service": "利用規約",
   "Runs": "実行",
   "New Run": "新しい実行",
   "Running: ": "実行中",
@@ -29,6 +25,8 @@
   "Total Projects": "すべてのプロジェクト",
   "Account settings": "アカウント設定",
   "Keyboard shortcuts": "キーボードショートカット",
+  "Terms of Service": "利用規約",
+  "Documentation": "ドキュメント",
   "Log out": "ログアウト",
   "Create new workspace": "新しいワークスペースを作成",
   "This is a list of keyboard shortcuts that you can use to navigate the application.": "このリストは、アプリケーションをナビゲートするために使用できるキーボードショートカットのリストです。",
@@ -119,5 +117,6 @@
   "Remove selected": "",
   "Members Settings": "",
   "Add Members": "",
+  "Members": "",
   "General": ""
 }

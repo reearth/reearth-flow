@@ -1,6 +1,6 @@
 import { Gear, Graph, User, UsersThree } from "@phosphor-icons/react";
 
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 import { DialogContentType } from "../Content";
 
