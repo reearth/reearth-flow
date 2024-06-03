@@ -1,10 +1,9 @@
+import type { Workspace as WorkspaceGraphqlType } from "@flow/lib/gql/__gen__/graphql";
+
 import type { Member } from "./member";
 import type { Project } from "./project";
 
-// TODO: Shouldn't this come from graphql?
-export type Workspace = {
-  id: string;
-  name: string;
+export type Workspace = Pick<WorkspaceGraphqlType, "id" | "name" | "personal"> & {
   members: Member[] | undefined;
   projects: Project[] | undefined;
 };
