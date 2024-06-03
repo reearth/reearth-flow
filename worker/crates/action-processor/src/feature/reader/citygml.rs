@@ -8,31 +8,39 @@ use nusamai_plateau::{appearance::AppearanceStore, models, Entity};
 use quick_xml::NsReader;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
-    executor_operation::NodeContext,
-    node::{IngestionMessage, Port, DEFAULT_PORT},
+    channels::ProcessorChannelForwarder, executor_operation::ExecutorContext, node::DEFAULT_PORT,
 };
-use reearth_flow_types::{geometry::Geometry, Feature};
-use tokio::sync::mpsc::Sender;
+use reearth_flow_types::geometry::Geometry;
 use url::Url;
 
-pub(crate) async fn read_citygml(
-    input_path: Uri,
-    ctx: NodeContext,
-    sender: Sender<(Port, IngestionMessage)>,
-) -> Result<(), crate::errors::SourceError> {
+use super::CompiledCommonPropertySchema;
+
+pub(crate) fn read_citygml(
+    params: &CompiledCommonPropertySchema,
+    ctx: ExecutorContext,
+    fw: &mut dyn ProcessorChannelForwarder,
+) -> Result<(), super::errors::FeatureProcessorError> {
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
+    let expr_engine = Arc::clone(&ctx.expr_engine);
+    let feature = &ctx.feature;
+    let scope = expr_engine.new_scope();
+    for (k, v) in &feature.attributes {
+        scope.set(k.inner().as_str(), v.clone().into());
+    }
+    let city_gml_path = scope.eval_ast::<String>(&params.expr).map_err(|e| {
+        super::errors::FeatureProcessorError::FileCityGmlReader(format!(
+            "Failed to evaluate expr: {}",
+            e
+        ))
+    })?;
+    let input_path = Uri::for_test(city_gml_path.as_str());
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let storage = storage_resolver
         .resolve(&input_path)
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-    let result = storage
-        .get(input_path.path().as_path())
-        .await
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-    let byte = result
-        .bytes()
-        .await
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+        .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
+    let byte = storage
+        .get_sync(input_path.path().as_path())
+        .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
     let cursor = Cursor::new(byte);
     let buf_reader = BufReader::new(cursor);
 
@@ -42,18 +50,18 @@ pub(crate) async fn read_citygml(
     let mut citygml_reader = CityGmlReader::new(context);
     let mut st = citygml_reader
         .start_root(&mut xml_reader)
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-    parse_tree_reader(&mut st, base_url, sender)
-        .await
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+        .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
+    parse_tree_reader(&mut st, base_url, ctx, fw)
+        .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
     Ok(())
 }
 
-async fn parse_tree_reader<'a, 'b, R: BufRead>(
-    st: &mut SubTreeReader<'a, 'b, R>,
+fn parse_tree_reader<R: BufRead>(
+    st: &mut SubTreeReader<'_, '_, R>,
     base_url: Url,
-    sender: Sender<(Port, IngestionMessage)>,
-) -> Result<(), crate::errors::SourceError> {
+    ctx: ExecutorContext,
+    fw: &mut dyn ProcessorChannelForwarder,
+) -> Result<(), super::errors::FeatureProcessorError> {
     let mut entities = Vec::new();
     let mut global_appearances = AppearanceStore::default();
 
@@ -99,7 +107,7 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
             ))),
         }
     })
-    .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+    .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
     for entity in entities {
         {
             let geom_store = entity.geometry_store.read().unwrap();
@@ -109,17 +117,13 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                 &geom_store.surface_spans,
             );
         }
-        let geometry: Geometry = entity
-            .try_into()
-            .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-        let feature: Feature = geometry.into();
-        sender
-            .send((
-                DEFAULT_PORT.clone(),
-                IngestionMessage::OperationEvent { feature },
-            ))
-            .await
-            .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+        let geometry: Geometry = entity.try_into().map_err(|e| {
+            super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
+        })?;
+        let feature = &ctx.feature;
+        let mut feature = feature.clone();
+        feature.geometry = Some(geometry);
+        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
     }
     Ok(())
 }
