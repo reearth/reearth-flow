@@ -1,3 +1,4 @@
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { useT } from "@flow/providers";
@@ -9,14 +10,23 @@ import { GeneralSettings, IntegrationsSettings, MembersSettings } from "./compon
 type Tab = "general" | "integrations" | "members";
 
 const WorkspaceSettings: React.FC = () => {
+  const { workspaceId, tab } = useParams({ strict: false });
   const t = useT();
-  const [selectedTab, selectTab] = useState<Tab>("general");
+
+  const [selectedTab, selectTab] = useState<Tab>(tab ?? "general");
+
+  const navigate = useNavigate();
 
   const content: { id: Tab; name: string; component: React.ReactNode }[] = [
     { id: "general", name: t("General"), component: <GeneralSettings /> },
     { id: "members", name: t("Members"), component: <MembersSettings /> },
     { id: "integrations", name: t("Integrations"), component: <IntegrationsSettings /> },
   ];
+
+  const handleTabChange = (t: Tab) => {
+    navigate({ to: `/workspace/${workspaceId}/settings/${t}` });
+    selectTab(t);
+  };
 
   return (
     <div className="flex flex-col bg-zinc-800 text-zinc-300 h-[100vh]">
@@ -27,7 +37,7 @@ const WorkspaceSettings: React.FC = () => {
             <div
               key={id}
               className={`px-2 py-1 rounded cursor-pointer border-l-2 border-transparent hover:bg-zinc-700/50 ${selectedTab === id ? "bg-zinc-700/50 border-red-800/50" : undefined}`}
-              onClick={() => selectTab(id)}>
+              onClick={() => handleTabChange(id)}>
               <p className="font-extralight">{name}</p>
             </div>
           ))}
