@@ -2,7 +2,7 @@ import { CaretDown, CaretUp } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@flow/components";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import { Run } from "@flow/types";
 
 import { LogConsole } from "../../BottomPanel/components";
@@ -21,13 +21,13 @@ const StatusContent: React.FC<Props> = ({ label, runs, selectedRun, onRunSelect 
   const t = useT();
   console.log("selected run", selectedRun);
   return (
-    <>
-      <div className="flex gap-2 items-center py-2 px-4 border-b border-zinc-700">
-        <p className="text-xl font-thin">{t("Runs manager")}</p>
-        <p className="font-thin text-zinc-400">({label})</p>
+    <div className="flex-1 p-8">
+      <div className="flex gap-2 items-center text-lg font-extralight">
+        <p>{t("Runs Manager")}</p>
+        <p className="text-sm font-thin text-zinc-400">({label})</p>
       </div>
-      <div className="flex flex-col gap-4 py-2 px-4">
-        <div className="max-h-[30vh] overflow-auto rounded-md border border-zinc-700 px-2">
+      <div className="flex flex-col gap-6 mt-4 max-w-[1200px]">
+        <div className="max-h-[30vh] overflow-auto rounded-md px-2">
           <RunsTable runs={runs} selectedRun={selectedRun} onRunSelect={onRunSelect} />
         </div>
         {selectedRun && (
@@ -78,7 +78,7 @@ const StatusContent: React.FC<Props> = ({ label, runs, selectedRun, onRunSelect 
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 };
 

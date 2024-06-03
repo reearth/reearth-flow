@@ -10,9 +10,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@flow/components";
+import { config } from "@flow/config";
+import { useOpenLink } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useMeQuery } from "@flow/lib/gql";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 
 type Props = {
@@ -22,12 +24,22 @@ type Props = {
   dropdownOffset?: number;
 };
 
-const UserNavigation: React.FC<Props> = ({ className, dropdownPosition, dropdownOffset }) => {
+const UserNavigation: React.FC<Props> = ({
+  className,
+  iconOnly,
+  dropdownPosition,
+  dropdownOffset,
+}) => {
   const t = useT();
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
   const getMe = useMeQuery();
   const data = getMe.data?.me;
+
+  const { tosUrl, documentationUrl } = config();
+
+  const handleTosPageOpen = useOpenLink(tosUrl ?? "");
+  const handleDocumentationPageOpen = useOpenLink(documentationUrl ?? "");
 
   return (
     <DropdownMenu>
@@ -37,11 +49,13 @@ const UserNavigation: React.FC<Props> = ({ className, dropdownPosition, dropdown
             <AvatarImage src={user?.picture} />
             <AvatarFallback>{data?.name ? data?.name.charAt(0).toUpperCase() : "F"}</AvatarFallback>
           </Avatar>
-          <div className="self-center">
-            <p className="text-zinc-400 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
-              {data?.name ? data?.name : "User"}
-            </p>
-          </div>
+          {!iconOnly ? (
+            <div className="self-center">
+              <p className="text-zinc-400 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
+                {data?.name ? data?.name : "User"}
+              </p>
+            </div>
+          ) : null}
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -51,13 +65,24 @@ const UserNavigation: React.FC<Props> = ({ className, dropdownPosition, dropdown
         sideOffset={dropdownOffset ?? 4}>
         {/* <DropdownMenuLabel>My Account</DropdownMenuLabel> */}
         <DropdownMenuItem className="gap-2" onClick={() => setDialogType("account-settings")}>
-          <User />
+          <User weight="thin" />
           <p>{t("Account settings")}</p>
         </DropdownMenuItem>
         <DropdownMenuItem className="gap-2" onClick={() => setDialogType("keyboard-instructions")}>
-          <Keyboard />
+          <Keyboard weight="thin" />
           <p>{t("Keyboard shortcuts")}</p>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {tosUrl && (
+          <DropdownMenuItem onClick={handleTosPageOpen}>
+            <p>{t("Terms of Service")}</p>
+          </DropdownMenuItem>
+        )}
+        {documentationUrl && (
+          <DropdownMenuItem onClick={handleDocumentationPageOpen}>
+            <p>{t("Documentation")}</p>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="gap-2">
           <SignOut className="w-[15px] h-[15px] stroke-1" />

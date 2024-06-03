@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 
 import { IconButton } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 import { DataTable, LogConsole, Map } from "./components";
 

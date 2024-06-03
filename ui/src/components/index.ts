@@ -3,6 +3,7 @@ export * from "./buttons";
 export * from "./Card";
 export * from "./Carousel";
 export * from "./Checkbox";
+export * from "./ContextMenu";
 export * from "./Collapsible";
 export * from "./DataTable";
 export * from "./Dialog";

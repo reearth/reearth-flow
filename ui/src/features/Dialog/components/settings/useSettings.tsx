@@ -1,6 +1,6 @@
 import { Gear, Graph, User, UsersThree } from "@phosphor-icons/react";
 
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 import { DialogContentType } from "../Content";
 
@@ -27,8 +27,8 @@ export default (): DialogContentType[] => {
       component: <WorkspacesDialogContent />,
     },
     {
-      id: "workflow-settings",
-      title: t("Workflow settings"),
+      id: "project-settings",
+      title: t("Project settings"),
       icon: <Graph />,
       component: <WorkflowDialogContent />,
     },

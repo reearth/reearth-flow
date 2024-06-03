@@ -1,8 +1,8 @@
-import { Plus, UsersThree } from "@phosphor-icons/react";
+import { Plus } from "@phosphor-icons/react";
 
 import { ButtonWithTooltip, FlowLogo } from "@flow/components";
 import { config } from "@flow/config";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 
 import { UserNavigation, WorkspaceNavigation } from "./components";
@@ -24,19 +24,20 @@ const Nav: React.FC<Props> = ({ className }) => {
             <FlowLogo className="h-5 w-5" />
           </div>
           <h1 className="text-md font-extralight select-none">
-            {brandName ?? t("Re:Earth Flow")} {version ?? "X.X.X"}
+            {brandName ?? "Re:Earth Flow"}{" "}
+            <span className="font-thin text-xs">v{version ?? "X.X.X"}</span>
           </h1>
         </div>
         <div id="dashboard-middle" className="absolute left-0 right-0 flex justify-center">
           <div className="flex justify-center gap-4 max-w-[40vw]">
             <WorkspaceNavigation />
             <ButtonWithTooltip
-              className="flex bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
+              className="flex gap-2 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
               variant="outline"
               onClick={() => setDialogType("add-workspace")}
               tooltipText={t("Create new workspace")}>
-              <UsersThree className="w-5 h-5" weight="thin" />
-              <Plus className="w-2 h-2" />
+              <Plus weight="thin" />
+              <p className="text-xs font-light">{t("New Workspace")}</p>
             </ButtonWithTooltip>
           </div>
         </div>
