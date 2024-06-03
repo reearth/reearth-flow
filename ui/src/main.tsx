@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 
 import loadConfig from "./config";
 import { routeTree } from "./routeTree.gen.ts";
-
 import "./index.css";
 
 const router = createRouter({ routeTree });

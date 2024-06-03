@@ -4,6 +4,7 @@ import { DialogType } from "@flow/stores";
 import useInstructions from "./instructions/useInstructions";
 import useSearches from "./searches/useSearches";
 import useSettings from "./settings/useSettings";
+import useWorkspace from "./workspace/useWorkspace";
 
 export type DialogContentType = {
   id: DialogType;
@@ -22,16 +23,20 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
   const searches = useSearches();
   const settings = useSettings();
   const instructions = useInstructions();
+  const addWorkspace = useWorkspace();
 
+  // TODO: Isn't this very hackish?
   const content = tab?.includes("search")
     ? searches
     : tab?.includes("settings")
       ? settings
       : tab?.includes("instructions")
         ? instructions
-        : null;
+        : tab?.includes("workspace")
+          ? addWorkspace
+          : null;
 
-  const disableClickaway = tab.includes("settings");
+  const disableClickAway = tab.includes("settings");
 
   return content ? (
     <DialogContentPrimitive
@@ -40,11 +45,11 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
       position={position}
       hideCloseButton={tab === "canvas-search"}
       overlayBgClass={tab === "canvas-search" ? "bg-black/30" : undefined}
-      onPointerDownOutside={e => disableClickaway && e.preventDefault()}
-      onEscapeKeyDown={e => disableClickaway && e.preventDefault()}>
+      onPointerDownOutside={e => disableClickAway && e.preventDefault()}
+      onEscapeKeyDown={e => disableClickAway && e.preventDefault()}>
       <div className="flex">
         {content.length > 1 && (
-          <div className={`flex flex-col pr-8 py-6 border-r border-zinc-800`}>
+          <div className={`flex flex-col gap-4 pr-5 py-6 border-r border-zinc-800`}>
             {content.map(c => (
               <IconButton
                 key={c.id}

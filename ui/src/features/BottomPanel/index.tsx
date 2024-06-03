@@ -1,9 +1,9 @@
-import { EnterFullScreenIcon, ExitFullScreenIcon } from "@radix-ui/react-icons";
+import { CornersIn, CornersOut, Globe, Terminal } from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 
-import { OutputIcon, PreviewIcon, IconButton } from "@flow/components";
+import { IconButton } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 import { DataTable, LogConsole, Map } from "./components";
 
@@ -25,13 +25,13 @@ const BottomPanel: React.FC = () => {
   const panelContents: PanelContent[] = [
     {
       id: "output-log",
-      icon: <OutputIcon />,
+      icon: <Terminal className="w-[20px] h-[20px]" weight="thin" />,
       description: t("Output log"),
       component: <LogConsole />,
     },
     {
       id: "visual-preview",
-      icon: <PreviewIcon />,
+      icon: <Globe className="w-[20px] h-[20px]" weight="thin" />,
       description: t("Preview data"),
       component: (
         <div className="flex flex-1">
@@ -60,16 +60,16 @@ const BottomPanel: React.FC = () => {
 
   return (
     <div
-      className="flex flex-col box-content transition-width duration-300 ease-in-out bg-zinc-900 border-t border-zinc-700 backdrop-blur-md"
+      className="flex flex-col box-content transition-width duration-300 ease-in-out bg-zinc-800 border-t border-zinc-700 backdrop-blur-md"
       style={{
-        height: isPanelOpen ? (windowSize === "max" ? "100vh" : "400px") : "36px",
+        height: isPanelOpen ? (windowSize === "max" ? "100vh" : "50vh") : "36px",
       }}>
-      <div id="edge" className="flex gap-1 items-center h-[36px] relative">
+      <div id="edge" className="flex gap-1 items-center shrink-0 h-[36px] bg-zinc-900/50">
         <div className="flex gap-1 items-center justify-center flex-1 h-[100%]">
           {panelContents?.map(content => (
             <IconButton
               key={content.id}
-              className={`w-[55px] h-[80%] ${isPanelOpen && selected?.id === content.id ? "text-white bg-zinc-800" : undefined}`}
+              className={`w-[55px] h-[80%] ${selected?.id === content.id ? "text-white bg-zinc-700" : undefined}`}
               icon={content.icon}
               tooltipText={content.description}
               tooltipPosition="top"
@@ -82,7 +82,7 @@ const BottomPanel: React.FC = () => {
             {windowSize === "min" && (
               <IconButton
                 className="w-[55px] h-[80%]"
-                icon={<EnterFullScreenIcon />}
+                icon={<CornersOut />}
                 tooltipText={"Enter full screen"}
                 tooltipPosition="top"
                 onClick={() => setWindowSize("max")}
@@ -91,7 +91,7 @@ const BottomPanel: React.FC = () => {
             {windowSize === "max" && (
               <IconButton
                 className="w-[55px] h-[80%]"
-                icon={<ExitFullScreenIcon />}
+                icon={<CornersIn />}
                 tooltipText={"Enter full screen"}
                 tooltipPosition="top"
                 onClick={() => setWindowSize("min")}
@@ -102,13 +102,9 @@ const BottomPanel: React.FC = () => {
       </div>
       <div
         id="content"
-        className="flex flex-1 bg-zinc-800"
+        className="flex flex-1 h-[calc(100%-36px)] bg-zinc-800"
         style={{
-          height: isPanelOpen
-            ? windowSize === "max"
-              ? "calc(100vh - 36px)"
-              : "calc(400px - 36px)"
-            : "0",
+          display: isPanelOpen ? "flex" : "none",
         }}>
         {panelContents.map(p => (
           <div

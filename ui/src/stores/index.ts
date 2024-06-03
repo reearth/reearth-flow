@@ -1,14 +1,15 @@
 import { atom, useAtom } from "jotai";
 
-import { Project, Workspace } from "@flow/types";
+import { Workspace, Project } from "@flow/types";
 
 export type DialogType =
   | "canvas-search"
   | "account-settings"
   | "workspaces-settings"
-  | "workflow-settings"
+  | "project-settings"
   | "general-settings"
-  | "keyboard-instructions";
+  | "keyboard-instructions"
+  | "add-workspace";
 
 const dialogType = atom<DialogType | undefined>(undefined);
 export const useDialogType = () => useAtom(dialogType);

@@ -1,6 +1,10 @@
-import { graphql } from "@flow/lib/gql";
+import { useQuery } from "@tanstack/react-query";
 
-export const GET_ME = graphql(`
+import { useGraphQLContext } from "@flow/lib/gql";
+
+import { graphql } from "../__gen__";
+
+graphql(`
   query GetMe {
     me {
       id
@@ -10,3 +14,15 @@ export const GET_ME = graphql(`
     }
   }
 `);
+
+export enum UserQueryKeys {
+  GetMe = "getMe",
+}
+
+export const useMeQuery = () => {
+  const graphQLContext = useGraphQLContext();
+  return useQuery({
+    queryKey: [UserQueryKeys.GetMe],
+    queryFn: () => graphQLContext?.GetMe(),
+  });
+};

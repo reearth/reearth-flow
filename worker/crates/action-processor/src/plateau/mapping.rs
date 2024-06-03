@@ -7,6 +7,7 @@ use super::{
     dictionaries_initiator::DictionariesInitiatorFactory,
     domain_of_definition_validator::DomainOfDefinitionValidatorFactory,
     udx_folder_extractor::UdxFolderExtractorFactory,
+    unmatched_xlink_detector::UnmatchedXlinkDetectorFactory,
     xml_attribute_extractor::XmlAttributeExtractorFactory,
 };
 
@@ -16,6 +17,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<DomainOfDefinitionValidatorFactory>::default(),
         Box::<DictionariesInitiatorFactory>::default(),
         Box::<XmlAttributeExtractorFactory>::default(),
+        Box::<UnmatchedXlinkDetectorFactory>::default(),
     ];
     factories
         .into_iter()

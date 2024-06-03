@@ -42,7 +42,9 @@ function config(): Plugin {
         server.config.envDir ?? process.cwd(),
         server.config.envPrefix,
       );
-      const remoteConfig = envs.FLOW_CONFIG ? await (await fetch(envs.FLOW_CONFIG)).json() : {};
+      const remoteConfig = envs.FLOW_CONFIG_URL
+        ? await (await fetch(envs.FLOW_CONFIG_URL)).json()
+        : {};
 
       const configRes = JSON.stringify(
         {

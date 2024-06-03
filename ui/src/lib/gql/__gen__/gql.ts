@@ -18,6 +18,10 @@ const documents = {
     "\n  mutation UpdateProject($input: UpdateProjectInput!) {\n    updateProject(input: $input) {\n      project {\n        id\n        name\n      }\n    }\n  }\n": types.UpdateProjectDocument,
     "\n  mutation DeleteProject($input: DeleteProjectInput!) {\n    deleteProject(input: $input) {\n      projectId\n    }\n  }\n": types.DeleteProjectDocument,
     "\n  query GetMe {\n    me {\n      id\n      name\n      email\n      myWorkspaceId\n    }\n  }\n": types.GetMeDocument,
+    "\n  mutation CreateWorkspace($input: CreateWorkspaceInput!) {\n    createWorkspace(input: $input) {\n      workspace {\n        id\n      }\n    }\n  }\n": types.CreateWorkspaceDocument,
+    "\n  query GetWorkspaces {\n    me {\n      workspaces {\n        id\n        name\n        personal\n      }\n    }\n  }\n": types.GetWorkspacesDocument,
+    "\n  mutation UpdateWorkspace($input: UpdateWorkspaceInput!) {\n    updateWorkspace(input: $input) {\n      workspace {\n        id\n        name\n      }\n    }\n  }\n": types.UpdateWorkspaceDocument,
+    "\n  mutation DeleteWorkspace($input: DeleteWorkspaceInput!) {\n    deleteWorkspace(input: $input) {\n      workspaceId\n    }\n  }\n": types.DeleteWorkspaceDocument,
 };
 
 /**
@@ -54,6 +58,22 @@ export function graphql(source: "\n  mutation DeleteProject($input: DeleteProjec
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query GetMe {\n    me {\n      id\n      name\n      email\n      myWorkspaceId\n    }\n  }\n"): (typeof documents)["\n  query GetMe {\n    me {\n      id\n      name\n      email\n      myWorkspaceId\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateWorkspace($input: CreateWorkspaceInput!) {\n    createWorkspace(input: $input) {\n      workspace {\n        id\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation CreateWorkspace($input: CreateWorkspaceInput!) {\n    createWorkspace(input: $input) {\n      workspace {\n        id\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query GetWorkspaces {\n    me {\n      workspaces {\n        id\n        name\n        personal\n      }\n    }\n  }\n"): (typeof documents)["\n  query GetWorkspaces {\n    me {\n      workspaces {\n        id\n        name\n        personal\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation UpdateWorkspace($input: UpdateWorkspaceInput!) {\n    updateWorkspace(input: $input) {\n      workspace {\n        id\n        name\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateWorkspace($input: UpdateWorkspaceInput!) {\n    updateWorkspace(input: $input) {\n      workspace {\n        id\n        name\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeleteWorkspace($input: DeleteWorkspaceInput!) {\n    deleteWorkspace(input: $input) {\n      workspaceId\n    }\n  }\n"): (typeof documents)["\n  mutation DeleteWorkspace($input: DeleteWorkspaceInput!) {\n    deleteWorkspace(input: $input) {\n      workspaceId\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

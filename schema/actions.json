@@ -451,6 +451,50 @@
       ]
     },
     {
+      "name": "FeatureReader",
+      "type": "processor",
+      "description": "Filters features based on conditions",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "enum": [
+                  "citygml"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "type": "object"
+          }
+        ],
+        "title": "FeatureReaderParam"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "FeatureSorter",
       "type": "processor",
       "description": "Sorts features by attributes",
@@ -795,6 +839,24 @@
       ]
     },
     {
+      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "type": "processor",
+      "description": "Detect unmatched xlink for PLATEAU",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "summary",
+        "unMatchedXlinkFrom",
+        "unMatchedXlinkTo"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU.XMLAttributeExtractor",
       "type": "processor",
       "description": "Extracts attributes from XML fragments based on a schema definition",
@@ -805,7 +867,8 @@
       ],
       "outputPorts": [
         "default",
-        "rejected"
+        "summary",
+        "filePath"
       ],
       "categories": [
         "PLATEAU"

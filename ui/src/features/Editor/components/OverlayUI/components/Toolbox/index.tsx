@@ -1,9 +1,16 @@
-import { DiscIcon, GroupIcon, Pencil2Icon } from "@radix-ui/react-icons";
-import { Redo, Undo } from "lucide-react";
+import {
+  ArrowArcLeft,
+  ArrowArcRight,
+  Database,
+  Disc,
+  Lightning,
+  Note,
+  RectangleDashed,
+} from "@phosphor-icons/react";
 import { type DragEvent } from "react";
 
-import { IconButton, ReaderIcon, TransformerIcon } from "@flow/components";
-import { useT } from "@flow/providers";
+import { IconButton } from "@flow/components";
+import { useT } from "@flow/lib/i18n";
 
 import { type NodeType } from "../../../Nodes/GeneralNode/types";
 
@@ -31,27 +38,27 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
     {
       id: "reader",
       name: t("Reader Node"),
-      icon: <ReaderIcon />,
+      icon: <Database weight="thin" />,
     },
     {
       id: "transformer",
       name: t("Transformer Node"),
-      icon: <TransformerIcon />,
+      icon: <Lightning weight="thin" />,
     },
     {
       id: "writer",
       name: t("Writer Node"),
-      icon: <DiscIcon />,
+      icon: <Disc weight="thin" />,
     },
     {
       id: "note",
       name: t("Note"),
-      icon: <Pencil2Icon />,
+      icon: <Note weight="thin" />,
     },
     {
       id: "batch",
       name: t("Batch Node"),
-      icon: <GroupIcon />,
+      icon: <RectangleDashed weight="thin" />,
     },
   ];
 
@@ -59,12 +66,12 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
     {
       id: "undo",
       name: t("Undo last action"),
-      icon: <Undo className="h-4 w-4 stroke-1" />,
+      icon: <ArrowArcLeft className="h-4 w-4 stroke-1" weight="thin" />,
     },
     {
       id: "redo",
       name: t("Redo action"),
-      icon: <Redo className="h-4 w-4 stroke-1" />,
+      icon: <ArrowArcRight className="h-4 w-4 stroke-1" weight="thin" />,
     },
   ];
 

@@ -30,18 +30,18 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea })
       )}
       <div
         id="handle-wrapper"
-        className="absolute bg-zinc-800 text-zinc-400 rounded-b-md ml-auto mr-auto left-0 right-0 w-[95%]">
+        className="absolute bg-zinc-900 text-zinc-400 rounded-b-md ml-auto mr-auto left-0 right-0 w-[95%]">
         <div className="relative">
           {inputs &&
             inputs.length > 1 &&
             inputs.map((input, index) => (
-              <div key={input + index} className="relative border-b border-zinc-900 py-0.5 px-1.5">
+              <div key={input + index} className="relative border-b border-zinc-800 py-0.5 px-1.5">
                 <CustomHandle
                   type="target"
                   className={`left-0 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-md" : undefined}`}
                   position={Position.Left}
                   id={input}
-                  // isConnectable={1}
+                // isConnectable={1}
                 />
                 <p className="text-[10px] font-light pl-1">{input}</p>
               </div>
@@ -51,7 +51,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea })
             outputs.map((output, index) => (
               <div
                 key={output + index}
-                className="relative border-b border-zinc-900 py-0.5 px-1.5 last-of-type:border-none">
+                className="relative border-b border-zinc-800 py-0.5 px-1.5 last-of-type:border-none">
                 <CustomHandle
                   type="source"
                   className={`right-0 w-[8px] rounded-none transition-colors ${index === (outputs && outputs.length - 1) ? "rounded-br-md" : undefined}`}

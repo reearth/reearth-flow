@@ -1,16 +1,24 @@
-import { TransformIcon } from "@radix-ui/react-icons";
+import {
+  Database,
+  Disc,
+  HardDrive,
+  Lightning,
+  MagnifyingGlass,
+  TreeView,
+} from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
-import { Database, Disc, Zap, AlignCenter, Cog, Search } from "lucide-react";
 import { useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 import { Workflow } from "@flow/types";
 
-// import HomeMenu from "./components/HomeMenu";
+import { UserNavigation } from "../Dashboard/components/Nav/components";
 
-type Tab = "navigator" | "assets";
+import { TransformerList, Resources, ProjectSettings } from "./components";
+
+type Tab = "navigator" | "transformer-list" | "resources";
 
 type Props = {
   data?: Workflow;
@@ -44,7 +52,7 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
     {
       id: "transformer",
       name: t("Transformers"),
-      icon: Zap,
+      icon: Lightning,
       children: data?.nodes
         ?.filter(n => n.type === "transformer")
         .map(n => ({
@@ -55,10 +63,11 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
     },
   ];
 
-  const tabContents: { id: Tab; title: string; component: React.ReactNode }[] = [
+  const tabs: { id: Tab; title: string; icon: React.ReactNode; component: React.ReactNode }[] = [
     {
       id: "navigator",
       title: t("Canvas Navigation"),
+      icon: <TreeView className="h-5 w-5" weight="thin" />,
       component: data && (
         <Tree
           data={treeContent}
@@ -71,28 +80,16 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
       ),
     },
     {
-      id: "assets",
+      id: "transformer-list",
       title: t("Transformer list"),
-      component: (
-        <div className="flex flex-col gap-2 px-1">
-          <div className="flex gap-2 items-center">
-            <Zap className="w-[15px] h-[15px] stroke-1" />
-            <p className="text-sm font-extralight">Transformer</p>
-          </div>
-          <div className="flex gap-2 items-center">
-            <Zap className="w-[15px] h-[15px] stroke-1" />
-            <p className="text-sm font-extralight">Transformer</p>
-          </div>
-          <div className="flex gap-2 items-center">
-            <Zap className="w-[15px] h-[15px] stroke-1" />
-            <p className="text-sm font-extralight">Transformer</p>
-          </div>
-          <div className="flex gap-2 items-center">
-            <Zap className="w-[15px] h-[15px] stroke-1" />
-            <p className="text-sm font-extralight">Transformer</p>
-          </div>
-        </div>
-      ),
+      icon: <Lightning className="h-5 w-5" weight="thin" />,
+      component: <TransformerList />,
+    },
+    {
+      id: "resources",
+      title: "Resources",
+      icon: <HardDrive className="h-5 w-5" weight="thin" />,
+      component: <Resources />,
     },
   ];
 
@@ -112,52 +109,55 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
       <div
         className="absolute left-12 z-10 flex flex-1 flex-col gap-3 h-full w-[300px] bg-zinc-900 border-r border-zinc-700 transition-all overflow-auto"
         style={{
-          transform: `translateX(${isPanelOpen ? "0" : "-100%"})`,
+          transform: `translateX(${isPanelOpen ? "8px" : "-100%"})`,
           transitionDuration: isPanelOpen ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
         <div className="flex flex-col gap-2 px-4 py-2 border-b border-zinc-700/50">
-          <p className="text-lg font-extralight">
-            {tabContents?.find(tc => tc.id === selectedTab)?.title}
-          </p>
+          <p className="text-lg font-thin">{tabs?.find(tc => tc.id === selectedTab)?.title}</p>
         </div>
         <div className="flex flex-col gap-2 overflow-auto">
           {/* {content.title && <p className="text-md">{content.title}</p>} */}
-          {tabContents?.find(tc => tc.id === selectedTab)?.component}
+          {tabs?.find(tc => tc.id === selectedTab)?.component}
         </div>
       </div>
-      <aside className="relative hidden h-full w-12 z-10 flex-col border-r border-zinc-700 bg-zinc-800 sm:flex">
-        <nav className="flex flex-col items-center gap-4 px-2 sm:py-4">
-          <Link
-            to={`/workspace/${workspaceId}`}
-            className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full border border-red-900 text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base hover:bg-red-900">
-            <FlowLogo className="h-4 w-4 transition-all group-hover:scale-110" />
-            <span className="sr-only">{t("Dashboard")}</span>
-          </Link>
-          <IconButton
-            className={`flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:text-zinc-300 md:h-8 md:w-8 ${selectedTab === "navigator" && "bg-zinc-700 text-zinc-300"}`}
-            icon={<AlignCenter className="h-5 w-5" />}
-            onClick={() => handleTabChange("navigator")}
-          />
-          <IconButton
-            className={`flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:text-zinc-300 md:h-8 md:w-8 ${selectedTab === "assets" && "bg-zinc-700 text-zinc-300"}`}
-            icon={<TransformIcon className="h-5 w-5 stroke-1" />}
-            onClick={() => handleTabChange("assets")}
-          />
-        </nav>
-        <nav className="mt-auto flex flex-col items-center gap-4 px-2 py-2">
-          <Search
-            className="stroke-1 text-zinc-400 cursor-pointer hover:text-zinc-300"
-            onClick={() => setDialogType("canvas-search")}
-          />
-          <Link
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:text-zinc-300 md:h-8 md:w-8"
-            to={"/settings"}>
-            <Cog className="h-5 w-5" />
-            <span className="sr-only">Settings</span>
-          </Link>
-        </nav>
+      <aside className="relative w-14 z-10  border-r border-zinc-700 bg-zinc-800">
+        <div className="bg-zinc-900/50 h-full flex flex-col">
+          <nav className="flex flex-col items-center gap-4 p-2">
+            <Link
+              to={`/workspace/${workspaceId}`}
+              className="flex p-2 shrink-0 items-center justify-center gap-2 rounded bg-red-800/50 text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base hover:bg-red-800/80">
+              <FlowLogo className="h-5 w-5" />
+              <span className="sr-only">{t("Dashboard")}</span>
+            </Link>
+            {tabs.map(tab => (
+              <IconButton
+                key={tab.id}
+                className={`flex h-9 w-9 items-center justify-center rounded text-zinc-500 transition-colors hover:text-zinc-300 md:h-8 md:w-8 ${selectedTab === tab.id && "bg-zinc-700/80 text-zinc-300"}`}
+                icon={tab.icon}
+                onClick={() => handleTabChange(tab.id)}
+              />
+            ))}
+          </nav>
+          <nav className="mt-auto flex flex-col items-center gap-4 px-2 py-2">
+            <MagnifyingGlass
+              className="h-6 w-6 text-zinc-400 cursor-pointer hover:text-zinc-300"
+              weight="thin"
+              onClick={() => setDialogType("canvas-search")}
+            />
+            <UserNavigation
+              className="w-full flex justify-center"
+              iconOnly
+              dropdownPosition="right"
+            />
+            <ProjectSettings
+              className="flex items-center justify-center cursor-pointer rounded text-zinc-400 transition-colors hover:text-zinc-300 md:h-8 md:w-8"
+              dropdownPosition="right"
+              dropdownOffset={15}
+            />
+          </nav>
+        </div>
       </aside>
     </>
   );

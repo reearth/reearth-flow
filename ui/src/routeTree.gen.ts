@@ -21,6 +21,12 @@ const IndexLazyImport = createFileRoute('/')()
 const WorkspaceWorkspaceIdLazyImport = createFileRoute(
   '/workspace/$workspaceId',
 )()
+const WorkspaceWorkspaceIdSettingsTabLazyImport = createFileRoute(
+  '/workspace/$workspaceId/settings/$tab',
+)()
+const WorkspaceWorkspaceIdRunsTabLazyImport = createFileRoute(
+  '/workspace/$workspaceId/runs/$tab',
+)()
 const WorkspaceWorkspaceIdProjectProjectIdLazyImport = createFileRoute(
   '/workspace/$workspaceId/project/$projectId',
 )()
@@ -43,6 +49,26 @@ const WorkspaceWorkspaceIdLazyRoute = WorkspaceWorkspaceIdLazyImport.update({
 } as any).lazy(() =>
   import('./routes/workspace_.$workspaceId.lazy').then((d) => d.Route),
 )
+
+const WorkspaceWorkspaceIdSettingsTabLazyRoute =
+  WorkspaceWorkspaceIdSettingsTabLazyImport.update({
+    path: '/workspace/$workspaceId/settings/$tab',
+    getParentRoute: () => rootRoute,
+  } as any).lazy(() =>
+    import('./routes/workspace_.$workspaceId_.settings.$tab.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
+const WorkspaceWorkspaceIdRunsTabLazyRoute =
+  WorkspaceWorkspaceIdRunsTabLazyImport.update({
+    path: '/workspace/$workspaceId/runs/$tab',
+    getParentRoute: () => rootRoute,
+  } as any).lazy(() =>
+    import('./routes/workspace_.$workspaceId_.runs.$tab.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 const WorkspaceWorkspaceIdProjectProjectIdLazyRoute =
   WorkspaceWorkspaceIdProjectProjectIdLazyImport.update({
@@ -74,6 +100,14 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceWorkspaceIdProjectProjectIdLazyImport
       parentRoute: typeof rootRoute
     }
+    '/workspace/$workspaceId/runs/$tab': {
+      preLoaderRoute: typeof WorkspaceWorkspaceIdRunsTabLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/workspace/$workspaceId/settings/$tab': {
+      preLoaderRoute: typeof WorkspaceWorkspaceIdSettingsTabLazyImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -84,6 +118,8 @@ export const routeTree = rootRoute.addChildren([
   WorkspaceLazyRoute,
   WorkspaceWorkspaceIdLazyRoute,
   WorkspaceWorkspaceIdProjectProjectIdLazyRoute,
+  WorkspaceWorkspaceIdRunsTabLazyRoute,
+  WorkspaceWorkspaceIdSettingsTabLazyRoute,
 ])
 
 /* prettier-ignore-end */

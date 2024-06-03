@@ -2524,6 +2524,7 @@ dependencies = [
  "parking_lot",
  "petgraph",
  "pretty_assertions",
+ "quick-xml",
  "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
@@ -2542,6 +2543,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "typetag",
+ "url",
  "uuid",
 ]
 
@@ -2920,18 +2922,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "typetag",
- "uuid",
-]
-
-[[package]]
-name = "reearth-flow-xml"
-version = "0.1.0"
-dependencies = [
- "quick-xml",
- "regex",
- "serde",
- "serde_json",
- "thiserror",
  "uuid",
 ]
 

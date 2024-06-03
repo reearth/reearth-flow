@@ -1,14 +1,15 @@
 import {
-  EnterFullScreenIcon,
-  ExitFullScreenIcon,
-  ZoomInIcon,
-  ZoomOutIcon,
-} from "@radix-ui/react-icons";
+  CornersIn,
+  CornersOut,
+  FrameCorners,
+  MagnifyingGlassMinus,
+  MagnifyingGlassPlus,
+} from "@phosphor-icons/react";
 import { useReactFlow } from "reactflow";
 
-import { CenterIcon, IconButton } from "@flow/components";
+import { IconButton } from "@flow/components";
 import { useFullscreen } from "@flow/hooks";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 const tooltipOffset = 6;
 
@@ -26,28 +27,28 @@ const CanvasActionBar = () => {
               className="w-[30px] h-[30px]"
               tooltipText={t("Zoom in")}
               tooltipOffset={tooltipOffset}
-              icon={<ZoomInIcon />}
+              icon={<MagnifyingGlassPlus />}
               onClick={() => zoomIn({ duration: 400 })}
             />
             <IconButton
               className="w-[30px] h-[30px]"
               tooltipText={t("Zoom out")}
               tooltipOffset={tooltipOffset}
-              icon={<ZoomOutIcon />}
+              icon={<MagnifyingGlassMinus />}
               onClick={() => zoomOut({ duration: 400 })}
             />
             <IconButton
               className="w-[30px] h-[30px]"
               tooltipText={t("All nodes in viewport")}
               tooltipOffset={tooltipOffset}
-              icon={<CenterIcon />}
+              icon={<FrameCorners />}
               onClick={() => fitView({ duration: 400, padding: 0.5 })}
             />
             <IconButton
               className="w-[30px] h-[30px]"
               tooltipText={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
               tooltipOffset={tooltipOffset}
-              icon={isFullscreen ? <ExitFullScreenIcon /> : <EnterFullScreenIcon />}
+              icon={isFullscreen ? <CornersIn /> : <CornersOut />}
               onClick={handleFullscreenToggle}
             />
             {/* <div className="border-l border-zinc-700 mx-3" /> */}

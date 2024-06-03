@@ -21,6 +21,10 @@ pub(super) enum PlateauProcessorError {
     XmlAttributeExtractorFactory(String),
     #[error("XmlAttribute Extractor error: {0}")]
     XmlAttributeExtractor(String),
+    #[error("Unmatched Xlink Detector Factory error: {0}")]
+    UnmatchedXlinkDetectorFactory(String),
+    #[error("Unmatched Xlink Detector error: {0}")]
+    UnmatchedXlinkDetector(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

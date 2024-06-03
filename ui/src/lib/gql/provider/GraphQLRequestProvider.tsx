@@ -3,9 +3,10 @@ import { createContext, useState, ReactNode, useEffect, useContext } from "react
 
 import { config } from "@flow/config";
 import { useAuth } from "@flow/lib/auth";
-import { Sdk, getSdk } from "@flow/lib/gql/";
 
-export const GraphQLContext = createContext<Sdk | undefined>(undefined);
+import { Sdk, getSdk } from "../__gen__/plugins/graphql-request";
+
+const GraphQLContext = createContext<Sdk | undefined>(undefined);
 
 export const useGraphQLContext = () => useContext(GraphQLContext);
 
@@ -14,8 +15,6 @@ export const GraphQLRequestProvider = ({ children }: { children?: ReactNode }) =
   const endpoint = `${config().api}/graphql`;
   const { getAccessToken } = useAuth();
 
-  // TODO: What happens when the token expires?
-  // Maybe parse the token, if it's expired get the token again?
   useEffect(() => {
     if (graphQLSdk) return;
     (async () => {

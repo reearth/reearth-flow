@@ -1,19 +1,38 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { Loading } from "@flow/components";
-import { useTimeoutOnLoad } from "@flow/hooks";
-import { workspaces } from "@flow/mock_data/workspaceData";
+import { useGetWorkspaceQuery } from "@flow/lib/gql";
 
 const LoadingPage: React.FC = () => {
-  const { running: isLoading } = useTimeoutOnLoad(1000);
-  const navigate = useNavigate({ from: "/" });
+  const { data, ...rest } = useGetWorkspaceQuery();
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | undefined>(undefined);
+
+  const isLoading = rest.isLoading;
+  const workspaces = data?.me?.workspaces;
+
   useEffect(() => {
-    if (!isLoading) {
-      navigate({ to: `/workspace/${workspaces[0].id}` });
+    if (isLoading) return;
+    else if (!workspaces) {
+      setError("Unable to fetch workspaces");
+      return;
     }
-  }, [isLoading, navigate]);
-  return <Loading show={isLoading} />;
+    const defaultWorkspace = workspaces.find(w => w.personal);
+
+    if (!defaultWorkspace) {
+      setError("No personal id workspace found...");
+      return;
+    }
+    navigate({ to: `/workspace/${defaultWorkspace.id}` });
+  }, [workspaces, setError, navigate, isLoading]);
+
+  if (isLoading) {
+    return <Loading show={isLoading} />;
+  }
+
+  // TODO: Show proper error
+  return error && <div>{error}</div>;
 };
 
 export { LoadingPage };

@@ -12,15 +12,8 @@ use reearth_flow_runtime::{
     node::{IngestionMessage, Port, DEFAULT_PORT},
 };
 use reearth_flow_types::{geometry::Geometry, Feature};
-use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 use url::Url;
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct CsvPropertySchema {
-    pub(super) offset: Option<usize>,
-}
 
 pub(crate) async fn read_citygml(
     input_path: Uri,
