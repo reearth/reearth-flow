@@ -37,8 +37,6 @@ const WorkspaceNavigation: React.FC = () => {
         className="max-w-[300px] min-w-[150px] bg-zinc-800 border"
         sideOffset={10}
         align="center">
-        {/* <DropdownMenuLabel>Workspaces</DropdownMenuLabel> */}
-        {/* <div className="bg-zinc-800 h-[1px]" /> */}
         <DropdownMenuGroup className="max-h-[300px] overflow-auto">
           {workspaces?.map(workspace => (
             <DropdownMenuItem
@@ -57,12 +55,6 @@ const WorkspaceNavigation: React.FC = () => {
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
-        {/* <DropdownMenuLabel className="flex">
-            <Button className="flex flex-1 gap-2" variant="outline" size="sm">
-              <PlusCircledIcon />
-              <p>New workspace</p>
-            </Button>
-          </DropdownMenuLabel> */}
       </DropdownMenuContent>
     </DropdownMenu>
   );

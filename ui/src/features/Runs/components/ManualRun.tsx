@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   Button,
   Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
@@ -18,14 +19,14 @@ const ManualRun: React.FC = () => {
   const [currentWorkspace] = useCurrentWorkspace();
   const [selectedProject, selectProject] = useState<Project>();
   return (
-    <>
-      <div className="flex gap-2 items-center py-2 px-4 border-b border-zinc-700">
-        <p className="text-xl font-thin">{t("Manual Run")}</p>
+    <div className="flex-1 p-8">
+      <div className="flex gap-2 items-center text-lg font-extralight">
+        <p>{t("Manual Run")}</p>
       </div>
-      <div className="flex justify-center py-[50px]">
-        <div className="flex flex-col items-center gap-4 w-[50%] max-w-[900px]">
-          <div className="flex justify-between items-center gap-4 w-full">
-            <p className="shrink-0 font-extralight">{t("Project")}</p>
+      <div className="flex flex-col gap-6 mt-4 max-w-[1200px]">
+        <div className="flex flex-col gap-4 w-[50%] max-w-[900px]">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="manual-run-project">{t("Project")}</Label>
             <Select
               onValueChange={pid =>
                 selectProject(currentWorkspace?.projects?.find(p => p.id === pid))
@@ -44,12 +45,12 @@ const ManualRun: React.FC = () => {
           </div>
           {selectedProject && (
             <>
-              <div className="flex justify-between items-center gap-4 w-full">
-                <p className="shrink-0 font-extralight">Version</p>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="manual-run-version">{t("Version")}</Label>
                 <Input placeholder="Do we need this?" />
               </div>
-              <div className="flex justify-between items-center gap-4 w-full">
-                <p className="shrink-0 font-extralight">Parameters</p>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="manual-run-params">{t("Parameters")}</Label>
                 <Input placeholder="What kind of parameters? user params? project params? etc" />
               </div>
             </>
@@ -59,7 +60,7 @@ const ManualRun: React.FC = () => {
           </Button>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

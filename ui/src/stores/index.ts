@@ -6,7 +6,7 @@ export type DialogType =
   | "canvas-search"
   | "account-settings"
   | "workspaces-settings"
-  | "workflow-settings"
+  | "project-settings"
   | "general-settings"
   | "keyboard-instructions";
 
