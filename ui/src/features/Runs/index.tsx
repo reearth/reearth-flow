@@ -3,8 +3,8 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@flow/components";
+import { useT } from "@flow/lib/i18n";
 import { runs as mockRuns } from "@flow/mock_data/runsData";
-import { useT } from "@flow/providers";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Run } from "@flow/types";
 

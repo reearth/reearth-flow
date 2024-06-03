@@ -1,4 +1,4 @@
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 export default () => {
   const t = useT();

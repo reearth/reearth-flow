@@ -1,7 +1,7 @@
 import { DownloadSimple, FloppyDiskBack, Play, Stop } from "@phosphor-icons/react";
 
 import { IconButton } from "@flow/components";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 const tooltipOffset = 6;
 

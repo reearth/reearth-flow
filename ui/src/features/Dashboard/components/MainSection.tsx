@@ -15,7 +15,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@flow/components";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import type { Project } from "@flow/types";
 

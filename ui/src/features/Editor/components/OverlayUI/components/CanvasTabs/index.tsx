@@ -1,6 +1,6 @@
 import { X } from "@phosphor-icons/react";
 
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 type Props = {
   editingCustomTransformers?: { id: string; name: string }[];

@@ -10,7 +10,7 @@ import {
 import { type DragEvent } from "react";
 
 import { IconButton } from "@flow/components";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 import { type NodeType } from "../../../Nodes/GeneralNode/types";
 

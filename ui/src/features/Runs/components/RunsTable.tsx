@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@flow/components/Table";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import { Run } from "@flow/types";
 
 type Props = {

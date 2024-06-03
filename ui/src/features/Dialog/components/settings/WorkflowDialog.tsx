@@ -1,5 +1,5 @@
 import { Button } from "@flow/components";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 import { ContentHeader, ContentSection } from "..";
 

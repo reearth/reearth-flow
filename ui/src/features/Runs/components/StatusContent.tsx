@@ -2,7 +2,7 @@ import { CaretDown, CaretUp } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@flow/components";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import { Run } from "@flow/types";
 
 import { LogConsole } from "../../BottomPanel/components";

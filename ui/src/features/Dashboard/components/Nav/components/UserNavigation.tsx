@@ -14,7 +14,7 @@ import { config } from "@flow/config";
 import { useOpenLink } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useMeQuery } from "@flow/lib/gql";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 
 type Props = {
