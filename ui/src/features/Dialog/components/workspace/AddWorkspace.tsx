@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { Button, Input } from "@flow/components";
-import { useCreateWorkspaceMutation } from "@flow/lib/api";
+import { useCreateWorkspaceMutation } from "@flow/lib/gql";
 import { useT } from "@flow/providers";
 import { useDialogType } from "@flow/stores";
 

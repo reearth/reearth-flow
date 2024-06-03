@@ -10,7 +10,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@flow/components";
-import { useMeQuery } from "@flow/lib/api";
 import { useAuth } from "@flow/lib/auth";
 import { useMeQuery } from "@flow/lib/gql";
 import { useT } from "@flow/providers";
