@@ -1,6 +1,6 @@
 import { StarIcon } from "@radix-ui/react-icons";
 
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 
 import { DialogContentType } from "../Content";
 

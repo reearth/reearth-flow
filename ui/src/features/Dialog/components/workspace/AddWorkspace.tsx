@@ -1,5 +1,3 @@
-// import { useT } from "@flow/providers";
-
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
@@ -9,7 +7,7 @@ import {
   useCreateWorkspaceMutation,
   useGetWorkspaceQuery,
 } from "@flow/lib/gql";
-import { useT } from "@flow/providers";
+import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 
 import { ContentHeader } from "../ContentHeader";
