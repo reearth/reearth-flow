@@ -36,7 +36,7 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
           ? addWorkspace
           : null;
 
-  const disableClickaway = tab.includes("settings");
+  const disableClickAway = tab.includes("settings");
 
   return content ? (
     <DialogContentPrimitive
@@ -45,8 +45,8 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
       position={position}
       hideCloseButton={tab === "canvas-search"}
       overlayBgClass={tab === "canvas-search" ? "bg-black/30" : undefined}
-      onPointerDownOutside={e => disableClickaway && e.preventDefault()}
-      onEscapeKeyDown={e => disableClickaway && e.preventDefault()}>
+      onPointerDownOutside={e => disableClickAway && e.preventDefault()}
+      onEscapeKeyDown={e => disableClickAway && e.preventDefault()}>
       <div className="flex">
         {content.length > 1 && (
           <div className={`flex flex-col gap-4 pr-5 py-6 border-r border-zinc-800`}>
