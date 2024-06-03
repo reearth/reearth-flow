@@ -46,6 +46,10 @@ graphql(`
   }
 `);
 
+export enum WorkspaceQueryKeys {
+  GetWorkspace = "getWorkspace",
+}
+
 // TODO: add onSuccess and onError types
 export const useCreateWorkspaceMutation = ({ onSuccess, onError }) => {
   const graphQLContext = useGraphQLContext();
@@ -62,8 +66,9 @@ export const useCreateWorkspaceMutation = ({ onSuccess, onError }) => {
 
 export const useGetWorkspaceQuery = () => {
   const graphQLContext = useGraphQLContext();
+
   const { data, ...rest } = useQuery({
-    queryKey: ["getWorkspace"],
+    queryKey: [WorkspaceQueryKeys.GetWorkspace],
     queryFn: async () => graphQLContext?.GetWorkspaces(),
   });
 
@@ -72,6 +77,7 @@ export const useGetWorkspaceQuery = () => {
 
 export const useUpdateWorkspaceMutation = () => {
   const graphQLContext = useGraphQLContext();
+
   return useMutation({
     mutationFn: graphQLContext?.UpdateWorkspace,
   });

@@ -16,11 +16,15 @@ graphql(`
   }
 `);
 
+export enum UserQueryKeys {
+  GetMe = "getMe",
+}
+
 export const useMeQuery = () => {
   const graphQLContext = useGraphQLContext();
   const { data, ...rest } = useQuery({
     // TODO: Use static keys rather than strings. Export the keys as well
-    queryKey: ["getMe"],
+    queryKey: [UserQueryKeys.GetMe],
     queryFn: async () => graphQLContext?.GetMe(),
   });
 
