@@ -1,6 +1,10 @@
-import { graphql } from "@flow/lib/gql";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export const CREATE_PROJECT = graphql(`
+import { CreateProjectMutation, useGraphQLContext } from "@flow/lib/gql";
+
+import { graphql } from "../__gen__";
+
+graphql(`
   mutation CreateProject($input: CreateProjectInput!) {
     createProject(input: $input) {
       project {
@@ -10,20 +14,18 @@ export const CREATE_PROJECT = graphql(`
   }
 `);
 
-export const GET_PROJECTS = graphql(`
+graphql(`
   query GetProjects($workspaceId: ID!, $first: Int!) {
     projects(workspaceId: $workspaceId, first: $first) {
-      edges {
-        node {
-          id
-          name
-        }
+      nodes {
+        name
+        id
       }
     }
   }
 `);
 
-export const UPDATE_PROJECT = graphql(`
+graphql(`
   mutation UpdateProject($input: UpdateProjectInput!) {
     updateProject(input: $input) {
       project {
@@ -34,10 +36,77 @@ export const UPDATE_PROJECT = graphql(`
   }
 `);
 
-export const DELETE_PROJECT = graphql(`
+graphql(`
   mutation DeleteProject($input: DeleteProjectInput!) {
     deleteProject(input: $input) {
       projectId
     }
   }
 `);
+
+export enum ProjectQueryKeys {
+  GetProjects = "getProjects",
+}
+
+type mutationInput = {
+  onSuccess?: () => void;
+  onError?: () => void;
+};
+
+export const useCreateProjectMutation = ({
+  onSuccess,
+  onError,
+}: {
+  onSuccess: (data: CreateProjectMutation) => void;
+  onError: () => void;
+}) => {
+  const graphQLContext = useGraphQLContext();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: graphQLContext?.CreateWorkspace,
+    onError: onError,
+    onSuccess: data => {
+      queryClient.invalidateQueries({ queryKey: [ProjectQueryKeys.GetProjects] });
+      onSuccess && onSuccess(data);
+    },
+  });
+};
+
+export const useGetProjectQuery = () => {
+  const graphQLContext = useGraphQLContext();
+
+  const { data, ...rest } = useQuery({
+    queryKey: [ProjectQueryKeys.GetProjects],
+    queryFn: async () => graphQLContext?.GetWorkspaces(),
+  });
+
+  return { data, ...rest };
+};
+
+export const useUpdateProjectMutation = ({ onSuccess, onError }: mutationInput) => {
+  const graphQLContext = useGraphQLContext();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: graphQLContext?.UpdateWorkspace,
+    onError: onError,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [ProjectQueryKeys.GetProjects] });
+      onSuccess && onSuccess();
+    },
+  });
+};
+
+export const useDeleteProjectMutation = ({ onSuccess, onError }: mutationInput) => {
+  const graphQLContext = useGraphQLContext();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: graphQLContext?.DeleteWorkspace,
+    onError: onError,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [ProjectQueryKeys.GetProjects] });
+      onSuccess && onSuccess();
+    },
+  });
+};
