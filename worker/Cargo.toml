@@ -51,7 +51,6 @@ reearth-flow-state = {path = "crates/state"}
 reearth-flow-storage = {path = "crates/storage"}
 reearth-flow-telemetry = {path = "crates/telemetry"}
 reearth-flow-types = {path = "crates/types"}
-reearth-flow-xml = {path = "crates/xml"}
 
 nusamai-citygml = {git = "https://github.com/reearth/plateau-gis-converter", features = ["serde", "serde_json"]}
 nusamai-geometry = {git = "https://github.com/reearth/plateau-gis-converter", features = ["serde"]}

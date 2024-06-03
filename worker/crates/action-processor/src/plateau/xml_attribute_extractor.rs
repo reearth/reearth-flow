@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use regex::Regex;
@@ -25,7 +25,7 @@ use super::{
     utils::{create_codelist_map, generate_xpath_to_properties},
 };
 
-pub(crate) static FILE_PATH_PORT: Lazy<Port> = Lazy::new(|| Port::new("file_path"));
+pub(crate) static FILE_PATH_PORT: Lazy<Port> = Lazy::new(|| Port::new("filePath"));
 pub(crate) static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
 
 #[derive(Default, Clone)]
@@ -399,7 +399,11 @@ impl ProcessorFactory for XmlAttributeExtractorFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![
+            DEFAULT_PORT.clone(),
+            SUMMARY_PORT.clone(),
+            FILE_PATH_PORT.clone(),
+        ]
     }
 
     fn build(

@@ -289,6 +289,23 @@ pub fn find_readonly_nodes_by_xpath(
     Ok(result)
 }
 
+pub fn find_readonly_nodes_in_elements(
+    ctx: &XmlContext,
+    node: &XmlRoNode,
+    elements_to_match: &[&str],
+) -> crate::Result<Vec<XmlRoNode>> {
+    let elements_to_match = elements_to_match
+        .iter()
+        .map(|element| format!("name()='{}'", element))
+        .collect::<Vec<_>>();
+    let elements_to_match_query = elements_to_match.join(" or ");
+    let elements_to_match_query = format!("({})", elements_to_match_query);
+    let xpath = format!("//*[{}]", elements_to_match_query);
+    let nodes = find_readonly_nodes_by_xpath(ctx, &xpath, node)
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath with {}", e)))?;
+    Ok(nodes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
