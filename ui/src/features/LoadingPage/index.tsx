@@ -13,7 +13,7 @@ const LoadingPage: React.FC = () => {
   const workspaces = data?.me?.workspaces;
 
   useEffect(() => {
-    if (rest.isLoading) return;
+    if (isLoading) return;
     else if (!workspaces) {
       setError("Unable to fetch workspaces");
       return;
@@ -25,7 +25,7 @@ const LoadingPage: React.FC = () => {
       return;
     }
     navigate({ to: `/workspace/${defaultWorkspace.id}` });
-  }, [workspaces, setError, navigate, rest.isLoading]);
+  }, [workspaces, setError, navigate, isLoading]);
 
   if (isLoading) {
     return <Loading show={isLoading} />;
