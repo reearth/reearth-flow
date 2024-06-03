@@ -16,6 +16,7 @@ export type Config = {
   tosUrl?: string;
   documentationUrl?: string;
   multiTenant?: Record<string, AuthInfo>;
+  api?: string;
 } & AuthInfo;
 
 const defaultConfig: Config = {

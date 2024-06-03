@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@flow/components";
 import { useAuth } from "@flow/lib/auth";
+import { useMeQuery } from "@flow/lib/gql";
 import { useT } from "@flow/providers";
 import { useDialogType } from "@flow/stores";
 
@@ -21,15 +22,12 @@ type Props = {
   dropdownOffset?: number;
 };
 
-const UserNavigation: React.FC<Props> = ({
-  className,
-  iconOnly,
-  dropdownPosition,
-  dropdownOffset,
-}) => {
+const UserNavigation: React.FC<Props> = ({ className, dropdownPosition, dropdownOffset }) => {
   const t = useT();
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
+  const getMe = useMeQuery();
+  const data = getMe.data?.me;
 
   return (
     <DropdownMenu>
@@ -37,15 +35,13 @@ const UserNavigation: React.FC<Props> = ({
         <div className={`flex gap-2 mr-2 ${className}`}>
           <Avatar className="h-8 w-8">
             <AvatarImage src={user?.picture} />
-            <AvatarFallback>{user?.name ? user.name.charAt(0).toUpperCase() : "U"}</AvatarFallback>
+            <AvatarFallback>{data?.name ? data?.name.charAt(0).toUpperCase() : "F"}</AvatarFallback>
           </Avatar>
-          {!iconOnly && (
-            <div className="self-center">
-              <p className="text-zinc-400 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
-                {user?.name ? user.name : "User"}
-              </p>
-            </div>
-          )}
+          <div className="self-center">
+            <p className="text-zinc-400 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
+              {data?.name ? data?.name : "User"}
+            </p>
+          </div>
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
