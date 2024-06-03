@@ -39,7 +39,7 @@ const MembersSettings: React.FC = () => {
 
   return (
     <div>
-      <div className="flex flex-col gap-6 mt-4 max-w-[700px]">
+      <div className="flex flex-col gap-6 mt-4 max-w-[800px]">
         <div className="flex justify-between">
           <p className="text-lg font-extralight">{t("Members Settings")}</p>
           <Button>{t("Add Members")}</Button>

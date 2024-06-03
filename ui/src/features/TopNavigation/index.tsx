@@ -22,7 +22,8 @@ const TopNavigation: React.FC = () => {
             <FlowLogo className="h-5 w-5" />
           </div>
           <h1 className="text-md font-extralight select-none">
-            {brandName ?? "Re:Earth Flow"} {version ?? "X.X.X"}
+            {brandName ?? "Re:Earth Flow"}{" "}
+            <span className="font-thin text-xs">v{version ?? "X.X.X"}</span>
           </h1>
         </div>
         <div id="dashboard-middle" className="absolute left-0 right-0 flex justify-center">

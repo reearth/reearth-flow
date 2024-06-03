@@ -8,7 +8,7 @@ const GeneralSettings: React.FC = () => {
   return (
     <div>
       <p className="text-lg font-extralight">{t("General Settings")}</p>
-      <div className="flex flex-col gap-6 mt-4 max-w-[600px]">
+      <div className="flex flex-col gap-6 mt-4 max-w-[700px]">
         <div className="flex flex-col gap-2">
           <Label htmlFor="workspace-name">{t("Workspace Name")}</Label>
           <Input
