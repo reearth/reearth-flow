@@ -1,6 +1,10 @@
-import { graphql } from "@flow/lib/gql";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-export const CREATE_WORKSPACE = graphql(`
+import { useGraphQLContext } from "@flow/lib/gql";
+
+import { graphql } from "../__gen__";
+
+graphql(`
   mutation CreateWorkspace($input: CreateWorkspaceInput!) {
     createWorkspace(input: $input) {
       workspace {
@@ -11,7 +15,7 @@ export const CREATE_WORKSPACE = graphql(`
 `);
 
 // TODO: Should this a fragment in GET_ME?
-export const GET_WORKSPACES = graphql(`
+graphql(`
   query GetWorkspaces {
     me {
       workspaces {
@@ -46,7 +50,7 @@ export const GET_WORKSPACES = graphql(`
   }
 `);
 
-export const UPDATE_WORKSPACE = graphql(`
+graphql(`
   mutation UpdateWorkspace($input: UpdateWorkspaceInput!) {
     updateWorkspace(input: $input) {
       workspace {
@@ -57,10 +61,49 @@ export const UPDATE_WORKSPACE = graphql(`
   }
 `);
 
-export const DELETE_WORKSPACE = graphql(`
+graphql(`
   mutation DeleteWorkspace($input: DeleteWorkspaceInput!) {
     deleteWorkspace(input: $input) {
       workspaceId
     }
   }
 `);
+
+// TODO: add onSuccess and onError types
+export const useCreateWorkspaceMutation = ({ onSuccess, onError }) => {
+  const graphQLContext = useGraphQLContext();
+  return useMutation({
+    mutationFn: graphQLContext?.CreateWorkspace,
+    onSuccess: onSuccess,
+    onError: onError,
+    // TODO: use the function below to invalidate the query
+    // onSuccess: () => {
+    //   queryClient.invalidateQueries({ queryKey: ['getWorkspace'] })
+    // },
+  });
+};
+
+export const useGetWorkspaceQuery = () => {
+  const graphQLContext = useGraphQLContext();
+  const { data, ...rest } = useQuery({
+    queryKey: ["getWorkspace"],
+    queryFn: async () => graphQLContext?.GetWorkspaces(),
+  });
+
+  return { data, ...rest };
+};
+
+export const useUpdateWorkspaceMutation = () => {
+  const graphQLContext = useGraphQLContext();
+  return useMutation({
+    mutationFn: graphQLContext?.UpdateWorkspace,
+  });
+};
+
+export const useDeleteWorkspaceQuery = () => {
+  const graphQLContext = useGraphQLContext();
+
+  return useMutation({
+    mutationFn: graphQLContext?.DeleteWorkspace,
+  });
+};
