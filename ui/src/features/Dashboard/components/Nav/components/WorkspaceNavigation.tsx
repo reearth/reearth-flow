@@ -9,10 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@flow/components";
-import { useGetWorkspaceQuery } from "@flow/lib/api";
-import { Workspace } from "@flow/lib/gql";
+import { useGetWorkspaceQuery } from "@flow/lib/gql";
 import { cn } from "@flow/lib/utils";
-import { workspaces } from "@flow/mock_data/workspaceData";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import { Workspace } from "@flow/types";
 
@@ -20,7 +18,6 @@ const WorkspaceNavigation: React.FC = () => {
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
   const [, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
-  const [, setDialogType] = useDialogType();
 
   // TODO: This fails with proper workspaces
   const handleWorkspaceChange = (workspace: Workspace) => {
