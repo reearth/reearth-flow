@@ -63,7 +63,7 @@ export const useCreateProjectMutation = ({
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: graphQLContext?.CreateWorkspace,
+    mutationFn: graphQLContext?.CreateProject,
     onError: onError,
     onSuccess: data => {
       queryClient.invalidateQueries({ queryKey: [ProjectQueryKeys.GetProjects] });
@@ -72,12 +72,23 @@ export const useCreateProjectMutation = ({
   });
 };
 
-export const useGetProjectQuery = () => {
+export const useGetProjectQuery = ({
+  workspaceId,
+  first,
+}: {
+  workspaceId: string;
+  first: number;
+}) => {
   const graphQLContext = useGraphQLContext();
+
+  const input = {
+    workspaceId,
+    first,
+  };
 
   const { data, ...rest } = useQuery({
     queryKey: [ProjectQueryKeys.GetProjects],
-    queryFn: async () => graphQLContext?.GetWorkspaces(),
+    queryFn: async () => graphQLContext?.GetProjects(input),
   });
 
   return { data, ...rest };
@@ -88,7 +99,7 @@ export const useUpdateProjectMutation = ({ onSuccess, onError }: mutationInput) 
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: graphQLContext?.UpdateWorkspace,
+    mutationFn: graphQLContext?.UpdateProject,
     onError: onError,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [ProjectQueryKeys.GetProjects] });
@@ -102,7 +113,7 @@ export const useDeleteProjectMutation = ({ onSuccess, onError }: mutationInput) 
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: graphQLContext?.DeleteWorkspace,
+    mutationFn: graphQLContext?.DeleteProject,
     onError: onError,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [ProjectQueryKeys.GetProjects] });
