@@ -11,7 +11,7 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/providers";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Role } from "@flow/types";
+import { Role, UserMember } from "@flow/types";
 
 type Filter = "all" | Role;
 
@@ -31,9 +31,9 @@ const MembersSettings: React.FC = () => {
   ];
 
   const members =
-    currentWorkspace?.members?.filter(m =>
-      currentFilter !== "all" ? m.role === currentFilter : true,
-    ) ?? [];
+    (currentWorkspace?.members?.filter(
+      m => "userId" in m && (currentFilter !== "all" ? m.role === currentFilter : true),
+    ) as UserMember[]) ?? [];
 
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
@@ -56,7 +56,7 @@ const MembersSettings: React.FC = () => {
                   )
                 }
               />
-              <User />
+              <User weight="thin" />
               <p>
                 {selectedMembers.length
                   ? `${selectedMembers.length} ${selectedMembers.length === 1 ? t("member selected") : t("members selected")}`
