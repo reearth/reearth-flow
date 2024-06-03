@@ -61,19 +61,19 @@ const Runs: React.FC = () => {
   return (
     <div className="flex flex-col bg-zinc-800 text-zinc-300 h-[100vh]">
       <TopNavigation />
-      <div className="flex flex-1 m-[8px] gap-[8px]">
-        <div className="flex flex-col gap-[8px]">
-          <div className="flex bg-zinc-900/50 border border-zinc-700 px-4 py-2 rounded-lg">
+      <div className="flex flex-1">
+        <div className="flex flex-col gap-3 px-2 py-4 bg-zinc-900/50 border-r border-zinc-700 w-[250px]">
+          <div className="flex p-2">
             <Button
               className="flex-1 gap-2"
               size="sm"
-              variant="ghost"
+              // variant="ghost"
               onClick={() => handleTabChange("manual")}>
               <Play />
               <p className="font-extralight">{t("Manual Run")}</p>
             </Button>
           </div>
-          <div className="flex-1 w-[200px] bg-zinc-900/50 border border-zinc-700 rounded-lg">
+          <div className="flex-1">
             <p className="font-thin text-lg border-b border-zinc-700 py-2 px-4">{t("Status")}</p>
             <div className="flex flex-col gap-4 p-4">
               {statuses.map(({ id, name }) => (
@@ -88,7 +88,7 @@ const Runs: React.FC = () => {
           </div>
         </div>
         <div className="flex flex-col flex-1">
-          <div className="flex-1 bg-zinc-900/50 border border-zinc-700 rounded-lg">
+          <div className="flex-1">
             {tab === "manual" ? (
               <ManualRun />
             ) : (
