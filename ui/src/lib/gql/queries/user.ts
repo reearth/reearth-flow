@@ -4,7 +4,6 @@ import { useGraphQLContext } from "@flow/lib/gql";
 
 import { graphql } from "../__gen__";
 
-// Need the queries to build the plugin
 graphql(`
   query GetMe {
     me {
@@ -24,6 +23,6 @@ export const useMeQuery = () => {
   const graphQLContext = useGraphQLContext();
   return useQuery({
     queryKey: [UserQueryKeys.GetMe],
-    queryFn: async () => graphQLContext?.GetMe(),
+    queryFn: () => graphQLContext?.GetMe(),
   });
 };
