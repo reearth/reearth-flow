@@ -1,1 +1,2 @@
-export * from "./WorkspaceMembers";
+export * from "./MembersSection";
+export * from "./RunsSection";

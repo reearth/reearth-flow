@@ -462,32 +462,6 @@ export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type GetMeQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string } | null };
 
-export type CreateWorkspaceMutationVariables = Exact<{
-  input: CreateWorkspaceInput;
-}>;
-
-
-export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace?: { __typename?: 'CreateWorkspacePayload', workspace: { __typename?: 'Workspace', name: string } } | null };
-
-export type GetWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type GetWorkspacesQuery = { __typename?: 'Query', me?: { __typename?: 'Me', workspaces: Array<{ __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string }>, assets: { __typename?: 'AssetConnection', totalCount: number, nodes: Array<{ __typename?: 'Asset', id: string } | null>, edges: Array<{ __typename?: 'AssetEdge', cursor: any }>, pageInfo: { __typename?: 'PageInfo', startCursor?: any | null, endCursor?: any | null, hasNextPage: boolean, hasPreviousPage: boolean } }, projects: { __typename?: 'ProjectConnection', nodes: Array<{ __typename?: 'Project', id: string } | null> } }> } | null };
-
-export type UpdateWorkspaceMutationVariables = Exact<{
-  input: UpdateWorkspaceInput;
-}>;
-
-
-export type UpdateWorkspaceMutation = { __typename?: 'Mutation', updateWorkspace?: { __typename?: 'UpdateWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string } } | null };
-
-export type DeleteWorkspaceMutationVariables = Exact<{
-  input: DeleteWorkspaceInput;
-}>;
-
-
-export type DeleteWorkspaceMutation = { __typename?: 'Mutation', deleteWorkspace?: { __typename?: 'DeleteWorkspacePayload', workspaceId: string } | null };
-
 
 export const GetMeDocument = gql`
     query GetMe {
@@ -496,66 +470,6 @@ export const GetMeDocument = gql`
     name
     email
     myWorkspaceId
-  }
-}
-    `;
-export const CreateWorkspaceDocument = gql`
-    mutation CreateWorkspace($input: CreateWorkspaceInput!) {
-  createWorkspace(input: $input) {
-    workspace {
-      name
-    }
-  }
-}
-    `;
-export const GetWorkspacesDocument = gql`
-    query GetWorkspaces {
-  me {
-    workspaces {
-      id
-      name
-      members {
-        userId
-      }
-      personal
-      assets(first: 5) {
-        nodes {
-          id
-        }
-        edges {
-          cursor
-        }
-        totalCount
-        pageInfo {
-          startCursor
-          endCursor
-          hasNextPage
-          hasPreviousPage
-        }
-      }
-      projects(first: 5) {
-        nodes {
-          id
-        }
-      }
-    }
-  }
-}
-    `;
-export const UpdateWorkspaceDocument = gql`
-    mutation UpdateWorkspace($input: UpdateWorkspaceInput!) {
-  updateWorkspace(input: $input) {
-    workspace {
-      id
-      name
-    }
-  }
-}
-    `;
-export const DeleteWorkspaceDocument = gql`
-    mutation DeleteWorkspace($input: DeleteWorkspaceInput!) {
-  deleteWorkspace(input: $input) {
-    workspaceId
   }
 }
     `;
@@ -569,18 +483,6 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
   return {
     GetMe(variables?: GetMeQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetMeQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetMeQuery>(GetMeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetMe', 'query', variables);
-    },
-    CreateWorkspace(variables: CreateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateWorkspaceMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkspaceMutation>(CreateWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateWorkspace', 'mutation', variables);
-    },
-    GetWorkspaces(variables?: GetWorkspacesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetWorkspacesQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetWorkspacesQuery>(GetWorkspacesDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetWorkspaces', 'query', variables);
-    },
-    UpdateWorkspace(variables: UpdateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateWorkspaceMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateWorkspaceMutation>(UpdateWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateWorkspace', 'mutation', variables);
-    },
-    DeleteWorkspace(variables: DeleteWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<DeleteWorkspaceMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkspaceMutation>(DeleteWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteWorkspace', 'mutation', variables);
     }
   };
 }

@@ -71,6 +71,7 @@ impl FeatureWriter for PrimaryKeyLookupFeatureWriter {
 
     async fn flush(&self) -> Result<(), FeatureWriterError> {
         let item = self.index.values().cloned().collect::<Vec<_>>();
+        let item: Vec<serde_json::Value> = item.into_iter().map(|feature| feature.into()).collect();
         self.state
             .save(&item, self.edge_id.to_string().as_str())
             .await

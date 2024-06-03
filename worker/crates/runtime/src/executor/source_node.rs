@@ -206,7 +206,7 @@ pub async fn create_source_node<F>(
     }
 
     let span = info_span!(
-        "root",
+        "action",
         "otel.name" = "Source Node",
         "otel.kind" = "source",
         "workflow.id" = dag.id.to_string().as_str(),
