@@ -17,7 +17,7 @@ import { Workspace } from "@flow/types";
 const WorkspaceNavigation: React.FC = () => {
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
   const [, setCurrentProject] = useCurrentProject();
-  const navigate = useNavigate({ from: "/workspace/$workspaceId" });
+  const navigate = useNavigate();
 
   // TODO: This fails with proper workspaces
   const handleWorkspaceChange = (workspace: Workspace) => {
