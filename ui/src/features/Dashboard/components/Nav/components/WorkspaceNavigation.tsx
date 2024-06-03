@@ -11,17 +11,14 @@ import {
 } from "@flow/components";
 import { useGetWorkspaceQuery } from "@flow/lib/gql";
 import { cn } from "@flow/lib/utils";
-import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
+import { useCurrentWorkspace } from "@flow/stores";
 import { Workspace } from "@flow/types";
 
 const WorkspaceNavigation: React.FC = () => {
-  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
-  const [, setCurrentProject] = useCurrentProject();
+  const [currentWorkspace, _] = useCurrentWorkspace();
   const navigate = useNavigate();
 
   const handleWorkspaceChange = (workspace: Workspace) => {
-    setCurrentProject(undefined);
-    setCurrentWorkspace(workspace);
     navigate({ to: `/workspace/${workspace.id}` });
   };
 
