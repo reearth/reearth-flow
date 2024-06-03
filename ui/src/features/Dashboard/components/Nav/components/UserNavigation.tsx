@@ -31,9 +31,8 @@ const UserNavigation: React.FC<Props> = ({ className, dropdownPosition, dropdown
   const getMe = useMeQuery();
   const data = getMe.data?.me;
 
-  const { githubRepoUrl, tosUrl, documentationUrl } = config();
+  const { tosUrl, documentationUrl } = config();
 
-  const handleGithubPageOpen = useOpenLink(githubRepoUrl ?? "");
   const handleTosPageOpen = useOpenLink(tosUrl ?? "");
   const handleDocumentationPageOpen = useOpenLink(documentationUrl ?? "");
 
@@ -67,11 +66,6 @@ const UserNavigation: React.FC<Props> = ({ className, dropdownPosition, dropdown
           <p>{t("Keyboard shortcuts")}</p>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        {githubRepoUrl && (
-          <DropdownMenuItem onClick={handleGithubPageOpen}>
-            <p>{t("Github")}</p>
-          </DropdownMenuItem>
-        )}
         {tosUrl && (
           <DropdownMenuItem onClick={handleTosPageOpen}>
             <p>{t("Terms of Service")}</p>

@@ -1,4 +1,4 @@
-import { Plus, UsersThree } from "@phosphor-icons/react";
+import { Plus } from "@phosphor-icons/react";
 
 import { ButtonWithTooltip, FlowLogo } from "@flow/components";
 import { config } from "@flow/config";
@@ -30,11 +30,11 @@ const Nav: React.FC<Props> = ({ className }) => {
           <div className="flex justify-center gap-4 max-w-[40vw]">
             <WorkspaceNavigation />
             <ButtonWithTooltip
-              className="flex bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
+              className="flex gap-2 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
               variant="outline"
               tooltipText={t("Create new workspace")}>
-              <UsersThree className="w-5 h-5" weight="thin" />
-              <Plus className="w-2 h-2" />
+              <Plus weight="thin" />
+              <p className="text-xs font-thin">{t("New Workspace")}</p>
             </ButtonWithTooltip>
           </div>
         </div>

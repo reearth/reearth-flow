@@ -21,13 +21,14 @@ const RunsSection: React.FC = () => {
       <div className="flex gap-2  justify-between items-center border-b border-zinc-700 py-2 px-4">
         <p className="text-lg font-extralight">{t("Runs")}</p>
         <ButtonWithTooltip
-          className="flex gap-1 font-extralight bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-300"
+          className="flex gap-2 font-extralight bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-300"
           variant="outline"
           tooltipText="Run a new flow"
           tooltipPosition="left"
           tooltipOffset={5}
           onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/manual` })}>
-          <Play />
+          <Play weight="thin" />
+          <p className="text-xs font-thin">{t("New Run")}</p>
         </ButtonWithTooltip>
       </div>
       <div className="flex flex-col gap-1 p-4">

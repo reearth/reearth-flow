@@ -1,4 +1,4 @@
-import { Graph, Plus } from "@phosphor-icons/react";
+import { Plus } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
 import projectImage from "@flow/assets/project-screenshot.png"; // TODO: replace with actual project image
@@ -43,8 +43,8 @@ const MainSection: React.FC = () => {
             className="flex bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
             variant="outline"
             tooltipText={t("Create new project")}>
-            <Graph className="w-5 h-5" weight="thin" />
-            <Plus className="w-2 h-2" />
+            <Plus weight="thin" />
+            <p className="text-xs font-thin">{t("New Project")}</p>
           </ButtonWithTooltip>
         </div>
         <div className="flex flex-col flex-1 justify-between overflow-auto">

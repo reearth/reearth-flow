@@ -1,4 +1,4 @@
-import { GithubLogo, UserPlus } from "@phosphor-icons/react";
+import { UserPlus } from "@phosphor-icons/react";
 
 import { ButtonWithTooltip } from "@flow/components";
 import { config } from "@flow/config";
@@ -9,9 +9,8 @@ import { MembersList } from "./MembersList";
 
 const MembersSection: React.FC = () => {
   const t = useT();
-  const { githubRepoUrl, tosUrl, documentationUrl } = config();
+  const { tosUrl, documentationUrl } = config();
 
-  const handleGithubPageOpen = useOpenLink(githubRepoUrl ?? "");
   const handleTosPageOpen = useOpenLink(tosUrl ?? "");
   const handleDocumentationPageOpen = useOpenLink(documentationUrl ?? "");
 
@@ -31,18 +30,6 @@ const MembersSection: React.FC = () => {
       </div>
       <MembersList />
       <div className="px-4 pb-4">
-        {githubRepoUrl && (
-          <div className="flex gap-2 items-center">
-            <div className="rounded-full border-[0.5px] border-zinc-400 p-[2px]">
-              <GithubLogo weight="thin" />
-            </div>
-            <p
-              className="font-extralight px-2 -mx-2 w-[95%] py-1 -my-1 cursor-pointer rounded-md hover:text-zinc-100 hover:bg-zinc-800 truncate"
-              onClick={handleGithubPageOpen}>
-              {t("Github")}
-            </p>
-          </div>
-        )}
         {tosUrl && (
           <p
             className="font-extralight px-2 -mx-2 w-[95%] py-1 cursor-pointer rounded-md hover:text-zinc-100 hover:bg-zinc-800 truncate"
