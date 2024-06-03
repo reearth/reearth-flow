@@ -24,7 +24,12 @@ type Props = {
   dropdownOffset?: number;
 };
 
-const UserNavigation: React.FC<Props> = ({ className, dropdownPosition, dropdownOffset }) => {
+const UserNavigation: React.FC<Props> = ({
+  className,
+  iconOnly,
+  dropdownPosition,
+  dropdownOffset,
+}) => {
   const t = useT();
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
@@ -44,11 +49,13 @@ const UserNavigation: React.FC<Props> = ({ className, dropdownPosition, dropdown
             <AvatarImage src={user?.picture} />
             <AvatarFallback>{data?.name ? data?.name.charAt(0).toUpperCase() : "F"}</AvatarFallback>
           </Avatar>
-          <div className="self-center">
-            <p className="text-zinc-400 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
-              {data?.name ? data?.name : "User"}
-            </p>
-          </div>
+          {!iconOnly ? (
+            <div className="self-center">
+              <p className="text-zinc-400 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
+                {data?.name ? data?.name : "User"}
+              </p>
+            </div>
+          ) : null}
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent

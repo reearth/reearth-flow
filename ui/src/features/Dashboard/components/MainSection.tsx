@@ -40,11 +40,11 @@ const MainSection: React.FC = () => {
         <div className="flex gap-2 justify-between items-center border-b border-zinc-700 pb-4">
           <p className="text-lg font-extralight">{t("Projects")}</p>
           <ButtonWithTooltip
-            className="flex bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
+            className="flex gap-2 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
             variant="outline"
             tooltipText={t("Create new project")}>
             <Plus weight="thin" />
-            <p className="text-xs font-thin">{t("New Project")}</p>
+            <p className="text-xs font-light">{t("New Project")}</p>
           </ButtonWithTooltip>
         </div>
         <div className="flex flex-col flex-1 justify-between overflow-auto">

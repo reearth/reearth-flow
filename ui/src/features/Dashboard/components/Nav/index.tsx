@@ -34,7 +34,7 @@ const Nav: React.FC<Props> = ({ className }) => {
               variant="outline"
               tooltipText={t("Create new workspace")}>
               <Plus weight="thin" />
-              <p className="text-xs font-thin">{t("New Workspace")}</p>
+              <p className="text-xs font-light">{t("New Workspace")}</p>
             </ButtonWithTooltip>
           </div>
         </div>

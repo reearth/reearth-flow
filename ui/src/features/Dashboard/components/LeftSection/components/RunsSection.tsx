@@ -1,7 +1,7 @@
 import { Play } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { ButtonWithTooltip } from "@flow/components";
+import { Button } from "@flow/components";
 import { runs } from "@flow/mock_data/runsData";
 import { useT } from "@flow/providers";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -18,18 +18,15 @@ const RunsSection: React.FC = () => {
 
   return (
     <div>
-      <div className="flex gap-2  justify-between items-center border-b border-zinc-700 py-2 px-4">
+      <div className="flex gap-2 justify-between items-center border-b border-zinc-700 p-2">
         <p className="text-lg font-extralight">{t("Runs")}</p>
-        <ButtonWithTooltip
-          className="flex gap-2 font-extralight bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-300"
+        <Button
+          className="flex gap-2 h-[30px] bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
           variant="outline"
-          tooltipText="Run a new flow"
-          tooltipPosition="left"
-          tooltipOffset={5}
           onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/manual` })}>
           <Play weight="thin" />
-          <p className="text-xs font-thin">{t("New Run")}</p>
-        </ButtonWithTooltip>
+          <p className="text-xs font-light">{t("New Run")}</p>
+        </Button>
       </div>
       <div className="flex flex-col gap-1 p-4">
         <div
