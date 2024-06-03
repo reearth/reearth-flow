@@ -1,4 +1,4 @@
-import type { Workspace as WorkspaceGraphqlType } from "@flow/lib/gql/__gen__/graphql";
+import type { Workspace as WorkspaceGraphqlType } from "@flow/lib/gql";
 
 import type { Member } from "./member";
 import type { Project } from "./project";
