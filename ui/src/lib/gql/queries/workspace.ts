@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
 
@@ -50,17 +50,21 @@ export enum WorkspaceQueryKeys {
   GetWorkspace = "getWorkspace",
 }
 
-// TODO: add onSuccess and onError types
-export const useCreateWorkspaceMutation = ({ onSuccess, onError }) => {
+type mutationInput = {
+  onSuccess?: () => void;
+  onError?: () => void;
+};
+
+export const useCreateWorkspaceMutation = ({ onSuccess, onError }: mutationInput) => {
   const graphQLContext = useGraphQLContext();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: graphQLContext?.CreateWorkspace,
-    onSuccess: onSuccess,
     onError: onError,
-    // TODO: use the function below to invalidate the query
-    // onSuccess: () => {
-    //   queryClient.invalidateQueries({ queryKey: ['getWorkspace'] })
-    // },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [WorkspaceQueryKeys.GetWorkspace] });
+      onSuccess && onSuccess();
+    },
   });
 };
 
@@ -75,18 +79,30 @@ export const useGetWorkspaceQuery = () => {
   return { data, ...rest };
 };
 
-export const useUpdateWorkspaceMutation = () => {
+export const useUpdateWorkspaceMutation = ({ onSuccess, onError }: mutationInput) => {
   const graphQLContext = useGraphQLContext();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: graphQLContext?.UpdateWorkspace,
+    onError: onError,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [WorkspaceQueryKeys.GetWorkspace] });
+      onSuccess && onSuccess();
+    },
   });
 };
 
-export const useDeleteWorkspaceQuery = () => {
+export const useDeleteWorkspaceQuery = ({ onSuccess, onError }: mutationInput) => {
   const graphQLContext = useGraphQLContext();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: graphQLContext?.DeleteWorkspace,
+    onError: onError,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [WorkspaceQueryKeys.GetWorkspace] });
+      onSuccess && onSuccess();
+    },
   });
 };
