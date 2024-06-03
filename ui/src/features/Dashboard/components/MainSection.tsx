@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@flow/components";
+import { workspaces as mockedWorkspaces } from "@flow/mock_data/workspaceData";
 import { useT } from "@flow/providers";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import type { Project } from "@flow/types";
@@ -28,7 +29,7 @@ const MainSection: React.FC = () => {
     }
   };
 
-  const projects = currentWorkspace?.projects;
+  const projects = mockedWorkspaces[0].projects;
 
   return (
     <div className="flex flex-col flex-1 justify-between border border-zinc-700 rounded-lg bg-zinc-900/50">
