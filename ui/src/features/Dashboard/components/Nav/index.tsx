@@ -3,6 +3,7 @@ import { Plus, UsersThree } from "@phosphor-icons/react";
 import { ButtonWithTooltip, FlowLogo } from "@flow/components";
 import { config } from "@flow/config";
 import { useT } from "@flow/providers";
+import { useDialogType } from "@flow/stores";
 
 import { UserNavigation, WorkspaceNavigation } from "./components";
 
@@ -13,6 +14,8 @@ type Props = {
 const Nav: React.FC<Props> = ({ className }) => {
   const t = useT();
   const { brandName, version } = config();
+  const [, setDialogType] = useDialogType();
+
   return (
     <div className={`bg-zinc-900/50 border-b border-zinc-700 ${className}`}>
       <div className="relative flex justify-between items-center gap-4 h-14 px-4">
@@ -30,6 +33,7 @@ const Nav: React.FC<Props> = ({ className }) => {
             <ButtonWithTooltip
               className="flex bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
               variant="outline"
+              onClick={() => setDialogType("add-workspace")}
               tooltipText={t("Create new workspace")}>
               <UsersThree className="w-5 h-5" weight="thin" />
               <Plus className="w-2 h-2" />
