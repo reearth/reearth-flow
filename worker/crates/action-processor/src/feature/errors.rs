@@ -2,7 +2,7 @@ use thiserror::Error;
 
 #[allow(dead_code)]
 #[derive(Error, Debug)]
-pub(super) enum FeatureProcessorError {
+pub(crate) enum FeatureProcessorError {
     #[error("Feature Merger Factory error: {0}")]
     MergerFactory(String),
     #[error("Feature Merger error: {0}")]
@@ -23,7 +23,9 @@ pub(super) enum FeatureProcessorError {
     CounterFactory(String),
     #[error("Feature Counter error: {0}")]
     Counter(String),
+    #[error("Feature File City Gml Reader error: {0}")]
+    FileCityGmlReader(String),
 }
 
 #[allow(dead_code)]
-pub(super) type Result<T, E = FeatureProcessorError> = std::result::Result<T, E>;
+pub(crate) type Result<T, E = FeatureProcessorError> = std::result::Result<T, E>;
