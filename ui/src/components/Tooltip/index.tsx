@@ -5,7 +5,7 @@ import * as React from "react";
 
 import { cn } from "@flow/lib/utils";
 
-const TooltipProvider = TooltipPrimitive.Provider;
+const TooltipProviderPrimitive = TooltipPrimitive.Provider;
 
 const Tooltip = TooltipPrimitive.Root;
 
@@ -26,5 +26,9 @@ const TooltipContent = React.forwardRef<
   />
 ));
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
+
+const TooltipProvider = ({ children }: { children?: React.ReactNode }) => {
+  return <TooltipProviderPrimitive>{children}</TooltipProviderPrimitive>;
+};
 
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };
