@@ -22,11 +22,8 @@ export enum UserQueryKeys {
 
 export const useMeQuery = () => {
   const graphQLContext = useGraphQLContext();
-  const { data, ...rest } = useQuery({
-    // TODO: Use static keys rather than strings. Export the keys as well
+  return useQuery({
     queryKey: [UserQueryKeys.GetMe],
     queryFn: async () => graphQLContext?.GetMe(),
   });
-
-  return { data, ...rest };
 };
