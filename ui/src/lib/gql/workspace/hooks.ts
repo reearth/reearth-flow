@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Workspace, useGraphQLContext } from "@flow/lib/gql";
+import { useGraphQLContext } from "@flow/lib/gql";
+import { Workspace } from "@flow/types";
 
 export enum WorkspaceQueryKeys {
   GetWorkspace = "getWorkspace",

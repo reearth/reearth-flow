@@ -24,9 +24,15 @@ const AddWorkspace: React.FC = () => {
     setButtonDisabled(true);
     try {
       const workspace = await createWorkspace(name);
+
+      if (!workspace) {
+        throw new Error("Workspace not created properly");
+      }
+
       setButtonDisabled(false);
       setShowError(false);
       setDialogType(undefined);
+
       navigate({ to: `/workspace/${workspace.id}` });
     } catch (err) {
       setShowError(true);
