@@ -11,7 +11,7 @@ import { ContentSection } from "../ContentSection";
 
 const AddWorkspace: React.FC = () => {
   const t = useT();
-  const [name, setName] = useState<string | undefined>();
+  const [name, setName] = useState("");
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [, setDialogType] = useDialogType();
   const navigate = useNavigate();

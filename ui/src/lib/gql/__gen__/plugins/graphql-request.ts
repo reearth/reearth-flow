@@ -467,7 +467,7 @@ export type CreateWorkspaceMutationVariables = Exact<{
 }>;
 
 
-export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace?: { __typename?: 'CreateWorkspacePayload', workspace: { __typename?: 'Workspace', id: string } } | null };
+export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace?: { __typename?: 'CreateWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string, personal: boolean } } | null };
 
 export type GetWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -504,6 +504,8 @@ export const CreateWorkspaceDocument = gql`
   createWorkspace(input: $input) {
     workspace {
       id
+      name
+      personal
     }
   }
 }

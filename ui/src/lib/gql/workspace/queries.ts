@@ -5,6 +5,8 @@ graphql(`
     createWorkspace(input: $input) {
       workspace {
         id
+        name
+        personal
       }
     }
   }
