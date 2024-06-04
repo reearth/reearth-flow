@@ -57,6 +57,7 @@ export const useGetWorkspaceQuery = (): GetWorkspace => {
       const data = await graphQLContext.GetWorkspaces();
       return data?.me?.workspaces;
     },
+    staleTime: Infinity,
   });
 
   return { workspaces: data, ...rest };
