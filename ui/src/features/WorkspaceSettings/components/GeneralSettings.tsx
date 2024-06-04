@@ -17,14 +17,14 @@ const GeneralSettings: React.FC = () => {
             defaultValue={currentWorkspace?.name}
           />
         </div>
-        <div className="flex flex-col gap-2">
+        {/* <div className="flex flex-col gap-2">
           <Label htmlFor="workspace-description">{t("Workspace Description")}</Label>
           <Input
             id="workspace-description"
             placeholder={t("Workspace Description")}
             defaultValue={currentWorkspace?.description}
           />
-        </div>
+        </div> */}
         <Button className="self-end">{t("Save")}</Button>
       </div>
     </div>
