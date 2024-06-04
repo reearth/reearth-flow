@@ -62,3 +62,33 @@ export const useGetWorkspace = (): GetWorkspace => {
 
   return { workspaces: data, ...rest };
 };
+
+type DeleteWorkspace = {
+  deleteWorkspace: (workspaceId: string) => Promise<string | undefined>;
+  data: string | undefined;
+} & CommonReturnType;
+
+export const useDeleteWorkspace = (): DeleteWorkspace => {
+  const graphQLContext = useGraphQLContext();
+  const queryClient = useQueryClient();
+  const { data, mutateAsync, ...rest } = useMutation({
+    mutationFn: async (workspaceId: string) => {
+      const data = await graphQLContext?.DeleteWorkspace({ input: { workspaceId } });
+      return data?.deleteWorkspace?.workspaceId;
+    },
+    onSuccess: deletedWorkspaceId => {
+      queryClient.setQueryData([WorkspaceQueryKeys.GetWorkspace], (data: Workspace[]) => {
+        data.splice(
+          data.findIndex(w => w.id === deletedWorkspaceId),
+          1,
+        );
+        return [...data];
+      });
+    },
+  });
+  return {
+    deleteWorkspace: mutateAsync,
+    data,
+    ...rest,
+  };
+};
