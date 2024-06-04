@@ -1,16 +1,10 @@
-use std::io::Read;
 use std::ops::Range;
 use std::path::Path;
-use std::pin::Pin;
-use std::task::Context;
-use std::task::Poll;
 use std::time::Duration;
 
 use bytes::Bytes;
-use futures::Stream;
 use object_store::ObjectMeta;
 use object_store::Result;
-use opendal::BlockingReader;
 use opendal::Metakey;
 use reearth_flow_common::uri::Protocol;
 use reearth_flow_common::uri::Uri;
@@ -97,14 +91,14 @@ impl Storage {
                         path: format!("{:?}", location).into(),
                     },
                 })?;
-                let mut r = self
+                let r = self
                     .inner
                     .blocking()
                     .reader(p)
                     .map_err(|err| format_object_store_error(err, p))?;
 
                 let mut buf = Vec::new();
-                r.read_to_end(&mut buf)
+                r.read_into(&mut buf, 1024..2048)
                     .map_err(|err| object_store::Error::Generic {
                         store: "IoError",
                         source: Box::new(err),
@@ -140,7 +134,7 @@ impl Storage {
             .call()
             .map_err(|err| format_object_store_error(err, p))?;
 
-        Ok(Bytes::from(bs))
+        Ok(Bytes::from(bs.to_vec()))
     }
 
     pub fn head_sync(&self, location: &Path) -> Result<ObjectMeta> {
@@ -228,25 +222,5 @@ impl Storage {
             .copy(from.as_ref(), to.as_ref())
             .map_err(|err| format_object_store_error(err, from))?;
         Ok(())
-    }
-}
-
-struct OpendalBlockingReader {
-    inner: BlockingReader,
-}
-
-impl Stream for OpendalBlockingReader {
-    type Item = Result<Bytes>;
-
-    fn poll_next(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let result = match self.inner.next() {
-            Some(Ok(v)) => Some(Ok(v)),
-            Some(Err(e)) => Some(Err(object_store::Error::Generic {
-                store: "IoError",
-                source: Box::new(e),
-            })),
-            None => None,
-        };
-        Poll::Ready(result)
     }
 }
