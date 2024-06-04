@@ -1,12 +1,18 @@
 import { graphql } from "../__gen__";
 
 graphql(`
+  fragment GetWorkspace on Workspace {
+    id
+    name
+    personal
+  }
+`);
+
+graphql(`
   mutation CreateWorkspace($input: CreateWorkspaceInput!) {
     createWorkspace(input: $input) {
       workspace {
-        id
-        name
-        personal
+        ...GetWorkspace
       }
     }
   }
@@ -17,9 +23,7 @@ graphql(`
   query GetWorkspaces {
     me {
       workspaces {
-        id
-        name
-        personal
+        ...GetWorkspace
       }
     }
   }
@@ -29,8 +33,7 @@ graphql(`
   mutation UpdateWorkspace($input: UpdateWorkspaceInput!) {
     updateWorkspace(input: $input) {
       workspace {
-        id
-        name
+        ...GetWorkspace
       }
     }
   }

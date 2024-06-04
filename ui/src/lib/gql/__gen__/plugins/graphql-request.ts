@@ -462,6 +462,8 @@ export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type GetMeQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string } | null };
 
+export type GetWorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean };
+
 export type CreateWorkspaceMutationVariables = Exact<{
   input: CreateWorkspaceInput;
 }>;
@@ -479,7 +481,7 @@ export type UpdateWorkspaceMutationVariables = Exact<{
 }>;
 
 
-export type UpdateWorkspaceMutation = { __typename?: 'Mutation', updateWorkspace?: { __typename?: 'UpdateWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string } } | null };
+export type UpdateWorkspaceMutation = { __typename?: 'Mutation', updateWorkspace?: { __typename?: 'UpdateWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string, personal: boolean } } | null };
 
 export type DeleteWorkspaceMutationVariables = Exact<{
   input: DeleteWorkspaceInput;
@@ -488,7 +490,13 @@ export type DeleteWorkspaceMutationVariables = Exact<{
 
 export type DeleteWorkspaceMutation = { __typename?: 'Mutation', deleteWorkspace?: { __typename?: 'DeleteWorkspacePayload', workspaceId: string } | null };
 
-
+export const GetWorkspaceFragmentDoc = gql`
+    fragment GetWorkspace on Workspace {
+  id
+  name
+  personal
+}
+    `;
 export const GetMeDocument = gql`
     query GetMe {
   me {
@@ -503,34 +511,29 @@ export const CreateWorkspaceDocument = gql`
     mutation CreateWorkspace($input: CreateWorkspaceInput!) {
   createWorkspace(input: $input) {
     workspace {
-      id
-      name
-      personal
+      ...GetWorkspace
     }
   }
 }
-    `;
+    ${GetWorkspaceFragmentDoc}`;
 export const GetWorkspacesDocument = gql`
     query GetWorkspaces {
   me {
     workspaces {
-      id
-      name
-      personal
+      ...GetWorkspace
     }
   }
 }
-    `;
+    ${GetWorkspaceFragmentDoc}`;
 export const UpdateWorkspaceDocument = gql`
     mutation UpdateWorkspace($input: UpdateWorkspaceInput!) {
   updateWorkspace(input: $input) {
     workspace {
-      id
-      name
+      ...GetWorkspace
     }
   }
 }
-    `;
+    ${GetWorkspaceFragmentDoc}`;
 export const DeleteWorkspaceDocument = gql`
     mutation DeleteWorkspace($input: DeleteWorkspaceInput!) {
   deleteWorkspace(input: $input) {
