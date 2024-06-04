@@ -14,7 +14,7 @@ const GeneralSettings: React.FC = () => {
           <Input
             id="workspace-name"
             placeholder={t("Workspace Name")}
-            defaultValue={currentWorkspace?.name}
+            value={currentWorkspace?.name}
           />
         </div>
         {/* <div className="flex flex-col gap-2">
@@ -26,6 +26,9 @@ const GeneralSettings: React.FC = () => {
           />
         </div> */}
         <Button className="self-end">{t("Save")}</Button>
+        <Button variant={"destructive"} disabled={currentWorkspace?.personal} className="self-end">
+          {t("Delete Workspace")}
+        </Button>
       </div>
     </div>
   );
