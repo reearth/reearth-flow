@@ -142,7 +142,7 @@ impl Storage {
             .await
             .map_err(|err| format_object_store_error(err, p))?;
 
-        Ok(Bytes::from(bs.to_vec()))
+        Ok(bs.to_bytes())
     }
 
     pub async fn head(&self, location: &Path) -> Result<ObjectMeta> {

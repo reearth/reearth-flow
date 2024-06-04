@@ -15,6 +15,10 @@ pub(super) enum GeometryProcessorError {
     CoordinateSystemSetterFactory(String),
     #[error("CoordinateSystemSetter error: {0}")]
     CoordinateSystemSetter(String),
+    #[error("GeometryFilter Factory error: {0}")]
+    GeometryFilterFactory(String),
+    #[error("GeometryFilter error: {0}")]
+    GeometryFilter(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

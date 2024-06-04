@@ -22,6 +22,7 @@ slog-term = "2.9.1"
 slog.workspace = true
 sloggers = {version = "2.2.0", default-features = false}
 thiserror.workspace = true
+time.workspace = true
 tokio-stream.workspace = true
 tokio.workspace = true
 tracing.workspace = true
