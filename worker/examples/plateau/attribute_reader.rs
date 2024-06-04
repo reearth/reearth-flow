@@ -1,5 +1,5 @@
 mod helper;
 
 fn main() {
-    helper::execute("xml_validator.yml");
+    helper::execute("lod_splitter_with_dm.yml");
 }

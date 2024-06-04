@@ -62,7 +62,6 @@ impl ProcessorFactory for FeatureFilterFactory {
             )
             .into());
         };
-
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let mut conditions = Vec::new();
         for condition in &params.conditions {

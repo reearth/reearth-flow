@@ -94,16 +94,9 @@ impl Storage {
                 let r = self
                     .inner
                     .blocking()
-                    .reader(p)
+                    .read(p)
                     .map_err(|err| format_object_store_error(err, p))?;
-
-                let mut buf = Vec::new();
-                r.read_into(&mut buf, 1024..2048)
-                    .map_err(|err| object_store::Error::Generic {
-                        store: "IoError",
-                        source: Box::new(err),
-                    })?;
-                Ok(Bytes::from(buf))
+                Ok(r.to_bytes())
             }
         }
     }
