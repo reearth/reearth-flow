@@ -5,12 +5,11 @@ import { Loading } from "@flow/components";
 import { useGetWorkspaceQuery } from "@flow/lib/gql";
 
 const LoadingPage: React.FC = () => {
-  const { data, ...rest } = useGetWorkspaceQuery();
+  const { workspaces, ...rest } = useGetWorkspaceQuery();
   const navigate = useNavigate();
   const [error, setError] = useState<string | undefined>(undefined);
 
   const isLoading = rest.isLoading;
-  const workspaces = data?.me?.workspaces;
 
   useEffect(() => {
     if (isLoading) return;

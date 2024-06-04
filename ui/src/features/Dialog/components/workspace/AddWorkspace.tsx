@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button, Input } from "@flow/components";
 import { useCreateWorkspaceMutation } from "@flow/lib/gql";
@@ -16,27 +16,22 @@ const AddWorkspace: React.FC = () => {
   const [, setDialogType] = useDialogType();
   const navigate = useNavigate();
   const [showError, setShowError] = useState(false);
-  const createWorkspace = useCreateWorkspaceMutation();
+  const { createWorkspace } = useCreateWorkspaceMutation();
 
-  useEffect(() => {
-    if (createWorkspace.isIdle || createWorkspace.isPending) return;
-
-    if (createWorkspace.isError) {
-      setShowError(true);
-      setButtonDisabled(false);
-    } else if (createWorkspace.isSuccess) {
-      const workspaceId = createWorkspace.data?.createWorkspace?.workspace.id;
+  const handleClick = async () => {
+    if (!name) return;
+    setShowError(false);
+    setButtonDisabled(true);
+    try {
+      const workspace = await createWorkspace(name);
       setButtonDisabled(false);
       setShowError(false);
       setDialogType(undefined);
-      navigate({ to: `/workspace/${workspaceId}` });
+      navigate({ to: `/workspace/${workspace.id}` });
+    } catch (err) {
+      setShowError(true);
+      setButtonDisabled(false);
     }
-  }, [createWorkspace, setShowError, setButtonDisabled, setDialogType, navigate]);
-
-  const handleClick = () => {
-    if (!name) return;
-    createWorkspace.mutate({ input: { name } });
-    setButtonDisabled(true);
   };
 
   return (

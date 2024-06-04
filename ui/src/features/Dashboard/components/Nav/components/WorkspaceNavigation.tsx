@@ -21,9 +21,7 @@ const WorkspaceNavigation: React.FC = () => {
     navigate({ to: `/workspace/${workspace.id}` });
   };
 
-  const { data } = useGetWorkspaceQuery();
-
-  const workspaces = data?.me?.workspaces;
+  const { workspaces } = useGetWorkspaceQuery();
 
   return (
     <DropdownMenu>

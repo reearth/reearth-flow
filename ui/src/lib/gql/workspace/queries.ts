@@ -18,7 +18,6 @@ graphql(`
   }
 `);
 
-// TODO: Should this a fragment in GET_ME?
 graphql(`
   query GetWorkspaces {
     me {

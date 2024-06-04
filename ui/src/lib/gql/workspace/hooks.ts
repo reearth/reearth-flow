@@ -1,59 +1,63 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useGraphQLContext } from "@flow/lib/gql";
-
-import { GetWorkspacesQuery } from "../__gen__/graphql";
+import { Workspace, useGraphQLContext } from "@flow/lib/gql";
 
 export enum WorkspaceQueryKeys {
   GetWorkspace = "getWorkspace",
 }
 
-export const useCreateWorkspaceMutation = () => {
-  const graphQLContext = useGraphQLContext();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: graphQLContext?.CreateWorkspace,
-    onSuccess: data => {
-      const workspace = data.createWorkspace?.workspace;
-      queryClient.setQueryData([WorkspaceQueryKeys.GetWorkspace], (data: GetWorkspacesQuery) => ({
-        ...data,
-        me: {
-          workspaces: [...(data?.me?.workspaces ? data.me.workspaces : []), workspace],
-        },
-      }));
-    },
-  });
+type CreateWorkspace = {
+  createWorkspace: (name: string) => Promise<Workspace>;
+  data: Workspace | undefined;
+  isError: boolean;
+  isSuccess: boolean;
+  isPending: boolean;
+  error: unknown;
 };
 
-export const useGetWorkspaceQuery = () => {
+export const useCreateWorkspaceMutation = (): CreateWorkspace => {
+  const graphQLContext = useGraphQLContext();
+  const queryClient = useQueryClient();
+  const { data, mutateAsync, ...rest } = useMutation({
+    mutationFn: async (name: string) => {
+      const data = await graphQLContext?.CreateWorkspace({ input: { name } });
+      return data?.createWorkspace?.workspace;
+    },
+    onSuccess: createdWorkspace => {
+      queryClient.setQueryData([WorkspaceQueryKeys.GetWorkspace], (data: Workspace[]) => [
+        ...data,
+        createdWorkspace,
+      ]);
+    },
+  });
+  return {
+    createWorkspace: mutateAsync as (name: string) => Promise<Workspace>,
+    data,
+    ...rest,
+  };
+};
+
+type GetWorkspace = {
+  workspaces: Workspace[] | undefined;
+  // TODO: These are generic so use declare them only once
+  isLoading: boolean;
+  isError: boolean;
+  isSuccess: boolean;
+  isPending: boolean;
+  error: unknown;
+};
+
+export const useGetWorkspaceQuery = (): GetWorkspace => {
   const graphQLContext = useGraphQLContext();
 
   const { data, ...rest } = useQuery({
     queryKey: [WorkspaceQueryKeys.GetWorkspace],
-    queryFn: async () => await graphQLContext?.GetWorkspaces(),
+    queryFn: async () => {
+      if (!graphQLContext?.GetWorkspaces) return;
+      const data = await graphQLContext.GetWorkspaces();
+      return data?.me?.workspaces;
+    },
   });
 
-  return { data, ...rest };
-};
-
-export const useUpdateWorkspaceMutation = () => {
-  const graphQLContext = useGraphQLContext();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: graphQLContext?.UpdateWorkspace,
-    onSuccess: async () =>
-      await queryClient.invalidateQueries({ queryKey: [WorkspaceQueryKeys.GetWorkspace] }),
-  });
-};
-
-export const useDeleteWorkspaceQuery = () => {
-  const graphQLContext = useGraphQLContext();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: graphQLContext?.DeleteWorkspace,
-    onSuccess: async () =>
-      await queryClient.invalidateQueries({ queryKey: [WorkspaceQueryKeys.GetWorkspace] }),
-  });
+  return { workspaces: data, ...rest };
 };

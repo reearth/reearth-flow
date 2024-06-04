@@ -12,9 +12,7 @@ const Dashboard: React.FC = () => {
   const { workspaceId } = useParams({ strict: false });
   const navigate = useNavigate();
 
-  const { data } = useGetWorkspaceQuery();
-
-  const workspaces = data?.me?.workspaces;
+  const { workspaces } = useGetWorkspaceQuery();
 
   useEffect(() => {
     if (!workspaces) return;
