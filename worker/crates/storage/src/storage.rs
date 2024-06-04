@@ -8,13 +8,14 @@ use bytes::Bytes;
 use futures::stream::BoxStream;
 use futures::Stream;
 use futures::StreamExt;
+use futures::TryStreamExt;
 use object_store::GetResult;
 use object_store::GetResultPayload;
 use object_store::ObjectMeta;
 use object_store::Result;
+use opendal::Buffer;
 use opendal::Metakey;
 use opendal::Operator;
-use opendal::Reader;
 
 use reearth_flow_common::uri::Uri;
 
@@ -105,10 +106,9 @@ impl Storage {
         };
         let r = self
             .inner
-            .reader(p)
+            .read(p)
             .await
             .map_err(|err| format_object_store_error(err, p))?;
-
         Ok(GetResult {
             payload: GetResultPayload::Stream(Box::pin(OpendalReader { inner: r })),
             range: (0..meta.size),
@@ -142,7 +142,7 @@ impl Storage {
             .await
             .map_err(|err| format_object_store_error(err, p))?;
 
-        Ok(Bytes::from(bs))
+        Ok(Bytes::from(bs.to_vec()))
     }
 
     pub async fn head(&self, location: &Path) -> Result<ObjectMeta> {
@@ -272,20 +272,19 @@ pub(crate) fn format_object_store_error(err: opendal::Error, path: &str) -> obje
 }
 
 struct OpendalReader {
-    inner: Reader,
+    inner: Buffer,
 }
 
 impl Stream for OpendalReader {
     type Item = Result<Bytes>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        use opendal::raw::oio::Read;
-
         self.inner
-            .poll_next(cx)
-            .map_err(|err| object_store::Error::Generic {
+            .try_poll_next_unpin(cx)
+            .map(|x| x.map(|x| x.map(Bytes::from)))
+            .map_err(|e| object_store::Error::Generic {
                 store: "IoError",
-                source: Box::new(err),
+                source: Box::new(e),
             })
     }
 }
