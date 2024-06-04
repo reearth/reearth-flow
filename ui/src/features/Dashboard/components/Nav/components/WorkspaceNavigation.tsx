@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@flow/components";
-import { useGetWorkspaceQuery } from "@flow/lib/gql";
+import { useGetWorkspace } from "@flow/lib/gql";
 import { cn } from "@flow/lib/utils";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Workspace } from "@flow/types";
@@ -22,7 +22,7 @@ const WorkspaceNavigation: React.FC = () => {
     navigate({ to: `/workspace/${workspace.id}` });
   };
 
-  const { workspaces } = useGetWorkspaceQuery();
+  const { workspaces } = useGetWorkspace();
 
   return (
     <DropdownMenu>

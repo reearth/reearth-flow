@@ -20,7 +20,7 @@ type CreateWorkspace = {
   data: Workspace | undefined;
 } & CommonReturnType;
 
-export const useCreateWorkspaceMutation = (): CreateWorkspace => {
+export const useCreateWorkspace = (): CreateWorkspace => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
   const { data, mutateAsync, ...rest } = useMutation({
@@ -47,7 +47,7 @@ type GetWorkspace = {
   isLoading: boolean;
 } & CommonReturnType;
 
-export const useGetWorkspaceQuery = (): GetWorkspace => {
+export const useGetWorkspace = (): GetWorkspace => {
   const graphQLContext = useGraphQLContext();
 
   const { data, ...rest } = useQuery({
