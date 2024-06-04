@@ -6,14 +6,18 @@ export enum WorkspaceQueryKeys {
   GetWorkspace = "getWorkspace",
 }
 
-type CreateWorkspace = {
-  createWorkspace: (name: string) => Promise<Workspace>;
-  data: Workspace | undefined;
+// TODO: This needs to be derived from the tanstack
+type CommonReturnType = {
   isError: boolean;
   isSuccess: boolean;
   isPending: boolean;
   error: unknown;
 };
+
+type CreateWorkspace = {
+  createWorkspace: (name: string) => Promise<Workspace | undefined>;
+  data: Workspace | undefined;
+} & CommonReturnType;
 
 export const useCreateWorkspaceMutation = (): CreateWorkspace => {
   const graphQLContext = useGraphQLContext();
@@ -31,7 +35,7 @@ export const useCreateWorkspaceMutation = (): CreateWorkspace => {
     },
   });
   return {
-    createWorkspace: mutateAsync as (name: string) => Promise<Workspace>,
+    createWorkspace: mutateAsync,
     data,
     ...rest,
   };
@@ -39,13 +43,8 @@ export const useCreateWorkspaceMutation = (): CreateWorkspace => {
 
 type GetWorkspace = {
   workspaces: Workspace[] | undefined;
-  // TODO: These are generic so use declare them only once
   isLoading: boolean;
-  isError: boolean;
-  isSuccess: boolean;
-  isPending: boolean;
-  error: unknown;
-};
+} & CommonReturnType;
 
 export const useGetWorkspaceQuery = (): GetWorkspace => {
   const graphQLContext = useGraphQLContext();
