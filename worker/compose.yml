@@ -9,7 +9,7 @@ services:
       - COLLECTOR_OTLP_ENABLED=true
 
   otel-collector:
-    image: otel/opentelemetry-collector:0.99.0
+    image: otel/opentelemetry-collector:0.101.0
     restart: always
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
