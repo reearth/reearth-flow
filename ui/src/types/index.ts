@@ -1,5 +1,4 @@
 export * from "./shared";
-export * from "./workspace";
 export * from "./member";
 export * from "./project";
 export * from "./workflow";

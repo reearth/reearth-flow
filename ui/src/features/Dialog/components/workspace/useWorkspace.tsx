@@ -1,4 +1,4 @@
-import { StarIcon } from "@radix-ui/react-icons";
+import { CaretRight } from "@phosphor-icons/react";
 
 import { useT } from "@flow/lib/i18n";
 
@@ -12,7 +12,7 @@ export default (): DialogContentType[] => {
     {
       id: "add-workspace",
       title: t("Add Workspace"),
-      icon: <StarIcon />,
+      icon: <CaretRight />,
       component: <AddWorkspace />,
     },
   ];
