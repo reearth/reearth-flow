@@ -34,8 +34,9 @@ const GeneralSettings: React.FC = () => {
           <Input
             id="workspace-name"
             placeholder={t("Workspace Name")}
-            defaultValue={currentWorkspace?.name}
             readOnly={true}
+            disabled={true}
+            value={currentWorkspace?.name}
           />
         </div>
         {/* <div className="flex flex-col gap-2">
