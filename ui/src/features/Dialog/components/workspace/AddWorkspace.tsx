@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button, Input } from "@flow/components";
-import { useCreateWorkspace } from "@flow/lib/gql";
+import { useWorkspaceApi } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 
@@ -16,28 +16,25 @@ const AddWorkspace: React.FC = () => {
   const [, setDialogType] = useDialogType();
   const navigate = useNavigate();
   const [showError, setShowError] = useState(false);
-  const { createWorkspace } = useCreateWorkspace();
+  const { createWorkspace } = useWorkspaceApi();
 
   const handleClick = async () => {
     if (!name) return;
     setShowError(false);
     setButtonDisabled(true);
-    try {
-      const workspace = await createWorkspace(name);
+    const { workspace } = await createWorkspace(name);
 
-      if (!workspace) {
-        throw new Error("Workspace not created properly");
-      }
-
-      setButtonDisabled(false);
-      setShowError(false);
-      setDialogType(undefined);
-
-      navigate({ to: `/workspace/${workspace.id}` });
-    } catch (err) {
+    if (!workspace) {
       setShowError(true);
       setButtonDisabled(false);
+      return;
     }
+
+    setButtonDisabled(false);
+    setShowError(false);
+    setDialogType(undefined);
+
+    navigate({ to: `/workspace/${workspace.id}` });
   };
 
   return (

@@ -9,15 +9,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@flow/components";
-import { useGetWorkspace } from "@flow/lib/gql";
+import { useWorkspaceApi } from "@flow/lib/gql";
 import { cn } from "@flow/lib/utils";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Workspace } from "@flow/types";
 
 const WorkspaceNavigation: React.FC = () => {
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
-  const { workspaces } = useGetWorkspace();
+  const { getWorkspaces } = useWorkspaceApi();
   const navigate = useNavigate();
+  const { workspaces } = getWorkspaces();
 
   const handleWorkspaceChange = async (workspace: Workspace) => {
     const route = window.location.pathname;

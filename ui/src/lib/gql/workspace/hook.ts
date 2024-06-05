@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
 import { Workspace } from "@flow/types";
@@ -7,7 +8,7 @@ export enum WorkspaceQueryKeys {
   GetWorkspace = "getWorkspace",
 }
 
-// TODO: This needs to be derived from the tanstack
+// Tanstack has many properties. Declare the ones we need to use in the code
 type CommonReturnType = {
   isError: boolean;
   isSuccess: boolean;
@@ -16,14 +17,23 @@ type CommonReturnType = {
 };
 
 type CreateWorkspace = {
-  createWorkspace: (name: string) => Promise<Workspace | undefined>;
-  data: Workspace | undefined;
+  workspace: Workspace | undefined;
 } & CommonReturnType;
 
-export const useCreateWorkspace = (): CreateWorkspace => {
+type GetWorkspace = {
+  workspaces: Workspace[] | undefined;
+  isLoading: boolean;
+} & CommonReturnType;
+
+type DeleteWorkspace = {
+  workspaceId: string | undefined;
+} & CommonReturnType;
+
+export const useWorkspaceApi = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
-  const { data, mutateAsync, ...rest } = useMutation({
+
+  const createWorkspaceMutation = useMutation({
     mutationFn: async (name: string) => {
       const data = await graphQLContext?.CreateWorkspace({ input: { name } });
       return data?.createWorkspace?.workspace;
@@ -35,22 +45,8 @@ export const useCreateWorkspace = (): CreateWorkspace => {
       ]);
     },
   });
-  return {
-    createWorkspace: mutateAsync,
-    data,
-    ...rest,
-  };
-};
 
-type GetWorkspace = {
-  workspaces: Workspace[] | undefined;
-  isLoading: boolean;
-} & CommonReturnType;
-
-export const useGetWorkspace = (): GetWorkspace => {
-  const graphQLContext = useGraphQLContext();
-
-  const { data, ...rest } = useQuery({
+  const getWorkspacesQuery = useQuery({
     queryKey: [WorkspaceQueryKeys.GetWorkspace],
     queryFn: async () => {
       if (!graphQLContext?.GetWorkspaces) return;
@@ -60,18 +56,7 @@ export const useGetWorkspace = (): GetWorkspace => {
     staleTime: Infinity,
   });
 
-  return { workspaces: data, ...rest };
-};
-
-type DeleteWorkspace = {
-  deleteWorkspace: (workspaceId: string) => Promise<string | undefined>;
-  data: string | undefined;
-} & CommonReturnType;
-
-export const useDeleteWorkspace = (): DeleteWorkspace => {
-  const graphQLContext = useGraphQLContext();
-  const queryClient = useQueryClient();
-  const { data, mutateAsync, ...rest } = useMutation({
+  const deleteWorkspaceMutation = useMutation({
     mutationFn: async (workspaceId: string) => {
       const data = await graphQLContext?.DeleteWorkspace({ input: { workspaceId } });
       return data?.deleteWorkspace?.workspaceId;
@@ -86,9 +71,36 @@ export const useDeleteWorkspace = (): DeleteWorkspace => {
       });
     },
   });
+
+  const createWorkspace = useCallback(
+    async (name: string): Promise<CreateWorkspace> => {
+      const { mutate, data, ...rest } = createWorkspaceMutation;
+      await mutate(name);
+      return { workspace: data, ...rest };
+    },
+    [createWorkspaceMutation],
+  );
+
+  const deleteWorkspace = useCallback(
+    async (workspaceId: string): Promise<DeleteWorkspace> => {
+      const { mutate, data, ...rest } = deleteWorkspaceMutation;
+      await mutate(workspaceId);
+      return { workspaceId: data, ...rest };
+    },
+    [deleteWorkspaceMutation],
+  );
+
+  const getWorkspaces = useCallback((): GetWorkspace => {
+    const { data: workspaces, ...rest } = getWorkspacesQuery;
+    return {
+      workspaces,
+      ...rest,
+    };
+  }, [getWorkspacesQuery]);
+
   return {
-    deleteWorkspace: mutateAsync,
-    data,
-    ...rest,
+    createWorkspace,
+    getWorkspaces,
+    deleteWorkspace,
   };
 };

@@ -2,28 +2,28 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button, Input, Label } from "@flow/components";
-import { useDeleteWorkspace } from "@flow/lib/gql";
+import { useWorkspaceApi } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
 const GeneralSettings: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
-  const { deleteWorkspace } = useDeleteWorkspace();
+  const { deleteWorkspace } = useWorkspaceApi();
   const navigate = useNavigate();
   const [showError, setShowError] = useState(false);
 
   const handleDeleteWorkspace = async () => {
     setShowError(false);
+    if (!currentWorkspace) return;
     // TODO: this trigger a pop up for confirming
-    try {
-      if (!currentWorkspace) return;
-      await deleteWorkspace(currentWorkspace.id);
-      navigate({ to: "/workspace" });
-    } catch (err) {
+    const { workspaceId } = await deleteWorkspace(currentWorkspace.id);
+
+    if (!workspaceId) {
       setShowError(true);
-      console.log(err);
+      return;
     }
+    navigate({ to: "/workspace" });
   };
   return (
     <div>

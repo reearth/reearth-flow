@@ -2,7 +2,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { Loading } from "@flow/components";
-import { useGetWorkspace } from "@flow/lib/gql";
+import { useWorkspaceApi } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
 
 import { LeftSection, MainSection, Nav } from "./components";
@@ -12,7 +12,9 @@ const Dashboard: React.FC = () => {
   const { workspaceId } = useParams({ strict: false });
   const navigate = useNavigate();
 
-  const { workspaces } = useGetWorkspace();
+  const { getWorkspaces } = useWorkspaceApi();
+
+  const { workspaces } = getWorkspaces();
 
   useEffect(() => {
     if (!workspaces) return;

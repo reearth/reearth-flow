@@ -2,14 +2,14 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Loading } from "@flow/components";
-import { useGetWorkspace } from "@flow/lib/gql";
+import { useWorkspaceApi } from "@flow/lib/gql";
 
 const LoadingPage: React.FC = () => {
-  const { workspaces, ...rest } = useGetWorkspace();
+  const { getWorkspaces: getWorkspace } = useWorkspaceApi();
   const navigate = useNavigate();
   const [error, setError] = useState<string | undefined>(undefined);
 
-  const isLoading = rest.isLoading;
+  const { workspaces, isLoading } = getWorkspace();
 
   useEffect(() => {
     if (isLoading) return;
