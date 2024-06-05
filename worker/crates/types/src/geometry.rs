@@ -1,14 +1,16 @@
+use std::fmt::Display;
 use std::hash::Hash;
 
 use nusamai_citygml::{object::ObjectStereotype, Color, GeometryType, Value};
 use nusamai_plateau::Entity;
 use nusamai_projection::crs::EpsgCode;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_geometry::types::polygon::Polygon3D;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
 use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
-use reearth_flow_geometry::types::multi_polygon::{MultiPolygon, MultiPolygon2D};
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 
 use crate::error::Error;
 
@@ -23,6 +25,7 @@ pub enum GeometryValue {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Geometry {
     pub id: String,
+    pub name: Option<String>,
     pub epsg: Option<EpsgCode>,
     pub value: GeometryValue,
     pub attributes: Option<serde_json::Value>,
@@ -33,6 +36,7 @@ impl TryFrom<Entity> for Geometry {
 
     fn try_from(entity: Entity) -> Result<Self, Self::Error> {
         let app = entity.appearance_store.read().unwrap();
+        let name = entity.name.clone();
         let theme = {
             app.themes
                 .get("rgbTexture")
@@ -49,21 +53,23 @@ impl TryFrom<Entity> for Geometry {
             return Err(Error::unsupported_feature("no feature found"));
         };
         let attributes = entity.root.to_attribute_json();
-        let mut mpoly = nusamai_geometry::MultiPolygon3::<f64>::new();
         let mut geometry_features = Vec::<GeometryFeature>::new();
         geometries.iter().for_each(|entry| match entry.ty {
             GeometryType::Solid
             | GeometryType::Surface
             | GeometryType::MultiSurface
             | GeometryType::Triangle => {
-                geometry_features.push(entry.clone().into());
+                let mut polygons = Vec::<Polygon3D<f64>>::new();
                 for idx_poly in geoms
                     .multipolygon
                     .iter_range(entry.pos as usize..(entry.pos + entry.len) as usize)
                 {
                     let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
-                    mpoly.push(&poly);
+                    polygons.push(poly.into());
                 }
+                let mut geometry_feature = GeometryFeature::from(entry.clone());
+                geometry_feature.polygon.extend(polygons);
+                geometry_features.push(geometry_feature);
             }
             GeometryType::Curve | GeometryType::MultiCurve => unimplemented!(),
             GeometryType::Point | GeometryType::MultiPoint => unimplemented!(),
@@ -72,7 +78,6 @@ impl TryFrom<Entity> for Geometry {
 
         let mut geometry_entity = CityGmlGeometry::new(
             geometry_features,
-            Some(mpoly.into()),
             apperance
                 .materials
                 .iter()
@@ -162,6 +167,7 @@ impl TryFrom<Entity> for Geometry {
         }
         Ok(Geometry::new(
             id.to_string(),
+            Some(name),
             epsg,
             GeometryValue::CityGmlGeometry(geometry_entity),
             Some(attributes),
@@ -173,6 +179,7 @@ impl Default for Geometry {
     fn default() -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
+            name: Some("".to_string()),
             epsg: None,
             value: GeometryValue::Null,
             attributes: None,
@@ -183,12 +190,14 @@ impl Default for Geometry {
 impl Geometry {
     pub fn new(
         id: String,
+        name: Option<String>,
         epsg: EpsgCode,
         value: GeometryValue,
         attributes: Option<serde_json::Value>,
     ) -> Self {
         Self {
             id,
+            name,
             epsg: Some(epsg),
             value,
             attributes,
@@ -198,6 +207,7 @@ impl Geometry {
     pub fn with_value(value: GeometryValue) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
+            name: None,
             epsg: None,
             value,
             attributes: None,
@@ -270,9 +280,8 @@ impl Appearance {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CityGmlGeometry {
     pub features: Vec<GeometryFeature>,
-    pub polygons: Option<MultiPolygon<f64>>,
-    materials: Vec<Material>,
-    textures: Vec<Texture>,
+    pub materials: Vec<Material>,
+    pub textures: Vec<Texture>,
     pub polygon_materials: Vec<Option<u32>>,
     pub polygon_textures: Vec<Option<u32>>,
     pub polygon_uv: Option<MultiPolygon2D<f64>>,
@@ -281,19 +290,30 @@ pub struct CityGmlGeometry {
 impl CityGmlGeometry {
     pub fn new(
         features: Vec<GeometryFeature>,
-        polygons: Option<MultiPolygon<f64>>,
         materials: Vec<Material>,
         textures: Vec<Texture>,
     ) -> Self {
         Self {
             features,
-            polygons,
             materials,
             textures,
             polygon_materials: Vec::new(),
             polygon_textures: Vec::new(),
             polygon_uv: None,
         }
+    }
+
+    pub fn split_feature(&self) -> Vec<CityGmlGeometry> {
+        self.features
+            .iter()
+            .map(|feature| {
+                CityGmlGeometry::new(
+                    vec![feature.clone()],
+                    self.materials.clone(),
+                    self.textures.clone(),
+                )
+            })
+            .collect()
     }
 
     pub fn materials(&self) -> &[Material] {
@@ -312,6 +332,14 @@ pub struct GeometryFeature {
     pub lod: Option<u8>,
     pub pos: u32,
     pub len: u32,
+    pub polygon: Vec<Polygon3D<f64>>,
+}
+
+impl Display for GeometryFeature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg = format!("lod{}{:?}", self.lod.unwrap_or_default(), self.ty);
+        write!(f, "{}", msg)
+    }
 }
 
 impl From<nusamai_citygml::geometry::GeometryRef> for GeometryFeature {
@@ -321,6 +349,7 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GeometryFeature {
             lod: Some(geometry.lod),
             pos: geometry.pos,
             len: geometry.len,
+            polygon: Vec::new(),
         }
     }
 }

@@ -147,6 +147,7 @@ impl Processor for GeometryFilter {
                     GeometryValue::Null => fw.send(
                         ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()),
                     ),
+
                     GeometryValue::FlowGeometry3D(geometry) => match geometry {
                         Geometry3D::MultiPolygon(_) => fw.send(ctx.new_with_feature_and_port(
                             feature.clone(),
