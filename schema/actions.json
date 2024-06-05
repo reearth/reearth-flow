@@ -788,6 +788,73 @@
       ]
     },
     {
+      "name": "GeometryFilter",
+      "type": "processor",
+      "description": "Filter geometry by type",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "oneOf": [
+          {
+            "properties": {
+              "filterType": {
+                "enum": [
+                  "none"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "filterType"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "filterType": {
+                "enum": [
+                  "multiple"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "filterType"
+            ],
+            "type": "object"
+          }
+        ],
+        "title": "GeometryFilterParam"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "unfiltered",
+        "none",
+        "contains"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometrySplitter",
+      "type": "processor",
+      "description": "Split geometry by type",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "PLATEAU.DictionariesInitiator",
       "type": "processor",
       "description": "Initializes dictionaries for PLATEAU",
