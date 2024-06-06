@@ -13,7 +13,6 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const { getWorkspaces } = useWorkspaceApi();
-
   const { workspaces } = getWorkspaces();
 
   useEffect(() => {

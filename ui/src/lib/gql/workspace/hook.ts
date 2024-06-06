@@ -75,8 +75,12 @@ export const useWorkspaceApi = () => {
   const createWorkspace = useCallback(
     async (name: string): Promise<CreateWorkspace> => {
       const { mutateAsync, ...rest } = createWorkspaceMutation;
-      const data = await mutateAsync(name);
-      return { workspace: data, ...rest };
+      try {
+        const data = await mutateAsync(name);
+        return { workspace: data, ...rest };
+      } catch (err) {
+        return { workspace: undefined, ...rest };
+      }
     },
     [createWorkspaceMutation],
   );
@@ -84,8 +88,12 @@ export const useWorkspaceApi = () => {
   const deleteWorkspace = useCallback(
     async (workspaceId: string): Promise<DeleteWorkspace> => {
       const { mutateAsync, ...rest } = deleteWorkspaceMutation;
-      const data = await mutateAsync(workspaceId);
-      return { workspaceId: data, ...rest };
+      try {
+        const data = await mutateAsync(workspaceId);
+        return { workspaceId: data, ...rest };
+      } catch (err) {
+        return { workspaceId: undefined, ...rest };
+      }
     },
     [deleteWorkspaceMutation],
   );
