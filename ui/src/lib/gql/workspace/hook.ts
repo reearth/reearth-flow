@@ -1,33 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { Workspace } from "@flow/types";
+import { Workspace, GetWorkspace, CreateWorkspace, DeleteWorkspace } from "@flow/types";
 
 export enum WorkspaceQueryKeys {
   GetWorkspace = "getWorkspace",
 }
-
-// Tanstack has many properties. Declare the ones we need to use in the code
-type CommonReturnType = {
-  isError: boolean;
-  isSuccess: boolean;
-  isPending: boolean;
-  error: unknown;
-};
-
-type CreateWorkspace = {
-  workspace: Workspace | undefined;
-} & CommonReturnType;
-
-type GetWorkspace = {
-  workspaces: Workspace[] | undefined;
-  isLoading: boolean;
-} & CommonReturnType;
-
-type DeleteWorkspace = {
-  workspaceId: string | undefined;
-} & CommonReturnType;
 
 export const useWorkspace = () => {
   const graphQLContext = useGraphQLContext();
@@ -72,39 +50,32 @@ export const useWorkspace = () => {
     },
   });
 
-  const createWorkspace = useCallback(
-    async (name: string): Promise<CreateWorkspace> => {
-      const { mutateAsync, ...rest } = createWorkspaceMutation;
-      try {
-        const data = await mutateAsync(name);
-        return { workspace: data, ...rest };
-      } catch (err) {
-        return { workspace: undefined, ...rest };
-      }
-    },
-    [createWorkspaceMutation],
-  );
+  const createWorkspace = async (name: string): Promise<CreateWorkspace> => {
+    const { mutateAsync, ...rest } = createWorkspaceMutation;
+    try {
+      const data = await mutateAsync(name);
+      return { workspace: data, ...rest };
+    } catch (err) {
+      return { workspace: undefined, ...rest };
+    }
+  };
+  const deleteWorkspace = async (workspaceId: string): Promise<DeleteWorkspace> => {
+    const { mutateAsync, ...rest } = deleteWorkspaceMutation;
+    try {
+      const data = await mutateAsync(workspaceId);
+      return { workspaceId: data, ...rest };
+    } catch (err) {
+      return { workspaceId: undefined, ...rest };
+    }
+  };
 
-  const deleteWorkspace = useCallback(
-    async (workspaceId: string): Promise<DeleteWorkspace> => {
-      const { mutateAsync, ...rest } = deleteWorkspaceMutation;
-      try {
-        const data = await mutateAsync(workspaceId);
-        return { workspaceId: data, ...rest };
-      } catch (err) {
-        return { workspaceId: undefined, ...rest };
-      }
-    },
-    [deleteWorkspaceMutation],
-  );
-
-  const getWorkspaces = useCallback((): GetWorkspace => {
+  const getWorkspaces = (): GetWorkspace => {
     const { data: workspaces, ...rest } = getWorkspacesQuery;
     return {
       workspaces,
       ...rest,
     };
-  }, [getWorkspacesQuery]);
+  };
 
   return {
     createWorkspace,

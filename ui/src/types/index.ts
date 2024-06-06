@@ -6,3 +6,4 @@ export * from "./edge";
 export * from "./node";
 export * from "./run";
 export * from "./workspace";
+export * from "./api";
