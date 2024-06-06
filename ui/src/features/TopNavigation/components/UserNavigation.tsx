@@ -1,4 +1,4 @@
-import { Keyboard, SignOut, User } from "@phosphor-icons/react";
+import { CaretDown, Keyboard, SignOut, User } from "@phosphor-icons/react";
 
 import {
   Avatar,
@@ -50,10 +50,11 @@ const UserNavigation: React.FC<Props> = ({
             <AvatarFallback>{data?.name ? data?.name.charAt(0).toUpperCase() : "F"}</AvatarFallback>
           </Avatar>
           {!iconOnly ? (
-            <div className="self-center">
-              <p className="text-zinc-400 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
+            <div className="flex items-center gap-2 self-center">
+              <p className="text-zinc-300 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
                 {data?.name ? data?.name : "User"}
               </p>
+              <CaretDown className="w-[12px]" weight="thin" />
             </div>
           ) : null}
         </div>

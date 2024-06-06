@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { Button, Input, Label } from "@flow/components";
+import { Button, DialogFooter, Input, Label } from "@flow/components";
 import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
@@ -59,7 +59,7 @@ const AddWorkspace: React.FC = () => {
           </div>
         }
       />
-      <div className="flex flex-col">
+      <DialogFooter>
         <Button
           className="self-end"
           disabled={!name || buttonDisabled}
@@ -67,7 +67,7 @@ const AddWorkspace: React.FC = () => {
           onClick={handleClick}>
           {t("Create")}
         </Button>
-      </div>
+      </DialogFooter>
     </>
   );
 };
