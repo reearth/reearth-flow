@@ -1,4 +1,4 @@
-// Tanstack has many properties. Declare the ones we need to use in the code
+// Common parameters when an API request is made
 export type ApiResponse = {
   isError: boolean;
   isSuccess: boolean;
