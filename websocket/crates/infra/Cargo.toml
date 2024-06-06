@@ -1,0 +1,22 @@
+[package]
+description = "Re:Earth Flow Websocket Domain library"
+name = "infra"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+flow-websocket-domain.workspace = true
+
+async-trait.workspace = true
+redis.workspace = true
+rslock.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+yrs.workspace = true
