@@ -49,16 +49,16 @@ const RootRoute: React.FC = () => {
               <AuthenticatedPage>
                 <Dialog />
                 <Outlet />
+                {!devMode && (
+                  <>
+                    <TanStackQueryDevtools initialIsOpen={false} />
+                    {/* <TanStackRouterDevtools /> */}
+                  </>
+                )}
               </AuthenticatedPage>
             </ReactFlowProvider>
           </TooltipProvider>
         </I18nProvider>
-        {!devMode && (
-          <>
-            <TanStackQueryDevtools initialIsOpen={false} />
-            {/* <TanStackRouterDevtools /> */}
-          </>
-        )}
       </GraphQLProvider>
     </AuthProvider>
   );
