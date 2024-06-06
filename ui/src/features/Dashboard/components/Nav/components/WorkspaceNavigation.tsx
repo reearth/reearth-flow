@@ -9,14 +9,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@flow/components";
-import { useWorkspaceApi } from "@flow/lib/gql";
+import { useWorkspace } from "@flow/lib/gql";
 import { cn } from "@flow/lib/utils";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Workspace } from "@flow/types";
 
 const WorkspaceNavigation: React.FC = () => {
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
-  const { getWorkspaces } = useWorkspaceApi();
+  const { getWorkspaces } = useWorkspace();
   const navigate = useNavigate();
   const { workspaces } = getWorkspaces();
 

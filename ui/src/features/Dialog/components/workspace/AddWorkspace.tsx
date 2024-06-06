@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button, Input } from "@flow/components";
-import { useWorkspaceApi } from "@flow/lib/gql";
+import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 
@@ -16,7 +16,7 @@ const AddWorkspace: React.FC = () => {
   const [, setDialogType] = useDialogType();
   const navigate = useNavigate();
   const [showError, setShowError] = useState(false);
-  const { createWorkspace } = useWorkspaceApi();
+  const { createWorkspace } = useWorkspace();
 
   const handleClick = async () => {
     if (!name) return;

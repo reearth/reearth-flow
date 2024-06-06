@@ -2,14 +2,14 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button, Input, Label } from "@flow/components";
-import { useWorkspaceApi } from "@flow/lib/gql";
+import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
 const GeneralSettings: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
-  const { deleteWorkspace } = useWorkspaceApi();
+  const { deleteWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const [showError, setShowError] = useState(false);
 

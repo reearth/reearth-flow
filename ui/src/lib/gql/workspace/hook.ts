@@ -29,7 +29,7 @@ type DeleteWorkspace = {
   workspaceId: string | undefined;
 } & CommonReturnType;
 
-export const useWorkspaceApi = () => {
+export const useWorkspace = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
 
