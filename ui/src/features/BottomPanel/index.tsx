@@ -106,17 +106,9 @@ const BottomPanel: React.FC = () => {
       )}
       <div
         id="content"
-        className="flex flex-1 h-[calc(100%-64px)] bg-zinc-800"
-        style={{
-          display: isPanelOpen ? "flex" : "none",
-        }}>
+        className={`flex flex-1 h-[calc(100%-64px)] bg-zinc-800 ${isPanelOpen ? "flex" : "hidden"}`}>
         {panelContents.map(p => (
-          <div
-            className="flex-1 p-1"
-            style={{
-              display: selected?.id === p.id ? "flex" : "none",
-            }}
-            key={p.id}>
+          <div className={`flex-1 ${selected?.id === p.id ? "flex" : "hidden"}`} key={p.id}>
             {p.component}
           </div>
         ))}
