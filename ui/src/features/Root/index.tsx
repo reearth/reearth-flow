@@ -53,7 +53,7 @@ const RootRoute: React.FC = () => {
             </ReactFlowProvider>
           </TooltipProvider>
         </I18nProvider>
-        {devMode && (
+        {!devMode && (
           <>
             <TanStackQueryDevtools initialIsOpen={false} />
             {/* <TanStackRouterDevtools /> */}

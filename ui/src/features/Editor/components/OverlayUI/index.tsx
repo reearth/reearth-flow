@@ -1,7 +1,6 @@
-import { customTransformers } from "@flow/mock_data/customTransformer";
 import { Edge, Node } from "@flow/types";
 
-import { ActionBar, CanvasActionBar, Toolbox, Breadcrumb, CanvasTabs, Infobar } from "./components";
+import { ActionBar, CanvasActionBar, Toolbox, Breadcrumb, Infobar } from "./components";
 
 type OverlayUIProps = {
   hoveredDetails: Node | Edge | undefined;
@@ -13,7 +12,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({ hoveredDetails, children: canvas 
     {canvas}
     <Breadcrumb />
     <Toolbox />
-    <CanvasTabs editingCustomTransformers={customTransformers} />
     <ActionBar />
     <CanvasActionBar />
     <Infobar hoveredDetails={hoveredDetails} />
