@@ -26,10 +26,6 @@ const WorkspaceNavigation: React.FC = () => {
     setCurrentWorkspace(workspace);
   };
 
-  const { data } = useGetWorkspaceQuery();
-
-  const workspaces = data?.me?.workspaces;
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center px-2 -mx-2 rounded-md max-w-[30vw] hover:bg-zinc-700/50">
