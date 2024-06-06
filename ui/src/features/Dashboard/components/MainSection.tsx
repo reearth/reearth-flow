@@ -38,6 +38,7 @@ const MainSection: React.FC = () => {
     }
   };
 
+  // TODO: Using sample projects at the moment
   useEffect(() => {
     if (!projects) return;
     projects.forEach(p => {
