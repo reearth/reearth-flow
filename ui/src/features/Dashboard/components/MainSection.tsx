@@ -1,5 +1,6 @@
 import { Plus } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import projectImage from "@flow/assets/project-screenshot.png"; // TODO: replace with actual project image
 import {
@@ -15,16 +16,20 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@flow/components";
+import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { generateProjects } from "@flow/mock_data/projectData";
+import { generateWorkflows } from "@flow/mock_data/workflowData";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import type { Project } from "@flow/types";
+import { formatDate } from "@flow/utils";
 
 const MainSection: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
   const [currentProject, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
+  const { useGetProjects } = useProject();
+  const { projects } = useGetProjects(currentWorkspace?.id as string);
 
   const handleProjectSelect = (p: Project) => {
     if (currentWorkspace) {
@@ -33,7 +38,12 @@ const MainSection: React.FC = () => {
     }
   };
 
-  const projects = generateProjects(10);
+  useEffect(() => {
+    if (!projects) return;
+    projects.forEach(p => {
+      p.workflow = generateWorkflows(1)[0];
+    });
+  }, [projects]);
 
   return (
     <div className="flex flex-col flex-1">
@@ -66,7 +76,7 @@ const MainSection: React.FC = () => {
                     </CardHeader>
                     <CardFooter className="px-3 pt-0 pb-2 flex">
                       <p className="font-thin text-xs">
-                        {t("Last modified:")} {p.updatedAt}
+                        {t("Last modified:")} {formatDate(p.updatedAt)}
                       </p>
                     </CardFooter>
                   </Card>
