@@ -13,6 +13,7 @@ export function generateProjects(count: number) {
       workflow: i === 0 ? undefined : generateWorkflows(1)[0],
       createdAt,
       updatedAt,
+      description: `Sample Project Description ${i + 1}`,
     });
   }
   return projects;

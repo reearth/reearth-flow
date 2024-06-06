@@ -16,6 +16,7 @@ import {
   ContextMenuTrigger,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { generateProjects } from "@flow/mock_data/projectData";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import type { Project } from "@flow/types";
 
@@ -32,7 +33,7 @@ const MainSection: React.FC = () => {
     }
   };
 
-  const projects = currentWorkspace?.projects;
+  const projects = generateProjects(10);
 
   return (
     <div className="flex flex-col flex-1">
