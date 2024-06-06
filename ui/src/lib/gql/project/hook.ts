@@ -19,6 +19,7 @@ export const useProject = () => {
       return { project: data?.createProject?.project };
     },
     onSuccess: project =>
+      // TODO: Maybe update cache and not refetch?
       queryClient.invalidateQueries({
         queryKey: [ProjectQueryKeys.GetProjects, project.project?.workspaceId],
       }),
