@@ -19,7 +19,7 @@ import {
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { generateWorkflows } from "@flow/mock_data/workflowData";
-import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
+import { useCurrentProject, useCurrentWorkspace, useDialogType } from "@flow/stores";
 import type { Project } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
@@ -30,6 +30,7 @@ const MainSection: React.FC = () => {
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
   const { useGetProjects } = useProject();
   const { projects } = useGetProjects(currentWorkspace?.id as string);
+  const [, setDialogType] = useDialogType();
 
   const handleProjectSelect = (p: Project) => {
     if (currentWorkspace) {
@@ -54,7 +55,8 @@ const MainSection: React.FC = () => {
           <ButtonWithTooltip
             className="flex gap-2 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
             variant="outline"
-            tooltipText={t("Create new project")}>
+            tooltipText={t("Create new project")}
+            onClick={() => setDialogType("add-project")}>
             <Plus weight="thin" />
             <p className="text-xs font-light">{t("New Project")}</p>
           </ButtonWithTooltip>

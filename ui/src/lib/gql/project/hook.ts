@@ -13,17 +13,16 @@ export const useProject = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
 
-  const useCreateProjectMutation = (workspaceId: string) =>
-    useMutation({
-      mutationFn: async (input: CreateProjectInput) => {
-        const data = await graphQLContext?.CreateProject({ input });
-        return { project: data?.createProject?.project };
-      },
-      onSuccess: () =>
-        queryClient.invalidateQueries({
-          queryKey: [ProjectQueryKeys.GetProjects, workspaceId],
-        }),
-    });
+  const createProjectMutation = useMutation({
+    mutationFn: async (input: CreateProjectInput) => {
+      const data = await graphQLContext?.CreateProject({ input });
+      return { project: data?.createProject?.project };
+    },
+    onSuccess: project =>
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProjects, project.project?.workspaceId],
+      }),
+  });
 
   const useGetProjectsQuery = (workspaceId: string) =>
     useQuery({
@@ -38,8 +37,8 @@ export const useProject = () => {
       },
     });
 
-  const useCreateProject = async (input: CreateProjectInput): Promise<CreateProject> => {
-    const { mutateAsync, ...rest } = useCreateProjectMutation(input.workspaceId);
+  const createProject = async (input: CreateProjectInput): Promise<CreateProject> => {
+    const { mutateAsync, ...rest } = createProjectMutation;
     try {
       const data = await mutateAsync(input);
       return { project: data.project, ...rest };
@@ -59,6 +58,6 @@ export const useProject = () => {
 
   return {
     useGetProjects,
-    useCreateProject,
+    createProject,
   };
 };
