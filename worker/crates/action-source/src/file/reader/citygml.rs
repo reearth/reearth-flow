@@ -72,9 +72,15 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                 let mut cityobj: models::TopLevelCityObject = Default::default();
                 cityobj.parse(st)?;
                 let geometry_store = st.collect_geometries();
+                let id = cityobj.id();
+                let name = cityobj.name();
+                let description = cityobj.description();
 
                 if let Some(root) = cityobj.into_object() {
                     let entity = Entity {
+                        id,
+                        name,
+                        description,
                         root,
                         base_url: base_url.clone(),
                         geometry_store: RwLock::new(geometry_store).into(),

@@ -8,7 +8,7 @@ use crossbeam::channel::Receiver;
 use futures::Future;
 use petgraph::graph::NodeIndex;
 use reearth_flow_action_log::factory::LoggerFactory;
-use reearth_flow_action_log::{action_log, ActionLogger};
+use reearth_flow_action_log::{action_error_log, action_log, ActionLogger};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Runtime;
@@ -228,7 +228,12 @@ fn process(
     let mut processor_guard = processor.write();
     let channel_manager: &mut ChannelManager = &mut channel_manager_guard;
     let processor: &mut Box<dyn Processor> = &mut processor_guard;
-    let _ = processor.process(ctx, channel_manager);
+    let result = processor.process(ctx, channel_manager);
+    if let Err(e) = result {
+        action_error_log!(
+            parent: span, logger, "Error operation, feature id = {:?}, error = {:?}", feature_id, e,
+        )
+    }
     action_log!(
         parent: span, logger, "Processing operation, feature id = {:?}, elapsed = {:?}", feature_id, now.elapsed(),
     );

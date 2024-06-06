@@ -1,9 +1,22 @@
-import type { Workspace as WorkspaceGraphqlType } from "@flow/lib/gql";
+import type { Member, Project, ApiResponse } from "@flow/types";
 
-import type { Member } from "./member";
-import type { Project } from "./project";
-
-export type Workspace = Pick<WorkspaceGraphqlType, "id" | "name" | "personal"> & {
+export type Workspace = {
+  id: string;
+  name: string;
+  personal: boolean;
   members?: Member[];
   projects?: Project[];
 };
+
+export type CreateWorkspace = {
+  workspace: Workspace | undefined;
+} & ApiResponse;
+
+export type GetWorkspace = {
+  workspaces: Workspace[] | undefined;
+  isLoading: boolean;
+} & ApiResponse;
+
+export type DeleteWorkspace = {
+  workspaceId: string | undefined;
+} & ApiResponse;

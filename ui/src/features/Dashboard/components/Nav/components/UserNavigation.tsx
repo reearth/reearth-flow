@@ -13,7 +13,7 @@ import {
 import { config } from "@flow/config";
 import { useOpenLink } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
-import { useMeQuery } from "@flow/lib/gql";
+import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 
@@ -33,8 +33,8 @@ const UserNavigation: React.FC<Props> = ({
   const t = useT();
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
-  const getMe = useMeQuery();
-  const data = getMe.data?.me;
+  const { getMe } = useUser();
+  const data = getMe().me;
 
   const { tosUrl, documentationUrl } = config();
 

@@ -491,12 +491,14 @@ export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type GetMeQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string } | null };
 
+export type GetWorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean };
+
 export type CreateWorkspaceMutationVariables = Exact<{
   input: CreateWorkspaceInput;
 }>;
 
 
-export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace?: { __typename?: 'CreateWorkspacePayload', workspace: { __typename?: 'Workspace', id: string } } | null };
+export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace?: { __typename?: 'CreateWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string, personal: boolean } } | null };
 
 export type GetWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -508,7 +510,7 @@ export type UpdateWorkspaceMutationVariables = Exact<{
 }>;
 
 
-export type UpdateWorkspaceMutation = { __typename?: 'Mutation', updateWorkspace?: { __typename?: 'UpdateWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string } } | null };
+export type UpdateWorkspaceMutation = { __typename?: 'Mutation', updateWorkspace?: { __typename?: 'UpdateWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string, personal: boolean } } | null };
 
 export type DeleteWorkspaceMutationVariables = Exact<{
   input: DeleteWorkspaceInput;
@@ -517,43 +519,11 @@ export type DeleteWorkspaceMutationVariables = Exact<{
 
 export type DeleteWorkspaceMutation = { __typename?: 'Mutation', deleteWorkspace?: { __typename?: 'DeleteWorkspacePayload', workspaceId: string } | null };
 
-
-export const CreateProjectDocument = gql`
-    mutation CreateProject($input: CreateProjectInput!) {
-  createProject(input: $input) {
-    project {
-      id
-    }
-  }
-}
-    `;
-export const GetProjectsDocument = gql`
-    query GetProjects($workspaceId: ID!, $first: Int!) {
-  projects(workspaceId: $workspaceId, first: $first) {
-    edges {
-      node {
-        id
-        name
-      }
-    }
-  }
-}
-    `;
-export const UpdateProjectDocument = gql`
-    mutation UpdateProject($input: UpdateProjectInput!) {
-  updateProject(input: $input) {
-    project {
-      id
-      name
-    }
-  }
-}
-    `;
-export const DeleteProjectDocument = gql`
-    mutation DeleteProject($input: DeleteProjectInput!) {
-  deleteProject(input: $input) {
-    projectId
-  }
+export const GetWorkspaceFragmentDoc = gql`
+    fragment GetWorkspace on Workspace {
+  id
+  name
+  personal
 }
     `;
 export const GetMeDocument = gql`
@@ -570,32 +540,29 @@ export const CreateWorkspaceDocument = gql`
     mutation CreateWorkspace($input: CreateWorkspaceInput!) {
   createWorkspace(input: $input) {
     workspace {
-      id
+      ...GetWorkspace
     }
   }
 }
-    `;
+    ${GetWorkspaceFragmentDoc}`;
 export const GetWorkspacesDocument = gql`
     query GetWorkspaces {
   me {
     workspaces {
-      id
-      name
-      personal
+      ...GetWorkspace
     }
   }
 }
-    `;
+    ${GetWorkspaceFragmentDoc}`;
 export const UpdateWorkspaceDocument = gql`
     mutation UpdateWorkspace($input: UpdateWorkspaceInput!) {
   updateWorkspace(input: $input) {
     workspace {
-      id
-      name
+      ...GetWorkspace
     }
   }
 }
-    `;
+    ${GetWorkspaceFragmentDoc}`;
 export const DeleteWorkspaceDocument = gql`
     mutation DeleteWorkspace($input: DeleteWorkspaceInput!) {
   deleteWorkspace(input: $input) {

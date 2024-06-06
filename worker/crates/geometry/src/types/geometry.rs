@@ -30,6 +30,7 @@ pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
     Rectangle(Rectangle<T, Z>),
     Triangle(Triangle<T, Z>),
     Solid(Solid<T, Z>),
+    GeometryCollection(Vec<Geometry<T, Z>>),
 }
 
 pub type Geometry2D<T = f64> = Geometry<T, NoValue>;
@@ -134,6 +135,7 @@ fn inner_type_name<T: CoordNum, Z: CoordNum>(geometry: Geometry<T, Z>) -> &'stat
         Geometry::Rectangle(_) => type_name::<Rectangle<T, Z>>(),
         Geometry::Triangle(_) => type_name::<Triangle<T, Z>>(),
         Geometry::Solid(_) => type_name::<Solid<T, Z>>(),
+        Geometry::GeometryCollection(_) => type_name::<Vec<Geometry<T, Z>>>(),
     }
 }
 

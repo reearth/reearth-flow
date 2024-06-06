@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use once_cell::sync::Lazy;
 use slog::{Drain, Logger, OwnedKVList, Record};
-use slog_term::{timestamp_local, Decorator};
+use slog_term::Decorator;
 use sloggers::file::FileLoggerBuilder;
 use sloggers::null::NullLoggerBuilder;
 use sloggers::types::Severity;
@@ -58,6 +58,10 @@ where
     }
 }
 
+const TIMESTAMP_FORMAT: &[time::format_description::FormatItem] = time::macros::format_description!(
+    "[year]/[month]/[day] [hour]:[minute]:[second] [offset_hour]:[offset_minute]"
+);
+
 impl<D> CustomFormat<D>
 where
     D: Decorator,
@@ -67,9 +71,21 @@ where
     }
 
     fn format_custom(&self, record: &Record, values: &OwnedKVList) -> std::io::Result<()> {
-        self.decorator.with_record(record, values, |mut decorator| {
+        self.decorator.with_record(record, values, |decorator| {
+            decorator.start_level()?;
+            write!(decorator, "[{:?}]", record.level())?;
+
+            decorator.start_whitespace()?;
+            write!(decorator, " ")?;
+
             decorator.start_timestamp()?;
-            timestamp_local(&mut decorator)?;
+            let now: time::OffsetDateTime = std::time::SystemTime::now().into();
+            write!(
+                decorator,
+                "{}",
+                now.format(TIMESTAMP_FORMAT)
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
+            )?;
 
             decorator.start_whitespace()?;
             write!(decorator, " ")?;
