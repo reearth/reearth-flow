@@ -1,7 +1,7 @@
 import { createContext } from "react";
 
 import { Dialog as DialogWrapper } from "@flow/components";
-import { workspaces as mockWorkspaces } from "@flow/mock_data/workspaceData";
+import { useWorkspace } from "@flow/lib/gql";
 import { DialogType, useDialogType } from "@flow/stores";
 import { Workspace } from "@flow/types";
 
@@ -13,18 +13,17 @@ export const DialogContext = createContext<{ workspaces: Workspace[] | undefined
 
 const Dialog: React.FC = () => {
   const [dialogType, setDialogType] = useDialogType();
+  const { getWorkspaces } = useWorkspace();
 
   const handleDialogTypeChange = (type?: DialogType) => {
     setDialogType(type);
   };
 
-  const workspaces: Workspace[] = mockWorkspaces;
-
-  const dialogContext = { workspaces };
+  const { workspaces } = getWorkspaces();
 
   return (
     dialogType && (
-      <DialogContext.Provider value={dialogContext}>
+      <DialogContext.Provider value={{ workspaces }}>
         <DialogWrapper open={!!dialogType} onOpenChange={o => !o && setDialogType(undefined)}>
           <DialogContent
             tab={dialogType}

@@ -3,7 +3,7 @@ id: a7fc8f35-b84f-496b-a2cb-65be3bfec285
 name: "lod_splitter_with_dm"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
-  cityGmlPath: "file:///Users/miseyu/Documents/fme/11234_yashio-shi_city_2023_citygml_1_op/udx/bldg/53395655_bldg_6697_op.gml"
+  cityGmlPath: "file:///Users/miseyu/Documents/fme/11234_yashio-shi_city_2023_citygml_1_op/udx/bldg/53395658_bldg_6697_op.gml"
   cityCode: "11234"
   codelistsPath: "file:///Users/miseyu/Documents/fme/11234_yashio-shi_city_2023_citygml_1_op/codelists"
   schemasPath: "file:///Users/miseyu/Documents/fme/11234_yashio-shi_city_2023_citygml_1_op/schemas"
@@ -38,6 +38,22 @@ graphs:
         with:
           filterType: none
 
+      - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
+        name: geometrySplitter_01
+        type: action
+        action: GeometrySplitter
+
+      - id: d2b4977d-e218-4628-96f2-d26407aeea14
+        name: attributeManager_01
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: lod
+              method: create
+              value: |
+                env.get("geometryName")[3]
+
     edges:
       - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
@@ -47,5 +63,15 @@ graphs:
       - id: e1c7680d-5830-4e48-8cd8-8d9d762c76ff
         from: 3c0bc9cd-284d-4553-83ae-f90365c5930c
         to: 278ab965-ce22-473d-98c6-c7b381c38679
+        fromPort: default
+        toPort: default
+      - id: 1386a662-cf02-4475-a5d2-3668a50a56b7
+        from: 278ab965-ce22-473d-98c6-c7b381c38679
+        to: 8fe1a102-e3f3-40dd-b235-66e9c148830f
+        fromPort: unfiltered
+        toPort: default
+      - id: 5857909b-7fc0-4d3e-adfa-65a5669a6646
+        from: 8fe1a102-e3f3-40dd-b235-66e9c148830f
+        to: d2b4977d-e218-4628-96f2-d26407aeea14
         fromPort: default
         toPort: default
