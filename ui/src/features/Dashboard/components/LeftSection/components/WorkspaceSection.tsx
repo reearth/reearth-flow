@@ -3,10 +3,12 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { useDialogType } from "@flow/stores";
 
 const WorkspaceSection: React.FC = () => {
   const t = useT();
   const navigate = useNavigate();
+  const [, setDialogType] = useDialogType();
   return (
     <div>
       <div className="flex gap-2 justify-between items-center border-b border-zinc-700 py-2 px-2">
@@ -14,7 +16,8 @@ const WorkspaceSection: React.FC = () => {
         <Button
           className="flex gap-2 h-[30px] bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
           variant="outline"
-          size="sm">
+          size="sm"
+          onClick={() => setDialogType("add-workspace")}>
           <Plus weight="thin" />
           <p className="text-xs font-light">{t("New Workspace")}</p>
         </Button>
