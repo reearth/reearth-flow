@@ -83,7 +83,7 @@ fn parse_tree_reader<R: BufRead>(
                 let id = cityobj.id();
                 let name = cityobj.name();
                 let description = cityobj.description();
-
+                let bounded = cityobj.bounded_by();
                 if let Some(root) = cityobj.into_object() {
                     let entity = Entity {
                         id,
@@ -92,7 +92,8 @@ fn parse_tree_reader<R: BufRead>(
                         root,
                         base_url: base_url.clone(),
                         geometry_store: RwLock::new(geometry_store).into(),
-                        appearance_store: Default::default(), // TODO: from local appearances
+                        appearance_store: Default::default(),
+                        bounded,
                     };
                     entities.push(entity);
                 }
