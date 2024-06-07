@@ -29,7 +29,8 @@ export const useProject = () => {
     useQuery({
       queryKey: [ProjectQueryKeys.GetProjects, workspaceId],
       queryFn: async () => {
-        const data = await graphQLContext?.GetProjects({ workspaceId, first: 5 });
+        // TODO: Should have pagination
+        const data = await graphQLContext?.GetProjects({ workspaceId, first: 20 });
         if (!data) return {};
         const {
           projects: { nodes, ...rest },
