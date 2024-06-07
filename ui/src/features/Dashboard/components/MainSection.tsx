@@ -28,7 +28,7 @@ const MainSection: React.FC = () => {
   const [currentWorkspace] = useCurrentWorkspace();
   const [currentProject, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
-  const { useGetProjects } = useProject();
+  const { useGetProjects, deleteProject } = useProject();
   const { projects } = useGetProjects(currentWorkspace?.id as string);
   const [, setDialogType] = useDialogType();
 
@@ -39,13 +39,17 @@ const MainSection: React.FC = () => {
     }
   };
 
-  // TODO: Using sample projects at the moment
+  // TODO: Using sample workflows at the moment
   useEffect(() => {
     if (!projects) return;
     projects.forEach(p => {
       p.workflow = generateWorkflows(1)[0];
     });
   }, [projects]);
+
+  const handleDeleteProject = async (id: string) => {
+    await deleteProject(id);
+  };
 
   return (
     <div className="flex flex-col flex-1">
@@ -86,7 +90,9 @@ const MainSection: React.FC = () => {
                 </ContextMenuTrigger>
                 <ContextMenuContent>
                   <ContextMenuItem>{t("Edit Details")}</ContextMenuItem>
-                  <ContextMenuItem>{t("Delete Project")}</ContextMenuItem>
+                  <ContextMenuItem onClick={() => handleDeleteProject(p.id)}>
+                    {t("Delete Project")}
+                  </ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenu>
             ))}

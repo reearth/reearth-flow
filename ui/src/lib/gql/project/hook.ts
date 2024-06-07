@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { CreateProject, GetProjects, Project } from "@flow/types";
+import { CreateProject, DeleteProject, GetProjects, Project } from "@flow/types";
 
-import { CreateProjectInput } from "../__gen__/graphql";
+import { CreateProjectInput, DeleteProjectInput } from "../__gen__/graphql";
 
 export enum ProjectQueryKeys {
   GetProjects = "getProjects",
@@ -36,7 +36,20 @@ export const useProject = () => {
         } = data;
         return { projects: nodes as Project[], meta: rest };
       },
+      staleTime: Infinity,
     });
+
+  const deleteProjectMutation = useMutation({
+    mutationFn: async (input: DeleteProjectInput) => {
+      const data = await graphQLContext?.DeleteProject({ input });
+      return { projectId: data?.deleteProject?.projectId };
+    },
+    onSuccess: () =>
+      // TODO: Invalidate getProjects for the workspace project belongs to
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProjects],
+      }),
+  });
 
   const createProject = async (input: CreateProjectInput): Promise<CreateProject> => {
     const { mutateAsync, ...rest } = createProjectMutation;
@@ -57,8 +70,19 @@ export const useProject = () => {
     };
   };
 
+  const deleteProject = async (projectId: string): Promise<DeleteProject> => {
+    const { mutateAsync, ...rest } = deleteProjectMutation;
+    try {
+      const data = await mutateAsync({ projectId });
+      return { projectId: data.projectId, ...rest };
+    } catch (err) {
+      return { projectId: undefined, ...rest };
+    }
+  };
+
   return {
     useGetProjects,
     createProject,
+    deleteProject,
   };
 };
