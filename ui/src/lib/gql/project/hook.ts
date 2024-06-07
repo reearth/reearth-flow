@@ -36,7 +36,6 @@ export const useProject = () => {
         } = data;
         return { projects: nodes as Project[], meta: rest };
       },
-      staleTime: Infinity,
     });
 
   const deleteProjectMutation = useMutation({
