@@ -19,7 +19,7 @@ export const useProject = () => {
       return { project: data?.createProject?.project };
     },
     onSuccess: project =>
-      // TODO: Maybe update cache and not refetch?
+      // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
         queryKey: [ProjectQueryKeys.GetProjects, project.project?.workspaceId],
       }),
