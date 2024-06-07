@@ -50,7 +50,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
 
   const handleDeleteProject = async (id: string) => {
     // TODO: this trigger a pop up for confirming
-    await deleteProject(id);
+    await deleteProject(id, workspace.id);
   };
 
   return (

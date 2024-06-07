@@ -42,14 +42,16 @@ export const useProject = () => {
     });
 
   const deleteProjectMutation = useMutation({
-    mutationFn: async (input: DeleteProjectInput) => {
-      const data = await graphQLContext?.DeleteProject({ input });
-      return { projectId: data?.deleteProject?.projectId };
+    mutationFn: async ({
+      projectId,
+      workspaceId,
+    }: DeleteProjectInput & { workspaceId: string }) => {
+      const data = await graphQLContext?.DeleteProject({ input: { projectId } });
+      return { projectId: data?.deleteProject?.projectId, workspaceId: workspaceId };
     },
-    onSuccess: () =>
-      // TODO: Invalidate getProjects for the workspace project belongs to
+    onSuccess: ({ workspaceId }) =>
       queryClient.invalidateQueries({
-        queryKey: [ProjectQueryKeys.GetProjects],
+        queryKey: [ProjectQueryKeys.GetProjects, workspaceId],
       }),
   });
 
@@ -72,10 +74,10 @@ export const useProject = () => {
     };
   };
 
-  const deleteProject = async (projectId: string): Promise<DeleteProject> => {
+  const deleteProject = async (projectId: string, workspaceId: string): Promise<DeleteProject> => {
     const { mutateAsync, ...rest } = deleteProjectMutation;
     try {
-      const data = await mutateAsync({ projectId });
+      const data = await mutateAsync({ projectId, workspaceId });
       return { projectId: data.projectId, ...rest };
     } catch (err) {
       return { projectId: undefined, ...rest };
