@@ -4,7 +4,7 @@ import { FlowLogo } from "@flow/components";
 import { config } from "@flow/config";
 import { useCurrentWorkspace } from "@flow/stores";
 
-import { UserNavigation, WorkspaceNavigation } from "../Dashboard/components/Nav/components";
+import { UserNavigation, WorkspaceNavigation } from "./components";
 
 const TopNavigation: React.FC = () => {
   const { brandName, version } = config();

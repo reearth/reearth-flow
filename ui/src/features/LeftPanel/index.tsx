@@ -14,9 +14,9 @@ import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 import { Workflow } from "@flow/types";
 
-import { UserNavigation } from "../Dashboard/components/Nav/components";
+import { UserNavigation } from "../TopNavigation/components";
 
-import { TransformerList, Resources, ProjectSettings } from "./components";
+import { TransformerList, Resources } from "./components";
 
 type Tab = "navigator" | "transformer-list" | "resources";
 
@@ -151,11 +151,11 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
               iconOnly
               dropdownPosition="right"
             />
-            <ProjectSettings
+            {/* <ProjectSettings
               className="flex items-center justify-center cursor-pointer rounded text-zinc-400 transition-colors hover:text-zinc-300 md:h-8 md:w-8"
               dropdownPosition="right"
               dropdownOffset={15}
-            />
+            /> */}
           </nav>
         </div>
       </aside>
