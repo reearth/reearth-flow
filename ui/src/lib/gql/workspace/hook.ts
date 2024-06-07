@@ -66,7 +66,7 @@ export const useWorkspace = () => {
     }
   };
 
-  const getWorkspaces = () => {
+  const getWorkspaces = (): GetWorkspace => {
     const { data: workspaces, ...rest } = getWorkspacesQuery;
     return {
       workspaces,
