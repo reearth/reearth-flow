@@ -26,11 +26,8 @@ export const useWorkspace = () => {
 
   const getWorkspacesQuery = useQuery({
     queryKey: [WorkspaceQueryKeys.GetWorkspace],
-    queryFn: async () => {
-      if (!graphQLContext?.GetWorkspaces) return;
-      const data = await graphQLContext.GetWorkspaces();
-      return data?.me?.workspaces;
-    },
+    queryFn: () => graphQLContext?.GetWorkspaces(),
+    select: data => data?.me?.workspaces,
     staleTime: Infinity,
   });
 
@@ -69,7 +66,7 @@ export const useWorkspace = () => {
     }
   };
 
-  const getWorkspaces = (): GetWorkspace => {
+  const getWorkspaces = () => {
     const { data: workspaces, ...rest } = getWorkspacesQuery;
     return {
       workspaces,
