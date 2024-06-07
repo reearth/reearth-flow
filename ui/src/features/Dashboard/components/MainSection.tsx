@@ -19,24 +19,25 @@ import {
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { generateWorkflows } from "@flow/mock_data/workflowData";
-import { useCurrentProject, useCurrentWorkspace, useDialogType } from "@flow/stores";
-import type { Project } from "@flow/types";
+import { useCurrentProject, useDialogType } from "@flow/stores";
+import type { Project, Workspace } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
-const MainSection: React.FC = () => {
+type Props = {
+  workspace: Workspace;
+};
+
+const MainSection: React.FC<Props> = ({ workspace }) => {
   const t = useT();
-  const [currentWorkspace] = useCurrentWorkspace();
   const [currentProject, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
   const { useGetProjects, deleteProject } = useProject();
-  const { projects } = useGetProjects(currentWorkspace?.id as string);
   const [, setDialogType] = useDialogType();
+  const { projects } = useGetProjects(workspace.id);
 
   const handleProjectSelect = (p: Project) => {
-    if (currentWorkspace) {
-      setCurrentProject(p);
-      navigate({ to: `/workspace/${currentWorkspace.id}/project/${p.id}` });
-    }
+    setCurrentProject(p);
+    navigate({ to: `/workspace/${workspace.id}/project/${p.id}` });
   };
 
   // TODO: Using sample workflows at the moment
@@ -48,6 +49,7 @@ const MainSection: React.FC = () => {
   }, [projects]);
 
   const handleDeleteProject = async (id: string) => {
+    // TODO: this trigger a pop up for confirming
     await deleteProject(id);
   };
 

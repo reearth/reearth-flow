@@ -35,7 +35,9 @@ export const useProject = () => {
         const {
           projects: { nodes, ...rest },
         } = data;
-        return { projects: nodes as Project[], meta: rest };
+
+        const projects: Project[] = nodes.flatMap(f => (f ? [f] : []));
+        return { projects, meta: rest };
       },
     });
 
