@@ -28,13 +28,13 @@ const BottomPanel: React.FC = () => {
     {
       id: "output-log",
       icon: <Terminal className="w-[20px] h-[20px]" weight="thin" />,
-      title: t("Output log"),
+      title: t("Log"),
       component: <LogConsole />,
     },
     {
       id: "visual-preview",
       icon: <Globe className="w-[20px] h-[20px]" weight="thin" />,
-      title: t("Preview data"),
+      title: t("Preview"),
       component: (
         <div className="flex flex-1">
           <DataTable />
@@ -69,16 +69,11 @@ const BottomPanel: React.FC = () => {
       {isPanelOpen && (
         <div id="top-edge" className="flex gap-1 items-center shrink-0 h-[29px] bg-zinc-900/50">
           <div className="flex justify-end gap-1 px-1 items-center flex-1 h-[100%]">
-            {panelContents?.map(content => (
-              <IconButton
-                key={content.id}
-                className={`w-[100px] h-[80%] ${selected?.id === content.id ? "text-white bg-zinc-700" : undefined}`}
-                icon={content.icon}
-                tooltipText={content.title}
-                tooltipPosition="top"
-                onClick={() => handleSelection(content)}
-              />
-            ))}
+            <BaseActionButtons
+              panelContents={panelContents}
+              selected={selected}
+              onSelection={handleSelection}
+            />
             {isPanelOpen && (
               <div className="h-[29px] flex items-center px-1">
                 {windowSize === "min" && (
@@ -119,17 +114,13 @@ const BottomPanel: React.FC = () => {
         <WorkflowTabs editingCustomTransformers={customTransformers} />
         <div className="border-r border-zinc-700 h-full" />
         <div className="flex justify-end items-center gap-1 flex-1 h-[100%] mx-4">
-          {!isPanelOpen &&
-            panelContents?.map(content => (
-              <IconButton
-                key={content.id}
-                className={`w-[100px] h-[80%] ${selected?.id === content.id ? "text-white bg-zinc-700" : undefined}`}
-                icon={content.icon}
-                tooltipText={content.title}
-                tooltipPosition="top"
-                onClick={() => handleSelection(content)}
-              />
-            ))}
+          {!isPanelOpen && (
+            <BaseActionButtons
+              panelContents={panelContents}
+              selected={selected}
+              onSelection={handleSelection}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -137,3 +128,19 @@ const BottomPanel: React.FC = () => {
 };
 
 export default BottomPanel;
+
+const BaseActionButtons: React.FC<{
+  panelContents?: PanelContent[];
+  selected?: PanelContent;
+  onSelection?: (content: PanelContent) => void;
+}> = ({ panelContents, selected, onSelection }) => {
+  return panelContents?.map(content => (
+    <div
+      key={content.id}
+      className={`flex justify-center items-center gap-2 h-[80%] min-w-[100px] rounded cursor-pointer hover:bg-zinc-700/75 hover:text-white ${selected?.id === content.id ? "text-white bg-zinc-700/75" : undefined}`}
+      onClick={() => onSelection?.(content)}>
+      {content.icon}
+      <p className="text-sm font-thin">{content.title}</p>
+    </div>
+  ));
+};
