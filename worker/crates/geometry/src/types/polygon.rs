@@ -1,6 +1,9 @@
 use approx::{AbsDiffEq, RelativeEq};
 use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
+use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
+
+use crate::error::Error;
 
 use super::coordnum::CoordNum;
 use super::face::Face;
@@ -178,6 +181,23 @@ impl<'a> From<NPolygon3<'a>> for Polygon<f64> {
     fn from(poly: NPolygon3<'a>) -> Self {
         let interiors = poly.interiors().map(|interior| interior.into()).collect();
         Polygon3D::new(poly.exterior().into(), interiors)
+    }
+}
+
+impl Polygon3D<f64> {
+    pub fn projection(
+        &mut self,
+        projection: &ExtendedTransverseMercatorProjection,
+    ) -> Result<(), Error> {
+        self.exterior.projection(projection)?;
+        self.exterior.close();
+        for interior in &mut self.interiors {
+            interior.projection(projection)?;
+        }
+        for interior in &mut self.interiors {
+            interior.close();
+        }
+        Ok(())
     }
 }
 

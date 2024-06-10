@@ -72,7 +72,7 @@ impl TryFrom<Entity> for Geometry {
                         polygons.push(poly.into());
                     }
                     let mut geometry_feature = GeometryFeature::from(geometry.clone());
-                    geometry_feature.polygon.extend(polygons);
+                    geometry_feature.polygons.extend(polygons);
                     Some(geometry_feature)
                 }
                 GeometryType::Curve | GeometryType::MultiCurve => unimplemented!(),
@@ -115,7 +115,7 @@ impl TryFrom<Entity> for Geometry {
                                 let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
                                 polygons.push(poly.into());
                             }
-                            feature.polygon.extend(polygons);
+                            feature.polygons.extend(polygons);
                         }
                     });
                 }
@@ -384,7 +384,7 @@ pub struct GeometryFeature {
     pub lod: Option<u8>,
     pub pos: u32,
     pub len: u32,
-    pub polygon: Vec<Polygon3D<f64>>,
+    pub polygons: Vec<Polygon3D<f64>>,
 }
 
 impl Display for GeometryFeature {
@@ -403,7 +403,7 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GeometryFeature {
             lod: Some(geometry.lod),
             pos: geometry.pos,
             len: geometry.len,
-            polygon: Vec::new(),
+            polygons: Vec::new(),
         }
     }
 }
