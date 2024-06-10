@@ -1,8 +1,11 @@
+use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
 use nusamai_geometry::{LineString2 as NLineString2, LineString3 as NLineString3};
+
+use crate::error::Error;
 
 use super::coordinate::{self, Coordinate};
 use super::coordnum::CoordNum;
@@ -217,6 +220,18 @@ impl<'a> From<NLineString3<'a>> for LineString<f64> {
                 .map(|a| coordinate::Coordinate3D::new__(a[0], a[1], a[2]))
                 .collect::<Vec<_>>(),
         )
+    }
+}
+
+impl LineString3D<f64> {
+    pub fn projection(
+        &mut self,
+        projection: &ExtendedTransverseMercatorProjection,
+    ) -> Result<(), Error> {
+        for coord in &mut self.0 {
+            coord.projection(projection)?;
+        }
+        Ok(())
     }
 }
 

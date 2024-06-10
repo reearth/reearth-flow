@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use nusamai_projection::crs::*;
+use nusamai_projection::{crs::*, etmerc::ExtendedTransverseMercatorProjection, jprect::JPRZone};
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::Geometry;
+use reearth_flow_types::GeometryValue;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -16,19 +16,19 @@ use serde_json::Value;
 use super::{errors::GeometryProcessorError, types::SUPPORT_EPSG_CODE};
 
 #[derive(Debug, Clone, Default)]
-pub struct CoordinateSystemSetterFactory;
+pub struct ReprojectorFactory;
 
-impl ProcessorFactory for CoordinateSystemSetterFactory {
+impl ProcessorFactory for ReprojectorFactory {
     fn name(&self) -> &str {
-        "CoordinateSystemSetter"
+        "Reprojector"
     }
 
     fn description(&self) -> &str {
-        "Sets the coordinate system of a feature"
+        "Reprojects the geometry of a feature to a specified coordinate system"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(CoordinateSystemSetter))
+        Some(schemars::schema_for!(ReprojectorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -49,42 +49,57 @@ impl ProcessorFactory for CoordinateSystemSetterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let processor: CoordinateSystemSetter = if let Some(with) = with {
+        let params: ReprojectorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::CoordinateSystemSetterFactory(format!(
+                GeometryProcessorError::ReprojectorFactory(format!(
                     "Failed to serialize with: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::CoordinateSystemSetterFactory(format!(
+                GeometryProcessorError::ReprojectorFactory(format!(
                     "Failed to deserialize with: {}",
                     e
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::CoordinateSystemSetterFactory(
+            return Err(GeometryProcessorError::ReprojectorFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
         };
-        if !SUPPORT_EPSG_CODE.contains(&processor.epsg_code) {
-            return Err(GeometryProcessorError::CoordinateSystemSetterFactory(
+        if !SUPPORT_EPSG_CODE.contains(&params.epsg_code) {
+            return Err(GeometryProcessorError::ReprojectorFactory(
                 "Unsupported EPSG code".to_string(),
             )
             .into());
         }
-        Ok(Box::new(processor))
+        let zone = JPRZone::from_epsg(params.epsg_code).ok_or(
+            GeometryProcessorError::ReprojectorFactory(format!(
+                "Failed to create JPRZone from EPSG code: {}",
+                params.epsg_code,
+            )),
+        )?;
+        Ok(Box::new(Reprojector {
+            epsg_code: params.epsg_code,
+            projection: zone.projection(),
+        }))
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CoordinateSystemSetter {
+pub struct ReprojectorParam {
     epsg_code: EpsgCode,
 }
 
-impl Processor for CoordinateSystemSetter {
+#[derive(Debug, Clone)]
+pub struct Reprojector {
+    epsg_code: EpsgCode,
+    projection: ExtendedTransverseMercatorProjection,
+}
+
+impl Processor for Reprojector {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
@@ -96,15 +111,21 @@ impl Processor for CoordinateSystemSetter {
         ctx: ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
-        let mut feature = feature.clone();
-        let mut geometry = if feature.geometry.is_some() {
-            feature.geometry.unwrap()
-        } else {
-            Geometry::default()
-        };
-        geometry.epsg = Some(self.epsg_code);
-        feature.geometry = Some(geometry);
+        let mut feature = ctx.feature.clone();
+        if let Some(ref mut geometry) = feature.geometry {
+            geometry.epsg = Some(self.epsg_code);
+            match &mut geometry.value {
+                GeometryValue::CityGmlGeometry(v) => {
+                    for feature in &mut v.features {
+                        for polygon in &mut feature.polygons {
+                            polygon.projection(&self.projection)?;
+                        }
+                    }
+                }
+                GeometryValue::Null => {}
+                _ => unimplemented!(),
+            }
+        }
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
@@ -118,6 +139,6 @@ impl Processor for CoordinateSystemSetter {
     }
 
     fn name(&self) -> &str {
-        "CoordinateSystemSetter"
+        "Reprojector"
     }
 }

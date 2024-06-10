@@ -5,7 +5,8 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
     coordinate_system_setter::CoordinateSystemSetterFactory, extruder::ExtruderFactory,
-    filter::GeometryFilterFactory, splitter::GeometrySplitterFactory,
+    filter::GeometryFilterFactory, reprojector::ReprojectorFactory,
+    splitter::GeometrySplitterFactory,
     three_dimention_box_replacer::ThreeDimentionBoxReplacerFactory,
 };
 
@@ -16,6 +17,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<ThreeDimentionBoxReplacerFactory>::default(),
         Box::<GeometryFilterFactory>::default(),
         Box::<GeometrySplitterFactory>::default(),
+        Box::<ReprojectorFactory>::default(),
     ];
     factories
         .into_iter()

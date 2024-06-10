@@ -13,6 +13,7 @@ version.workspace = true
 [dependencies]
 nusamai-citygml.workspace = true
 nusamai-geometry.workspace = true
+nusamai-projection.workspace = true
 
 approx = "0.5.1"
 bytes.workspace = true
