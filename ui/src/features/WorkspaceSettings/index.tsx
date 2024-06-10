@@ -1,11 +1,10 @@
 import { PlugsConnected, Toolbox, UsersThree } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Loading } from "@flow/components";
-import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentWorkspace } from "@flow/stores";
+import { useCheckWorkspace } from "@flow/utils/router/checkWorkspace";
 
 import { TopNavigation } from "../TopNavigation";
 
@@ -18,9 +17,8 @@ const DEFAULT_TAB: Tab = "general";
 const WorkspaceSettings: React.FC = () => {
   const { workspaceId, tab } = useParams({ strict: false });
   const t = useT();
-  const [_, setCurrentWorkspace] = useCurrentWorkspace();
   const navigate = useNavigate();
-  const { getWorkspaces } = useWorkspace();
+  const { workspaces, isLoading } = useCheckWorkspace(workspaceId);
 
   const content: { id: Tab; name: string; icon: React.ReactNode; component: React.ReactNode }[] = [
     {
@@ -46,26 +44,15 @@ const WorkspaceSettings: React.FC = () => {
 
   const [selectedTab, selectTab] = useState<Tab>(checkTab ?? DEFAULT_TAB);
 
-  const { workspaces, isLoading } = getWorkspaces();
-
-  useEffect(() => {
-    if (!workspaces) return;
-    const selectedWorkspace = workspaces?.find(w => w.id === workspaceId);
-
-    if (!selectedWorkspace) {
-      // TODO: This returns a promise but it can't be awaited
-      navigate({ to: `/workspace/${workspaces[0].id}/settings/${DEFAULT_TAB}`, replace: true });
-      return;
-    }
-    setCurrentWorkspace(selectedWorkspace);
-  }, [workspaces, navigate, setCurrentWorkspace, workspaceId]);
-
   const handleTabChange = (t: Tab) => {
     navigate({ to: `/workspace/${workspaceId}/settings/${t}` });
     selectTab(t);
   };
 
   if (isLoading) return <Loading />;
+
+  // TODO: Show proper error
+  if (!workspaces) return <div>Could not fetch workspaces</div>;
 
   return (
     <div className="flex flex-col bg-zinc-800 text-zinc-300 h-[100vh]">

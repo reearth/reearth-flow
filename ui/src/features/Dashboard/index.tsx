@@ -1,34 +1,16 @@
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useParams } from "@tanstack/react-router";
 
 import { Loading } from "@flow/components";
-import { useWorkspace } from "@flow/lib/gql";
-import { useCurrentWorkspace } from "@flow/stores";
+import { useCheckWorkspace } from "@flow/utils/router/checkWorkspace";
 
 import { TopNavigation } from "../TopNavigation";
 
 import { LeftSection, MainSection } from "./components";
 
 const Dashboard: React.FC = () => {
-  const [_, setCurrentWorkspace] = useCurrentWorkspace();
   const { workspaceId } = useParams({ strict: false });
-  const navigate = useNavigate();
 
-  const { getWorkspaces } = useWorkspace();
-  const { workspaces, isLoading } = getWorkspaces();
-
-  useEffect(() => {
-    if (!workspaces) return;
-    const selectedWorkspace = workspaces?.find(w => w.id === workspaceId);
-
-    if (!selectedWorkspace) {
-      // TODO: This returns a promise but it can't be awaited
-      navigate({ to: `/workspace/${workspaces[0].id}`, replace: true });
-      return;
-    }
-
-    setCurrentWorkspace(selectedWorkspace);
-  }, [workspaces, navigate, setCurrentWorkspace, workspaceId]);
+  const { workspaces, isLoading } = useCheckWorkspace(workspaceId);
 
   if (isLoading) return <Loading />;
 

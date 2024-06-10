@@ -1,13 +1,12 @@
 import { Play } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button, Loading } from "@flow/components";
-import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { runs as mockRuns } from "@flow/mock_data/runsData";
-import { useCurrentWorkspace } from "@flow/stores";
 import { Run } from "@flow/types";
+import { useCheckWorkspace } from "@flow/utils/router/checkWorkspace";
 
 import { TopNavigation } from "../TopNavigation";
 
@@ -22,26 +21,11 @@ const Runs: React.FC = () => {
   const t = useT();
   const { tab } = useParams({ strict: false });
   const navigate = useNavigate();
-  const [_, setCurrentWorkspace] = useCurrentWorkspace();
   const { workspaceId } = useParams({ strict: false });
 
   const [selectedRun, selectRun] = useState<Run>();
 
-  const { getWorkspaces } = useWorkspace();
-  const { workspaces, isLoading } = getWorkspaces();
-
-  useEffect(() => {
-    if (!workspaces) return;
-    const selectedWorkspace = workspaces?.find(w => w.id === workspaceId);
-
-    if (!selectedWorkspace) {
-      // TODO: This returns a promise but it can't be awaited
-      navigate({ to: `/workspace/${workspaces[0].id}/runs/${tab}`, replace: true });
-      return;
-    }
-
-    setCurrentWorkspace(selectedWorkspace);
-  }, [workspaces, navigate, setCurrentWorkspace, workspaceId, tab]);
+  const { workspaces, isLoading } = useCheckWorkspace(workspaceId);
 
   const handleTabChange = (tab: Tab) => {
     selectRun(undefined);
@@ -77,6 +61,9 @@ const Runs: React.FC = () => {
   ];
 
   if (isLoading) return <Loading />;
+
+  // TODO: Show proper error
+  if (!workspaces) return <div>Could not fetch workspaces</div>;
 
   return (
     <div className="flex flex-col bg-zinc-800 text-zinc-300 h-[100vh]">
