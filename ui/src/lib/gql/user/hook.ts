@@ -12,18 +12,15 @@ export const useUser = () => {
 
   const getMeQuery = useQuery({
     queryKey: [UserQueryKeys.GetMe],
-    queryFn: async () => {
-      if (!graphQLContext?.GetMe) return;
-      const data = await graphQLContext?.GetMe();
-      return data?.me;
-    },
+    queryFn: () => graphQLContext?.GetMe(),
+    select: data => data?.me,
     staleTime: Infinity,
   });
 
   const getMe = (): GetMe => {
-    const { data: me, ...rest } = getMeQuery;
+    const { data, ...rest } = getMeQuery;
     return {
-      me,
+      me: data,
       ...rest,
     };
   };
