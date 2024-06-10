@@ -15,7 +15,7 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const { getWorkspaces } = useWorkspace();
-  const { workspaces } = getWorkspaces();
+  const { workspaces, isLoading } = getWorkspaces();
 
   useEffect(() => {
     if (!workspaces) return;
@@ -24,14 +24,16 @@ const Dashboard: React.FC = () => {
     if (!selectedWorkspace) {
       // TODO: This returns a promise but it can't be awaited
       navigate({ to: `/workspace/${workspaces[0].id}`, replace: true });
+      return;
     }
 
     setCurrentWorkspace(selectedWorkspace);
   }, [workspaces, navigate, setCurrentWorkspace, workspaceId]);
 
-  if (!workspaces) {
-    return <Loading />;
-  }
+  if (isLoading) return <Loading />;
+
+  // TODO: Show proper error
+  if (!workspaces) return <div>Could not fetch workspaces</div>;
 
   return (
     <div className="[&>*]:dark flex flex-col bg-zinc-800 text-zinc-300 h-[100vh]">

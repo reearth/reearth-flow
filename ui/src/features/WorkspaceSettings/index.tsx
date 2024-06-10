@@ -1,8 +1,11 @@
 import { PlugsConnected, Toolbox, UsersThree } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { Loading } from "@flow/components";
+import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
+import { useCurrentWorkspace } from "@flow/stores";
 
 import { TopNavigation } from "../TopNavigation";
 
@@ -10,13 +13,14 @@ import { GeneralSettings, IntegrationsSettings, MembersSettings } from "./compon
 
 type Tab = "general" | "integrations" | "members";
 
+const DEFAULT_TAB: Tab = "general";
+
 const WorkspaceSettings: React.FC = () => {
   const { workspaceId, tab } = useParams({ strict: false });
   const t = useT();
-
-  const [selectedTab, selectTab] = useState<Tab>(tab ?? "general");
-
+  const [_, setCurrentWorkspace] = useCurrentWorkspace();
   const navigate = useNavigate();
+  const { getWorkspaces } = useWorkspace();
 
   const content: { id: Tab; name: string; icon: React.ReactNode; component: React.ReactNode }[] = [
     {
@@ -38,11 +42,30 @@ const WorkspaceSettings: React.FC = () => {
       component: <IntegrationsSettings />,
     },
   ];
+  const checkTab = content.find(c => c.id === tab)?.id;
+
+  const [selectedTab, selectTab] = useState<Tab>(checkTab ?? DEFAULT_TAB);
+
+  const { workspaces, isLoading } = getWorkspaces();
+
+  useEffect(() => {
+    if (!workspaces) return;
+    const selectedWorkspace = workspaces?.find(w => w.id === workspaceId);
+
+    if (!selectedWorkspace) {
+      // TODO: This returns a promise but it can't be awaited
+      navigate({ to: `/workspace/${workspaces[0].id}/settings/${DEFAULT_TAB}`, replace: true });
+      return;
+    }
+    setCurrentWorkspace(selectedWorkspace);
+  }, [workspaces, navigate, setCurrentWorkspace, workspaceId]);
 
   const handleTabChange = (t: Tab) => {
     navigate({ to: `/workspace/${workspaceId}/settings/${t}` });
     selectTab(t);
   };
+
+  if (isLoading) return <Loading />;
 
   return (
     <div className="flex flex-col bg-zinc-800 text-zinc-300 h-[100vh]">
