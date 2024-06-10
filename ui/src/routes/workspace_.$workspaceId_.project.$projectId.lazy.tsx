@@ -8,6 +8,7 @@ export const Route = createLazyFileRoute("/workspace/$workspaceId/project/$proje
 });
 
 function Editor() {
+  // TODO: Update this once the PROJECT CRUD PR is merged
   const [currentProject] = useCurrentProject();
 
   return (
