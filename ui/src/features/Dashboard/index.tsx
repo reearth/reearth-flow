@@ -20,15 +20,15 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!workspaces) return;
     const selectedWorkspace = workspaces?.find(w => w.id === workspaceId);
-    setCurrentWorkspace(selectedWorkspace);
 
     if (!selectedWorkspace) {
-      setCurrentWorkspace(workspaces[0]);
+      // TODO: This returns a promise but it can't be awaited
       navigate({ to: `/workspace/${workspaces[0].id}`, replace: true });
     }
+
+    setCurrentWorkspace(selectedWorkspace);
   }, [workspaces, navigate, setCurrentWorkspace, workspaceId]);
 
-  // TODO: this needs a common component
   if (!workspaces) {
     return <Loading />;
   }
