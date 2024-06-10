@@ -2,8 +2,10 @@ use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::coord;
+use crate::error::Error;
 use approx::{AbsDiffEq, RelativeEq, UlpsEq};
 use num_traits::Zero;
+use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
@@ -221,6 +223,21 @@ impl<T: CoordNum, Z: CoordNum> Zero for Coordinate<T, Z> {
     #[inline]
     fn is_zero(&self) -> bool {
         self.x.is_zero() && self.y.is_zero() && self.z.is_zero()
+    }
+}
+
+impl Coordinate3D<f64> {
+    pub fn projection(
+        &mut self,
+        projection: &ExtendedTransverseMercatorProjection,
+    ) -> Result<(), Error> {
+        let (y, x, z) = projection
+            .project_forward(self.y, self.x, self.z)
+            .map_err(Error::projection)?;
+        self.x = x;
+        self.y = y;
+        self.z = z;
+        Ok(())
     }
 }
 
