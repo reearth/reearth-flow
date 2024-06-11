@@ -9,6 +9,7 @@ export enum WorkspaceQueryKeys {
 }
 
 export const useWorkspace = () => {
+  // TODO: Move the react-query functions into it's own file.
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
 
