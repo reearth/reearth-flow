@@ -1,6 +1,6 @@
-import { CreateProject, DeleteProject, GetProjects } from "@flow/types";
+import { CreateProject, DeleteProject, GetProjects, UpdateProject } from "@flow/types";
 
-import { CreateProjectInput } from "../__gen__/graphql";
+import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
 
 import { useFunction } from "./function";
 
@@ -9,7 +9,12 @@ export enum ProjectQueryKeys {
 }
 
 export const useProject = () => {
-  const { createProjectMutation, useGetProjectsQuery, deleteProjectMutation } = useFunction();
+  const {
+    createProjectMutation,
+    useGetProjectsQuery,
+    deleteProjectMutation,
+    updateProjectMutation,
+  } = useFunction();
 
   const createProject = async (input: CreateProjectInput): Promise<CreateProject> => {
     const { mutateAsync, ...rest } = createProjectMutation;
@@ -30,6 +35,16 @@ export const useProject = () => {
     };
   };
 
+  const updateProject = async (input: UpdateProjectInput): Promise<UpdateProject> => {
+    const { mutateAsync, ...rest } = updateProjectMutation;
+    try {
+      const project = await mutateAsync(input);
+      return { project, ...rest };
+    } catch (err) {
+      return { project: undefined, ...rest };
+    }
+  };
+
   const deleteProject = async (projectId: string, workspaceId: string): Promise<DeleteProject> => {
     const { mutateAsync, ...rest } = deleteProjectMutation;
     try {
@@ -43,6 +58,7 @@ export const useProject = () => {
   return {
     useGetProjects,
     createProject,
+    updateProject,
     deleteProject,
   };
 };

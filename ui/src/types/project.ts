@@ -21,6 +21,10 @@ export type CreateProject = {
   project?: Project;
 } & ApiResponse;
 
+export type UpdateProject = {
+  project?: Project;
+} & ApiResponse;
+
 export type DeleteProject = {
   projectId?: string;
 } & ApiResponse;
