@@ -1,4 +1,4 @@
-use std::{fs, path::Path, str::FromStr, sync::Arc};
+use std::{fs, io, path::Path, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgMatches, Command};
 use directories::ProjectDirs;
@@ -59,7 +59,7 @@ fn action_log_cli_arg() -> Arg {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct RunCliCommand {
-    workflow_uri: Uri,
+    workflow_path: String,
     job_id: Option<String>,
     dataframe_state_uri: Option<String>,
     action_log_uri: Option<String>,
@@ -67,15 +67,14 @@ pub struct RunCliCommand {
 
 impl RunCliCommand {
     pub fn parse_cli_args(mut matches: ArgMatches) -> crate::Result<Self> {
-        let workflow_uri = matches
+        let workflow_path = matches
             .remove_one::<String>("workflow")
-            .map(|uri_str| Uri::for_test(&uri_str))
             .ok_or(crate::Error::init("No workflow uri provided"))?;
         let job_id = matches.remove_one::<String>("job_id");
         let dataframe_state_uri = matches.remove_one::<String>("dataframe_state");
         let action_log_uri = matches.remove_one::<String>("action_log");
         Ok(RunCliCommand {
-            workflow_uri,
+            workflow_path,
             job_id,
             dataframe_state_uri,
             action_log_uri,
@@ -85,13 +84,18 @@ impl RunCliCommand {
     pub fn execute(&self) -> crate::Result<()> {
         debug!(args = ?self, "run-workflow");
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
-        let storage = storage_resolver
-            .resolve(&self.workflow_uri)
-            .map_err(crate::Error::init)?;
-        let content = storage
-            .get_sync(self.workflow_uri.path().as_path())
-            .map_err(crate::Error::init)?;
-        let json = String::from_utf8(content.to_vec()).map_err(crate::Error::init)?;
+        let json = if self.workflow_path == "-" {
+            io::read_to_string(io::stdin()).map_err(crate::Error::init)?
+        } else {
+            let path = Uri::for_test(self.workflow_path.as_str());
+            let storage = storage_resolver
+                .resolve(&path)
+                .map_err(crate::Error::init)?;
+            let bytes = storage
+                .get_sync(path.path().as_path())
+                .map_err(crate::Error::init)?;
+            String::from_utf8(bytes.to_vec()).map_err(crate::Error::init)?
+        };
         let workflow = Workflow::try_from_str(&json);
         let job_id = match &self.job_id {
             Some(job_id) => uuid::Uuid::from_str(job_id.as_str()).map_err(crate::Error::init)?,
