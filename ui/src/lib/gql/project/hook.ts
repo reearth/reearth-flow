@@ -16,12 +16,24 @@ export const useProject = () => {
   const createProjectMutation = useMutation({
     mutationFn: async (input: CreateProjectInput) => {
       const data = await graphQLContext?.CreateProject({ input });
-      return { project: data?.createProject?.project };
+
+      if (data?.createProject?.project) {
+        const project = data.createProject.project;
+        return {
+          id: project.id,
+          createdAt: project.createdAt,
+          updatedAt: project.updatedAt,
+          name: project.name,
+          description: project.description,
+          workspaceId: project.workspaceId,
+        };
+      }
+      return { project: undefined };
     },
     onSuccess: project =>
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
-        queryKey: [ProjectQueryKeys.GetProjects, project.project?.workspaceId],
+        queryKey: [ProjectQueryKeys.GetProjects, project?.workspaceId],
       }),
   });
 
@@ -70,15 +82,7 @@ export const useProject = () => {
   const createProject = async (input: CreateProjectInput): Promise<CreateProject> => {
     const { mutateAsync, ...rest } = createProjectMutation;
     try {
-      const { project: data } = await mutateAsync(input);
-      const project = data && {
-        id: data.id,
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-        name: data.name,
-        description: data.description,
-        workspaceId: data.workspaceId,
-      };
+      const { project } = await mutateAsync(input);
       return { project, ...rest };
     } catch (err) {
       return { project: undefined, ...rest };
