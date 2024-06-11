@@ -81,7 +81,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
                     </CardContent>
                     <CardHeader className="p-3">
                       <CardTitle className="truncate font-extralight">{p.name}</CardTitle>
-                      {p.description && <CardDescription>{p.description}</CardDescription>}
+                      <CardDescription className="min-h-5">{p.description ?? ""}</CardDescription>
                     </CardHeader>
                     <CardFooter className="px-3 pt-0 pb-2 flex">
                       <p className="font-thin text-xs">
