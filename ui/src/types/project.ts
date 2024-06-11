@@ -3,7 +3,6 @@ import { Workflow } from "./workflow";
 
 export type Project = {
   id: string;
-  isArchived: boolean;
   createdAt: Date;
   updatedAt: Date;
   name: string;

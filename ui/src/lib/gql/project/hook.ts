@@ -28,15 +28,27 @@ export const useProject = () => {
   const useGetProjectsQuery = (workspaceId: string) =>
     useQuery({
       queryKey: [ProjectQueryKeys.GetProjects, workspaceId],
-      queryFn: async () => {
-        // TODO: Should have pagination
-        const data = await graphQLContext?.GetProjects({ workspaceId, first: 20 });
+      queryFn: () => graphQLContext?.GetProjects({ workspaceId, first: 20 }),
+      select: data => {
         if (!data) return {};
         const {
           projects: { nodes, ...rest },
         } = data;
 
-        const projects: Project[] = nodes.flatMap(f => (f ? [f] : []));
+        const projects: Project[] = nodes.flatMap(project =>
+          project
+            ? [
+                {
+                  id: project.id,
+                  createdAt: project.createdAt,
+                  updatedAt: project.updatedAt,
+                  name: project.name,
+                  description: project.description,
+                  workspaceId: project.workspaceId,
+                },
+              ]
+            : [],
+        );
         return { projects, meta: rest };
       },
     });
@@ -58,8 +70,16 @@ export const useProject = () => {
   const createProject = async (input: CreateProjectInput): Promise<CreateProject> => {
     const { mutateAsync, ...rest } = createProjectMutation;
     try {
-      const data = await mutateAsync(input);
-      return { project: data.project, ...rest };
+      const { project: data } = await mutateAsync(input);
+      const project = data && {
+        id: data.id,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        name: data.name,
+        description: data.description,
+        workspaceId: data.workspaceId,
+      };
+      return { project, ...rest };
     } catch (err) {
       return { project: undefined, ...rest };
     }
