@@ -1,5 +1,6 @@
 extern crate alloc;
 
+pub mod algorithm;
 pub mod error;
 pub mod types;
 pub mod utils;

@@ -33,14 +33,12 @@ impl<T: CoordNum, Z: CoordNum> Triangle<T, Z> {
     pub fn to_polygon(self) -> Polygon<T, Z> {
         polygon![self.0, self.1, self.2, self.0]
     }
-}
 
-impl<T: CoordNum> Triangle<T, NoValue> {
-    pub fn to_lines(&self) -> [Line<T, NoValue>; 3] {
+    pub fn to_lines(&self) -> [Line<T, Z>; 3] {
         [
-            Line::new(self.0, self.1),
-            Line::new(self.1, self.2),
-            Line::new(self.2, self.0),
+            Line::new_(self.0, self.1),
+            Line::new_(self.1, self.2),
+            Line::new_(self.2, self.0),
         ]
     }
 }
