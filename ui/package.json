@@ -116,5 +116,8 @@
     "vite-plugin-cesium": "1.2.22",
     "vitest": "1.6.0"
   },
-  "packageManager": "yarn@4.2.1"
+  "packageManager": "yarn@4.2.1",
+  "graphql": {
+    "schema": "../api/gql/*.graphql"
+  }
 }
