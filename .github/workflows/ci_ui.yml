@@ -16,7 +16,7 @@ jobs:
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
         run: |
-          CACHE_DIR=$(yarn cache dir)
+          CACHE_DIR=$(yarn cache dir 2>/dev/null || echo ~/.cache/yarn)
           echo "dir=$CACHE_DIR" >> $GITHUB_OUTPUT
       - uses: actions/cache@v3
         id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
