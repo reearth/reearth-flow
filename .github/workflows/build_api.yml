@@ -118,9 +118,9 @@ jobs:
             VERSION=$SHA
             TAGS=$IMAGE_NAME:$NAME
           fi
-          echo "::set-output name=platforms::$PLATFORMS"
-          echo "::set-output name=version::$VERSION"
-          echo "::set-output name=tags::$TAGS"
+          echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
       - name: Build and push docker image
         uses: docker/build-push-action@v2
         with:

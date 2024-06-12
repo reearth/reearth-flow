@@ -69,22 +69,21 @@ jobs:
         run: git fetch --prune --unshallow --tags
       - name: Get info
         id: info
-        # The tag name should be retrieved lazily, as tagging may be delayed.
         env:
           BRANCH: ${{github.ref_name}}
         run: |
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "BRANCH=$BRANCH"
           if [[ "$BRANCH" = "release" || "$BRANCH" = "release/"* ]]; then
             TAG=$(git tag --points-at HEAD)
             if [[ ! -z "$TAG" ]]; then
-              echo "::set-output name=new_tag::$TAG"
-              echo "::set-output name=new_tag_short::${TAG#v}"
+              echo "new_tag=$TAG" >> $GITHUB_OUTPUT
+              echo "new_tag_short=${TAG#v}" >> $GITHUB_OUTPUT
             else
-              echo "::set-output name=name::rc"
+              echo "name=rc" >> $GITHUB_OUTPUT
             fi
           else
-            echo "::set-output name=name::nightly"
+            echo "name=nightly" >> $GITHUB_OUTPUT
           fi
       - name: Show info
         env:
