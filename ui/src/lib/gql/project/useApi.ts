@@ -2,7 +2,7 @@ import { CreateProject, DeleteProject, GetProjects, UpdateProject } from "@flow/
 
 import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
 
-import { useFunction } from "./function";
+import { useFunction } from "./useQueries";
 
 export enum ProjectQueryKeys {
   GetProjects = "getProjects",

@@ -4,16 +4,21 @@ import { useCallback } from "react";
 import { useGraphQLContext } from "@flow/lib/gql";
 import { Project } from "@flow/types";
 
-import { CreateProjectInput, DeleteProjectInput, UpdateProjectInput } from "../__gen__/graphql";
+import {
+  CreateProjectInput,
+  DeleteProjectInput,
+  UpdateProjectInput,
+  ProjectFragment,
+} from "../__gen__/graphql";
 
-import { ProjectQueryKeys } from "./hook";
+import { ProjectQueryKeys } from "./useApi";
 
 export const useFunction = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
 
   const createNewProjectObject = useCallback(
-    (project: Project) => ({
+    (project: ProjectFragment): Project => ({
       id: project.id,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
