@@ -18,8 +18,6 @@ export default function Editor({ workflow }: EditorProps) {
     edges: [],
   });
 
-  console.log("selected", selected);
-
   const handleSelect = (nodes?: Node[], edges?: Edge[]) => {
     setSelected({ nodes: nodes ?? [], edges: edges ?? [] });
   };
