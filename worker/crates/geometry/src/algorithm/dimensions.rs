@@ -1,13 +1,14 @@
 use crate::types::{
-    line::Line, line_string::LineString, multi_line_string::MultiLineString,
-    multi_point::MultiPoint, multi_polygon::MultiPolygon, point::Point, polygon::Polygon,
-    rect::Rect, solid::Solid, triangle::Triangle,
+    geometry::Geometry, geometry_collection::GeometryCollection, line::Line,
+    line_string::LineString, multi_line_string::MultiLineString, multi_point::MultiPoint,
+    multi_polygon::MultiPolygon, point::Point, polygon::Polygon, rect::Rect, solid::Solid,
+    triangle::Triangle,
 };
 
 use super::{
     coords_iter::CoordsIter,
     kernels::{Orientation, RobustKernel},
-    GeoNum,
+    CoordNum, GeoNum,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
@@ -31,7 +32,46 @@ pub trait HasDimensions {
     fn boundary_dimensions(&self) -> Dimensions;
 }
 
-impl<T: GeoNum, Z: GeoNum> HasDimensions for Solid<T, Z> {
+impl<T: GeoNum, Z: GeoNum> HasDimensions for Vec<Geometry<T, Z>> {
+    fn is_empty(&self) -> bool {
+        self.iter().all(Geometry::is_empty)
+    }
+    fn dimensions(&self) -> Dimensions {
+        let mut max = Dimensions::Empty;
+        for geom in self {
+            let dimensions = geom.dimensions();
+            if dimensions == Dimensions::TwoDimensional {
+                // short-circuit since we know none can be larger
+                return Dimensions::TwoDimensional;
+            }
+            max = max.max(dimensions)
+        }
+        max
+    }
+    fn boundary_dimensions(&self) -> Dimensions {
+        let mut max = Dimensions::Empty;
+        for geom in self {
+            let d = geom.boundary_dimensions();
+
+            if d == Dimensions::OneDimensional {
+                return Dimensions::OneDimensional;
+            }
+
+            max = max.max(d);
+        }
+        max
+    }
+}
+
+impl<T: GeoNum, Z: GeoNum> HasDimensions for Geometry<T, Z> {
+    crate::geometry_delegate_impl! {
+        fn is_empty(&self) -> bool;
+        fn dimensions(&self) -> Dimensions;
+        fn boundary_dimensions(&self) -> Dimensions;
+    }
+}
+
+impl<T: CoordNum, Z: CoordNum> HasDimensions for Solid<T, Z> {
     fn is_empty(&self) -> bool {
         false
     }
@@ -45,7 +85,7 @@ impl<T: GeoNum, Z: GeoNum> HasDimensions for Solid<T, Z> {
     }
 }
 
-impl<T: GeoNum, Z: GeoNum> HasDimensions for Point<T, Z> {
+impl<T: CoordNum, Z: CoordNum> HasDimensions for Point<T, Z> {
     fn is_empty(&self) -> bool {
         false
     }
@@ -59,7 +99,7 @@ impl<T: GeoNum, Z: GeoNum> HasDimensions for Point<T, Z> {
     }
 }
 
-impl<T: GeoNum, Z: GeoNum> HasDimensions for Line<T, Z> {
+impl<T: CoordNum, Z: CoordNum> HasDimensions for Line<T, Z> {
     fn is_empty(&self) -> bool {
         false
     }
@@ -83,7 +123,7 @@ impl<T: GeoNum, Z: GeoNum> HasDimensions for Line<T, Z> {
     }
 }
 
-impl<T: GeoNum, Z: GeoNum> HasDimensions for LineString<T, Z> {
+impl<T: CoordNum, Z: CoordNum> HasDimensions for LineString<T, Z> {
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -115,7 +155,7 @@ impl<T: GeoNum, Z: GeoNum> HasDimensions for LineString<T, Z> {
     }
 }
 
-impl<T: GeoNum, Z: GeoNum> HasDimensions for Polygon<T, Z> {
+impl<T: CoordNum, Z: CoordNum> HasDimensions for Polygon<T, Z> {
     fn is_empty(&self) -> bool {
         self.exterior().is_empty()
     }
@@ -140,7 +180,7 @@ impl<T: GeoNum, Z: GeoNum> HasDimensions for Polygon<T, Z> {
     }
 }
 
-impl<T: GeoNum, Z: GeoNum> HasDimensions for MultiPoint<T, Z> {
+impl<T: CoordNum, Z: CoordNum> HasDimensions for MultiPoint<T, Z> {
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -158,7 +198,7 @@ impl<T: GeoNum, Z: GeoNum> HasDimensions for MultiPoint<T, Z> {
     }
 }
 
-impl<T: GeoNum, Z: GeoNum> HasDimensions for MultiLineString<T, Z> {
+impl<T: CoordNum, Z: CoordNum> HasDimensions for MultiLineString<T, Z> {
     fn is_empty(&self) -> bool {
         self.iter().all(LineString::is_empty)
     }
@@ -193,7 +233,7 @@ impl<T: GeoNum, Z: GeoNum> HasDimensions for MultiLineString<T, Z> {
     }
 }
 
-impl<T: GeoNum, Z: GeoNum> HasDimensions for MultiPolygon<T, Z> {
+impl<T: CoordNum, Z: CoordNum> HasDimensions for MultiPolygon<T, Z> {
     fn is_empty(&self) -> bool {
         self.iter().all(Polygon::is_empty)
     }
@@ -215,7 +255,7 @@ impl<T: GeoNum, Z: GeoNum> HasDimensions for MultiPolygon<T, Z> {
     }
 }
 
-impl<T: GeoNum, Z: GeoNum> HasDimensions for Rect<T, Z> {
+impl<T: CoordNum, Z: CoordNum> HasDimensions for Rect<T, Z> {
     fn is_empty(&self) -> bool {
         false
     }
@@ -272,5 +312,42 @@ impl<T: GeoNum, Z: GeoNum> HasDimensions for Triangle<T, Z> {
             Dimensions::OneDimensional => Dimensions::ZeroDimensional,
             Dimensions::TwoDimensional => Dimensions::OneDimensional,
         }
+    }
+}
+
+impl<T: GeoNum, Z: GeoNum> HasDimensions for GeometryCollection<T, Z> {
+    fn is_empty(&self) -> bool {
+        if self.0.is_empty() {
+            true
+        } else {
+            self.iter().all(Geometry::is_empty)
+        }
+    }
+
+    fn dimensions(&self) -> Dimensions {
+        let mut max = Dimensions::Empty;
+        for geom in self {
+            let dimensions = geom.dimensions();
+            if dimensions == Dimensions::TwoDimensional {
+                // short-circuit since we know none can be larger
+                return Dimensions::TwoDimensional;
+            }
+            max = max.max(dimensions)
+        }
+        max
+    }
+
+    fn boundary_dimensions(&self) -> Dimensions {
+        let mut max = Dimensions::Empty;
+        for geom in self {
+            let d = geom.boundary_dimensions();
+
+            if d == Dimensions::OneDimensional {
+                return Dimensions::OneDimensional;
+            }
+
+            max = max.max(d);
+        }
+        max
     }
 }

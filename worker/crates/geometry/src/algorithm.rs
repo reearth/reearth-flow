@@ -5,11 +5,13 @@ use num_traits::Float;
 use crate::types::{coordnum::CoordNum, point::Point};
 
 pub mod bounding_rect;
+pub mod contains;
 pub mod coordinate_position;
 pub mod coords_iter;
 pub mod dimensions;
 pub mod intersects;
 pub mod kernels;
+pub mod line_intersection;
 pub mod utils;
 
 pub trait GeoFloat:

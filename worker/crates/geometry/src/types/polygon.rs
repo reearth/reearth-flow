@@ -3,10 +3,13 @@ use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
 
+use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
+use crate::algorithm::GeoFloat;
 use crate::error::Error;
 
 use super::coordnum::CoordNum;
 use super::face::Face;
+use super::line::Line;
 use super::line_string::LineString;
 use super::no_value::NoValue;
 use super::rect::Rect;
@@ -141,6 +144,61 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
             is_valid: errors.is_empty(),
             errors,
         }
+    }
+
+    pub fn validate_polygon_rings_closed(&self) -> Validation {
+        let mut errors: Vec<String> = vec![];
+        let exterior = self.exterior();
+        if !exterior.is_closed() {
+            let error_message = format!("Exterior ring {:?} is not closed", exterior);
+            errors.push(error_message);
+        }
+        for interior in self.interiors() {
+            if !interior.is_closed() {
+                let error_message = format!("Interior ring {:?} is not closed", interior);
+                errors.push(error_message);
+            }
+        }
+        Validation {
+            is_valid: errors.is_empty(),
+            errors,
+        }
+    }
+}
+
+pub fn validate_self_intersection<T: GeoFloat, Z: GeoFloat>(polygon: &Polygon<T, Z>) -> Validation {
+    let mut errors: Vec<String> = vec![];
+    let exterior = polygon.exterior();
+    let mut lines: Vec<Line<T, Z>> = vec![];
+
+    lines.extend(exterior.lines());
+    for interior in polygon.interiors() {
+        lines.extend(interior.lines())
+    }
+    // Use index of the line to determine which parts we havent compared to yet
+    for (index, line) in lines.clone().iter().enumerate() {
+        for line2 in &lines.clone()[index + 1..] {
+            if let Some(intersection) = line_intersection(*line, *line2) {
+                let intersection_message = match intersection {
+                    LineIntersection::Collinear { intersection } => {
+                        Some(format!("Found collinear at {:?}", intersection))
+                    }
+
+                    LineIntersection::SinglePoint {
+                        intersection,
+                        is_proper: true,
+                    } => Some(format!("Found self intersection at {:?}", intersection)),
+                    _ => None,
+                };
+                if let Some(error_message) = intersection_message {
+                    errors.push(error_message);
+                }
+            }
+        }
+    }
+    Validation {
+        is_valid: errors.is_empty(),
+        errors,
     }
 }
 

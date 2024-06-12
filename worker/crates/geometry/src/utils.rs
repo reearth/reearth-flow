@@ -58,10 +58,11 @@ fn get_min_max<T: PartialOrd>(p: T, min: T, max: T) -> (T, T) {
     }
 }
 
-pub fn line_segment_distance<T, C>(point: C, start: C, end: C) -> T
+pub fn line_segment_distance<T, Z, C>(point: C, start: C, end: C) -> T
 where
     T: CoordFloat,
-    C: Into<Coordinate<T, T>>,
+    Z: CoordFloat,
+    C: Into<Coordinate<T, Z>>,
 {
     let point = point.into();
     let start = start.into();
@@ -83,17 +84,19 @@ where
     s.abs() * dx.hypot(dy)
 }
 
-pub fn line_euclidean_length<T>(line: Line<T, T>) -> T
+pub fn line_euclidean_length<T, Z>(line: Line<T, Z>) -> T
 where
     T: CoordFloat,
+    Z: CoordFloat,
 {
     line.dx().hypot(line.dy())
 }
 
-pub fn point_line_euclidean_distance<C, T>(p: C, l: Line<T, T>) -> T
+pub fn point_line_euclidean_distance<C, T, Z>(p: C, l: Line<T, Z>) -> T
 where
     T: CoordFloat,
-    C: Into<Coordinate<T, T>>,
+    Z: CoordFloat,
+    C: Into<Coordinate<T, Z>>,
 {
     line_segment_distance(p.into(), l.start, l.end)
 }
