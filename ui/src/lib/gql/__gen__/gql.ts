@@ -13,11 +13,7 @@ import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/
  * Therefore it is highly recommended to use the babel or swc plugin for production.
  */
 const documents = {
-    "\n  fragment Project on Project {\n    name\n    id\n    description\n    createdAt\n    updatedAt\n    isArchived\n    workspaceId\n  }\n": types.ProjectFragmentDoc,
-    "\n  mutation CreateProject($input: CreateProjectInput!) {\n    createProject(input: $input) {\n      project {\n        ...Project\n      }\n    }\n  }\n": types.CreateProjectDocument,
-    "\n  query GetProjects($workspaceId: ID!, $first: Int!) {\n    projects(workspaceId: $workspaceId, first: $first) {\n      totalCount\n      nodes {\n        ...Project\n      }\n      pageInfo {\n        startCursor\n        endCursor\n        hasNextPage\n        hasPreviousPage\n      }\n    }\n  }\n": types.GetProjectsDocument,
-    "\n  mutation UpdateProject($input: UpdateProjectInput!) {\n    updateProject(input: $input) {\n      project {\n        ...Project\n      }\n    }\n  }\n": types.UpdateProjectDocument,
-    "\n  mutation DeleteProject($input: DeleteProjectInput!) {\n    deleteProject(input: $input) {\n      projectId\n    }\n  }\n": types.DeleteProjectDocument,
+    "fragment Project on Project {\n  name\n  id\n  description\n  createdAt\n  updatedAt\n  isArchived\n  workspaceId\n}\n\nmutation CreateProject($input: CreateProjectInput!) {\n  createProject(input: $input) {\n    project {\n      ...Project\n    }\n  }\n}\n\nquery GetProjects($workspaceId: ID!, $first: Int!) {\n  projects(workspaceId: $workspaceId, first: $first) {\n    totalCount\n    nodes {\n      ...Project\n    }\n    pageInfo {\n      startCursor\n      endCursor\n      hasNextPage\n      hasPreviousPage\n    }\n  }\n}\n\nmutation UpdateProject($input: UpdateProjectInput!) {\n  updateProject(input: $input) {\n    project {\n      ...Project\n    }\n  }\n}\n\nmutation DeleteProject($input: DeleteProjectInput!) {\n  deleteProject(input: $input) {\n    projectId\n  }\n}": types.ProjectFragmentDoc,
     "\n  query GetMe {\n    me {\n      id\n      name\n      email\n      myWorkspaceId\n    }\n  }\n": types.GetMeDocument,
     "\n  fragment GetWorkspace on Workspace {\n    id\n    name\n    personal\n  }\n": types.GetWorkspaceFragmentDoc,
     "\n  mutation CreateWorkspace($input: CreateWorkspaceInput!) {\n    createWorkspace(input: $input) {\n      workspace {\n        ...GetWorkspace\n      }\n    }\n  }\n": types.CreateWorkspaceDocument,
@@ -43,23 +39,7 @@ export function graphql(source: string): unknown;
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  fragment Project on Project {\n    name\n    id\n    description\n    createdAt\n    updatedAt\n    isArchived\n    workspaceId\n  }\n"): (typeof documents)["\n  fragment Project on Project {\n    name\n    id\n    description\n    createdAt\n    updatedAt\n    isArchived\n    workspaceId\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(source: "\n  mutation CreateProject($input: CreateProjectInput!) {\n    createProject(input: $input) {\n      project {\n        ...Project\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation CreateProject($input: CreateProjectInput!) {\n    createProject(input: $input) {\n      project {\n        ...Project\n      }\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(source: "\n  query GetProjects($workspaceId: ID!, $first: Int!) {\n    projects(workspaceId: $workspaceId, first: $first) {\n      totalCount\n      nodes {\n        ...Project\n      }\n      pageInfo {\n        startCursor\n        endCursor\n        hasNextPage\n        hasPreviousPage\n      }\n    }\n  }\n"): (typeof documents)["\n  query GetProjects($workspaceId: ID!, $first: Int!) {\n    projects(workspaceId: $workspaceId, first: $first) {\n      totalCount\n      nodes {\n        ...Project\n      }\n      pageInfo {\n        startCursor\n        endCursor\n        hasNextPage\n        hasPreviousPage\n      }\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(source: "\n  mutation UpdateProject($input: UpdateProjectInput!) {\n    updateProject(input: $input) {\n      project {\n        ...Project\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateProject($input: UpdateProjectInput!) {\n    updateProject(input: $input) {\n      project {\n        ...Project\n      }\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
-export function graphql(source: "\n  mutation DeleteProject($input: DeleteProjectInput!) {\n    deleteProject(input: $input) {\n      projectId\n    }\n  }\n"): (typeof documents)["\n  mutation DeleteProject($input: DeleteProjectInput!) {\n    deleteProject(input: $input) {\n      projectId\n    }\n  }\n"];
+export function graphql(source: "fragment Project on Project {\n  name\n  id\n  description\n  createdAt\n  updatedAt\n  isArchived\n  workspaceId\n}\n\nmutation CreateProject($input: CreateProjectInput!) {\n  createProject(input: $input) {\n    project {\n      ...Project\n    }\n  }\n}\n\nquery GetProjects($workspaceId: ID!, $first: Int!) {\n  projects(workspaceId: $workspaceId, first: $first) {\n    totalCount\n    nodes {\n      ...Project\n    }\n    pageInfo {\n      startCursor\n      endCursor\n      hasNextPage\n      hasPreviousPage\n    }\n  }\n}\n\nmutation UpdateProject($input: UpdateProjectInput!) {\n  updateProject(input: $input) {\n    project {\n      ...Project\n    }\n  }\n}\n\nmutation DeleteProject($input: DeleteProjectInput!) {\n  deleteProject(input: $input) {\n    projectId\n  }\n}"): (typeof documents)["fragment Project on Project {\n  name\n  id\n  description\n  createdAt\n  updatedAt\n  isArchived\n  workspaceId\n}\n\nmutation CreateProject($input: CreateProjectInput!) {\n  createProject(input: $input) {\n    project {\n      ...Project\n    }\n  }\n}\n\nquery GetProjects($workspaceId: ID!, $first: Int!) {\n  projects(workspaceId: $workspaceId, first: $first) {\n    totalCount\n    nodes {\n      ...Project\n    }\n    pageInfo {\n      startCursor\n      endCursor\n      hasNextPage\n      hasPreviousPage\n    }\n  }\n}\n\nmutation UpdateProject($input: UpdateProjectInput!) {\n  updateProject(input: $input) {\n    project {\n      ...Project\n    }\n  }\n}\n\nmutation DeleteProject($input: DeleteProjectInput!) {\n  deleteProject(input: $input) {\n    projectId\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

@@ -2963,7 +2963,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@graphql-eslint/eslint-plugin@npm:^3.20.1":
+"@graphql-eslint/eslint-plugin@npm:3.20.1":
   version: 3.20.1
   resolution: "@graphql-eslint/eslint-plugin@npm:3.20.1"
   dependencies:
@@ -5248,7 +5248,7 @@ __metadata:
     "@graphql-codegen/typescript": "npm:4.0.7"
     "@graphql-codegen/typescript-graphql-request": "npm:6.2.0"
     "@graphql-codegen/typescript-operations": "npm:4.2.1"
-    "@graphql-eslint/eslint-plugin": "npm:^3.20.1"
+    "@graphql-eslint/eslint-plugin": "npm:3.20.1"
     "@parcel/watcher": "npm:2.4.1"
     "@phosphor-icons/react": "npm:2.1.5"
     "@radix-ui/react-accordion": "npm:1.1.2"

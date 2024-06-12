@@ -33,4 +33,9 @@ module.exports = {
       extends: "plugin:@graphql-eslint/operations-recommended",
     },
   ],
+  parserOptions: {
+    skipGraphQLConfig: true,
+    schema: "../api/gql/*.graphql",
+    operations: "src/lib/gql/**/*.graphql",
+  },
 };
