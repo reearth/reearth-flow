@@ -36,6 +36,25 @@ module.exports = {
       parser: "@graphql-eslint/eslint-plugin",
       plugins: ["@graphql-eslint"],
       extends: "plugin:@graphql-eslint/operations-recommended",
+      // Source: https://github.com/dimaMachina/graphql-eslint/blob/master/packages/plugin/src/configs/operations-recommended.ts
+      rules: {
+        "@graphql-eslint/naming-convention": [
+          "error",
+          {
+            VariableDefinition: "camelCase",
+            OperationDefinition: {
+              style: "PascalCase",
+              forbiddenPrefixes: ["Query", "Mutation", "Subscription"],
+              forbiddenSuffixes: ["Query", "Mutation", "Subscription"],
+            },
+            FragmentDefinition: {
+              style: "PascalCase",
+              forbiddenPrefixes: ["Fragment"],
+              forbiddenSuffixes: ["Fragment"],
+            },
+          },
+        ],
+      },
     },
   ],
   parserOptions: {

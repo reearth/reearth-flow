@@ -13,6 +13,7 @@ mutation CreateWorkspace($input: CreateWorkspaceInput!) {
 }
 
 query GetWorkspaces {
+  # eslint-disable-next-line @graphql-eslint/require-id-when-available
   me {
     workspaces {
       ...GetWorkspace
