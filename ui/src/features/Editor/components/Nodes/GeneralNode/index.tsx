@@ -19,7 +19,8 @@ export type GeneralNodeProps = NodeProps<NodeData> & {
 
 const typeIconClasses = "w-[10px] h-[100%]";
 
-const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, selected, ...props }) => {
+const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, selected }) => {
+  // const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, selected, ...props }) => {
   const [hovered, setHovered] = useState(false);
 
   const [_, handleDoubleClick] = useDoubleClick(undefined, () => console.log("double click"));
@@ -31,7 +32,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
   //   },
   //   [data],
   // );
-  console.log("props: ", props);
+  // console.log("props: ", props);
   // console.log("data: ", data);
 
   const singular =

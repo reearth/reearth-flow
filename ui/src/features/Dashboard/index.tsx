@@ -2,10 +2,9 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { Loading } from "@flow/components";
+import { TopNavigation } from "@flow/features/TopNavigation";
 import { useWorkspace } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
-
-import { TopNavigation } from "../TopNavigation";
 
 import { LeftSection, MainSection } from "./components";
 

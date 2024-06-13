@@ -21,8 +21,8 @@ export const initialSize = { width: 300 };
 const minSize = { width: 250, height: 150 };
 
 const NoteNode: React.FC<NodeProps<NodeData>> = ({ data, ...props }) => {
-  const [width, _setWidth] = useState(data.width ?? initialSize.width);
-  const [height, _setHeight] = useState(data.height);
+  const [_width, _setWidth] = useState(data.width ?? initialSize.width);
+  const [_height, _setHeight] = useState(data.height);
   // const onChange = useCallback(
   //   (evt: any) => {
   //     console.log("EVT", evt.target.value);
@@ -30,9 +30,9 @@ const NoteNode: React.FC<NodeProps<NodeData>> = ({ data, ...props }) => {
   //   },
   //   [data],
   // );
-  console.log(width, height);
+  // console.log(width, height);
 
-  console.log("ADS props: ", props);
+  // console.log("ADS props: ", props);
   return (
     <>
       {props.selected && (
