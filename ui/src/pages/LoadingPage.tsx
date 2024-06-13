@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 
 import { Loading } from "@flow/components";
+import { ErrorPage } from "@flow/features/ErrorPage";
 import { useUser } from "@flow/lib/gql";
 
 const LoadingPage: React.FC = () => {
@@ -10,8 +11,7 @@ const LoadingPage: React.FC = () => {
 
   if (isLoading) return <Loading />;
 
-  // TODO: Show proper error
-  if (!me || !me?.myWorkspaceId) return <div>Could not fetch user</div>;
+  if (!me || !me?.myWorkspaceId) return <ErrorPage errorMessage={"Could not fetch user"} />;
 
   // TODO: This gives error in the console
   navigate({ to: `/workspace/${me?.myWorkspaceId}`, replace: true });

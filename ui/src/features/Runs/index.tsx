@@ -2,11 +2,10 @@ import { Play } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { Button, Loading } from "@flow/components";
+import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { runs as mockRuns } from "@flow/mock_data/runsData";
 import { Run } from "@flow/types";
-import { useCheckWorkspace } from "@flow/utils/router/checkWorkspace";
 
 import { TopNavigation } from "../TopNavigation";
 
@@ -24,8 +23,6 @@ const Runs: React.FC = () => {
   const { workspaceId } = useParams({ strict: false });
 
   const [selectedRun, selectRun] = useState<Run>();
-
-  const { workspaces, isLoading } = useCheckWorkspace(workspaceId);
 
   const handleTabChange = (tab: Tab) => {
     selectRun(undefined);
@@ -59,11 +56,6 @@ const Runs: React.FC = () => {
       name: t("Queued"),
     },
   ];
-
-  if (isLoading) return <Loading />;
-
-  // TODO: Show proper error
-  if (!workspaces) return <div>Could not fetch workspaces</div>;
 
   return (
     <div className="flex flex-col bg-zinc-800 text-zinc-300 h-[100vh]">
