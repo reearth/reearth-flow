@@ -23,6 +23,7 @@ query GetWorkspaces {
 
 query GetWorkspaceById($workspaceId: ID!) {
   node(id: $workspaceId, type: WORKSPACE) {
+    __typename
     ...Workspace
   }
 }

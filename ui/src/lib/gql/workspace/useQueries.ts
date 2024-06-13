@@ -50,7 +50,8 @@ export const useQueries = () => {
     useQuery({
       queryKey: [WorkspaceQueryKeys.GetWorkspace, workspaceId],
       queryFn: () => graphQLContext?.GetWorkspaceById({ workspaceId }),
-      select: data => (data?.node?.__typename === "Workspace" ? data.node : undefined),
+      select: data =>
+        data?.node?.__typename === "Workspace" ? createNewWorkspaceObject(data.node) : undefined,
       staleTime: Infinity,
     });
 

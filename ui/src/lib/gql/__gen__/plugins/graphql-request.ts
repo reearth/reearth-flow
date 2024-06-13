@@ -457,14 +457,14 @@ export type WorkspaceMember = {
   userId: Scalars['ID']['output'];
 };
 
-export type ProjectFragment = { __typename?: 'Project', name: string, id: string, description: string, createdAt: any, updatedAt: any, isArchived: boolean, workspaceId: string };
+export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string };
 
 export type CreateProjectMutationVariables = Exact<{
   input: CreateProjectInput;
 }>;
 
 
-export type CreateProjectMutation = { __typename?: 'Mutation', createProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', name: string, id: string, description: string, createdAt: any, updatedAt: any, isArchived: boolean, workspaceId: string } } | null };
+export type CreateProjectMutation = { __typename?: 'Mutation', createProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string } } | null };
 
 export type GetProjectsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -472,21 +472,21 @@ export type GetProjectsQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectsQuery = { __typename?: 'Query', projects: { __typename?: 'ProjectConnection', totalCount: number, nodes: Array<{ __typename?: 'Project', name: string, id: string, description: string, createdAt: any, updatedAt: any, isArchived: boolean, workspaceId: string } | null>, pageInfo: { __typename?: 'PageInfo', startCursor?: any | null, endCursor?: any | null, hasNextPage: boolean, hasPreviousPage: boolean } } };
+export type GetProjectsQuery = { __typename?: 'Query', projects: { __typename?: 'ProjectConnection', totalCount: number, nodes: Array<{ __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string } | null>, pageInfo: { __typename?: 'PageInfo', startCursor?: any | null, endCursor?: any | null, hasNextPage: boolean, hasPreviousPage: boolean } } };
 
 export type GetProjectByIdQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
 }>;
 
 
-export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename?: 'Asset' } | { __typename?: 'Project', name: string, id: string, description: string, createdAt: any, updatedAt: any, isArchived: boolean, workspaceId: string } | { __typename?: 'User' } | { __typename?: 'Workspace' } | null };
+export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string } | { __typename: 'User' } | { __typename: 'Workspace' } | null };
 
 export type UpdateProjectMutationVariables = Exact<{
   input: UpdateProjectInput;
 }>;
 
 
-export type UpdateProjectMutation = { __typename?: 'Mutation', updateProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', name: string, id: string, description: string, createdAt: any, updatedAt: any, isArchived: boolean, workspaceId: string } } | null };
+export type UpdateProjectMutation = { __typename?: 'Mutation', updateProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string } } | null };
 
 export type DeleteProjectMutationVariables = Exact<{
   input: DeleteProjectInput;
@@ -519,7 +519,7 @@ export type GetWorkspaceByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename?: 'Asset' } | { __typename?: 'Project' } | { __typename?: 'User' } | { __typename?: 'Workspace', id: string, name: string, personal: boolean } | null };
+export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Project' } | { __typename: 'User' } | { __typename: 'Workspace', id: string, name: string, personal: boolean } | null };
 
 export type UpdateWorkspaceMutationVariables = Exact<{
   input: UpdateWorkspaceInput;
@@ -537,12 +537,11 @@ export type DeleteWorkspaceMutation = { __typename?: 'Mutation', deleteWorkspace
 
 export const ProjectFragmentDoc = gql`
     fragment Project on Project {
-  name
   id
+  name
   description
   createdAt
   updatedAt
-  isArchived
   workspaceId
 }
     `;
@@ -581,6 +580,7 @@ export const GetProjectsDocument = gql`
 export const GetProjectByIdDocument = gql`
     query GetProjectById($projectId: ID!) {
   node(id: $projectId, type: PROJECT) {
+    __typename
     ...Project
   }
 }
@@ -632,6 +632,7 @@ export const GetWorkspacesDocument = gql`
 export const GetWorkspaceByIdDocument = gql`
     query GetWorkspaceById($workspaceId: ID!) {
   node(id: $workspaceId, type: WORKSPACE) {
+    __typename
     ...Workspace
   }
 }
