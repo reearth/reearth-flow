@@ -2,7 +2,7 @@ import { CreateProject, DeleteProject, GetProjects, UpdateProject } from "@flow/
 
 import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
 
-import { useFunction } from "./useQueries";
+import { useQueries } from "./useQueries";
 
 export enum ProjectQueryKeys {
   GetProjects = "getProjects",
@@ -14,7 +14,7 @@ export const useProject = () => {
     useGetProjectsQuery,
     deleteProjectMutation,
     updateProjectMutation,
-  } = useFunction();
+  } = useQueries();
 
   const createProject = async (input: CreateProjectInput): Promise<CreateProject> => {
     const { mutateAsync, ...rest } = createProjectMutation;

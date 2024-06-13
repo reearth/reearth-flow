@@ -13,7 +13,7 @@ import {
 
 import { ProjectQueryKeys } from "./useApi";
 
-export const useFunction = () => {
+export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
 
