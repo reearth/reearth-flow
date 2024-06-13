@@ -8,6 +8,7 @@ use super::{
     filter::GeometryFilterFactory, reprojector::ReprojectorFactory,
     splitter::GeometrySplitterFactory,
     three_dimention_box_replacer::ThreeDimentionBoxReplacerFactory,
+    two_dimention_forcer::TwoDimentionForcerFactory,
 };
 
 pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -18,6 +19,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<GeometryFilterFactory>::default(),
         Box::<GeometrySplitterFactory>::default(),
         Box::<ReprojectorFactory>::default(),
+        Box::<TwoDimentionForcerFactory>::default(),
     ];
     factories
         .into_iter()

@@ -28,6 +28,22 @@ pub struct Polygon<T: CoordNum = f64, Z: CoordNum = f64> {
 pub type Polygon2D<T> = Polygon<T, NoValue>;
 pub type Polygon3D<T> = Polygon<T, T>;
 
+impl From<Polygon<f64, f64>> for Polygon<f64, NoValue> {
+    #[inline]
+    fn from(polygons: Polygon<f64, f64>) -> Self {
+        let new_exterior = polygons.exterior.into();
+        let new_interiors = polygons
+            .interiors
+            .into_iter()
+            .map(|interior| interior.into())
+            .collect::<Vec<LineString<f64, NoValue>>>();
+        Polygon {
+            exterior: new_exterior,
+            interiors: new_interiors,
+        }
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
     pub fn new(mut exterior: LineString<T, Z>, mut interiors: Vec<LineString<T, Z>>) -> Self {
         exterior.close();
