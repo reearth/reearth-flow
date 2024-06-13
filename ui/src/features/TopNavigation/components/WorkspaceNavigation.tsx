@@ -15,9 +15,9 @@ import { Workspace } from "@flow/types";
 
 const WorkspaceNavigation: React.FC = () => {
   const [currentWorkspace] = useCurrentWorkspace();
-  const { getWorkspaces } = useWorkspace();
+  const { useGetWorkspaces } = useWorkspace();
   const navigate = useNavigate();
-  const { workspaces } = getWorkspaces();
+  const { workspaces } = useGetWorkspaces();
 
   const handleWorkspaceChange = (workspace: Workspace) => {
     const route = window.location.pathname;

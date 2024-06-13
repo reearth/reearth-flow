@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { useGraphQLContext } from "@flow/lib/gql";
 import { Workspace } from "@flow/types";
 
-import { GetWorkspaceFragment } from "../__gen__/graphql";
+import { WorkspaceFragment } from "../__gen__/graphql";
 
 import { WorkspaceQueryKeys } from "./useApi";
 
@@ -14,7 +14,7 @@ export const useQueries = () => {
   const queryClient = useQueryClient();
 
   const createNewWorkspaceObject = useCallback(
-    (w: GetWorkspaceFragment): Workspace => ({
+    (w: WorkspaceFragment): Workspace => ({
       id: w.id,
       name: w.name,
       personal: w.personal,
@@ -31,19 +31,28 @@ export const useQueries = () => {
       );
     },
     onSuccess: createdWorkspace => {
-      queryClient.setQueryData([WorkspaceQueryKeys.GetWorkspace], (data: Workspace[]) => [
+      queryClient.setQueryData([WorkspaceQueryKeys.GetWorkspaces], (data: Workspace[]) => [
         ...data,
         createdWorkspace,
       ]);
     },
   });
 
-  const getWorkspacesQuery = useQuery({
-    queryKey: [WorkspaceQueryKeys.GetWorkspace],
+  const useGetWorkspacesQuery = useQuery({
+    queryKey: [WorkspaceQueryKeys.GetWorkspaces],
     queryFn: () => graphQLContext?.GetWorkspaces(),
     select: data => data?.me?.workspaces.map(w => createNewWorkspaceObject(w)),
     staleTime: Infinity,
   });
+
+  const useGetWorkspaceByIdQuery = (workspaceId: string) =>
+    useQuery({
+      queryKey: [WorkspaceQueryKeys.GetWorkspace, workspaceId],
+      queryFn: () => graphQLContext?.GetWorkspaceById({ workspaceId }),
+      select: data =>
+        data?.node?.__typename === "Workspace" ? createNewWorkspaceObject(data.node) : undefined,
+      staleTime: Infinity,
+    });
 
   const deleteWorkspaceMutation = useMutation({
     mutationFn: async (workspaceId: string) => {
@@ -51,7 +60,7 @@ export const useQueries = () => {
       return data?.deleteWorkspace?.workspaceId;
     },
     onSuccess: deletedWorkspaceId => {
-      queryClient.setQueryData([WorkspaceQueryKeys.GetWorkspace], (data: Workspace[]) => {
+      queryClient.setQueryData([WorkspaceQueryKeys.GetWorkspaces], (data: Workspace[]) => {
         data.splice(
           data.findIndex(w => w.id === deletedWorkspaceId),
           1,
@@ -63,7 +72,8 @@ export const useQueries = () => {
 
   return {
     createWorkspaceMutation,
-    getWorkspacesQuery,
+    useGetWorkspacesQuery,
+    useGetWorkspaceByIdQuery,
     deleteWorkspaceMutation,
   };
 };

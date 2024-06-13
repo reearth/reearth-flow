@@ -1,13 +1,19 @@
-import { GetWorkspace, CreateWorkspace, DeleteWorkspace } from "@flow/types";
+import { GetWorkspaces, CreateWorkspace, DeleteWorkspace, GetWorkspace } from "@flow/types";
 
 import { useQueries } from "./useQueries";
 
 export enum WorkspaceQueryKeys {
+  GetWorkspaces = "getWorkspaces",
   GetWorkspace = "getWorkspace",
 }
 
 export const useWorkspace = () => {
-  const { createWorkspaceMutation, getWorkspacesQuery, deleteWorkspaceMutation } = useQueries();
+  const {
+    createWorkspaceMutation,
+    useGetWorkspacesQuery,
+    deleteWorkspaceMutation,
+    useGetWorkspaceByIdQuery,
+  } = useQueries();
 
   const createWorkspace = async (name: string): Promise<CreateWorkspace> => {
     const { mutateAsync, ...rest } = createWorkspaceMutation;
@@ -29,17 +35,26 @@ export const useWorkspace = () => {
     }
   };
 
-  const getWorkspaces = (): GetWorkspace => {
-    const { data: workspaces, ...rest } = getWorkspacesQuery;
+  const useGetWorkspaces = (): GetWorkspaces => {
+    const { data: workspaces, ...rest } = useGetWorkspacesQuery;
     return {
       workspaces,
       ...rest,
     };
   };
 
+  const useGetWorkspace = (workspaceId: string): GetWorkspace => {
+    const { data: workspace, ...rest } = useGetWorkspaceByIdQuery(workspaceId);
+    return {
+      workspace,
+      ...rest,
+    };
+  };
+
   return {
     createWorkspace,
-    getWorkspaces,
+    useGetWorkspaces,
+    useGetWorkspace,
     deleteWorkspace,
   };
 };

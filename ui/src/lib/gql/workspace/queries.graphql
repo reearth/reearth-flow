@@ -1,4 +1,4 @@
-fragment GetWorkspace on Workspace {
+fragment Workspace on Workspace {
   id
   name
   personal
@@ -7,7 +7,7 @@ fragment GetWorkspace on Workspace {
 mutation CreateWorkspace($input: CreateWorkspaceInput!) {
   createWorkspace(input: $input) {
     workspace {
-      ...GetWorkspace
+      ...Workspace
     }
   }
 }
@@ -16,15 +16,21 @@ query GetWorkspaces {
   # eslint-disable-next-line @graphql-eslint/require-id-when-available
   me {
     workspaces {
-      ...GetWorkspace
+      ...Workspace
     }
+  }
+}
+
+query GetWorkspaceById($workspaceId: ID!) {
+  node(id: $workspaceId, type: WORKSPACE) {
+    ...Workspace
   }
 }
 
 mutation UpdateWorkspace($input: UpdateWorkspaceInput!) {
   updateWorkspace(input: $input) {
     workspace {
-      ...GetWorkspace
+      ...Workspace
     }
   }
 }
