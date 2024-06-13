@@ -2,19 +2,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { Workspace, GetWorkspace, CreateWorkspace, DeleteWorkspace } from "@flow/types";
+import { Workspace } from "@flow/types";
 
-export enum WorkspaceQueryKeys {
-  GetWorkspace = "getWorkspace",
-}
+import { GetWorkspaceFragment } from "../__gen__/graphql";
 
-export const useWorkspace = () => {
+import { WorkspaceQueryKeys } from "./useApi";
+
+export const useQueries = () => {
   // TODO: Move the react-query functions into it's own file.
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
 
   const createNewWorkspaceObject = useCallback(
-    (w: Workspace) => ({
+    (w: GetWorkspaceFragment): Workspace => ({
       id: w.id,
       name: w.name,
       personal: w.personal,
@@ -61,37 +61,9 @@ export const useWorkspace = () => {
     },
   });
 
-  const createWorkspace = async (name: string): Promise<CreateWorkspace> => {
-    const { mutateAsync, ...rest } = createWorkspaceMutation;
-    try {
-      const data = await mutateAsync(name);
-      return { workspace: data, ...rest };
-    } catch (err) {
-      return { workspace: undefined, ...rest };
-    }
-  };
-
-  const deleteWorkspace = async (workspaceId: string): Promise<DeleteWorkspace> => {
-    const { mutateAsync, ...rest } = deleteWorkspaceMutation;
-    try {
-      const data = await mutateAsync(workspaceId);
-      return { workspaceId: data, ...rest };
-    } catch (err) {
-      return { workspaceId: undefined, ...rest };
-    }
-  };
-
-  const getWorkspaces = (): GetWorkspace => {
-    const { data: workspaces, ...rest } = getWorkspacesQuery;
-    return {
-      workspaces,
-      ...rest,
-    };
-  };
-
   return {
-    createWorkspace,
-    getWorkspaces,
-    deleteWorkspace,
+    createWorkspaceMutation,
+    getWorkspacesQuery,
+    deleteWorkspaceMutation,
   };
 };
