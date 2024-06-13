@@ -6,4 +6,5 @@ pub mod mapping;
 pub mod reprojector;
 pub mod splitter;
 pub mod three_dimention_box_replacer;
+pub mod two_dimention_forcer;
 pub(super) mod types;

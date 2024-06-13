@@ -16,15 +16,15 @@ pub struct MultiPolygon<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Polygon<T,
 pub type MultiPolygon2D<T> = MultiPolygon<T, NoValue>;
 pub type MultiPolygon3D<T> = MultiPolygon<T, T>;
 
-impl<T: CoordNum, Z: CoordNum, IP: Into<Polygon<T, Z>>> From<IP> for MultiPolygon<T, Z> {
-    fn from(x: IP) -> Self {
-        Self(vec![x.into()])
+impl From<Vec<Polygon<f64, NoValue>>> for MultiPolygon<f64, NoValue> {
+    fn from(x: Vec<Polygon<f64, NoValue>>) -> Self {
+        Self(x)
     }
 }
 
-impl<T: CoordNum, Z: CoordNum, IP: Into<Polygon<T, Z>>> From<Vec<IP>> for MultiPolygon<T, Z> {
-    fn from(x: Vec<IP>) -> Self {
-        Self(x.into_iter().map(|p| p.into()).collect())
+impl<T: CoordNum, Z: CoordNum, IP: Into<Polygon<T, Z>>> From<IP> for MultiPolygon<T, Z> {
+    fn from(x: IP) -> Self {
+        Self(vec![x.into()])
     }
 }
 

@@ -88,6 +88,13 @@ impl<T: CoordNum> From<[T; 3]> for Coordinate<T, T> {
     }
 }
 
+impl From<Coordinate<f64, f64>> for Coordinate<f64, NoValue> {
+    #[inline]
+    fn from(coords: Coordinate<f64, f64>) -> Self {
+        Coordinate::new__(coords.x, coords.y, NoValue)
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for Coordinate<T, Z> {
     #[inline]
     fn from(point: Point<T, Z>) -> Self {

@@ -19,6 +19,18 @@ pub struct LineString<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Coordinate<T
 pub type LineString2D<T> = LineString<T, NoValue>;
 pub type LineString3D<T> = LineString<T, T>;
 
+impl From<LineString<f64, f64>> for LineString<f64, NoValue> {
+    #[inline]
+    fn from(coords: LineString<f64, f64>) -> Self {
+        let new_coords = coords
+            .0
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Coordinate<f64, NoValue>>>();
+        LineString(new_coords)
+    }
+}
+
 #[derive(Debug)]
 pub struct PointsIter<'a, T, Z>(::std::slice::Iter<'a, Coordinate<T, Z>>)
 where

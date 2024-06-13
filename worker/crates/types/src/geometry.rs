@@ -7,7 +7,7 @@ use nusamai_citygml::{object::ObjectStereotype, Color, GeometryType, Value};
 use nusamai_plateau::Entity;
 use nusamai_projection::crs::EpsgCode;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_geometry::types::polygon::Polygon3D;
+use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
@@ -373,6 +373,18 @@ impl CityGmlGeometry {
 
     pub fn textures(&self) -> &[Texture] {
         &self.textures
+    }
+}
+
+impl From<CityGmlGeometry> for FlowGeometry2D {
+    fn from(geometry: CityGmlGeometry) -> Self {
+        let mut polygons = Vec::<Polygon2D<f64>>::new();
+        for feature in geometry.features {
+            for polygon in feature.polygons {
+                polygons.push(polygon.into());
+            }
+        }
+        Self::MultiPolygon(MultiPolygon2D::from(polygons))
     }
 }
 

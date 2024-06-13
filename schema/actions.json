@@ -1049,6 +1049,39 @@
       ]
     },
     {
+      "name": "TwoDimentionForcer",
+      "type": "processor",
+      "description": "Forces a geometry to be two dimentional.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "outputAttribute"
+        ],
+        "title": "TwoDimentionForcer",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "XMLFragmenter",
       "type": "processor",
       "description": "Fragment XML",
