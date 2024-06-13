@@ -2,6 +2,7 @@ import { DialogContent as DialogContentPrimitive, IconButton } from "@flow/compo
 import { DialogType } from "@flow/stores";
 
 import useInstructions from "./instructions/useInstructions";
+import useProject from "./project/useProject";
 import useSearches from "./searches/useSearches";
 import useSettings from "./settings/useSettings";
 import useWorkspace from "./workspace/useWorkspace";
@@ -24,6 +25,7 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
   const settings = useSettings();
   const instructions = useInstructions();
   const addWorkspace = useWorkspace();
+  const addProject = useProject();
 
   // TODO: Isn't this very hackish?
   const content = tab?.includes("search")
@@ -34,7 +36,9 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
         ? instructions
         : tab?.includes("workspace")
           ? addWorkspace
-          : null;
+          : tab?.includes("project")
+            ? addProject
+            : null;
 
   const disableClickAway = tab.includes("settings");
 

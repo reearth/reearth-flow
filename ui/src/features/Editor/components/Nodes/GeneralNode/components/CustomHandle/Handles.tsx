@@ -41,7 +41,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea })
                   className={`left-0 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-md" : undefined}`}
                   position={Position.Left}
                   id={input}
-                // isConnectable={1}
+                  // isConnectable={1}
                 />
                 <p className="text-[10px] font-light pl-1">{input}</p>
               </div>

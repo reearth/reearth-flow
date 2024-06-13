@@ -9,7 +9,7 @@ import { useCurrentWorkspace } from "@flow/stores";
 import { LeftSection, MainSection } from "./components";
 
 const Dashboard: React.FC = () => {
-  const [_, setCurrentWorkspace] = useCurrentWorkspace();
+  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
   const { workspaceId } = useParams({ strict: false });
   const navigate = useNavigate();
 
@@ -28,7 +28,7 @@ const Dashboard: React.FC = () => {
   }, [workspaces, navigate, setCurrentWorkspace, workspaceId]);
 
   // TODO: this needs a common component
-  if (!workspaces) {
+  if (!workspaces || !currentWorkspace) {
     return <Loading />;
   }
 
@@ -37,7 +37,7 @@ const Dashboard: React.FC = () => {
       <TopNavigation />
       <div className="flex-1 flex">
         <LeftSection />
-        <MainSection />
+        <MainSection workspace={currentWorkspace} />
       </div>
     </div>
   );

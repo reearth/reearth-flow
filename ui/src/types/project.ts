@@ -1,10 +1,30 @@
+import { ApiResponse } from "./api";
 import { Workflow } from "./workflow";
 
 export type Project = {
   id: string;
+  createdAt: Date;
+  updatedAt: Date;
   name: string;
-  description?: string;
-  workflow: Workflow | undefined;
-  createdAt: string;
-  updatedAt?: string;
+  description: string;
+  workspaceId: string;
+  workflow?: Workflow;
+  // workspace: Workspace;
 };
+
+export type GetProjects = {
+  projects?: Project[];
+  isLoading: boolean;
+} & ApiResponse;
+
+export type CreateProject = {
+  project?: Project;
+} & ApiResponse;
+
+export type UpdateProject = {
+  project?: Project;
+} & ApiResponse;
+
+export type DeleteProject = {
+  projectId?: string;
+} & ApiResponse;

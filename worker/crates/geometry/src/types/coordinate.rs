@@ -31,6 +31,16 @@ impl<T: CoordNum, Z: CoordNum> Coordinate<T, Z> {
     pub fn new__(x: T, y: T, z: Z) -> Self {
         Self { x, y, z }
     }
+
+    #[inline]
+    pub fn is_2d(&self) -> bool {
+        self.z.to_f64().is_none()
+    }
+
+    #[inline]
+    pub fn is_3d(&self) -> bool {
+        !self.is_2d()
+    }
 }
 
 pub type Coordinate2D<T> = Coordinate<T, NoValue>;
@@ -118,11 +128,8 @@ impl<T: CoordNum, Z: CoordNum> Coordinate<T, Z> {
     pub fn x_y(&self) -> (T, T) {
         (self.x, self.y)
     }
-}
 
-impl<T: CoordNum> Coordinate<T, T> {
-    #[inline]
-    pub fn x_y_z(&self) -> (T, T, T) {
+    pub fn x_y_z(&self) -> (T, T, Z) {
         (self.x, self.y, self.z)
     }
 }
