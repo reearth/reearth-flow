@@ -1,0 +1,35 @@
+fragment GetWorkspace on Workspace {
+  id
+  name
+  personal
+}
+
+mutation CreateWorkspace($input: CreateWorkspaceInput!) {
+  createWorkspace(input: $input) {
+    workspace {
+      ...GetWorkspace
+    }
+  }
+}
+
+query GetWorkspaces {
+  me {
+    workspaces {
+      ...GetWorkspace
+    }
+  }
+}
+
+mutation UpdateWorkspace($input: UpdateWorkspaceInput!) {
+  updateWorkspace(input: $input) {
+    workspace {
+      ...GetWorkspace
+    }
+  }
+}
+
+mutation DeleteWorkspace($input: DeleteWorkspaceInput!) {
+  deleteWorkspace(input: $input) {
+    workspaceId
+  }
+}
