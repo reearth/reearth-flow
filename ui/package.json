@@ -15,9 +15,9 @@
     "type": "tsc",
     "clean": "del coverage dist node_modules/.cache",
     "test": "vitest",
-    "lint": "eslint . --ext ts,tsx",
+    "lint": "eslint . --ext ts,tsx,graphql",
     "eslint-debug": "eslint --debug",
-    "format": "eslint . --ext ts,tsx --fix",
+    "format": "eslint . --ext ts,tsx,graphql --fix",
     "gql": "graphql-codegen",
     "gql:watch": "graphql-codegen --watch"
   },
@@ -78,6 +78,7 @@
     "@graphql-codegen/typescript": "4.0.7",
     "@graphql-codegen/typescript-graphql-request": "6.2.0",
     "@graphql-codegen/typescript-operations": "4.2.1",
+    "@graphql-eslint/eslint-plugin": "3.20.1",
     "@parcel/watcher": "2.4.1",
     "@storybook/addon-essentials": "8.0.10",
     "@storybook/addon-interactions": "8.0.10",
@@ -115,5 +116,8 @@
     "vite-plugin-cesium": "1.2.22",
     "vitest": "1.6.0"
   },
-  "packageManager": "yarn@4.2.1"
+  "packageManager": "yarn@4.2.1",
+  "graphql": {
+    "schema": "../api/gql/*.graphql"
+  }
 }

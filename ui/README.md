@@ -1,9 +1,11 @@
 # Re:Earth Flow Web
+
 Frontend to build and setup workflows to calculate and convert various types of data through an easy to use UI.
 
 ## Development
 
 ### Main libraries & services
+
 - React 18
 - TypeScript 5
 - Vite 5
@@ -19,14 +21,15 @@ yarn start
 // or
 yarn storybook
 ```
+
 ## License
 
 Licensed under either (at your discretion):
 
 - Apache License, Version 2.0
-   ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+   ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
 - MIT license
-   ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+   ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 ## Contribution
 
