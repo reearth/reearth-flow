@@ -38,19 +38,19 @@ export const useQueries = () => {
     },
   });
 
-  const useGetWorkspacesQuery = useQuery({
-    queryKey: [WorkspaceQueryKeys.GetWorkspaces],
-    queryFn: () => graphQLContext?.GetWorkspaces(),
-    select: data => data?.me?.workspaces.map(w => createNewWorkspaceObject(w)),
-    staleTime: Infinity,
-  });
+  const useGetWorkspacesQuery = () =>
+    useQuery({
+      queryKey: [WorkspaceQueryKeys.GetWorkspaces],
+      queryFn: () => graphQLContext?.GetWorkspaces(),
+      select: data => data?.me?.workspaces.map(w => createNewWorkspaceObject(w)),
+      staleTime: Infinity,
+    });
 
   const useGetWorkspaceByIdQuery = (workspaceId: string) =>
     useQuery({
       queryKey: [WorkspaceQueryKeys.GetWorkspace, workspaceId],
       queryFn: () => graphQLContext?.GetWorkspaceById({ workspaceId }),
-      select: data =>
-        data?.node?.__typename === "Workspace" ? createNewWorkspaceObject(data.node) : undefined,
+      select: data => (data?.node?.__typename === "Workspace" ? data.node : undefined),
       staleTime: Infinity,
     });
 
