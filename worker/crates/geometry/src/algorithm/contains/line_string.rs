@@ -6,7 +6,12 @@ use crate::types::coordnum::CoordNum;
 use crate::types::line::Line;
 use crate::types::line_string::LineString;
 use crate::types::multi_line_string::MultiLineString;
+use crate::types::multi_point::MultiPoint;
+use crate::types::multi_polygon::MultiPolygon;
 use crate::types::point::Point;
+use crate::types::polygon::Polygon;
+use crate::types::rect::Rect;
+use crate::types::triangle::Triangle;
 
 // ┌────────────────────────────────┐
 // │ Implementations for LineString │
@@ -133,3 +138,7 @@ where
         self.iter().any(|ls| ls.contains(rhs))
     }
 }
+
+impl_contains_from_relate!(LineString<T, Z>, [Polygon<T, Z>, MultiPoint<T, Z>, MultiLineString<T, Z>, MultiPolygon<T, Z>, Rect<T, Z>, Triangle<T, Z>]);
+
+impl_contains_from_relate!(MultiLineString<T, Z>, [Line<T, Z>, LineString<T, Z>, Polygon<T, Z>, MultiPoint<T, Z>, MultiLineString<T, Z>, MultiPolygon<T, Z>, Rect<T, Z>, Triangle<T, Z>]);

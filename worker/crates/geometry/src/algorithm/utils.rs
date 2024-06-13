@@ -95,7 +95,7 @@ pub fn partial_min<T: PartialOrd>(a: T, b: T) -> T {
 }
 
 #[inline]
-pub fn lex_cmp<T: CoordNum>(p: &Coordinate<T>, q: &Coordinate<T>) -> Ordering {
+pub fn lex_cmp<T: CoordNum, Z: CoordNum>(p: &Coordinate<T, Z>, q: &Coordinate<T, Z>) -> Ordering {
     p.x.partial_cmp(&q.x)
         .unwrap()
         .then(p.y.partial_cmp(&q.y).unwrap())
@@ -106,7 +106,7 @@ pub fn lex_cmp<T: CoordNum>(p: &Coordinate<T>, q: &Coordinate<T>) -> Ordering {
 ///
 /// Should only be called on a non-empty slice with no `nan`
 /// coordinates.
-pub fn least_index<T: CoordNum>(pts: &[Coordinate<T>]) -> usize {
+pub fn least_index<T: CoordNum, Z: CoordNum>(pts: &[Coordinate<T, Z>]) -> usize {
     pts.iter()
         .enumerate()
         .min_by(|(_, p), (_, q)| lex_cmp(p, q))
@@ -119,7 +119,9 @@ pub fn least_index<T: CoordNum>(pts: &[Coordinate<T>]) -> usize {
 ///
 /// Should only be called on a non-empty slice with no `nan`
 /// coordinates.
-pub fn least_and_greatest_index<T: CoordNum>(pts: &[Coordinate<T>]) -> (usize, usize) {
+pub fn least_and_greatest_index<T: CoordNum, Z: CoordNum>(
+    pts: &[Coordinate<T, Z>],
+) -> (usize, usize) {
     assert_ne!(pts.len(), 0);
     let (min, max) = pts
         .iter()

@@ -9,10 +9,15 @@ pub mod contains;
 pub mod coordinate_position;
 pub mod coords_iter;
 pub mod dimensions;
+pub mod geometry_cow;
 pub mod intersects;
 pub mod kernels;
 pub mod line_intersection;
+pub mod relate;
 pub mod utils;
+pub mod winding_order;
+
+pub use relate::Relate;
 
 pub trait GeoFloat:
     GeoNum + num_traits::Float + num_traits::Signed + num_traits::Bounded + float_next_after::NextAfter

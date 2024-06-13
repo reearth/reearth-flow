@@ -7,6 +7,7 @@ use crate::types::{
 
 use super::{
     coords_iter::CoordsIter,
+    geometry_cow::GeometryCow,
     kernels::{Orientation, RobustKernel},
     CoordNum, GeoNum,
 };
@@ -30,6 +31,14 @@ pub trait HasDimensions {
     fn dimensions(&self) -> Dimensions;
 
     fn boundary_dimensions(&self) -> Dimensions;
+}
+
+impl<T: GeoNum, Z: GeoNum> HasDimensions for GeometryCow<'_, T, Z> {
+    crate::geometry_cow_delegate_impl! {
+        fn is_empty(&self) -> bool;
+        fn dimensions(&self) -> Dimensions;
+        fn boundary_dimensions(&self) -> Dimensions;
+    }
 }
 
 impl<T: GeoNum, Z: GeoNum> HasDimensions for Vec<Geometry<T, Z>> {
