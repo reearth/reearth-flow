@@ -31,7 +31,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   const t = useT();
   const [currentProject, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
-  const { useGetWorkspaceProjects: useGetWorkspaceProjects, deleteProject } = useProject();
+  const { useGetWorkspaceProjects, deleteProject } = useProject();
   const [, setDialogType] = useDialogType();
   const { projects } = useGetWorkspaceProjects(workspace.id);
 
