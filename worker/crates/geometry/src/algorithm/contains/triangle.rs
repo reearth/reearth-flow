@@ -3,7 +3,11 @@ use crate::{
         kernels::{Orientation, RobustKernel},
         GeoNum,
     },
-    types::{coordinate::Coordinate, point::Point, triangle::Triangle},
+    types::{
+        coordinate::Coordinate, line::Line, line_string::LineString,
+        multi_line_string::MultiLineString, multi_point::MultiPoint, multi_polygon::MultiPolygon,
+        point::Point, polygon::Polygon, rect::Rect, triangle::Triangle,
+    },
 };
 
 use super::Contains;
@@ -31,3 +35,5 @@ where
         self.contains(&point.0)
     }
 }
+
+impl_contains_from_relate!(Triangle<T, Z>, [Line<T, Z>, LineString<T, Z>, Polygon<T, Z>, MultiPoint<T, Z>, MultiLineString<T, Z>, MultiPolygon<T, Z>, Rect<T, Z>, Triangle<T, Z>]);

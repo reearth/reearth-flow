@@ -20,7 +20,7 @@ pub type LineString2D<T> = LineString<T, NoValue>;
 pub type LineString3D<T> = LineString<T, T>;
 
 #[derive(Debug)]
-pub struct PointsIter<'a, T, Z = NoValue>(::std::slice::Iter<'a, Coordinate<T, Z>>)
+pub struct PointsIter<'a, T, Z>(::std::slice::Iter<'a, Coordinate<T, Z>>)
 where
     T: CoordNum + 'a,
     Z: CoordNum + 'a;
