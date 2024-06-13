@@ -30,4 +30,17 @@ module.exports = {
     ],
     "@tanstack/query/exhaustive-deps": 0,
   },
+  overrides: [
+    {
+      files: ["*.graphql"],
+      parser: "@graphql-eslint/eslint-plugin",
+      plugins: ["@graphql-eslint"],
+      extends: "plugin:@graphql-eslint/operations-recommended",
+    },
+  ],
+  parserOptions: {
+    skipGraphQLConfig: true,
+    schema: "../api/gql/*.graphql",
+    operations: "src/lib/gql/**/*.graphql",
+  },
 };
