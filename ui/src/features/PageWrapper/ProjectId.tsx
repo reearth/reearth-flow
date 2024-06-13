@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 import { Loading } from "@flow/components";
 import { useProject } from "@flow/lib/gql";
-import { useCurrentProject } from "@flow/stores";
+import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 
 import NotFoundPage from "../NotFoundPage";
 
@@ -12,6 +12,7 @@ type Props = {
 };
 
 const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
+  const [currentWorkspace] = useCurrentWorkspace();
   const [, setCurrentProject] = useCurrentProject();
 
   const { projectId }: { projectId: string } = useParams({
@@ -24,13 +25,22 @@ const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
   useEffect(() => {
     if (!project) return;
 
+    if (project.workspaceId != currentWorkspace?.id) return;
+
     setCurrentProject(project);
     return;
-  }, [project, setCurrentProject]);
+  }, [project, setCurrentProject, currentWorkspace]);
 
   if (isLoading || !project) return <Loading />;
 
   if (!project) return <NotFoundPage message={`Project with id: "${projectId}" not found.`} />;
+
+  if (project.workspaceId != currentWorkspace?.id)
+    return (
+      <NotFoundPage
+        message={`Project : "${project.name}" not found in the workspace "${currentWorkspace?.name}"`}
+      />
+    );
 
   return <>{children}</>;
 };
