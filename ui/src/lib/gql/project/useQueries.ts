@@ -40,13 +40,13 @@ export const useQueries = () => {
     onSuccess: project =>
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
-        queryKey: [ProjectQueryKeys.GetProjects, project?.workspaceId],
+        queryKey: [ProjectQueryKeys.GetWorkspaceProjects, project?.workspaceId],
       }),
   });
 
   const useGetProjectsQuery = (workspaceId: string) =>
     useQuery({
-      queryKey: [ProjectQueryKeys.GetProjects, workspaceId],
+      queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
       queryFn: () => graphQLContext?.GetProjects({ workspaceId, first: 20 }),
       select: data => {
         if (!data) return {};
@@ -61,6 +61,14 @@ export const useQueries = () => {
       },
     });
 
+  const useGetProjectByIdQuery = (projectId: string) =>
+    useQuery({
+      queryKey: [ProjectQueryKeys.GetProject, projectId],
+      queryFn: () => graphQLContext?.GetProjectById({ projectId }),
+      select: data =>
+        data?.node?.__typename === "Project" ? createNewProjectObject(data.node) : undefined,
+    });
+
   const updateProjectMutation = useMutation({
     mutationFn: async (input: UpdateProjectInput) => {
       const data = await graphQLContext?.UpdateProject({ input });
@@ -72,7 +80,7 @@ export const useQueries = () => {
     onSuccess: project =>
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
-        queryKey: [ProjectQueryKeys.GetProjects, project?.workspaceId],
+        queryKey: [ProjectQueryKeys.GetWorkspaceProjects, project?.workspaceId],
       }),
   });
 
@@ -86,13 +94,14 @@ export const useQueries = () => {
     },
     onSuccess: ({ workspaceId }) =>
       queryClient.invalidateQueries({
-        queryKey: [ProjectQueryKeys.GetProjects, workspaceId],
+        queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
       }),
   });
 
   return {
     createProjectMutation,
     useGetProjectsQuery,
+    useGetProjectByIdQuery,
     deleteProjectMutation,
     updateProjectMutation,
   };

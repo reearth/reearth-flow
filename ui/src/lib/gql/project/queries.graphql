@@ -31,6 +31,12 @@ query GetProjects($workspaceId: ID!, $first: Int!) {
   }
 }
 
+query GetProjectById($projectId: ID!) {
+  node(id: $projectId, type: PROJECT) {
+    ...Project
+  }
+}
+
 mutation UpdateProject($input: UpdateProjectInput!) {
   updateProject(input: $input) {
     project {

@@ -12,8 +12,13 @@ export type Project = {
   // workspace: Workspace;
 };
 
-export type GetProjects = {
+export type GetWorkspaceProjects = {
   projects?: Project[];
+  isLoading: boolean;
+} & ApiResponse;
+
+export type GetProject = {
+  project?: Project;
   isLoading: boolean;
 } & ApiResponse;
 
