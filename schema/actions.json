@@ -788,6 +788,39 @@
       ]
     },
     {
+      "name": "GeometryExtractor",
+      "type": "processor",
+      "description": "Extracts geometry from a feature and adds it as an attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "outputAttribute"
+        ],
+        "title": "GeometryExtractor",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "GeometryFilter",
       "type": "processor",
       "description": "Filter geometry by type",
@@ -1052,24 +1085,7 @@
       "name": "TwoDimentionForcer",
       "type": "processor",
       "description": "Forces a geometry to be two dimentional.",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        },
-        "properties": {
-          "outputAttribute": {
-            "$ref": "#/definitions/Attribute"
-          }
-        },
-        "required": [
-          "outputAttribute"
-        ],
-        "title": "TwoDimentionForcer",
-        "type": "object"
-      },
+      "parameter": null,
       "builtin": true,
       "inputPorts": [
         "default"

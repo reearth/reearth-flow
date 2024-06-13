@@ -27,6 +27,10 @@ pub(super) enum GeometryProcessorError {
     TwoDimentionForcerFactory(String),
     #[error("TwoDimentionForcer error: {0}")]
     TwoDimentionForcer(String),
+    #[error("GeometryExtractor Factory error: {0}")]
+    GeometryExtractorFactory(String),
+    #[error("GeometryExtractor error: {0}")]
+    GeometryExtractor(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

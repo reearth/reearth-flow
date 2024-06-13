@@ -1,5 +1,6 @@
 pub mod coordinate_system_setter;
 pub mod errors;
+pub mod extractor;
 pub mod extruder;
 pub mod filter;
 pub mod mapping;

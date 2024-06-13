@@ -8,12 +8,8 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, GeometryValue};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use reearth_flow_types::GeometryValue;
 use serde_json::Value;
-
-use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct TwoDimentionForcerFactory;
@@ -28,7 +24,7 @@ impl ProcessorFactory for TwoDimentionForcerFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(TwoDimentionForcer))
+        None
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -48,42 +44,20 @@ impl ProcessorFactory for TwoDimentionForcerFactory {
         _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
-        with: Option<HashMap<String, Value>>,
+        _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let processor: TwoDimentionForcer = if let Some(with) = with {
-            let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::TwoDimentionForcerFactory(format!(
-                    "Failed to serialize with: {}",
-                    e
-                ))
-            })?;
-            serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::TwoDimentionForcerFactory(format!(
-                    "Failed to deserialize with: {}",
-                    e
-                ))
-            })?
-        } else {
-            return Err(GeometryProcessorError::TwoDimentionForcerFactory(
-                "Missing required parameter `with`".to_string(),
-            )
-            .into());
-        };
-        Ok(Box::new(processor))
+        Ok(Box::new(TwoDimentionForcer))
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct TwoDimentionForcer {
-    output_attribute: Attribute,
-}
+#[derive(Debug, Clone)]
+pub struct TwoDimentionForcer;
 
 impl Processor for TwoDimentionForcer {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
-        5
+        2
     }
 
     fn process(
