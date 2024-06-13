@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { runs as mockRuns } from "@flow/mock_data/runsData";
+import { useCurrentWorkspace } from "@flow/stores";
 import { Run } from "@flow/types";
 
 import { TopNavigation } from "../TopNavigation";
@@ -20,13 +21,13 @@ const Runs: React.FC = () => {
   const t = useT();
   const { tab } = useParams({ strict: false });
   const navigate = useNavigate();
-  const { workspaceId } = useParams({ strict: false });
+  const [currentWorkspace] = useCurrentWorkspace();
 
   const [selectedRun, selectRun] = useState<Run>();
 
   const handleTabChange = (tab: Tab) => {
     selectRun(undefined);
-    navigate({ to: `/workspace/${workspaceId}/runs/${tab}` });
+    navigate({ to: `/workspace/${currentWorkspace?.id}/runs/${tab}` });
   };
 
   const runs = mockRuns.filter(run => {
