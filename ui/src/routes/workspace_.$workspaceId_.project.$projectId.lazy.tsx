@@ -1,21 +1,14 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { ReactFlowProvider } from "reactflow";
 
-import Canvas from "@flow/features/Editor";
-import { useCurrentProject } from "@flow/stores";
+import { ProjectIdWrapper, WorkspaceIdWrapper } from "@flow/features/PageWrapper";
+import { Editor } from "@flow/pages";
 
 export const Route = createLazyFileRoute("/workspace/$workspaceId/project/$projectId")({
-  component: Editor,
+  component: () => (
+    <WorkspaceIdWrapper>
+      <ProjectIdWrapper>
+        <Editor />
+      </ProjectIdWrapper>
+    </WorkspaceIdWrapper>
+  ),
 });
-
-function Editor() {
-  const [currentProject] = useCurrentProject();
-
-  return (
-    <div className="flex flex-col bg-zinc-900 text-zinc-300 h-screen">
-      <ReactFlowProvider>
-        <Canvas workflow={currentProject?.workflow} />
-      </ReactFlowProvider>
-    </div>
-  );
-}

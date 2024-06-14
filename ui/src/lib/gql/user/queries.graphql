@@ -1,0 +1,8 @@
+query GetMe {
+  me {
+    id
+    name
+    email
+    myWorkspaceId
+  }
+}

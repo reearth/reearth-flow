@@ -1,7 +1,7 @@
 import { ApiResponse } from "./api";
 
 export type GetMe = {
-  me: User | undefined | null;
+  me: Me | undefined;
   isLoading: boolean;
 } & ApiResponse;
 

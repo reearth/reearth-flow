@@ -1,5 +1,9 @@
 module.exports = {
-  extends: ["reearth", "plugin:storybook/recommended"],
+  extends: [
+    "reearth",
+    "plugin:storybook/recommended",
+    "plugin:@tanstack/eslint-plugin-query/recommended",
+  ],
   root: true,
   env: { browser: true, es2020: true },
   ignorePatterns: ["dist", ".eslintrc.cjs"],
@@ -24,6 +28,7 @@ module.exports = {
         },
       },
     ],
+    "@tanstack/query/exhaustive-deps": 0,
   },
   overrides: [
     {
@@ -31,6 +36,24 @@ module.exports = {
       parser: "@graphql-eslint/eslint-plugin",
       plugins: ["@graphql-eslint"],
       extends: "plugin:@graphql-eslint/operations-recommended",
+      rules: {
+        "@graphql-eslint/naming-convention": [
+          "error",
+          {
+            VariableDefinition: "camelCase",
+            OperationDefinition: {
+              style: "PascalCase",
+              forbiddenPrefixes: ["Query", "Mutation", "Subscription"],
+              forbiddenSuffixes: ["Query", "Mutation", "Subscription"],
+            },
+            FragmentDefinition: {
+              style: "PascalCase",
+              forbiddenPrefixes: ["Fragment"],
+              forbiddenSuffixes: ["Fragment"],
+            },
+          },
+        ],
+      },
     },
   ],
   parserOptions: {

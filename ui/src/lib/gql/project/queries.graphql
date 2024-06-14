@@ -1,10 +1,9 @@
 fragment Project on Project {
-  name
   id
+  name
   description
   createdAt
   updatedAt
-  isArchived
   workspaceId
 }
 
@@ -28,6 +27,13 @@ query GetProjects($workspaceId: ID!, $first: Int!) {
       hasNextPage
       hasPreviousPage
     }
+  }
+}
+
+query GetProjectById($projectId: ID!) {
+  node(id: $projectId, type: PROJECT) {
+    __typename
+    ...Project
   }
 }
 
