@@ -1,24 +1,21 @@
 name: build-api
-on:
-  workflow_dispatch:
-    inputs:
-      sha_short:
-        description: 'sha_short'
-        required: true
-      new_tag:
-        description: 'new_tag'
-        required: true
-      new_tag_short:
-        description: 'new_tag_short'
-        required: true
-      name:
-        description: 'name'
-        required: true
-      sha:
-        description: "sha"
-        required: true
-  repository_dispatch:
-      types: [build-api]
+description: Builds the Backend API and Its Docker Image
+inputs:
+  sha_short:
+    description: 'sha_short'
+    required: true
+  new_tag:
+    description: 'new_tag'
+    required: true
+  new_tag_short:
+    description: 'new_tag_short'
+    required: true
+  name:
+    description: 'name'
+    required: true
+  sha:
+    description: "sha"
+    required: true
 jobs:
   build-api:
     name: Build and release api
@@ -131,9 +128,30 @@ jobs:
           tags: ${{ steps.options.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Invoke ci-deploy-api-nightly workflow
-        uses: benc-uk/workflow-dispatch@v1
-        if: github.event.inputs.name == 'nightly'
-        with:
-          workflow: deploy-api-nightly
-          token: ${{ steps.app-token.outputs.token }}
+      - name: Deploy to nightly
+        if: ${{ github.event.inputs.name == 'nightly' }}
+        env:
+          IMAGE: reearth/reearth-flow-api:nightly
+          IMAGE_GCP: us.gcr.io/reearth-oss/reearth-flow-api:nightly
+          GCP_REGION: us-central1
+          CLOUD_RUN_SERVICE: reearth-flow-api
+        steps:
+          - uses: google-github-actions/auth@v0
+            with:
+              credentials_json: ${{ secrets.GCP_SA_KEY }}
+          - name: Set up Cloud SDK
+            uses: google-github-actions/setup-gcloud@v0
+          - name: Configure docker
+            run: gcloud auth configure-docker --quiet
+          - name: docker push
+            run: |
+              docker pull $IMAGE
+              docker tag $IMAGE $IMAGE_GCP
+              docker push $IMAGE_GCP
+          - name: Deploy to Cloud Run
+            run: |
+              gcloud run deploy $CLOUD_RUN_SERVICE \
+                --image $IMAGE_GCP \
+                --region $GCP_REGION \
+                --platform managed \
+                --quiet

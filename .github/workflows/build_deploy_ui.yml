@@ -1,24 +1,22 @@
 name: build-ui
-on:
-  workflow_dispatch:
-    inputs:
-      sha_short:
-        description: 'sha_short'
-        required: true
-      new_tag:
-        description: 'new_tag'
-        required: true
-      new_tag_short:
-        description: 'new_tag_short'
-        required: true
-      name:
-        description: 'name'
-        required: true
-      sha:
-        description: "sha"
-        required: true
-  repository_dispatch:
-      types: [build-ui]
+description: Builds the UI Editor and Its Docker Image
+inputs:
+  sha_short:
+    description: 'sha_short'
+    required: true
+  new_tag:
+    description: 'new_tag'
+    required: true
+  new_tag_short:
+    description: 'new_tag_short'
+    required: true
+  name:
+    description: 'name'
+    required: true
+  sha:
+    description: "sha"
+    required: true
+
 jobs:
   build-ui:
     name: Build
@@ -56,11 +54,53 @@ jobs:
         with:
           name: flow-ui
           path: ui/flow-ui.tar.gz
-  
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [build-ui]
+    if: ${{ github.event.inputs.name != 'blank' || github.event.inputs.new_tag != 'blank' }}
+    env:
+      ARTIFACT: flow-ui_${{ github.event.inputs.name && github.event.inputs.name != 'blank' && github.event.inputs.name || github.event.inputs.new_tag }}.tar.gz
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: flow-ui
+      - name: Rename artifact
+        run: mv flow-ui.tar.gz $ARTIFACT
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: ${{ env.ARTIFACT }}
+          artifactContentType: application/gzip
+          commit: ${{ github.event.inputs.sha }}
+          name: ${{ github.event.inputs.name && github.event.inputs.name != 'blank' && github.event.inputs.name || github.event.inputs.new_tag }}
+          tag: ${{ github.event.inputs.name && github.event.inputs.name != 'blank' && github.event.inputs.name || github.event.inputs.new_tag }}
+          body: ${{ github.event.inputs.sha }}
+          prerelease: ${{ github.event.inputs.name && github.event.inputs.name != 'blank' }}
+      - name: Download latest changelog
+        if: ${{ github.event.inputs.new_tag != 'blank' }}
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: release.yml
+          name: changelog-${{ github.event.inputs.new_tag }}
+      - name: Update GitHub release
+        if: ${{ github.event.inputs.new_tag != 'blank' }}
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: ${{ env.ARTIFACT }}
+          artifactContentType: application/gzip
+          commit: ${{ github.event.inputs.sha }}
+          name: ${{ github.event.inputs.new_tag }}
+          tag: ${{ github.event.inputs.new_tag }}
+          bodyFile: CHANGELOG_latest.md
+
   build-docker-image:
     name: Build and push Docker image
     runs-on: ubuntu-latest
-    needs: [release-nightly]
+    needs: [release]
     if: ${{ github.event.inputs.name != 'blank' || github.event.inputs.new_tag != 'blank' }}
     env:
       IMAGE_NAME: reearth/reearth-flow-ui
@@ -123,52 +163,30 @@ jobs:
           tags: ${{ steps.options.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Invoke deploy-ui-nightly workflow
-        uses: benc-uk/workflow-dispatch@v1
-        if: github.event.inputs.name == 'nightly'
-        with:
-          workflow: deploy-ui-nightly
-          token: ${{ secrets.GPT }}
-          inputs: '{"image_tag": "${{ github.event.inputs.name }}"}'
-
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    needs: [build-ui]
-    if: ${{ github.event.inputs.name != 'blank' || github.event.inputs.new_tag != 'blank' }}
-    env:
-      ARTIFACT: flow-ui_${{ github.event.inputs.name && github.event.inputs.name != 'blank' && github.event.inputs.name || github.event.inputs.new_tag }}.tar.gz
-    steps:
-      - uses: actions/download-artifact@v2
-        with:
-          name: flow-ui
-      - name: Rename artifact
-        run: mv flow-ui.tar.gz $ARTIFACT
-      - name: Release
-        uses: ncipollo/release-action@v1
-        with:
-          allowUpdates: true
-          artifacts: ${{ env.ARTIFACT }}
-          artifactContentType: application/gzip
-          commit: ${{ github.event.inputs.sha }}
-          name: ${{ github.event.inputs.name && github.event.inputs.name != 'blank' && github.event.inputs.name || github.event.inputs.new_tag }}
-          tag: ${{ github.event.inputs.name && github.event.inputs.name != 'blank' && github.event.inputs.name || github.event.inputs.new_tag }}
-          body: ${{ github.event.inputs.sha }}
-          prerelease: ${{ github.event.inputs.name && github.event.inputs.name != 'blank' }}
-      - name: Download latest changelog
-        if: ${{ github.event.inputs.new_tag != 'blank' }}
-        uses: dawidd6/action-download-artifact@v2
-        with:
-          workflow: release.yml
-          name: changelog-${{ github.event.inputs.new_tag }}
-      - name: Update GitHub release
-        if: ${{ github.event.inputs.new_tag != 'blank' }}
-        uses: ncipollo/release-action@v1
-        with:
-          allowUpdates: true
-          artifacts: ${{ env.ARTIFACT }}
-          artifactContentType: application/gzip
-          commit: ${{ github.event.inputs.sha }}
-          name: ${{ github.event.inputs.new_tag }}
-          tag: ${{ github.event.inputs.new_tag }}
-          bodyFile: CHANGELOG_latest.md
+      - name: Deploy to nightly
+        if: ${{ github.event.inputs.name == 'nightly' }}
+        env:
+          IMAGE: reearth/reearth-flow-ui:nightly
+          IMAGE_GCP: us.gcr.io/reearth-oss/reearth-flow-ui:nightly
+          GCP_REGION: us-central1
+          CLOUD_RUN_SERVICE: reearth-flow-ui
+        steps:
+          - uses: google-github-actions/auth@v0
+            with:
+              credentials_json: ${{ secrets.GCP_SA_KEY }}
+          - name: Set up Cloud SDK
+            uses: google-github-actions/setup-gcloud@v0
+          - name: Configure docker
+            run: gcloud auth configure-docker --quiet
+          - name: docker push
+            run: |
+              docker pull $IMAGE
+              docker tag $IMAGE $IMAGE_GCP
+              docker push $IMAGE_GCP
+          - name: Deploy to Cloud Run
+            run: |
+              gcloud run deploy $CLOUD_RUN_SERVICE \
+                --image $IMAGE_GCP \
+                --region $GCP_REGION \
+                --platform managed \
+                --quiet

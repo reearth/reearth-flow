@@ -100,17 +100,16 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{!failure() && needs.ci-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/'))}}
     steps:
-      - name: Dispatch ui Build
-        uses: benc-uk/workflow-dispatch@v1
+      - uses: actions/checkout@v4
+
+      - name: Build UI
+        uses: ./.github/workflows/build_ui.yml
         with:
-          workflow: build_ui.yml
-          inputs: '{
-            "sha_short": "${{ needs.ci-collect-info.outputs.sha_short }}", 
-            "new_tag": "${{ needs.ci-collect-info.outputs.new_tag }}", 
-            "new_tag_short": "${{ needs.ci-collect-info.outputs.new_tag_short }}", 
-            "name": "${{ needs.ci-collect-info.outputs.name }}",
-            "sha": "${{ github.sha }}"
-            }'
+          sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+          new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+          new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+          name: ${{ needs.ci-collect-info.outputs.name }}
+          sha: ${{ github.sha }}
   build-api:
     needs: 
       - ci
@@ -119,14 +118,13 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{!failure() && needs.ci-api.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/'))}}
     steps:
-      - name: Dispatch api Build
-        uses: benc-uk/workflow-dispatch@v1
+      - uses: actions/checkout@v4
+
+      - name: Build API
+        uses: ./.github/workflows/build_api.yml
         with:
-          workflow: build_api.yml
-          inputs: '{
-            "sha_short": "${{ needs.ci-collect-info.outputs.sha_short }}", 
-            "new_tag": "${{ needs.ci-collect-info.outputs.new_tag }}", 
-            "new_tag_short": "${{ needs.ci-collect-info.outputs.new_tag_short }}", 
-            "name": "${{ needs.ci-collect-info.outputs.name }}",
-            "sha": "${{ github.sha }}"
-            }'
+          sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+          new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+          new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+          name: ${{ needs.ci-collect-info.outputs.name }}
+          sha: ${{ github.sha }}
