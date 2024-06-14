@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.name != 'blank' || github.event.inputs.new_tag != 'blank' }}
     env:
-      IMAGE_NAME: reearth/reearth-flow
+      IMAGE_NAME: reearth/reearth-flow-api
     defaults:
       run:
         working-directory: api

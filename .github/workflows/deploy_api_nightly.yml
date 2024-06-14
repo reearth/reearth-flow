@@ -5,8 +5,8 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 env:
-  IMAGE: reearth/reearth-flow:nightly
-  IMAGE_GCP: us.gcr.io/reearth-oss/reearth-flow:nightly
+  IMAGE: reearth/reearth-flow-api:nightly
+  IMAGE_GCP: us.gcr.io/reearth-oss/reearth-flow-api:nightly
   GCP_REGION: us-central1
 jobs:
   deploy_test:
