@@ -19,6 +19,7 @@ approx = "0.5.1"
 bytes.workspace = true
 float_next_after.workspace = true
 num-traits = "0.2.19"
+parking_lot.workspace = true
 reearth-flow-common.workspace = true
 robust.workspace = true
 rstar = "0.12.0"

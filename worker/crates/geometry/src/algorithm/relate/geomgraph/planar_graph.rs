@@ -1,3 +1,5 @@
+use parking_lot::RwLock;
+
 use super::{
     node_map::{NodeFactory, NodeMap},
     CoordNode, Edge, Label,
@@ -7,8 +9,8 @@ use crate::{
     types::coordinate::Coordinate,
 };
 
-use std::cell::RefCell;
 use std::rc::Rc;
+use std::{cell::RefCell, sync::Arc};
 
 pub(crate) struct PlanarGraphNode;
 
@@ -26,11 +28,11 @@ where
 
 pub(crate) struct PlanarGraph<T: GeoFloat, Z: GeoFloat> {
     pub(crate) nodes: NodeMap<T, Z, PlanarGraphNode>,
-    edges: Vec<Rc<RefCell<Edge<T, Z>>>>,
+    edges: Vec<Arc<RwLock<Edge<T, Z>>>>,
 }
 
 impl<T: GeoFloat, Z: GeoFloat> PlanarGraph<T, Z> {
-    pub fn edges(&self) -> &[Rc<RefCell<Edge<T, Z>>>] {
+    pub fn edges(&self) -> &[Arc<RwLock<Edge<T, Z>>>] {
         &self.edges
     }
 
@@ -50,7 +52,7 @@ impl<T: GeoFloat, Z: GeoFloat> PlanarGraph<T, Z> {
     }
 
     pub fn insert_edge(&mut self, edge: Edge<T, Z>) {
-        self.edges.push(Rc::new(RefCell::new(edge)));
+        self.edges.push(Arc::new(RwLock::new(edge)));
     }
 
     pub fn add_node_with_coordinate(&mut self, coord: Coordinate<T, Z>) -> &mut CoordNode<T, Z> {

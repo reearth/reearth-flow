@@ -1,9 +1,12 @@
+use parking_lot::RwLock;
+
 use crate::algorithm::GeoFloat;
 
 use super::super::Edge;
 use super::SegmentIntersector;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 
 pub(crate) trait EdgeSetIntersector<T: GeoFloat, Z: GeoFloat> {
     /// Compute all intersections between the edges within a set, recording those intersections on
@@ -14,7 +17,7 @@ pub(crate) trait EdgeSetIntersector<T: GeoFloat, Z: GeoFloat> {
     /// `segment_intersector`: the SegmentIntersector to use
     fn compute_intersections_within_set(
         &mut self,
-        edges: &[Rc<RefCell<Edge<T, Z>>>],
+        edges: &[Arc<RwLock<Edge<T, Z>>>],
         check_for_self_intersecting_edges: bool,
         segment_intersector: &mut SegmentIntersector<T, Z>,
     );
@@ -23,8 +26,8 @@ pub(crate) trait EdgeSetIntersector<T: GeoFloat, Z: GeoFloat> {
     /// the intersecting edges.
     fn compute_intersections_between_sets(
         &mut self,
-        edges0: &[Rc<RefCell<Edge<T, Z>>>],
-        edges1: &[Rc<RefCell<Edge<T, Z>>>],
+        edges0: &[Arc<RwLock<Edge<T, Z>>>],
+        edges1: &[Arc<RwLock<Edge<T, Z>>>],
         segment_intersector: &mut SegmentIntersector<T, Z>,
     );
 }

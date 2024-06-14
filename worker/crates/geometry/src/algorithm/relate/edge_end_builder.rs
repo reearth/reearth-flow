@@ -1,8 +1,8 @@
+use parking_lot::RwLock;
+use std::sync::Arc;
+
 use super::geomgraph::{Edge, EdgeEnd, EdgeIntersection};
 use crate::algorithm::GeoFloat;
-
-use std::cell::RefCell;
-use std::rc::Rc;
 
 pub(crate) struct EdgeEndBuilder<T: GeoFloat, Z: GeoFloat> {
     _marker1: std::marker::PhantomData<T>,
@@ -17,10 +17,10 @@ impl<T: GeoFloat, Z: GeoFloat> EdgeEndBuilder<T, Z> {
         }
     }
 
-    pub fn compute_ends_for_edges(&self, edges: &[Rc<RefCell<Edge<T, Z>>>]) -> Vec<EdgeEnd<T, Z>> {
+    pub fn compute_ends_for_edges(&self, edges: &[Arc<RwLock<Edge<T, Z>>>]) -> Vec<EdgeEnd<T, Z>> {
         let mut list = vec![];
         for edge in edges {
-            self.compute_ends_for_edge(&mut edge.borrow_mut(), &mut list);
+            self.compute_ends_for_edge(&mut edge.write(), &mut list);
         }
         list
     }

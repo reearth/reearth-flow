@@ -2762,6 +2762,7 @@ dependencies = [
  "nusamai-citygml",
  "nusamai-geometry",
  "nusamai-projection",
+ "parking_lot",
  "reearth-flow-common",
  "robust",
  "rstar",

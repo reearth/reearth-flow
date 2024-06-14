@@ -14,6 +14,7 @@ pub mod intersects;
 pub mod kernels;
 pub mod line_intersection;
 pub mod relate;
+pub mod sweep;
 pub mod utils;
 pub mod winding_order;
 
@@ -42,3 +43,16 @@ pub enum Closest<F: GeoFloat> {
     SinglePoint(Point<F>),
     Indeterminate,
 }
+
+macro_rules! impl_geo_num_for_float {
+    ($t: ident) => {
+        impl GeoNum for $t {
+            fn total_cmp(&self, other: &Self) -> Ordering {
+                self.total_cmp(other)
+            }
+        }
+    };
+}
+
+impl_geo_num_for_float!(f32);
+impl_geo_num_for_float!(f64);

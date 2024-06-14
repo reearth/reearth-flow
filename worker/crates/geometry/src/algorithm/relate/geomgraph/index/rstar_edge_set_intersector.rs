@@ -5,7 +5,9 @@ use crate::types::coordinate::Coordinate;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
 
+use parking_lot::RwLock;
 use rstar::RTree;
 
 pub(crate) struct RstarEdgeSetIntersector;
@@ -18,7 +20,7 @@ impl RstarEdgeSetIntersector {
 
 struct Segment<'a, T: GeoFloat + rstar::RTreeNum, Z: GeoFloat + rstar::RTreeNum> {
     i: usize,
-    edge: &'a RefCell<Edge<T, Z>>,
+    edge: &'a RwLock<Edge<T, Z>>,
     envelope: rstar::AABB<Coordinate<T, Z>>,
 }
 
@@ -27,10 +29,10 @@ where
     T: GeoFloat + rstar::RTreeNum,
     Z: GeoFloat + rstar::RTreeNum,
 {
-    fn new(i: usize, edge: &'a RefCell<Edge<T, Z>>) -> Self {
+    fn new(i: usize, edge: &'a RwLock<Edge<T, Z>>) -> Self {
         use rstar::RTreeObject;
-        let p1 = edge.borrow().coords()[i];
-        let p2 = edge.borrow().coords()[i + 1];
+        let p1 = edge.read().coords()[i];
+        let p2 = edge.read().coords()[i + 1];
         Self {
             i,
             edge,
@@ -58,21 +60,21 @@ where
 {
     fn compute_intersections_within_set(
         &mut self,
-        edges: &[Rc<RefCell<Edge<T, Z>>>],
+        edges: &[Arc<RwLock<Edge<T, Z>>>],
         check_for_self_intersecting_edges: bool,
         segment_intersector: &mut SegmentIntersector<T, Z>,
     ) {
         let segments: Vec<Segment<T, Z>> = edges
             .iter()
             .flat_map(|edge| {
-                let start_of_final_segment: usize = RefCell::borrow(edge).coords().len() - 1;
+                let start_of_final_segment: usize = edge.read().coords().len() - 1;
                 (0..start_of_final_segment).map(|segment_i| Segment::new(segment_i, edge))
             })
             .collect();
         let tree = RTree::bulk_load(segments);
 
         for (edge0, edge1) in tree.intersection_candidates_with_other_tree(&tree) {
-            if check_for_self_intersecting_edges || edge0.edge.as_ptr() != edge1.edge.as_ptr() {
+            if check_for_self_intersecting_edges || edge0.edge.data_ptr() != edge1.edge.data_ptr() {
                 segment_intersector.add_intersections(edge0.edge, edge0.i, edge1.edge, edge1.i);
             }
         }
@@ -80,14 +82,14 @@ where
 
     fn compute_intersections_between_sets(
         &mut self,
-        edges0: &[Rc<RefCell<Edge<T, Z>>>],
-        edges1: &[Rc<RefCell<Edge<T, Z>>>],
+        edges0: &[Arc<RwLock<Edge<T, Z>>>],
+        edges1: &[Arc<RwLock<Edge<T, Z>>>],
         segment_intersector: &mut SegmentIntersector<T, Z>,
     ) {
         let segments0: Vec<Segment<T, Z>> = edges0
             .iter()
             .flat_map(|edge| {
-                let start_of_final_segment: usize = RefCell::borrow(edge).coords().len() - 1;
+                let start_of_final_segment: usize = edge.read().coords().len() - 1;
                 (0..start_of_final_segment).map(|segment_i| Segment::new(segment_i, edge))
             })
             .collect();
@@ -96,7 +98,7 @@ where
         let segments1: Vec<Segment<T, Z>> = edges1
             .iter()
             .flat_map(|edge| {
-                let start_of_final_segment: usize = RefCell::borrow(edge).coords().len() - 1;
+                let start_of_final_segment: usize = edge.read().coords().len() - 1;
                 (0..start_of_final_segment).map(|segment_i| Segment::new(segment_i, edge))
             })
             .collect();
