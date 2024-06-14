@@ -13,7 +13,7 @@ type Props = {
 
 const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
   const [currentWorkspace] = useCurrentWorkspace();
-  const [, setCurrentProject] = useCurrentProject();
+  const [currentProject, setCurrentProject] = useCurrentProject();
 
   const { projectId }: { projectId: string } = useParams({
     strict: false,
@@ -25,11 +25,13 @@ const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
   useEffect(() => {
     if (!project) return;
 
-    if (project.workspaceId != currentWorkspace?.id) return;
+    if (currentWorkspace && project.workspaceId != currentWorkspace?.id) return;
+
+    if (currentProject?.id === project.id) return;
 
     setCurrentProject(project);
     return;
-  }, [project, setCurrentProject, currentWorkspace]);
+  }, [project, setCurrentProject, currentProject, currentWorkspace]);
 
   if (isLoading || !project) return <Loading />;
 
@@ -42,7 +44,7 @@ const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
       />
     );
 
-  return <>{children}</>;
+  return children;
 };
 
 export { ProjectIdWrapper };
