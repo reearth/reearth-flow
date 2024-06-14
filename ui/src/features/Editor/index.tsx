@@ -33,8 +33,6 @@ export default function Editor({ workflow }: EditorProps) {
     return { nodes: selectedNodes, edges: selectedEdges };
   }, [nodes, edges]);
 
-  console.log("selected", selected);
-
   const [hoveredDetails, setHoveredDetails] = useState<Node | Edge | undefined>();
 
   const handleNodeHover = useCallback(
