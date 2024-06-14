@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use inflector::cases::snakecase::to_snake_case;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_runtime::{
@@ -9,7 +10,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::GeometryValue;
+use reearth_flow_types::{Feature, Geometry, GeometryFeatureType, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -92,6 +93,8 @@ pub enum GeometryFilterParam {
     None,
     #[serde(rename = "multiple")]
     Multiple,
+    #[serde(rename = "featureType")]
+    FeatureType,
 }
 
 impl GeometryFilterParam {
@@ -99,14 +102,31 @@ impl GeometryFilterParam {
         match self {
             GeometryFilterParam::None => Port::new("none"),
             GeometryFilterParam::Multiple => Port::new("contains"),
+            GeometryFilterParam::FeatureType => unreachable!(),
         }
     }
 
+    fn all_feature_type_ports() -> Vec<Port> {
+        let mut result = reearth_flow_geometry::types::geometry::all_type_names()
+            .iter()
+            .map(|name| Port::new(to_snake_case(name)))
+            .collect::<Vec<Port>>();
+        result.extend(
+            GeometryFeatureType::all_type_names()
+                .iter()
+                .map(|name| Port::new(to_snake_case(name)))
+                .collect::<Vec<Port>>(),
+        );
+        result
+    }
+
     fn all_ports() -> Vec<Port> {
-        vec![
+        let mut result = vec![
             GeometryFilterParam::None.output_port(),
             GeometryFilterParam::Multiple.output_port(),
-        ]
+        ];
+        result.extend(GeometryFilterParam::all_feature_type_ports());
+        result
     }
 }
 
@@ -143,55 +163,13 @@ impl Processor for GeometryFilter {
                 None => {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
                 }
-                Some(geometry) => match &geometry.value {
-                    GeometryValue::Null => fw.send(
-                        ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()),
-                    ),
-
-                    GeometryValue::FlowGeometry3D(geometry) => match geometry {
-                        Geometry3D::MultiPolygon(_) => fw.send(ctx.new_with_feature_and_port(
-                            feature.clone(),
-                            GeometryFilterParam::Multiple.output_port(),
-                        )),
-                        Geometry3D::GeometryCollection(_) => {
-                            fw.send(ctx.new_with_feature_and_port(
-                                feature.clone(),
-                                GeometryFilterParam::Multiple.output_port(),
-                            ))
-                        }
-                        _ => fw.send(
-                            ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()),
-                        ),
-                    },
-                    GeometryValue::FlowGeometry2D(geometry) => match geometry {
-                        Geometry2D::MultiPolygon(_) => fw.send(ctx.new_with_feature_and_port(
-                            feature.clone(),
-                            GeometryFilterParam::Multiple.output_port(),
-                        )),
-                        Geometry2D::GeometryCollection(_) => {
-                            fw.send(ctx.new_with_feature_and_port(
-                                feature.clone(),
-                                GeometryFilterParam::Multiple.output_port(),
-                            ))
-                        }
-                        _ => fw.send(
-                            ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()),
-                        ),
-                    },
-                    GeometryValue::CityGmlGeometry(geometry) => {
-                        if geometry.features.len() > 1 {
-                            fw.send(ctx.new_with_feature_and_port(
-                                feature.clone(),
-                                GeometryFilterParam::Multiple.output_port(),
-                            ))
-                        } else {
-                            fw.send(ctx.new_with_feature_and_port(
-                                feature.clone(),
-                                UNFILTERED_PORT.clone(),
-                            ))
-                        }
-                    }
-                },
+                Some(geometry) => filter_multiple_geometry(&ctx, fw, feature, geometry),
+            },
+            GeometryFilterParam::FeatureType => match &feature.geometry {
+                None => {
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
+                }
+                Some(geometry) => filter_feature_type(&ctx, fw, feature, geometry),
             },
         }
         Ok(())
@@ -207,5 +185,91 @@ impl Processor for GeometryFilter {
 
     fn name(&self) -> &str {
         "GeometryFilter"
+    }
+}
+
+fn filter_multiple_geometry(
+    ctx: &ExecutorContext,
+    fw: &mut dyn ProcessorChannelForwarder,
+    feature: &Feature,
+    geometry: &Geometry,
+) {
+    match &geometry.value {
+        GeometryValue::Null => {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
+        }
+        GeometryValue::FlowGeometry3D(geometry) => match geometry {
+            Geometry3D::MultiPolygon(_) => fw.send(ctx.new_with_feature_and_port(
+                feature.clone(),
+                GeometryFilterParam::Multiple.output_port(),
+            )),
+            Geometry3D::GeometryCollection(_) => fw.send(ctx.new_with_feature_and_port(
+                feature.clone(),
+                GeometryFilterParam::Multiple.output_port(),
+            )),
+            _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone())),
+        },
+        GeometryValue::FlowGeometry2D(geometry) => match geometry {
+            Geometry2D::MultiPolygon(_) => fw.send(ctx.new_with_feature_and_port(
+                feature.clone(),
+                GeometryFilterParam::Multiple.output_port(),
+            )),
+            Geometry2D::GeometryCollection(_) => fw.send(ctx.new_with_feature_and_port(
+                feature.clone(),
+                GeometryFilterParam::Multiple.output_port(),
+            )),
+            _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone())),
+        },
+        GeometryValue::CityGmlGeometry(geometry) => {
+            if geometry.features.len() > 1 {
+                fw.send(ctx.new_with_feature_and_port(
+                    feature.clone(),
+                    GeometryFilterParam::Multiple.output_port(),
+                ))
+            } else {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
+            }
+        }
+    }
+}
+
+fn filter_feature_type(
+    ctx: &ExecutorContext,
+    fw: &mut dyn ProcessorChannelForwarder,
+    feature: &Feature,
+    geometry: &Geometry,
+) {
+    match &geometry.value {
+        GeometryValue::Null => {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
+        }
+        GeometryValue::FlowGeometry3D(geometry) => {
+            fw.send(ctx.new_with_feature_and_port(
+                feature.clone(),
+                Port::new(to_snake_case(geometry.name())),
+            ))
+        }
+        GeometryValue::FlowGeometry2D(geometry) => {
+            fw.send(ctx.new_with_feature_and_port(
+                feature.clone(),
+                Port::new(to_snake_case(geometry.name())),
+            ))
+        }
+        GeometryValue::CityGmlGeometry(geometry) => {
+            if geometry.features.len() != 1 {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
+            } else {
+                let Some(first_feature) = geometry.features.first() else {
+                    fw.send(
+                        ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()),
+                    );
+                    return;
+                };
+                fw.send(ctx.new_with_feature_and_port(
+                    feature.clone(),
+                    Port::new(to_snake_case(first_feature.name())),
+                ))
+            }
+        }
     }
 }

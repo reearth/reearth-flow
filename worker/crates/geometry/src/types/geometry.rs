@@ -36,6 +36,24 @@ pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
 pub type Geometry2D<T = f64> = Geometry<T, NoValue>;
 pub type Geometry3D<T = f64> = Geometry<T, T>;
 
+impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Geometry::Point(_) => "Point",
+            Geometry::Line(_) => "Line",
+            Geometry::LineString(_) => "LineString",
+            Geometry::Polygon(_) => "Polygon",
+            Geometry::MultiPoint(_) => "MultiPoint",
+            Geometry::MultiLineString(_) => "MultiLineString",
+            Geometry::MultiPolygon(_) => "MultiPolygon",
+            Geometry::Rect(_) => "Rect",
+            Geometry::Triangle(_) => "Triangle",
+            Geometry::Solid(_) => "Solid",
+            Geometry::GeometryCollection(_) => "GeometryCollection",
+        }
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for Geometry<T, Z> {
     fn from(x: Point<T, Z>) -> Self {
         Self::Point(x)
@@ -137,6 +155,25 @@ fn inner_type_name<T: CoordNum, Z: CoordNum>(geometry: Geometry<T, Z>) -> &'stat
         Geometry::Solid(_) => type_name::<Solid<T, Z>>(),
         Geometry::GeometryCollection(_) => type_name::<Vec<Geometry<T, Z>>>(),
     }
+}
+
+pub fn all_type_names() -> Vec<String> {
+    [
+        "Point",
+        "Line",
+        "LineString",
+        "Polygon",
+        "MultiPoint",
+        "MultiLineString",
+        "MultiPolygon",
+        "Rect",
+        "Triangle",
+        "Solid",
+        "GeometryCollection",
+    ]
+    .into_iter()
+    .map(|s| s.to_string())
+    .collect()
 }
 
 impl<T> RelativeEq for Geometry<T, T>
