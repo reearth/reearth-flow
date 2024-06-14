@@ -88,6 +88,13 @@ impl<T: CoordNum> From<[T; 3]> for Coordinate<T, T> {
     }
 }
 
+impl From<Coordinate<f64, f64>> for Coordinate<f64, NoValue> {
+    #[inline]
+    fn from(coords: Coordinate<f64, f64>) -> Self {
+        Coordinate::new__(coords.x, coords.y, NoValue)
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for Coordinate<T, Z> {
     #[inline]
     fn from(point: Point<T, Z>) -> Self {
@@ -298,5 +305,37 @@ where
         T::ulps_eq(&self.x, &other.x, epsilon, max_ulps)
             && T::ulps_eq(&self.y, &other.y, epsilon, max_ulps)
             && T::ulps_eq(&self.z, &other.z, epsilon, max_ulps)
+    }
+}
+
+impl<T, Z> ::rstar::Point for Coordinate<T, Z>
+where
+    T: ::num_traits::Float + ::rstar::RTreeNum,
+    Z: ::num_traits::Float + ::rstar::RTreeNum,
+{
+    type Scalar = T;
+
+    const DIMENSIONS: usize = 3;
+
+    fn generate(mut generator: impl FnMut(usize) -> Self::Scalar) -> Self {
+        Coordinate::new__(generator(0), generator(1), Z::zero())
+    }
+
+    #[inline]
+    fn nth(&self, index: usize) -> Self::Scalar {
+        match index {
+            0 => self.x,
+            1 => self.y,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    fn nth_mut(&mut self, index: usize) -> &mut Self::Scalar {
+        match index {
+            0 => &mut self.x,
+            1 => &mut self.y,
+            _ => unreachable!(),
+        }
     }
 }

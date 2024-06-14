@@ -1,6 +1,5 @@
 import { Outlet } from "@tanstack/react-router";
 import { lazy } from "react";
-import { ReactFlowProvider } from "reactflow";
 
 import { TooltipProvider } from "@flow/components";
 import { config } from "@flow/config";
@@ -30,18 +29,16 @@ const RootRoute: React.FC = () => {
       <GraphQLProvider>
         <I18nProvider>
           <TooltipProvider>
-            <ReactFlowProvider>
-              <AuthenticatedPage>
-                <Dialog />
-                <Outlet />
-                {devMode && (
-                  <>
-                    <TanStackQueryDevtools initialIsOpen={false} />
-                    {/* <TanStackRouterDevtools /> */}
-                  </>
-                )}
-              </AuthenticatedPage>
-            </ReactFlowProvider>
+            <AuthenticatedPage>
+              <Dialog />
+              <Outlet />
+              {devMode && (
+                <>
+                  <TanStackQueryDevtools initialIsOpen={false} />
+                  {/* <TanStackRouterDevtools /> */}
+                </>
+              )}
+            </AuthenticatedPage>
           </TooltipProvider>
         </I18nProvider>
       </GraphQLProvider>

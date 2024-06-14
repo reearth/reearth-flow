@@ -9,6 +9,7 @@ use crate::types::triangle::Triangle;
 use crate::types::{coordinate::Coordinate, line::Line, line_string::LineString, point::Point};
 
 use super::dimensions::HasDimensions;
+use super::geometry_cow::GeometryCow;
 use super::intersects::*;
 use super::kernels::{Orientation, RobustKernel};
 use super::GeoNum;
@@ -44,6 +45,18 @@ pub trait CoordinatePosition {
         is_inside: &mut bool,
         boundary_count: &mut usize,
     );
+}
+
+impl<'a, T: GeoNum, Z: GeoNum> CoordinatePosition for GeometryCow<'a, T, Z> {
+    type ScalarXY = T;
+    type ScalarZ = Z;
+    crate::geometry_cow_delegate_impl! {
+        fn calculate_coordinate_position(
+            &self,
+            coord: &Coordinate<T, Z>,
+            is_inside: &mut bool,
+            boundary_count: &mut usize) -> ();
+    }
 }
 
 impl<T, Z> CoordinatePosition for Coordinate<T, Z>

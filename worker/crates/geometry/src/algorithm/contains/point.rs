@@ -156,3 +156,5 @@ where
         self.iter().any(|c| c == point)
     }
 }
+
+impl_contains_from_relate!(MultiPoint<T, Z>, [Line<T, Z>, LineString<T, Z>, Polygon<T, Z>, MultiLineString<T, Z>, MultiPolygon<T, Z>, MultiPoint<T, Z>, Rect<T, Z>, Triangle<T, Z>]);

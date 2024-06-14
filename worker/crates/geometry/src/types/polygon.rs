@@ -3,6 +3,7 @@ use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
 
+use crate::algorithm::contains::Contains;
 use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
 use crate::algorithm::GeoFloat;
 use crate::error::Error;
@@ -26,6 +27,22 @@ pub struct Polygon<T: CoordNum = f64, Z: CoordNum = f64> {
 
 pub type Polygon2D<T> = Polygon<T, NoValue>;
 pub type Polygon3D<T> = Polygon<T, T>;
+
+impl From<Polygon<f64, f64>> for Polygon<f64, NoValue> {
+    #[inline]
+    fn from(polygons: Polygon<f64, f64>) -> Self {
+        let new_exterior = polygons.exterior.into();
+        let new_interiors = polygons
+            .interiors
+            .into_iter()
+            .map(|interior| interior.into())
+            .collect::<Vec<LineString<f64, NoValue>>>();
+        Polygon {
+            exterior: new_exterior,
+            interiors: new_interiors,
+        }
+    }
+}
 
 impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
     pub fn new(mut exterior: LineString<T, Z>, mut interiors: Vec<LineString<T, Z>>) -> Self {
@@ -193,6 +210,34 @@ pub fn validate_self_intersection<T: GeoFloat, Z: GeoFloat>(polygon: &Polygon<T,
                 if let Some(error_message) = intersection_message {
                     errors.push(error_message);
                 }
+            }
+        }
+    }
+    Validation {
+        is_valid: errors.is_empty(),
+        errors,
+    }
+}
+
+pub fn validate_interiors_are_not_within<T: GeoFloat, Z: GeoFloat>(
+    polygon: &Polygon<T, Z>,
+) -> Validation {
+    let mut errors: Vec<String> = vec![];
+    let interiors = polygon.interiors();
+    for interior in interiors {
+        let polygon = Polygon::<T, Z>::new(interior.clone(), vec![]);
+        for interior2 in interiors {
+            // dont compare exactly the same interiors
+            if interior == interior2 {
+                continue;
+            }
+            let polygon2 = Polygon::<T, Z>::new(interior2.clone(), vec![]);
+            if polygon.contains(&polygon2) {
+                let error_message = format!(
+                    "Interior ring {:?} is contains another interior ring {:?}",
+                    interior, interior2
+                );
+                errors.push(error_message);
             }
         }
     }

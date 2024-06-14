@@ -1,4 +1,8 @@
-use crate::types::{coordinate::Coordinate, coordnum::CoordNum, point::Point, rect::Rect};
+use crate::types::{
+    coordinate::Coordinate, coordnum::CoordNum, line::Line, line_string::LineString,
+    multi_line_string::MultiLineString, multi_point::MultiPoint, multi_polygon::MultiPolygon,
+    point::Point, polygon::Polygon, rect::Rect, triangle::Triangle,
+};
 
 use super::Contains;
 
@@ -43,3 +47,5 @@ where
             && self.max().z >= other.max().z
     }
 }
+
+impl_contains_from_relate!(Rect<T, Z>, [Line<T, Z>, LineString<T, Z>, Polygon<T, Z>, MultiPoint<T, Z>, MultiLineString<T, Z>, MultiPolygon<T, Z>, Triangle<T, Z>]);

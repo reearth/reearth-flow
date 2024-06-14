@@ -4,8 +4,9 @@ use crate::{
         GeoNum,
     },
     types::{
-        coordinate::Coordinate, multi_point::MultiPoint, multi_polygon::MultiPolygon, point::Point,
-        polygon::Polygon,
+        coordinate::Coordinate, line::Line, line_string::LineString,
+        multi_line_string::MultiLineString, multi_point::MultiPoint, multi_polygon::MultiPolygon,
+        point::Point, polygon::Polygon, rect::Rect, triangle::Triangle,
     },
 };
 
@@ -56,3 +57,5 @@ impl<T: GeoNum, Z: GeoNum> Contains<MultiPoint<T, Z>> for MultiPolygon<T, Z> {
         rhs.iter().all(|point| self.contains(point))
     }
 }
+
+impl_contains_from_relate!(Polygon<T, Z>, [Line<T, Z>, LineString<T, Z>, Polygon<T, Z>, MultiPoint<T, Z>, MultiLineString<T, Z>, MultiPolygon<T, Z>, Rect<T, Z>, Triangle<T, Z>]);

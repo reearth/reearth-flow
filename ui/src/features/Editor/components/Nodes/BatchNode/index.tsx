@@ -19,9 +19,10 @@ export const baseBatchNode = {
 
 const minSize = { width: 250, height: 150 };
 
-const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected, ...props }) => {
-  const [width, _setWidth] = useState(data.width ?? initialSize.width);
-  const [height, _setHeight] = useState(data.height ?? initialSize.height);
+const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected }) => {
+  // const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected, ...props }) => {
+  const [_width, _setWidth] = useState(data.width ?? initialSize.width);
+  const [_height, _setHeight] = useState(data.height ?? initialSize.height);
   // const onChange = useCallback(
   //   (evt: any) => {
   //     console.log("EVT", evt.target.value);
@@ -29,9 +30,9 @@ const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected, ...props }) 
   //   },
   //   [data],
   // );
-  console.log(width, height);
+  // console.log(width, height);
 
-  console.log("ADS props: ", props);
+  // console.log("ADS props: ", props);
   return (
     <>
       {selected && (

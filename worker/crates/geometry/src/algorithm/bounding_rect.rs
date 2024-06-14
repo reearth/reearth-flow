@@ -8,7 +8,10 @@ use crate::{
     utils::{get_bounding_rect, line_string_bounding_rect},
 };
 
-use super::utils::{partial_max, partial_min};
+use super::{
+    geometry_cow::GeometryCow,
+    utils::{partial_max, partial_min},
+};
 
 /// Calculation of the bounding rectangle of a geometry.
 pub trait BoundingRect<T: CoordNum, Z: CoordNum> {
@@ -189,6 +192,18 @@ where
                 (Some(r1), Some(r2)) => Some(bounding_rect_merge(r1, r2)),
             }
         })
+    }
+}
+
+impl<T, Z> BoundingRect<T, Z> for GeometryCow<'_, T, Z>
+where
+    T: CoordNum,
+    Z: CoordNum,
+{
+    type Output = Option<Rect<T, Z>>;
+
+    crate::geometry_cow_delegate_impl! {
+       fn bounding_rect(&self) -> Self::Output;
     }
 }
 

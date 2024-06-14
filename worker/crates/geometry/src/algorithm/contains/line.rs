@@ -1,6 +1,10 @@
 use crate::{
     algorithm::{intersects::Intersects, GeoNum},
-    types::{coordinate::Coordinate, line::Line, line_string::LineString, point::Point},
+    types::{
+        coordinate::Coordinate, line::Line, line_string::LineString,
+        multi_line_string::MultiLineString, multi_point::MultiPoint, multi_polygon::MultiPolygon,
+        point::Point, polygon::Polygon, rect::Rect, triangle::Triangle,
+    },
 };
 
 use super::Contains;
@@ -68,3 +72,5 @@ where
         all_intersects && (!all_equal || self.contains(first))
     }
 }
+
+impl_contains_from_relate!(Line<T, Z>, [Polygon<T, Z>, MultiPoint<T, Z>, MultiLineString<T, Z>, MultiPolygon<T, Z>,  Rect<T, Z>, Triangle<T, Z>]);

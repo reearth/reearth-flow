@@ -114,6 +114,11 @@ macro_rules! geometry_delegate_impl {
     ($($a:tt)*) => { $crate::__geometry_delegate_impl_helper!{ Geometry, $($a)* } }
 }
 
+#[macro_export]
+macro_rules! geometry_cow_delegate_impl {
+    ($($a:tt)*) => { $crate::__geometry_delegate_impl_helper!{ GeometryCow, $($a)* } }
+}
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __geometry_delegate_impl_helper {
@@ -135,10 +140,9 @@ macro_rules! __geometry_delegate_impl_helper {
                         $enum::MultiPoint(g) => g.$func_name($($arg_name),*).into(),
                         $enum::MultiLineString(g) => g.$func_name($($arg_name),*).into(),
                         $enum::MultiPolygon(g) => g.$func_name($($arg_name),*).into(),
-                        $enum::GeometryCollection(g) => g.$func_name($($arg_name),*).into(),
                         $enum::Rect(g) => g.$func_name($($arg_name),*).into(),
                         $enum::Triangle(g) => g.$func_name($($arg_name),*).into(),
-                        $enum::Solid(g) => g.$func_name($($arg_name),*).into(),
+                        _ => unimplemented!(),
                     }
                 }
             )+

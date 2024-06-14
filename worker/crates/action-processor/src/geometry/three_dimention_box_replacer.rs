@@ -54,19 +54,19 @@ impl ProcessorFactory for ThreeDimentionBoxReplacerFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let processor: ThreeDimentionBoxReplacer = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::ThreeDimentionBoxReplacer(format!(
+                GeometryProcessorError::ThreeDimentionBoxReplacerFactory(format!(
                     "Failed to serialize with: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::ThreeDimentionBoxReplacer(format!(
+                GeometryProcessorError::ThreeDimentionBoxReplacerFactory(format!(
                     "Failed to deserialize with: {}",
                     e
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::ThreeDimentionBoxReplacer(
+            return Err(GeometryProcessorError::ThreeDimentionBoxReplacerFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
