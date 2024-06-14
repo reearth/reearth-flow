@@ -103,7 +103,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build UI
-        uses: ./.github/workflows/build_ui.yml
+        uses: ./.github/actions/build_deploy_ui
         with:
           sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
           new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
@@ -121,7 +121,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build API
-        uses: ./.github/workflows/build_api.yml
+        uses: ./.github/actions/build_deploy_api
         with:
           sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
           new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
