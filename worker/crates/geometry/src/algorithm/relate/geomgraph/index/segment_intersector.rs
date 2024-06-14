@@ -1,3 +1,5 @@
+use parking_lot::RwLock;
+
 use super::super::{CoordNode, Edge};
 use crate::{
     algorithm::{
@@ -6,8 +8,6 @@ use crate::{
     },
     types::{coordinate::Coordinate, line::Line},
 };
-
-use std::cell::{Ref, RefCell};
 
 /// Computes the intersection of line segments and adds the intersection to the [`Edge`s] containing
 /// the segments.
@@ -72,12 +72,12 @@ where
     fn is_trivial_intersection(
         &self,
         intersection: LineIntersection<T, Z>,
-        edge0: &RefCell<Edge<T, Z>>,
+        edge0: &RwLock<Edge<T, Z>>,
         segment_index_0: usize,
-        edge1: &RefCell<Edge<T, Z>>,
+        edge1: &RwLock<Edge<T, Z>>,
         segment_index_1: usize,
     ) -> bool {
-        if edge0.as_ptr() != edge1.as_ptr() {
+        if edge0.data_ptr() != edge1.data_ptr() {
             return false;
         }
 
@@ -89,7 +89,7 @@ where
             return true;
         }
 
-        let edge0 = edge0.borrow();
+        let edge0 = edge0.read();
         if edge0.is_closed() {
             // first and last coords in a ring are adjacent
             let max_segment_index = edge0.coords().len() - 1;
@@ -105,23 +105,23 @@ where
 
     pub fn add_intersections(
         &mut self,
-        edge0: &RefCell<Edge<T, Z>>,
+        edge0: &RwLock<Edge<T, Z>>,
         segment_index_0: usize,
-        edge1: &RefCell<Edge<T, Z>>,
+        edge1: &RwLock<Edge<T, Z>>,
         segment_index_1: usize,
     ) {
         // avoid a segment spuriously "intersecting" with itself
-        if edge0.as_ptr() == edge1.as_ptr() && segment_index_0 == segment_index_1 {
+        if edge0.data_ptr() == edge1.data_ptr() && segment_index_0 == segment_index_1 {
             return;
         }
 
         let line_0 = Line::new_(
-            edge0.borrow().coords()[segment_index_0],
-            edge0.borrow().coords()[segment_index_0 + 1],
+            edge0.read().coords()[segment_index_0],
+            edge0.read().coords()[segment_index_0 + 1],
         );
         let line_1 = Line::new_(
-            edge1.borrow().coords()[segment_index_1],
-            edge1.borrow().coords()[segment_index_1 + 1],
+            edge1.read().coords()[segment_index_1],
+            edge1.read().coords()[segment_index_1 + 1],
         );
 
         let intersection = self.line_intersector.compute_intersection(line_0, line_1);
@@ -132,8 +132,8 @@ where
         let intersection = intersection.unwrap();
 
         if !self.edges_are_from_same_geometry {
-            edge0.borrow_mut().mark_as_unisolated();
-            edge1.borrow_mut().mark_as_unisolated();
+            edge0.write().mark_as_unisolated();
+            edge1.write().mark_as_unisolated();
         }
         if !self.is_trivial_intersection(
             intersection,
@@ -146,11 +146,11 @@ where
                 // In the case of self-noding, `edge0` might alias `edge1`, so it's imperative that
                 // the mutable borrows are short lived and do not overlap.
                 edge0
-                    .borrow_mut()
+                    .write()
                     .add_intersections(intersection, line_0, segment_index_0);
 
                 edge1
-                    .borrow_mut()
+                    .write()
                     .add_intersections(intersection, line_1, segment_index_1);
             }
             if let LineIntersection::SinglePoint {

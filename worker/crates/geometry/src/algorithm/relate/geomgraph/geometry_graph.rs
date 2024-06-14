@@ -1,3 +1,5 @@
+use parking_lot::RwLock;
+
 use crate::{
     algorithm::{
         coordinate_position::CoordPos,
@@ -19,8 +21,8 @@ use super::{
     CoordNode, Direction, Edge, Label, PlanarGraph, TopologyPosition,
 };
 
-use std::cell::RefCell;
 use std::rc::Rc;
+use std::{cell::RefCell, sync::Arc};
 
 pub(crate) struct GeometryGraph<'a, T, Z>
 where
@@ -42,7 +44,7 @@ where
     T: GeoFloat,
     Z: GeoFloat,
 {
-    pub fn edges(&self) -> &[Rc<RefCell<Edge<T, Z>>>] {
+    pub fn edges(&self) -> &[Arc<RwLock<Edge<T, Z>>>] {
         self.planar_graph.edges()
     }
 
@@ -340,7 +342,7 @@ where
         let positions_and_intersections: Vec<(CoordPos, Vec<Coordinate<T, Z>>)> = self
             .edges()
             .iter()
-            .map(|cell| cell.borrow())
+            .map(|cell| cell.read())
             .map(|edge| {
                 let position = edge
                     .label()

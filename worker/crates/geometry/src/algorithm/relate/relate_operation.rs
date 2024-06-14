@@ -1,3 +1,5 @@
+use parking_lot::RwLock;
+
 use crate::algorithm::bounding_rect::BoundingRect;
 use crate::algorithm::coordinate_position::{CoordPos, CoordinatePosition};
 use crate::algorithm::dimensions::{Dimensions, HasDimensions};
@@ -13,8 +15,7 @@ use super::geomgraph::{
     RobustLineIntersector,
 };
 use super::{EdgeEndBuilder, IntersectionMatrix};
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// Computes an [`IntersectionMatrix`] describing the topological relationship between two
 /// Geometries.
@@ -34,7 +35,7 @@ where
     graph_b: GeometryGraph<'a, T, Z>,
     nodes: NodeMap<T, Z, RelateNodeFactory>,
     line_intersector: RobustLineIntersector,
-    isolated_edges: Vec<Rc<RefCell<Edge<T, Z>>>>,
+    isolated_edges: Vec<Arc<RwLock<Edge<T, Z>>>>,
 }
 
 pub(crate) struct RelateNodeFactory;
@@ -249,7 +250,7 @@ where
         };
 
         for edge in graph.edges() {
-            let edge = edge.borrow();
+            let edge = edge.read();
 
             let edge_position = edge.label().on_position(geom_index);
             for edge_intersection in edge.edge_intersections() {
@@ -308,7 +309,7 @@ where
         intersection_matrix: &mut IntersectionMatrix,
     ) {
         for isolated_edge in &self.isolated_edges {
-            let edge = isolated_edge.borrow();
+            let edge = isolated_edge.read();
             Edge::<T, Z>::update_intersection_matrix(edge.label(), intersection_matrix);
         }
 
@@ -326,7 +327,7 @@ where
         };
 
         for edge in this_graph.edges() {
-            let mut mut_edge = edge.borrow_mut();
+            let mut mut_edge = edge.write();
             if mut_edge.is_isolated() {
                 Self::label_isolated_edge(&mut mut_edge, target_index, target_graph.geometry());
                 self.isolated_edges.push(edge.clone());
