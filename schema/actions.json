@@ -854,6 +854,20 @@
               "filterType"
             ],
             "type": "object"
+          },
+          {
+            "properties": {
+              "filterType": {
+                "enum": [
+                  "featureType"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "filterType"
+            ],
+            "type": "object"
           }
         ],
         "title": "GeometryFilterParam"
@@ -865,7 +879,28 @@
       "outputPorts": [
         "unfiltered",
         "none",
-        "contains"
+        "contains",
+        "point",
+        "line",
+        "line_string",
+        "polygon",
+        "multi_point",
+        "multi_line_string",
+        "multi_polygon",
+        "rect",
+        "triangle",
+        "solid",
+        "geometry_collection",
+        "solid",
+        "multi_surface",
+        "composite_surface",
+        "surface",
+        "triangle",
+        "multi_curve",
+        "curve",
+        "multi_point",
+        "point",
+        "tin"
       ],
       "categories": [
         "Geometry"
