@@ -19,7 +19,7 @@ type Props = {
 const StatusContent: React.FC<Props> = ({ label, runs, selectedRun, onRunSelect }) => {
   const [showLogs, setShowLogs] = useState(false);
   const t = useT();
-  console.log("selected run", selectedRun);
+
   return (
     <div className="flex-1 p-8">
       <div className="flex gap-2 items-center text-lg font-extralight">

@@ -24,6 +24,7 @@ nusamai-citygml.workspace = true
 nusamai-plateau.workspace = true
 nusamai-projection.workspace = true
 
+Inflector.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 once_cell.workspace = true

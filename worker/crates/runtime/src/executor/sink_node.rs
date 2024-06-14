@@ -4,7 +4,6 @@ use std::{
     mem::swap,
     sync::Arc,
     time::{Duration, Instant},
-    usize,
 };
 
 use crossbeam::channel::{Receiver, Sender, TryRecvError};

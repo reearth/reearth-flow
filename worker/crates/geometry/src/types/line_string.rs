@@ -19,8 +19,20 @@ pub struct LineString<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Coordinate<T
 pub type LineString2D<T> = LineString<T, NoValue>;
 pub type LineString3D<T> = LineString<T, T>;
 
+impl From<LineString<f64, f64>> for LineString<f64, NoValue> {
+    #[inline]
+    fn from(coords: LineString<f64, f64>) -> Self {
+        let new_coords = coords
+            .0
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Coordinate<f64, NoValue>>>();
+        LineString(new_coords)
+    }
+}
+
 #[derive(Debug)]
-pub struct PointsIter<'a, T, Z = NoValue>(::std::slice::Iter<'a, Coordinate<T, Z>>)
+pub struct PointsIter<'a, T, Z>(::std::slice::Iter<'a, Coordinate<T, Z>>)
 where
     T: CoordNum + 'a,
     Z: CoordNum + 'a;
@@ -108,6 +120,13 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
 
     pub fn into_inner(self) -> Vec<Coordinate<T, Z>> {
         self.0
+    }
+
+    pub fn lines(&'_ self) -> impl ExactSizeIterator<Item = Line<T, Z>> + '_ {
+        self.0.windows(2).map(|w| {
+            // slice::windows(N) is guaranteed to yield a slice with exactly N elements
+            unsafe { Line::new_(*w.get_unchecked(0), *w.get_unchecked(1)) }
+        })
     }
 
     pub fn triangles(&'_ self) -> impl ExactSizeIterator<Item = Triangle<T, Z>> + '_ {

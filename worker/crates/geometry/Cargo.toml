@@ -17,10 +17,16 @@ nusamai-projection.workspace = true
 
 approx = "0.5.1"
 bytes.workspace = true
+float_next_after.workspace = true
 num-traits = "0.2.19"
+parking_lot.workspace = true
 reearth-flow-common.workspace = true
+robust.workspace = true
+rstar = "0.12.0"
 serde.workspace = true
 serde_json.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
 thiserror.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true

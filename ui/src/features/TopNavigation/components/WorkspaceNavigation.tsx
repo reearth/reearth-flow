@@ -14,15 +14,14 @@ import { useCurrentWorkspace } from "@flow/stores";
 import { Workspace } from "@flow/types";
 
 const WorkspaceNavigation: React.FC = () => {
-  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
-  const { getWorkspaces } = useWorkspace();
+  const [currentWorkspace] = useCurrentWorkspace();
+  const { useGetWorkspaces } = useWorkspace();
   const navigate = useNavigate();
-  const { workspaces } = getWorkspaces();
+  const { workspaces } = useGetWorkspaces();
 
-  const handleWorkspaceChange = async (workspace: Workspace) => {
+  const handleWorkspaceChange = (workspace: Workspace) => {
     const route = window.location.pathname;
-    await navigate({ to: route.replace(currentWorkspace?.id as string, workspace.id) });
-    setCurrentWorkspace(workspace);
+    navigate({ to: route.replace(currentWorkspace?.id as string, workspace.id) });
   };
 
   return (

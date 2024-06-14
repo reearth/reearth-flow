@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use reearth_flow_geometry::types::{
-    coordinate::Coordinate, geometry::Geometry3D as FlowGeometry3D, rectangle::Rectangle,
+    coordinate::Coordinate, geometry::Geometry3D as FlowGeometry3D, rect::Rect,
 };
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -54,19 +54,19 @@ impl ProcessorFactory for ThreeDimentionBoxReplacerFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let processor: ThreeDimentionBoxReplacer = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::ThreeDimentionBoxReplacer(format!(
+                GeometryProcessorError::ThreeDimentionBoxReplacerFactory(format!(
                     "Failed to serialize with: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::ThreeDimentionBoxReplacer(format!(
+                GeometryProcessorError::ThreeDimentionBoxReplacerFactory(format!(
                     "Failed to deserialize with: {}",
                     e
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::ThreeDimentionBoxReplacer(
+            return Err(GeometryProcessorError::ThreeDimentionBoxReplacerFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -107,7 +107,7 @@ impl Processor for ThreeDimentionBoxReplacer {
         let max_z = parse_f64(attributes.get(&self.max_z))?;
         let min = Coordinate::new__(min_x, min_y, min_z);
         let max = Coordinate::new__(max_x, max_y, max_z);
-        let rectangle = Rectangle::new(min, max);
+        let rectangle = Rect::new(min, max);
         let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(
             FlowGeometry3D::Polygon(rectangle.to_polygon()),
         ));

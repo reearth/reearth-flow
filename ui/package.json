@@ -15,9 +15,9 @@
     "type": "tsc",
     "clean": "del coverage dist node_modules/.cache",
     "test": "vitest",
-    "lint": "eslint . --ext ts,tsx",
+    "lint": "eslint . --ext ts,tsx,graphql",
     "eslint-debug": "eslint --debug",
-    "format": "eslint . --ext ts,tsx --fix",
+    "format": "eslint . --ext ts,tsx,graphql --fix",
     "gql": "graphql-codegen",
     "gql:watch": "graphql-codegen --watch"
   },
@@ -45,7 +45,6 @@
     "@radix-ui/react-tooltip": "1.0.7",
     "@reearth/core": "0.0.3",
     "@tanstack/react-query": "5.35.1",
-    "@tanstack/react-query-devtools": "5.40.0",
     "@tanstack/react-router": "1.31.24",
     "@tanstack/react-table": "8.16.0",
     "@tanstack/router-devtools": "1.31.24",
@@ -78,6 +77,7 @@
     "@graphql-codegen/typescript": "4.0.7",
     "@graphql-codegen/typescript-graphql-request": "6.2.0",
     "@graphql-codegen/typescript-operations": "4.2.1",
+    "@graphql-eslint/eslint-plugin": "3.20.1",
     "@parcel/watcher": "2.4.1",
     "@storybook/addon-essentials": "8.0.10",
     "@storybook/addon-interactions": "8.0.10",
@@ -88,6 +88,7 @@
     "@storybook/react-vite": "8.0.10",
     "@storybook/test": "8.0.10",
     "@tanstack/eslint-plugin-query": "5.32.1",
+    "@tanstack/react-query-devtools": "5.40.0",
     "@types/leaflet": "1.9.12",
     "@types/lodash-es": "4.17.12",
     "@types/react": "18.3.1",
@@ -115,5 +116,8 @@
     "vite-plugin-cesium": "1.2.22",
     "vitest": "1.6.0"
   },
-  "packageManager": "yarn@4.2.1"
+  "packageManager": "yarn@4.2.1",
+  "graphql": {
+    "schema": "../api/gql/*.graphql"
+  }
 }

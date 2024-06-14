@@ -1,9 +1,8 @@
-import { useState, useMemo, useEffect, useCallback, MouseEvent } from "react";
-import { Node, Edge, useNodesState, useEdgesState } from "reactflow";
+import { useState, useCallback, MouseEvent } from "react";
 
 import LeftPanel from "@flow/features/LeftPanel";
 import RightPanel from "@flow/features/RightPanel";
-import type { Workflow } from "@flow/types";
+import type { Edge, Node, Workflow } from "@flow/types";
 
 import BottomPanel from "../BottomPanel";
 
@@ -14,26 +13,14 @@ type EditorProps = {
 };
 
 export default function Editor({ workflow }: EditorProps) {
-  const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(workflow?.id ?? "");
+  const [selected, setSelected] = useState<{ nodes: Node[]; edges: Edge[] }>({
+    nodes: [],
+    edges: [],
+  });
 
-  const [nodes, setNodes] = useNodesState(workflow?.nodes ?? []);
-  const [edges, setEdges] = useEdgesState(workflow?.edges ?? []);
-
-  useEffect(() => {
-    if (workflow?.id !== currentWorkflowId) {
-      setNodes(workflow?.nodes ?? []);
-      setEdges(workflow?.edges ?? []);
-      setCurrentWorkflowId(workflow?.id ?? "");
-    }
-  }, [currentWorkflowId, workflow, setNodes, setEdges]);
-
-  const selected = useMemo(() => {
-    const selectedNodes = nodes.filter(node => node.selected);
-    const selectedEdges = edges.filter(edge => edge.selected);
-    return { nodes: selectedNodes, edges: selectedEdges };
-  }, [nodes, edges]);
-
-  console.log("selected", selected);
+  const handleSelect = (nodes?: Node[], edges?: Edge[]) => {
+    setSelected({ nodes: nodes ?? [], edges: edges ?? [] });
+  };
 
   const [hoveredDetails, setHoveredDetails] = useState<Node | Edge | undefined>();
 
@@ -66,10 +53,7 @@ export default function Editor({ workflow }: EditorProps) {
         <OverlayUI hoveredDetails={hoveredDetails}>
           <Canvas
             workflow={workflow}
-            nodes={nodes}
-            edges={edges}
-            setNodes={setNodes}
-            setEdges={setEdges}
+            onSelect={handleSelect}
             onNodeHover={handleNodeHover}
             onEdgeHover={handleEdgeHover}
           />

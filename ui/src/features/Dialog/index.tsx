@@ -13,13 +13,13 @@ export const DialogContext = createContext<{ workspaces: Workspace[] | undefined
 
 const Dialog: React.FC = () => {
   const [dialogType, setDialogType] = useDialogType();
-  const { getWorkspaces } = useWorkspace();
+  const { useGetWorkspaces } = useWorkspace();
 
   const handleDialogTypeChange = (type?: DialogType) => {
     setDialogType(type);
   };
 
-  const { workspaces } = getWorkspaces();
+  const { workspaces } = useGetWorkspaces();
 
   return (
     dialogType && (

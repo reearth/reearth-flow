@@ -7,15 +7,19 @@ type OverlayUIProps = {
   children?: React.ReactNode;
 };
 
-const OverlayUI: React.FC<OverlayUIProps> = ({ hoveredDetails, children: canvas }) => (
-  <div className="relative flex flex-col flex-1">
-    {canvas}
-    <Breadcrumb />
-    <Toolbox />
-    <ActionBar />
-    <CanvasActionBar />
-    <Infobar hoveredDetails={hoveredDetails} />
-  </div>
-);
+const OverlayUI: React.FC<OverlayUIProps> = ({ hoveredDetails, children: canvas }) => {
+  // const { devMode } = config();
+  return (
+    <div className="relative flex flex-col flex-1">
+      {/* {devMode && <DevTools />} */}
+      {canvas}
+      <Breadcrumb />
+      <Toolbox />
+      <ActionBar />
+      <CanvasActionBar />
+      <Infobar hoveredDetails={hoveredDetails} />
+    </div>
+  );
+};
 
 export { OverlayUI };

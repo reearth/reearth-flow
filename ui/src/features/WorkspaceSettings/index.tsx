@@ -10,12 +10,11 @@ import { GeneralSettings, IntegrationsSettings, MembersSettings } from "./compon
 
 type Tab = "general" | "integrations" | "members";
 
+const DEFAULT_TAB: Tab = "general";
+
 const WorkspaceSettings: React.FC = () => {
   const { workspaceId, tab } = useParams({ strict: false });
   const t = useT();
-
-  const [selectedTab, selectTab] = useState<Tab>(tab ?? "general");
-
   const navigate = useNavigate();
 
   const content: { id: Tab; name: string; icon: React.ReactNode; component: React.ReactNode }[] = [
@@ -38,6 +37,9 @@ const WorkspaceSettings: React.FC = () => {
       component: <IntegrationsSettings />,
     },
   ];
+  const checkTab = content.find(c => c.id === tab)?.id;
+
+  const [selectedTab, selectTab] = useState<Tab>(checkTab ?? DEFAULT_TAB);
 
   const handleTabChange = (t: Tab) => {
     navigate({ to: `/workspace/${workspaceId}/settings/${t}` });

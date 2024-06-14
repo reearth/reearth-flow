@@ -12,8 +12,13 @@ export type CreateWorkspace = {
   workspace: Workspace | undefined;
 } & ApiResponse;
 
-export type GetWorkspace = {
+export type GetWorkspaces = {
   workspaces: Workspace[] | undefined;
+  isLoading: boolean;
+} & ApiResponse;
+
+export type GetWorkspace = {
+  workspace?: Workspace;
   isLoading: boolean;
 } & ApiResponse;
 

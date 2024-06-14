@@ -7,7 +7,7 @@ use nusamai_citygml::{object::ObjectStereotype, Color, GeometryType, Value};
 use nusamai_plateau::Entity;
 use nusamai_projection::crs::EpsgCode;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_geometry::types::polygon::Polygon3D;
+use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
@@ -376,15 +376,106 @@ impl CityGmlGeometry {
     }
 }
 
+impl From<CityGmlGeometry> for FlowGeometry2D {
+    fn from(geometry: CityGmlGeometry) -> Self {
+        let mut polygons = Vec::<Polygon2D<f64>>::new();
+        for feature in geometry.features {
+            for polygon in feature.polygons {
+                polygons.push(polygon.into());
+            }
+        }
+        Self::MultiPolygon(MultiPolygon2D::from(polygons))
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GeometryFeature {
-    #[serde(rename = "type")]
     pub id: Option<String>,
-    pub ty: GeometryType,
+    #[serde(rename = "type")]
+    pub ty: GeometryFeatureType,
     pub lod: Option<u8>,
     pub pos: u32,
     pub len: u32,
     pub polygons: Vec<Polygon3D<f64>>,
+}
+
+impl GeometryFeature {
+    pub fn name(&self) -> &str {
+        self.ty.name()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub enum GeometryFeatureType {
+    /// Polygons (solids)
+    Solid,
+    /// Polygons (surfaces)
+    MultiSurface,
+    /// Composite surface
+    CompositeSurface,
+    Surface,
+    /// Polygons (triangles)
+    Triangle,
+    /// Line-strings
+    MultiCurve,
+    Curve,
+    /// Points
+    MultiPoint,
+    Point,
+    /// Tin
+    Tin,
+}
+
+impl From<nusamai_citygml::geometry::GeometryType> for GeometryFeatureType {
+    fn from(ty: nusamai_citygml::geometry::GeometryType) -> Self {
+        match ty {
+            nusamai_citygml::geometry::GeometryType::Solid => Self::Solid,
+            nusamai_citygml::geometry::GeometryType::MultiSurface => Self::MultiSurface,
+            nusamai_citygml::geometry::GeometryType::CompositeSurface => Self::CompositeSurface,
+            nusamai_citygml::geometry::GeometryType::Surface => Self::Surface,
+            nusamai_citygml::geometry::GeometryType::Triangle => Self::Triangle,
+            nusamai_citygml::geometry::GeometryType::MultiCurve => Self::MultiCurve,
+            nusamai_citygml::geometry::GeometryType::Curve => Self::Curve,
+            nusamai_citygml::geometry::GeometryType::MultiPoint => Self::MultiPoint,
+            nusamai_citygml::geometry::GeometryType::Point => Self::Point,
+            nusamai_citygml::geometry::GeometryType::Tin => Self::Tin,
+        }
+    }
+}
+
+impl GeometryFeatureType {
+    pub fn all_type_names() -> Vec<String> {
+        [
+            "Solid",
+            "MultiSurface",
+            "CompositeSurface",
+            "Surface",
+            "Triangle",
+            "MultiCurve",
+            "Curve",
+            "MultiPoint",
+            "Point",
+            "Tin",
+        ]
+        .iter()
+        .map(|name| name.to_string())
+        .collect()
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Solid => "Solid",
+            Self::MultiSurface => "MultiSurface",
+            Self::CompositeSurface => "CompositeSurface",
+            Self::Surface => "Surface",
+            Self::Triangle => "Triangle",
+            Self::MultiCurve => "MultiCurve",
+            Self::Curve => "Curve",
+            Self::MultiPoint => "MultiPoint",
+            Self::Point => "Point",
+            Self::Tin => "Tin",
+        }
+    }
 }
 
 impl Display for GeometryFeature {
@@ -399,7 +490,7 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GeometryFeature {
         let id = geometry.id.map(|id| id.value());
         Self {
             id,
-            ty: geometry.ty,
+            ty: geometry.ty.into(),
             lod: Some(geometry.lod),
             pos: geometry.pos,
             len: geometry.len,

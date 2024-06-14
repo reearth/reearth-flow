@@ -3,16 +3,21 @@ use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
 
+use crate::algorithm::contains::Contains;
+use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
+use crate::algorithm::GeoFloat;
 use crate::error::Error;
 
 use super::coordnum::CoordNum;
 use super::face::Face;
+use super::line::Line;
 use super::line_string::LineString;
 use super::no_value::NoValue;
-use super::rectangle::Rectangle;
+use super::rect::Rect;
 use super::solid::Solid;
 use super::traits::Surface;
 use super::triangle::Triangle;
+use super::validation::Validation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub struct Polygon<T: CoordNum = f64, Z: CoordNum = f64> {
@@ -22,6 +27,22 @@ pub struct Polygon<T: CoordNum = f64, Z: CoordNum = f64> {
 
 pub type Polygon2D<T> = Polygon<T, NoValue>;
 pub type Polygon3D<T> = Polygon<T, T>;
+
+impl From<Polygon<f64, f64>> for Polygon<f64, NoValue> {
+    #[inline]
+    fn from(polygons: Polygon<f64, f64>) -> Self {
+        let new_exterior = polygons.exterior.into();
+        let new_interiors = polygons
+            .interiors
+            .into_iter()
+            .map(|interior| interior.into())
+            .collect::<Vec<LineString<f64, NoValue>>>();
+        Polygon {
+            exterior: new_exterior,
+            interiors: new_interiors,
+        }
+    }
+}
 
 impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
     pub fn new(mut exterior: LineString<T, Z>, mut interiors: Vec<LineString<T, Z>>) -> Self {
@@ -100,6 +121,130 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
         );
         Solid::new(bottom_faces, top_faces, side_faces)
     }
+
+    pub fn validate_rings_length(&self) -> Validation {
+        let mut errors: Vec<String> = vec![];
+
+        let exterior = self.exterior();
+        if exterior.coords().count() < 3 {
+            let error_message =
+                format!("Exterior Ring {:?} must contain 3 or more coords", exterior);
+            errors.push(error_message);
+        }
+        for interior in self.interiors() {
+            if interior.coords().count() < 3 {
+                let error_message =
+                    format!("Interior Ring {:?} must contain 3 or more coords", interior);
+                errors.push(error_message);
+            }
+        }
+        Validation {
+            is_valid: errors.is_empty(),
+            errors,
+        }
+    }
+
+    pub fn validate_rings_closed(&self) -> Validation {
+        let mut errors: Vec<String> = vec![];
+        let exterior = self.exterior();
+        if !exterior.is_closed() {
+            let error_message = format!("Exterior ring {:?} is not closed", exterior);
+            errors.push(error_message);
+        }
+        for interior in self.interiors() {
+            if !interior.is_closed() {
+                let error_message = format!("Interior ring {:?} is not closed", interior);
+                errors.push(error_message);
+            }
+        }
+        Validation {
+            is_valid: errors.is_empty(),
+            errors,
+        }
+    }
+
+    pub fn validate_polygon_rings_closed(&self) -> Validation {
+        let mut errors: Vec<String> = vec![];
+        let exterior = self.exterior();
+        if !exterior.is_closed() {
+            let error_message = format!("Exterior ring {:?} is not closed", exterior);
+            errors.push(error_message);
+        }
+        for interior in self.interiors() {
+            if !interior.is_closed() {
+                let error_message = format!("Interior ring {:?} is not closed", interior);
+                errors.push(error_message);
+            }
+        }
+        Validation {
+            is_valid: errors.is_empty(),
+            errors,
+        }
+    }
+}
+
+pub fn validate_self_intersection<T: GeoFloat, Z: GeoFloat>(polygon: &Polygon<T, Z>) -> Validation {
+    let mut errors: Vec<String> = vec![];
+    let exterior = polygon.exterior();
+    let mut lines: Vec<Line<T, Z>> = vec![];
+
+    lines.extend(exterior.lines());
+    for interior in polygon.interiors() {
+        lines.extend(interior.lines())
+    }
+    // Use index of the line to determine which parts we havent compared to yet
+    for (index, line) in lines.clone().iter().enumerate() {
+        for line2 in &lines.clone()[index + 1..] {
+            if let Some(intersection) = line_intersection(*line, *line2) {
+                let intersection_message = match intersection {
+                    LineIntersection::Collinear { intersection } => {
+                        Some(format!("Found collinear at {:?}", intersection))
+                    }
+
+                    LineIntersection::SinglePoint {
+                        intersection,
+                        is_proper: true,
+                    } => Some(format!("Found self intersection at {:?}", intersection)),
+                    _ => None,
+                };
+                if let Some(error_message) = intersection_message {
+                    errors.push(error_message);
+                }
+            }
+        }
+    }
+    Validation {
+        is_valid: errors.is_empty(),
+        errors,
+    }
+}
+
+pub fn validate_interiors_are_not_within<T: GeoFloat, Z: GeoFloat>(
+    polygon: &Polygon<T, Z>,
+) -> Validation {
+    let mut errors: Vec<String> = vec![];
+    let interiors = polygon.interiors();
+    for interior in interiors {
+        let polygon = Polygon::<T, Z>::new(interior.clone(), vec![]);
+        for interior2 in interiors {
+            // dont compare exactly the same interiors
+            if interior == interior2 {
+                continue;
+            }
+            let polygon2 = Polygon::<T, Z>::new(interior2.clone(), vec![]);
+            if polygon.contains(&polygon2) {
+                let error_message = format!(
+                    "Interior ring {:?} is contains another interior ring {:?}",
+                    interior, interior2
+                );
+                errors.push(error_message);
+            }
+        }
+    }
+    Validation {
+        is_valid: errors.is_empty(),
+        errors,
+    }
 }
 
 fn to_faces<T: CoordNum, Z: CoordNum>(
@@ -146,8 +291,8 @@ fn to_side_faces<T: CoordNum, Z: CoordNum>(
     faces
 }
 
-impl<T: CoordNum> From<Rectangle<T>> for Polygon<T, NoValue> {
-    fn from(r: Rectangle<T>) -> Self {
+impl<T: CoordNum> From<Rect<T>> for Polygon<T, NoValue> {
+    fn from(r: Rect<T>) -> Self {
         Polygon::new(
             vec![
                 (r.min().x, r.min().y),
