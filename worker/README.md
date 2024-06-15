@@ -36,6 +36,12 @@ C:\> vcpkg integrate install
 ```
 
 ## Usage
+
+### Set up the environment variables
+```console
+export FLOW_VARS_cityGmlPath="file:///root/53395658_bldg_6697_op.gml"
+```
+
 ### Run workflow
 ```console
 $ cargo run -- run --workflow ${workflow_path}
