@@ -69,22 +69,21 @@ jobs:
         run: git fetch --prune --unshallow --tags
       - name: Get info
         id: info
-        # The tag name should be retrieved lazily, as tagging may be delayed.
         env:
           BRANCH: ${{github.ref_name}}
         run: |
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "BRANCH=$BRANCH"
           if [[ "$BRANCH" = "release" || "$BRANCH" = "release/"* ]]; then
             TAG=$(git tag --points-at HEAD)
             if [[ ! -z "$TAG" ]]; then
-              echo "::set-output name=new_tag::$TAG"
-              echo "::set-output name=new_tag_short::${TAG#v}"
+              echo "new_tag=$TAG" >> $GITHUB_OUTPUT
+              echo "new_tag_short=${TAG#v}" >> $GITHUB_OUTPUT
             else
-              echo "::set-output name=name::rc"
+              echo "name=rc" >> $GITHUB_OUTPUT
             fi
           else
-            echo "::set-output name=name::nightly"
+            echo "name=nightly" >> $GITHUB_OUTPUT
           fi
       - name: Show info
         env:
@@ -101,33 +100,31 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{!failure() && needs.ci-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/'))}}
     steps:
-      - name: Dispatch ui Build
-        uses: benc-uk/workflow-dispatch@v1
+      - uses: actions/checkout@v4
+
+      - name: Build UI
+        uses: ./.github/actions/build_deploy_ui
         with:
-          workflow: build_ui.yml
-          inputs: '{
-            "sha_short": "${{ needs.ci-collect-info.outputs.sha_short }}", 
-            "new_tag": "${{ needs.ci-collect-info.outputs.new_tag }}", 
-            "new_tag_short": "${{ needs.ci-collect-info.outputs.new_tag_short }}", 
-            "name": "${{ needs.ci-collect-info.outputs.name }}",
-            "sha": "${{ github.sha }}"
-            }'
-  # build-api:
-  #   needs: 
-  #     - ci
-  #     - ci-api
-  #     - ci-collect-info
-  #   runs-on: ubuntu-latest
-  #   if: ${{!failure() && needs.ci-api.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/'))}}
-  #   steps:
-  #     - name: Dispatch api Build
-  #       uses: benc-uk/workflow-dispatch@v1
-  #       with:
-  #         workflow: build_api.yml
-  #         inputs: '{
-  #           "sha_short": "${{ needs.ci-collect-info.outputs.sha_short }}", 
-  #           "new_tag": "${{ needs.ci-collect-info.outputs.new_tag }}", 
-  #           "new_tag_short": "${{ needs.ci-collect-info.outputs.new_tag_short }}", 
-  #           "name": "${{ needs.ci-collect-info.outputs.name }}",
-  #           "sha": "${{ github.sha }}"
-  #           }'
+          sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+          new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+          new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+          name: ${{ needs.ci-collect-info.outputs.name }}
+          sha: ${{ github.sha }}
+  build-api:
+    needs: 
+      - ci
+      - ci-api
+      - ci-collect-info
+    runs-on: ubuntu-latest
+    if: ${{!failure() && needs.ci-api.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/'))}}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API
+        uses: ./.github/actions/build_deploy_api
+        with:
+          sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+          new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+          new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+          name: ${{ needs.ci-collect-info.outputs.name }}
+          sha: ${{ github.sha }}
