@@ -1,6 +1,6 @@
-use std::{fs, io, path::Path, str::FromStr, sync::Arc};
+use std::{collections::HashMap, fs, io, path::Path, str::FromStr, sync::Arc};
 
-use clap::{Arg, ArgMatches, Command};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use directories::ProjectDirs;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_state::State;
@@ -19,12 +19,13 @@ pub fn build_run_command() -> Command {
         .arg(job_id_cli_arg())
         .arg(dataframe_state_cli_arg())
         .arg(action_log_cli_arg())
+        .arg(vars_arg())
 }
 
 fn workflow_cli_arg() -> Arg {
     Arg::new("workflow")
         .long("workflow")
-        .help("Workflow file location")
+        .help("Workflow file location. Use '-' to read from stdin.")
         .env("REEARTH_FLOW_WORKFLOW")
         .required(true)
         .display_order(1)
@@ -57,12 +58,22 @@ fn action_log_cli_arg() -> Arg {
         .display_order(4)
 }
 
+fn vars_arg() -> Arg {
+    Arg::new("values")
+        .long("value")
+        .help("Workflow variables")
+        .required(false)
+        .action(ArgAction::Append)
+        .display_order(5)
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct RunCliCommand {
     workflow_path: String,
     job_id: Option<String>,
     dataframe_state_uri: Option<String>,
     action_log_uri: Option<String>,
+    values: HashMap<String, String>,
 }
 
 impl RunCliCommand {
@@ -73,11 +84,28 @@ impl RunCliCommand {
         let job_id = matches.remove_one::<String>("job_id");
         let dataframe_state_uri = matches.remove_one::<String>("dataframe_state");
         let action_log_uri = matches.remove_one::<String>("action_log");
+        let values = matches.remove_many::<String>("values");
+        let values = if let Some(values) = values {
+            values
+                .into_iter()
+                .flat_map(|v| {
+                    let parts: Vec<&str> = v.splitn(2, '=').collect();
+                    if parts.len() == 2 {
+                        Some((parts[0].to_string(), parts[1].to_string()))
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else {
+            HashMap::<String, String>::new()
+        };
         Ok(RunCliCommand {
             workflow_path,
             job_id,
             dataframe_state_uri,
             action_log_uri,
+            values,
         })
     }
 
@@ -96,7 +124,8 @@ impl RunCliCommand {
                 .map_err(crate::Error::init)?;
             String::from_utf8(bytes.to_vec()).map_err(crate::Error::init)?
         };
-        let workflow = Workflow::try_from_str(&json);
+        let mut workflow = Workflow::try_from_str(&json);
+        workflow.merge_with(self.values.clone());
         let job_id = match &self.job_id {
             Some(job_id) => uuid::Uuid::from_str(job_id.as_str()).map_err(crate::Error::init)?,
             None => uuid::Uuid::new_v4(),
