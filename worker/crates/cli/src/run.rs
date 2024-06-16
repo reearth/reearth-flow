@@ -59,8 +59,8 @@ fn action_log_cli_arg() -> Arg {
 }
 
 fn vars_arg() -> Arg {
-    Arg::new("values")
-        .long("value")
+    Arg::new("var")
+        .long("var")
         .help("Workflow variables")
         .required(false)
         .action(ArgAction::Append)
@@ -73,7 +73,7 @@ pub struct RunCliCommand {
     job_id: Option<String>,
     dataframe_state_uri: Option<String>,
     action_log_uri: Option<String>,
-    values: HashMap<String, String>,
+    vars: HashMap<String, String>,
 }
 
 impl RunCliCommand {
@@ -84,10 +84,9 @@ impl RunCliCommand {
         let job_id = matches.remove_one::<String>("job_id");
         let dataframe_state_uri = matches.remove_one::<String>("dataframe_state");
         let action_log_uri = matches.remove_one::<String>("action_log");
-        let values = matches.remove_many::<String>("values");
-        let values = if let Some(values) = values {
-            values
-                .into_iter()
+        let vars = matches.remove_many::<String>("var");
+        let vars = if let Some(vars) = vars {
+            vars.into_iter()
                 .flat_map(|v| {
                     let parts: Vec<&str> = v.splitn(2, '=').collect();
                     if parts.len() == 2 {
@@ -105,7 +104,7 @@ impl RunCliCommand {
             job_id,
             dataframe_state_uri,
             action_log_uri,
-            values,
+            vars,
         })
     }
 
@@ -125,7 +124,7 @@ impl RunCliCommand {
             String::from_utf8(bytes.to_vec()).map_err(crate::Error::init)?
         };
         let mut workflow = Workflow::try_from_str(&json);
-        workflow.merge_with(self.values.clone());
+        workflow.merge_with(self.vars.clone());
         let job_id = match &self.job_id {
             Some(job_id) => uuid::Uuid::from_str(job_id.as_str()).map_err(crate::Error::init)?,
             None => uuid::Uuid::new_v4(),
