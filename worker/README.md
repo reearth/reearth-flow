@@ -35,12 +35,42 @@ C:\> vcpkg install libxml2:x64-windows
 C:\> vcpkg integrate install
 ```
 
-## Usage
-
-### Set up the environment variables
-```console
-export FLOW_VARS_cityGmlPath="file:///root/53395658_bldg_6697_op.gml"
+## Input Variables
+### Declaring an Input Variable
+``` yaml
+id: a7fc8f35-b84f-496b-a2cb-65be3bfec285
+name: "lod_splitter_with_dm"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../config/schema.txt
+  targetPackages:
+    - bldg
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
 ```
+
+### Variables on the Command Line
+* To specify individual variables on the command line, use the -var option when running the
+
+``` console
+$ cargo run -- run --var="cityGmlPath=file:///root/53395658_bldg_6697_op.gml"
+$ cargo run -- run --var='cityGmlPath_list=["file:///root/53395658_bldg_6697_op.gml","file:///root/53395658_bldg_6698_op.gml"]' --var="addNsprefixToFeatureTypes=false"
+$ cargo run -- run --var='cityGmlPath_map={"path01":"file:///root/53395658_bldg_6697_op.gml","path02":"file:///root/53395658_bldg_6698_op.gml"}'
+```
+
+### Environment Variables
+* As a fallback for the other ways of defining variables, Flow searches the environment of its own process for environment variables named FLOW_VAR_ followed by the name of a declared variable.
+
+```console
+export FLOW_VAR_cityGmlPath="file:///root/53395658_bldg_6697_op.gml"
+export FLOW_VAR_targetPackages='["bldg", "fld"]'
+```
+
+## Usage
 
 ### Run workflow
 ```console

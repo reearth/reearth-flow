@@ -1,9 +1,11 @@
 use std::{collections::HashMap, env};
 
+use reearth_flow_common::serde::SerdeFormat;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
+use reearth_flow_common::serde::determine_format;
 use reearth_flow_common::serde::from_str;
 
 pub type Id = Uuid;
@@ -11,7 +13,7 @@ pub type NodeProperty = Map<String, Value>;
 pub type NodeAction = String;
 pub type Parameter = Map<String, Value>;
 
-static ENVIRONMENT_PREFIX: &str = "FLOW_VARS_";
+static ENVIRONMENT_PREFIX: &str = "FLOW_VAR_";
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -56,11 +58,13 @@ impl Workflow {
         } else {
             serde_json::Map::<String, Value>::new()
         };
-        with.extend(
-            environment_vars
-                .into_iter()
-                .map(|(key, value)| (key, Value::String(value))),
-        );
+        with.extend(environment_vars.into_iter().map(|(key, value)| {
+            let value = match determine_format(value.as_str()) {
+                SerdeFormat::Json | SerdeFormat::Yaml => from_str(value.as_str()).unwrap(),
+                SerdeFormat::Unknown => serde_json::to_value(value).unwrap(),
+            };
+            (key, value)
+        }));
         self.with = Some(with);
     }
 
@@ -81,7 +85,13 @@ impl Workflow {
                     .unwrap_or(&serde_json::Map::new())
                     .contains_key(key)
             })
-            .map(|(key, value)| (key, Value::String(value)))
+            .map(|(key, value)| {
+                let value = match determine_format(value.as_str()) {
+                    SerdeFormat::Json | SerdeFormat::Yaml => from_str(value.as_str()).unwrap(),
+                    SerdeFormat::Unknown => serde_json::to_value(value).unwrap(),
+                };
+                (key, value)
+            })
             .collect::<serde_json::Map<String, Value>>();
         with.extend(params);
         self.with = Some(with);

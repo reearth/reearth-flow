@@ -2,7 +2,7 @@ use serde;
 use serde_json::Value as JsonValue;
 use serde_yaml::Value as YamlValue;
 
-enum SerdeFormat {
+pub enum SerdeFormat {
     Json,
     Yaml,
     Unknown,
@@ -24,7 +24,7 @@ where
     }
 }
 
-fn determine_format(input: &str) -> SerdeFormat {
+pub fn determine_format(input: &str) -> SerdeFormat {
     if serde_json::from_str::<JsonValue>(input).is_ok() {
         SerdeFormat::Json
     } else if serde_yaml::from_str::<YamlValue>(input).is_ok() {
