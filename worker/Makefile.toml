@@ -17,12 +17,6 @@ script = ['''
 cargo clippy --workspace --all-targets --all-features
 ''']
 
-[tasks.example]
-script = ['''
-#!/usr/bin/env bash -eux
-cargo run --package reearth-flow-examples --example plateau-runner
-''']
-
 [tasks.test]
 script = ['''
 #!/usr/bin/env bash -eux

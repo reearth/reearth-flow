@@ -3,8 +3,10 @@ id: 369bd41c-52f7-4aec-bc4a-8a62c8e41fcd
 name: "PLATEAU.AttributeReader"
 entryGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
 with:
-  cityGmlPath: https://assets.cms.plateau.reearth.io/assets/ab/73d159-7d5a-4fd7-a48a-cc585157d03f/11234_yashio-shi_city_2023_citygml_1_op.zip
+  cityGmlPath:
   cityCode: "11234"
+  codelistsPath:
+  schemasPath:
   schemaJson: !include ../config/schema.txt
   targetPackages:
     - bldg
