@@ -86,6 +86,13 @@ $ FLOW_VAR_schemasPath="${schemas_path}"
 $ cargo run --package reearth-flow-examples --example attribute_reader
 ```
 
+### Run generate graphviz
+```console
+$ brew install graphviz
+$ cargo install yaml-include
+$ yaml-include examples/plateau/testdata/workflow/attribute_reader.yml | cargo run -- dot --workflow - | dot -Tpng > output.png
+```
+
 ### Run generate action documentation
 ```console
 $ cargo make doc-action

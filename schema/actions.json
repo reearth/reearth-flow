@@ -923,6 +923,39 @@
       ]
     },
     {
+      "name": "OrientationExtractor",
+      "type": "processor",
+      "description": "Extracts the orientation of a geometry from a feature and adds it as an attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "outputAttribute"
+        ],
+        "title": "OrientationExtractorParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "PLATEAU.DictionariesInitiator",
       "type": "processor",
       "description": "Initializes dictionaries for PLATEAU",
