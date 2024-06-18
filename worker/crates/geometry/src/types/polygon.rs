@@ -346,11 +346,12 @@ impl Polygon3D<f64> {
     }
 }
 
-impl<T: CoordNum> Surface for Polygon<T, T> {}
+impl<T: CoordNum, Z: CoordNum> Surface for Polygon<T, Z> {}
 
-impl<T> RelativeEq for Polygon<T, T>
+impl<T, Z> RelativeEq for Polygon<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -378,7 +379,9 @@ where
     }
 }
 
-impl<T: AbsDiffEq<Epsilon = T> + CoordNum> AbsDiffEq for Polygon<T, T> {
+impl<T: AbsDiffEq<Epsilon = T> + CoordNum, Z: AbsDiffEq<Epsilon = Z> + CoordNum> AbsDiffEq
+    for Polygon<T, Z>
+{
     type Epsilon = T;
 
     #[inline]

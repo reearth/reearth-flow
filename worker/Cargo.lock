@@ -2686,6 +2686,7 @@ dependencies = [
 name = "reearth-flow-common"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "async-recursion",
  "base64 0.22.1",
  "bytes",

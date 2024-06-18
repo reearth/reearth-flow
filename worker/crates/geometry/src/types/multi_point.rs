@@ -88,9 +88,10 @@ impl<'a> From<NMultiPoint3<'a>> for MultiPoint3D<f64> {
     }
 }
 
-impl<T> RelativeEq for MultiPoint<T, T>
+impl<T, Z> RelativeEq for MultiPoint<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -113,10 +114,12 @@ where
     }
 }
 
-impl<T> AbsDiffEq for MultiPoint<T, T>
+impl<T, Z> AbsDiffEq for MultiPoint<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum,
     T::Epsilon: Copy,
+    Z::Epsilon: Copy,
 {
     type Epsilon = T;
 

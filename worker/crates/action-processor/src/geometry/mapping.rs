@@ -23,6 +23,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<TwoDimentionForcerFactory>::default(),
         Box::<GeometryExtractorFactory>::default(),
         Box::<OrientationExtractorFactory>::default(),
+        Box::<GeometryFilterFactory>::default(),
     ];
     factories
         .into_iter()

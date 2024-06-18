@@ -58,6 +58,7 @@ nusamai-plateau = {git = "https://github.com/reearth/plateau-gis-converter", fea
 nusamai-projection = {git = "https://github.com/reearth/plateau-gis-converter"}
 
 Inflector = "0.11.4"
+approx = "0.5.1"
 async-trait = "0.1.80"
 async_zip = {version = "0.0.17", features = ["full"]}
 bytes = {version = "1.6.0", features = ["serde"]}

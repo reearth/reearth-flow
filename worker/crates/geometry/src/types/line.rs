@@ -92,9 +92,10 @@ impl<T: CoordNum> From<[(T, T, T); 2]> for Line<T, T> {
     }
 }
 
-impl<T> RelativeEq for Line<T, T>
+impl<T, Z> RelativeEq for Line<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -113,7 +114,9 @@ where
     }
 }
 
-impl<T: AbsDiffEq<Epsilon = T> + CoordNum> AbsDiffEq for Line<T, T> {
+impl<T: AbsDiffEq<Epsilon = T> + CoordNum, Z: AbsDiffEq<Epsilon = Z> + CoordNum> AbsDiffEq
+    for Line<T, Z>
+{
     type Epsilon = T;
 
     #[inline]

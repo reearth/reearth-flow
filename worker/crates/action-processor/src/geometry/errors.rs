@@ -35,6 +35,10 @@ pub(super) enum GeometryProcessorError {
     OrientationExtractorFactory(String),
     #[error("OrientationExtractor error: {0}")]
     OrientationExtractor(String),
+    #[error("GeometryValidator Factory error: {0}")]
+    GeometryValidatorFactory(String),
+    #[error("GeometryValidator error: {0}")]
+    GeometryValidator(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
