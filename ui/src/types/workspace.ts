@@ -4,16 +4,20 @@ export type Workspace = {
   id: string;
   name: string;
   personal: boolean;
-  members?: Member[];
+  members: Member[];
   projects?: Project[];
 };
 
 export type CreateWorkspace = {
-  workspace: Workspace | undefined;
+  workspace?: Workspace;
+} & ApiResponse;
+
+export type UpdateWorkspace = {
+  workspace?: Workspace;
 } & ApiResponse;
 
 export type GetWorkspaces = {
-  workspaces: Workspace[] | undefined;
+  workspaces?: Workspace[];
   isLoading: boolean;
 } & ApiResponse;
 
@@ -23,5 +27,5 @@ export type GetWorkspace = {
 } & ApiResponse;
 
 export type DeleteWorkspace = {
-  workspaceId: string | undefined;
+  workspaceId?: string;
 } & ApiResponse;

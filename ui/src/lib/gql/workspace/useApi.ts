@@ -1,4 +1,10 @@
-import { GetWorkspaces, CreateWorkspace, DeleteWorkspace, GetWorkspace } from "@flow/types";
+import {
+  GetWorkspaces,
+  CreateWorkspace,
+  DeleteWorkspace,
+  GetWorkspace,
+  UpdateWorkspace,
+} from "@flow/types";
 
 import { useQueries } from "./useQueries";
 
@@ -13,6 +19,7 @@ export const useWorkspace = () => {
     useGetWorkspacesQuery,
     deleteWorkspaceMutation,
     useGetWorkspaceByIdQuery,
+    updateWorkspaceMutation,
   } = useQueries();
 
   const createWorkspace = async (name: string): Promise<CreateWorkspace> => {
@@ -22,16 +29,6 @@ export const useWorkspace = () => {
       return { workspace: data, ...rest };
     } catch (err) {
       return { workspace: undefined, ...rest };
-    }
-  };
-
-  const deleteWorkspace = async (workspaceId: string): Promise<DeleteWorkspace> => {
-    const { mutateAsync, ...rest } = deleteWorkspaceMutation;
-    try {
-      const data = await mutateAsync(workspaceId);
-      return { workspaceId: data, ...rest };
-    } catch (err) {
-      return { workspaceId: undefined, ...rest };
     }
   };
 
@@ -51,10 +48,31 @@ export const useWorkspace = () => {
     };
   };
 
+  const updateWorkspace = async (workspaceId: string, name: string): Promise<UpdateWorkspace> => {
+    const { mutateAsync, ...rest } = updateWorkspaceMutation;
+    try {
+      const data = await mutateAsync({ workspaceId, name });
+      return { workspace: data, ...rest };
+    } catch (err) {
+      return { workspace: undefined, ...rest };
+    }
+  };
+
+  const deleteWorkspace = async (workspaceId: string): Promise<DeleteWorkspace> => {
+    const { mutateAsync, ...rest } = deleteWorkspaceMutation;
+    try {
+      const data = await mutateAsync(workspaceId);
+      return { workspaceId: data, ...rest };
+    } catch (err) {
+      return { workspaceId: undefined, ...rest };
+    }
+  };
+
   return {
     createWorkspace,
     useGetWorkspaces,
     useGetWorkspace,
     deleteWorkspace,
+    updateWorkspace,
   };
 };

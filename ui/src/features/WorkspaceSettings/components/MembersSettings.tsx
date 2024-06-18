@@ -15,7 +15,7 @@ import { Role, UserMember } from "@flow/types";
 
 type Filter = "all" | Role;
 
-const roles = ["admin", "reader", "writer"];
+const roles: Role[] = ["MAINTAINER", "OWNER", "READER", "WRITER"];
 
 const MembersSettings: React.FC = () => {
   const t = useT();
@@ -25,9 +25,10 @@ const MembersSettings: React.FC = () => {
 
   const filters: { id: Filter; title: string }[] = [
     { id: "all", title: t("All") },
-    { id: "admin", title: t("Admin") },
-    { id: "reader", title: t("Reader") },
-    { id: "writer", title: t("Writer") },
+    { id: "OWNER", title: t("Owner") },
+    { id: "READER", title: t("Reader") },
+    { id: "MAINTAINER", title: t("Maintainer") },
+    { id: "WRITER", title: t("Writer") },
   ];
 
   const members =
@@ -118,7 +119,7 @@ const MembersSettings: React.FC = () => {
                     )
                   }
                 />
-                <p>{member.user.name}</p>
+                <p>{member.user?.name}</p>
                 <p className="px-4 font-thin capitalize text-sm">{member.role}</p>
               </div>
             ))}

@@ -1,12 +1,12 @@
 import { IntegrationMember } from "./integration";
 import { User } from "./user";
 
-export type Role = "reader" | "writer" | "admin";
+export type Role = "MAINTAINER" | "OWNER" | "READER" | "WRITER";
 
 export type UserMember = {
   userId: string;
   role: Role;
-  user: User;
+  user?: User;
 };
 
 export type Member = UserMember | IntegrationMember;
