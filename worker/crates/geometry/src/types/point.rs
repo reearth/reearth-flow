@@ -45,8 +45,8 @@ impl<T: CoordNum> From<Point<T>> for (T, T) {
     }
 }
 
-impl<T: CoordNum> From<Point<T, T>> for (T, T, T) {
-    fn from(point: Point<T, T>) -> Self {
+impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for (T, T, Z) {
+    fn from(point: Point<T, Z>) -> Self {
         point.0.into()
     }
 }
@@ -208,9 +208,10 @@ impl<T: CoordNum> DivAssign<T> for Point<T, NoValue> {
     }
 }
 
-impl<T> RelativeEq for Point<T, T>
+impl<T, Z> RelativeEq for Point<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -228,10 +229,12 @@ where
     }
 }
 
-impl<T> AbsDiffEq for Point<T, T>
+impl<T, Z> AbsDiffEq for Point<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum,
     T::Epsilon: Copy,
+    Z::Epsilon: Copy,
 {
     type Epsilon = T::Epsilon;
 

@@ -254,9 +254,10 @@ impl LineString3D<f64> {
     }
 }
 
-impl<T> approx::RelativeEq for LineString<T, T>
+impl<T, Z> approx::RelativeEq for LineString<T, Z>
 where
     T: approx::AbsDiffEq<Epsilon = T> + CoordNum + approx::RelativeEq,
+    Z: approx::AbsDiffEq<Epsilon = Z> + CoordNum + approx::RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -279,12 +280,15 @@ where
                 return false;
             }
         }
-
         true
     }
 }
 
-impl<T: approx::AbsDiffEq<Epsilon = T> + CoordNum> approx::AbsDiffEq for LineString<T, T> {
+impl<
+        T: approx::AbsDiffEq<Epsilon = T> + CoordNum,
+        Z: approx::AbsDiffEq<Epsilon = Z> + CoordNum,
+    > approx::AbsDiffEq for LineString<T, Z>
+{
     type Epsilon = T;
 
     #[inline]

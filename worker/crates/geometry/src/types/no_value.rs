@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
+use approx::{AbsDiffEq, RelativeEq, UlpsEq};
 use num_traits::{Float, Num, NumCast, One, ToPrimitive, Zero};
 use serde::{Deserialize, Serialize};
 
@@ -342,5 +343,48 @@ impl Float for NoValue {
 impl GeoNum for NoValue {
     fn total_cmp(&self, _other: &Self) -> Ordering {
         Ordering::Equal
+    }
+}
+
+impl AbsDiffEq for NoValue {
+    type Epsilon = f64;
+
+    #[inline]
+    fn default_epsilon() -> Self::Epsilon {
+        1e-8
+    }
+
+    #[inline]
+    fn abs_diff_eq(&self, other: &Self, _epsilon: Self::Epsilon) -> bool {
+        self == other
+    }
+}
+
+impl RelativeEq for NoValue {
+    #[inline]
+    fn default_max_relative() -> Self::Epsilon {
+        1e-8
+    }
+
+    #[inline]
+    fn relative_eq(
+        &self,
+        other: &Self,
+        _epsilon: Self::Epsilon,
+        _max_relative: Self::Epsilon,
+    ) -> bool {
+        self == other
+    }
+}
+
+impl UlpsEq for NoValue {
+    #[inline]
+    fn default_max_ulps() -> u32 {
+        0
+    }
+
+    #[inline]
+    fn ulps_eq(&self, other: &Self, _epsilon: Self::Epsilon, _max_ulps: u32) -> bool {
+        self == other
     }
 }

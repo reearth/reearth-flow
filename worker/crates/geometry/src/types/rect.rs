@@ -1,3 +1,4 @@
+use approx::{AbsDiffEq, RelativeEq};
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;
@@ -104,6 +105,62 @@ impl<T: CoordFloat> Rect<T, NoValue> {
             (self.max.x + self.min.x) / two,
             (self.max.y + self.min.y) / two,
         )
+    }
+}
+
+impl<T, Z> RelativeEq for Rect<T, Z>
+where
+    T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
+{
+    #[inline]
+    fn default_max_relative() -> Self::Epsilon {
+        T::default_max_relative()
+    }
+
+    #[inline]
+    fn relative_eq(
+        &self,
+        other: &Self,
+        epsilon: Self::Epsilon,
+        max_relative: Self::Epsilon,
+    ) -> bool {
+        if !self.min.relative_eq(&other.min, epsilon, max_relative) {
+            return false;
+        }
+
+        if !self.max.relative_eq(&other.max, epsilon, max_relative) {
+            return false;
+        }
+
+        true
+    }
+}
+
+impl<T, Z> AbsDiffEq for Rect<T, Z>
+where
+    T: AbsDiffEq<Epsilon = T> + CoordNum,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum,
+    T::Epsilon: Copy,
+    Z::Epsilon: Copy,
+{
+    type Epsilon = T;
+
+    #[inline]
+    fn default_epsilon() -> Self::Epsilon {
+        T::default_epsilon()
+    }
+    #[inline]
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        if !self.min.abs_diff_eq(&other.min, epsilon) {
+            return false;
+        }
+
+        if !self.max.abs_diff_eq(&other.max, epsilon) {
+            return false;
+        }
+
+        true
     }
 }
 

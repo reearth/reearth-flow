@@ -15,7 +15,7 @@ nusamai-citygml.workspace = true
 nusamai-geometry.workspace = true
 nusamai-projection.workspace = true
 
-approx = "0.5.1"
+approx.workspace = true
 bytes.workspace = true
 float_next_after.workspace = true
 num-traits = "0.2.19"

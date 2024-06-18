@@ -130,9 +130,10 @@ impl<'a, T: CoordNum> Iterator for Iter<'a, T> {
     }
 }
 
-impl<T> RelativeEq for MultiPolygon<T, T>
+impl<T, Z> RelativeEq for MultiPolygon<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -155,10 +156,12 @@ where
     }
 }
 
-impl<T> AbsDiffEq for MultiPolygon<T, T>
+impl<T, Z> AbsDiffEq for MultiPolygon<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum,
     T::Epsilon: Copy,
+    Z::Epsilon: Copy,
 {
     type Epsilon = T;
 

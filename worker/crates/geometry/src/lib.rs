@@ -4,6 +4,7 @@ pub mod algorithm;
 pub mod error;
 pub mod types;
 pub mod utils;
+pub mod validation;
 
 #[macro_use]
 pub mod macros;
