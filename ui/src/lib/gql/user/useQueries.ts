@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { Me, User } from "@flow/types/user";
+import { Me } from "@flow/types/user";
 
-import { GetMeQuery, SearchUserQuery } from "../__gen__/graphql";
+import { GetMeQuery } from "../__gen__/graphql";
 
 import { UserQueryKeys } from "./useApi";
 
@@ -26,7 +26,7 @@ export const useQueries = () => {
     staleTime: Infinity,
   });
 
-  // Not using react-query because it was returning a hook and a function was needed
+  // Not using react-query because no observers are needed on this
   const searchUserQuery = async (email: string) => {
     try {
       const data = await graphQLContext?.SearchUser({ email });
