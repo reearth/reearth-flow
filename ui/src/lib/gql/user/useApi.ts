@@ -8,7 +8,7 @@ export enum UserQueryKeys {
 }
 
 export const useUser = () => {
-  const { getMeQuery, useSearchUserQuery } = useQueries();
+  const { getMeQuery, searchUserQuery } = useQueries();
 
   const getMe = (): GetMe => {
     const { data, ...rest } = getMeQuery;
@@ -18,16 +18,15 @@ export const useUser = () => {
     };
   };
 
-  const useSearchUser = (email: string): SearchUser => {
-    const { data, ...rest } = useSearchUserQuery(email);
+  const searchUser = async (email: string): Promise<SearchUser> => {
+    const data = await searchUserQuery(email);
     return {
       user: data,
-      ...rest,
     };
   };
 
   return {
     getMe,
-    useSearchUser,
+    searchUser,
   };
 };

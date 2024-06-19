@@ -19,4 +19,4 @@ export type User = {
 
 export type SearchUser = {
   user?: User;
-} & ApiResponse;
+};

@@ -26,24 +26,23 @@ export const useQueries = () => {
     staleTime: Infinity,
   });
 
-  const useSearchUserQuery = (email: string) =>
-    useQuery({
-      queryKey: [UserQueryKeys.SearchUser, email],
-      queryFn: () => graphQLContext?.SearchUser({ email }),
-      select: (data: SearchUserQuery | undefined): User | undefined => {
-        if (!data?.searchUser) return undefined;
-        const user = data.searchUser;
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        };
-      },
-      staleTime: Infinity,
-    });
+  // Not using react-query because it was returning a hook and a function was needed
+  const searchUserQuery = async (email: string) => {
+    try {
+      const data = await graphQLContext?.SearchUser({ email });
+      if (!data?.searchUser) return;
+      return {
+        id: data.searchUser.id,
+        name: data.searchUser.name,
+        email: data.searchUser.email,
+      };
+    } catch (err) {
+      return;
+    }
+  };
 
   return {
     getMeQuery,
-    useSearchUserQuery,
+    searchUserQuery,
   };
 };
