@@ -37,9 +37,11 @@ const MembersSettings: React.FC = () => {
   ];
 
   const members =
-    (currentWorkspace?.members?.filter(
-      m => "userId" in m && (currentFilter !== "all" ? m.role === currentFilter : true),
-    ) as UserMember[]) ?? [];
+    (
+      currentWorkspace?.members?.filter(
+        m => "userId" in m && (currentFilter !== "all" ? m.role === currentFilter : true),
+      ) as UserMember[]
+    ).sort((a, b) => a.user?.name.localeCompare(b.user?.name ?? "") ?? 0) ?? [];
 
   const handleAddMember = async (email: string) => {
     setError(undefined);
@@ -56,6 +58,7 @@ const MembersSettings: React.FC = () => {
       return;
     }
     setCurrentWorkspace(workspace);
+    setEmail("");
   };
 
   const handleChangeRole = async (userId: string, role: Role) => {
