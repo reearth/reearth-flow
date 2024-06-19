@@ -96,6 +96,39 @@ impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType 
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct ValidationResult {
+    error_count: usize,
+    details: Vec<serde_json::Value>,
+}
+
+impl ValidationResult {
+    fn merge(results: Vec<Self>) -> Self {
+        let error_count = results.iter().map(|result| result.error_count).sum();
+        let details = results
+            .into_iter()
+            .flat_map(|result| result.details)
+            .collect();
+        Self {
+            error_count,
+            details,
+        }
+    }
+}
+
+impl From<ValidationProblemReport> for ValidationResult {
+    fn from(report: ValidationProblemReport) -> Self {
+        Self {
+            error_count: report.error_count(),
+            details: report
+                .reports()
+                .into_iter()
+                .map(|detail| serde_json::to_value(detail).unwrap())
+                .collect(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryValidator {
@@ -119,36 +152,59 @@ impl Processor for GeometryValidator {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
         };
-        let port = match &geometry.value {
-            GeometryValue::Null => REJECTED_PORT.clone(),
+        match &geometry.value {
+            GeometryValue::Null => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
             GeometryValue::FlowGeometry2D(geometry) => {
-                if geometry.validate(self.validation_type.clone().into()) {
-                    SUCCESS_PORT.clone()
+                if let Some(report) = geometry.validate(self.validation_type.clone().into()) {
+                    let mut feature = feature.clone();
+                    feature.insert(
+                        "validationResult",
+                        serde_json::to_value(ValidationResult::from(report))?.into(),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
                 } else {
-                    FAILED_PORT.clone()
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
                 }
             }
             GeometryValue::FlowGeometry3D(geometry) => {
-                if geometry.validate(self.validation_type.clone().into()) {
-                    SUCCESS_PORT.clone()
+                if let Some(report) = geometry.validate(self.validation_type.clone().into()) {
+                    let mut feature = feature.clone();
+                    feature.insert(
+                        "validationResult",
+                        serde_json::to_value(ValidationResult::from(report))?.into(),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
                 } else {
-                    FAILED_PORT.clone()
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
                 }
             }
             GeometryValue::CityGmlGeometry(gml_geometry) => {
-                if gml_geometry.features.iter().all(|feature| {
-                    feature
-                        .polygons
-                        .iter()
-                        .all(|polygon| polygon.validate(self.validation_type.clone().into()))
-                }) {
-                    SUCCESS_PORT.clone()
+                let result = gml_geometry
+                    .features
+                    .iter()
+                    .flat_map(|feature| {
+                        feature
+                            .polygons
+                            .iter()
+                            .map(|polygon| polygon.validate(self.validation_type.clone().into()))
+                    })
+                    .flatten()
+                    .map(|report| report.into())
+                    .collect::<Vec<ValidationResult>>();
+                if result.is_empty() {
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
                 } else {
-                    FAILED_PORT.clone()
+                    let mut feature = feature.clone();
+                    feature.insert(
+                        "validationResult",
+                        serde_json::to_value(ValidationResult::merge(result))?.into(),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
                 }
             }
-        };
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), port));
+        }
         Ok(())
     }
 
