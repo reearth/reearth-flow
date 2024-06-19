@@ -10,7 +10,7 @@ type Errors = "delete" | "update";
 
 const GeneralSettings: React.FC = () => {
   const t = useT();
-  const [currentWorkspace] = useCurrentWorkspace();
+  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
   const { deleteWorkspace, updateWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const [showError, setShowError] = useState<Errors | undefined>(undefined);
@@ -39,7 +39,10 @@ const GeneralSettings: React.FC = () => {
     setLoading(false);
     if (!workspace) {
       setShowError("update");
+      return;
     }
+    // TODO: Not sure if this is correct to set here
+    setCurrentWorkspace(workspace);
   };
   return (
     <div>
