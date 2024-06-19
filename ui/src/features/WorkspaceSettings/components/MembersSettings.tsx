@@ -10,26 +10,30 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@flow/components";
+// import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Role, UserMember } from "@flow/types";
 
 type Filter = "all" | Role;
 
-const roles: Role[] = ["MAINTAINER", "OWNER", "READER", "WRITER"];
+const roles: Role[] = Object.values(Role);
 
 const MembersSettings: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
+  // const { useSearchUser } = useUser();
+
+  const [email, setEmail] = useState<string | undefined>();
 
   const [currentFilter, setFilter] = useState<Filter>("all");
 
   const filters: { id: Filter; title: string }[] = [
     { id: "all", title: t("All") },
-    { id: "OWNER", title: t("Owner") },
-    { id: "READER", title: t("Reader") },
-    { id: "MAINTAINER", title: t("Maintainer") },
-    { id: "WRITER", title: t("Writer") },
+    { id: Role.Owner, title: t("Owner") },
+    { id: Role.Reader, title: t("Reader") },
+    { id: Role.Reader, title: t("Maintainer") },
+    { id: Role.Writer, title: t("Writer") },
   ];
 
   const members =
@@ -39,15 +43,29 @@ const MembersSettings: React.FC = () => {
 
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
+  const handleAddMember = async () => {
+    if (!email || currentWorkspace?.id) return;
+    // const user = useSearchUser(email);
+    // const { workspace } = await addMemberToWorkspace();
+  };
+
   return (
     <div>
       <div className="flex flex-col gap-6 mt-4 max-w-[800px]">
         <div className="flex justify-between">
           <p className="text-lg font-extralight">{t("Members Settings")}</p>
         </div>
-        <div>
-          <Input placeholder={t("Enter email")} value={"sample"} />
-          <Button>{t("Add Members")}</Button>
+        <div className="flex justify-between items-center">
+          {/* TODO: This will be a dialog component */}
+          <Input
+            className="w-2/4"
+            placeholder={t("Enter email")}
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+          />
+          <Button onClick={handleAddMember} disabled={!email}>
+            {t("Add Member")}
+          </Button>
         </div>
         <div className="border border-zinc-700 rounded font-extralight">
           <div className="flex justify-between items-center gap-2 p-2 border-b border-zinc-700 h-[42px]">

@@ -1,7 +1,12 @@
 import { IntegrationMember } from "./integration";
 import { User } from "./user";
 
-export type Role = "MAINTAINER" | "OWNER" | "READER" | "WRITER";
+export enum Role {
+  Maintainer = "MAINTAINER",
+  Owner = "OWNER",
+  Reader = "READER",
+  Writer = "WRITER",
+}
 
 export type UserMember = {
   userId: string;
