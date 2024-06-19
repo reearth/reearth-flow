@@ -8,13 +8,10 @@ export type Workspace = {
   projects?: Project[];
 };
 
-export type CreateWorkspace = {
+export type WorkspaceMutation {
   workspace?: Workspace;
 } & ApiResponse;
 
-export type UpdateWorkspace = {
-  workspace?: Workspace;
-} & ApiResponse;
 
 export type GetWorkspaces = {
   workspaces?: Workspace[];

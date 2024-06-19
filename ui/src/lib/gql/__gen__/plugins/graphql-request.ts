@@ -500,6 +500,13 @@ export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type GetMeQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string } | null };
 
+export type SearchUserQueryVariables = Exact<{
+  email: Scalars['String']['input'];
+}>;
+
+
+export type SearchUserQuery = { __typename?: 'Query', searchUser?: { __typename?: 'User', id: string, name: string, email: string } | null };
+
 export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
 
 export type CreateWorkspaceMutationVariables = Exact<{
@@ -542,19 +549,19 @@ export type AddMemberToWorkspaceMutationVariables = Exact<{
 
 export type AddMemberToWorkspaceMutation = { __typename?: 'Mutation', addMemberToWorkspace?: { __typename?: 'AddMemberToWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } } | null };
 
-export type RemoveMemberToWorkspaceMutationVariables = Exact<{
+export type RemoveMemberFromWorkspaceMutationVariables = Exact<{
   input: RemoveMemberFromWorkspaceInput;
 }>;
 
 
-export type RemoveMemberToWorkspaceMutation = { __typename?: 'Mutation', removeMemberFromWorkspace?: { __typename?: 'RemoveMemberFromWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } } | null };
+export type RemoveMemberFromWorkspaceMutation = { __typename?: 'Mutation', removeMemberFromWorkspace?: { __typename?: 'RemoveMemberFromWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } } | null };
 
-export type UpdateMemberToWorkspaceMutationVariables = Exact<{
+export type UpdateMemberOfWorkspaceMutationVariables = Exact<{
   input: UpdateMemberOfWorkspaceInput;
 }>;
 
 
-export type UpdateMemberToWorkspaceMutation = { __typename?: 'Mutation', updateMemberOfWorkspace?: { __typename?: 'UpdateMemberOfWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } } | null };
+export type UpdateMemberOfWorkspaceMutation = { __typename?: 'Mutation', updateMemberOfWorkspace?: { __typename?: 'UpdateMemberOfWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } } | null };
 
 export const ProjectFragmentDoc = gql`
     fragment Project on Project {
@@ -641,6 +648,15 @@ export const GetMeDocument = gql`
   }
 }
     `;
+export const SearchUserDocument = gql`
+    query SearchUser($email: String!) {
+  searchUser(nameOrEmail: $email) {
+    id
+    name
+    email
+  }
+}
+    `;
 export const CreateWorkspaceDocument = gql`
     mutation CreateWorkspace($input: CreateWorkspaceInput!) {
   createWorkspace(input: $input) {
@@ -692,8 +708,8 @@ export const AddMemberToWorkspaceDocument = gql`
   }
 }
     ${WorkspaceFragmentDoc}`;
-export const RemoveMemberToWorkspaceDocument = gql`
-    mutation RemoveMemberToWorkspace($input: RemoveMemberFromWorkspaceInput!) {
+export const RemoveMemberFromWorkspaceDocument = gql`
+    mutation RemoveMemberFromWorkspace($input: RemoveMemberFromWorkspaceInput!) {
   removeMemberFromWorkspace(input: $input) {
     workspace {
       ...Workspace
@@ -701,8 +717,8 @@ export const RemoveMemberToWorkspaceDocument = gql`
   }
 }
     ${WorkspaceFragmentDoc}`;
-export const UpdateMemberToWorkspaceDocument = gql`
-    mutation UpdateMemberToWorkspace($input: UpdateMemberOfWorkspaceInput!) {
+export const UpdateMemberOfWorkspaceDocument = gql`
+    mutation UpdateMemberOfWorkspace($input: UpdateMemberOfWorkspaceInput!) {
   updateMemberOfWorkspace(input: $input) {
     workspace {
       ...Workspace
@@ -736,6 +752,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     GetMe(variables?: GetMeQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetMeQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetMeQuery>(GetMeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetMe', 'query', variables);
     },
+    SearchUser(variables: SearchUserQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<SearchUserQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<SearchUserQuery>(SearchUserDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'SearchUser', 'query', variables);
+    },
     CreateWorkspace(variables: CreateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateWorkspaceMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkspaceMutation>(CreateWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateWorkspace', 'mutation', variables);
     },
@@ -754,11 +773,11 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     AddMemberToWorkspace(variables: AddMemberToWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<AddMemberToWorkspaceMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<AddMemberToWorkspaceMutation>(AddMemberToWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'AddMemberToWorkspace', 'mutation', variables);
     },
-    RemoveMemberToWorkspace(variables: RemoveMemberToWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RemoveMemberToWorkspaceMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<RemoveMemberToWorkspaceMutation>(RemoveMemberToWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RemoveMemberToWorkspace', 'mutation', variables);
+    RemoveMemberFromWorkspace(variables: RemoveMemberFromWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RemoveMemberFromWorkspaceMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RemoveMemberFromWorkspaceMutation>(RemoveMemberFromWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RemoveMemberFromWorkspace', 'mutation', variables);
     },
-    UpdateMemberToWorkspace(variables: UpdateMemberToWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateMemberToWorkspaceMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateMemberToWorkspaceMutation>(UpdateMemberToWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateMemberToWorkspace', 'mutation', variables);
+    UpdateMemberOfWorkspace(variables: UpdateMemberOfWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateMemberOfWorkspaceMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateMemberOfWorkspaceMutation>(UpdateMemberOfWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateMemberOfWorkspace', 'mutation', variables);
     }
   };
 }

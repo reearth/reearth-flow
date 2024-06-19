@@ -4,7 +4,13 @@ import { useCallback } from "react";
 import { useGraphQLContext } from "@flow/lib/gql";
 import { Member, Workspace } from "@flow/types";
 
-import { UpdateWorkspaceInput, WorkspaceFragment } from "../__gen__/graphql";
+import {
+  AddMemberToWorkspaceInput,
+  RemoveMemberFromWorkspaceInput,
+  UpdateMemberOfWorkspaceInput,
+  UpdateWorkspaceInput,
+  WorkspaceFragment,
+} from "../__gen__/graphql";
 
 import { WorkspaceQueryKeys } from "./useApi";
 
@@ -14,34 +20,34 @@ export const useQueries = () => {
   const queryClient = useQueryClient();
 
   const createNewWorkspaceObject = useCallback(
-    (w: WorkspaceFragment): Workspace => ({
-      id: w.id,
-      name: w.name,
-      personal: w.personal,
-      members: w.members.map(
-        (m): Member => ({
-          userId: m.userId,
-          role: m.role,
-          user: m.user
-            ? {
-                id: m.user?.id,
-                name: m.user?.name,
-                email: m.user?.email,
-              }
-            : undefined,
-        }),
-      ),
-    }),
+    (w: WorkspaceFragment | undefined): Workspace | undefined =>
+      w
+        ? {
+            id: w.id,
+            name: w.name,
+            personal: w.personal,
+            members: w.members.map(
+              (m): Member => ({
+                userId: m.userId,
+                role: m.role,
+                user: m.user
+                  ? {
+                      id: m.user?.id,
+                      name: m.user?.name,
+                      email: m.user?.email,
+                    }
+                  : undefined,
+              }),
+            ),
+          }
+        : undefined,
     [],
   );
 
   const createWorkspaceMutation = useMutation({
     mutationFn: async (name: string) => {
       const data = await graphQLContext?.CreateWorkspace({ input: { name } });
-      return (
-        data?.createWorkspace?.workspace &&
-        createNewWorkspaceObject(data?.createWorkspace?.workspace)
-      );
+      return createNewWorkspaceObject(data?.createWorkspace?.workspace);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -54,7 +60,8 @@ export const useQueries = () => {
     useQuery({
       queryKey: [WorkspaceQueryKeys.GetWorkspaces],
       queryFn: () => graphQLContext?.GetWorkspaces(),
-      select: data => data?.me?.workspaces.map(w => createNewWorkspaceObject(w)),
+      select: data =>
+        data?.me?.workspaces.map(w => createNewWorkspaceObject(w)).flatMap(w => (w ? [w] : [])),
       staleTime: Infinity,
     });
 
@@ -70,10 +77,7 @@ export const useQueries = () => {
   const updateWorkspaceMutation = useMutation({
     mutationFn: async (input: UpdateWorkspaceInput) => {
       const data = await graphQLContext?.UpdateWorkspace({ input });
-      return (
-        data?.updateWorkspace?.workspace &&
-        createNewWorkspaceObject(data?.updateWorkspace?.workspace)
-      );
+      return createNewWorkspaceObject(data?.updateWorkspace?.workspace);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -94,11 +98,57 @@ export const useQueries = () => {
     },
   });
 
+  // Members in the Workspace
+  const addMemberToWorkspaceMutation = useMutation({
+    mutationFn: async (input: AddMemberToWorkspaceInput) => {
+      const data = await graphQLContext?.AddMemberToWorkspace({
+        input,
+      });
+      return createNewWorkspaceObject(data?.addMemberToWorkspace?.workspace);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [WorkspaceQueryKeys.GetWorkspaces],
+      });
+    },
+  });
+
+  const removeMemberFromWorkspaceMutation = useMutation({
+    mutationFn: async (input: RemoveMemberFromWorkspaceInput) => {
+      const data = await graphQLContext?.RemoveMemberFromWorkspace({
+        input,
+      });
+      return createNewWorkspaceObject(data?.removeMemberFromWorkspace?.workspace);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [WorkspaceQueryKeys.GetWorkspaces],
+      });
+    },
+  });
+
+  const updateMemberOfWorkspaceMutation = useMutation({
+    mutationFn: async (input: UpdateMemberOfWorkspaceInput) => {
+      const data = await graphQLContext?.UpdateMemberOfWorkspace({
+        input,
+      });
+      return createNewWorkspaceObject(data?.updateMemberOfWorkspace?.workspace);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [WorkspaceQueryKeys.GetWorkspaces],
+      });
+    },
+  });
+
   return {
     createWorkspaceMutation,
     useGetWorkspacesQuery,
     useGetWorkspaceByIdQuery,
     deleteWorkspaceMutation,
     updateWorkspaceMutation,
+    addMemberToWorkspaceMutation,
+    removeMemberFromWorkspaceMutation,
+    updateMemberOfWorkspaceMutation,
   };
 };

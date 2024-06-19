@@ -59,7 +59,7 @@ mutation AddMemberToWorkspace($input: AddMemberToWorkspaceInput!) {
   }
 }
 
-mutation RemoveMemberToWorkspace($input: RemoveMemberFromWorkspaceInput!) {
+mutation RemoveMemberFromWorkspace($input: RemoveMemberFromWorkspaceInput!) {
   removeMemberFromWorkspace(input: $input) {
     workspace {
       ...Workspace
@@ -67,7 +67,7 @@ mutation RemoveMemberToWorkspace($input: RemoveMemberFromWorkspaceInput!) {
   }
 }
 
-mutation UpdateMemberToWorkspace($input: UpdateMemberOfWorkspaceInput!) {
+mutation UpdateMemberOfWorkspace($input: UpdateMemberOfWorkspaceInput!) {
   updateMemberOfWorkspace(input: $input) {
     workspace {
       ...Workspace
