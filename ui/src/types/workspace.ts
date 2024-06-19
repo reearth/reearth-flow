@@ -8,10 +8,9 @@ export type Workspace = {
   projects?: Project[];
 };
 
-export type WorkspaceMutation {
+export type WorkspaceMutation = {
   workspace?: Workspace;
 } & ApiResponse;
-
 
 export type GetWorkspaces = {
   workspaces?: Workspace[];
