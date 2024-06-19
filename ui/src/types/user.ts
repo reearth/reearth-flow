@@ -16,3 +16,7 @@ export type User = {
   name: string;
   email: string;
 };
+
+export type SearchUser = {
+  user?: User;
+} & ApiResponse;

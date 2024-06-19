@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { Me } from "@flow/types/user";
+import { Me, User } from "@flow/types/user";
 
-import { GetMeQuery } from "../__gen__/graphql";
+import { GetMeQuery, SearchUserQuery } from "../__gen__/graphql";
 
 import { UserQueryKeys } from "./useApi";
 
@@ -26,7 +26,24 @@ export const useQueries = () => {
     staleTime: Infinity,
   });
 
+  const useSearchUserQuery = (email: string) =>
+    useQuery({
+      queryKey: [UserQueryKeys.SearchUser, email],
+      queryFn: () => graphQLContext?.SearchUser({ email }),
+      select: (data: SearchUserQuery | undefined): User | undefined => {
+        if (!data?.searchUser) return undefined;
+        const user = data.searchUser;
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        };
+      },
+      staleTime: Infinity,
+    });
+
   return {
     getMeQuery,
+    useSearchUserQuery,
   };
 };

@@ -6,3 +6,11 @@ query GetMe {
     myWorkspaceId
   }
 }
+
+query SearchUser($email: String!) {
+  searchUser(nameOrEmail: $email) {
+    id
+    name
+    email
+  }
+}
