@@ -8,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -43,6 +44,9 @@ const MembersSettings: React.FC = () => {
       <div className="flex flex-col gap-6 mt-4 max-w-[800px]">
         <div className="flex justify-between">
           <p className="text-lg font-extralight">{t("Members Settings")}</p>
+        </div>
+        <div>
+          <Input placeholder={t("Enter email")} value={"sample"} />
           <Button>{t("Add Members")}</Button>
         </div>
         <div className="border border-zinc-700 rounded font-extralight">
