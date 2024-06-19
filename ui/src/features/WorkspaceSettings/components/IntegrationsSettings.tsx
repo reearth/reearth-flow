@@ -16,7 +16,7 @@ import { IntegrationMember } from "@flow/types/integration";
 
 type Filter = "all" | Role;
 
-const roles = ["admin", "reader", "writer"];
+const roles: Role[] = ["OWNER", "MAINTAINER", "READER", "WRITER"];
 
 const IntegrationsSettings: React.FC = () => {
   const t = useT();
@@ -26,9 +26,10 @@ const IntegrationsSettings: React.FC = () => {
 
   const filters: { id: Filter; title: string }[] = [
     { id: "all", title: t("All") },
-    { id: "admin", title: t("Admin") },
-    { id: "reader", title: t("Reader") },
-    { id: "writer", title: t("Writer") },
+    { id: "OWNER", title: t("Owner") },
+    { id: "READER", title: t("Reader") },
+    { id: "MAINTAINER", title: t("Maintainer") },
+    { id: "WRITER", title: t("Writer") },
   ];
 
   const integrations: IntegrationMember[] =
