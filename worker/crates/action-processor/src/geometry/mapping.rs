@@ -9,7 +9,7 @@ use super::{
     orientation_extractor::OrientationExtractorFactory, reprojector::ReprojectorFactory,
     splitter::GeometrySplitterFactory,
     three_dimention_box_replacer::ThreeDimentionBoxReplacerFactory,
-    two_dimention_forcer::TwoDimentionForcerFactory,
+    two_dimention_forcer::TwoDimentionForcerFactory, validator::GeometryValidatorFactory,
 };
 
 pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -24,6 +24,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<GeometryExtractorFactory>::default(),
         Box::<OrientationExtractorFactory>::default(),
         Box::<GeometryFilterFactory>::default(),
+        Box::<GeometryValidatorFactory>::default(),
     ];
     factories
         .into_iter()
