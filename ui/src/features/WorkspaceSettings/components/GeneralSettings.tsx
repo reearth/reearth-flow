@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button, Input, Label } from "@flow/components";
 import { useWorkspace } from "@flow/lib/gql";
@@ -42,6 +42,11 @@ const GeneralSettings: React.FC = () => {
       return;
     }
   };
+
+  useEffect(() => {
+    setWorkspaceName(currentWorkspace?.name);
+  }, [currentWorkspace]);
+
   return (
     <div>
       <p className="text-lg font-extralight">{t("General Settings")}</p>
