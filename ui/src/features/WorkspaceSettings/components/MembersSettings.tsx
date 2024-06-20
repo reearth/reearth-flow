@@ -36,39 +36,35 @@ const MembersSettings: React.FC = () => {
     { id: Role.Writer, title: t("Writer") },
   ];
 
-  const members =
-    (
-      currentWorkspace?.members?.filter(
-        m => "userId" in m && (currentFilter === "all" || m.role === currentFilter),
-      ) as UserMember[]
-    ).sort((a, b) => a.user?.name.localeCompare(b.user?.name ?? "") ?? 0) ?? [];
+  const members = currentWorkspace?.members?.filter(
+    m => "userId" in m && (currentFilter === "all" || m.role === currentFilter),
+  ) as UserMember[];
 
   const handleAddMember = async (email: string) => {
     setError(undefined);
+    if (!currentWorkspace?.id) return;
     const { user } = await searchUser(email);
     if (!user) {
       setError(t("Could not find the user"));
       return;
     }
-    if (!currentWorkspace?.id) return;
     const { workspace } = await addMemberToWorkspace(currentWorkspace.id, user.id, Role.Reader);
 
     if (!workspace) {
       setError(t("Failed to add member"));
       return;
     }
-    setCurrentWorkspace(workspace);
     setEmail("");
   };
 
   const handleChangeRole = async (userId: string, role: Role) => {
+    setError(undefined);
     if (!currentWorkspace?.id) return;
     const { workspace } = await updateMemberOfWorkspace(currentWorkspace.id, userId, role);
     if (!workspace) {
       setError(t("Failed to change role of the member"));
       return;
     }
-    setCurrentWorkspace(workspace);
   };
 
   const handleRemoveMembers = async (userId: string) => {
@@ -79,7 +75,6 @@ const MembersSettings: React.FC = () => {
       setError(t("Failed to remove member"));
       return;
     }
-    setCurrentWorkspace(workspace);
   };
 
   return (
