@@ -266,6 +266,8 @@ impl Display for ValidationProblemReport {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationType {
     DuplicatePoints,
+    CorruptGeometry,
+    SelfIntersection,
 }
 
 pub trait Validator<
@@ -281,16 +283,14 @@ impl<
         Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
     > Validator<T, Z> for Coordinate<T, Z>
 {
-    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
+    fn validate(&self, _valid_type: ValidationType) -> Option<ValidationProblemReport> {
         if utils::check_coord_is_not_finite(self) {
             return Some(ValidationProblemReport(vec![ValidationProblemAtPosition(
                 ValidationProblem::NotFinite,
                 ValidationProblemPosition::Point,
             )]));
         }
-        match valid_type {
-            ValidationType::DuplicatePoints => None,
-        }
+        None
     }
 }
 
@@ -300,9 +300,7 @@ impl<
     > Validator<T, Z> for Point<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
-        match valid_type {
-            ValidationType::DuplicatePoints => self.0.validate(valid_type),
-        }
+        self.0.validate(valid_type)
     }
 }
 
@@ -335,6 +333,7 @@ impl<
                     }
                 }
             }
+            _ => unimplemented!(),
         }
         if reason.is_empty() {
             None
@@ -379,6 +378,7 @@ where
                     ));
                 }
             }
+            _ => unimplemented!(),
         }
         if reason.is_empty() {
             None
@@ -415,6 +415,7 @@ impl<
                     }
                 }
             }
+            _ => unimplemented!(),
         }
         if reason.is_empty() {
             None
@@ -447,6 +448,7 @@ impl<
                     }
                 }
             }
+            _ => unimplemented!(),
         }
         if reason.is_empty() {
             None
@@ -479,6 +481,7 @@ impl<
                     }
                 }
             }
+            _ => unimplemented!(),
         }
         if reason.is_empty() {
             None
@@ -512,6 +515,7 @@ impl<
                     }
                 }
             }
+            _ => unimplemented!(),
         }
         if reason.is_empty() {
             None
@@ -548,6 +552,7 @@ impl<
                     }
                 }
             }
+            _ => unimplemented!(),
         }
         if reason.is_empty() {
             None
@@ -577,6 +582,7 @@ impl<
                     }
                 }
             }
+            _ => unimplemented!(),
         }
         if reason.is_empty() {
             None
@@ -608,6 +614,7 @@ impl<
                     }
                 }
             }
+            _ => unimplemented!(),
         }
         if reason.is_empty() {
             None

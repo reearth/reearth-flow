@@ -47,16 +47,16 @@ impl ActionSchema {
     }
 }
 
-pub fn build_schema_command() -> Command {
-    Command::new("schema")
-        .about("Show schema.")
-        .long_about("Show schema.")
+pub fn build_schema_action_command() -> Command {
+    Command::new("schema-action")
+        .about("Show action schema.")
+        .long_about("Show action schema.")
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct SchemaCliCommand;
+pub struct SchemaActionCliCommand;
 
-impl SchemaCliCommand {
+impl SchemaActionCliCommand {
     pub fn execute(&self) -> crate::Result<()> {
         let mut actions = ACTION_MAPPINGS
             .clone()
