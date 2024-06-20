@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
 use approx::{AbsDiffEq, RelativeEq, UlpsEq};
-use num_traits::{Float, Num, NumCast, One, ToPrimitive, Zero};
+use num_traits::{Float, FromPrimitive, Num, NumCast, One, ToPrimitive, Zero};
 use serde::{Deserialize, Serialize};
 
 use crate::algorithm::GeoNum;
@@ -337,6 +337,20 @@ impl Float for NoValue {
 
     fn integer_decode(self) -> (u64, i16, i8) {
         todo!()
+    }
+}
+
+impl FromPrimitive for NoValue {
+    fn from_i64(_: i64) -> Option<Self> {
+        None
+    }
+
+    fn from_u64(_: u64) -> Option<Self> {
+        None
+    }
+
+    fn from_f64(_: f64) -> Option<Self> {
+        None
     }
 }
 
