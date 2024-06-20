@@ -923,6 +923,47 @@
       ]
     },
     {
+      "name": "GeometryValidator",
+      "type": "processor",
+      "description": "Validates the geometry of a feature",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "ValidationType": {
+            "enum": [
+              "duplicatePoints"
+            ],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "validationTypes": {
+            "items": {
+              "$ref": "#/definitions/ValidationType"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "validationTypes"
+        ],
+        "title": "GeometryValidator",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "success",
+        "failed",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "OrientationExtractor",
       "type": "processor",
       "description": "Extracts the orientation of a geometry from a feature and adds it as an attribute.",
