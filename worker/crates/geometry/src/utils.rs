@@ -148,3 +148,10 @@ macro_rules! __geometry_delegate_impl_helper {
             )+
         };
 }
+
+pub fn check_coord_is_not_finite<T: CoordFloat, Z: CoordFloat>(geom: &Coordinate<T, Z>) -> bool {
+    if geom.x.is_finite() || geom.y.is_finite() || geom.z.is_finite() {
+        return false;
+    }
+    true
+}
