@@ -39,7 +39,7 @@ const MembersSettings: React.FC = () => {
   const members =
     (
       currentWorkspace?.members?.filter(
-        m => "userId" in m && (currentFilter !== "all" ? m.role === currentFilter : true),
+        m => "userId" in m && (currentFilter === "all" || m.role === currentFilter),
       ) as UserMember[]
     ).sort((a, b) => a.user?.name.localeCompare(b.user?.name ?? "") ?? 0) ?? [];
 
