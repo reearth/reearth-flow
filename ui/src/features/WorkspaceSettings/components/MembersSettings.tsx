@@ -32,7 +32,7 @@ const MembersSettings: React.FC = () => {
     { id: "all", title: t("All") },
     { id: Role.Owner, title: t("Owner") },
     { id: Role.Reader, title: t("Reader") },
-    { id: Role.Reader, title: t("Maintainer") },
+    { id: Role.Maintainer, title: t("Maintainer") },
     { id: Role.Writer, title: t("Writer") },
   ];
 
