@@ -56,5 +56,12 @@ git ls-files |grep -E '.rs$' |(! xargs grep 'todo!')
 script = ['''
 #!/usr/bin/env bash -eux
 rm -rf ../schema/actions.json
-cargo run -- schema > ../schema/actions.json
+cargo run -- schema-action > ../schema/actions.json
+''']
+
+[tasks.doc-workflow]
+script = ['''
+#!/usr/bin/env bash -eux
+rm -rf ../schema/workflow.json
+cargo run -- schema-workflow > ../schema/workflow.json
 ''']

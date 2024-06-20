@@ -2551,6 +2551,7 @@ name = "reearth-flow-action-processor"
 version = "0.1.0"
 dependencies = [
  "Inflector",
+ "approx",
  "async-trait",
  "bytes",
  "chrono",
@@ -3360,6 +3361,7 @@ dependencies = [
  "schemars_derive",
  "serde",
  "serde_json",
+ "uuid",
 ]
 
 [[package]]
