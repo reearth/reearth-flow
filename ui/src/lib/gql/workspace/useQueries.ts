@@ -19,30 +19,27 @@ export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
 
-  const createNewWorkspaceObject = useCallback(
-    (w: WorkspaceFragment | undefined): Workspace | undefined =>
-      w
-        ? {
-            id: w.id,
-            name: w.name,
-            personal: w.personal,
-            members: w.members.map(
-              (m): Member => ({
-                userId: m.userId,
-                role: m.role,
-                user: m.user
-                  ? {
-                      id: m.user?.id,
-                      name: m.user?.name,
-                      email: m.user?.email,
-                    }
-                  : undefined,
-              }),
-            ),
-          }
-        : undefined,
-    [],
-  );
+  const createNewWorkspaceObject = useCallback((w?: WorkspaceFragment): Workspace | undefined => {
+    if (!w) return;
+    return {
+      id: w.id,
+      name: w.name,
+      personal: w.personal,
+      members: w.members.map(
+        (m): Member => ({
+          userId: m.userId,
+          role: m.role,
+          user: m.user
+            ? {
+                id: m.user?.id,
+                name: m.user?.name,
+                email: m.user?.email,
+              }
+            : undefined,
+        }),
+      ),
+    };
+  }, []);
 
   const createWorkspaceMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -61,7 +58,7 @@ export const useQueries = () => {
       queryKey: [WorkspaceQueryKeys.GetWorkspaces],
       queryFn: () => graphQLContext?.GetWorkspaces(),
       select: data =>
-        data?.me?.workspaces.map(w => createNewWorkspaceObject(w)).flatMap(w => (w ? [w] : [])),
+        data?.me?.workspaces.flatMap(w => (w ? [createNewWorkspaceObject(w) as Workspace] : [])),
       staleTime: Infinity,
     });
 
