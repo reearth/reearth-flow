@@ -56,14 +56,6 @@ const GeneralSettings: React.FC = () => {
             onChange={e => setWorkspaceName(e.target.value)}
           />
         </div>
-        {/* <div className="flex flex-col gap-2">
-          <Label htmlFor="workspace-description">{t("Workspace Description")}</Label>
-          <Input
-            id="workspace-description"
-            placeholder={t("Workspace Description")}
-            defaultValue={currentWorkspace?.description}
-          />
-        </div> */}
         <Button
           className="self-end"
           disabled={loading || !workspaceName || currentWorkspace?.personal}
