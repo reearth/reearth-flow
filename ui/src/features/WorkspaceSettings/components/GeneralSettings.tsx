@@ -43,6 +43,7 @@ const GeneralSettings: React.FC = () => {
     }
   };
 
+  // currentWorkspace can be changed from the navigation
   useEffect(() => {
     setWorkspaceName(currentWorkspace?.name);
   }, [currentWorkspace]);
