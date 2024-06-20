@@ -2,7 +2,8 @@ pub mod cli;
 pub mod dot;
 pub mod logger;
 pub mod run;
-pub mod schema;
+pub mod schema_action;
+pub mod schema_workflow;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

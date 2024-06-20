@@ -1,6 +1,7 @@
 use std::{collections::HashMap, env};
 
 use reearth_flow_common::serde::SerdeFormat;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
@@ -15,7 +16,7 @@ pub type Parameter = Map<String, Value>;
 
 static ENVIRONMENT_PREFIX: &str = "FLOW_VAR_";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Workflow {
     pub id: Id,
@@ -98,14 +99,14 @@ impl Workflow {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 pub struct NodeEntity {
     pub id: Id,
     pub name: String,
     pub with: Option<NodeProperty>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "type")]
 pub enum Node {
     #[serde(rename = "action")]
@@ -165,7 +166,7 @@ impl Node {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Edge {
     pub id: Id,
@@ -175,7 +176,7 @@ pub struct Edge {
     pub to_port: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, JsonSchema)]
 pub struct Graph {
     pub id: Id,
     pub name: String,
