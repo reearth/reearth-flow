@@ -23,12 +23,12 @@ const MembersSettings: React.FC = () => {
   const [currentWorkspace] = useCurrentWorkspace();
   const { addMemberToWorkspace, removeMemberFromWorkspace, updateMemberOfWorkspace } =
     useWorkspace();
-  const { searchUser, getMe } = useUser();
+  const { searchUser, useGetMe } = useUser();
   const [email, setEmail] = useState<string>("");
   const [currentFilter, setFilter] = useState<Filter>("all");
   const [error, setError] = useState<string | undefined>();
 
-  const me = getMe();
+  const { me } = useGetMe();
 
   const filters: { id: Filter; title: string }[] = [
     { id: "all", title: t("All") },
@@ -133,8 +133,8 @@ const MembersSettings: React.FC = () => {
                 <p className="flex-1 px-4 font-thin capitalize text-sm">{m.role}</p>
                 <DropdownMenu>
                   <DropdownMenuTrigger
-                    disabled={m.userId === me.me?.id}
-                    className={`flex-1 flex items-center gap-1 ${m.userId === me.me?.id ? "opacity-50" : ""}`}>
+                    disabled={m.userId === me?.id}
+                    className={`flex-1 flex items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}>
                     <p className="text-sm">{t("Change role")}</p>
                     <CaretDown className="w-2 h-2" />
                   </DropdownMenuTrigger>
@@ -151,7 +151,7 @@ const MembersSettings: React.FC = () => {
                   className="flex-1 h-[25px]"
                   size="sm"
                   variant="outline"
-                  disabled={m.userId === me.me?.id}
+                  disabled={m.userId === me?.id}
                   onClick={() => handleRemoveMembers(m.userId)}>
                   {t("Remove")}
                 </Button>

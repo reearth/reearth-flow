@@ -8,10 +8,10 @@ export enum UserQueryKeys {
 }
 
 export const useUser = () => {
-  const { getMeQuery, searchUserQuery } = useQueries();
+  const { useGetMeQuery, searchUserQuery } = useQueries();
 
-  const getMe = (): GetMe => {
-    const { data, ...rest } = getMeQuery;
+  const useGetMe = (): GetMe => {
+    const { data, ...rest } = useGetMeQuery();
     return {
       me: data,
       ...rest,
@@ -26,7 +26,7 @@ export const useUser = () => {
   };
 
   return {
-    getMe,
+    useGetMe,
     searchUser,
   };
 };

@@ -33,8 +33,8 @@ const UserNavigation: React.FC<Props> = ({
   const t = useT();
   const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
-  const { getMe } = useUser();
-  const data = getMe().me;
+  const { useGetMe } = useUser();
+  const { me } = useGetMe();
 
   const { tosUrl, documentationUrl } = config();
 
@@ -47,12 +47,12 @@ const UserNavigation: React.FC<Props> = ({
         <div className={`flex gap-2 mr-2 ${className}`}>
           <Avatar className="h-8 w-8">
             <AvatarImage src={user?.picture} />
-            <AvatarFallback>{data?.name ? data?.name.charAt(0).toUpperCase() : "F"}</AvatarFallback>
+            <AvatarFallback>{me?.name ? me.name.charAt(0).toUpperCase() : "F"}</AvatarFallback>
           </Avatar>
           {!iconOnly ? (
             <div className="flex items-center gap-2 self-center">
               <p className="text-zinc-300 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
-                {data?.name ? data?.name : "User"}
+                {me?.name ? me.name : "User"}
               </p>
               <CaretDown className="w-[12px]" weight="thin" />
             </div>
