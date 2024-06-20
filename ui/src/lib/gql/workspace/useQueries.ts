@@ -46,28 +46,35 @@ export const useQueries = () => {
       const data = await graphQLContext?.CreateWorkspace({ input: { name } });
       return createNewWorkspaceObject(data?.createWorkspace?.workspace);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [WorkspaceQueryKeys.GetWorkspaces],
-      });
+    onSuccess: createdWorkspace => {
+      queryClient.setQueryData([WorkspaceQueryKeys.GetWorkspaces], (data: Workspace[]) => [
+        ...data,
+        createdWorkspace,
+      ]);
     },
   });
 
   const useGetWorkspacesQuery = () =>
     useQuery({
       queryKey: [WorkspaceQueryKeys.GetWorkspaces],
-      queryFn: () => graphQLContext?.GetWorkspaces(),
-      select: data =>
-        data?.me?.workspaces.flatMap(w => (w ? [createNewWorkspaceObject(w) as Workspace] : [])),
+      queryFn: async () => {
+        const data = await graphQLContext?.GetWorkspaces();
+        return data?.me?.workspaces.flatMap(w =>
+          w ? [createNewWorkspaceObject(w) as Workspace] : [],
+        );
+      },
       staleTime: Infinity,
     });
 
   const useGetWorkspaceByIdQuery = (workspaceId: string) =>
     useQuery({
       queryKey: [WorkspaceQueryKeys.GetWorkspace, workspaceId],
-      queryFn: () => graphQLContext?.GetWorkspaceById({ workspaceId }),
-      select: data =>
-        data?.node?.__typename === "Workspace" ? createNewWorkspaceObject(data.node) : undefined,
+      queryFn: async () => {
+        const data = await graphQLContext?.GetWorkspaceById({ workspaceId });
+        return data?.node?.__typename === "Workspace"
+          ? createNewWorkspaceObject(data.node)
+          : undefined;
+      },
       staleTime: Infinity,
     });
 
@@ -76,10 +83,17 @@ export const useQueries = () => {
       const data = await graphQLContext?.UpdateWorkspace({ input });
       return createNewWorkspaceObject(data?.updateWorkspace?.workspace);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [WorkspaceQueryKeys.GetWorkspaces],
+    onSuccess: workspace => {
+      if (!workspace) return;
+      queryClient.setQueryData([WorkspaceQueryKeys.GetWorkspaces], (data: Workspace[]) => {
+        data.splice(
+          data.findIndex(w => w.id === workspace?.id),
+          1,
+          workspace,
+        );
+        return [...data];
       });
+      queryClient.setQueryData([WorkspaceQueryKeys.GetWorkspace, workspace.id], () => workspace);
     },
   });
 
@@ -88,9 +102,13 @@ export const useQueries = () => {
       const data = await graphQLContext?.DeleteWorkspace({ input: { workspaceId } });
       return data?.deleteWorkspace?.workspaceId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [WorkspaceQueryKeys.GetWorkspaces],
+    onSuccess: deletedWorkspaceId => {
+      queryClient.setQueryData([WorkspaceQueryKeys.GetWorkspaces], (data: Workspace[]) => {
+        data.splice(
+          data.findIndex(w => w.id === deletedWorkspaceId),
+          1,
+        );
+        return [...data];
       });
     },
   });
