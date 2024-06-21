@@ -2555,6 +2555,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "chrono",
+ "num-traits",
  "nusamai-citygml",
  "nusamai-plateau",
  "nusamai-projection",
