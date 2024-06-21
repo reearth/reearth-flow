@@ -931,7 +931,9 @@
         "definitions": {
           "ValidationType": {
             "enum": [
-              "duplicatePoints"
+              "duplicatePoints",
+              "corruptGeometry",
+              "selfIntersection"
             ],
             "type": "string"
           }

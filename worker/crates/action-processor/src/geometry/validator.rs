@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
+use num_traits::FromPrimitive;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
-    algorithm::GeoNum, types::geometry::Geometry as FlowGeometry, validation::*,
+    algorithm::{GeoFloat, GeoNum},
+    types::geometry::Geometry as FlowGeometry,
+    validation::*,
 };
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -87,6 +90,10 @@ impl ProcessorFactory for GeometryValidatorFactory {
 pub enum ValidationType {
     #[serde(rename = "duplicatePoints")]
     DuplicatePoints,
+    #[serde(rename = "corruptGeometry")]
+    CorruptGeometry,
+    #[serde(rename = "selfIntersection")]
+    SelfIntersection,
 }
 
 impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType {
@@ -94,6 +101,12 @@ impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType 
         match validation_type {
             ValidationType::DuplicatePoints => {
                 reearth_flow_geometry::validation::ValidationType::DuplicatePoints
+            }
+            ValidationType::CorruptGeometry => {
+                reearth_flow_geometry::validation::ValidationType::CorruptGeometry
+            }
+            ValidationType::SelfIntersection => {
+                reearth_flow_geometry::validation::ValidationType::SelfIntersection
             }
         }
     }
@@ -214,8 +227,8 @@ impl Processor for GeometryValidator {
 
 impl GeometryValidator {
     fn process_flow_geometry<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     >(
         &self,
         ctx: &ExecutorContext,
