@@ -7,6 +7,7 @@ use nusamai_citygml::{object::ObjectStereotype, Color, GeometryType, Value};
 use nusamai_plateau::Entity;
 use nusamai_projection::crs::EpsgCode;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_geometry::algorithm::hole::HoleCounter;
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use serde::{Deserialize, Serialize};
 
@@ -373,6 +374,19 @@ impl CityGmlGeometry {
 
     pub fn textures(&self) -> &[Texture] {
         &self.textures
+    }
+
+    pub fn hole_count(&self) -> usize {
+        self.features
+            .iter()
+            .map(|feature| {
+                feature
+                    .polygons
+                    .iter()
+                    .map(|poly| poly.hole_count())
+                    .sum::<usize>()
+            })
+            .sum()
     }
 }
 

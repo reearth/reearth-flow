@@ -12,6 +12,7 @@ pub mod coordinate_position;
 pub mod coords_iter;
 pub mod dimensions;
 pub mod geometry_cow;
+pub mod hole;
 pub mod intersects;
 pub mod kernels;
 pub mod line_intersection;

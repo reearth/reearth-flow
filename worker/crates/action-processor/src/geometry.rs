@@ -3,6 +3,7 @@ pub mod errors;
 pub mod extractor;
 pub mod extruder;
 pub mod filter;
+pub mod hole_counter;
 pub mod mapping;
 pub mod orientation_extractor;
 pub mod reprojector;
