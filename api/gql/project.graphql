@@ -6,10 +6,12 @@ type Project implements Node {
   basicAuthPassword: String!
   createdAt: DateTime!
   updatedAt: DateTime!
+  version: Int!
   name: String!
   description: String!
   workspaceId: ID!
   workspace: Workspace
+  workflowIds: [ID!]!
 }
 
 # InputType

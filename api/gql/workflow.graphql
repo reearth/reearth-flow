@@ -1,0 +1,42 @@
+type Workflow implements Node {
+  id: ID!
+  name: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  data: Data!
+  projectId: ID!
+  workspaceId: ID!
+}
+
+type Data {
+  name: String
+  inputs: [Input]!
+  outputs: [Output]!
+  status: Status
+  content: String # For batch node. If we want rich text, how would this change?
+  transformerId: ID # Do we need???
+  params: [Param] # ?? How would we type this?
+}
+
+type Param {
+  id: ID!
+  name: String!
+  value: ParamValue!
+}
+
+enum ParamValue {
+  STRING
+  NUMBER
+  BOOLEAN
+  OBJECT
+  ARRAY
+}
+
+# InputType
+
+input CreateWorkflowInput {
+  projectId: ID!
+  workspaceId: ID!
+  name: String!
+  data: DataInput!
+}
