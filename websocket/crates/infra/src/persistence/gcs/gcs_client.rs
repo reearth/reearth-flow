@@ -1,4 +1,6 @@
 use google_cloud_storage::client::{Client, ClientConfig};
+use google_cloud_storage::http::objects::download::Range;
+use google_cloud_storage::http::objects::get::GetObjectRequest;
 use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
 
 #[derive(Clone)]
@@ -32,5 +34,20 @@ impl GcsClient {
             )
             .await?;
         Ok(())
+    }
+
+    pub async fn download(&self, path: String) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let data = self
+            .client
+            .download_object(
+                &GetObjectRequest {
+                    bucket: self.bucket.clone(),
+                    object: path,
+                    ..Default::default()
+                },
+                &Range::default(),
+            )
+            .await?;
+        Ok(data)
     }
 }
