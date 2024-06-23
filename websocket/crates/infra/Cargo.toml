@@ -14,6 +14,7 @@ version.workspace = true
 flow-websocket-domain.workspace = true
 
 async-trait.workspace = true
+google-cloud-storage.workspace = true
 redis.workspace = true
 rslock.workspace = true
 serde.workspace = true
