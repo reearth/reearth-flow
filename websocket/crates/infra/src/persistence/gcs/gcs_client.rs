@@ -47,11 +47,6 @@ impl GcsClient {
         path: String,
     ) -> Result<T, Box<dyn std::error::Error>> {
         let bytes = self
-    pub async fn download<T: for<'de> Deserialize<'de>>(
-        &self,
-        path: String,
-    ) -> Result<T, Box<dyn std::error::Error>> {
-        let bytes = self
             .client
             .download_object(
                 &GetObjectRequest {
@@ -62,8 +57,6 @@ impl GcsClient {
                 &Range::default(),
             )
             .await?;
-        let src = String::from_utf8(bytes)?;
-        let data = serde_json::from_str(&src)?;
         let src = String::from_utf8(bytes)?;
         let data = serde_json::from_str(&src)?;
         Ok(data)
