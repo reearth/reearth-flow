@@ -3,7 +3,6 @@ use google_cloud_storage::http::objects::download::Range;
 use google_cloud_storage::http::objects::get::GetObjectRequest;
 use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
 use serde::{Deserialize, Serialize};
-use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 pub struct GcsClient {
@@ -22,10 +21,8 @@ impl GcsClient {
         &self,
         path: String,
         data: &T,
-        data: &T,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let upload_type = UploadType::Simple(Media::new(path));
-        let bytes = serde_json::to_string(data)?;
         let bytes = serde_json::to_string(data)?;
         let _uploaded = self
             .client
@@ -34,7 +31,6 @@ impl GcsClient {
                     bucket: self.bucket.clone(),
                     ..Default::default()
                 },
-                bytes,
                 bytes,
                 &upload_type,
             )
