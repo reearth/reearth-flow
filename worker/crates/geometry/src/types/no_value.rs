@@ -354,6 +354,44 @@ impl FromPrimitive for NoValue {
     }
 }
 
+impl float_next_after::NextAfter for NoValue {
+    fn next_after(self, _: Self) -> Self {
+        NoValue
+    }
+}
+
+impl num_traits::Bounded for NoValue {
+    fn min_value() -> Self {
+        NoValue
+    }
+
+    fn max_value() -> Self {
+        NoValue
+    }
+}
+
+impl num_traits::Signed for NoValue {
+    fn abs(&self) -> Self {
+        NoValue
+    }
+
+    fn abs_sub(&self, _: &Self) -> Self {
+        NoValue
+    }
+
+    fn signum(&self) -> Self {
+        NoValue
+    }
+
+    fn is_positive(&self) -> bool {
+        false
+    }
+
+    fn is_negative(&self) -> bool {
+        false
+    }
+}
+
 impl GeoNum for NoValue {
     fn total_cmp(&self, _other: &Self) -> Ordering {
         Ordering::Equal

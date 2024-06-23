@@ -39,6 +39,10 @@ pub(super) enum GeometryProcessorError {
     GeometryValidatorFactory(String),
     #[error("GeometryValidator error: {0}")]
     GeometryValidator(String),
+    #[error("HoleCounter Factory error: {0}")]
+    HoleCounterFactory(String),
+    #[error("HoleCounter error: {0}")]
+    HoleCounter(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
