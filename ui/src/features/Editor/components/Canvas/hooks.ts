@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   DefaultEdgeOptions,
   OnConnect,
@@ -7,9 +6,11 @@ import {
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
-} from "reactflow";
+  useReactFlow,
+} from "@xyflow/react";
+import { useEffect, useState } from "react";
 
-import { Workflow } from "@flow/types";
+import { Node, Workflow } from "@flow/types";
 
 import useDnd from "./useDnd";
 
@@ -35,8 +36,8 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
 };
 
 export default ({ workflow }: Props) => {
-  // const reactFlowInstance = useReactFlow();
-  // console.log("reactFlowInstance", reactFlowInstance);
+  const reactFlowInstance = useReactFlow();
+  console.log("reactFlowInstance", reactFlowInstance.toObject());
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(workflow?.id ?? "");
 
   const [nodes, setNodes] = useState(workflow?.nodes ?? []);
@@ -53,20 +54,25 @@ export default ({ workflow }: Props) => {
 
   const { onDragOver, onDrop } = useDnd({ setNodes });
 
-  const onNodesChange: OnNodesChange = changes => {
-    setNodes(nds => applyNodeChanges(changes, nds));
+  const onNodesChange: OnNodesChange<Node> = changes => {
+    setNodes(nds => applyNodeChanges<Node>(changes, nds));
   };
 
   const onEdgesChange: OnEdgesChange = changes => setEdges(eds => applyEdgeChanges(changes, eds));
 
   const onConnect: OnConnect = connection => setEdges(eds => addEdge(connection, eds));
 
-  useEffect(() => {
-    if (workflow) {
-      setNodes(workflow.nodes ?? []);
-      setEdges(workflow.edges ?? []);
-    }
-  }, [workflow, setNodes, setEdges]);
+  console.log("workflow", workflow);
+
+  console.log("NODES", nodes);
+  console.log("EDGES", edges);
+
+  // useEffect(() => {
+  //   if (workflow) {
+  //     setNodes(workflow.nodes ?? []);
+  //     setEdges(workflow.edges ?? []);
+  //   }
+  // }, [workflow, setNodes, setEdges]);
 
   return {
     nodes,
