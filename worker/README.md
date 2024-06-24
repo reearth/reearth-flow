@@ -38,6 +38,7 @@ C:\> vcpkg integrate install
 ## Input Variables
 ### Declaring an Input Variable
 ``` yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
 id: a7fc8f35-b84f-496b-a2cb-65be3bfec285
 name: "lod_splitter_with_dm"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
@@ -90,8 +91,10 @@ $ cargo run --package reearth-flow-examples --example attribute_reader
 ```console
 $ brew install graphviz
 $ cargo install yaml-include
-$ yaml-include examples/plateau/testdata/workflow/attribute_reader.yml | cargo run -- dot --workflow - | dot -Tpng > output.png
+$ yaml-include examples/plateau/testdata/workflow/xml_validator.yml | cargo run -- dot --workflow - | dot -Tpng > output.png
 ```
+
+![xml_validator](./docs/images/xml_validator.png)
 
 ### Run generate action documentation
 ```console
