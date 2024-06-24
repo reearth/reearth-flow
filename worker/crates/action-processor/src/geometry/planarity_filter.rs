@@ -121,3 +121,27 @@ impl Processor for PlanarityFilter {
         "PlanarityFilter"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use reearth_flow_types::{Feature, Geometry};
+
+    use super::*;
+    use crate::tests::utils::{create_default_execute_context, MockProcessorChannelForwarder};
+
+    #[test]
+    fn test_process_null_geometry() {
+        let mut processor = PlanarityFilter;
+        let mut fw = MockProcessorChannelForwarder::default();
+
+        let feature = Feature {
+            geometry: Some(Geometry::default()),
+            ..Default::default()
+        };
+        let ctx = create_default_execute_context(&feature);
+
+        processor.process(ctx, &mut fw).unwrap();
+
+        assert_eq!(fw.send_port, NOT_PLANARITY_PORT.clone());
+    }
+}
