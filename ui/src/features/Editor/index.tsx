@@ -9,14 +9,21 @@ import BottomPanel from "../BottomPanel";
 import { Canvas, OverlayUI } from "./components";
 
 type EditorProps = {
-  workflow?: Workflow;
+  workflows?: Workflow[];
 };
 
-export default function Editor({ workflow }: EditorProps) {
+export default function Editor({ workflows }: EditorProps) {
   const [selected, setSelected] = useState<{ nodes: Node[]; edges: Edge[] }>({
     nodes: [],
     edges: [],
   });
+  const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | undefined>(workflows?.[0]);
+
+  const handleWorkflowChange = (workflowId?: string) => {
+    if (!workflowId) return setCurrentWorkflow(workflows?.[0]);
+    const workflow = workflows?.find(w => w.id === workflowId);
+    setCurrentWorkflow(workflow);
+  };
 
   const handleSelect = (nodes?: Node[], edges?: Edge[]) => {
     setSelected({ nodes: nodes ?? [], edges: edges ?? [] });
@@ -48,17 +55,20 @@ export default function Editor({ workflow }: EditorProps) {
 
   return (
     <div className="flex flex-1 relative">
-      <LeftPanel data={workflow} />
+      <LeftPanel data={currentWorkflow} />
       <div className="flex flex-col flex-1">
         <OverlayUI hoveredDetails={hoveredDetails}>
           <Canvas
-            workflow={workflow}
+            workflow={currentWorkflow}
             onSelect={handleSelect}
             onNodeHover={handleNodeHover}
             onEdgeHover={handleEdgeHover}
           />
         </OverlayUI>
-        <BottomPanel />
+        <BottomPanel
+          currentWorkflowId={currentWorkflow?.id}
+          onWorkflowChange={handleWorkflowChange}
+        />
       </div>
       <RightPanel selected={selected.nodes} />
     </div>

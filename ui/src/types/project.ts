@@ -8,7 +8,7 @@ export type Project = {
   name: string;
   description: string;
   workspaceId: string;
-  workflow?: Workflow;
+  workflows?: Workflow[];
   // workspace: Workspace;
 };
 
