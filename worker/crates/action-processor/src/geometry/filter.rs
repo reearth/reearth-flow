@@ -273,3 +273,75 @@ fn filter_feature_type(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::tests::utils::{create_default_execute_context, MockProcessorChannelForwarder};
+
+    use super::*;
+
+    #[test]
+    fn test_filter_multiple_geometry_null() {
+        let mut fw = MockProcessorChannelForwarder::default();
+        let feature = Feature {
+            geometry: None,
+            ..Default::default()
+        };
+        let geometry = Geometry {
+            value: GeometryValue::Null,
+            ..Default::default()
+        };
+        let ctx = create_default_execute_context(&feature);
+        filter_multiple_geometry(&ctx, &mut fw, &feature, &geometry);
+        assert_eq!(fw.send_port, UNFILTERED_PORT.clone());
+    }
+
+    #[test]
+    fn test_filter_multiple_geometry_3d_multipolygon() {
+        let mut fw = MockProcessorChannelForwarder::default();
+        let feature = Feature {
+            geometry: Some(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::MultiPolygon(Default::default())),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let ctx = create_default_execute_context(&feature);
+        filter_multiple_geometry(&ctx, &mut fw, &feature, &feature.geometry.clone().unwrap());
+        assert_eq!(fw.send_port, GeometryFilterParam::Multiple.output_port());
+    }
+
+    #[test]
+    fn test_filter_multiple_geometry_3d_geometry_collection() {
+        let mut fw = MockProcessorChannelForwarder::default();
+        let feature = Feature {
+            geometry: Some(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::GeometryCollection(
+                    Default::default(),
+                )),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let ctx = create_default_execute_context(&feature);
+        filter_multiple_geometry(&ctx, &mut fw, &feature, &feature.geometry.clone().unwrap());
+        assert_eq!(fw.send_port, GeometryFilterParam::Multiple.output_port());
+    }
+
+    #[test]
+    fn test_filter_multiple_geometry_3d_other_geometry() {
+        let mut fw = MockProcessorChannelForwarder::default();
+        let feature = Feature {
+            geometry: Some(Geometry {
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Default::default())),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let ctx = create_default_execute_context(&feature);
+        filter_multiple_geometry(&ctx, &mut fw, &feature, &feature.geometry.clone().unwrap());
+        assert_eq!(fw.send_port, UNFILTERED_PORT.clone());
+    }
+
+    // Add more tests for other scenarios...
+}
