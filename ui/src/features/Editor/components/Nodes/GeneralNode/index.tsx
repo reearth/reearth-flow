@@ -1,18 +1,18 @@
 import { Database, Disc, Lightning } from "@phosphor-icons/react";
 import { GearIcon, DoubleArrowRightIcon, PlayIcon } from "@radix-ui/react-icons";
+import { NodeProps } from "@xyflow/react";
 import { useState } from "react";
-import { NodeProps } from "reactflow";
 
 import { IconButton } from "@flow/components";
 import { useDoubleClick } from "@flow/hooks";
-import { NodeData } from "@flow/types";
+import { Node } from "@flow/types";
 
 import { getPropsFrom } from "../utils";
 
 import { Handles } from "./components/CustomHandle/Handles";
 import type { NodePosition, NodeType } from "./types";
 
-export type GeneralNodeProps = NodeProps<NodeData> & {
+export type GeneralNodeProps = NodeProps<Node> & {
   className?: string;
   onHover?: (nodeInfo?: { id: string; type: NodeType; position: NodePosition }) => void;
 };

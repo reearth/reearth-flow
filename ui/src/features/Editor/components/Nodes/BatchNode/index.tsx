@@ -1,13 +1,9 @@
+import { NodeProps, NodeResizer } from "@xyflow/react";
 import { useState } from "react";
-import { NodeProps, NodeResizer } from "reactflow";
 
-type NodeData = {
-  name: string;
-  width?: number;
-  height?: number;
-  backgroundColor?: string;
-  textColor?: string;
-};
+import { Node } from "@flow/types";
+
+export type BatchNodeProps = NodeProps<Node>;
 
 export const initialSize = { width: 300, height: 200 };
 
@@ -19,7 +15,7 @@ export const baseBatchNode = {
 
 const minSize = { width: 250, height: 150 };
 
-const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected }) => {
+const BatchNode: React.FC<BatchNodeProps> = ({ data, selected }) => {
   // const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected, ...props }) => {
   const [_width, _setWidth] = useState(data.width ?? initialSize.width);
   const [_height, _setHeight] = useState(data.height ?? initialSize.height);

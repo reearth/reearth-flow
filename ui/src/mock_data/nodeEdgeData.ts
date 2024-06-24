@@ -37,7 +37,7 @@ export const initialNodes: Node[] = [
     },
     // position: { x: 315, y: 400 }, // Original position
     position: { x: 115, y: 100 }, // OP - parent's position
-    parentNode: "batch1",
+    parentId: "batch1",
   },
   {
     id: "3",
@@ -63,7 +63,7 @@ export const initialNodes: Node[] = [
     data: { name: "Reader Node 6", outputs: ["output1"], status: "success" },
     // position: { x: 210, y: 350 }, // Original position
     position: { x: 10, y: 50 }, // OP - parent's position
-    parentNode: "batch1",
+    parentId: "batch1",
     extent: "parent",
   },
   {
@@ -75,7 +75,7 @@ export const initialNodes: Node[] = [
   {
     id: "note1",
     type: "note",
-    data: { content: "Note 1" },
+    data: { name: "MyNote1", content: "Note 1" },
     position: { x: 900, y: 100 },
     style: { width: initialSize.width + "px" },
     zIndex: -1001,
@@ -94,8 +94,8 @@ export const initialEdges: Edge[] = [
   {
     id: "e1t-2t",
     source: "1-transformer",
-    target: "2-transformer",
     sourceHandle: "error",
+    target: "2-transformer",
     data: { status: "failure" },
     // below attached when status is above
     style: { stroke: "red", strokeWidth: 2 },

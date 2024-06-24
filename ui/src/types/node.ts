@@ -1,4 +1,5 @@
-import type { Node as ReactFlowNode } from "reactflow";
+import type { NodeProps, Node as ReactFlowNode } from "@xyflow/react";
+import { ComponentType } from "react";
 
 import type { Status } from "./shared";
 
@@ -12,15 +13,31 @@ type NodeParam<T extends ParamValueType> = {
 };
 
 export type NodeData = {
-  name?: string;
+  name: string;
   inputs?: string[];
   outputs?: string[];
   status?: Status;
   params?: NodeParam<any>[];
   // transformer
   transformerId?: string;
-  // batch
+  // batch & note nodes
   content?: string;
+  width?: number;
+  height?: number;
+  backgroundColor?: string;
+  textColor?: string;
 };
 
+export type NodeType = "reader" | "writer" | "transformer" | "batch" | "note";
+
 export type Node = ReactFlowNode<NodeData>;
+
+export type NodeTypes = Record<
+  NodeType,
+  ComponentType<
+    NodeProps & {
+      data: NodeData;
+      type: NodeType;
+    }
+  >
+>;

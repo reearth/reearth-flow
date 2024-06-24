@@ -1,4 +1,4 @@
-import { NodeTypes } from "reactflow";
+import { NodeTypes } from "@xyflow/react";
 
 import BatchNode from "./BatchNode";
 import NoteNode from "./NoteNode";
