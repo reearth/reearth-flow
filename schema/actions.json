@@ -1119,6 +1119,23 @@
       ]
     },
     {
+      "name": "PlanarityFilter",
+      "type": "processor",
+      "description": "Filter geometry by type",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "planarity",
+        "notplanarity"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "Reprojector",
       "type": "processor",
       "description": "Reprojects the geometry of a feature to a specified coordinate system",

@@ -204,3 +204,27 @@ pub fn linestring_has_self_intersection<T: GeoNum, Z: GeoNum>(geom: &LineString<
     }
     false
 }
+
+pub fn are_points_coplanar(points: Vec<nalgebra::Point3<f64>>, epsilon: f64) -> bool {
+    if points.len() < 4 {
+        return true; // Three points or less are always on the same plane.
+    }
+
+    let a = points[0];
+    let b = points[1];
+    let c = points[2];
+
+    let ab = b - a;
+    let ac = c - a;
+
+    let normal = ab.cross(&ac);
+
+    for point in points.iter().skip(3) {
+        let ap = point - a;
+        if normal.dot(&ap).abs() >= epsilon {
+            return false;
+        }
+    }
+
+    true
+}
