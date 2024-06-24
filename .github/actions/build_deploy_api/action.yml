@@ -1,4 +1,4 @@
-Copyname: build-api
+name: build-api
 on:
   workflow_call:
     inputs:
