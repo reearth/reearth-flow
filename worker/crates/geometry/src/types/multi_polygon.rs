@@ -1,9 +1,9 @@
 use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
-use serde::{Deserialize, Serialize};
-
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use nusamai_geometry::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3};
+use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
 use super::line_string::LineString;
@@ -178,5 +178,41 @@ where
 
         let mut mp_zipper = self.into_iter().zip(other);
         mp_zipper.all(|(lhs, rhs)| lhs.abs_diff_eq(rhs, epsilon))
+    }
+}
+
+impl From<MultiPolygon2D<f64>> for Vec<NaPoint2<f64>> {
+    #[inline]
+    fn from(p: MultiPolygon2D<f64>) -> Vec<NaPoint2<f64>> {
+        let result =
+            p.0.into_iter()
+                .map(|p| p.rings())
+                .map(|c| {
+                    let result = c
+                        .into_iter()
+                        .map(|c| c.into())
+                        .collect::<Vec<Vec<NaPoint2<f64>>>>();
+                    result.into_iter().flatten().collect()
+                })
+                .collect::<Vec<Vec<NaPoint2<f64>>>>();
+        result.into_iter().flatten().collect()
+    }
+}
+
+impl From<MultiPolygon3D<f64>> for Vec<NaPoint3<f64>> {
+    #[inline]
+    fn from(p: MultiPolygon3D<f64>) -> Vec<NaPoint3<f64>> {
+        let result =
+            p.0.into_iter()
+                .map(|p| p.rings())
+                .map(|c| {
+                    let result = c
+                        .into_iter()
+                        .map(|c| c.into())
+                        .collect::<Vec<Vec<NaPoint3<f64>>>>();
+                    result.into_iter().flatten().collect()
+                })
+                .collect::<Vec<Vec<NaPoint3<f64>>>>();
+        result.into_iter().flatten().collect()
     }
 }
