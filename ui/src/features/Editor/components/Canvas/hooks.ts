@@ -62,11 +62,6 @@ export default ({ workflow }: Props) => {
 
   const onConnect: OnConnect = connection => setEdges(eds => addEdge(connection, eds));
 
-  console.log("workflow", workflow);
-
-  console.log("NODES", nodes);
-  console.log("EDGES", edges);
-
   // useEffect(() => {
   //   if (workflow) {
   //     setNodes(workflow.nodes ?? []);
