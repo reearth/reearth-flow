@@ -18,7 +18,7 @@ impl GcsClient {
     }
 
     pub async fn upload<T: Serialize>(
-        &mut self,
+        &self,
         path: String,
         data: &T,
     ) -> Result<(), Box<dyn std::error::Error>> {
