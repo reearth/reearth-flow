@@ -479,6 +479,58 @@
               "format"
             ],
             "type": "object"
+          },
+          {
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "enum": [
+                  "csv"
+                ],
+                "type": "string"
+              },
+              "offset": {
+                "format": "uint",
+                "minimum": 0.0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "enum": [
+                  "tsv"
+                ],
+                "type": "string"
+              },
+              "offset": {
+                "format": "uint",
+                "minimum": 0.0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "type": "object"
           }
         ],
         "title": "FeatureReaderParam"
