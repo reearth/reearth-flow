@@ -48,7 +48,7 @@ where
 }
 
 /// How a linestring is wound, clockwise or counter-clockwise
-#[derive(PartialEq, Clone, Debug, Eq, Copy)]
+#[derive(PartialEq, Clone, Debug, Eq, Copy, Hash)]
 pub enum WindingOrder {
     Clockwise,
     CounterClockwise,

@@ -5,10 +5,11 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
     coordinate_system_setter::CoordinateSystemSetterFactory, extractor::GeometryExtractorFactory,
-    extruder::ExtruderFactory, filter::GeometryFilterFactory, reprojector::ReprojectorFactory,
-    splitter::GeometrySplitterFactory,
+    extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
+    orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
+    reprojector::ReprojectorFactory, splitter::GeometrySplitterFactory,
     three_dimention_box_replacer::ThreeDimentionBoxReplacerFactory,
-    two_dimention_forcer::TwoDimentionForcerFactory,
+    two_dimention_forcer::TwoDimentionForcerFactory, validator::GeometryValidatorFactory,
 };
 
 pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -21,6 +22,11 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<ReprojectorFactory>::default(),
         Box::<TwoDimentionForcerFactory>::default(),
         Box::<GeometryExtractorFactory>::default(),
+        Box::<OrientationExtractorFactory>::default(),
+        Box::<GeometryFilterFactory>::default(),
+        Box::<GeometryValidatorFactory>::default(),
+        Box::<HoleCounterFactory>::default(),
+        Box::<PlanarityFilterFactory>::default(),
     ];
     factories
         .into_iter()

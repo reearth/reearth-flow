@@ -49,11 +49,12 @@ impl<IC: Into<Coordinate<T, Z>> + Copy, T: CoordNum, Z: CoordNum> From<[IC; 3]> 
     }
 }
 
-impl<T: CoordNum> Surface for Triangle<T, T> {}
+impl<T: CoordNum, Z: CoordNum> Surface for Triangle<T, Z> {}
 
-impl<T> RelativeEq for Triangle<T, T>
+impl<T, Z> RelativeEq for Triangle<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -81,10 +82,12 @@ where
     }
 }
 
-impl<T> AbsDiffEq for Triangle<T, T>
+impl<T, Z> AbsDiffEq for Triangle<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum,
     T::Epsilon: Copy,
+    Z::Epsilon: Copy,
 {
     type Epsilon = T;
 

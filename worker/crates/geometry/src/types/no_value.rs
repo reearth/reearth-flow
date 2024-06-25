@@ -2,7 +2,8 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
-use num_traits::{Float, Num, NumCast, One, ToPrimitive, Zero};
+use approx::{AbsDiffEq, RelativeEq, UlpsEq};
+use num_traits::{Float, FromPrimitive, Num, NumCast, One, ToPrimitive, Zero};
 use serde::{Deserialize, Serialize};
 
 use crate::algorithm::GeoNum;
@@ -339,8 +340,103 @@ impl Float for NoValue {
     }
 }
 
+impl FromPrimitive for NoValue {
+    fn from_i64(_: i64) -> Option<Self> {
+        None
+    }
+
+    fn from_u64(_: u64) -> Option<Self> {
+        None
+    }
+
+    fn from_f64(_: f64) -> Option<Self> {
+        None
+    }
+}
+
+impl float_next_after::NextAfter for NoValue {
+    fn next_after(self, _: Self) -> Self {
+        NoValue
+    }
+}
+
+impl num_traits::Bounded for NoValue {
+    fn min_value() -> Self {
+        NoValue
+    }
+
+    fn max_value() -> Self {
+        NoValue
+    }
+}
+
+impl num_traits::Signed for NoValue {
+    fn abs(&self) -> Self {
+        NoValue
+    }
+
+    fn abs_sub(&self, _: &Self) -> Self {
+        NoValue
+    }
+
+    fn signum(&self) -> Self {
+        NoValue
+    }
+
+    fn is_positive(&self) -> bool {
+        false
+    }
+
+    fn is_negative(&self) -> bool {
+        false
+    }
+}
+
 impl GeoNum for NoValue {
     fn total_cmp(&self, _other: &Self) -> Ordering {
         Ordering::Equal
+    }
+}
+
+impl AbsDiffEq for NoValue {
+    type Epsilon = f64;
+
+    #[inline]
+    fn default_epsilon() -> Self::Epsilon {
+        1e-8
+    }
+
+    #[inline]
+    fn abs_diff_eq(&self, other: &Self, _epsilon: Self::Epsilon) -> bool {
+        self == other
+    }
+}
+
+impl RelativeEq for NoValue {
+    #[inline]
+    fn default_max_relative() -> Self::Epsilon {
+        1e-8
+    }
+
+    #[inline]
+    fn relative_eq(
+        &self,
+        other: &Self,
+        _epsilon: Self::Epsilon,
+        _max_relative: Self::Epsilon,
+    ) -> bool {
+        self == other
+    }
+}
+
+impl UlpsEq for NoValue {
+    #[inline]
+    fn default_max_ulps() -> u32 {
+        0
+    }
+
+    #[inline]
+    fn ulps_eq(&self, other: &Self, _epsilon: Self::Epsilon, _max_ulps: u32) -> bool {
+        self == other
     }
 }

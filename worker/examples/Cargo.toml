@@ -43,3 +43,7 @@ path = "plateau/xml_validator.rs"
 [[example]]
 name = "domain_of_definition_validator"
 path = "plateau/domain_of_definition_validator.rs"
+
+[[example]]
+name = "lod_splitter_with_dm"
+path = "plateau/lod_splitter_with_dm.rs"

@@ -1,7 +1,7 @@
 use crate::{
     algorithm::coords_iter::CoordsIter,
     types::{
-        coordinate::Coordinate, coordnum::CoordNum, line::Line, line_string::LineString,
+        coordinate::Coordinate, coordnum::CoordFloat, line::Line, line_string::LineString,
         multi_line_string::MultiLineString, multi_point::MultiPoint, multi_polygon::MultiPolygon,
         point::Point, polygon::Polygon, rect::Rect, triangle::Triangle,
     },
@@ -13,8 +13,8 @@ use super::Contains;
 
 impl<T, Z> Contains<Coordinate<T, Z>> for Point<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, coord: &Coordinate<T, Z>) -> bool {
         &self.0 == coord
@@ -23,8 +23,8 @@ where
 
 impl<T, Z> Contains<Point<T, Z>> for Point<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, p: &Point<T, Z>) -> bool {
         self.contains(&p.0)
@@ -33,8 +33,8 @@ where
 
 impl<T, Z> Contains<Line<T, Z>> for Point<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, line: &Line<T, Z>) -> bool {
         if line.start == line.end {
@@ -47,8 +47,8 @@ where
 
 impl<T, Z> Contains<LineString<T, Z>> for Point<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, line_string: &LineString<T, Z>) -> bool {
         if line_string.is_empty() {
@@ -61,8 +61,8 @@ where
 
 impl<T, Z> Contains<Polygon<T, Z>> for Point<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, polygon: &Polygon<T, Z>) -> bool {
         if polygon.is_empty() {
@@ -75,8 +75,8 @@ where
 
 impl<T, Z> Contains<MultiPoint<T, Z>> for Point<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, multi_point: &MultiPoint<T, Z>) -> bool {
         if multi_point.is_empty() {
@@ -88,8 +88,8 @@ where
 
 impl<T, Z> Contains<MultiLineString<T, Z>> for Point<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, multi_line_string: &MultiLineString<T, Z>) -> bool {
         if multi_line_string.is_empty() {
@@ -103,8 +103,8 @@ where
 
 impl<T, Z> Contains<MultiPolygon<T, Z>> for Point<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, multi_polygon: &MultiPolygon<T, Z>) -> bool {
         if multi_polygon.is_empty() {
@@ -117,8 +117,8 @@ where
 
 impl<T, Z> Contains<Rect<T, Z>> for Point<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, rect: &Rect<T, Z>) -> bool {
         // only a degenerate Rect could be within a point
@@ -128,8 +128,8 @@ where
 
 impl<T, Z> Contains<Triangle<T, Z>> for Point<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, triangle: &Triangle<T, Z>) -> bool {
         // only a degenerate Triangle could be within a point
@@ -139,8 +139,8 @@ where
 
 impl<T, Z> Contains<Coordinate<T, Z>> for MultiPoint<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, coord: &Coordinate<T, Z>) -> bool {
         self.iter().any(|c| &c.0 == coord)
@@ -149,8 +149,8 @@ where
 
 impl<T, Z> Contains<Point<T, Z>> for MultiPoint<T, Z>
 where
-    T: CoordNum,
-    Z: CoordNum,
+    T: CoordFloat,
+    Z: CoordFloat,
 {
     fn contains(&self, point: &Point<T, Z>) -> bool {
         self.iter().any(|c| c == point)

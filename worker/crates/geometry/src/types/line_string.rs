@@ -1,3 +1,4 @@
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
@@ -39,6 +40,20 @@ where
 
 pub type PointsIter2D<'a, T> = PointsIter<'a, T, NoValue>;
 pub type PointsIter3D<'a, T> = PointsIter<'a, T, T>;
+
+impl From<LineString2D<f64>> for Vec<NaPoint2<f64>> {
+    #[inline]
+    fn from(p: LineString2D<f64>) -> Vec<NaPoint2<f64>> {
+        p.0.into_iter().map(|c| c.into()).collect()
+    }
+}
+
+impl From<LineString3D<f64>> for Vec<NaPoint3<f64>> {
+    #[inline]
+    fn from(p: LineString3D<f64>) -> Vec<NaPoint3<f64>> {
+        p.0.into_iter().map(|c| c.into()).collect()
+    }
+}
 
 impl<'a, T, Z> Iterator for PointsIter<'a, T, Z>
 where
@@ -254,9 +269,10 @@ impl LineString3D<f64> {
     }
 }
 
-impl<T> approx::RelativeEq for LineString<T, T>
+impl<T, Z> approx::RelativeEq for LineString<T, Z>
 where
     T: approx::AbsDiffEq<Epsilon = T> + CoordNum + approx::RelativeEq,
+    Z: approx::AbsDiffEq<Epsilon = Z> + CoordNum + approx::RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -279,12 +295,15 @@ where
                 return false;
             }
         }
-
         true
     }
 }
 
-impl<T: approx::AbsDiffEq<Epsilon = T> + CoordNum> approx::AbsDiffEq for LineString<T, T> {
+impl<
+        T: approx::AbsDiffEq<Epsilon = T> + CoordNum,
+        Z: approx::AbsDiffEq<Epsilon = Z> + CoordNum,
+    > approx::AbsDiffEq for LineString<T, Z>
+{
     type Epsilon = T;
 
     #[inline]

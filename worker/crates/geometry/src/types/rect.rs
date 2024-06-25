@@ -1,3 +1,5 @@
+use approx::{AbsDiffEq, RelativeEq};
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;
@@ -97,6 +99,32 @@ impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
     }
 }
 
+impl From<Rect2D<f64>> for Vec<NaPoint2<f64>> {
+    #[inline]
+    fn from(p: Rect2D<f64>) -> Vec<NaPoint2<f64>> {
+        let result = p
+            .to_polygon()
+            .rings()
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Vec<NaPoint2<f64>>>>();
+        result.into_iter().flatten().collect()
+    }
+}
+
+impl From<Rect3D<f64>> for Vec<NaPoint3<f64>> {
+    #[inline]
+    fn from(p: Rect3D<f64>) -> Vec<NaPoint3<f64>> {
+        let result = p
+            .to_polygon()
+            .rings()
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Vec<NaPoint3<f64>>>>();
+        result.into_iter().flatten().collect()
+    }
+}
+
 impl<T: CoordFloat> Rect<T, NoValue> {
     pub fn center(self) -> Coordinate<T, NoValue> {
         let two = T::one() + T::one();
@@ -104,6 +132,62 @@ impl<T: CoordFloat> Rect<T, NoValue> {
             (self.max.x + self.min.x) / two,
             (self.max.y + self.min.y) / two,
         )
+    }
+}
+
+impl<T, Z> RelativeEq for Rect<T, Z>
+where
+    T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
+{
+    #[inline]
+    fn default_max_relative() -> Self::Epsilon {
+        T::default_max_relative()
+    }
+
+    #[inline]
+    fn relative_eq(
+        &self,
+        other: &Self,
+        epsilon: Self::Epsilon,
+        max_relative: Self::Epsilon,
+    ) -> bool {
+        if !self.min.relative_eq(&other.min, epsilon, max_relative) {
+            return false;
+        }
+
+        if !self.max.relative_eq(&other.max, epsilon, max_relative) {
+            return false;
+        }
+
+        true
+    }
+}
+
+impl<T, Z> AbsDiffEq for Rect<T, Z>
+where
+    T: AbsDiffEq<Epsilon = T> + CoordNum,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum,
+    T::Epsilon: Copy,
+    Z::Epsilon: Copy,
+{
+    type Epsilon = T;
+
+    #[inline]
+    fn default_epsilon() -> Self::Epsilon {
+        T::default_epsilon()
+    }
+    #[inline]
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        if !self.min.abs_diff_eq(&other.min, epsilon) {
+            return false;
+        }
+
+        if !self.max.abs_diff_eq(&other.max, epsilon) {
+            return false;
+        }
+
+        true
     }
 }
 

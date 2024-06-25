@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   Handle,
   HandleProps,
@@ -6,10 +5,11 @@ import {
   getConnectedEdges,
   useNodeId,
   useStore,
-} from "reactflow";
+} from "@xyflow/react";
+import { useMemo } from "react";
 
 const selector = (s: ReactFlowState) => ({
-  nodeInternals: s.nodeInternals,
+  nodeInternals: s.nodeLookup,
   edges: s.edges,
 });
 

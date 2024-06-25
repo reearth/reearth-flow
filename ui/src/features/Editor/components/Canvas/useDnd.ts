@@ -1,7 +1,8 @@
+import { useReactFlow } from "@xyflow/react";
 import { Dispatch, DragEvent, SetStateAction, useCallback } from "react";
-import { Node, useReactFlow } from "reactflow";
 
 import { useRandomId } from "@flow/hooks";
+import { Node } from "@flow/types";
 
 import { baseBatchNode } from "../Nodes/BatchNode";
 
@@ -48,7 +49,7 @@ export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) =>
       if (type === "note") {
         newNode = {
           ...newNode,
-          data: { content: "New Note", width: 300, height: 200 },
+          data: { ...newNode.data, content: "New Note", width: 300, height: 200 },
         };
       }
 

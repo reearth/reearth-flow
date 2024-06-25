@@ -4,16 +4,21 @@ use num_traits::Float;
 
 use crate::types::{coordnum::CoordNum, point::Point};
 
+pub mod area2d;
+pub mod area3d;
 pub mod bounding_rect;
 pub mod contains;
 pub mod coordinate_position;
 pub mod coords_iter;
 pub mod dimensions;
 pub mod geometry_cow;
+pub mod hole;
 pub mod intersects;
 pub mod kernels;
 pub mod line_intersection;
+pub mod map_coords;
 pub mod relate;
+pub mod remove_repeated_points;
 pub mod sweep;
 pub mod utils;
 pub mod winding_order;

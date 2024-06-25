@@ -1,10 +1,20 @@
-use crate::types::{
-    coordinate::Coordinate,
-    coordnum::{CoordFloat, CoordNum},
-    line::Line,
-    line_string::LineString,
-    point::Point,
-    rect::Rect,
+use num_traits::FromPrimitive;
+
+use crate::{
+    algorithm::{
+        intersects::Intersects,
+        kernels::{Orientation, RobustKernel},
+        remove_repeated_points::RemoveRepeatedPoints,
+        GeoNum,
+    },
+    types::{
+        coordinate::{Coordinate, Coordinate2D},
+        coordnum::{CoordFloat, CoordNum},
+        line::Line,
+        line_string::LineString,
+        point::Point,
+        rect::Rect,
+    },
 };
 
 pub fn line_string_bounding_rect<T, Z>(line_string: &LineString<T, Z>) -> Option<Rect<T, Z>>
@@ -147,4 +157,74 @@ macro_rules! __geometry_delegate_impl_helper {
                 }
             )+
         };
+}
+
+pub fn check_coord_is_not_finite<T: CoordFloat, Z: CoordFloat>(geom: &Coordinate<T, Z>) -> bool {
+    if geom.x.is_finite() || geom.y.is_finite() || geom.z.is_finite() {
+        return false;
+    }
+    true
+}
+
+pub fn robust_2d_check_points_are_collinear<T: CoordFloat>(
+    p0: &Coordinate2D<T>,
+    p1: &Coordinate2D<T>,
+    p2: &Coordinate2D<T>,
+) -> bool {
+    RobustKernel::orient(
+        Coordinate::new_(p0.x, p0.y),
+        Coordinate::new_(p1.x, p1.y),
+        Coordinate::new_(p2.x, p2.y),
+        None,
+    ) == Orientation::Collinear
+}
+
+pub fn check_too_few_points<T: CoordFloat + FromPrimitive, Z: CoordFloat + FromPrimitive>(
+    geom: &LineString<T, Z>,
+    is_ring: bool,
+) -> bool {
+    let n_pts = if is_ring { 4 } else { 2 };
+    if geom.remove_repeated_points().0.len() < n_pts {
+        return true;
+    }
+    false
+}
+
+pub fn linestring_has_self_intersection<T: GeoNum, Z: GeoNum>(geom: &LineString<T, Z>) -> bool {
+    for (i, line) in geom.lines().enumerate() {
+        for (j, other_line) in geom.lines().enumerate() {
+            if i != j
+                && line.intersects(&other_line)
+                && line.start != other_line.end
+                && line.end != other_line.start
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+pub fn are_points_coplanar(points: Vec<nalgebra::Point3<f64>>, epsilon: f64) -> bool {
+    if points.len() < 4 {
+        return true; // Three points or less are always on the same plane.
+    }
+
+    let a = points[0];
+    let b = points[1];
+    let c = points[2];
+
+    let ab = b - a;
+    let ac = c - a;
+
+    let normal = ab.cross(&ac);
+
+    for point in points.iter().skip(3) {
+        let ap = point - a;
+        if normal.dot(&ap).abs() >= epsilon {
+            return false;
+        }
+    }
+
+    true
 }

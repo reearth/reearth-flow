@@ -1,6 +1,7 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use approx::{AbsDiffEq, RelativeEq};
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use serde::{Deserialize, Serialize};
 
 use crate::point;
@@ -45,8 +46,8 @@ impl<T: CoordNum> From<Point<T>> for (T, T) {
     }
 }
 
-impl<T: CoordNum> From<Point<T, T>> for (T, T, T) {
-    fn from(point: Point<T, T>) -> Self {
+impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for (T, T, Z) {
+    fn from(point: Point<T, Z>) -> Self {
         point.0.into()
     }
 }
@@ -141,6 +142,20 @@ impl<T: CoordFloat> Point<T, NoValue> {
     }
 }
 
+impl From<Point2D<f64>> for NaPoint2<f64> {
+    #[inline]
+    fn from(p: Point2D<f64>) -> NaPoint2<f64> {
+        NaPoint2::new(p.0.x, p.0.y)
+    }
+}
+
+impl From<Point3D<f64>> for NaPoint3<f64> {
+    #[inline]
+    fn from(p: Point3D<f64>) -> NaPoint3<f64> {
+        NaPoint3::new(p.0.x, p.0.y, p.0.z)
+    }
+}
+
 impl<T> Neg for Point<T, NoValue>
 where
     T: CoordNum + Neg<Output = T>,
@@ -208,9 +223,10 @@ impl<T: CoordNum> DivAssign<T> for Point<T, NoValue> {
     }
 }
 
-impl<T> RelativeEq for Point<T, T>
+impl<T, Z> RelativeEq for Point<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -228,10 +244,12 @@ where
     }
 }
 
-impl<T> AbsDiffEq for Point<T, T>
+impl<T, Z> AbsDiffEq for Point<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum,
     T::Epsilon: Copy,
+    Z::Epsilon: Copy,
 {
     type Epsilon = T::Epsilon;
 

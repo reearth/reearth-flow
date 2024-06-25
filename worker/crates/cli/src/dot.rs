@@ -19,7 +19,7 @@ pub fn build_dot_command() -> Command {
 fn dot_cli_arg() -> Arg {
     Arg::new("workflow")
         .long("workflow")
-        .help("Workflow file location")
+        .help("Workflow file location. Use '-' to read from stdin.")
         .env("REEARTH_FLOW_WORKFLOW")
         .required(true)
         .display_order(1)

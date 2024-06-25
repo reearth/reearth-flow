@@ -1,4 +1,5 @@
 use approx::{AbsDiffEq, RelativeEq};
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
@@ -291,6 +292,30 @@ fn to_side_faces<T: CoordNum, Z: CoordNum>(
     faces
 }
 
+impl From<Polygon2D<f64>> for Vec<NaPoint2<f64>> {
+    #[inline]
+    fn from(p: Polygon2D<f64>) -> Vec<NaPoint2<f64>> {
+        let result = p
+            .rings()
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Vec<NaPoint2<f64>>>>();
+        result.into_iter().flatten().collect()
+    }
+}
+
+impl From<Polygon3D<f64>> for Vec<NaPoint3<f64>> {
+    #[inline]
+    fn from(p: Polygon3D<f64>) -> Vec<NaPoint3<f64>> {
+        let result = p
+            .rings()
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Vec<NaPoint3<f64>>>>();
+        result.into_iter().flatten().collect()
+    }
+}
+
 impl<T: CoordNum> From<Rect<T>> for Polygon<T, NoValue> {
     fn from(r: Rect<T>) -> Self {
         Polygon::new(
@@ -346,11 +371,12 @@ impl Polygon3D<f64> {
     }
 }
 
-impl<T: CoordNum> Surface for Polygon<T, T> {}
+impl<T: CoordNum, Z: CoordNum> Surface for Polygon<T, Z> {}
 
-impl<T> RelativeEq for Polygon<T, T>
+impl<T, Z> RelativeEq for Polygon<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -378,7 +404,9 @@ where
     }
 }
 
-impl<T: AbsDiffEq<Epsilon = T> + CoordNum> AbsDiffEq for Polygon<T, T> {
+impl<T: AbsDiffEq<Epsilon = T> + CoordNum, Z: AbsDiffEq<Epsilon = Z> + CoordNum> AbsDiffEq
+    for Polygon<T, Z>
+{
     type Epsilon = T;
 
     #[inline]

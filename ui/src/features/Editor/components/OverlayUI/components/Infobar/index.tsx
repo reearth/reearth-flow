@@ -1,4 +1,4 @@
-import type { Edge, Node } from "reactflow";
+import { Edge, Node } from "@flow/types";
 
 type Props = {
   hoveredDetails: Node | Edge | undefined;

@@ -1,10 +1,12 @@
----
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
 id: a7fc8f35-b84f-496b-a2cb-65be3bfec285
 name: "PLATEAU.XMLValidator"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
-  cityGmlPath: https://assets.cms.plateau.reearth.io/assets/ab/73d159-7d5a-4fd7-a48a-cc585157d03f/11234_yashio-shi_city_2023_citygml_1_op.zip
+  cityGmlPath:
   cityCode: "11234"
+  codelistsPath:
+  schemasPath:
   schemaJson: !include ../config/schema.txt
   targetPackages:
     - bldg

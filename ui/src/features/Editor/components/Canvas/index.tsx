@@ -1,7 +1,7 @@
+import { ReactFlow, Background, BackgroundVariant, SelectionMode } from "@xyflow/react";
 import { MouseEvent } from "react";
-import ReactFlow, { Background, BackgroundVariant, Edge, Node, SelectionMode } from "reactflow";
 
-import { Workflow } from "@flow/types";
+import { Edge, Node, Workflow } from "@flow/types";
 
 import { CustomConnectionLine, connectionLineStyle } from "../CustomConnectionLine";
 import { edgeTypes } from "../CustomEdge";
@@ -9,7 +9,7 @@ import { nodeTypes } from "../Nodes";
 
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
-import "reactflow/dist/style.css";
+import "@xyflow/react/dist/style.css";
 
 type Props = {
   workflow?: Workflow;

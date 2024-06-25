@@ -1,4 +1,4 @@
-import { ReactFlowProvider } from "reactflow";
+import { ReactFlowProvider } from "@xyflow/react";
 
 import Canvas from "@flow/features/Editor";
 import { useCurrentProject } from "@flow/stores";

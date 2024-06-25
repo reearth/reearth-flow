@@ -7,7 +7,7 @@ import {
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
 } from "@phosphor-icons/react";
-import { useReactFlow } from "reactflow";
+import { useReactFlow } from "@xyflow/react";
 
 import {
   Select,
