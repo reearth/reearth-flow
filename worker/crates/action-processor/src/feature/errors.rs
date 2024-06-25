@@ -25,6 +25,8 @@ pub(crate) enum FeatureProcessorError {
     Counter(String),
     #[error("Feature File City Gml Reader error: {0}")]
     FileCityGmlReader(String),
+    #[error("Feature File Csv Reader error: {0}")]
+    FileCsvReader(String),
 }
 
 #[allow(dead_code)]
