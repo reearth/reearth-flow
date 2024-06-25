@@ -999,6 +999,24 @@
       ]
     },
     {
+      "name": "HoleExtractor",
+      "type": "processor",
+      "description": "Extracts holes in a geometry and adds it as an attribute.",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "outershell",
+        "hole",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "OrientationExtractor",
       "type": "processor",
       "description": "Extracts the orientation of a geometry from a feature and adds it as an attribute.",
