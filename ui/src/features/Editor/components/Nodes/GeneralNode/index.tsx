@@ -42,7 +42,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
 
   return (
     <div
-      className="bg-zinc-800"
+      className="bg-zinc-800 rounded-sm"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onDoubleClick={handleDoubleClick}>

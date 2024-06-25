@@ -15,7 +15,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea })
       {nodeType !== "reader" && inputs && inputs.length === 1 && (
         <CustomHandle
           id={inputs[0]}
-          className="rounded-l rounded-r-none -left-0 z-[1001] w-[16px]"
+          className="rounded-l rounded-r-none left-2 z-[1001] w-[16px]"
           type="target"
           position={Position.Left}
         />
@@ -23,7 +23,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea })
       {outputs && outputs.length === 1 && (
         <CustomHandle
           id={outputs[0]}
-          className="rounded-r rounded-l-none -right-0 z-[1001] w-[16px]"
+          className="rounded-r rounded-l-none right-2 z-[1001] w-[16px]"
           type="source"
           position={Position.Right}
         />
@@ -38,7 +38,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea })
               <div key={input + index} className="relative border-b border-zinc-800 py-0.5 px-1.5">
                 <CustomHandle
                   type="target"
-                  className={`left-0 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-md" : undefined}`}
+                  className={`left-1 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-sm" : undefined}`}
                   position={Position.Left}
                   id={input}
                   // isConnectable={1}
@@ -54,7 +54,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea })
                 className="relative border-b border-zinc-800 py-0.5 px-1.5 last-of-type:border-none">
                 <CustomHandle
                   type="source"
-                  className={`right-0 w-[8px] rounded-none transition-colors ${index === (outputs && outputs.length - 1) ? "rounded-br-md" : undefined}`}
+                  className={`right-1 w-[8px] rounded-none transition-colors ${index === (outputs && outputs.length - 1) ? "rounded-br-sm" : undefined}`}
                   position={Position.Right}
                   id={output}
                 />
