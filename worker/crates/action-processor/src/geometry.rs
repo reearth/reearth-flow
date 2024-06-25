@@ -4,6 +4,7 @@ pub mod extractor;
 pub mod extruder;
 pub mod filter;
 pub mod hole_counter;
+pub mod hole_extractor;
 pub mod mapping;
 pub mod orientation_extractor;
 pub mod planarity_filter;
