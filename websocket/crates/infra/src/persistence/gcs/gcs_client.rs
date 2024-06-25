@@ -2,6 +2,7 @@ use google_cloud_storage::client::{Client, ClientConfig};
 use google_cloud_storage::http::objects::download::Range;
 use google_cloud_storage::http::objects::get::GetObjectRequest;
 use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 pub struct GcsClient {
@@ -16,12 +17,13 @@ impl GcsClient {
         Ok(GcsClient { client, bucket })
     }
 
-    pub async fn upload(
+    pub async fn upload<T: Serialize>(
         &mut self,
         path: String,
-        data: Vec<u8>,
+        data: &T,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let upload_type = UploadType::Simple(Media::new(path));
+        let bytes = serde_json::to_string(data)?;
         let _uploaded = self
             .client
             .upload_object(
@@ -29,15 +31,18 @@ impl GcsClient {
                     bucket: self.bucket.clone(),
                     ..Default::default()
                 },
-                data,
+                bytes,
                 &upload_type,
             )
             .await?;
         Ok(())
     }
 
-    pub async fn download(&self, path: String) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        let data = self
+    pub async fn download<T: for<'de> Deserialize<'de>>(
+        &self,
+        path: String,
+    ) -> Result<T, Box<dyn std::error::Error>> {
+        let bytes = self
             .client
             .download_object(
                 &GetObjectRequest {
@@ -48,6 +53,8 @@ impl GcsClient {
                 &Range::default(),
             )
             .await?;
+        let src = String::from_utf8(bytes)?;
+        let data = serde_json::from_str(&src)?;
         Ok(data)
     }
 }
