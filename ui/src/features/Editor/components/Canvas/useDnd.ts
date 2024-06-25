@@ -1,62 +1,56 @@
 import { useReactFlow } from "@xyflow/react";
-import { Dispatch, DragEvent, SetStateAction, useCallback } from "react";
+import { Dispatch, DragEvent, SetStateAction } from "react";
 
-import { useRandomId } from "@flow/hooks";
 import { Node } from "@flow/types";
+import { randomID } from "@flow/utils";
 
 import { baseBatchNode } from "../Nodes/BatchNode";
+import { baseNoteNode } from "../Nodes/NoteNode";
 
 export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) => {
-  const reactFlowInstance = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
 
-  const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+  const onDragOver = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-  }, []);
+  };
 
-  const onDrop = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
+  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
 
-      const type = event.dataTransfer.getData("application/reactflow");
+    const type = event.dataTransfer.getData("application/reactflow");
 
-      // check if the dropped element is valid
-      if (typeof type === "undefined" || !type) {
-        return;
-      }
+    // check if the dropped element is valid
+    if (typeof type === "undefined" || !type) return;
 
-      // reactFlowInstance.project was renamed to reactFlowInstance.screenToFlowPosition
-      // and you don't need to subtract the reactFlowBounds.left/top anymore
-      // details: https://reactflow.dev/whats-new/2023-11-10
-      const position = reactFlowInstance.screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
+    const position = screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    });
 
-      let newNode: Node; // TODO: stronger typing
+    let newNode: Node;
 
+    // TODO: Once we have access to transformers list, we can set the newNode based on the selected type
+    newNode = {
+      id: randomID(),
+      type,
+      position,
+      data: { name: `New ${type} node`, inputs: ["source"], outputs: ["target"], status: "idle" },
+    };
+
+    if (type === "batch") {
+      newNode = { ...newNode, ...baseBatchNode };
+    }
+
+    if (type === "note") {
       newNode = {
-        id: useRandomId(),
-        type,
-        position,
-        data: { name: `New ${type} node`, inputs: ["source"], outputs: ["target"], status: "idle" },
+        ...newNode,
+        data: { ...newNode.data, ...baseNoteNode },
       };
+    }
 
-      if (type === "batch") {
-        newNode = { ...newNode, ...baseBatchNode };
-      }
-
-      if (type === "note") {
-        newNode = {
-          ...newNode,
-          data: { ...newNode.data, content: "New Note", width: 300, height: 200 },
-        };
-      }
-
-      setNodes(nds => nds.concat(newNode));
-    },
-    [reactFlowInstance, setNodes],
-  );
+    setNodes(nds => nds.concat(newNode));
+  };
 
   return { onDragOver, onDrop };
 };

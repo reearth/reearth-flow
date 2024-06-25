@@ -42,14 +42,15 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
 
   return (
     <div
+      className="bg-zinc-800"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onDoubleClick={handleDoubleClick}>
       <div
-        className={`flex relative w-[150px] z-[1001] rounded-sm bg-zinc-900 ${singular ? "h-[30px]" : "h-[25px]"}`}
+        className={`flex relative w-[150px] z-[1001] rounded-sm bg-zinc-900/50 ${singular ? "h-[30px]" : "h-[25px]"}`}
         style={{ zIndex: 1001 }}>
         <div
-          className={`flex justify-center w-4 rounded-l-sm border-t border-l border-b ${selected ? "border-zinc-400" : "border-zinc-700"} ${className}`}>
+          className={`flex justify-center w-4 rounded-l-sm border-t border-l border-b ${selected ? "border-zinc-300" : "border-zinc-500"} ${className}`}>
           {type === "reader" ? (
             <Database className={typeIconClasses} />
           ) : type === "writer" ? (
@@ -59,7 +60,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
           ) : null}
         </div>
         <div
-          className={`flex justify-between gap-2 flex-1 px-1 leading-none truncate rounded-r-sm border-t border-r border-b ${selected ? "border-zinc-400" : "border-zinc-700"}`}>
+          className={`flex justify-between gap-2 flex-1 px-1 leading-none truncate rounded-r-sm border-t border-r border-b ${selected ? "border-zinc-300" : "border-zinc-500"}`}>
           <p className="text-[10px] text-zinc-300 font-light truncate self-center">{data.name}</p>
           <div className={`w-[8px] h-[8px] rounded self-center ${metaProps.style}`} />
         </div>

@@ -8,11 +8,13 @@ export type NoteNodeProps = NodeProps<Node>;
 export const initialSize = { width: 300 };
 // export const initialSize = { width: 300, height: 200 };
 
-// export const baseBatchNode = {
-//   type: "batch",
-//   style: { width: initialSize.width + "px", height: initialSize.height + "px" },
-//   zIndex: -1001,
-// };
+export const baseNoteNode = {
+  type: "note",
+  content: "New Note",
+  width: 300,
+  height: 200,
+  // style: { width: initialSize.width + "px" },
+};
 
 const minSize = { width: 250, height: 150 };
 

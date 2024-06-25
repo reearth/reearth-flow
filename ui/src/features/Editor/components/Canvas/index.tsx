@@ -11,6 +11,8 @@ import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
 
+const gridSize = 30;
+
 type Props = {
   workflow?: Workflow;
   onSelect: (nodes?: Node[], edges?: Edge[]) => void;
@@ -19,13 +21,21 @@ type Props = {
 };
 
 const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
-  const { nodes, edges, onDragOver, onDrop, onNodesChange, onEdgesChange, onConnect } = useHooks({
+  const {
+    nodes,
+    edges,
+    onDragOver,
+    onDrop,
+    onNodeDragStop,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+  } = useHooks({
     workflow,
   });
 
   return (
     <ReactFlow
-      // snapToGrid
       // minZoom={0.7}
       // maxZoom={1}
       // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
@@ -36,6 +46,8 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
       //   [1000, 1000],
       // ]}
       // onInit={setReactFlowInstance}
+      snapToGrid
+      snapGrid={[gridSize, gridSize]}
       selectNodesOnDrag={false}
       selectionMode={SelectionMode["Partial"]}
       nodes={nodes}
@@ -45,9 +57,9 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
       defaultEdgeOptions={defaultEdgeOptions}
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}
-      snapGrid={[30, 30]}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
+      onNodeDragStop={onNodeDragStop}
       onNodeMouseEnter={onNodeHover}
       onNodeMouseLeave={onNodeHover}
       onEdgeMouseEnter={onEdgeHover}
@@ -74,8 +86,8 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
       <Background
         className="bg-zinc-800"
         variant={BackgroundVariant["Lines"]}
-        gap={30}
-        color="rgba(63, 63, 70, 0.5)"
+        gap={gridSize}
+        color="rgba(63, 63, 70, 0.3)"
       />
     </ReactFlow>
   );

@@ -8,10 +8,11 @@ import {
   applyNodeChanges,
   useReactFlow,
 } from "@xyflow/react";
-import { useEffect, useState } from "react";
+import { MouseEvent, useEffect, useState } from "react";
 
 import { Node, Workflow } from "@flow/types";
 
+import useBatch from "./useBatch";
 import useDnd from "./useDnd";
 
 type Props = {
@@ -36,12 +37,15 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
 };
 
 export default ({ workflow }: Props) => {
-  const reactFlowInstance = useReactFlow();
-  console.log("reactFlowInstance", reactFlowInstance.toObject());
+  const { isNodeIntersecting } = useReactFlow();
+  // console.log("reactFlowInstance", toObject());
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(workflow?.id ?? "");
 
   const [nodes, setNodes] = useState(workflow?.nodes ?? []);
   const [edges, setEdges] = useState(workflow?.edges ?? []);
+
+  const { onDragOver, onDrop } = useDnd({ setNodes });
+  const { handleAddToBatch, handleRemoveFromBatch } = useBatch();
 
   useEffect(() => {
     if (workflow && workflow.id !== currentWorkflowId) {
@@ -52,8 +56,6 @@ export default ({ workflow }: Props) => {
     }
   }, [currentWorkflowId, workflow, setNodes, setEdges]);
 
-  const { onDragOver, onDrop } = useDnd({ setNodes });
-
   const onNodesChange: OnNodesChange<Node> = changes => {
     setNodes(nds => applyNodeChanges<Node>(changes, nds));
   };
@@ -62,12 +64,30 @@ export default ({ workflow }: Props) => {
 
   const onConnect: OnConnect = connection => setEdges(eds => addEdge(connection, eds));
 
-  // useEffect(() => {
-  //   if (workflow) {
-  //     setNodes(workflow.nodes ?? []);
-  //     setEdges(workflow.edges ?? []);
-  //   }
-  // }, [workflow, setNodes, setEdges]);
+  const onNodeDragStop = (_evt: MouseEvent, node: Node) => {
+    if (node.type === "batch") {
+      return;
+    }
+    nodes.forEach(nd => {
+      if (nd.type === "batch") {
+        //safety check to make sure there's a height and width
+        if (nd.measured?.height && nd.measured?.width) {
+          const rec = {
+            height: nd.measured.height,
+            width: nd.measured.width,
+            ...nd.position,
+          };
+
+          // Check if the dragged node is inside the group
+          if (isNodeIntersecting(node, rec, false)) {
+            handleAddToBatch(node, nd, setNodes);
+          } else {
+            handleRemoveFromBatch(node, nd, setNodes);
+          }
+        }
+      }
+    });
+  };
 
   return {
     nodes,
@@ -75,6 +95,7 @@ export default ({ workflow }: Props) => {
     onDragOver,
     onDrop,
     onNodesChange,
+    onNodeDragStop,
     onEdgesChange,
     onConnect,
   };
