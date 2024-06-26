@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use inflector::cases::snakecase::to_snake_case;
+use inflector::cases::camelcase::to_camel_case;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_runtime::{
@@ -109,12 +109,12 @@ impl GeometryFilterParam {
     fn all_feature_type_ports() -> Vec<Port> {
         let mut result = reearth_flow_geometry::types::geometry::all_type_names()
             .iter()
-            .map(|name| Port::new(to_snake_case(name)))
+            .map(|name| Port::new(to_camel_case(name)))
             .collect::<Vec<Port>>();
         result.extend(
             GeometryFeatureType::all_type_names()
                 .iter()
-                .map(|name| Port::new(to_snake_case(name)))
+                .map(|name| Port::new(to_camel_case(name)))
                 .collect::<Vec<Port>>(),
         );
         result
@@ -246,13 +246,13 @@ fn filter_feature_type(
         GeometryValue::FlowGeometry3D(geometry) => {
             fw.send(ctx.new_with_feature_and_port(
                 feature.clone(),
-                Port::new(to_snake_case(geometry.name())),
+                Port::new(to_camel_case(geometry.name())),
             ))
         }
         GeometryValue::FlowGeometry2D(geometry) => {
             fw.send(ctx.new_with_feature_and_port(
                 feature.clone(),
-                Port::new(to_snake_case(geometry.name())),
+                Port::new(to_camel_case(geometry.name())),
             ))
         }
         GeometryValue::CityGmlGeometry(geometry) => {
@@ -267,7 +267,7 @@ fn filter_feature_type(
                 };
                 fw.send(ctx.new_with_feature_and_port(
                     feature.clone(),
-                    Port::new(to_snake_case(first_feature.name())),
+                    Port::new(to_camel_case(first_feature.name())),
                 ))
             }
         }
