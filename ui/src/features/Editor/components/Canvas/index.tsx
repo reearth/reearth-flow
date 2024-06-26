@@ -24,12 +24,13 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
   const {
     nodes,
     edges,
-    onDragOver,
-    onDrop,
-    onNodeDragStop,
-    onNodesChange,
-    onEdgesChange,
-    onConnect,
+    handleNodesChange,
+    handleNodesDelete,
+    handleNodeDragStop,
+    handleNodeDragOver,
+    handleNodeDrop,
+    handleEdgesChange,
+    handleConnect,
   } = useHooks({
     workflow,
   });
@@ -46,9 +47,11 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
       //   [1000, 1000],
       // ]}
       // onInit={setReactFlowInstance}
-      snapToGrid
+      // selectNodesOnDrag={false}
+      // fitViewOptions={{ padding: 0.5 }}
+      // fitView
+      // snapToGrid
       snapGrid={[gridSize, gridSize]}
-      selectNodesOnDrag={false}
       selectionMode={SelectionMode["Partial"]}
       nodes={nodes}
       nodeTypes={nodeTypes}
@@ -57,9 +60,10 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
       defaultEdgeOptions={defaultEdgeOptions}
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onNodeDragStop={onNodeDragStop}
+      onNodesChange={handleNodesChange}
+      onEdgesChange={handleEdgesChange}
+      onNodeDragStop={handleNodeDragStop}
+      onNodesDelete={handleNodesDelete}
       onNodeMouseEnter={onNodeHover}
       onNodeMouseLeave={onNodeHover}
       onEdgeMouseEnter={onEdgeHover}
@@ -70,11 +74,9 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
       //     s.edges.filter(e => e.selected),
       //   );
       // }}
-      onConnect={onConnect}
-      onDrop={onDrop}
-      onDragOver={onDragOver}
-      fitViewOptions={{ padding: 0.5 }}
-      fitView
+      onConnect={handleConnect}
+      onDrop={handleNodeDrop}
+      onDragOver={handleNodeDragOver}
       panOnScroll
       proOptions={{ hideAttribution: true }}>
       {/* <MiniMap

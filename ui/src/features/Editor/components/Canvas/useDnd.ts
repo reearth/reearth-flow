@@ -7,15 +7,17 @@ import { randomID } from "@flow/utils";
 import { baseBatchNode } from "../Nodes/BatchNode";
 import { baseNoteNode } from "../Nodes/NoteNode";
 
+// This is used for drag and drop functionality in to the canvas
+// This is not used for node dnd within the canvas. That is done internally by react-flow
 export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) => {
   const { screenToFlowPosition } = useReactFlow();
 
-  const onDragOver = (event: DragEvent<HTMLDivElement>) => {
+  const handleNodeDragOver = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
   };
 
-  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+  const handleNodeDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
 
     const type = event.dataTransfer.getData("application/reactflow");
@@ -52,5 +54,5 @@ export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) =>
     setNodes(nds => nds.concat(newNode));
   };
 
-  return { onDragOver, onDrop };
+  return { handleNodeDragOver, handleNodeDrop };
 };

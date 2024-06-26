@@ -4,7 +4,7 @@ import { Dispatch, SetStateAction } from "react";
 import { Node } from "@flow/types";
 
 export default () => {
-  const { getInternalNode } = useReactFlow();
+  const { getInternalNode, isNodeIntersecting } = useReactFlow();
 
   const handleAddToBatch = (
     draggedNode: Node,
@@ -60,8 +60,33 @@ export default () => {
     }
   };
 
+  const handleNodeDropInBatch = (
+    droppedNode: Node,
+    nodes: Node[],
+    setNodes: Dispatch<SetStateAction<Node[]>>,
+  ) => {
+    nodes.forEach(nd => {
+      if (nd.type === "batch") {
+        //safety check to make sure there's a height and width
+        if (nd.measured?.height && nd.measured?.width) {
+          const rec = {
+            height: nd.measured.height,
+            width: nd.measured.width,
+            ...nd.position,
+          };
+
+          // Check if the dragged node is inside the group
+          if (isNodeIntersecting(droppedNode, rec, false)) {
+            handleAddToBatch(droppedNode, nd, setNodes);
+          } else {
+            handleRemoveFromBatch(droppedNode, nd, setNodes);
+          }
+        }
+      }
+    });
+  };
+
   return {
-    handleAddToBatch,
-    handleRemoveFromBatch,
+    handleNodeDropInBatch,
   };
 };

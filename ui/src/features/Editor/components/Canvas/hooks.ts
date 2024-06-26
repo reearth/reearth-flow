@@ -1,19 +1,10 @@
-import {
-  DefaultEdgeOptions,
-  OnConnect,
-  OnEdgesChange,
-  OnNodesChange,
-  addEdge,
-  applyEdgeChanges,
-  applyNodeChanges,
-  useReactFlow,
-} from "@xyflow/react";
-import { MouseEvent, useEffect, useState } from "react";
+import { DefaultEdgeOptions } from "@xyflow/react";
+import { useEffect, useState } from "react";
 
-import { Node, Workflow } from "@flow/types";
+import type { Workflow } from "@flow/types";
 
-import useBatch from "./useBatch";
-import useDnd from "./useDnd";
+import useEdges from "./useEdges";
+import useNodes from "./useNodes";
 
 type Props = {
   workflow?: Workflow;
@@ -37,15 +28,10 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
 };
 
 export default ({ workflow }: Props) => {
-  const { isNodeIntersecting } = useReactFlow();
-  // console.log("reactFlowInstance", toObject());
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(workflow?.id ?? "");
 
   const [nodes, setNodes] = useState(workflow?.nodes ?? []);
   const [edges, setEdges] = useState(workflow?.edges ?? []);
-
-  const { onDragOver, onDrop } = useDnd({ setNodes });
-  const { handleAddToBatch, handleRemoveFromBatch } = useBatch();
 
   useEffect(() => {
     if (workflow && workflow.id !== currentWorkflowId) {
@@ -56,47 +42,36 @@ export default ({ workflow }: Props) => {
     }
   }, [currentWorkflowId, workflow, setNodes, setEdges]);
 
-  const onNodesChange: OnNodesChange<Node> = changes => {
-    setNodes(nds => applyNodeChanges<Node>(changes, nds));
-  };
+  const {
+    handleNodesChange,
+    handleNodesDelete,
+    handleNodeDragStop,
+    handleNodeDrop,
+    handleNodeDragOver,
+  } = useNodes({
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+  });
 
-  const onEdgesChange: OnEdgesChange = changes => setEdges(eds => applyEdgeChanges(changes, eds));
+  const { handleEdgesChange, handleConnect } = useEdges({ setEdges });
 
-  const onConnect: OnConnect = connection => setEdges(eds => addEdge(connection, eds));
-
-  const onNodeDragStop = (_evt: MouseEvent, node: Node) => {
-    if (node.type === "batch") {
-      return;
-    }
-    nodes.forEach(nd => {
-      if (nd.type === "batch") {
-        //safety check to make sure there's a height and width
-        if (nd.measured?.height && nd.measured?.width) {
-          const rec = {
-            height: nd.measured.height,
-            width: nd.measured.width,
-            ...nd.position,
-          };
-
-          // Check if the dragged node is inside the group
-          if (isNodeIntersecting(node, rec, false)) {
-            handleAddToBatch(node, nd, setNodes);
-          } else {
-            handleRemoveFromBatch(node, nd, setNodes);
-          }
-        }
-      }
-    });
-  };
+  // const { softSelect, hardSelect, useSingleClick, useDoubleClick } = useSelect();
 
   return {
     nodes,
     edges,
-    onDragOver,
-    onDrop,
-    onNodesChange,
-    onNodeDragStop,
-    onEdgesChange,
-    onConnect,
+    // softSelect,
+    // hardSelect,
+    // useSingleClick,
+    // useDoubleClick,
+    handleNodesChange,
+    handleNodesDelete,
+    handleNodeDragStop,
+    handleNodeDragOver,
+    handleNodeDrop,
+    handleEdgesChange,
+    handleConnect,
   };
 };
