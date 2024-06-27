@@ -54,13 +54,13 @@ impl ProcessorFactory for GeometryCoercerFactory {
         let coercer: GeometryCoercer = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::GeometryCoercerFactory(format!(
-                    "Failed to serialize with: {}",
+                    "GeometryCoercer serialization failure: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 GeometryProcessorError::GeometryCoercerFactory(format!(
-                    "Failed to deserialize with: {}",
+                    "GeometryCoercer deserialization failure: {}",
                     e
                 ))
             })?
