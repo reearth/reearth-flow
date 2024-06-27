@@ -1,8 +1,8 @@
-use redis::{aio::MultiplexedConnection, AsyncCommands, Client, streams::StreamMaxlen};
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
+use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
+use redis::{aio::MultiplexedConnection, AsyncCommands, Client, streams::StreamMaxlen};
 
 #[derive(Clone)]
 pub struct RedisClient {
@@ -63,9 +63,9 @@ impl RedisClient {
         Ok(len)
     }
 
-    pub async fn xdel(&self, key: &str, id: &str) -> Result<usize, Box<dyn std::error::Error>> {
+    pub async fn xdel(&self, key: &str, ids: &[&str]) -> Result<usize, Box<dyn std::error::Error>> {
         let mut connection = self.connection.lock().await;
-        let count: usize = connection.xdel(key, id).await?;
+        let count: usize = connection.xdel(key, ids).await?;
         Ok(count)
     }
 

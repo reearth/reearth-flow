@@ -20,3 +20,4 @@ serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 yrs.workspace = true
+chrono.workspace = true
