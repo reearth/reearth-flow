@@ -9,6 +9,7 @@ use nusamai_projection::crs::EpsgCode;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::algorithm::hole::HoleCounter;
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+use reearth_flow_geometry::utils::are_points_coplanar;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
@@ -16,6 +17,8 @@ use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 
 use crate::error::Error;
+
+static EPSILON: f64 = 1e-10;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum GeometryValue {
@@ -387,6 +390,14 @@ impl CityGmlGeometry {
                     .sum::<usize>()
             })
             .sum()
+    }
+    pub fn are_points_coplanar(&self) -> bool {
+        self.features.iter().all(|feature| {
+            feature
+                .polygons
+                .iter()
+                .all(|poly| are_points_coplanar(poly.clone().into(), EPSILON))
+        })
     }
 }
 

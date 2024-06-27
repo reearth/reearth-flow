@@ -4,6 +4,7 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 use crate::coord;
 use crate::error::Error;
 use approx::{AbsDiffEq, RelativeEq, UlpsEq};
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
 use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
@@ -127,6 +128,34 @@ impl<T: CoordNum> From<Coordinate<T, T>> for [T; 3] {
     #[inline]
     fn from(coord: Coordinate<T, T>) -> Self {
         [coord.x, coord.y, coord.z]
+    }
+}
+
+impl From<NaPoint2<f64>> for Coordinate2D<f64> {
+    #[inline]
+    fn from(p: NaPoint2<f64>) -> Self {
+        Self::new_(p.x, p.y)
+    }
+}
+
+impl From<Coordinate2D<f64>> for NaPoint2<f64> {
+    #[inline]
+    fn from(p: Coordinate2D<f64>) -> Self {
+        Self::new(p.x, p.y)
+    }
+}
+
+impl From<NaPoint3<f64>> for Coordinate3D<f64> {
+    #[inline]
+    fn from(p: NaPoint3<f64>) -> Self {
+        Self::new__(p.x, p.y, p.z)
+    }
+}
+
+impl From<Coordinate3D<f64>> for NaPoint3<f64> {
+    #[inline]
+    fn from(p: Coordinate3D<f64>) -> Self {
+        Self::new(p.x, p.y, p.z)
     }
 }
 
