@@ -202,6 +202,17 @@ impl Feature {
         }
     }
 
+    pub fn new_with_attributes_and_geometry(
+        attributes: HashMap<Attribute, AttributeValue>,
+        geometry: Geometry,
+    ) -> Self {
+        Self {
+            id: uuid::Uuid::new_v4(),
+            attributes,
+            geometry: Some(geometry),
+        }
+    }
+
     pub fn with_attributes(&self, attributes: HashMap<Attribute, AttributeValue>) -> Self {
         Self {
             id: self.id,

@@ -479,6 +479,58 @@
               "format"
             ],
             "type": "object"
+          },
+          {
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "enum": [
+                  "csv"
+                ],
+                "type": "string"
+              },
+              "offset": {
+                "format": "uint",
+                "minimum": 0.0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "enum": [
+                  "tsv"
+                ],
+                "type": "string"
+              },
+              "offset": {
+                "format": "uint",
+                "minimum": 0.0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "type": "object"
           }
         ],
         "title": "FeatureReaderParam"
@@ -788,6 +840,268 @@
       ]
     },
     {
+      "name": "GeometryExtractor",
+      "type": "processor",
+      "description": "Extracts geometry from a feature and adds it as an attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "outputAttribute"
+        ],
+        "title": "GeometryExtractor",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryFilter",
+      "type": "processor",
+      "description": "Filter geometry by type",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "oneOf": [
+          {
+            "properties": {
+              "filterType": {
+                "enum": [
+                  "none"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "filterType"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "filterType": {
+                "enum": [
+                  "multiple"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "filterType"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "filterType": {
+                "enum": [
+                  "featureType"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "filterType"
+            ],
+            "type": "object"
+          }
+        ],
+        "title": "GeometryFilterParam"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "unfiltered",
+        "none",
+        "contains",
+        "point",
+        "line",
+        "lineString",
+        "polygon",
+        "multiPoint",
+        "multiLineString",
+        "multiPolygon",
+        "rect",
+        "triangle",
+        "solid",
+        "geometryCollection",
+        "solid",
+        "multiSurface",
+        "compositeSurface",
+        "surface",
+        "triangle",
+        "multiCurve",
+        "curve",
+        "multiPoint",
+        "point",
+        "tin"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometrySplitter",
+      "type": "processor",
+      "description": "Split geometry by type",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryValidator",
+      "type": "processor",
+      "description": "Validates the geometry of a feature",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "ValidationType": {
+            "enum": [
+              "duplicatePoints",
+              "corruptGeometry",
+              "selfIntersection"
+            ],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "validationTypes": {
+            "items": {
+              "$ref": "#/definitions/ValidationType"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "validationTypes"
+        ],
+        "title": "GeometryValidator",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "success",
+        "failed",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "HoleCounter",
+      "type": "processor",
+      "description": "Counts the number of holes in a geometry and adds it as an attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "outputAttribute"
+        ],
+        "title": "HoleCounterParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "HoleExtractor",
+      "type": "processor",
+      "description": "Extracts holes in a geometry and adds it as an attribute.",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "outershell",
+        "hole",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "OrientationExtractor",
+      "type": "processor",
+      "description": "Extracts the orientation of a geometry from a feature and adds it as an attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "outputAttribute"
+        ],
+        "title": "OrientationExtractorParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "PLATEAU.DictionariesInitiator",
       "type": "processor",
       "description": "Initializes dictionaries for PLATEAU",
@@ -875,6 +1189,53 @@
       ]
     },
     {
+      "name": "PlanarityFilter",
+      "type": "processor",
+      "description": "Filter geometry by type",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "planarity",
+        "notplanarity"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "Reprojector",
+      "type": "processor",
+      "description": "Reprojects the geometry of a feature to a specified coordinate system",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "epsgCode": {
+            "format": "uint16",
+            "minimum": 0.0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "epsgCode"
+        ],
+        "title": "ReprojectorParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "Router",
       "type": "processor",
       "description": "Action for last port forwarding for sub-workflows.",
@@ -940,6 +1301,22 @@
         "title": "ThreeDimentionBoxReplacer",
         "type": "object"
       },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "TwoDimentionForcer",
+      "type": "processor",
+      "description": "Forces a geometry to be two dimentional.",
+      "parameter": null,
       "builtin": true,
       "inputPorts": [
         "default"

@@ -2,7 +2,7 @@ import { Project } from "./project";
 
 export type Run = {
   id: string;
-  project: Project;
+  project: Pick<Project, "id" | "name" | "workflow" | "createdAt">;
   // projectId: string;
   // projectRevisionId: string; OR projectVersionId: string; OR workflowId: string;
   status: "running" | "queued" | "completed" | "failed";

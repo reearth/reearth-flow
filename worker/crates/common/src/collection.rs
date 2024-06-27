@@ -6,6 +6,48 @@ use std::{
 use futures::Future;
 use rayon::prelude::*;
 
+pub struct ApproxHashSet<T>
+where
+    T: approx::AbsDiffEq<Epsilon = f64> + Clone,
+{
+    set: Vec<T>,
+    epsilon: f64,
+}
+
+impl<T> ApproxHashSet<T>
+where
+    T: approx::AbsDiffEq<Epsilon = f64> + Clone,
+{
+    pub fn new() -> Self {
+        Self {
+            set: Vec::new(),
+            epsilon: 1e-8,
+        }
+    }
+
+    pub fn insert(&mut self, item: T) -> bool {
+        if self.contains(&item) {
+            false
+        } else {
+            self.set.push(item);
+            true
+        }
+    }
+
+    fn contains(&self, item: &T) -> bool {
+        self.set.iter().any(|i| i.abs_diff_eq(item, self.epsilon))
+    }
+}
+
+impl<T> Default for ApproxHashSet<T>
+where
+    T: approx::AbsDiffEq<Epsilon = f64> + Clone,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub fn filter<T, P>(collection: &[T], predict: P) -> Vec<T>
 where
     T: Send + Sync + Clone,

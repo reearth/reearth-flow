@@ -19,6 +19,30 @@ pub(super) enum GeometryProcessorError {
     GeometryFilterFactory(String),
     #[error("GeometryFilter error: {0}")]
     GeometryFilter(String),
+    #[error("Reprojector Factory error: {0}")]
+    ReprojectorFactory(String),
+    #[error("Reprojector error: {0}")]
+    Reprojector(String),
+    #[error("TwoDimentionForcer Factory error: {0}")]
+    TwoDimentionForcerFactory(String),
+    #[error("TwoDimentionForcer error: {0}")]
+    TwoDimentionForcer(String),
+    #[error("GeometryExtractor Factory error: {0}")]
+    GeometryExtractorFactory(String),
+    #[error("GeometryExtractor error: {0}")]
+    GeometryExtractor(String),
+    #[error("OrientationExtractor Factory error: {0}")]
+    OrientationExtractorFactory(String),
+    #[error("OrientationExtractor error: {0}")]
+    OrientationExtractor(String),
+    #[error("GeometryValidator Factory error: {0}")]
+    GeometryValidatorFactory(String),
+    #[error("GeometryValidator error: {0}")]
+    GeometryValidator(String),
+    #[error("HoleCounter Factory error: {0}")]
+    HoleCounterFactory(String),
+    #[error("HoleCounter error: {0}")]
+    HoleCounter(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

@@ -1,4 +1,4 @@
-import { ConnectionLineComponent, getStraightPath } from "reactflow";
+import { ConnectionLineComponent, getStraightPath } from "@xyflow/react";
 
 export const connectionLineStyle = {
   strokeWidth: 1,

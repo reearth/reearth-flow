@@ -13,10 +13,12 @@ use super::multi_polygon::MultiPolygon;
 use super::no_value::NoValue;
 use super::point::Point;
 use super::polygon::Polygon;
-use super::rectangle::Rectangle;
+use super::rect::Rect;
 use super::solid::Solid;
 use super::triangle::Triangle;
 use crate::error::Error;
+
+static EPSILON: f64 = 1e-10;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
@@ -27,7 +29,7 @@ pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
     MultiPoint(MultiPoint<T, Z>),
     MultiLineString(MultiLineString<T, Z>),
     MultiPolygon(MultiPolygon<T, Z>),
-    Rectangle(Rectangle<T, Z>),
+    Rect(Rect<T, Z>),
     Triangle(Triangle<T, Z>),
     Solid(Solid<T, Z>),
     GeometryCollection(Vec<Geometry<T, Z>>),
@@ -35,6 +37,24 @@ pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
 
 pub type Geometry2D<T = f64> = Geometry<T, NoValue>;
 pub type Geometry3D<T = f64> = Geometry<T, T>;
+
+impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Geometry::Point(_) => "Point",
+            Geometry::Line(_) => "Line",
+            Geometry::LineString(_) => "LineString",
+            Geometry::Polygon(_) => "Polygon",
+            Geometry::MultiPoint(_) => "MultiPoint",
+            Geometry::MultiLineString(_) => "MultiLineString",
+            Geometry::MultiPolygon(_) => "MultiPolygon",
+            Geometry::Rect(_) => "Rect",
+            Geometry::Triangle(_) => "Triangle",
+            Geometry::Solid(_) => "Solid",
+            Geometry::GeometryCollection(_) => "GeometryCollection",
+        }
+    }
+}
 
 impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for Geometry<T, Z> {
     fn from(x: Point<T, Z>) -> Self {
@@ -73,9 +93,9 @@ impl<T: CoordNum, Z: CoordNum> From<MultiPolygon<T, Z>> for Geometry<T, Z> {
     }
 }
 
-impl<T: CoordNum, Z: CoordNum> From<Rectangle<T, Z>> for Geometry<T, Z> {
-    fn from(x: Rectangle<T, Z>) -> Self {
-        Self::Rectangle(x)
+impl<T: CoordNum, Z: CoordNum> From<Rect<T, Z>> for Geometry<T, Z> {
+    fn from(x: Rect<T, Z>) -> Self {
+        Self::Rect(x)
     }
 }
 
@@ -119,9 +139,45 @@ try_from_geometry_impl!(
     MultiPoint,
     MultiLineString,
     MultiPolygon,
-    Rectangle,
+    Rect,
     Triangle,
 );
+
+impl Geometry2D<f64> {
+    pub fn are_points_coplanar(&self) -> bool {
+        true
+    }
+}
+
+impl Geometry3D<f64> {
+    pub fn are_points_coplanar(&self) -> bool {
+        match self {
+            Geometry::Point(_) => true,
+            Geometry::Line(_) => true,
+            Geometry::LineString(ls) => {
+                crate::utils::are_points_coplanar(ls.clone().into(), EPSILON)
+            }
+            Geometry::Polygon(polygon) => {
+                crate::utils::are_points_coplanar(polygon.clone().into(), EPSILON)
+            }
+            Geometry::MultiPoint(mpolygon) => {
+                crate::utils::are_points_coplanar(mpolygon.clone().into(), EPSILON)
+            }
+            Geometry::MultiLineString(mls) => {
+                crate::utils::are_points_coplanar(mls.clone().into(), EPSILON)
+            }
+            Geometry::MultiPolygon(mpolygon) => {
+                crate::utils::are_points_coplanar(mpolygon.clone().into(), EPSILON)
+            }
+            Geometry::Rect(rect) => crate::utils::are_points_coplanar((*rect).into(), EPSILON),
+            Geometry::Triangle(_) => unimplemented!(),
+            Geometry::Solid(_) => unimplemented!(),
+            Geometry::GeometryCollection(gc) => {
+                gc.iter().all(|geometry| geometry.are_points_coplanar())
+            }
+        }
+    }
+}
 
 fn inner_type_name<T: CoordNum, Z: CoordNum>(geometry: Geometry<T, Z>) -> &'static str {
     match geometry {
@@ -132,11 +188,30 @@ fn inner_type_name<T: CoordNum, Z: CoordNum>(geometry: Geometry<T, Z>) -> &'stat
         Geometry::MultiPoint(_) => type_name::<MultiPoint<T, Z>>(),
         Geometry::MultiLineString(_) => type_name::<MultiLineString<T, Z>>(),
         Geometry::MultiPolygon(_) => type_name::<MultiPolygon<T, Z>>(),
-        Geometry::Rectangle(_) => type_name::<Rectangle<T, Z>>(),
+        Geometry::Rect(_) => type_name::<Rect<T, Z>>(),
         Geometry::Triangle(_) => type_name::<Triangle<T, Z>>(),
         Geometry::Solid(_) => type_name::<Solid<T, Z>>(),
         Geometry::GeometryCollection(_) => type_name::<Vec<Geometry<T, Z>>>(),
     }
+}
+
+pub fn all_type_names() -> Vec<String> {
+    [
+        "Point",
+        "Line",
+        "LineString",
+        "Polygon",
+        "MultiPoint",
+        "MultiLineString",
+        "MultiPolygon",
+        "Rect",
+        "Triangle",
+        "Solid",
+        "GeometryCollection",
+    ]
+    .into_iter()
+    .map(|s| s.to_string())
+    .collect()
 }
 
 impl<T> RelativeEq for Geometry<T, T>
@@ -172,9 +247,6 @@ where
             (Geometry::MultiPolygon(g1), Geometry::MultiPolygon(g2)) => {
                 g1.relative_eq(g2, epsilon, max_relative)
             }
-            (Geometry::Rectangle(g1), Geometry::Rectangle(g2)) => {
-                g1.relative_eq(g2, epsilon, max_relative)
-            }
             (Geometry::Triangle(g1), Geometry::Triangle(g2)) => {
                 g1.relative_eq(g2, epsilon, max_relative)
             }
@@ -202,7 +274,6 @@ impl<T: AbsDiffEq<Epsilon = T> + CoordNum> AbsDiffEq for Geometry<T, T> {
                 g1.abs_diff_eq(g2, epsilon)
             }
             (Geometry::MultiPolygon(g1), Geometry::MultiPolygon(g2)) => g1.abs_diff_eq(g2, epsilon),
-            (Geometry::Rectangle(g1), Geometry::Rectangle(g2)) => g1.abs_diff_eq(g2, epsilon),
             (Geometry::Triangle(g1), Geometry::Triangle(g2)) => g1.abs_diff_eq(g2, epsilon),
             (_, _) => false,
         }

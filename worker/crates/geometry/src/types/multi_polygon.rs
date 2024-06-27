@@ -1,9 +1,9 @@
 use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
-use serde::{Deserialize, Serialize};
-
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use nusamai_geometry::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3};
+use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
 use super::line_string::LineString;
@@ -16,15 +16,15 @@ pub struct MultiPolygon<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Polygon<T,
 pub type MultiPolygon2D<T> = MultiPolygon<T, NoValue>;
 pub type MultiPolygon3D<T> = MultiPolygon<T, T>;
 
-impl<T: CoordNum, Z: CoordNum, IP: Into<Polygon<T, Z>>> From<IP> for MultiPolygon<T, Z> {
-    fn from(x: IP) -> Self {
-        Self(vec![x.into()])
+impl From<Vec<Polygon<f64, NoValue>>> for MultiPolygon<f64, NoValue> {
+    fn from(x: Vec<Polygon<f64, NoValue>>) -> Self {
+        Self(x)
     }
 }
 
-impl<T: CoordNum, Z: CoordNum, IP: Into<Polygon<T, Z>>> From<Vec<IP>> for MultiPolygon<T, Z> {
-    fn from(x: Vec<IP>) -> Self {
-        Self(x.into_iter().map(|p| p.into()).collect())
+impl<T: CoordNum, Z: CoordNum, IP: Into<Polygon<T, Z>>> From<IP> for MultiPolygon<T, Z> {
+    fn from(x: IP) -> Self {
+        Self(vec![x.into()])
     }
 }
 
@@ -130,9 +130,10 @@ impl<'a, T: CoordNum> Iterator for Iter<'a, T> {
     }
 }
 
-impl<T> RelativeEq for MultiPolygon<T, T>
+impl<T, Z> RelativeEq for MultiPolygon<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -155,10 +156,12 @@ where
     }
 }
 
-impl<T> AbsDiffEq for MultiPolygon<T, T>
+impl<T, Z> AbsDiffEq for MultiPolygon<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum,
     T::Epsilon: Copy,
+    Z::Epsilon: Copy,
 {
     type Epsilon = T;
 
@@ -175,5 +178,41 @@ where
 
         let mut mp_zipper = self.into_iter().zip(other);
         mp_zipper.all(|(lhs, rhs)| lhs.abs_diff_eq(rhs, epsilon))
+    }
+}
+
+impl From<MultiPolygon2D<f64>> for Vec<NaPoint2<f64>> {
+    #[inline]
+    fn from(p: MultiPolygon2D<f64>) -> Vec<NaPoint2<f64>> {
+        let result =
+            p.0.into_iter()
+                .map(|p| p.rings())
+                .map(|c| {
+                    let result = c
+                        .into_iter()
+                        .map(|c| c.into())
+                        .collect::<Vec<Vec<NaPoint2<f64>>>>();
+                    result.into_iter().flatten().collect()
+                })
+                .collect::<Vec<Vec<NaPoint2<f64>>>>();
+        result.into_iter().flatten().collect()
+    }
+}
+
+impl From<MultiPolygon3D<f64>> for Vec<NaPoint3<f64>> {
+    #[inline]
+    fn from(p: MultiPolygon3D<f64>) -> Vec<NaPoint3<f64>> {
+        let result =
+            p.0.into_iter()
+                .map(|p| p.rings())
+                .map(|c| {
+                    let result = c
+                        .into_iter()
+                        .map(|c| c.into())
+                        .collect::<Vec<Vec<NaPoint3<f64>>>>();
+                    result.into_iter().flatten().collect()
+                })
+                .collect::<Vec<Vec<NaPoint3<f64>>>>();
+        result.into_iter().flatten().collect()
     }
 }

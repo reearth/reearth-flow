@@ -10,7 +10,7 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder, executor_operation::ExecutorContext, node::DEFAULT_PORT,
 };
-use reearth_flow_types::geometry::Geometry;
+use reearth_flow_types::{geometry::Geometry, Feature};
 use url::Url;
 
 use super::CompiledCommonPropertySchema;
@@ -80,13 +80,20 @@ fn parse_tree_reader<R: BufRead>(
                 let mut cityobj: models::TopLevelCityObject = Default::default();
                 cityobj.parse(st)?;
                 let geometry_store = st.collect_geometries();
-
+                let id = cityobj.id();
+                let name = cityobj.name();
+                let description = cityobj.description();
+                let bounded = cityobj.bounded_by();
                 if let Some(root) = cityobj.into_object() {
                     let entity = Entity {
+                        id,
+                        name,
+                        description,
                         root,
                         base_url: base_url.clone(),
                         geometry_store: RwLock::new(geometry_store).into(),
-                        appearance_store: Default::default(), // TODO: from local appearances
+                        appearance_store: Default::default(),
+                        bounded,
                     };
                     entities.push(entity);
                 }
@@ -120,8 +127,7 @@ fn parse_tree_reader<R: BufRead>(
         let geometry: Geometry = entity.try_into().map_err(|e| {
             super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
         })?;
-        let feature = &ctx.feature;
-        let mut feature = feature.clone();
+        let mut feature = Feature::new_with_attributes(ctx.feature.attributes.clone());
         feature.geometry = Some(geometry);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
     }

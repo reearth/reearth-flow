@@ -1,25 +1,26 @@
 import { Database, Disc, Lightning } from "@phosphor-icons/react";
 import { GearIcon, DoubleArrowRightIcon, PlayIcon } from "@radix-ui/react-icons";
+import { NodeProps } from "@xyflow/react";
 import { useState } from "react";
-import { NodeProps } from "reactflow";
 
 import { IconButton } from "@flow/components";
 import { useDoubleClick } from "@flow/hooks";
-import { NodeData } from "@flow/types";
+import { Node } from "@flow/types";
 
 import { getPropsFrom } from "../utils";
 
 import { Handles } from "./components/CustomHandle/Handles";
 import type { NodePosition, NodeType } from "./types";
 
-export type GeneralNodeProps = NodeProps<NodeData> & {
+export type GeneralNodeProps = NodeProps<Node> & {
   className?: string;
   onHover?: (nodeInfo?: { id: string; type: NodeType; position: NodePosition }) => void;
 };
 
 const typeIconClasses = "w-[10px] h-[100%]";
 
-const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, selected, ...props }) => {
+const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, selected }) => {
+  // const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, selected, ...props }) => {
   const [hovered, setHovered] = useState(false);
 
   const [_, handleDoubleClick] = useDoubleClick(undefined, () => console.log("double click"));
@@ -31,7 +32,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
   //   },
   //   [data],
   // );
-  console.log("props: ", props);
+  // console.log("props: ", props);
   // console.log("data: ", data);
 
   const singular =

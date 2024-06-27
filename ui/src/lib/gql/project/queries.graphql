@@ -1,0 +1,52 @@
+fragment Project on Project {
+  id
+  name
+  description
+  createdAt
+  updatedAt
+  workspaceId
+}
+
+mutation CreateProject($input: CreateProjectInput!) {
+  createProject(input: $input) {
+    project {
+      ...Project
+    }
+  }
+}
+
+query GetProjects($workspaceId: ID!, $first: Int!) {
+  projects(workspaceId: $workspaceId, first: $first) {
+    totalCount
+    nodes {
+      ...Project
+    }
+    pageInfo {
+      startCursor
+      endCursor
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}
+
+query GetProjectById($projectId: ID!) {
+  node(id: $projectId, type: PROJECT) {
+    __typename
+    ...Project
+  }
+}
+
+mutation UpdateProject($input: UpdateProjectInput!) {
+  updateProject(input: $input) {
+    project {
+      ...Project
+    }
+  }
+}
+
+mutation DeleteProject($input: DeleteProjectInput!) {
+  deleteProject(input: $input) {
+    projectId
+  }
+}

@@ -18,4 +18,12 @@ impl<T: CoordNum, Z: CoordNum> Solid<T, Z> {
     pub fn new(bottom: Vec<Face<T, Z>>, top: Vec<Face<T, Z>>, sides: Vec<Face<T, Z>>) -> Self {
         Self { bottom, top, sides }
     }
+
+    pub fn all_faces(&self) -> Vec<&Face<T, Z>> {
+        self.bottom
+            .iter()
+            .chain(self.top.iter())
+            .chain(self.sides.iter())
+            .collect()
+    }
 }

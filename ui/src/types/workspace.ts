@@ -1,11 +1,27 @@
-import type { Member } from "./member";
-import type { Project } from "./project";
+import type { Member, Project, ApiResponse } from "@flow/types";
 
 export type Workspace = {
   id: string;
   name: string;
-  description?: string;
-  members: Member[] | undefined;
-  projects: Project[] | undefined;
-  personal?: boolean;
+  personal: boolean;
+  members?: Member[];
+  projects?: Project[];
 };
+
+export type CreateWorkspace = {
+  workspace: Workspace | undefined;
+} & ApiResponse;
+
+export type GetWorkspaces = {
+  workspaces: Workspace[] | undefined;
+  isLoading: boolean;
+} & ApiResponse;
+
+export type GetWorkspace = {
+  workspace?: Workspace;
+  isLoading: boolean;
+} & ApiResponse;
+
+export type DeleteWorkspace = {
+  workspaceId: string | undefined;
+} & ApiResponse;

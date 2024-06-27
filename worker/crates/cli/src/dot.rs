@@ -1,3 +1,5 @@
+use std::io;
+
 use clap::{Arg, ArgMatches, Command};
 use reearth_flow_runner::executor::ACTION_MAPPINGS;
 use reearth_flow_runtime::dag_schemas::DagSchemas;
@@ -17,7 +19,7 @@ pub fn build_dot_command() -> Command {
 fn dot_cli_arg() -> Arg {
     Arg::new("workflow")
         .long("workflow")
-        .help("Workflow file location")
+        .help("Workflow file location. Use '-' to read from stdin.")
         .env("REEARTH_FLOW_WORKFLOW")
         .required(true)
         .display_order(1)
@@ -25,28 +27,32 @@ fn dot_cli_arg() -> Arg {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct DotCliCommand {
-    workflow_uri: Uri,
+    workflow_path: String,
 }
 
 impl DotCliCommand {
     pub fn parse_cli_args(mut matches: ArgMatches) -> crate::Result<Self> {
-        let workflow_uri = matches
+        let workflow_path = matches
             .remove_one::<String>("workflow")
-            .map(|uri_str| Uri::for_test(&uri_str))
             .ok_or(crate::Error::init("No workflow uri provided"))?;
-        Ok(DotCliCommand { workflow_uri })
+        Ok(DotCliCommand { workflow_path })
     }
 
     pub fn execute(&self) -> crate::Result<()> {
         debug!(args = ?self, "dot");
         let storage_resolver = resolve::StorageResolver::new();
-        let storage = storage_resolver
-            .resolve(&self.workflow_uri)
-            .map_err(crate::Error::init)?;
-        let content = storage
-            .get_sync(self.workflow_uri.path().as_path())
-            .map_err(crate::Error::init)?;
-        let json = String::from_utf8(content.to_vec()).map_err(crate::Error::init)?;
+        let json = if self.workflow_path == "-" {
+            io::read_to_string(io::stdin()).map_err(crate::Error::init)?
+        } else {
+            let path = Uri::for_test(self.workflow_path.as_str());
+            let storage = storage_resolver
+                .resolve(&path)
+                .map_err(crate::Error::init)?;
+            let bytes = storage
+                .get_sync(path.path().as_path())
+                .map_err(crate::Error::init)?;
+            String::from_utf8(bytes.to_vec()).map_err(crate::Error::init)?
+        };
         let workflow = Workflow::try_from_str(&json);
         let dag = DagSchemas::from_graphs(
             workflow.entry_graph_id,

@@ -1,16 +1,24 @@
+use std::collections::HashMap;
+use std::fmt::Display;
 use std::hash::Hash;
 
+use nusamai_citygml::GeometryRef;
 use nusamai_citygml::{object::ObjectStereotype, Color, GeometryType, Value};
 use nusamai_plateau::Entity;
 use nusamai_projection::crs::EpsgCode;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_geometry::algorithm::hole::HoleCounter;
+use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+use reearth_flow_geometry::utils::are_points_coplanar;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
 use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
-use reearth_flow_geometry::types::multi_polygon::{MultiPolygon, MultiPolygon2D};
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 
 use crate::error::Error;
+
+static EPSILON: f64 = 1e-10;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum GeometryValue {
@@ -23,6 +31,7 @@ pub enum GeometryValue {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Geometry {
     pub id: String,
+    pub name: Option<String>,
     pub epsg: Option<EpsgCode>,
     pub value: GeometryValue,
     pub attributes: Option<serde_json::Value>,
@@ -33,6 +42,7 @@ impl TryFrom<Entity> for Geometry {
 
     fn try_from(entity: Entity) -> Result<Self, Self::Error> {
         let app = entity.appearance_store.read().unwrap();
+        let name = entity.name.clone();
         let theme = {
             app.themes
                 .get("rgbTexture")
@@ -49,30 +59,79 @@ impl TryFrom<Entity> for Geometry {
             return Err(Error::unsupported_feature("no feature found"));
         };
         let attributes = entity.root.to_attribute_json();
-        let mut mpoly = nusamai_geometry::MultiPolygon3::<f64>::new();
         let mut geometry_features = Vec::<GeometryFeature>::new();
-        geometries.iter().for_each(|entry| match entry.ty {
-            GeometryType::Solid
-            | GeometryType::Surface
-            | GeometryType::MultiSurface
-            | GeometryType::Triangle => {
-                geometry_features.push(entry.clone().into());
-                for idx_poly in geoms
-                    .multipolygon
-                    .iter_range(entry.pos as usize..(entry.pos + entry.len) as usize)
-                {
-                    let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
-                    mpoly.push(&poly);
+        let operation = |geometry: &GeometryRef| -> Option<GeometryFeature> {
+            match geometry.ty {
+                GeometryType::Solid
+                | GeometryType::Surface
+                | GeometryType::MultiSurface
+                | GeometryType::CompositeSurface
+                | GeometryType::Triangle => {
+                    let mut polygons = Vec::<Polygon3D<f64>>::new();
+                    for idx_poly in geoms
+                        .multipolygon
+                        .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
+                    {
+                        let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
+                        polygons.push(poly.into());
+                    }
+                    let mut geometry_feature = GeometryFeature::from(geometry.clone());
+                    geometry_feature.polygons.extend(polygons);
+                    Some(geometry_feature)
                 }
+                GeometryType::Curve | GeometryType::MultiCurve => unimplemented!(),
+                GeometryType::Point | GeometryType::MultiPoint => unimplemented!(),
+                GeometryType::Tin => unimplemented!(),
             }
-            GeometryType::Curve | GeometryType::MultiCurve => unimplemented!(),
-            GeometryType::Point | GeometryType::MultiPoint => unimplemented!(),
-            GeometryType::Tin => unimplemented!(),
-        });
+        };
+        geometry_features.extend(geometries.iter().flat_map(operation));
+        let bounded_map = entity
+            .bounded
+            .iter()
+            .flat_map(|bound| {
+                let id = bound.id.clone()?;
+                Some((id, bound.clone()))
+            })
+            .collect::<HashMap<_, _>>();
+
+        geometries
+            .iter()
+            .enumerate()
+            .for_each(|(index, geometry)| match geometry.ty {
+                GeometryType::Solid
+                | GeometryType::Surface
+                | GeometryType::MultiSurface
+                | GeometryType::CompositeSurface
+                | GeometryType::Triangle => {
+                    if geometry.solid_ids.is_empty() {
+                        return;
+                    }
+                    let Some(feature) = geometry_features.get_mut(index) else {
+                        return;
+                    };
+                    geometry.solid_ids.iter().for_each(|solid_id| {
+                        if let Some(bound) = bounded_map.get(solid_id) {
+                            let mut polygons = Vec::<Polygon3D<f64>>::new();
+                            for idx_poly in geoms
+                                .multipolygon
+                                .iter_range(bound.pos as usize..(bound.pos + bound.len) as usize)
+                            {
+                                let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
+                                polygons.push(poly.into());
+                            }
+                            feature.polygons.extend(polygons);
+                        }
+                    });
+                }
+                GeometryType::Curve | GeometryType::MultiCurve => unimplemented!(),
+                GeometryType::Point | GeometryType::MultiPoint => unimplemented!(),
+                GeometryType::Tin => unimplemented!(),
+            });
+
+        geometry_features.extend(entity.bounded.iter().flat_map(operation));
 
         let mut geometry_entity = CityGmlGeometry::new(
             geometry_features,
-            Some(mpoly.into()),
             apperance
                 .materials
                 .iter()
@@ -106,6 +165,7 @@ impl TryFrom<Entity> for Geometry {
                         let tex = ring_id_iter
                             .next()
                             .unwrap()
+                            .clone()
                             .and_then(|ring_id| theme.ring_id_to_texture.get(&ring_id));
 
                         let mut add_dummy_texture = || {
@@ -162,6 +222,7 @@ impl TryFrom<Entity> for Geometry {
         }
         Ok(Geometry::new(
             id.to_string(),
+            Some(name),
             epsg,
             GeometryValue::CityGmlGeometry(geometry_entity),
             Some(attributes),
@@ -173,6 +234,7 @@ impl Default for Geometry {
     fn default() -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
+            name: Some("".to_string()),
             epsg: None,
             value: GeometryValue::Null,
             attributes: None,
@@ -183,12 +245,14 @@ impl Default for Geometry {
 impl Geometry {
     pub fn new(
         id: String,
+        name: Option<String>,
         epsg: EpsgCode,
         value: GeometryValue,
         attributes: Option<serde_json::Value>,
     ) -> Self {
         Self {
             id,
+            name,
             epsg: Some(epsg),
             value,
             attributes,
@@ -198,6 +262,7 @@ impl Geometry {
     pub fn with_value(value: GeometryValue) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
+            name: None,
             epsg: None,
             value,
             attributes: None,
@@ -270,9 +335,8 @@ impl Appearance {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CityGmlGeometry {
     pub features: Vec<GeometryFeature>,
-    pub polygons: Option<MultiPolygon<f64>>,
-    materials: Vec<Material>,
-    textures: Vec<Texture>,
+    pub materials: Vec<Material>,
+    pub textures: Vec<Texture>,
     pub polygon_materials: Vec<Option<u32>>,
     pub polygon_textures: Vec<Option<u32>>,
     pub polygon_uv: Option<MultiPolygon2D<f64>>,
@@ -281,19 +345,30 @@ pub struct CityGmlGeometry {
 impl CityGmlGeometry {
     pub fn new(
         features: Vec<GeometryFeature>,
-        polygons: Option<MultiPolygon<f64>>,
         materials: Vec<Material>,
         textures: Vec<Texture>,
     ) -> Self {
         Self {
             features,
-            polygons,
             materials,
             textures,
             polygon_materials: Vec::new(),
             polygon_textures: Vec::new(),
             polygon_uv: None,
         }
+    }
+
+    pub fn split_feature(&self) -> Vec<CityGmlGeometry> {
+        self.features
+            .iter()
+            .map(|feature| {
+                CityGmlGeometry::new(
+                    vec![feature.clone()],
+                    self.materials.clone(),
+                    self.textures.clone(),
+                )
+            })
+            .collect()
     }
 
     pub fn materials(&self) -> &[Material] {
@@ -303,24 +378,148 @@ impl CityGmlGeometry {
     pub fn textures(&self) -> &[Texture] {
         &self.textures
     }
+
+    pub fn hole_count(&self) -> usize {
+        self.features
+            .iter()
+            .map(|feature| {
+                feature
+                    .polygons
+                    .iter()
+                    .map(|poly| poly.hole_count())
+                    .sum::<usize>()
+            })
+            .sum()
+    }
+    pub fn are_points_coplanar(&self) -> bool {
+        self.features.iter().all(|feature| {
+            feature
+                .polygons
+                .iter()
+                .all(|poly| are_points_coplanar(poly.clone().into(), EPSILON))
+        })
+    }
+}
+
+impl From<CityGmlGeometry> for FlowGeometry2D {
+    fn from(geometry: CityGmlGeometry) -> Self {
+        let mut polygons = Vec::<Polygon2D<f64>>::new();
+        for feature in geometry.features {
+            for polygon in feature.polygons {
+                polygons.push(polygon.into());
+            }
+        }
+        Self::MultiPolygon(MultiPolygon2D::from(polygons))
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GeometryFeature {
+    pub id: Option<String>,
     #[serde(rename = "type")]
-    pub ty: GeometryType,
+    pub ty: GeometryFeatureType,
     pub lod: Option<u8>,
     pub pos: u32,
     pub len: u32,
+    pub polygons: Vec<Polygon3D<f64>>,
+}
+
+impl GeometryFeature {
+    pub fn name(&self) -> &str {
+        self.ty.name()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub enum GeometryFeatureType {
+    /// Polygons (solids)
+    Solid,
+    /// Polygons (surfaces)
+    MultiSurface,
+    /// Composite surface
+    CompositeSurface,
+    Surface,
+    /// Polygons (triangles)
+    Triangle,
+    /// Line-strings
+    MultiCurve,
+    Curve,
+    /// Points
+    MultiPoint,
+    Point,
+    /// Tin
+    Tin,
+}
+
+impl From<nusamai_citygml::geometry::GeometryType> for GeometryFeatureType {
+    fn from(ty: nusamai_citygml::geometry::GeometryType) -> Self {
+        match ty {
+            nusamai_citygml::geometry::GeometryType::Solid => Self::Solid,
+            nusamai_citygml::geometry::GeometryType::MultiSurface => Self::MultiSurface,
+            nusamai_citygml::geometry::GeometryType::CompositeSurface => Self::CompositeSurface,
+            nusamai_citygml::geometry::GeometryType::Surface => Self::Surface,
+            nusamai_citygml::geometry::GeometryType::Triangle => Self::Triangle,
+            nusamai_citygml::geometry::GeometryType::MultiCurve => Self::MultiCurve,
+            nusamai_citygml::geometry::GeometryType::Curve => Self::Curve,
+            nusamai_citygml::geometry::GeometryType::MultiPoint => Self::MultiPoint,
+            nusamai_citygml::geometry::GeometryType::Point => Self::Point,
+            nusamai_citygml::geometry::GeometryType::Tin => Self::Tin,
+        }
+    }
+}
+
+impl GeometryFeatureType {
+    pub fn all_type_names() -> Vec<String> {
+        [
+            "Solid",
+            "MultiSurface",
+            "CompositeSurface",
+            "Surface",
+            "Triangle",
+            "MultiCurve",
+            "Curve",
+            "MultiPoint",
+            "Point",
+            "Tin",
+        ]
+        .iter()
+        .map(|name| name.to_string())
+        .collect()
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Solid => "Solid",
+            Self::MultiSurface => "MultiSurface",
+            Self::CompositeSurface => "CompositeSurface",
+            Self::Surface => "Surface",
+            Self::Triangle => "Triangle",
+            Self::MultiCurve => "MultiCurve",
+            Self::Curve => "Curve",
+            Self::MultiPoint => "MultiPoint",
+            Self::Point => "Point",
+            Self::Tin => "Tin",
+        }
+    }
+}
+
+impl Display for GeometryFeature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg = format!("lod{}{:?}", self.lod.unwrap_or_default(), self.ty);
+        write!(f, "{}", msg)
+    }
 }
 
 impl From<nusamai_citygml::geometry::GeometryRef> for GeometryFeature {
     fn from(geometry: nusamai_citygml::geometry::GeometryRef) -> Self {
+        let id = geometry.id.map(|id| id.value());
         Self {
-            ty: geometry.ty,
+            id,
+            ty: geometry.ty.into(),
             lod: Some(geometry.lod),
             pos: geometry.pos,
             len: geometry.len,
+            polygons: Vec::new(),
         }
     }
 }

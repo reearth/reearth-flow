@@ -1,4 +1,4 @@
-import { Position } from "reactflow";
+import { Position } from "@xyflow/react";
 
 import CustomHandle from "./CustomHandle";
 
@@ -14,7 +14,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea })
     <>
       {nodeType !== "reader" && inputs && inputs.length === 1 && (
         <CustomHandle
-          id="target"
+          id={inputs[0]}
           className="rounded-l rounded-r-none -left-0 z-[1001] w-[16px]"
           type="target"
           position={Position.Left}
@@ -22,7 +22,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea })
       )}
       {outputs && outputs.length === 1 && (
         <CustomHandle
-          id="source"
+          id={outputs[0]}
           className="rounded-r rounded-l-none -right-0 z-[1001] w-[16px]"
           type="source"
           position={Position.Right}
@@ -41,7 +41,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea })
                   className={`left-0 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-md" : undefined}`}
                   position={Position.Left}
                   id={input}
-                // isConnectable={1}
+                  // isConnectable={1}
                 />
                 <p className="text-[10px] font-light pl-1">{input}</p>
               </div>

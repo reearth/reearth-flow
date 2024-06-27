@@ -43,6 +43,16 @@ pub(crate) async fn read_json(
                     .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
             }
         }
+        AttributeValue::Map(_) => {
+            let feature = Feature::from(features);
+            sender
+                .send((
+                    DEFAULT_PORT.clone(),
+                    IngestionMessage::OperationEvent { feature },
+                ))
+                .await
+                .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+        }
         _ => Err(crate::errors::SourceError::FileReader(
             "Invalid JSON format".to_string(),
         ))?,

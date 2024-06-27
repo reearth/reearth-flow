@@ -1,0 +1,157 @@
+use std::collections::BTreeSet;
+
+use crate::{
+    algorithm::{dimensions::Dimensions, line_intersection::LineIntersection, GeoFloat},
+    types::{coordinate::Coordinate, line::Line},
+};
+
+use super::{Direction, EdgeIntersection, IntersectionMatrix, Label, RobustLineIntersector};
+
+#[derive(Debug)]
+pub(crate) struct Edge<T: GeoFloat, Z: GeoFloat> {
+    /// `coordinates` of the line geometry
+    coords: Vec<Coordinate<T, Z>>,
+
+    /// an edge is "isolated" if no other edge touches it
+    is_isolated: bool,
+
+    /// other edges that this edge intersects with
+    edge_intersections: BTreeSet<EdgeIntersection<T, Z>>,
+
+    /// where the line's topological classification to the two geometries is recorded
+    label: Label,
+}
+
+impl<T: GeoFloat, Z: GeoFloat> Edge<T, Z> {
+    /// Create a new Edge.
+    ///
+    /// - `coords` a *non-empty* Vec of Coords
+    /// - `label` an appropriately dimensioned topology label for the Edge. See [`TopologyPosition`]
+    ///    for details
+    pub(crate) fn new(mut coords: Vec<Coordinate<T, Z>>, label: Label) -> Edge<T, Z> {
+        assert!(!coords.is_empty(), "Can't add empty edge");
+        coords.shrink_to_fit();
+        Edge {
+            coords,
+            label,
+            is_isolated: true,
+            edge_intersections: BTreeSet::new(),
+        }
+    }
+
+    pub(crate) fn label(&self) -> &Label {
+        &self.label
+    }
+
+    pub(crate) fn label_mut(&mut self) -> &mut Label {
+        &mut self.label
+    }
+
+    pub fn coords(&self) -> &[Coordinate<T, Z>] {
+        &self.coords
+    }
+
+    pub fn is_isolated(&self) -> bool {
+        self.is_isolated
+    }
+    pub fn mark_as_unisolated(&mut self) {
+        self.is_isolated = false;
+    }
+
+    pub fn edge_intersections(&self) -> &BTreeSet<EdgeIntersection<T, Z>> {
+        &self.edge_intersections
+    }
+
+    pub fn edge_intersections_mut(&mut self) -> &mut BTreeSet<EdgeIntersection<T, Z>> {
+        &mut self.edge_intersections
+    }
+
+    pub fn add_edge_intersection_list_endpoints(&mut self) {
+        let max_segment_index = self.coords().len() - 1;
+        let first_coord = self.coords()[0];
+        let max_coord = self.coords()[max_segment_index];
+        self.edge_intersections_mut()
+            .insert(EdgeIntersection::new(first_coord, 0, T::zero()));
+        self.edge_intersections_mut().insert(EdgeIntersection::new(
+            max_coord,
+            max_segment_index,
+            T::zero(),
+        ));
+    }
+
+    pub fn is_closed(&self) -> bool {
+        self.coords().first() == self.coords().last()
+    }
+
+    /// Adds EdgeIntersections for one or both intersections found for a segment of an edge to the
+    /// edge intersection list.
+    pub fn add_intersections(
+        &mut self,
+        intersection: LineIntersection<T, Z>,
+        line: Line<T, Z>,
+        segment_index: usize,
+    ) {
+        match intersection {
+            LineIntersection::SinglePoint { intersection, .. } => {
+                self.add_intersection(intersection, line, segment_index);
+            }
+            LineIntersection::Collinear { intersection } => {
+                self.add_intersection(intersection.start, line, segment_index);
+                self.add_intersection(intersection.end, line, segment_index);
+            }
+        }
+    }
+
+    /// Add an EdgeIntersection for `intersection`.
+    ///
+    /// An intersection that falls exactly on a vertex of the edge is normalized to use the higher
+    /// of the two possible `segment_index`
+    pub fn add_intersection(
+        &mut self,
+        intersection_coord: Coordinate<T, Z>,
+        line: Line<T, Z>,
+        segment_index: usize,
+    ) {
+        let mut normalized_segment_index = segment_index;
+        let mut distance = RobustLineIntersector::compute_edge_distance(intersection_coord, line);
+
+        let next_segment_index = normalized_segment_index + 1;
+
+        if next_segment_index < self.coords.len() {
+            let next_coord = self.coords[next_segment_index];
+            if intersection_coord == next_coord {
+                normalized_segment_index = next_segment_index;
+                distance = T::zero();
+            }
+        }
+        self.edge_intersections.insert(EdgeIntersection::new(
+            intersection_coord,
+            normalized_segment_index,
+            distance,
+        ));
+    }
+
+    /// Update the IM with the contribution for this component.
+    ///
+    /// A component only contributes if it has a labelling for both parent geometries
+    pub fn update_intersection_matrix(label: &Label, intersection_matrix: &mut IntersectionMatrix) {
+        intersection_matrix.set_at_least_if_in_both(
+            label.position(0, Direction::On),
+            label.position(1, Direction::On),
+            Dimensions::OneDimensional,
+        );
+
+        if label.is_area() {
+            intersection_matrix.set_at_least_if_in_both(
+                label.position(0, Direction::Left),
+                label.position(1, Direction::Left),
+                Dimensions::TwoDimensional,
+            );
+            intersection_matrix.set_at_least_if_in_both(
+                label.position(0, Direction::Right),
+                label.position(1, Direction::Right),
+                Dimensions::TwoDimensional,
+            );
+        }
+    }
+}
