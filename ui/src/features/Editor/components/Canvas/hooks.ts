@@ -1,13 +1,15 @@
 import { DefaultEdgeOptions } from "@xyflow/react";
-import { useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
 
-import type { Workflow } from "@flow/types";
+import { Edge, type Node, type Workflow } from "@flow/types";
 
 import useEdges from "./useEdges";
 import useNodes from "./useNodes";
 
 type Props = {
   workflow?: Workflow;
+  lockedNodeIds: string[];
+  onNodeLocking: (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => void;
 };
 
 export const defaultEdgeOptions: DefaultEdgeOptions = {
@@ -27,20 +29,34 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
   // animated: true,
 };
 
-export default ({ workflow }: Props) => {
+export default ({ workflow, lockedNodeIds, onNodeLocking }: Props) => {
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(workflow?.id ?? "");
 
-  const [nodes, setNodes] = useState(workflow?.nodes ?? []);
-  const [edges, setEdges] = useState(workflow?.edges ?? []);
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>(workflow?.edges ?? []);
+
+  const processNode = useCallback(
+    (node: Node) => {
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          locked: lockedNodeIds.includes(node.id),
+          onLock: () => onNodeLocking(node.id, setNodes),
+        },
+      };
+    },
+    [lockedNodeIds, setNodes, onNodeLocking],
+  );
 
   useEffect(() => {
     if (workflow && workflow.id !== currentWorkflowId) {
-      setNodes(workflow.nodes ?? []);
+      setNodes(workflow.nodes?.map(n => processNode(n)) ?? []);
       setEdges(workflow.edges ?? []);
 
       setCurrentWorkflowId(workflow.id);
     }
-  }, [currentWorkflowId, workflow, setNodes, setEdges]);
+  }, [currentWorkflowId, workflow, processNode, setNodes, setEdges]);
 
   const {
     handleNodesChange,
@@ -53,19 +69,14 @@ export default ({ workflow }: Props) => {
     edges,
     setNodes,
     setEdges,
+    onNodeLocking,
   });
 
   const { handleEdgesChange, handleConnect } = useEdges({ setEdges });
 
-  // const { softSelect, hardSelect, useSingleClick, useDoubleClick } = useSelect();
-
   return {
     nodes,
     edges,
-    // softSelect,
-    // hardSelect,
-    // useSingleClick,
-    // useDoubleClick,
     handleNodesChange,
     handleNodesDelete,
     handleNodeDragStop,

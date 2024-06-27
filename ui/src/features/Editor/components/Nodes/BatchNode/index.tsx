@@ -1,6 +1,6 @@
 import { RectangleDashed } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import { Node } from "@flow/types";
 
@@ -80,4 +80,4 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected }) => {
   );
 };
 
-export default BatchNode;
+export default memo(BatchNode);

@@ -1,57 +1,27 @@
-import { useState, useCallback, MouseEvent } from "react";
-
 import LeftPanel from "@flow/features/LeftPanel";
 import RightPanel from "@flow/features/RightPanel";
-import type { Edge, Node, Workflow } from "@flow/types";
+import type { Workflow } from "@flow/types";
 
 import BottomPanel from "../BottomPanel";
 
 import { Canvas, OverlayUI } from "./components";
+import useHooks from "./hooks";
 
 type EditorProps = {
   workflows?: Workflow[];
 };
 
 export default function Editor({ workflows }: EditorProps) {
-  const [selected, setSelected] = useState<{ nodes: Node[]; edges: Edge[] }>({
-    nodes: [],
-    edges: [],
-  });
-  const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | undefined>(workflows?.[0]);
-
-  const handleWorkflowChange = (workflowId?: string) => {
-    if (!workflowId) return setCurrentWorkflow(workflows?.[0]);
-    const workflow = workflows?.find(w => w.id === workflowId);
-    setCurrentWorkflow(workflow);
-  };
-
-  const handleSelect = (nodes?: Node[], edges?: Edge[]) => {
-    setSelected({ nodes: nodes ?? [], edges: edges ?? [] });
-  };
-
-  const [hoveredDetails, setHoveredDetails] = useState<Node | Edge | undefined>();
-
-  const handleNodeHover = useCallback(
-    (e: MouseEvent, node?: Node) => {
-      if (e.type === "mouseleave" && hoveredDetails) {
-        setHoveredDetails(undefined);
-      } else {
-        setHoveredDetails(node);
-      }
-    },
-    [hoveredDetails],
-  );
-
-  const handleEdgeHover = useCallback(
-    (e: MouseEvent, edge?: Edge) => {
-      if (e.type === "mouseleave" && hoveredDetails) {
-        setHoveredDetails(undefined);
-      } else {
-        setHoveredDetails(edge);
-      }
-    },
-    [hoveredDetails],
-  );
+  const {
+    currentWorkflow,
+    lockedNodeIds,
+    locallyLockedNode,
+    hoveredDetails,
+    handleNodeLocking,
+    handleWorkflowChange,
+    handleNodeHover,
+    handleEdgeHover,
+  } = useHooks({ workflows });
 
   return (
     <div className="flex flex-1 relative">
@@ -60,7 +30,8 @@ export default function Editor({ workflows }: EditorProps) {
         <OverlayUI hoveredDetails={hoveredDetails}>
           <Canvas
             workflow={currentWorkflow}
-            onSelect={handleSelect}
+            lockedNodeIds={lockedNodeIds}
+            onNodeLocking={handleNodeLocking}
             onNodeHover={handleNodeHover}
             onEdgeHover={handleEdgeHover}
           />
@@ -70,7 +41,7 @@ export default function Editor({ workflows }: EditorProps) {
           onWorkflowChange={handleWorkflowChange}
         />
       </div>
-      <RightPanel selected={selected.nodes} />
+      <RightPanel selected={locallyLockedNode} />
     </div>
   );
 }

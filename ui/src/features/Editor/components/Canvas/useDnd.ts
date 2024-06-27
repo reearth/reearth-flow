@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { Dispatch, DragEvent, SetStateAction } from "react";
+import { Dispatch, DragEvent, SetStateAction, useCallback } from "react";
 
 import { Node } from "@flow/types";
 import { randomID } from "@flow/utils";
@@ -7,52 +7,70 @@ import { randomID } from "@flow/utils";
 import { baseBatchNode } from "../Nodes/BatchNode";
 import { baseNoteNode } from "../Nodes/NoteNode";
 
+type Props = {
+  setNodes: Dispatch<SetStateAction<Node[]>>;
+  onNodeLocking: (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => void;
+};
+
 // This is used for drag and drop functionality in to the canvas
 // This is not used for node dnd within the canvas. That is done internally by react-flow
-export default ({ setNodes }: { setNodes: Dispatch<SetStateAction<Node[]>> }) => {
+export default ({ setNodes, onNodeLocking }: Props) => {
   const { screenToFlowPosition } = useReactFlow();
 
-  const handleNodeDragOver = (event: DragEvent<HTMLDivElement>) => {
+  const handleNodeDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-  };
+  }, []);
 
-  const handleNodeDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
+  const handleNodeDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
 
-    const type = event.dataTransfer.getData("application/reactflow");
+      const type = event.dataTransfer.getData("application/reactflow");
 
-    // check if the dropped element is valid
-    if (typeof type === "undefined" || !type) return;
+      // check if the dropped element is valid
+      if (typeof type === "undefined" || !type) return;
 
-    const position = screenToFlowPosition({
-      x: event.clientX,
-      y: event.clientY,
-    });
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
 
-    let newNode: Node;
+      let newNode: Node;
 
-    // TODO: Once we have access to transformers list, we can set the newNode based on the selected type
-    newNode = {
-      id: randomID(),
-      type,
-      position,
-      data: { name: `New ${type} node`, inputs: ["source"], outputs: ["target"], status: "idle" },
-    };
+      const handleNodeLocking = (setNodes: Dispatch<SetStateAction<Node[]>>) => (nodeId: string) =>
+        onNodeLocking(nodeId, setNodes);
 
-    if (type === "batch") {
-      newNode = { ...newNode, ...baseBatchNode };
-    }
-
-    if (type === "note") {
+      // TODO: Once we have access to transformers list, we can set the newNode based on the selected type
       newNode = {
-        ...newNode,
-        data: { ...newNode.data, ...baseNoteNode },
+        id: randomID(),
+        type,
+        position,
+        data: {
+          name: `New ${type} node`,
+          inputs: type === "reader" ? undefined : ["source"],
+          outputs: type === "writer" ? undefined : ["target"],
+          status: "idle",
+          locked: false,
+          onLock: handleNodeLocking(setNodes),
+        },
       };
-    }
 
-    setNodes(nds => nds.concat(newNode));
-  };
+      if (type === "batch") {
+        newNode = { ...newNode, ...baseBatchNode };
+      }
+
+      if (type === "note") {
+        newNode = {
+          ...newNode,
+          data: { ...newNode.data, ...baseNoteNode },
+        };
+      }
+
+      setNodes(nds => nds.concat(newNode));
+    },
+    [onNodeLocking, screenToFlowPosition, setNodes],
+  );
 
   return { handleNodeDragOver, handleNodeDrop };
 };

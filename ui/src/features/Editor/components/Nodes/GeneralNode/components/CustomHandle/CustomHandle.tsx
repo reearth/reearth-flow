@@ -6,7 +6,7 @@ import {
   useNodeId,
   useStore,
 } from "@xyflow/react";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 
 const selector = (s: ReactFlowState) => ({
   nodeInternals: s.nodeLookup,
@@ -41,4 +41,4 @@ const CustomHandle: React.FC<Props> = ({ className, ...props }) => {
   );
 };
 
-export default CustomHandle;
+export default memo(CustomHandle);

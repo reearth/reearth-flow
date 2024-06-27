@@ -1,4 +1,5 @@
 import { Position } from "@xyflow/react";
+import { memo } from "react";
 
 import CustomHandle from "./CustomHandle";
 
@@ -6,10 +7,9 @@ type Props = {
   nodeType?: string;
   inputs?: string[];
   outputs?: string[];
-  nodeActionArea?: React.ReactNode;
 };
 
-const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea }) => {
+const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
   return (
     <>
       {nodeType !== "reader" && inputs && inputs.length === 1 && (
@@ -62,10 +62,9 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs, nodeActionArea })
               </div>
             ))}
         </div>
-        {nodeActionArea}
       </div>
     </>
   );
 };
 
-export { Handles };
+export default memo(Handles);

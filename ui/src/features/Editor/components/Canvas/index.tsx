@@ -1,9 +1,9 @@
 import { ReactFlow, Background, BackgroundVariant, SelectionMode } from "@xyflow/react";
-import { MouseEvent } from "react";
+import { Dispatch, MouseEvent, SetStateAction, memo } from "react";
 
-import { Edge, Node, Workflow } from "@flow/types";
+import type { Edge, Node, Workflow } from "@flow/types";
 
-import { CustomConnectionLine, connectionLineStyle } from "../CustomConnectionLine";
+import CustomConnectionLine, { connectionLineStyle } from "../CustomConnectionLine";
 import { edgeTypes } from "../CustomEdge";
 import { nodeTypes } from "../Nodes";
 
@@ -15,12 +15,19 @@ const gridSize = 30;
 
 type Props = {
   workflow?: Workflow;
-  onSelect: (nodes?: Node[], edges?: Edge[]) => void;
+  lockedNodeIds: string[];
+  onNodeLocking: (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => void;
   onNodeHover: (e: MouseEvent, node?: Node) => void;
   onEdgeHover: (e: MouseEvent, edge?: Edge) => void;
 };
 
-const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
+const Canvas: React.FC<Props> = ({
+  workflow,
+  lockedNodeIds,
+  onNodeLocking,
+  onNodeHover,
+  onEdgeHover,
+}) => {
   const {
     nodes,
     edges,
@@ -33,6 +40,8 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
     handleConnect,
   } = useHooks({
     workflow,
+    lockedNodeIds,
+    onNodeLocking,
   });
 
   return (
@@ -68,12 +77,6 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
       onNodeMouseLeave={onNodeHover}
       onEdgeMouseEnter={onEdgeHover}
       onEdgeMouseLeave={onEdgeHover}
-      // onSelectionChange={s => {
-      //   onSelect(
-      //     s.nodes.filter(n => n.selected),
-      //     s.edges.filter(e => e.selected),
-      //   );
-      // }}
       onConnect={handleConnect}
       onDrop={handleNodeDrop}
       onDragOver={handleNodeDragOver}
@@ -95,4 +98,4 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
   );
 };
 
-export { Canvas };
+export default memo(Canvas);

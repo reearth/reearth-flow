@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import GeneralNode, { type GeneralNodeProps } from "./GeneralNode";
 
 // selected style: border border-[#91855b]
@@ -13,4 +15,4 @@ const WriterNode: React.FC<GeneralNodeProps> = props => {
   return <GeneralNode className="bg-[#635116]/60" {...props} />;
 };
 
-export default WriterNode;
+export default memo(WriterNode);
