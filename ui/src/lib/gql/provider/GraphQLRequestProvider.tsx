@@ -6,7 +6,7 @@ import { useAuth } from "@flow/lib/auth";
 
 import { Sdk, getSdk } from "../__gen__/plugins/graphql-request";
 
-export const GraphQLContext = createContext<Sdk | undefined>(undefined);
+const GraphQLContext = createContext<Sdk | undefined>(undefined);
 
 export const useGraphQLContext = () => useContext(GraphQLContext);
 

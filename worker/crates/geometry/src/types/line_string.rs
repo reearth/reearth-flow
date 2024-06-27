@@ -1,8 +1,12 @@
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
 use nusamai_geometry::{LineString2 as NLineString2, LineString3 as NLineString3};
+
+use crate::error::Error;
 
 use super::coordinate::{self, Coordinate};
 use super::coordnum::CoordNum;
@@ -16,14 +20,40 @@ pub struct LineString<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Coordinate<T
 pub type LineString2D<T> = LineString<T, NoValue>;
 pub type LineString3D<T> = LineString<T, T>;
 
+impl From<LineString<f64, f64>> for LineString<f64, NoValue> {
+    #[inline]
+    fn from(coords: LineString<f64, f64>) -> Self {
+        let new_coords = coords
+            .0
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Coordinate<f64, NoValue>>>();
+        LineString(new_coords)
+    }
+}
+
 #[derive(Debug)]
-pub struct PointsIter<'a, T, Z = NoValue>(::std::slice::Iter<'a, Coordinate<T, Z>>)
+pub struct PointsIter<'a, T, Z>(::std::slice::Iter<'a, Coordinate<T, Z>>)
 where
     T: CoordNum + 'a,
     Z: CoordNum + 'a;
 
 pub type PointsIter2D<'a, T> = PointsIter<'a, T, NoValue>;
 pub type PointsIter3D<'a, T> = PointsIter<'a, T, T>;
+
+impl From<LineString2D<f64>> for Vec<NaPoint2<f64>> {
+    #[inline]
+    fn from(p: LineString2D<f64>) -> Vec<NaPoint2<f64>> {
+        p.0.into_iter().map(|c| c.into()).collect()
+    }
+}
+
+impl From<LineString3D<f64>> for Vec<NaPoint3<f64>> {
+    #[inline]
+    fn from(p: LineString3D<f64>) -> Vec<NaPoint3<f64>> {
+        p.0.into_iter().map(|c| c.into()).collect()
+    }
+}
 
 impl<'a, T, Z> Iterator for PointsIter<'a, T, Z>
 where
@@ -105,6 +135,13 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
 
     pub fn into_inner(self) -> Vec<Coordinate<T, Z>> {
         self.0
+    }
+
+    pub fn lines(&'_ self) -> impl ExactSizeIterator<Item = Line<T, Z>> + '_ {
+        self.0.windows(2).map(|w| {
+            // slice::windows(N) is guaranteed to yield a slice with exactly N elements
+            unsafe { Line::new_(*w.get_unchecked(0), *w.get_unchecked(1)) }
+        })
     }
 
     pub fn triangles(&'_ self) -> impl ExactSizeIterator<Item = Triangle<T, Z>> + '_ {
@@ -220,9 +257,22 @@ impl<'a> From<NLineString3<'a>> for LineString<f64> {
     }
 }
 
-impl<T> approx::RelativeEq for LineString<T, T>
+impl LineString3D<f64> {
+    pub fn projection(
+        &mut self,
+        projection: &ExtendedTransverseMercatorProjection,
+    ) -> Result<(), Error> {
+        for coord in &mut self.0 {
+            coord.projection(projection)?;
+        }
+        Ok(())
+    }
+}
+
+impl<T, Z> approx::RelativeEq for LineString<T, Z>
 where
     T: approx::AbsDiffEq<Epsilon = T> + CoordNum + approx::RelativeEq,
+    Z: approx::AbsDiffEq<Epsilon = Z> + CoordNum + approx::RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -245,12 +295,15 @@ where
                 return false;
             }
         }
-
         true
     }
 }
 
-impl<T: approx::AbsDiffEq<Epsilon = T> + CoordNum> approx::AbsDiffEq for LineString<T, T> {
+impl<
+        T: approx::AbsDiffEq<Epsilon = T> + CoordNum,
+        Z: approx::AbsDiffEq<Epsilon = Z> + CoordNum,
+    > approx::AbsDiffEq for LineString<T, Z>
+{
     type Epsilon = T;
 
     #[inline]

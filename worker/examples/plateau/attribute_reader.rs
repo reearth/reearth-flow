@@ -1,5 +1,5 @@
 mod helper;
 
 fn main() {
-    helper::execute("lod_splitter_with_dm.yml");
+    helper::execute("attribute_reader.yml");
 }

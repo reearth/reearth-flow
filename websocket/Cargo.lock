@@ -944,6 +944,7 @@ name = "infra"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "flow-websocket-domain",
  "google-cloud-storage",
  "redis 0.25.4",

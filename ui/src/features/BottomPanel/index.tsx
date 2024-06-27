@@ -4,6 +4,9 @@ import { useCallback, useState } from "react";
 import { IconButton } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
+import { customTransformers } from "@flow/mock_data/customTransformer";
+
+import { WorkflowTabs } from "../Editor/components";
 
 import { DataTable, LogConsole, Map } from "./components";
 
@@ -11,7 +14,6 @@ type PanelContent = {
   id: string;
   component: React.ReactNode;
   title?: string;
-  description?: string;
   icon?: React.ReactNode;
 };
 
@@ -26,13 +28,13 @@ const BottomPanel: React.FC = () => {
     {
       id: "output-log",
       icon: <Terminal className="w-[20px] h-[20px]" weight="thin" />,
-      description: t("Output log"),
+      title: t("Log"),
       component: <LogConsole />,
     },
     {
       id: "visual-preview",
       icon: <Globe className="w-[20px] h-[20px]" weight="thin" />,
-      description: t("Preview data"),
+      title: t("Preview"),
       component: (
         <div className="flex flex-1">
           <DataTable />
@@ -60,65 +62,85 @@ const BottomPanel: React.FC = () => {
 
   return (
     <div
-      className="flex flex-col box-content transition-width duration-300 ease-in-out bg-zinc-800 border-t border-zinc-700 backdrop-blur-md"
+      className="flex flex-col justify-end box-content transition-width duration-300 ease-in-out bg-zinc-800 border-t border-zinc-700 backdrop-blur-md"
       style={{
-        height: isPanelOpen ? (windowSize === "max" ? "100vh" : "50vh") : "36px",
+        height: isPanelOpen ? (windowSize === "max" ? "calc(100vh - 1px)" : "50vh") : "29px",
       }}>
-      <div id="edge" className="flex gap-1 items-center shrink-0 h-[36px] bg-zinc-900/50">
-        <div className="flex gap-1 items-center justify-center flex-1 h-[100%]">
-          {panelContents?.map(content => (
-            <IconButton
-              key={content.id}
-              className={`w-[55px] h-[80%] ${selected?.id === content.id ? "text-white bg-zinc-700" : undefined}`}
-              icon={content.icon}
-              tooltipText={content.description}
-              tooltipPosition="top"
-              onClick={() => handleSelection(content)}
+      {isPanelOpen && (
+        <div id="top-edge" className="flex gap-1 items-center shrink-0 h-[29px] bg-zinc-900/50">
+          <div className="flex justify-end gap-1 px-1 items-center flex-1 h-[100%]">
+            <BaseActionButtons
+              panelContents={panelContents}
+              selected={selected}
+              onSelection={handleSelection}
             />
-          ))}
-        </div>
-        {isPanelOpen && (
-          <div className="fixed right-0 h-[36px] flex items-center">
-            {windowSize === "min" && (
-              <IconButton
-                className="w-[55px] h-[80%]"
-                icon={<CornersOut />}
-                tooltipText={"Enter full screen"}
-                tooltipPosition="top"
-                onClick={() => setWindowSize("max")}
-              />
-            )}
-            {windowSize === "max" && (
-              <IconButton
-                className="w-[55px] h-[80%]"
-                icon={<CornersIn />}
-                tooltipText={"Enter full screen"}
-                tooltipPosition="top"
-                onClick={() => setWindowSize("min")}
-              />
+            {isPanelOpen && (
+              <div className="h-[29px] flex items-center px-1">
+                {windowSize === "min" && (
+                  <IconButton
+                    className="w-[55px] h-[80%]"
+                    icon={<CornersOut />}
+                    tooltipText={"Enter full screen"}
+                    tooltipPosition="top"
+                    onClick={() => setWindowSize("max")}
+                  />
+                )}
+                {windowSize === "max" && (
+                  <IconButton
+                    className="w-[55px] h-[80%]"
+                    icon={<CornersIn />}
+                    tooltipText={"Enter full screen"}
+                    tooltipPosition="top"
+                    onClick={() => setWindowSize("min")}
+                  />
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
       <div
         id="content"
-        className="flex flex-1 h-[calc(100%-36px)] bg-zinc-800"
-        style={{
-          display: isPanelOpen ? "flex" : "none",
-        }}>
+        className={`flex flex-1 h-[calc(100%-64px)] bg-zinc-800 ${isPanelOpen ? "flex" : "hidden"}`}>
         {panelContents.map(p => (
-          <div
-            className="flex-1 p-1"
-            style={{
-              display: selected?.id === p.id ? "flex" : "none",
-            }}
-            key={p.id}>
+          <div className={`flex-1 ${selected?.id === p.id ? "flex" : "hidden"}`} key={p.id}>
             {p.component}
           </div>
         ))}
+      </div>
+      <div
+        id="bottom-edge"
+        className="flex gap-1 justify-end items-center shrink-0 h-[29px] bg-zinc-900/50">
+        <WorkflowTabs editingCustomTransformers={customTransformers} />
+        <div className="border-r border-zinc-700 h-full" />
+        <div className="flex justify-end items-center gap-1 flex-1 h-[100%] mx-4">
+          {!isPanelOpen && (
+            <BaseActionButtons
+              panelContents={panelContents}
+              selected={selected}
+              onSelection={handleSelection}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
 export default BottomPanel;
+
+const BaseActionButtons: React.FC<{
+  panelContents?: PanelContent[];
+  selected?: PanelContent;
+  onSelection?: (content: PanelContent) => void;
+}> = ({ panelContents, selected, onSelection }) => {
+  return panelContents?.map(content => (
+    <div
+      key={content.id}
+      className={`flex justify-center items-center gap-2 h-[80%] min-w-[100px] rounded cursor-pointer hover:bg-zinc-700/75 hover:text-white ${selected?.id === content.id ? "text-white bg-zinc-700/75" : undefined}`}
+      onClick={() => onSelection?.(content)}>
+      {content.icon}
+      <p className="text-sm font-thin">{content.title}</p>
+    </div>
+  ));
+};

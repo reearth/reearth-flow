@@ -2,8 +2,11 @@ use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::coord;
+use crate::error::Error;
 use approx::{AbsDiffEq, RelativeEq, UlpsEq};
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
+use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
@@ -28,6 +31,16 @@ impl<T: CoordNum, Z: CoordNum> Coordinate<T, Z> {
     #[inline]
     pub fn new__(x: T, y: T, z: Z) -> Self {
         Self { x, y, z }
+    }
+
+    #[inline]
+    pub fn is_2d(&self) -> bool {
+        self.z.to_f64().is_none()
+    }
+
+    #[inline]
+    pub fn is_3d(&self) -> bool {
+        !self.is_2d()
     }
 }
 
@@ -76,6 +89,13 @@ impl<T: CoordNum> From<[T; 3]> for Coordinate<T, T> {
     }
 }
 
+impl From<Coordinate<f64, f64>> for Coordinate<f64, NoValue> {
+    #[inline]
+    fn from(coords: Coordinate<f64, f64>) -> Self {
+        Coordinate::new__(coords.x, coords.y, NoValue)
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for Coordinate<T, Z> {
     #[inline]
     fn from(point: Point<T, Z>) -> Self {
@@ -90,9 +110,9 @@ impl<T: CoordNum, Z: CoordNum> From<Coordinate<T, Z>> for (T, T) {
     }
 }
 
-impl<T: CoordNum> From<Coordinate<T, T>> for (T, T, T) {
+impl<T: CoordNum, Z: CoordNum> From<Coordinate<T, Z>> for (T, T, Z) {
     #[inline]
-    fn from(coord: Coordinate<T, T>) -> Self {
+    fn from(coord: Coordinate<T, Z>) -> Self {
         (coord.x, coord.y, coord.z)
     }
 }
@@ -111,16 +131,41 @@ impl<T: CoordNum> From<Coordinate<T, T>> for [T; 3] {
     }
 }
 
+impl From<NaPoint2<f64>> for Coordinate2D<f64> {
+    #[inline]
+    fn from(p: NaPoint2<f64>) -> Self {
+        Self::new_(p.x, p.y)
+    }
+}
+
+impl From<Coordinate2D<f64>> for NaPoint2<f64> {
+    #[inline]
+    fn from(p: Coordinate2D<f64>) -> Self {
+        Self::new(p.x, p.y)
+    }
+}
+
+impl From<NaPoint3<f64>> for Coordinate3D<f64> {
+    #[inline]
+    fn from(p: NaPoint3<f64>) -> Self {
+        Self::new__(p.x, p.y, p.z)
+    }
+}
+
+impl From<Coordinate3D<f64>> for NaPoint3<f64> {
+    #[inline]
+    fn from(p: Coordinate3D<f64>) -> Self {
+        Self::new(p.x, p.y, p.z)
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum> Coordinate<T, Z> {
     #[inline]
     pub fn x_y(&self) -> (T, T) {
         (self.x, self.y)
     }
-}
 
-impl<T: CoordNum> Coordinate<T, T> {
-    #[inline]
-    pub fn x_y_z(&self) -> (T, T, T) {
+    pub fn x_y_z(&self) -> (T, T, Z) {
         (self.x, self.y, self.z)
     }
 }
@@ -224,7 +269,22 @@ impl<T: CoordNum, Z: CoordNum> Zero for Coordinate<T, Z> {
     }
 }
 
-impl<T: CoordNum + AbsDiffEq> AbsDiffEq for Coordinate<T, T>
+impl Coordinate3D<f64> {
+    pub fn projection(
+        &mut self,
+        projection: &ExtendedTransverseMercatorProjection,
+    ) -> Result<(), Error> {
+        let (y, x, z) = projection
+            .project_forward(self.y, self.x, self.z)
+            .map_err(Error::projection)?;
+        self.x = x;
+        self.y = y;
+        self.z = z;
+        Ok(())
+    }
+}
+
+impl<T: CoordNum + AbsDiffEq, Z: CoordNum + AbsDiffEq> AbsDiffEq for Coordinate<T, Z>
 where
     T::Epsilon: Copy,
 {
@@ -239,11 +299,11 @@ where
     fn abs_diff_eq(&self, other: &Self, epsilon: T::Epsilon) -> bool {
         T::abs_diff_eq(&self.x, &other.x, epsilon)
             && T::abs_diff_eq(&self.y, &other.y, epsilon)
-            && T::abs_diff_eq(&self.z, &other.z, epsilon)
+            && Z::abs_diff_eq(&self.z, &other.z, Z::default_epsilon())
     }
 }
 
-impl<T: CoordNum + RelativeEq> RelativeEq for Coordinate<T, T>
+impl<T: CoordNum + RelativeEq, Z: CoordNum + RelativeEq> RelativeEq for Coordinate<T, Z>
 where
     T::Epsilon: Copy,
 {
@@ -256,11 +316,16 @@ where
     fn relative_eq(&self, other: &Self, epsilon: T::Epsilon, max_relative: T::Epsilon) -> bool {
         T::relative_eq(&self.x, &other.x, epsilon, max_relative)
             && T::relative_eq(&self.y, &other.y, epsilon, max_relative)
-            && T::relative_eq(&self.z, &other.z, epsilon, max_relative)
+            && Z::relative_eq(
+                &self.z,
+                &other.z,
+                Z::default_epsilon(),
+                Z::default_max_relative(),
+            )
     }
 }
 
-impl<T: CoordNum + UlpsEq> UlpsEq for Coordinate<T, T>
+impl<T: CoordNum + UlpsEq, Z: CoordNum + UlpsEq> UlpsEq for Coordinate<T, Z>
 where
     T::Epsilon: Copy,
 {
@@ -273,6 +338,43 @@ where
     fn ulps_eq(&self, other: &Self, epsilon: T::Epsilon, max_ulps: u32) -> bool {
         T::ulps_eq(&self.x, &other.x, epsilon, max_ulps)
             && T::ulps_eq(&self.y, &other.y, epsilon, max_ulps)
-            && T::ulps_eq(&self.z, &other.z, epsilon, max_ulps)
+            && Z::ulps_eq(
+                &self.z,
+                &other.z,
+                Z::default_epsilon(),
+                Z::default_max_ulps(),
+            )
+    }
+}
+
+impl<T, Z> ::rstar::Point for Coordinate<T, Z>
+where
+    T: ::num_traits::Float + ::rstar::RTreeNum + Default,
+    Z: ::num_traits::Float + ::rstar::RTreeNum + Default,
+{
+    type Scalar = T;
+
+    const DIMENSIONS: usize = 3;
+
+    fn generate(mut generator: impl FnMut(usize) -> Self::Scalar) -> Self {
+        Coordinate::new__(generator(0), generator(1), Z::zero())
+    }
+
+    #[inline]
+    fn nth(&self, index: usize) -> Self::Scalar {
+        match index {
+            0 => self.x,
+            1 => self.y,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    fn nth_mut(&mut self, index: usize) -> &mut Self::Scalar {
+        match index {
+            0 => &mut self.x,
+            1 => &mut self.y,
+            _ => unreachable!(),
+        }
     }
 }

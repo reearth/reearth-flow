@@ -1,6 +1,7 @@
 use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use nusamai_geometry::{MultiPoint2 as NMultiPoint2, MultiPoint3 as NMultiPoint3};
 use serde::{Deserialize, Serialize};
 
@@ -88,9 +89,24 @@ impl<'a> From<NMultiPoint3<'a>> for MultiPoint3D<f64> {
     }
 }
 
-impl<T> RelativeEq for MultiPoint<T, T>
+impl From<MultiPoint2D<f64>> for Vec<NaPoint2<f64>> {
+    #[inline]
+    fn from(p: MultiPoint2D<f64>) -> Vec<NaPoint2<f64>> {
+        p.0.into_iter().map(|c| c.into()).collect()
+    }
+}
+
+impl From<MultiPoint3D<f64>> for Vec<NaPoint3<f64>> {
+    #[inline]
+    fn from(p: MultiPoint3D<f64>) -> Vec<NaPoint3<f64>> {
+        p.0.into_iter().map(|c| c.into()).collect()
+    }
+}
+
+impl<T, Z> RelativeEq for MultiPoint<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -113,10 +129,12 @@ where
     }
 }
 
-impl<T> AbsDiffEq for MultiPoint<T, T>
+impl<T, Z> AbsDiffEq for MultiPoint<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum,
     T::Epsilon: Copy,
+    Z::Epsilon: Copy,
 {
     type Epsilon = T;
 

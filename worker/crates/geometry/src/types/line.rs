@@ -54,19 +54,15 @@ impl<T: CoordNum, Z: CoordNum> Line<T, Z> {
     pub fn dz(&self) -> Z {
         self.delta().z
     }
-}
 
-impl<T: CoordNum> Line<T> {
-    pub fn slope(&self) -> T {
-        self.dy() / self.dx()
+    pub fn slope(&self) -> Coordinate<T, Z> {
+        Coordinate {
+            x: self.end.x - self.start.x,
+            y: self.end.y - self.start.y,
+            z: self.end.z - self.start.z,
+        }
     }
 
-    pub fn determinant(&self) -> T {
-        self.start.x * self.end.y - self.start.y * self.end.x
-    }
-}
-
-impl<T: CoordNum, Z: CoordNum> Line<T, Z> {
     pub fn start_point(&self) -> Point<T, Z> {
         Point::from(self.start)
     }
@@ -77,6 +73,20 @@ impl<T: CoordNum, Z: CoordNum> Line<T, Z> {
 
     pub fn points(&self) -> (Point<T, Z>, Point<T, Z>) {
         (self.start_point(), self.end_point())
+    }
+}
+
+impl<T: CoordNum> Line3D<T> {
+    pub fn determinant3d(&self) -> T {
+        self.start.x * (self.end.y * self.start.z - self.end.z * self.start.y)
+            - self.start.y * (self.end.x * self.start.z - self.end.z * self.start.x)
+            + self.start.z * (self.end.x * self.start.y - self.end.y * self.start.x)
+    }
+}
+
+impl<T: CoordNum> Line2D<T> {
+    pub fn determinant2d(&self) -> T {
+        self.start.x * self.end.y - self.start.y * self.end.x
     }
 }
 
@@ -92,9 +102,10 @@ impl<T: CoordNum> From<[(T, T, T); 2]> for Line<T, T> {
     }
 }
 
-impl<T> RelativeEq for Line<T, T>
+impl<T, Z> RelativeEq for Line<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -113,7 +124,9 @@ where
     }
 }
 
-impl<T: AbsDiffEq<Epsilon = T> + CoordNum> AbsDiffEq for Line<T, T> {
+impl<T: AbsDiffEq<Epsilon = T> + CoordNum, Z: AbsDiffEq<Epsilon = Z> + CoordNum> AbsDiffEq
+    for Line<T, Z>
+{
     type Epsilon = T;
 
     #[inline]

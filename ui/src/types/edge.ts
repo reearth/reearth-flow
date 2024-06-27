@@ -1,4 +1,4 @@
-import type { Edge as ReactFlowEdge } from "reactflow";
+import type { Edge as ReactFlowEdge } from "@xyflow/react";
 
 import type { Status } from "./shared";
 

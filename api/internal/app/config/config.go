@@ -63,9 +63,6 @@ type Config struct {
 	Auth_TTL      *int          `pp:",omitempty"`
 	Auth_ClientID *string       `pp:",omitempty"`
 	Auth_JWKSURI  *string       `pp:",omitempty"`
-
-	// system extensions
-	Ext_Plugin []string `pp:",omitempty"`
 }
 
 func ReadConfig(debug bool) (*Config, error) {

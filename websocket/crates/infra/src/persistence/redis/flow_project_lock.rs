@@ -1,4 +1,24 @@
+use std::error::Error;
+use std::fmt;
+
 use rslock::{ LockError, LockGuard, LockManager};
+
+#[derive(Debug)]
+pub struct GlobalLockError(pub LockError);
+
+impl fmt::Display for GlobalLockError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Global Lock Error: {:?}", self.0)
+    }
+}
+
+impl Error for GlobalLockError {}
+
+impl From<LockError> for GlobalLockError {
+    fn from(err: LockError) -> Self {
+        GlobalLockError(err)
+    }
+}
 
 pub struct FlowProjectLock {
     lock_manager: LockManager,

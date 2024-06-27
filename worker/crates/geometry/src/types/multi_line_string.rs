@@ -1,6 +1,7 @@
 use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use serde::{Deserialize, Serialize};
 
 use nusamai_geometry::{
@@ -24,6 +25,28 @@ impl<T: CoordNum, Z: CoordNum> MultiLineString<T, Z> {
 
     pub fn is_closed(&self) -> bool {
         self.iter().all(LineString::is_closed)
+    }
+}
+
+impl From<MultiLineString2D<f64>> for Vec<NaPoint2<f64>> {
+    #[inline]
+    fn from(p: MultiLineString2D<f64>) -> Vec<NaPoint2<f64>> {
+        let result =
+            p.0.into_iter()
+                .map(|c| c.into())
+                .collect::<Vec<Vec<NaPoint2<f64>>>>();
+        result.into_iter().flatten().collect()
+    }
+}
+
+impl From<MultiLineString3D<f64>> for Vec<NaPoint3<f64>> {
+    #[inline]
+    fn from(p: MultiLineString3D<f64>) -> Vec<NaPoint3<f64>> {
+        let result =
+            p.0.into_iter()
+                .map(|c| c.into())
+                .collect::<Vec<Vec<NaPoint3<f64>>>>();
+        result.into_iter().flatten().collect()
     }
 }
 
@@ -92,9 +115,10 @@ impl<'a> From<NMultiLineString3<'a>> for MultiLineString3D<f64> {
     }
 }
 
-impl<T> RelativeEq for MultiLineString<T, T>
+impl<T, Z> RelativeEq for MultiLineString<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum + RelativeEq,
 {
     #[inline]
     fn default_max_relative() -> Self::Epsilon {
@@ -117,10 +141,12 @@ where
     }
 }
 
-impl<T> AbsDiffEq for MultiLineString<T, T>
+impl<T, Z> AbsDiffEq for MultiLineString<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum,
+    Z: AbsDiffEq<Epsilon = Z> + CoordNum,
     T::Epsilon: Copy,
+    Z::Epsilon: Copy,
 {
     type Epsilon = T;
 
