@@ -1,4 +1,11 @@
-import { ReactFlow, Background, BackgroundVariant, SelectionMode } from "@xyflow/react";
+import {
+  ReactFlow,
+  Background,
+  BackgroundVariant,
+  SelectionMode,
+  ProOptions,
+  SnapGrid,
+} from "@xyflow/react";
 import { Dispatch, MouseEvent, SetStateAction, memo } from "react";
 
 import type { Edge, Node, Workflow } from "@flow/types";
@@ -13,9 +20,16 @@ import "@xyflow/react/dist/style.css";
 
 const gridSize = 30;
 
+const snapGrid: SnapGrid = [gridSize, gridSize];
+
+const proOptions: ProOptions = {
+  hideAttribution: true, // We should probably show this in the future. But need to discuss with the team.
+};
+
 type Props = {
   workflow?: Workflow;
   lockedNodeIds: string[];
+  canvasLock: boolean;
   onNodeLocking: (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => void;
   onNodeHover: (e: MouseEvent, node?: Node) => void;
   onEdgeHover: (e: MouseEvent, edge?: Edge) => void;
@@ -24,6 +38,7 @@ type Props = {
 const Canvas: React.FC<Props> = ({
   workflow,
   lockedNodeIds,
+  canvasLock,
   onNodeLocking,
   onNodeHover,
   onEdgeHover,
@@ -60,7 +75,24 @@ const Canvas: React.FC<Props> = ({
       // fitViewOptions={{ padding: 0.5 }}
       // fitView
       // snapToGrid
-      snapGrid={[gridSize, gridSize]}
+      // Locking props START
+      nodesDraggable={!canvasLock}
+      nodesConnectable={!canvasLock}
+      nodesFocusable={!canvasLock}
+      edgesFocusable={!canvasLock}
+      elementsSelectable={!canvasLock}
+      autoPanOnConnect={!canvasLock}
+      autoPanOnNodeDrag={!canvasLock}
+      panOnDrag={!canvasLock}
+      selectionOnDrag={!canvasLock}
+      panOnScroll={!canvasLock}
+      zoomOnScroll={!canvasLock}
+      zoomOnPinch={!canvasLock}
+      zoomOnDoubleClick={!canvasLock}
+      connectOnClick={!canvasLock}
+      // Locking props END
+
+      snapGrid={snapGrid}
       selectionMode={SelectionMode["Partial"]}
       nodes={nodes}
       nodeTypes={nodeTypes}
@@ -75,13 +107,12 @@ const Canvas: React.FC<Props> = ({
       onNodesDelete={handleNodesDelete}
       onNodeMouseEnter={onNodeHover}
       onNodeMouseLeave={onNodeHover}
+      onDrop={handleNodeDrop}
+      onDragOver={handleNodeDragOver}
       onEdgeMouseEnter={onEdgeHover}
       onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
-      onDrop={handleNodeDrop}
-      onDragOver={handleNodeDragOver}
-      panOnScroll
-      proOptions={{ hideAttribution: true }}>
+      proOptions={proOptions}>
       {/* <MiniMap
       className="bg-zinc-900"
       nodeColor="purple"

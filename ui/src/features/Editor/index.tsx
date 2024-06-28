@@ -31,6 +31,7 @@ export default function Editor({ workflows }: EditorProps) {
           <Canvas
             workflow={currentWorkflow}
             lockedNodeIds={lockedNodeIds}
+            canvasLock={!!locallyLockedNode}
             onNodeLocking={handleNodeLocking}
             onNodeHover={handleNodeHover}
             onEdgeHover={handleEdgeHover}

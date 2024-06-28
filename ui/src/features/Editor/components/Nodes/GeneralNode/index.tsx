@@ -74,7 +74,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
           <p className="text-[10px] text-zinc-300 font-light truncate self-center">{name}</p>
           <div className={`w-[8px] h-[8px] rounded self-center ${metaProps.style}`} />
         </div>
-        {selected && (
+        {selected && !locked && (
           <div className="absolute flex items-center justify-center h-[25px] w-[95%] bg-zinc-900 rounded-t-lg bottom-[25px] right-[50%] translate-x-1/2">
             <IconButton
               className="h-full flex-1 rounded-b-none"

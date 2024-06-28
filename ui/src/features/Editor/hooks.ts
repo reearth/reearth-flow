@@ -15,8 +15,6 @@ export default ({ workflows }: { workflows?: Workflow[] }) => {
   // consider making a node context and supplying vars and functions like this to the nodes that way
   const handleNodeLocking = useCallback(
     (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => {
-      console.log("LOCKING", nodeId);
-
       setNodes(nodes =>
         nodes.map(n => {
           if (n.id === nodeId) {
