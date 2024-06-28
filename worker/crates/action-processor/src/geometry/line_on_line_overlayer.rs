@@ -180,9 +180,9 @@ impl LineOnLineOverlayer {
     ) {
         let mut overlap = 0;
         let mut points = Vec::<Point2D<f64>>::new();
-        for (i, &current) in lines.iter().enumerate() {
-            for &next in &lines[i + 1..] {
-                match line_intersection(current, next) {
+        for (i, current) in lines.iter().enumerate() {
+            for next in &lines[i + 1..] {
+                match line_intersection(*current, *next) {
                     Some(line_intersection::LineIntersection::SinglePoint {
                         intersection, ..
                     }) => {
@@ -255,9 +255,9 @@ impl LineOnLineOverlayer {
     ) {
         let mut overlap = 0;
         let mut points = Vec::<Point3D<f64>>::new();
-        for (i, &current) in lines.iter().enumerate() {
-            for &next in &lines[i + 1..] {
-                match line_intersection(current, next) {
+        for (i, current) in lines.iter().enumerate() {
+            for next in &lines[i + 1..] {
+                match line_intersection(*current, *next) {
                     Some(line_intersection::LineIntersection::SinglePoint {
                         intersection, ..
                     }) => {
