@@ -1,5 +1,5 @@
+import { SortAscending } from "@phosphor-icons/react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { ArrowUpDown } from "lucide-react";
 
 import { Button, Checkbox } from "@flow/components";
 
@@ -78,7 +78,7 @@ export const SortTable: Story = {
               variant="ghost"
               onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
               Email
-              <ArrowUpDown className="ml-2 h-4 w-4" />
+              <SortAscending className="ml-2 h-4 w-4" />
             </Button>
           );
         },

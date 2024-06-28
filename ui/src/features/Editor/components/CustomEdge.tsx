@@ -1,4 +1,5 @@
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, EdgeTypes, getBezierPath } from "@xyflow/react";
+import { memo } from "react";
 
 import { Edge } from "@flow/types";
 
@@ -42,7 +43,7 @@ const CustomEdge: React.FC<CustomEdgeProps> = ({
   );
 };
 
-export { CustomEdge };
+export default memo(CustomEdge);
 
 export const edgeTypes: EdgeTypes = {
   default: CustomEdge,
