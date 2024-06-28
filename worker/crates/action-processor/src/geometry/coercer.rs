@@ -99,7 +99,7 @@ impl Processor for GeometryCoercer {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let Some(geometry) = &feature.geometry else {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
             return Ok(());
         };
         match &geometry.value {
