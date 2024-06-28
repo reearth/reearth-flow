@@ -1,5 +1,5 @@
+import { CaretDown } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronDown } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -29,7 +29,7 @@ const WorkspaceNavigation: React.FC = () => {
       <DropdownMenuTrigger className="flex items-center py-1 px-2 -mx-2 rounded-md max-w-[30vw] hover:bg-zinc-700/50">
         <p className="text-lg font-thin truncate">{currentWorkspace?.name}</p>
         <div className="ml-2">
-          <ChevronDown size="12px" />
+          <CaretDown size="12px" />
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent

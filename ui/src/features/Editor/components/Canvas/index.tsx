@@ -22,9 +22,7 @@ const gridSize = 30;
 
 const snapGrid: SnapGrid = [gridSize, gridSize];
 
-const proOptions: ProOptions = {
-  hideAttribution: true, // We should probably show this in the future. But need to discuss with the team.
-};
+const proOptions: ProOptions = { hideAttribution: true };
 
 type Props = {
   workflow?: Workflow;
