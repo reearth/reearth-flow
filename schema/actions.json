@@ -805,12 +805,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "definitions": {
+          "Expr": {
+            "type": "string"
+          },
           "Format": {
             "enum": [
               "csv",
               "tsv",
               "json",
-              "json"
+              "excel"
             ],
             "type": "string"
           }
@@ -820,7 +823,7 @@
             "$ref": "#/definitions/Format"
           },
           "output": {
-            "type": "string"
+            "$ref": "#/definitions/Expr"
           }
         },
         "required": [
@@ -1098,6 +1101,41 @@
       "outputPorts": [
         "outershell",
         "hole",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "LineOnLineOverlayer",
+      "type": "processor",
+      "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "outputAttribute"
+        ],
+        "title": "LineOnLineOverlayerParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "point",
+        "line",
         "rejected"
       ],
       "categories": [

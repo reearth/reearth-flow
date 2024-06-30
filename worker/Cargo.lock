@@ -2682,6 +2682,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-types",
  "regex",
+ "rhai",
  "rust_xlsxwriter",
  "schemars",
  "serde",
