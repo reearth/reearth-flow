@@ -1,4 +1,5 @@
 mod citygml;
+mod csv;
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -79,6 +80,40 @@ impl ProcessorFactory for FeatureReaderFactory {
                 };
                 Ok(Box::new(process))
             }
+            FeatureReaderParam::Csv {
+                common_property,
+                property,
+            } => {
+                let common_property = CompiledCommonPropertySchema {
+                    expr: expr_engine
+                        .compile(common_property.dataset.as_ref())
+                        .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
+                };
+                let process = FeatureReader {
+                    params: CompiledFeatureReaderParam::Csv {
+                        common_property,
+                        property,
+                    },
+                };
+                Ok(Box::new(process))
+            }
+            FeatureReaderParam::Tsv {
+                common_property,
+                property,
+            } => {
+                let common_property = CompiledCommonPropertySchema {
+                    expr: expr_engine
+                        .compile(common_property.dataset.as_ref())
+                        .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
+                };
+                let process = FeatureReader {
+                    params: CompiledFeatureReaderParam::Tsv {
+                        common_property,
+                        property,
+                    },
+                };
+                Ok(Box::new(process))
+            }
         }
     }
 }
@@ -102,12 +137,34 @@ pub enum FeatureReaderParam {
         #[serde(flatten)]
         common_property: CommonPropertySchema,
     },
+    #[serde(rename = "csv")]
+    Csv {
+        #[serde(flatten)]
+        common_property: CommonPropertySchema,
+        #[serde(flatten)]
+        property: csv::CsvPropertySchema,
+    },
+    #[serde(rename = "tsv")]
+    Tsv {
+        #[serde(flatten)]
+        common_property: CommonPropertySchema,
+        #[serde(flatten)]
+        property: csv::CsvPropertySchema,
+    },
 }
 
 #[derive(Debug, Clone)]
 enum CompiledFeatureReaderParam {
     CityGML {
         common_property: CompiledCommonPropertySchema,
+    },
+    Csv {
+        common_property: CompiledCommonPropertySchema,
+        property: csv::CsvPropertySchema,
+    },
+    Tsv {
+        common_property: CompiledCommonPropertySchema,
+        property: csv::CsvPropertySchema,
     },
 }
 
@@ -132,6 +189,34 @@ impl Processor for FeatureReader {
             FeatureReader {
                 params: CompiledFeatureReaderParam::CityGML { common_property },
             } => citygml::read_citygml(common_property, ctx, fw).map_err(|e| e.into()),
+            FeatureReader {
+                params:
+                    CompiledFeatureReaderParam::Csv {
+                        common_property,
+                        property,
+                    },
+            } => csv::read_csv(
+                reearth_flow_common::csv::Delimiter::Comma,
+                common_property,
+                property,
+                ctx,
+                fw,
+            )
+            .map_err(|e| e.into()),
+            FeatureReader {
+                params:
+                    CompiledFeatureReaderParam::Tsv {
+                        common_property,
+                        property,
+                    },
+            } => csv::read_csv(
+                reearth_flow_common::csv::Delimiter::Tab,
+                common_property,
+                property,
+                ctx,
+                fw,
+            )
+            .map_err(|e| e.into()),
         }
     }
 

@@ -1,4 +1,5 @@
 import { ConnectionLineComponent, getStraightPath } from "@xyflow/react";
+import { memo } from "react";
 
 export const connectionLineStyle = {
   strokeWidth: 1,
@@ -27,4 +28,4 @@ const CustomConnectionLine: ConnectionLineComponent = ({
   );
 };
 
-export { CustomConnectionLine };
+export default memo(CustomConnectionLine);

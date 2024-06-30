@@ -13,11 +13,13 @@ type NodeParam<T extends ParamValueType> = {
 };
 
 export type NodeData = {
-  name: string;
+  name?: string;
   inputs?: string[];
   outputs?: string[];
   status?: Status;
   params?: NodeParam<any>[];
+  locked?: boolean | undefined;
+  onLock?: (nodeId: string) => void;
   // transformer
   transformerId?: string;
   // batch & note nodes

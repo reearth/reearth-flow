@@ -1,21 +1,15 @@
-import {
-  DefaultEdgeOptions,
-  OnConnect,
-  OnEdgesChange,
-  OnNodesChange,
-  addEdge,
-  applyEdgeChanges,
-  applyNodeChanges,
-  useReactFlow,
-} from "@xyflow/react";
-import { useEffect, useState } from "react";
+import { DefaultEdgeOptions } from "@xyflow/react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
 
-import { Node, Workflow } from "@flow/types";
+import { Edge, type Node, type Workflow } from "@flow/types";
 
-import useDnd from "./useDnd";
+import useEdges from "./useEdges";
+import useNodes from "./useNodes";
 
 type Props = {
   workflow?: Workflow;
+  lockedNodeIds: string[];
+  onNodeLocking: (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => void;
 };
 
 export const defaultEdgeOptions: DefaultEdgeOptions = {
@@ -35,47 +29,60 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
   // animated: true,
 };
 
-export default ({ workflow }: Props) => {
-  const reactFlowInstance = useReactFlow();
-  console.log("reactFlowInstance", reactFlowInstance.toObject());
+export default ({ workflow, lockedNodeIds, onNodeLocking }: Props) => {
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(workflow?.id ?? "");
 
-  const [nodes, setNodes] = useState(workflow?.nodes ?? []);
-  const [edges, setEdges] = useState(workflow?.edges ?? []);
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>(workflow?.edges ?? []);
+
+  const processNode = useCallback(
+    (node: Node) => {
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          locked: lockedNodeIds.includes(node.id),
+          onLock: () => onNodeLocking(node.id, setNodes),
+        },
+      };
+    },
+    [lockedNodeIds, setNodes, onNodeLocking],
+  );
 
   useEffect(() => {
     if (workflow && workflow.id !== currentWorkflowId) {
-      setNodes(workflow.nodes ?? []);
+      setNodes(workflow.nodes?.map(n => processNode(n)) ?? []);
       setEdges(workflow.edges ?? []);
 
       setCurrentWorkflowId(workflow.id);
     }
-  }, [currentWorkflowId, workflow, setNodes, setEdges]);
+  }, [currentWorkflowId, workflow, processNode, setNodes, setEdges]);
 
-  const { onDragOver, onDrop } = useDnd({ setNodes });
+  const {
+    handleNodesChange,
+    handleNodesDelete,
+    handleNodeDragStop,
+    handleNodeDrop,
+    handleNodeDragOver,
+  } = useNodes({
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    onNodeLocking,
+  });
 
-  const onNodesChange: OnNodesChange<Node> = changes => {
-    setNodes(nds => applyNodeChanges<Node>(changes, nds));
-  };
-
-  const onEdgesChange: OnEdgesChange = changes => setEdges(eds => applyEdgeChanges(changes, eds));
-
-  const onConnect: OnConnect = connection => setEdges(eds => addEdge(connection, eds));
-
-  // useEffect(() => {
-  //   if (workflow) {
-  //     setNodes(workflow.nodes ?? []);
-  //     setEdges(workflow.edges ?? []);
-  //   }
-  // }, [workflow, setNodes, setEdges]);
+  const { handleEdgesChange, handleConnect } = useEdges({ setEdges });
 
   return {
     nodes,
     edges,
-    onDragOver,
-    onDrop,
-    onNodesChange,
-    onEdgesChange,
-    onConnect,
+    handleNodesChange,
+    handleNodesDelete,
+    handleNodeDragStop,
+    handleNodeDragOver,
+    handleNodeDrop,
+    handleEdgesChange,
+    handleConnect,
   };
 };

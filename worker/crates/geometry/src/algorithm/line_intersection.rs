@@ -83,20 +83,6 @@ where
         || q_p1 == Orientation::Collinear
         || q_p2 == Orientation::Collinear
     {
-        // Check for two equal endpoints.
-        // This is done explicitly rather than by the orientation tests below in order to improve
-        // robustness.
-        //
-        // [An example where the orientation tests fail to be consistent is the following (where
-        // the true intersection is at the shared endpoint
-        // POINT (19.850257749638203 46.29709338043669)
-        //
-        // LINESTRING ( 19.850257749638203 46.29709338043669, 20.31970698357233 46.76654261437082 )
-        // and
-        // LINESTRING ( -48.51001596420236 -22.063180333403878, 19.850257749638203 46.29709338043669 )
-        //
-        // which used to produce the INCORRECT result: (20.31970698357233, 46.76654261437082, NaN)
-
         let intersection: Coordinate<T, Z>;
         // false positives for this overzealous clippy https://github.com/rust-lang/rust-clippy/issues/6747
         #[allow(clippy::suspicious_operation_groupings)]
@@ -262,4 +248,138 @@ fn proper_intersection<T: GeoFloat, Z: GeoFloat>(p: Line<T, Z>, q: Line<T, Z>) -
         int_pt = nearest_endpoint(p, q);
     }
     int_pt
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        algorithm::line_intersection::{line_intersection, LineIntersection},
+        types::{coordinate::Coordinate, line::Line},
+    };
+
+    #[test]
+    fn test_central_endpoint_heuristic_failure_1() {
+        let line_1 = Line::new(
+            Coordinate::new_(163.81867067, -211.31840378),
+            Coordinate::new_(165.9174252, -214.1665075),
+        );
+        let line_2 = Line::new(
+            Coordinate::new_(2.84139601, -57.95412726),
+            Coordinate::new_(469.59990601, -502.63851732),
+        );
+        let actual = line_intersection(line_1, line_2);
+        let expected = LineIntersection::SinglePoint {
+            intersection: Coordinate::new_(163.81867067, -211.31840378),
+            is_proper: true,
+        };
+        assert_eq!(actual, Some(expected));
+    }
+
+    #[test]
+    fn test_central_endpoint_heuristic_failure_2() {
+        let line_1 = Line::new(
+            Coordinate::new_(-58.00593335955, -1.43739086465),
+            Coordinate::new_(-513.86101637525, -457.29247388035),
+        );
+        let line_2 = Line::new(
+            Coordinate::new_(-215.22279674875, -158.65425425385),
+            Coordinate::new_(-218.1208801283, -160.68343590235),
+        );
+        let actual = line_intersection(line_1, line_2);
+        let expected = LineIntersection::SinglePoint {
+            intersection: Coordinate::new_(-215.22279674875, -158.65425425385),
+            is_proper: true,
+        };
+        assert_eq!(actual, Some(expected));
+    }
+
+    #[test]
+    fn test_leduc_1() {
+        let line_1 = Line::new(
+            Coordinate::new_(305690.0434123494, 254176.46578338774),
+            Coordinate::new_(305601.9999843455, 254243.19999846347),
+        );
+        let line_2 = Line::new(
+            Coordinate::new_(305689.6153764265, 254177.33102743194),
+            Coordinate::new_(305692.4999844298, 254171.4999983967),
+        );
+        let actual = line_intersection(line_1, line_2);
+        let expected = LineIntersection::SinglePoint {
+            intersection: Coordinate::new_(305690.0434123494, 254176.46578338774),
+            is_proper: true,
+        };
+        assert_eq!(actual, Some(expected));
+    }
+
+    #[test]
+    fn test_geos_1() {
+        let line_1 = Line::new(
+            Coordinate::new_(588750.7429703881, 4518950.493668233),
+            Coordinate::new_(588748.2060409798, 4518933.9452804085),
+        );
+        let line_2 = Line::new(
+            Coordinate::new_(588745.824857241, 4518940.742239175),
+            Coordinate::new_(588748.2060437313, 4518933.9452791475),
+        );
+        let actual = line_intersection(line_1, line_2);
+        let expected = LineIntersection::SinglePoint {
+            intersection: Coordinate::new_(588748.2060416829, 4518933.945284994),
+            is_proper: true,
+        };
+        assert_eq!(actual, Some(expected));
+    }
+
+    #[test]
+    fn test_geos_2() {
+        let line_1 = Line::new(
+            Coordinate::new_(588743.626135934, 4518924.610969561),
+            Coordinate::new_(588732.2822865889, 4518925.4314047815),
+        );
+        let line_2 = Line::new(
+            Coordinate::new_(588739.1191384895, 4518927.235700594),
+            Coordinate::new_(588731.7854614238, 4518924.578370095),
+        );
+        let actual = line_intersection(line_1, line_2);
+        let expected = LineIntersection::SinglePoint {
+            intersection: Coordinate::new_(588733.8306132929, 4518925.319423238),
+            is_proper: true,
+        };
+        assert_eq!(actual, Some(expected));
+    }
+
+    #[test]
+    fn test_dave_skea_case() {
+        let line_1 = Line::new(
+            Coordinate::new_(2089426.5233462777, 1180182.387733969),
+            Coordinate::new_(2085646.6891757075, 1195618.7333999649),
+        );
+        let line_2 = Line::new(
+            Coordinate::new_(1889281.8148903656, 1997547.0560044837),
+            Coordinate::new_(2259977.3672236, 483675.17050843034),
+        );
+        let actual = line_intersection(line_1, line_2);
+        let expected = LineIntersection::SinglePoint {
+            intersection: Coordinate::new_(2087536.6062609926, 1187900.560566967),
+            is_proper: true,
+        };
+        assert_eq!(actual, Some(expected));
+    }
+
+    #[test]
+    fn test_cmp_5_cask_wkt() {
+        let line_1 = Line::new(
+            Coordinate::new_(4348433.262114629, 5552595.478385733),
+            Coordinate::new_(4348440.849387404, 5552599.272022122),
+        );
+        let line_2 = Line::new(
+            Coordinate::new_(4348433.26211463, 5552595.47838573),
+            Coordinate::new_(4348440.8493874, 5552599.27202212),
+        );
+        let actual = line_intersection(line_1, line_2);
+        let expected = LineIntersection::SinglePoint {
+            intersection: Coordinate::new_(4348440.8493874, 5552599.27202212),
+            is_proper: true,
+        };
+        assert_eq!(actual, Some(expected));
+    }
 }

@@ -10,7 +10,7 @@ jobs:
       ui: ${{ steps.ui.outputs.any_changed }}
       api: ${{ steps.api.outputs.any_changed }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: changed files for ui
@@ -64,7 +64,7 @@ jobs:
       name: ${{ steps.info.outputs.name || 'blank' }}
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Fetch tags
         run: git fetch --prune --unshallow --tags
       - name: Get info

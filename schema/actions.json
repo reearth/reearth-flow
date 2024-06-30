@@ -479,6 +479,58 @@
               "format"
             ],
             "type": "object"
+          },
+          {
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "enum": [
+                  "csv"
+                ],
+                "type": "string"
+              },
+              "offset": {
+                "format": "uint",
+                "minimum": 0.0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "enum": [
+                  "tsv"
+                ],
+                "type": "string"
+              },
+              "offset": {
+                "format": "uint",
+                "minimum": 0.0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "type": "object"
           }
         ],
         "title": "FeatureReaderParam"
@@ -753,12 +805,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "definitions": {
+          "Expr": {
+            "type": "string"
+          },
           "Format": {
             "enum": [
               "csv",
               "tsv",
               "json",
-              "json"
+              "excel"
             ],
             "type": "string"
           }
@@ -768,7 +823,7 @@
             "$ref": "#/definitions/Format"
           },
           "output": {
-            "type": "string"
+            "$ref": "#/definitions/Expr"
           }
         },
         "required": [
@@ -785,6 +840,42 @@
       "outputPorts": [],
       "categories": [
         "File"
+      ]
+    },
+    {
+      "name": "GeometryCoercer",
+      "type": "processor",
+      "description": "Coerces the geometry of a feature to a specific geometry",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "CoercerType": {
+            "enum": [
+              "lineString"
+            ],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "coercer_type": {
+            "$ref": "#/definitions/CoercerType"
+          }
+        },
+        "required": [
+          "coercer_type"
+        ],
+        "title": "GeometryCoercer",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
       ]
     },
     {
@@ -882,23 +973,23 @@
         "contains",
         "point",
         "line",
-        "line_string",
+        "lineString",
         "polygon",
-        "multi_point",
-        "multi_line_string",
-        "multi_polygon",
+        "multiPoint",
+        "multiLineString",
+        "multiPolygon",
         "rect",
         "triangle",
         "solid",
-        "geometry_collection",
+        "geometryCollection",
         "solid",
-        "multi_surface",
-        "composite_surface",
+        "multiSurface",
+        "compositeSurface",
         "surface",
         "triangle",
-        "multi_curve",
+        "multiCurve",
         "curve",
-        "multi_point",
+        "multiPoint",
         "point",
         "tin"
       ],
@@ -993,6 +1084,59 @@
       ],
       "outputPorts": [
         "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "HoleExtractor",
+      "type": "processor",
+      "description": "Extracts holes in a geometry and adds it as an attribute.",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "outershell",
+        "hole",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "LineOnLineOverlayer",
+      "type": "processor",
+      "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "outputAttribute"
+        ],
+        "title": "LineOnLineOverlayerParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "point",
+        "line",
+        "rejected"
       ],
       "categories": [
         "Geometry"
