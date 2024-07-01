@@ -21,56 +21,30 @@ defaults:
 
 jobs:
   check:
-    # Run `cargo check` first to ensure that the pushed code at least compiles.
-    name: cargo check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Check
-        run: cargo check --all
-
-  style:
-    # Check style.
-    name: cargo fmt
-    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
+          components: clippy, rustfmt
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: check
+        run: cargo check --all
       - name: rustfmt
         run: cargo fmt --all -- --check
-
-  warnings:
-    # Check for any warnings. This is informational and thus is allowed to fail.
-    runs-on: ubuntu-latest
-    needs: check
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - name: rustfmt
+      - name: clippy
         run: cargo clippy --all -- -D warnings
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Run tests
-        run: cargo test --workspace --all-targets --all-features
-
-  schema:
-    name: check schema generation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
       - name: install cargo-make
-        run: cargo install cargo-make
+        run: cargo install --force cargo-make
       - name: generate schema
         run: cargo make doc-action
       - name: check schema generator
@@ -83,3 +57,5 @@ jobs:
             git diff
             exit -1
           fi
+      - name: run tests
+        run: cargo test --workspace --all-targets --all-features

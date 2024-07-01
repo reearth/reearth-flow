@@ -43,7 +43,10 @@ jobs:
         uses: tj-actions/changed-files@v41
         with:
           files: |
-            worker
+            worker/crates/**
+            worker/tests/**
+            worker/Cargo.toml
+            worker/Cargo.lock
             .github/workflows/ci.yml
             .github/workflows/ci_worker.yml
             CHANGELOG.md
