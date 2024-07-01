@@ -168,7 +168,7 @@ fn start_source<F: Send + 'static + Future + Unpin + Debug>(
             // Maybe it quit gracefully so we don't need to propagate the error.
             Err(e) => {
                 if let ExecutionError::Source(e) = &e {
-                    if let Some(ExecutionError::CannotSendToChannel) = e.downcast_ref() {
+                    if let Some(ExecutionError::CannotSendToChannel(_)) = e.downcast_ref() {
                         return Ok(());
                     }
                 }

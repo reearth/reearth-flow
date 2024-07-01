@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import GeneralNode, { type GeneralNodeProps } from "./GeneralNode";
 
 // selected style ???
@@ -14,4 +16,4 @@ const TransformerNode: React.FC<GeneralNodeProps> = props => {
   return <GeneralNode className="bg-[#631628]/60" {...props} />;
 };
 
-export default TransformerNode;
+export default memo(TransformerNode);

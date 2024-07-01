@@ -172,6 +172,10 @@ impl Processor for DictionariesInitiator {
                             Attribute::new("cityName"),
                             AttributeValue::String(city_name.clone()),
                         );
+                        result_value.insert(
+                            Attribute::new("cityCode"),
+                            AttributeValue::String(city_code.clone()),
+                        );
                     }
                 }
             }

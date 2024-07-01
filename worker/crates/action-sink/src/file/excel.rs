@@ -1,6 +1,6 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use std::{collections::HashMap, str::FromStr};
 
 use reearth_flow_types::Attribute;
 use rust_xlsxwriter::{Format, FormatAlign, FormatUnderline, Formula, Url, Workbook, Worksheet};
@@ -11,11 +11,9 @@ use reearth_flow_common::uri::Uri;
 
 use reearth_flow_types::{AttributeValue, Feature};
 
-use super::writer::FileWriter;
-
 pub(super) fn write_excel(
+    output: &Uri,
     features: &[Feature],
-    props: &FileWriter,
     storage_resolver: Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     let mut workbook = Workbook::new();
@@ -56,11 +54,10 @@ pub(super) fn write_excel(
         .save_to_buffer()
         .map_err(crate::errors::SinkError::file_writer)?;
 
-    let uri = Uri::from_str(&props.params.output).map_err(crate::errors::SinkError::file_writer)?;
     let storage = storage_resolver
-        .resolve(&uri)
+        .resolve(output)
         .map_err(crate::errors::SinkError::file_writer)?;
-    let uri_path = uri.path();
+    let uri_path = output.path();
     let path = Path::new(&uri_path);
 
     storage

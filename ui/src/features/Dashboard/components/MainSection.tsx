@@ -44,7 +44,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   useEffect(() => {
     if (!projects) return;
     projects.forEach(p => {
-      p.workflow = generateWorkflows(1)[0];
+      p.workflows = generateWorkflows(4);
     });
   }, [projects]);
 

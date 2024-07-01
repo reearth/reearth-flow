@@ -1,1 +1,1 @@
-export * from "./CustomHandle/Handles";
+export { default as Handles } from "./CustomHandle/Handles";

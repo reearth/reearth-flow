@@ -46,7 +46,7 @@ pub struct ProcessorNode<F> {
     /// The runtime to run the source in.
     #[allow(dead_code)]
     runtime: Arc<Runtime>,
-    /// The error manager, for reporting non-fatal errors.
+    #[allow(dead_code)]
     error_manager: Arc<ErrorManager>,
     logger_factory: Arc<LoggerFactory>,
     logger: Arc<ActionLogger>,
@@ -207,10 +207,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         processor
             .write()
             .finish(ctx.clone(), channel_manager)
-            .map_err(|e| {
-                self.error_manager.report(e);
-                ExecutionError::CannotSendToChannel
-            })?;
+            .map_err(|e| ExecutionError::CannotSendToChannel(format!("{:?}", e)))?;
         channel_manager.send_terminate(ctx)
     }
 }

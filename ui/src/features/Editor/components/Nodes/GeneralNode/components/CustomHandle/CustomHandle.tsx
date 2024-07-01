@@ -6,7 +6,7 @@ import {
   useNodeId,
   useStore,
 } from "@xyflow/react";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 
 const selector = (s: ReactFlowState) => ({
   nodeInternals: s.nodeLookup,
@@ -36,9 +36,9 @@ const CustomHandle: React.FC<Props> = ({ className, ...props }) => {
     <Handle
       {...props}
       isConnectable={isHandleConnectable}
-      className={`bg-transparent border-none h-full hover:bg-zinc-600/60 ${className}`}
+      className={`bg-transparent border-none h-full hover:bg-zinc-600/40 ${className}`}
     />
   );
 };
 
-export default CustomHandle;
+export default memo(CustomHandle);

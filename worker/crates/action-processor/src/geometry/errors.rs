@@ -43,6 +43,14 @@ pub(super) enum GeometryProcessorError {
     HoleCounterFactory(String),
     #[error("HoleCounter error: {0}")]
     HoleCounter(String),
+    #[error("GeometryCoercer Factory error: {0}")]
+    GeometryCoercerFactory(String),
+    #[error("GeometryCoercer error: {0}")]
+    GeometryCoercer(String),
+    #[error("LineOnLineOverlayer Factory error: {0}")]
+    LineOnLineOverlayerFactory(String),
+    #[error("LineOnLineOverlayer error: {0}")]
+    LineOnLineOverlayer(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
