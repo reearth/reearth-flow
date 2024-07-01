@@ -9,6 +9,7 @@ jobs:
     outputs:
       ui: ${{ steps.ui.outputs.any_changed }}
       api: ${{ steps.api.outputs.any_changed }}
+      worker: ${{ steps.worker.outputs.any_changed }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,6 +37,20 @@ jobs:
             .github/workflows/build_api.yml
             .github/workflows/deploy_api_nightly.yml
             CHANGELOG.md
+
+      - name: changed files for worker
+        id: worker
+        uses: tj-actions/changed-files@v41
+        with:
+          files: |
+            worker/crates/**
+            worker/tests/**
+            worker/Cargo.toml
+            worker/Cargo.lock
+            .github/workflows/ci.yml
+            .github/workflows/ci_worker.yml
+            CHANGELOG.md
+
   ci-ui:
     needs: prepare
     if: needs.prepare.outputs.ui == 'true'
@@ -44,11 +59,16 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.api == 'true'
     uses: ./.github/workflows/ci_api.yml
+  ci-worker:
+    needs: prepare
+    if: needs.prepare.outputs.worker == 'true'
+    uses: ./.github/workflows/ci_worker.yml
   ci:
     runs-on: ubuntu-latest
     needs:
       - ci-ui
       - ci-api
+      - ci-worker
     if: '!failure()'
     steps:
       - run: echo OK
@@ -93,7 +113,7 @@ jobs:
           NAME: ${{ steps.info.outputs.name }}
         run: echo "sha_short=$SHA_SHORT, new_tag=$NEW_TAG, new_tag_short=$NEW_TAG_SHORT, name=$NAME"
   build-ui:
-    needs: 
+    needs:
       - ci
       - ci-ui
       - ci-collect-info
@@ -111,7 +131,7 @@ jobs:
           name: ${{ needs.ci-collect-info.outputs.name }}
           sha: ${{ github.sha }}
   build-api:
-    needs: 
+    needs:
       - ci
       - ci-api
       - ci-collect-info
