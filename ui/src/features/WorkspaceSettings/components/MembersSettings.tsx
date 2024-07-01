@@ -45,6 +45,14 @@ const MembersSettings: React.FC = () => {
   const handleAddMember = async (email: string) => {
     setError(undefined);
     if (!currentWorkspace?.id) return;
+
+    const alreadyExists = members.find(m => m.user?.email === email);
+
+    if (alreadyExists) {
+      setError("User already exists");
+      return;
+    }
+
     const { user } = await searchUser(email);
     if (!user) {
       setError(t("Could not find the user"));
