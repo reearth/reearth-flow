@@ -76,9 +76,6 @@ impl Processor for MaxLodExtractor {
             PlateauProcessorError::DomainOfDefinitionValidator("package key empty".to_string()),
         )?;
 
-        let package_lenght = package.to_string().len();
-        let out_length = package_lenght + 1;
-
         let city_gml_path = feature
             .attributes
             .get(&Attribute::new("cityGmlPath"))
@@ -102,13 +99,11 @@ impl Processor for MaxLodExtractor {
         }
 
         let parts: Vec<&str> = file_name.split('_').collect();
-        let out_code = parts[0];
-        let out_type = parts[1];
+        let code = parts[0];
 
         let attribute_code = Attribute::new("code");
         let attribute_type = Attribute::new("type");
         let attribute_max_lod = Attribute::new("maxLod");
-        let attribute_length = Attribute::new("length");
         let attribute_file = Attribute::new("file");
 
         let mut attributes = feature.attributes.clone();
@@ -117,13 +112,9 @@ impl Processor for MaxLodExtractor {
             attributes.remove(k);
         }
 
-        attributes.insert(attribute_code, AttributeValue::String(out_code.to_string()));
-        attributes.insert(attribute_type, AttributeValue::String(out_type.to_string()));
+        attributes.insert(attribute_code, AttributeValue::String(code.to_string()));
+        attributes.insert(attribute_type, AttributeValue::String(package.to_string()));
         attributes.insert(attribute_max_lod, AttributeValue::String("1".to_string()));
-        attributes.insert(
-            attribute_length,
-            AttributeValue::String(out_length.to_string()),
-        );
         attributes.insert(
             attribute_file,
             AttributeValue::String(file_name.to_string()),
