@@ -3,10 +3,14 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use flow_websocket_domain::project::{Project, ProjectEditingSession};
-use flow_websocket_domain::repository::{ProjectRepository, ProjectEditingSessionRepository};
-
+use crate::persistence::gcs::gcs_client::GcsClient;
 use crate::persistence::redis::redis_client::RedisClient;
+
+use flow_websocket_domain::project::{Project, ProjectEditingSession};
+use flow_websocket_domain::repository::{
+    ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
+};
+use flow_websocket_domain::snapshot::ProjectSnapshot;
 
 pub struct ProjectRedisRepository {
     redis_client: Arc<RedisClient>,
@@ -34,7 +38,10 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
         Ok(())
     }
 
-    async fn get_active_session(&self, project_id: &str) -> Result<Option<ProjectEditingSession>, Box<dyn Error>> {
+    async fn get_active_session(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<ProjectEditingSession>, Box<dyn Error>> {
         let key = format!("project:{}:active_session", project_id);
         self.redis_client.get(&key).await
     }
@@ -43,5 +50,42 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
         let key = format!("session:{}", session.session_id.as_ref().unwrap());
         self.redis_client.set(key, &session).await?;
         Ok(())
+    }
+}
+
+/// A `ProjectGcsRepository` is a thin wrapper of `GcsClient`.
+pub struct ProjectGcsRepository {
+    client: GcsClient,
+}
+
+impl ProjectGcsRepository {
+    /// Returns the `ProjectGcsRepository`.
+    fn new(client: GcsClient) -> Self {
+        Self { client }
+    }
+}
+
+#[async_trait]
+impl ProjectSnapshotRepository for ProjectGcsRepository {
+    /// Create a snapshot.
+    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Box<dyn Error>> {
+        let path = format!("snapshot/{}", snapshot.id);
+        self.client.upload(path, &snapshot).await?;
+        Ok(())
+    }
+
+    /// Get the latest snapshot.
+    async fn get_latest_snapshot(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<ProjectSnapshot>, Box<dyn Error>> {
+        let path = format!("snapshot/{}:latest_snapshot", project_id);
+        self.client.download(path).await
+    }
+
+    /// Get the state of the latest snapshot.
+    async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+        let path = format!("snapshot/{}:latest_snapshot_state", project_id);
+        self.client.download(path).await
     }
 }
