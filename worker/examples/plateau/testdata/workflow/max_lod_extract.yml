@@ -18,14 +18,15 @@ with:
   extractDmGeometryAsXmlFragment: false
   outputPath:
 graphs:
+  - !include ../graphs/attribute_reader.yml
   - !include ../graphs/folder_and_file_path_reader.yml
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
     nodes:
       - id: d3773442-1ba8-47c1-b7c1-0bafa23adec9
-        name: FolderAndfilePathReader01
+        name: AttributeReader01
         type: subGraph
-        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+        subGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
 
       - id: d3773442-1ba8-47c1-b7c1-0bafa23adec6
         name: maxLodExtractor
@@ -45,7 +46,7 @@ graphs:
       - id: c064cf52-705f-443a-b2de-6795266c540d
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
         to: d3773442-1ba8-47c1-b7c1-0bafa23adec6
-        fromPort: default
+        fromPort: filePath
         toPort: default
       - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec6
