@@ -1,0 +1,47 @@
+type Workflow implements Node {
+  id: ID!
+  name: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  nodes: [NodeType]
+  edges: [Edge]
+  isMain: Boolean
+  version: Int!
+  projectId: ID!
+  workspaceId: ID!
+}
+
+type NodeType {
+  id: ID!
+  data: Data!
+}
+
+type Data {
+  name: String
+  inputs: [Input]!
+  outputs: [Output]!
+  status: Status
+  content: String
+  transformerId: ID
+  params: [Param]
+}
+
+type Param {
+  id: ID!
+  name: String!
+  value: ParamValue!
+}
+
+enum ParamValue {
+  STRING
+  NUMBER
+  BOOLEAN
+  OBJECT
+  ARRAY
+}
+
+type Edge {
+  id: ID!
+  source: [ID!]!
+  target: [ID!]!
+}

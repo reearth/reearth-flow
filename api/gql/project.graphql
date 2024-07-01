@@ -6,6 +6,7 @@ type Project implements Node {
   basicAuthPassword: String!
   createdAt: DateTime!
   updatedAt: DateTime!
+  version: Int!
   name: String!
   description: String!
   workspaceId: ID!
@@ -35,6 +36,11 @@ input DeleteProjectInput {
   projectId: ID!
 }
 
+input ExecuteWorkflowRunInput {
+  projectId: ID!
+  workflows: [Workflow!]!
+}
+
 # Payload
 
 type ProjectPayload {
@@ -43,6 +49,11 @@ type ProjectPayload {
 
 type DeleteProjectPayload {
   projectId: ID!
+}
+
+type WorkflowRunPayload {
+  projectId: ID!
+  started: Boolean!
 }
 
 # Connection
@@ -67,4 +78,5 @@ extend type Mutation {
   createProject(input: CreateProjectInput!): ProjectPayload
   updateProject(input: UpdateProjectInput!): ProjectPayload
   deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
+  executeWorkflowRun(input: ExecuteWorkflowRunInput!): WorkflowRunPayload
 }
