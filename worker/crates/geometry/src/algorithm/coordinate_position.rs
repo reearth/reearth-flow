@@ -234,10 +234,12 @@ where
             Ordering::Equal => boundary = true,
             Ordering::Greater => {}
         }
-        match coord.z.partial_cmp(&min.z).unwrap() {
-            Ordering::Less => return,
-            Ordering::Equal => boundary = true,
-            Ordering::Greater => {}
+        if !coord.z.is_nan() {
+            match coord.z.partial_cmp(&min.z).unwrap() {
+                Ordering::Less => return,
+                Ordering::Equal => boundary = true,
+                Ordering::Greater => {}
+            }
         }
 
         let max = self.max();
@@ -252,10 +254,12 @@ where
             Ordering::Equal => boundary = true,
             Ordering::Greater => {}
         }
-        match max.z.partial_cmp(&coord.z).unwrap() {
-            Ordering::Less => return,
-            Ordering::Equal => boundary = true,
-            Ordering::Greater => {}
+        if !coord.z.is_nan() {
+            match max.z.partial_cmp(&coord.z).unwrap() {
+                Ordering::Less => return,
+                Ordering::Equal => boundary = true,
+                Ordering::Greater => {}
+            }
         }
 
         if boundary {
@@ -424,5 +428,47 @@ where
         CoordPos::Outside
     } else {
         CoordPos::Inside
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        algorithm::coordinate_position::{CoordPos, CoordinatePosition},
+        types::{coordinate::Coordinate2D, line::Line2D, point::Point2D, rect::Rect2D},
+    };
+
+    #[test]
+    fn test_simple_line() {
+        let line = Line2D::new(Point2D::new(0.0, 0.0), Point2D::new(10.0, 10.0));
+
+        let start = Coordinate2D::new_(0.0, 0.0);
+        assert_eq!(line.coordinate_position(&start), CoordPos::OnBoundary);
+
+        let end = Coordinate2D::new_(10.0, 10.0);
+        assert_eq!(line.coordinate_position(&end), CoordPos::OnBoundary);
+
+        let interior = Coordinate2D::new_(5.0, 5.0);
+        assert_eq!(line.coordinate_position(&interior), CoordPos::Inside);
+
+        let outside = Coordinate2D::new_(6.0, 5.0);
+        assert_eq!(line.coordinate_position(&outside), CoordPos::Outside);
+    }
+
+    #[test]
+    fn test_rect() {
+        let rect = Rect2D::new((0.0, 0.0), (10.0, 10.0));
+        assert_eq!(
+            rect.coordinate_position(&Coordinate2D::new_(5.0, 5.0)),
+            CoordPos::Inside
+        );
+        assert_eq!(
+            rect.coordinate_position(&Coordinate2D::new_(0.0, 5.0)),
+            CoordPos::OnBoundary
+        );
+        assert_eq!(
+            rect.coordinate_position(&Coordinate2D::new_(15.0, 15.0)),
+            CoordPos::Outside
+        );
     }
 }
