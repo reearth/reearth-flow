@@ -4,12 +4,11 @@ name: "PLATEAU.AttributeReader"
 entryGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
 with:
   cityGmlPath:
-  cityCode: "11234"
+  cityCode:
   codelistsPath:
   schemasPath:
   schemaJson: !include ../config/schema.txt
   targetPackages:
-    - bldg
   addNsprefixToFeatureTypes: true
   extractDmGeometryAsXmlFragment: false
 graphs:

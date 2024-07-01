@@ -85,7 +85,7 @@ impl ChannelManager {
             for writer in writers {
                 let result = writer.flush().await;
                 if let Err(e) = result {
-                    println!("Failed to flush feature writer: {e}")
+                    self.error_manager.report(e.into());
                 }
             }
         });
