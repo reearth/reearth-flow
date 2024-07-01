@@ -1,22 +1,8 @@
-name: Crates CI
+name: ci-worker
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "worker/crates/**"
-      - "worker/tests/**"
-      - "worker/Cargo.toml"
-      - "worker/Cargo.lock"
-      - ".github/workflows/crates-ci.yml"
-  pull_request:
-    paths:
-      - "worker/crates/**"
-      - "worker/tests/**"
-      - "worker/Cargo.toml"
-      - "worker/Cargo.lock"
-      - "worker/.github/workflows/crates-ci.yml"
+  workflow_call:
+
 env:
   # Disable incremental compilation.
   CARGO_INCREMENTAL: 0
@@ -31,7 +17,7 @@ env:
 
 defaults:
   run:
-    working-directory: ./worker
+    working-directory: worker
 
 jobs:
   check:
@@ -76,3 +62,24 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Run tests
         run: cargo test --workspace --all-targets --all-features
+
+  schema:
+    name: check schema generation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: install cargo-make
+        run: cargo install cargo-make
+      - name: generate schema
+        run: cargo make doc-action
+      - name: check schema generator
+        run: |
+          git add -N .
+          git diff
+          line=`git diff | wc -l`
+          if [ $line -gt 0 ]; then
+            echo "Please run 'cargo schema' and commit the changes."
+            git diff
+            exit -1
+          fi
