@@ -54,7 +54,7 @@
     "@tanstack/router-devtools": "1.31.24",
     "@tanstack/router-vite-plugin": "1.31.18",
     "@xyflow/react": "12.0.0-next.24",
-    "cesium": "1.118.2",
+    "cesium": "1.119.0",
     "class-variance-authority": "0.7.0",
     "clsx": "2.1.1",
     "cmdk": "1.0.0",

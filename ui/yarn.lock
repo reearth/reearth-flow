@@ -1605,9 +1605,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@cesium/engine@npm:^9.2.0":
-  version: 9.2.0
-  resolution: "@cesium/engine@npm:9.2.0"
+"@cesium/engine@npm:^10.0.0":
+  version: 10.0.0
+  resolution: "@cesium/engine@npm:10.0.0"
   dependencies:
     "@tweenjs/tween.js": "npm:^23.1.1"
     "@zip.js/zip.js": "npm:^2.7.34"
@@ -1622,23 +1622,23 @@ __metadata:
     ktx-parse: "npm:^0.7.0"
     lerc: "npm:^2.0.0"
     mersenne-twister: "npm:^1.1.0"
-    meshoptimizer: "npm:^0.20.0"
+    meshoptimizer: "npm:^0.21.0"
     pako: "npm:^2.0.4"
     protobufjs: "npm:^7.1.0"
     rbush: "npm:^3.0.1"
     topojson-client: "npm:^3.1.0"
     urijs: "npm:^1.19.7"
-  checksum: 10c0/b5bfa043b9ea10f2abea11c5b04b06589c0b21ef9578ffbfdeb1629627e01995d9bb64866ffb0a51b070d521c6fcd399a67b71c985969df46158d48bcef4908e
+  checksum: 10c0/5ffea8d6588796a611a83fd518fceeba5222b15a7fb233ab4e8e0465b93386e9784b2bbf80c373d961a17da581a8380bd084c002b7371b846e1e1dae18bbdeba
   languageName: node
   linkType: hard
 
-"@cesium/widgets@npm:^6.1.2":
-  version: 6.1.2
-  resolution: "@cesium/widgets@npm:6.1.2"
+"@cesium/widgets@npm:^7.0.0":
+  version: 7.0.0
+  resolution: "@cesium/widgets@npm:7.0.0"
   dependencies:
-    "@cesium/engine": "npm:^9.2.0"
+    "@cesium/engine": "npm:^10.0.0"
     nosleep.js: "npm:^0.12.0"
-  checksum: 10c0/268c4480b89e9edb631eaae21c907e181dd6e4ad3d35699fd3ebbb08f88d520315901c0fd29ce82b8d25cc67b396661287dc15ee9558a9771dfbda178e1883aa
+  checksum: 10c0/28f7debdfd5018394f4101faee382a52e32f9bc58aaf71ad70fe4d2a3212499ba5b97afe29d84d27d87dee30bb9cbeac70ebdb3b1293c1cc8bbb4167b7106eb4
   languageName: node
   linkType: hard
 
@@ -4806,7 +4806,7 @@ __metadata:
     "@vitejs/plugin-react": "npm:4.2.1"
     "@xyflow/react": "npm:12.0.0-next.24"
     autoprefixer: "npm:10.4.19"
-    cesium: "npm:1.118.2"
+    cesium: "npm:1.119.0"
     class-variance-authority: "npm:0.7.0"
     clsx: "npm:2.1.1"
     cmdk: "npm:1.0.0"
@@ -9547,13 +9547,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cesium@npm:1.118.2":
-  version: 1.118.2
-  resolution: "cesium@npm:1.118.2"
+"cesium@npm:1.119.0":
+  version: 1.119.0
+  resolution: "cesium@npm:1.119.0"
   dependencies:
-    "@cesium/engine": "npm:^9.2.0"
-    "@cesium/widgets": "npm:^6.1.2"
-  checksum: 10c0/5f6866247e3e7ed95812b4f7079e08681041aeefce27dc49a61820dd54799f2be0278a7bde238a6d25b1fc8b3971891340c979cfda81f1b937798ff5efc52abd
+    "@cesium/engine": "npm:^10.0.0"
+    "@cesium/widgets": "npm:^7.0.0"
+  checksum: 10c0/01e27ec6af794e03aa6b0432702f6f7a6a405c896a40164c00653211771a2797a7290419e6e0ce9a7979ddd420a19d320d9fbce2fd206b1594b3f8f85f3f735b
   languageName: node
   linkType: hard
 
@@ -15164,10 +15164,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"meshoptimizer@npm:^0.20.0":
-  version: 0.20.0
-  resolution: "meshoptimizer@npm:0.20.0"
-  checksum: 10c0/a4ef1a0e6c0454c2faf69602ba45f8aa87102c53de987c711348a73b2faed6627732704bc21c0791ab99494d9fd07b2038abd68754d4e5805c5b2b3f481f8bc3
+"meshoptimizer@npm:^0.21.0":
+  version: 0.21.0
+  resolution: "meshoptimizer@npm:0.21.0"
+  checksum: 10c0/3d55799c2f49c8b6dc0f73fb0a0e0c815b32cfe2e66d7433e1197c032aa172d379d37b45682fe713526dbfd1df68a3cddc283cd55bca620efc8eeccff58b0184
   languageName: node
   linkType: hard
 
