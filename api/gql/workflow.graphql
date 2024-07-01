@@ -3,9 +3,22 @@ type Workflow implements Node {
   name: String!
   createdAt: DateTime!
   updatedAt: DateTime!
-  data: Data!
+  nodes: [NodeType]
+  edges: [EdgeType]
+  type: WorkflowType!
+  version: Int!
   projectId: ID!
   workspaceId: ID!
+}
+
+enum WorkflowType {
+  MAIN_WORKFLOW
+  SUB_WORKFLOW
+}
+
+type NodeType {
+  id: ID!
+  data: Data!
 }
 
 type Data {
@@ -14,7 +27,7 @@ type Data {
   outputs: [Output]!
   status: Status
   content: String # For batch node. If we want rich text, how would this change?
-  transformerId: ID # Do we need???
+  transformerId: ID
   params: [Param] # ?? How would we type this?
 }
 
@@ -32,11 +45,16 @@ enum ParamValue {
   ARRAY
 }
 
+type EdgeType {
+  id: ID!
+  source: [ID!]!
+  target: [ID!]!
+}
+
 # InputType
 
 input CreateWorkflowInput {
   projectId: ID!
   workspaceId: ID!
   name: String!
-  data: DataInput!
 }
