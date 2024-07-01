@@ -1,5 +1,6 @@
 use super::errors::PlateauProcessorError;
 use once_cell::sync::Lazy;
+use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -11,7 +12,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use regex::Regex;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::path::Path;
+use std::str::FromStr;
 
 static DIGITS_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d+").unwrap());
 
@@ -73,7 +74,7 @@ impl Processor for MaxLodExtractor {
         let feature = &ctx.feature;
 
         let package = feature.attributes.get(&Attribute::new("package")).ok_or(
-            PlateauProcessorError::DomainOfDefinitionValidator("package key empty".to_string()),
+            PlateauProcessorError::MaxLodExtractor("package key empty".to_string()),
         )?;
 
         let city_gml_path = feature
@@ -82,33 +83,36 @@ impl Processor for MaxLodExtractor {
             .unwrap()
             .clone();
 
-        let city_gml_path = city_gml_path.to_string();
-        let path = Path::new(&city_gml_path);
-        let file_name = if let Some(file_name) = path.file_name() {
-            if let Some(file_name_str) = file_name.to_str() {
-                file_name_str
-            } else {
-                return Ok(());
-            }
-        } else {
-            return Ok(());
-        };
+        let path_uri = Uri::from_str(city_gml_path.to_string().as_str()).map_err(|err| {
+            PlateauProcessorError::MaxLodExtractor(format!(
+                "cityGmlPath is not a valid uri: {}",
+                err
+            ))
+        })?;
 
-        if !DIGITS_PATTERN.is_match(file_name) {
+        let file_name = path_uri
+            .file_name()
+            .ok_or(PlateauProcessorError::MaxLodExtractor(
+                "file_name is empty".to_string(),
+            ))?;
+
+        let file_name_str = file_name
+            .to_str()
+            .ok_or(PlateauProcessorError::MaxLodExtractor(
+                "file_name is not a valid string".to_string(),
+            ))?;
+
+        if !DIGITS_PATTERN.is_match(file_name_str) {
             return Ok(());
         }
 
-        let code = if let Some(code) = feature.attributes.get(&Attribute::new("meshCode")) {
-            code
-        } else {
-            return Ok(());
-        };
+        let code = feature.attributes.get(&Attribute::new("meshCode")).ok_or(
+            PlateauProcessorError::MaxLodExtractor("meshCode key empty".to_string()),
+        )?;
 
-        let max_lod = if let Some(max_lod) = feature.attributes.get(&Attribute::new("maxLod")) {
-            max_lod
-        } else {
-            return Ok(());
-        };
+        let max_lod = feature.attributes.get(&Attribute::new("maxLod")).ok_or(
+            PlateauProcessorError::MaxLodExtractor("maxLod key empty".to_string()),
+        )?;
 
         let attribute_code = Attribute::new("code");
         let attribute_type = Attribute::new("type");
@@ -129,7 +133,7 @@ impl Processor for MaxLodExtractor {
         );
         attributes.insert(
             attribute_file,
-            AttributeValue::String(file_name.to_string()),
+            AttributeValue::String(file_name_str.to_string()),
         );
 
         let feature = Feature {
