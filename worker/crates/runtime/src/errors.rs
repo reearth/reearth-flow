@@ -69,7 +69,7 @@ pub enum ExecutionError {
     #[error("Duplicate input for node {node} on port {port}")]
     DuplicateInput { node: NodeHandle, port: Port },
     #[error("Cannot send to channel")]
-    CannotSendToChannel,
+    CannotSendToChannel(String),
     #[error("Cannot receive from channel: {0}")]
     CannotReceiveFromChannel(String),
     #[error("Cannot spawn worker thread: {0}")]
@@ -100,7 +100,7 @@ pub enum ExecutionError {
 
 impl<T> From<crossbeam::channel::SendError<T>> for ExecutionError {
     fn from(_: crossbeam::channel::SendError<T>) -> Self {
-        ExecutionError::CannotSendToChannel
+        ExecutionError::CannotSendToChannel("SendError".to_string())
     }
 }
 

@@ -26,6 +26,7 @@ use super::{
 };
 
 pub(crate) static FILE_PATH_PORT: Lazy<Port> = Lazy::new(|| Port::new("filePath"));
+pub(crate) static ATTRIBUTE_FEATURE_PORT: Lazy<Port> = Lazy::new(|| Port::new("attributeFeature"));
 pub(crate) static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
 
 #[derive(Default, Clone)]
@@ -260,7 +261,14 @@ impl TryFrom<FilePathResponse> for Feature {
                 e
             ))
         })?;
-        Ok(attributes.into())
+        let attributes = match attributes {
+            serde_json::Value::Object(v) => v
+                .into_iter()
+                .map(|(k, v)| (Attribute::new(k), AttributeValue::from(v)))
+                .collect(),
+            _ => HashMap::new(),
+        };
+        Ok(Feature::new_with_attributes(attributes))
     }
 }
 
@@ -310,7 +318,14 @@ impl TryFrom<FeatureResponse> for Feature {
                 e
             ))
         })?;
-        Ok(attributes.into())
+        let attributes = match attributes {
+            serde_json::Value::Object(v) => v
+                .into_iter()
+                .map(|(k, v)| (Attribute::new(k), AttributeValue::from(v)))
+                .collect(),
+            _ => HashMap::new(),
+        };
+        Ok(Feature::new_with_attributes(attributes))
     }
 }
 
@@ -348,8 +363,14 @@ impl TryFrom<SummaryResponse> for Feature {
                 e
             ))
         })?;
-        let feature: Feature = attributes.into();
-        Ok(feature)
+        let attributes = match attributes {
+            serde_json::Value::Object(v) => v
+                .into_iter()
+                .map(|(k, v)| (Attribute::new(k), AttributeValue::from(v)))
+                .collect(),
+            _ => HashMap::new(),
+        };
+        Ok(Feature::new_with_attributes(attributes))
     }
 }
 
@@ -400,7 +421,7 @@ impl ProcessorFactory for XmlAttributeExtractorFactory {
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            DEFAULT_PORT.clone(),
+            ATTRIBUTE_FEATURE_PORT.clone(),
             SUMMARY_PORT.clone(),
             FILE_PATH_PORT.clone(),
         ]
@@ -478,7 +499,7 @@ impl Processor for XmlAttributeExtractor {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
-        20
+        10
     }
 
     fn process(
@@ -608,7 +629,7 @@ impl Processor for XmlAttributeExtractor {
                     .ok_or(PlateauProcessorError::XmlAttributeExtractor(
                         "No Root Node".to_string(),
                     ))?;
-                let tag = root.get_name();
+                let tag = xml::get_readonly_node_tag(root);
                 let schema_def = self.xpath_to_properties.get(tag.as_str());
                 if schema_def.is_none() || self.except_feature_types.contains(&tag) {
                     continue;
@@ -696,15 +717,19 @@ impl Processor for XmlAttributeExtractor {
             }
             for (_xml_id, (row_id, attr)) in xml_id_to_feature_and_attribute.iter() {
                 let (feature, _attr) = row_map.get(row_id).unwrap();
-                let xml_parent_id = feature
+                let Some(xml_parent_id) = feature
                     .get(&Attribute::new("xmlParentId"))
+                    .filter(|v| match v {
+                        AttributeValue::String(v) => !v.is_empty(),
+                        _ => false,
+                    })
                     .map(|v| match v {
                         AttributeValue::String(v) => v,
                         _ => "",
                     })
-                    .ok_or(PlateauProcessorError::XmlAttributeExtractor(
-                        "No Parent Id".to_string(),
-                    ))?;
+                else {
+                    continue;
+                };
                 let ancestors = ancestor_attributes(
                     xml_parent_id.to_string(),
                     &xml_id_to_feature_and_attribute,
@@ -769,7 +794,7 @@ impl Processor for XmlAttributeExtractor {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     feature,
-                    DEFAULT_PORT.clone(),
+                    ATTRIBUTE_FEATURE_PORT.clone(),
                 ));
             }
             // create file path response
