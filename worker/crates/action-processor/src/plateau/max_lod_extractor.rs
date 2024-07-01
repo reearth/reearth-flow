@@ -98,8 +98,17 @@ impl Processor for MaxLodExtractor {
             return Ok(());
         }
 
-        let parts: Vec<&str> = file_name.split('_').collect();
-        let code = parts[0];
+        let code = if let Some(code) = feature.attributes.get(&Attribute::new("meshCode")) {
+            code
+        } else {
+            return Ok(());
+        };
+
+        let max_lod = if let Some(max_lod) = feature.attributes.get(&Attribute::new("maxLod")) {
+            max_lod
+        } else {
+            return Ok(());
+        };
 
         let attribute_code = Attribute::new("code");
         let attribute_type = Attribute::new("type");
@@ -114,7 +123,10 @@ impl Processor for MaxLodExtractor {
 
         attributes.insert(attribute_code, AttributeValue::String(code.to_string()));
         attributes.insert(attribute_type, AttributeValue::String(package.to_string()));
-        attributes.insert(attribute_max_lod, AttributeValue::String("1".to_string()));
+        attributes.insert(
+            attribute_max_lod,
+            AttributeValue::String(max_lod.to_string()),
+        );
         attributes.insert(
             attribute_file,
             AttributeValue::String(file_name.to_string()),
