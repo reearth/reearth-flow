@@ -1,10 +1,10 @@
-use serde::{Deserialize, Serialize};
-use crate::snapshot::{ProjectSnapshot, ObjectTenant, ObjectDelete};
-use crate::repository::ProjectSnapshotRepository;
 use std::error::Error;
 
-use crate::utils::generate_id;
+use serde::{Deserialize, Serialize};
 
+use crate::repository::ProjectSnapshotRepository;
+use crate::snapshot::{ObjectDelete, ObjectTenant, ProjectSnapshot};
+use crate::utils::generate_id;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {

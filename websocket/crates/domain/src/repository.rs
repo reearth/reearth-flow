@@ -1,6 +1,7 @@
+use std::error::Error;
+
 use crate::project::{Project, ProjectEditingSession};
 use crate::snapshot::ProjectSnapshot;
-use std::error::Error;
 
 #[async_trait::async_trait]
 pub trait ProjectRepository {
