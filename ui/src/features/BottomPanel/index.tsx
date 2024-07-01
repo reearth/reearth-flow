@@ -4,11 +4,15 @@ import { useCallback, useState } from "react";
 import { IconButton } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import { customTransformers } from "@flow/mock_data/customTransformer";
 
 import { WorkflowTabs } from "../Editor/components";
 
 import { DataTable, LogConsole, Map } from "./components";
+
+type Props = {
+  currentWorkflowId?: string;
+  onWorkflowChange: (workflowId?: string) => void;
+};
 
 type PanelContent = {
   id: string;
@@ -19,7 +23,7 @@ type PanelContent = {
 
 type WindowSize = "min" | "max";
 
-const BottomPanel: React.FC = () => {
+const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) => {
   const [isPanelOpen, handlePanelToggle] = useStateManager(false);
   const t = useT();
   const [windowSize, setWindowSize] = useState<WindowSize>("min");
@@ -111,7 +115,7 @@ const BottomPanel: React.FC = () => {
       <div
         id="bottom-edge"
         className="flex gap-1 justify-end items-center shrink-0 h-[29px] bg-zinc-900/50">
-        <WorkflowTabs editingCustomTransformers={customTransformers} />
+        <WorkflowTabs currentWorkflowId={currentWorkflowId} onWorkflowChange={onWorkflowChange} />
         <div className="border-r border-zinc-700 h-full" />
         <div className="flex justify-end items-center gap-1 flex-1 h-[100%] mx-4">
           {!isPanelOpen && (

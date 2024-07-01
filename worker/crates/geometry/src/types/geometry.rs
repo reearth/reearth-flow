@@ -18,6 +18,8 @@ use super::solid::Solid;
 use super::triangle::Triangle;
 use crate::error::Error;
 
+static EPSILON: f64 = 1e-10;
+
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
     Point(Point<T, Z>),
@@ -140,6 +142,42 @@ try_from_geometry_impl!(
     Rect,
     Triangle,
 );
+
+impl Geometry2D<f64> {
+    pub fn are_points_coplanar(&self) -> bool {
+        true
+    }
+}
+
+impl Geometry3D<f64> {
+    pub fn are_points_coplanar(&self) -> bool {
+        match self {
+            Geometry::Point(_) => true,
+            Geometry::Line(_) => true,
+            Geometry::LineString(ls) => {
+                crate::utils::are_points_coplanar(ls.clone().into(), EPSILON)
+            }
+            Geometry::Polygon(polygon) => {
+                crate::utils::are_points_coplanar(polygon.clone().into(), EPSILON)
+            }
+            Geometry::MultiPoint(mpolygon) => {
+                crate::utils::are_points_coplanar(mpolygon.clone().into(), EPSILON)
+            }
+            Geometry::MultiLineString(mls) => {
+                crate::utils::are_points_coplanar(mls.clone().into(), EPSILON)
+            }
+            Geometry::MultiPolygon(mpolygon) => {
+                crate::utils::are_points_coplanar(mpolygon.clone().into(), EPSILON)
+            }
+            Geometry::Rect(rect) => crate::utils::are_points_coplanar((*rect).into(), EPSILON),
+            Geometry::Triangle(_) => unimplemented!(),
+            Geometry::Solid(_) => unimplemented!(),
+            Geometry::GeometryCollection(gc) => {
+                gc.iter().all(|geometry| geometry.are_points_coplanar())
+            }
+        }
+    }
+}
 
 fn inner_type_name<T: CoordNum, Z: CoordNum>(geometry: Geometry<T, Z>) -> &'static str {
     match geometry {

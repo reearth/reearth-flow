@@ -1,31 +1,64 @@
-import { MouseEvent } from "react";
-import ReactFlow, { Background, BackgroundVariant, Edge, Node, SelectionMode } from "reactflow";
+import {
+  ReactFlow,
+  Background,
+  BackgroundVariant,
+  SelectionMode,
+  ProOptions,
+  SnapGrid,
+} from "@xyflow/react";
+import { Dispatch, MouseEvent, SetStateAction, memo } from "react";
 
-import { Workflow } from "@flow/types";
+import type { Edge, Node, Workflow } from "@flow/types";
 
-import { CustomConnectionLine, connectionLineStyle } from "../CustomConnectionLine";
+import CustomConnectionLine, { connectionLineStyle } from "../CustomConnectionLine";
 import { edgeTypes } from "../CustomEdge";
 import { nodeTypes } from "../Nodes";
 
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
-import "reactflow/dist/style.css";
+import "@xyflow/react/dist/style.css";
+
+const gridSize = 30;
+
+const snapGrid: SnapGrid = [gridSize, gridSize];
+
+const proOptions: ProOptions = { hideAttribution: true };
 
 type Props = {
   workflow?: Workflow;
-  onSelect: (nodes?: Node[], edges?: Edge[]) => void;
+  lockedNodeIds: string[];
+  canvasLock: boolean;
+  onNodeLocking: (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => void;
   onNodeHover: (e: MouseEvent, node?: Node) => void;
   onEdgeHover: (e: MouseEvent, edge?: Edge) => void;
 };
 
-const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
-  const { nodes, edges, onDragOver, onDrop, onNodesChange, onEdgesChange, onConnect } = useHooks({
+const Canvas: React.FC<Props> = ({
+  workflow,
+  lockedNodeIds,
+  canvasLock,
+  onNodeLocking,
+  onNodeHover,
+  onEdgeHover,
+}) => {
+  const {
+    nodes,
+    edges,
+    handleNodesChange,
+    handleNodesDelete,
+    handleNodeDragStop,
+    handleNodeDragOver,
+    handleNodeDrop,
+    handleEdgesChange,
+    handleConnect,
+  } = useHooks({
     workflow,
+    lockedNodeIds,
+    onNodeLocking,
   });
 
   return (
     <ReactFlow
-      // snapToGrid
       // minZoom={0.7}
       // maxZoom={1}
       // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
@@ -36,7 +69,28 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
       //   [1000, 1000],
       // ]}
       // onInit={setReactFlowInstance}
-      selectNodesOnDrag={false}
+      // selectNodesOnDrag={false}
+      // fitViewOptions={{ padding: 0.5 }}
+      // fitView
+      // snapToGrid
+      // Locking props START
+      nodesDraggable={!canvasLock}
+      nodesConnectable={!canvasLock}
+      nodesFocusable={!canvasLock}
+      edgesFocusable={!canvasLock}
+      elementsSelectable={!canvasLock}
+      autoPanOnConnect={!canvasLock}
+      autoPanOnNodeDrag={!canvasLock}
+      panOnDrag={!canvasLock}
+      selectionOnDrag={!canvasLock}
+      panOnScroll={!canvasLock}
+      zoomOnScroll={!canvasLock}
+      zoomOnPinch={!canvasLock}
+      zoomOnDoubleClick={!canvasLock}
+      connectOnClick={!canvasLock}
+      // Locking props END
+
+      snapGrid={snapGrid}
       selectionMode={SelectionMode["Partial"]}
       nodes={nodes}
       nodeTypes={nodeTypes}
@@ -45,26 +99,18 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
       defaultEdgeOptions={defaultEdgeOptions}
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}
-      snapGrid={[30, 30]}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
+      onNodesChange={handleNodesChange}
+      onEdgesChange={handleEdgesChange}
+      onNodeDragStop={handleNodeDragStop}
+      onNodesDelete={handleNodesDelete}
       onNodeMouseEnter={onNodeHover}
       onNodeMouseLeave={onNodeHover}
+      onDrop={handleNodeDrop}
+      onDragOver={handleNodeDragOver}
       onEdgeMouseEnter={onEdgeHover}
       onEdgeMouseLeave={onEdgeHover}
-      // onSelectionChange={s => {
-      //   onSelect(
-      //     s.nodes.filter(n => n.selected),
-      //     s.edges.filter(e => e.selected),
-      //   );
-      // }}
-      onConnect={onConnect}
-      onDrop={onDrop}
-      onDragOver={onDragOver}
-      fitViewOptions={{ padding: 0.5 }}
-      fitView
-      panOnScroll
-      proOptions={{ hideAttribution: true }}>
+      onConnect={handleConnect}
+      proOptions={proOptions}>
       {/* <MiniMap
       className="bg-zinc-900"
       nodeColor="purple"
@@ -74,11 +120,11 @@ const Canvas: React.FC<Props> = ({ workflow, onNodeHover, onEdgeHover }) => {
       <Background
         className="bg-zinc-800"
         variant={BackgroundVariant["Lines"]}
-        gap={30}
-        color="rgba(63, 63, 70, 0.5)"
+        gap={gridSize}
+        color="rgba(63, 63, 70, 0.3)"
       />
     </ReactFlow>
   );
 };
 
-export { Canvas };
+export default memo(Canvas);

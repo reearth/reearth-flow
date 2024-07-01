@@ -1,13 +1,10 @@
-import { useState } from "react";
-import { NodeProps, NodeResizer } from "reactflow";
+import { RectangleDashed } from "@phosphor-icons/react";
+import { NodeProps, NodeResizer } from "@xyflow/react";
+import { memo, useState } from "react";
 
-type NodeData = {
-  name: string;
-  width?: number;
-  height?: number;
-  backgroundColor?: string;
-  textColor?: string;
-};
+import { Node } from "@flow/types";
+
+export type BatchNodeProps = NodeProps<Node>;
 
 export const initialSize = { width: 300, height: 200 };
 
@@ -19,7 +16,7 @@ export const baseBatchNode = {
 
 const minSize = { width: 250, height: 150 };
 
-const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected }) => {
+const BatchNode: React.FC<BatchNodeProps> = ({ data, selected }) => {
   // const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected, ...props }) => {
   const [_width, _setWidth] = useState(data.width ?? initialSize.width);
   const [_height, _setHeight] = useState(data.height ?? initialSize.height);
@@ -71,11 +68,11 @@ const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected }) => {
           }}
         />
       )}
-      {/* <div className={`bg-orange-400/60 w-[${width}px] h-[${height}px]`} style={{ width, height }}> */}
       <div
         className={`bg-yellow-200/20 rounded-b-sm h-full z-0 relative border-l border-r border-b border-transparent ${selected ? "border-yellow-200/50" : undefined}`}>
         <div
-          className={`bg-yellow-200/50 py-1 px-2 rounded-t-sm absolute -top-[33px] -left-[0.8px] -right-[0.8px] border-t border-l border-r border-transparent ${selected ? "border-yellow-200/50" : undefined}`}>
+          className={`flex items-center gap-2 bg-yellow-200/50 py-1 px-2 rounded-t-sm absolute -top-[33px] -left-[0.8px] -right-[0.8px] border-t border-l border-r border-transparent ${selected ? "border-yellow-200/50" : undefined}`}>
+          <RectangleDashed />
           <p>{data.name}</p>
         </div>
       </div>
@@ -83,4 +80,4 @@ const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected }) => {
   );
 };
 
-export default BatchNode;
+export default memo(BatchNode);

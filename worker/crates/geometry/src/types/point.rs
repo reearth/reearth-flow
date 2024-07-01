@@ -1,6 +1,7 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use approx::{AbsDiffEq, RelativeEq};
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use serde::{Deserialize, Serialize};
 
 use crate::point;
@@ -138,6 +139,20 @@ impl<T: CoordFloat> Point<T, NoValue> {
         let x = x.to_radians();
         let y = y.to_radians();
         Point::new(x, y)
+    }
+}
+
+impl From<Point2D<f64>> for NaPoint2<f64> {
+    #[inline]
+    fn from(p: Point2D<f64>) -> NaPoint2<f64> {
+        NaPoint2::new(p.0.x, p.0.y)
+    }
+}
+
+impl From<Point3D<f64>> for NaPoint3<f64> {
+    #[inline]
+    fn from(p: Point3D<f64>) -> NaPoint3<f64> {
+        NaPoint3::new(p.0.x, p.0.y, p.0.z)
     }
 }
 

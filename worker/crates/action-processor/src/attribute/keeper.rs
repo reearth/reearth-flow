@@ -107,3 +107,44 @@ impl Processor for AttributeKeeper {
         "AttributeKeeper"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use reearth_flow_types::{AttributeValue, Feature};
+
+    use crate::tests::utils::{create_default_execute_context, MockProcessorChannelForwarder};
+
+    use super::*;
+
+    #[test]
+    fn test_attribute_keeper_process() {
+        let mut processor = AttributeKeeper {
+            keep_attributes: vec![Attribute::new("name"), Attribute::new("age")],
+        };
+
+        let mut attributes = HashMap::new();
+        attributes.insert(
+            Attribute::new("name"),
+            AttributeValue::String("John".to_string()),
+        );
+        attributes.insert(Attribute::new("age"), AttributeValue::Number(25.into()));
+        attributes.insert(
+            Attribute::new("gender"),
+            AttributeValue::String("Male".to_string()),
+        );
+
+        let feature = Feature::new_with_attributes(attributes);
+
+        let ctx = create_default_execute_context(&feature);
+        let mut fw = MockProcessorChannelForwarder::default();
+
+        processor.process(ctx, &mut fw).unwrap();
+
+        let processed_attributes = fw.send_feature.attributes;
+
+        assert_eq!(processed_attributes.len(), 2);
+        assert!(processed_attributes.contains_key(&Attribute::new("name")),);
+        assert!(processed_attributes.contains_key(&Attribute::new("age")),);
+        assert!(!processed_attributes.contains_key(&Attribute::new("gender")),);
+    }
+}

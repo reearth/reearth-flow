@@ -1,5 +1,5 @@
+import { useReactFlow } from "@xyflow/react";
 import { useState } from "react";
-import { useReactFlow } from "reactflow";
 
 import {
   Command,
@@ -10,30 +10,29 @@ import {
   CommandSeparator,
 } from "@flow/components/Command";
 import { useT } from "@flow/lib/i18n";
+import { Edge, Node } from "@flow/types";
 
 const commandClasses =
   "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5";
 
-const valueInSearch = (searchTerm: string, values?: string[]) =>
-  !!values?.find(
-    value => searchTerm.length && value?.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+const valueInSearch = (searchTerm: string, nodeName?: string) =>
+  searchTerm.length && nodeName?.toLowerCase().includes(searchTerm.toLowerCase());
 
 const CanvasSearch: React.FC = () => {
   const t = useT();
-  const reactFlowInstance = useReactFlow();
-  const nodes = reactFlowInstance.getNodes();
+  const reactFlowInstance = useReactFlow<Node, Edge>();
+  const nodes: Node[] = reactFlowInstance.getNodes();
 
   const [searchValue, setSearchValue] = useState("");
 
   const filteredReaders = nodes.filter(
-    node => node.type === "reader" && valueInSearch(searchValue, [node.data.name]),
+    node => node.type === "reader" && valueInSearch(searchValue, node.data.name),
   );
   const filteredWriters = nodes.filter(
-    node => node.type === "writer" && valueInSearch(searchValue, [node.data.name]),
+    node => node.type === "writer" && valueInSearch(searchValue, node.data.name),
   );
   const filteredTransformers = nodes.filter(
-    node => node.type === "transformer" && valueInSearch(searchValue, [node.data.name]),
+    node => node.type === "transformer" && valueInSearch(searchValue, node.data.name),
   );
 
   //   const edges = reactFlowInstance.getEdges();
