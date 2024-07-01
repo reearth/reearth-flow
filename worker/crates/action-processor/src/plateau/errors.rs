@@ -25,6 +25,8 @@ pub(super) enum PlateauProcessorError {
     UnmatchedXlinkDetectorFactory(String),
     #[error("Unmatched Xlink Detector error: {0}")]
     UnmatchedXlinkDetector(String),
+    #[error("Max Lod Extractor error: {0}")]
+    MaxLodExtractor(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

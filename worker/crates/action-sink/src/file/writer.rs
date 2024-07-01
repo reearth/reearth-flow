@@ -152,7 +152,18 @@ fn write_csv(
         .quote_style(csv::QuoteStyle::NonNumeric)
         .from_writer(vec![]);
     let rows: Vec<AttributeValue> = features.iter().map(|f| f.clone().into()).collect();
-    let fields = get_fields(rows.first().unwrap());
+    let mut fields = get_fields(rows.first().unwrap());
+
+    if let Some(ref mut fields) = fields {
+        // Remove _id field
+        fields.retain(|field| field != "_id");
+        // Write header
+        if !fields.is_empty() {
+            wtr.write_record(fields.clone())
+                .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
+        }
+    }
+
     for row in rows {
         match fields {
             Some(ref fields) if !fields.is_empty() => {

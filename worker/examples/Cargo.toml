@@ -47,3 +47,7 @@ path = "plateau/domain_of_definition_validator.rs"
 [[example]]
 name = "lod_splitter_with_dm"
 path = "plateau/lod_splitter_with_dm.rs"
+
+[[example]]
+name = "max_lod_extractor"
+path = "plateau/max_lod_extractor.rs"
