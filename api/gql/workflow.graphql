@@ -57,4 +57,42 @@ input CreateWorkflowInput {
   projectId: ID!
   workspaceId: ID!
   name: String!
+  type: WorkflowType!
+}
+
+input UpdateWorkflowInput {
+  workflowId: ID!
+  name: String
+  nodes: [NodeType]
+  edges: [EdgeType]
+}
+
+input DeleteWorkflowInput {
+  workflowId: ID!
+}
+
+# Payload
+
+type CreateWorkflowPayload {
+  workflow: Workflow!
+}
+
+type UpdateWorkflowPayload {
+  workflow: Workflow!
+}
+
+type DeleteWorkflowPayload {
+  workflowId: ID!
+}
+
+extend type Query {
+  workflows(
+    projectId: ID!
+  ): [Workflow]!
+}
+
+extend type Mutation {
+  createWorkflow(input: CreateWorkflowInput!): CreateWorkflowPayload
+  updateWorkflow(input: UpdateWorkflowInput!): UpdateWorkflowPayload
+  deleteWorkflow(input: DeleteWorkflowInput!): DeleteWorkflowPayload
 }
