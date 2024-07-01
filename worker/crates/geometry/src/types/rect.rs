@@ -1,4 +1,5 @@
 use approx::{AbsDiffEq, RelativeEq};
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;
@@ -95,6 +96,32 @@ impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
 
     pub fn has_valid_bounds(&self) -> bool {
         self.min.x <= self.max.x && self.min.y <= self.max.y && self.min.z <= self.max.z
+    }
+}
+
+impl From<Rect2D<f64>> for Vec<NaPoint2<f64>> {
+    #[inline]
+    fn from(p: Rect2D<f64>) -> Vec<NaPoint2<f64>> {
+        let result = p
+            .to_polygon()
+            .rings()
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Vec<NaPoint2<f64>>>>();
+        result.into_iter().flatten().collect()
+    }
+}
+
+impl From<Rect3D<f64>> for Vec<NaPoint3<f64>> {
+    #[inline]
+    fn from(p: Rect3D<f64>) -> Vec<NaPoint3<f64>> {
+        let result = p
+            .to_polygon()
+            .rings()
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Vec<NaPoint3<f64>>>>();
+        result.into_iter().flatten().collect()
     }
 }
 

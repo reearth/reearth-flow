@@ -34,6 +34,32 @@ nodes:
         (env.get("exceptFeatureTypes") ?? [])
       attribute: cityGmlPath
 
+  - id: e1715556-31ed-4cae-9932-1ac331b9fb04
+    name: PLATEAU.XMLAttributeExtractor01
+    type: action
+    action: PLATEAU.XMLAttributeExtractor
+
+  - id: 3d103429-37b0-4645-b1f3-6f14305ad913
+    name: filePathRouter
+    type: action
+    action: Router
+    with:
+      routingPort: filePath
+
+  - id: fed5f2f2-7663-481e-b177-3f215fc40241
+    name: attributeFeatureRouter
+    type: action
+    action: Router
+    with:
+      routingPort: attributeFeature
+
+  - id: 213f5f78-c7ad-473b-8364-a757855998c4
+    name: summaryRouter
+    type: action
+    action: Router
+    with:
+      routingPort: summary
+
 edges:
   - id: afa36141-5b6a-4d2b-8a75-bf184f961378
     from: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
@@ -49,4 +75,24 @@ edges:
     from: b90a3d22-7aaf-4e1c-9e27-d9f01b75d82d
     to: 53c4f2fd-8d0f-40b0-8dca-42e6c68ae62b
     fromPort: default
+    toPort: default
+  - id: 56a01938-fcbd-4aaf-a84d-e6283d0989b7
+    from: 53c4f2fd-8d0f-40b0-8dca-42e6c68ae62b
+    to: e1715556-31ed-4cae-9932-1ac331b9fb04
+    fromPort: default
+    toPort: default
+  - id: abc48e10-c9d4-484b-9cba-8420a68ca7d3
+    from: e1715556-31ed-4cae-9932-1ac331b9fb04
+    to: 3d103429-37b0-4645-b1f3-6f14305ad913
+    fromPort: filePath
+    toPort: default
+  - id: a0bb2791-7ba2-4c1d-bb98-0e366a8afc01
+    from: e1715556-31ed-4cae-9932-1ac331b9fb04
+    to: fed5f2f2-7663-481e-b177-3f215fc40241
+    fromPort: attributeFeature
+    toPort: default
+  - id: fc1482b3-5915-4903-a50b-39c7cc58cfb4
+    from: e1715556-31ed-4cae-9932-1ac331b9fb04
+    to: 213f5f78-c7ad-473b-8364-a757855998c4
+    fromPort: summary
     toPort: default

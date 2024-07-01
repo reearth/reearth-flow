@@ -263,3 +263,42 @@ where
             .fold(T::zero(), |acc, next| acc + next)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        algorithm::{area2d::Area2D, map_coords::MapCoords},
+        types::{coordinate::Coordinate2D, polygon::Polygon2D},
+    };
+
+    #[test]
+    fn area_polygon_numerical_stability() {
+        let polygon = {
+            use std::f64::consts::PI;
+            const NUM_VERTICES: usize = 10;
+            const ANGLE_INC: f64 = 2. * PI / NUM_VERTICES as f64;
+
+            Polygon2D::new(
+                (0..NUM_VERTICES)
+                    .map(|i| {
+                        let angle = i as f64 * ANGLE_INC;
+                        Coordinate2D::new_(angle.cos(), angle.sin())
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
+                vec![],
+            )
+        };
+
+        let area = polygon.signed_area2d();
+
+        let shift = Coordinate2D::new_(1.5e8, 1.5e8);
+
+        let polygon = polygon.map_coords(|c| c + shift);
+
+        let new_area = polygon.signed_area2d();
+        let err = (area - new_area).abs() / area;
+
+        assert!(err < 1e-2);
+    }
+}

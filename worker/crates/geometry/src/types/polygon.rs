@@ -1,4 +1,5 @@
 use approx::{AbsDiffEq, RelativeEq};
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
@@ -289,6 +290,30 @@ fn to_side_faces<T: CoordNum, Z: CoordNum>(
         faces.extend(create_side_walls(bottom, top));
     }
     faces
+}
+
+impl From<Polygon2D<f64>> for Vec<NaPoint2<f64>> {
+    #[inline]
+    fn from(p: Polygon2D<f64>) -> Vec<NaPoint2<f64>> {
+        let result = p
+            .rings()
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Vec<NaPoint2<f64>>>>();
+        result.into_iter().flatten().collect()
+    }
+}
+
+impl From<Polygon3D<f64>> for Vec<NaPoint3<f64>> {
+    #[inline]
+    fn from(p: Polygon3D<f64>) -> Vec<NaPoint3<f64>> {
+        let result = p
+            .rings()
+            .into_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Vec<NaPoint3<f64>>>>();
+        result.into_iter().flatten().collect()
+    }
 }
 
 impl<T: CoordNum> From<Rect<T>> for Polygon<T, NoValue> {

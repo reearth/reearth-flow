@@ -1,0 +1,61 @@
+name: ci-worker
+
+on:
+  workflow_call:
+
+env:
+  # Disable incremental compilation.
+  CARGO_INCREMENTAL: 0
+  # Allow more retries for network requests in cargo (downloading crates) and
+  # rustup (installing toolchains). This should help to reduce flaky CI failures
+  # from transient network timeouts or other issues.
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
+  # Don't emit giant backtraces in the CI logs.
+  RUST_BACKTRACE: short
+  ACTION_LOG_DISABLE: true
+
+defaults:
+  run:
+    working-directory: worker
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: check
+        run: cargo check --all
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+      - name: clippy
+        run: cargo clippy --all -- -D warnings
+      - name: install cargo-make
+        run: cargo install --force cargo-make
+      - name: generate schema
+        run: cargo make doc-action
+      - name: check schema generator
+        run: |
+          git add -N .
+          git diff
+          line=`git diff | wc -l`
+          if [ $line -gt 0 ]; then
+            echo "Please run 'cargo schema' and commit the changes."
+            git diff
+            exit -1
+          fi
+      - name: run tests
+        run: cargo test --workspace --all-targets --all-features

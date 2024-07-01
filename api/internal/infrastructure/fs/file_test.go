@@ -123,7 +123,6 @@ func TestGetAssetFileURL(t *testing.T) {
 func mockFs() afero.Fs {
 	files := map[string]string{
 		filepath.Join("assets", "xxx.txt"):              "hello",
-		filepath.Join("plugins", "aaa~1.0.0", "foo.js"): "bar",
 		filepath.Join("published", "s.json"):            "{}",
 	}
 

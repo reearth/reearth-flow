@@ -8,7 +8,7 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{AttributeValue, Feature};
+use reearth_flow_types::{AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -78,11 +78,10 @@ impl SinkFactory for FileWriterSinkFactory {
 #[serde(rename_all = "camelCase")]
 pub struct FileWriterParam {
     format: Format,
-    pub(super) output: String,
+    pub(super) output: Expr,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct FileWriter {
     pub(super) params: FileWriterParam,
     pub(super) buffer: Vec<Feature>,
@@ -96,7 +95,7 @@ enum Format {
     Tsv,
     #[serde(rename = "json")]
     Json,
-    #[serde(rename = "json")]
+    #[serde(rename = "excel")]
     Excel,
 }
 
@@ -108,11 +107,17 @@ impl Sink for FileWriter {
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let scope = ctx.expr_engine.new_scope();
+        let path = ctx
+            .expr_engine
+            .eval_scope::<String>(self.params.output.as_ref(), &scope)
+            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let output = Uri::from_str(path.as_str())?;
         let result = match self.params.format {
-            Format::Json => write_json(&self.buffer, self, storage_resolver),
-            Format::Csv => write_csv(&self.buffer, Delimiter::Comma, self, storage_resolver),
-            Format::Tsv => write_csv(&self.buffer, Delimiter::Tab, self, storage_resolver),
-            Format::Excel => write_excel(&self.buffer, self, storage_resolver),
+            Format::Json => write_json(&output, &self.buffer, storage_resolver),
+            Format::Csv => write_csv(&output, &self.buffer, Delimiter::Comma, storage_resolver),
+            Format::Tsv => write_csv(&output, &self.buffer, Delimiter::Tab, storage_resolver),
+            Format::Excel => write_excel(&output, &self.buffer, storage_resolver),
         };
         match result {
             Ok(_) => Ok(()),
@@ -122,27 +127,24 @@ impl Sink for FileWriter {
 }
 
 fn write_json(
+    output: &Uri,
     features: &[Feature],
-    props: &FileWriter,
     storage_resolver: Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     let json_value: serde_json::Value = features.into();
-
-    let uri = Uri::from_str(&props.params.output)
-        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
     let storage = storage_resolver
-        .resolve(&uri)
+        .resolve(output)
         .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
     storage
-        .put_sync(uri.path().as_path(), Bytes::from(json_value.to_string()))
+        .put_sync(output.path().as_path(), Bytes::from(json_value.to_string()))
         .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
     Ok(())
 }
 
 fn write_csv(
+    output: &Uri,
     features: &[Feature],
     delimiter: Delimiter,
-    props: &FileWriter,
     storage_resolver: Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     let mut wtr = csv::WriterBuilder::new()
@@ -150,7 +152,18 @@ fn write_csv(
         .quote_style(csv::QuoteStyle::NonNumeric)
         .from_writer(vec![]);
     let rows: Vec<AttributeValue> = features.iter().map(|f| f.clone().into()).collect();
-    let fields = get_fields(rows.first().unwrap());
+    let mut fields = get_fields(rows.first().unwrap());
+
+    if let Some(ref mut fields) = fields {
+        // Remove _id field
+        fields.retain(|field| field != "_id");
+        // Write header
+        if !fields.is_empty() {
+            wtr.write_record(fields.clone())
+                .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
+        }
+    }
+
     for row in rows {
         match fields {
             Some(ref fields) if !fields.is_empty() => {
@@ -188,13 +201,11 @@ fn write_csv(
             .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?,
     )
     .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
-    let uri = Uri::from_str(&props.params.output)
-        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
     let storage = storage_resolver
-        .resolve(&uri)
+        .resolve(output)
         .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
     storage
-        .put_sync(uri.path().as_path(), Bytes::from(data))
+        .put_sync(output.path().as_path(), Bytes::from(data))
         .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
     Ok(())
 }

@@ -1,8 +1,10 @@
-ui:
-  - ui/**/*
 api:
   - api/**/*
-worker:
-  - worker/**/*
 cicd:
   - .github/workflows/**/*
+ui:
+  - ui/**/*
+websocket:
+  - websocket/**/*
+worker:
+  - worker/**/*

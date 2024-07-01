@@ -1,15 +1,14 @@
----
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
 id: 369bd41c-52f7-4aec-bc4a-8a62c8e41fcd
 name: "PLATEAU.AttributeReader"
 entryGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
 with:
   cityGmlPath:
-  cityCode: "11234"
+  cityCode:
   codelistsPath:
   schemasPath:
   schemaJson: !include ../config/schema.txt
   targetPackages:
-    - bldg
   addNsprefixToFeatureTypes: true
   extractDmGeometryAsXmlFragment: false
 graphs:

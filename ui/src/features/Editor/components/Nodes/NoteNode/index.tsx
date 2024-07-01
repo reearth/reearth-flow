@@ -1,26 +1,24 @@
+import { NodeProps, NodeResizer } from "@xyflow/react";
 import { useState } from "react";
-import { NodeProps, NodeResizer } from "reactflow";
 
-type NodeData = {
-  content: string;
-  width?: number;
-  height?: number;
-  backgroundColor?: string;
-  textColor?: string;
-};
+import { Node } from "@flow/types";
+
+export type NoteNodeProps = NodeProps<Node>;
 
 export const initialSize = { width: 300 };
 // export const initialSize = { width: 300, height: 200 };
 
-// export const baseBatchNode = {
-//   type: "batch",
-//   style: { width: initialSize.width + "px", height: initialSize.height + "px" },
-//   zIndex: -1001,
-// };
+export const baseNoteNode = {
+  type: "note",
+  content: "New Note",
+  width: 300,
+  height: 200,
+  // style: { width: initialSize.width + "px" },
+};
 
 const minSize = { width: 250, height: 150 };
 
-const NoteNode: React.FC<NodeProps<NodeData>> = ({ data, ...props }) => {
+const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
   const [_width, _setWidth] = useState(data.width ?? initialSize.width);
   const [_height, _setHeight] = useState(data.height);
   // const onChange = useCallback(

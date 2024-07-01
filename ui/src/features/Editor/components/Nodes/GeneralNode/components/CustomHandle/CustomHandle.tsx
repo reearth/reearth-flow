@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   Handle,
   HandleProps,
@@ -6,10 +5,11 @@ import {
   getConnectedEdges,
   useNodeId,
   useStore,
-} from "reactflow";
+} from "@xyflow/react";
+import { memo, useMemo } from "react";
 
 const selector = (s: ReactFlowState) => ({
-  nodeInternals: s.nodeInternals,
+  nodeInternals: s.nodeLookup,
   edges: s.edges,
 });
 
@@ -36,9 +36,9 @@ const CustomHandle: React.FC<Props> = ({ className, ...props }) => {
     <Handle
       {...props}
       isConnectable={isHandleConnectable}
-      className={`bg-transparent border-none h-full hover:bg-zinc-600/60 ${className}`}
+      className={`bg-transparent border-none h-full hover:bg-zinc-600/40 ${className}`}
     />
   );
 };
 
-export default CustomHandle;
+export default memo(CustomHandle);

@@ -7,7 +7,8 @@ import {
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
 } from "@phosphor-icons/react";
-import { useReactFlow } from "reactflow";
+import { useReactFlow } from "@xyflow/react";
+import { memo } from "react";
 
 import {
   Select,
@@ -179,4 +180,4 @@ const ParamEditor: React.FC<Props> = ({
   );
 };
 
-export { ParamEditor };
+export default memo(ParamEditor);

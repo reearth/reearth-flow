@@ -1,6 +1,7 @@
 use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
+use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use nusamai_geometry::{MultiPoint2 as NMultiPoint2, MultiPoint3 as NMultiPoint3};
 use serde::{Deserialize, Serialize};
 
@@ -85,6 +86,20 @@ impl<'a> From<NMultiPoint3<'a>> for MultiPoint3D<f64> {
     #[inline]
     fn from(line_strings: NMultiPoint3<'a>) -> Self {
         MultiPoint3D::new(line_strings.iter().map(|a| a.into()).collect::<Vec<_>>())
+    }
+}
+
+impl From<MultiPoint2D<f64>> for Vec<NaPoint2<f64>> {
+    #[inline]
+    fn from(p: MultiPoint2D<f64>) -> Vec<NaPoint2<f64>> {
+        p.0.into_iter().map(|c| c.into()).collect()
+    }
+}
+
+impl From<MultiPoint3D<f64>> for Vec<NaPoint3<f64>> {
+    #[inline]
+    fn from(p: MultiPoint3D<f64>) -> Vec<NaPoint3<f64>> {
+        p.0.into_iter().map(|c| c.into()).collect()
     }
 }
 

@@ -1,10 +1,14 @@
 use std::fmt::Display;
 
+use num_traits::FromPrimitive;
 use reearth_flow_common::collection::ApproxHashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    algorithm::GeoNum,
+    algorithm::{
+        contains::Contains, coordinate_position::CoordPos, dimensions::Dimensions, GeoFloat,
+        GeoNum, Relate,
+    },
     types::{
         coordinate::Coordinate, face::Face, geometry::Geometry, line::Line,
         line_string::LineString, multi_line_string::MultiLineString, multi_point::MultiPoint,
@@ -271,16 +275,16 @@ pub enum ValidationType {
 }
 
 pub trait Validator<
-    T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
 >
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport>;
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for Coordinate<T, Z>
 {
     fn validate(&self, _valid_type: ValidationType) -> Option<ValidationProblemReport> {
@@ -295,8 +299,8 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for Point<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
@@ -305,8 +309,8 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for MultiPoint<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
@@ -344,8 +348,8 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for Line<T, Z>
 where
     T: GeoNum,
@@ -353,33 +357,30 @@ where
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
-        match valid_type {
-            ValidationType::DuplicatePoints => {
-                if let Some(result) = self.start.validate(valid_type.clone()) {
-                    for problem in &result.0 {
-                        reason.push(ValidationProblemAtPosition(
-                            problem.0.clone(),
-                            ValidationProblemPosition::Line(CoordinatePosition(0)),
-                        ));
-                    }
-                }
-                if let Some(result) = self.end.validate(valid_type.clone()) {
-                    for problem in &result.0 {
-                        reason.push(ValidationProblemAtPosition(
-                            problem.0.clone(),
-                            ValidationProblemPosition::Line(CoordinatePosition(1)),
-                        ));
-                    }
-                }
-                if self.start == self.end {
-                    reason.push(ValidationProblemAtPosition(
-                        ValidationProblem::IdenticalCoords,
-                        ValidationProblemPosition::Line(CoordinatePosition(-1)),
-                    ));
-                }
+        if let Some(result) = self.start.validate(valid_type.clone()) {
+            for problem in &result.0 {
+                reason.push(ValidationProblemAtPosition(
+                    problem.0.clone(),
+                    ValidationProblemPosition::Line(CoordinatePosition(0)),
+                ));
             }
-            _ => unimplemented!(),
         }
+        if let Some(result) = self.end.validate(valid_type.clone()) {
+            for problem in &result.0 {
+                reason.push(ValidationProblemAtPosition(
+                    problem.0.clone(),
+                    ValidationProblemPosition::Line(CoordinatePosition(1)),
+                ));
+            }
+        }
+
+        if matches!(valid_type, ValidationType::DuplicatePoints) && self.start == self.end {
+            reason.push(ValidationProblemAtPosition(
+                ValidationProblem::IdenticalCoords,
+                ValidationProblemPosition::Line(CoordinatePosition(-1)),
+            ));
+        }
+
         if reason.is_empty() {
             None
         } else {
@@ -389,12 +390,20 @@ where
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for LineString<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
+        for (i, point) in self.0.iter().enumerate() {
+            if utils::check_coord_is_not_finite(point) {
+                reason.push(ValidationProblemAtPosition(
+                    ValidationProblem::NotFinite,
+                    ValidationProblemPosition::LineString(CoordinatePosition(i as isize)),
+                ));
+            }
+        }
         match valid_type {
             ValidationType::DuplicatePoints => {
                 let mut seen = ApproxHashSet::<Coordinate<T, Z>>::new();
@@ -415,8 +424,17 @@ impl<
                     }
                 }
             }
-            _ => unimplemented!(),
+            ValidationType::CorruptGeometry => {
+                if utils::check_too_few_points(self, false) {
+                    reason.push(ValidationProblemAtPosition(
+                        ValidationProblem::TooFewPoints,
+                        ValidationProblemPosition::LineString(CoordinatePosition(0)),
+                    ));
+                }
+            }
+            ValidationType::SelfIntersection => {}
         }
+
         if reason.is_empty() {
             None
         } else {
@@ -426,14 +444,14 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for MultiLineString<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
         match valid_type {
-            ValidationType::DuplicatePoints => {
+            ValidationType::DuplicatePoints | ValidationType::CorruptGeometry => {
                 for line_string in &self.0 {
                     if let Some(result) = line_string.validate(valid_type.clone()) {
                         for (idx, problem) in result.0.iter().enumerate() {
@@ -448,7 +466,7 @@ impl<
                     }
                 }
             }
-            _ => unimplemented!(),
+            ValidationType::SelfIntersection => {}
         }
         if reason.is_empty() {
             None
@@ -459,162 +477,108 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for Polygon<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
-        match valid_type {
-            ValidationType::DuplicatePoints => {
-                for line_string in &self.rings() {
-                    if let Some(result) = line_string.validate(valid_type.clone()) {
-                        for (idx, problem) in result.0.iter().enumerate() {
-                            reason.push(ValidationProblemAtPosition(
-                                problem.0.clone(),
-                                ValidationProblemPosition::Polygon(
-                                    RingRole::Exterior,
-                                    CoordinatePosition(idx as isize),
-                                ),
-                            ));
-                        }
-                    }
+        for (j, line_string) in self.rings().iter().enumerate() {
+            if let Some(result) = line_string.validate(valid_type.clone()) {
+                for problem in result.0.iter() {
+                    reason.push(ValidationProblemAtPosition(
+                        problem.0.clone(),
+                        ValidationProblemPosition::Polygon(
+                            if j == 0 {
+                                RingRole::Exterior
+                            } else {
+                                RingRole::Interior(j as isize)
+                            },
+                            CoordinatePosition(j as isize),
+                        ),
+                    ));
                 }
             }
-            _ => unimplemented!(),
         }
-        if reason.is_empty() {
-            None
-        } else {
-            Some(ValidationProblemReport(reason))
-        }
-    }
-}
-
-impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-    > Validator<T, Z> for MultiPolygon<T, Z>
-{
-    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
-        let mut reason = Vec::new();
         match valid_type {
-            ValidationType::DuplicatePoints => {
-                for (idx, polygon) in self.0.iter().enumerate() {
-                    if let Some(result) = polygon.validate(valid_type.clone()) {
-                        for (idx2, problem) in result.0.iter().enumerate() {
-                            reason.push(ValidationProblemAtPosition(
-                                problem.0.clone(),
-                                ValidationProblemPosition::MultiPolygon(
-                                    GeometryPosition(idx as isize),
-                                    RingRole::Exterior,
-                                    CoordinatePosition(idx2 as isize),
-                                ),
-                            ));
-                        }
-                    }
-                }
-            }
-            _ => unimplemented!(),
-        }
-        if reason.is_empty() {
-            None
-        } else {
-            Some(ValidationProblemReport(reason))
-        }
-    }
-}
-
-impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-    > Validator<T, Z> for Face<T, Z>
-{
-    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
-        let mut reason = Vec::new();
-        match valid_type {
-            ValidationType::DuplicatePoints => {
-                let mut seen = ApproxHashSet::<Coordinate<T, Z>>::new();
-                for (idx, pt) in self.0.iter().enumerate() {
-                    if let Some(result) = pt.validate(valid_type.clone()) {
-                        for problem in &result.0 {
-                            reason.push(ValidationProblemAtPosition(
-                                problem.0.clone(),
-                                ValidationProblemPosition::Face(GeometryPosition(idx as isize)),
-                            ));
-                        }
-                    }
-                    if !seen.insert(*pt) {
+            ValidationType::DuplicatePoints => {}
+            ValidationType::CorruptGeometry => {
+                let polygon_exterior = Polygon::new(self.exterior().clone(), vec![]);
+                for (j, interior) in self.interiors().iter().enumerate() {
+                    if !polygon_exterior.contains(interior) {
                         reason.push(ValidationProblemAtPosition(
-                            ValidationProblem::IdenticalCoords,
-                            ValidationProblemPosition::Face(GeometryPosition(idx as isize)),
-                        ));
-                    }
-                }
-            }
-            _ => unimplemented!(),
-        }
-        if reason.is_empty() {
-            None
-        } else {
-            Some(ValidationProblemReport(reason))
-        }
-    }
-}
-
-impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-    > Validator<T, Z> for Solid<T, Z>
-{
-    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
-        let mut reason = Vec::new();
-        match valid_type {
-            ValidationType::DuplicatePoints => {
-                for (idx, face) in self.all_faces().iter().enumerate() {
-                    if let Some(result) = face.validate(valid_type.clone()) {
-                        for problem in result.0.iter() {
-                            reason.push(ValidationProblemAtPosition(
-                                problem.0.clone(),
-                                ValidationProblemPosition::Solid(GeometryPosition(idx as isize)),
-                            ));
-                        }
-                    }
-                }
-            }
-            _ => unimplemented!(),
-        }
-        if reason.is_empty() {
-            None
-        } else {
-            Some(ValidationProblemReport(reason))
-        }
-    }
-}
-
-impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-    > Validator<T, Z> for Rect<T, Z>
-{
-    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
-        let mut reason = Vec::new();
-        match valid_type {
-            ValidationType::DuplicatePoints => {
-                let polygon = self.to_polygon();
-                if let Some(result) = polygon.validate(valid_type.clone()) {
-                    for problem in result.0.iter() {
-                        reason.push(ValidationProblemAtPosition(
-                            problem.0.clone(),
-                            ValidationProblemPosition::Rect(
-                                RingRole::Exterior,
+                            ValidationProblem::InteriorRingNotContainedInExteriorRing,
+                            ValidationProblemPosition::Polygon(
+                                RingRole::Interior(j as isize),
                                 CoordinatePosition(-1),
                             ),
                         ));
                     }
                 }
             }
-            _ => unimplemented!(),
+            ValidationType::SelfIntersection => {
+                for (j, line_string) in self.rings().iter().enumerate() {
+                    if utils::linestring_has_self_intersection(line_string) {
+                        reason.push(ValidationProblemAtPosition(
+                            ValidationProblem::SelfIntersection,
+                            ValidationProblemPosition::Polygon(
+                                if j == 0 {
+                                    RingRole::Exterior
+                                } else {
+                                    RingRole::Interior(j as isize)
+                                },
+                                CoordinatePosition(-1),
+                            ),
+                        ));
+                    }
+                }
+                let polygon_exterior = Polygon::new(self.exterior().clone(), vec![]);
+                for (j, interior) in self.interiors().iter().enumerate() {
+                    let im = polygon_exterior.relate(interior);
+
+                    // Interior ring and exterior ring may only touch at point (not as a line)
+                    // and not cross
+                    if im.get(CoordPos::OnBoundary, CoordPos::Inside) == Dimensions::OneDimensional
+                    {
+                        reason.push(ValidationProblemAtPosition(
+                            ValidationProblem::IntersectingRingsOnALine,
+                            ValidationProblemPosition::Polygon(
+                                RingRole::Interior(j as isize),
+                                CoordinatePosition(-1),
+                            ),
+                        ));
+                    }
+                    let pol_interior1 = Polygon::new(interior.clone(), vec![]);
+                    for (i, interior2) in self.interiors().iter().enumerate() {
+                        if j != i {
+                            let pol_interior2 = Polygon::new(interior2.clone(), vec![]);
+                            let intersection_matrix = pol_interior1.relate(&pol_interior2);
+                            if intersection_matrix.get(CoordPos::Inside, CoordPos::Inside)
+                                == Dimensions::TwoDimensional
+                            {
+                                reason.push(ValidationProblemAtPosition(
+                                    ValidationProblem::IntersectingRingsOnAnArea,
+                                    ValidationProblemPosition::Polygon(
+                                        RingRole::Interior(j as isize),
+                                        CoordinatePosition(-1),
+                                    ),
+                                ));
+                            }
+                            if intersection_matrix.get(CoordPos::OnBoundary, CoordPos::OnBoundary)
+                                == Dimensions::OneDimensional
+                            {
+                                reason.push(ValidationProblemAtPosition(
+                                    ValidationProblem::IntersectingRingsOnALine,
+                                    ValidationProblemPosition::Polygon(
+                                        RingRole::Interior(j as isize),
+                                        CoordinatePosition(-1),
+                                    ),
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
         }
         if reason.is_empty() {
             None
@@ -625,8 +589,123 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64>,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    > Validator<T, Z> for MultiPolygon<T, Z>
+{
+    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
+        let mut reason = Vec::new();
+        for (idx, polygon) in self.0.iter().enumerate() {
+            if let Some(result) = polygon.validate(valid_type.clone()) {
+                for problem in result.0.iter() {
+                    match &problem.1 {
+                        ValidationProblemPosition::Polygon(ring_role, coord_pos) => {
+                            reason.push(ValidationProblemAtPosition(
+                                problem.0.clone(),
+                                ValidationProblemPosition::MultiPolygon(
+                                    GeometryPosition(idx as isize),
+                                    ring_role.clone(),
+                                    coord_pos.clone(),
+                                ),
+                            ));
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            }
+        }
+        if reason.is_empty() {
+            None
+        } else {
+            Some(ValidationProblemReport(reason))
+        }
+    }
+}
+
+impl<
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    > Validator<T, Z> for Face<T, Z>
+{
+    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
+        let mut reason = Vec::new();
+        let mut seen = ApproxHashSet::<Coordinate<T, Z>>::new();
+        for (idx, pt) in self.0.iter().enumerate() {
+            if let Some(result) = pt.validate(valid_type.clone()) {
+                for problem in &result.0 {
+                    reason.push(ValidationProblemAtPosition(
+                        problem.0.clone(),
+                        ValidationProblemPosition::Face(GeometryPosition(idx as isize)),
+                    ));
+                }
+            }
+            if !seen.insert(*pt) {
+                reason.push(ValidationProblemAtPosition(
+                    ValidationProblem::IdenticalCoords,
+                    ValidationProblemPosition::Face(GeometryPosition(idx as isize)),
+                ));
+            }
+        }
+        if reason.is_empty() {
+            None
+        } else {
+            Some(ValidationProblemReport(reason))
+        }
+    }
+}
+
+impl<
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    > Validator<T, Z> for Solid<T, Z>
+{
+    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
+        let mut reason = Vec::new();
+        for (idx, face) in self.all_faces().iter().enumerate() {
+            if let Some(result) = face.validate(valid_type.clone()) {
+                for problem in result.0.iter() {
+                    reason.push(ValidationProblemAtPosition(
+                        problem.0.clone(),
+                        ValidationProblemPosition::Solid(GeometryPosition(idx as isize)),
+                    ));
+                }
+            }
+        }
+        if reason.is_empty() {
+            None
+        } else {
+            Some(ValidationProblemReport(reason))
+        }
+    }
+}
+
+impl<
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    > Validator<T, Z> for Rect<T, Z>
+{
+    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
+        let mut reason = Vec::new();
+        let polygon = self.to_polygon();
+        if let Some(result) = polygon.validate(valid_type.clone()) {
+            for problem in result.0.iter() {
+                reason.push(ValidationProblemAtPosition(
+                    problem.0.clone(),
+                    ValidationProblemPosition::Rect(RingRole::Exterior, CoordinatePosition(-1)),
+                ));
+            }
+        }
+        if reason.is_empty() {
+            None
+        } else {
+            Some(ValidationProblemReport(reason))
+        }
+    }
+}
+
+impl<
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for Geometry<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
