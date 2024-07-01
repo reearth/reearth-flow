@@ -1254,7 +1254,7 @@
         "default"
       ],
       "outputPorts": [
-        "default",
+        "attributeFeature",
         "summary",
         "filePath"
       ],

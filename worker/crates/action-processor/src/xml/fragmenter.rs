@@ -122,34 +122,33 @@ pub enum XmlFragmenterParam {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct XmlFragment {
-    pub(super) xml_id: usize,
+    pub(super) xml_id: String,
     pub(super) fragment: String,
     pub(super) matched_tag: String,
-    pub(super) xml_parent_id: Option<usize>,
+    pub(super) xml_parent_id: Option<String>,
 }
 
 impl XmlFragment {
-    fn to_hashmap(
-        fragment: XmlFragment,
-        xml_id: String,
-        xml_parent_id: Option<String>,
-    ) -> HashMap<Attribute, AttributeValue> {
+    fn to_hashmap(fragment: XmlFragment) -> HashMap<Attribute, AttributeValue> {
         let mut map = HashMap::new();
-        map.insert(Attribute::new("xmlId"), AttributeValue::String(xml_id));
         map.insert(
-            Attribute::new("fragment"),
+            Attribute::new("xmlId"),
+            AttributeValue::String(fragment.xml_id),
+        );
+        map.insert(
+            Attribute::new("xmlFragment"),
             AttributeValue::String(fragment.fragment),
         );
         map.insert(
             Attribute::new("matchedTag"),
             AttributeValue::String(fragment.matched_tag),
         );
-        if let Some(xml_parent_id) = xml_parent_id {
-            map.insert(
-                Attribute::new("xmlParentId"),
-                AttributeValue::String(xml_parent_id),
-            );
-        }
+        let attribute = if let Some(xml_parent_id) = fragment.xml_parent_id {
+            AttributeValue::String(xml_parent_id)
+        } else {
+            AttributeValue::Null
+        };
+        map.insert(Attribute::new("xmlParentId"), attribute);
         map
     }
 }
@@ -158,7 +157,7 @@ impl Processor for XmlFragmenter {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
-        30
+        20
     }
 
     fn process(
@@ -254,22 +253,11 @@ fn action_value_to_fragment(
     let fragments = generate_fragment(&document, &elements_to_match, &elements_to_exclude)?;
     let xml_id_maps = fragments
         .into_iter()
-        .map(|fragment| (fragment.xml_id, (uuid::Uuid::new_v4(), fragment)))
-        .collect::<HashMap<usize, (Uuid, XmlFragment)>>();
-    let xml_id_uuid_map = xml_id_maps
-        .iter()
-        .map(|(xml_id, (feature_id, _fragment))| (*xml_id, feature_id.to_string()))
-        .collect::<HashMap<usize, String>>();
+        .map(|fragment| (fragment.xml_id.clone(), (uuid::Uuid::new_v4(), fragment)))
+        .collect::<HashMap<String, (Uuid, XmlFragment)>>();
     for (_xml_id, (feature_id, fragment)) in xml_id_maps.into_iter() {
         let mut value = Feature::new_with_id_and_attributes(feature_id, row.attributes.clone());
-        let parent_id = {
-            if let Some(xml_parent_id) = fragment.xml_parent_id {
-                xml_id_uuid_map.get(&xml_parent_id).cloned()
-            } else {
-                None
-            }
-        };
-        XmlFragment::to_hashmap(fragment, feature_id.to_string(), parent_id)
+        XmlFragment::to_hashmap(fragment)
             .into_iter()
             .for_each(|(k, v)| {
                 value.attributes.insert(k, v);
@@ -342,13 +330,21 @@ fn generate_fragment(
                 xml::node_to_xml_string(document, node)
                     .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?
             };
-            let xml_id = node.to_hashable();
-            let xml_parent_id = node.get_parent().map(|parent| parent.to_hashable());
+            let xml_id = reearth_flow_common::str::to_hash(&fragment);
+            let parent_fragment = if let Some(mut parent) = node.get_parent() {
+                if let Ok(fragment) = xml::node_to_xml_string(document, &mut parent) {
+                    Some(reearth_flow_common::str::to_hash(&fragment))
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
             result.push(XmlFragment {
                 xml_id,
                 fragment,
                 matched_tag: tag,
-                xml_parent_id,
+                xml_parent_id: parent_fragment,
             });
         }
     }
