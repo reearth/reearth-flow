@@ -4,16 +4,11 @@ type Workflow implements Node {
   createdAt: DateTime!
   updatedAt: DateTime!
   nodes: [NodeType]
-  edges: [EdgeType]
-  type: WorkflowType!
+  edges: [Edge]
+  isMain: Boolean
   version: Int!
   projectId: ID!
   workspaceId: ID!
-}
-
-enum WorkflowType {
-  MAIN_WORKFLOW
-  SUB_WORKFLOW
 }
 
 type NodeType {
@@ -26,9 +21,9 @@ type Data {
   inputs: [Input]!
   outputs: [Output]!
   status: Status
-  content: String # For batch node. If we want rich text, how would this change?
+  content: String
   transformerId: ID
-  params: [Param] # ?? How would we type this?
+  params: [Param]
 }
 
 type Param {
@@ -45,54 +40,8 @@ enum ParamValue {
   ARRAY
 }
 
-type EdgeType {
+type Edge {
   id: ID!
   source: [ID!]!
   target: [ID!]!
-}
-
-# InputType
-
-input CreateWorkflowInput {
-  projectId: ID!
-  workspaceId: ID!
-  name: String!
-  type: WorkflowType!
-}
-
-input UpdateWorkflowInput {
-  workflowId: ID!
-  name: String
-  nodes: [NodeType]
-  edges: [EdgeType]
-}
-
-input DeleteWorkflowInput {
-  workflowId: ID!
-}
-
-# Payload
-
-type CreateWorkflowPayload {
-  workflow: Workflow!
-}
-
-type UpdateWorkflowPayload {
-  workflow: Workflow!
-}
-
-type DeleteWorkflowPayload {
-  workflowId: ID!
-}
-
-extend type Query {
-  workflows(
-    projectId: ID!
-  ): [Workflow]!
-}
-
-extend type Mutation {
-  createWorkflow(input: CreateWorkflowInput!): CreateWorkflowPayload
-  updateWorkflow(input: UpdateWorkflowInput!): UpdateWorkflowPayload
-  deleteWorkflow(input: DeleteWorkflowInput!): DeleteWorkflowPayload
 }
