@@ -105,4 +105,11 @@ impl RobustKernel {
             Orientation::Collinear
         }
     }
+
+    pub fn square_euclidean_distance<T: CoordNum + Float, Z: CoordNum + Float>(
+        p: Coordinate<T, Z>,
+        q: Coordinate<T, Z>,
+    ) -> T {
+        (p.x - q.x) * (p.x - q.x) + (p.y - q.y) * (p.y - q.y)
+    }
 }
