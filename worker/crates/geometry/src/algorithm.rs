@@ -6,6 +6,7 @@ use crate::types::{coordnum::CoordNum, point::Point};
 
 pub mod area2d;
 pub mod area3d;
+pub mod bool_ops;
 pub mod bounding_rect;
 pub mod contains;
 pub mod coordinate_position;
