@@ -53,13 +53,11 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
     }
 }
 
-/// A `ProjectGcsRepository` is a thin wrapper of `GcsClient`.
 pub struct ProjectGcsRepository {
     client: GcsClient,
 }
 
 impl ProjectGcsRepository {
-    /// Returns the `ProjectGcsRepository`.
     fn new(client: GcsClient) -> Self {
         Self { client }
     }
@@ -67,14 +65,12 @@ impl ProjectGcsRepository {
 
 #[async_trait]
 impl ProjectSnapshotRepository for ProjectGcsRepository {
-    /// Create a snapshot.
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Box<dyn Error>> {
         let path = format!("snapshot/{}", snapshot.id);
         self.client.upload(path, &snapshot).await?;
         Ok(())
     }
 
-    /// Get the latest snapshot.
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
@@ -83,7 +79,6 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
         self.client.download(path).await
     }
 
-    /// Get the state of the latest snapshot.
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Box<dyn Error>> {
         let path = format!("snapshot/{}:latest_snapshot_state", project_id);
         self.client.download(path).await
