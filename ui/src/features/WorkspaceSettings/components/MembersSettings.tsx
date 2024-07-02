@@ -135,39 +135,36 @@ const MembersSettings: React.FC = () => {
             </div>
           </div>
           <div className="max-h-[50vh] overflow-auto">
-            {members &&
-              members.map(m => (
-                <div key={m.userId} className="flex gap-4 px-4 py-2">
-                  <p className="flex-1">{m.user?.name}</p>
-                  <p className="flex-1 px-4 font-thin capitalize text-sm">{m.role}</p>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      disabled={m.userId === me?.id}
-                      className={`flex-1 flex items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}>
-                      <p className="text-sm">{t("Change role")}</p>
-                      <CaretDown className="w-2 h-2" />
-                    </DropdownMenuTrigger>
-
-                    <DropdownMenuContent className="min-w-[70px]">
-                      {roles.map((role, idx) => (
-                        <DropdownMenuItem
-                          key={idx}
-                          onClick={() => handleChangeRole(m.userId, role)}>
-                          {role}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Button
-                    className="flex-1 h-[25px]"
-                    size="sm"
-                    variant="outline"
+            {members?.map(m => (
+              <div key={m.userId} className="flex gap-4 px-4 py-2">
+                <p className="flex-1">{m.user?.name}</p>
+                <p className="flex-1 px-4 font-thin capitalize text-sm">{m.role}</p>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
                     disabled={m.userId === me?.id}
-                    onClick={() => handleRemoveMembers(m.userId)}>
-                    {t("Remove")}
-                  </Button>
-                </div>
-              ))}
+                    className={`flex-1 flex items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}>
+                    <p className="text-sm">{t("Change role")}</p>
+                    <CaretDown className="w-2 h-2" />
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent className="min-w-[70px]">
+                    {roles.map((role, idx) => (
+                      <DropdownMenuItem key={idx} onClick={() => handleChangeRole(m.userId, role)}>
+                        {role}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  className="flex-1 h-[25px]"
+                  size="sm"
+                  variant="outline"
+                  disabled={m.userId === me?.id}
+                  onClick={() => handleRemoveMembers(m.userId)}>
+                  {t("Remove")}
+                </Button>
+              </div>
+            ))}
           </div>
         </div>
         <p className="text-sm text-red-400">{error}</p>
