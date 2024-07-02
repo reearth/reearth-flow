@@ -12,7 +12,7 @@ type Props = {
 };
 
 const WorkspaceIdWrapper: React.FC<Props> = ({ children }) => {
-  const [_, setCurrentWorkspace] = useCurrentWorkspace();
+  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
 
   const { workspaceId }: { workspaceId: string } = useParams({
     strict: false,
@@ -30,7 +30,7 @@ const WorkspaceIdWrapper: React.FC<Props> = ({ children }) => {
 
   if (isLoading) return <Loading />;
 
-  if (!workspace)
+  if (!workspace || !currentWorkspace)
     return <NotFoundPage message={`Workspace with id: "${workspaceId}" not found.`} />;
 
   return children;

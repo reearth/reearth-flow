@@ -35,7 +35,8 @@ const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
 
   if (isLoading || !project) return <Loading />;
 
-  if (!project) return <NotFoundPage message={`Project with id: "${projectId}" not found.`} />;
+  if (!project || !currentProject)
+    return <NotFoundPage message={`Project with id: "${projectId}" not found.`} />;
 
   if (currentWorkspace && project.workspaceId != currentWorkspace?.id)
     return (

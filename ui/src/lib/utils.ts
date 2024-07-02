@@ -7,5 +7,5 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function isDefined<T>(argument: T | undefined | null): argument is T {
-  return argument !== undefined || argument !== null;
+  return argument !== undefined && argument !== null;
 }
