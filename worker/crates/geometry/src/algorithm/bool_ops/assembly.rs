@@ -39,7 +39,9 @@ impl<T: GeoFloat> Default for RegionAssembly<T> {
 impl<T: GeoFloat> RegionAssembly<T> {
     /// Adds the `edge` geometry to the assembly.
     pub fn add_edge(&mut self, edge: LineOrPoint<T, NoValue>) {
-        debug_assert!(edge.is_line());
+        if !edge.is_line() {
+            return;
+        }
         self.segments.push(edge.into());
     }
     /// Creates the final `MultiPolygon` from the edges previously added.
@@ -336,8 +338,10 @@ impl<T: GeoFloat> Snake<T> {
     }
     /// Adds a vertex to the "head" of the snake.
     pub fn push(&mut self, right: SweepPoint<T, NoValue>) {
-        debug_assert!(self.end_pair.is_none());
-        self.points.push(right)
+        if self.end_pair.is_some() {
+            return;
+        }
+        self.points.push(right);
     }
     /// Finishes the snake, meaning that the snake forms a loop.
     pub fn finish(&mut self, other: usize) {

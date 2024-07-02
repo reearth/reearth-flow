@@ -30,6 +30,7 @@ jobs:
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
         with:
+          workspaces: worker
           shared-key: "worker-ci"
       - name: check
         run: cargo check --all
@@ -38,7 +39,7 @@ jobs:
       - name: clippy
         run: cargo clippy --all -- -D warnings
       - name: install cargo-make
-        run: cargo install --force cargo-make
+        run: cargo install cargo-make
       - name: generate schema
         run: cargo make doc-action
       - name: check schema generator
