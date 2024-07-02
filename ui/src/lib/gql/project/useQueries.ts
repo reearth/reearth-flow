@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
+import { isDefined } from "@flow/lib/utils";
 import { Project } from "@flow/types";
 
 import {
@@ -54,9 +55,9 @@ export const useQueries = () => {
           projects: { nodes, ...rest },
         } = data;
 
-        const projects: Project[] = nodes.flatMap(project =>
-          project ? [createNewProjectObject(project)] : [],
-        );
+        const projects: Project[] = nodes
+          .filter(isDefined)
+          .map(project => createNewProjectObject(project));
         return { projects, meta: rest };
       },
     });

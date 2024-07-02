@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
+import { isDefined } from "@flow/lib/utils";
 import { Member, Workspace } from "@flow/types";
 
 import {
@@ -72,9 +73,10 @@ export const useQueries = () => {
       queryKey: [WorkspaceQueryKeys.GetWorkspaces],
       queryFn: async () => {
         const data = await graphQLContext?.GetWorkspaces();
-        return data?.me?.workspaces.flatMap(w =>
-          w ? [createNewWorkspaceObject(w) as Workspace] : [],
-        );
+
+        return data?.me?.workspaces
+          .filter(isDefined)
+          .map(w => createNewWorkspaceObject(w) as Workspace);
       },
       staleTime: Infinity,
     });
