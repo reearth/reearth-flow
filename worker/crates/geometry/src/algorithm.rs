@@ -6,14 +6,17 @@ use crate::types::{coordnum::CoordNum, point::Point};
 
 pub mod area2d;
 pub mod area3d;
+pub mod bool_ops;
 pub mod bounding_rect;
 pub mod contains;
+pub mod convex_hull;
 pub mod coordinate_position;
 pub mod coords_iter;
 pub mod dimensions;
 pub mod geometry_cow;
 pub mod hole;
 pub mod intersects;
+pub mod is_convex;
 pub mod kernels;
 pub mod line_intersection;
 pub mod map_coords;
