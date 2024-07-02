@@ -6,8 +6,8 @@ import { useUser } from "@flow/lib/gql";
 
 const LoadingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { getMe } = useUser();
-  const { isLoading, me } = getMe();
+  const { useGetMe } = useUser();
+  const { me, isLoading } = useGetMe();
 
   if (isLoading) return <Loading />;
 

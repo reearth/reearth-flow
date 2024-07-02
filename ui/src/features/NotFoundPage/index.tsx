@@ -10,8 +10,8 @@ type Props = {
 
 const NotFoundPage: React.FC<Props> = ({ message }) => {
   const t = useT();
-  const { getMe } = useUser();
-  const { me } = getMe();
+  const { useGetMe } = useUser();
+  const { me } = useGetMe();
 
   return (
     <div className="bg-zinc-800 h-[100vh] flex justify-center items-center">

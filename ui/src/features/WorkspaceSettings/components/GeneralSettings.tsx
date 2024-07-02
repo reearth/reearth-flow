@@ -1,30 +1,53 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button, Input, Label } from "@flow/components";
 import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
+type Errors = "delete" | "update";
+
 const GeneralSettings: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
-  const { deleteWorkspace } = useWorkspace();
+  const { deleteWorkspace, updateWorkspace } = useWorkspace();
   const navigate = useNavigate();
-  const [showError, setShowError] = useState(false);
+  const [showError, setShowError] = useState<Errors | undefined>(undefined);
+  const [workspaceName, setWorkspaceName] = useState(currentWorkspace?.name);
+  const [loading, setLoading] = useState(false);
 
   const handleDeleteWorkspace = async () => {
-    setShowError(false);
+    setLoading(true);
+    setShowError(undefined);
     if (!currentWorkspace) return;
-    // TODO: this trigger a pop up for confirming
+    // TODO: this should trigger a pop up for confirming
     const { workspaceId } = await deleteWorkspace(currentWorkspace.id);
 
     if (!workspaceId) {
-      setShowError(true);
+      setShowError("delete");
       return;
     }
     navigate({ to: "/workspace" });
   };
+
+  const handleUpdateWorkspace = async () => {
+    setLoading(true);
+    setShowError(undefined);
+    if (!currentWorkspace?.id || !workspaceName) return;
+    const { workspace } = await updateWorkspace(currentWorkspace?.id, workspaceName);
+    setLoading(false);
+    if (!workspace) {
+      setShowError("update");
+      return;
+    }
+  };
+
+  // currentWorkspace can be changed from the navigation
+  useEffect(() => {
+    setWorkspaceName(currentWorkspace?.name);
+  }, [currentWorkspace]);
+
   return (
     <div>
       <p className="text-lg font-extralight">{t("General Settings")}</p>
@@ -34,29 +57,27 @@ const GeneralSettings: React.FC = () => {
           <Input
             id="workspace-name"
             placeholder={t("Workspace Name")}
-            readOnly={true}
-            disabled={true}
-            value={currentWorkspace?.name}
+            disabled={currentWorkspace?.personal || loading}
+            value={workspaceName}
+            onChange={e => setWorkspaceName(e.target.value)}
           />
         </div>
-        {/* <div className="flex flex-col gap-2">
-          <Label htmlFor="workspace-description">{t("Workspace Description")}</Label>
-          <Input
-            id="workspace-description"
-            placeholder={t("Workspace Description")}
-            defaultValue={currentWorkspace?.description}
-          />
-        </div> */}
-        <Button className="self-end">{t("Save")}</Button>
+        <Button
+          className="self-end"
+          disabled={loading || !workspaceName || currentWorkspace?.personal}
+          onClick={handleUpdateWorkspace}>
+          {t("Save")}
+        </Button>
         <Button
           variant={"destructive"}
-          disabled={currentWorkspace?.personal}
+          disabled={currentWorkspace?.personal || loading}
           className="self-end"
           onClick={() => handleDeleteWorkspace()}>
           {t("Delete Workspace")}
         </Button>
         <div className={`text-xs text-red-400 self-end ${showError ? "opacity-70" : "opacity-0"}`}>
-          {t("Failed to delete workspace")}
+          {showError === "delete" && t("Failed to delete Workspace")}
+          {showError === "update" && t("Failed to update Workspace")}
         </div>
       </div>
     </div>

@@ -12,7 +12,7 @@ type Props = {
 };
 
 const WorkspaceIdWrapper: React.FC<Props> = ({ children }) => {
-  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
+  const [_, setCurrentWorkspace] = useCurrentWorkspace();
 
   const { workspaceId }: { workspaceId: string } = useParams({
     strict: false,
@@ -23,11 +23,10 @@ const WorkspaceIdWrapper: React.FC<Props> = ({ children }) => {
 
   useEffect(() => {
     if (!workspace) return;
-    if (currentWorkspace?.id === workspace.id) return;
     setCurrentWorkspace(workspace);
 
     return;
-  }, [workspace, currentWorkspace, setCurrentWorkspace]);
+  }, [workspace, setCurrentWorkspace]);
 
   if (isLoading) return <Loading />;
 
