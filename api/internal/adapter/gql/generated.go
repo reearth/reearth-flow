@@ -144,6 +144,7 @@ type ComplexityRoot struct {
 		IsBasicAuthActive func(childComplexity int) int
 		Name              func(childComplexity int) int
 		UpdatedAt         func(childComplexity int) int
+		Version           func(childComplexity int) int
 		Workspace         func(childComplexity int) int
 		WorkspaceID       func(childComplexity int) int
 	}
@@ -740,6 +741,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.UpdatedAt(childComplexity), true
 
+	case "Project.version":
+		if e.complexity.Project.Version == nil {
+			break
+		}
+
+		return e.complexity.Project.Version(childComplexity), true
+
 	case "Project.workspace":
 		if e.complexity.Project.Workspace == nil {
 			break
@@ -1266,6 +1274,7 @@ extend type Mutation {
   basicAuthPassword: String!
   createdAt: DateTime!
   updatedAt: DateTime!
+  version: Int!
   name: String!
   description: String!
   workspaceId: ID!
@@ -1295,6 +1304,11 @@ input DeleteProjectInput {
   projectId: ID!
 }
 
+# input ExecuteProjectRunInput {
+#   projectId: ID!
+#   Projects: [Project!]!
+# }
+
 # Payload
 
 type ProjectPayload {
@@ -1304,6 +1318,11 @@ type ProjectPayload {
 type DeleteProjectPayload {
   projectId: ID!
 }
+
+# type ProjectRunPayload {
+#   projectId: ID!
+#   started: Boolean!
+# }
 
 # Connection
 
@@ -1327,6 +1346,7 @@ extend type Mutation {
   createProject(input: CreateProjectInput!): ProjectPayload
   updateProject(input: UpdateProjectInput!): ProjectPayload
   deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
+  # executeProjectRun(input: ExecuteProjectRunInput!): ProjectRunPayload
 }`, BuiltIn: false},
 	{Name: "../../../gql/user.graphql", Input: `type User implements Node {
   id: ID!
@@ -1394,6 +1414,52 @@ extend type Mutation {
   removeMyAuth(input: RemoveMyAuthInput!): UpdateMePayload
   deleteMe(input: DeleteMeInput!): DeleteMePayload
 }
+`, BuiltIn: false},
+	{Name: "../../../gql/workflow.graphql", Input: `# input Workflow {
+#   id: ID!
+#   name: String!
+#   createdAt: DateTime!
+#   updatedAt: DateTime!
+#   nodes: [WorkflowNode]
+#   edges: [WorkflowEdge]
+#   isMain: Boolean
+#   version: Int!
+#   projectId: ID!
+#   workspaceId: ID!
+# }
+
+# input WorkflowNode {
+#   id: ID!
+#   data: Data!
+# }
+
+# input Data {
+#   name: String
+#   inputs: [ID]!
+#   outputs: [ID]!
+#   actionId: ID
+#   params: [Param]
+# }
+
+# input Param {
+#   id: ID!
+#   name: String!
+#   value: ParamValue!
+# }
+
+# enum ParamValue {
+#   STRING
+#   NUMBER
+#   BOOLEAN
+#   OBJECT
+#   ARRAY
+# }
+
+# input WorkflowEdge {
+#   id: ID!
+#   source: [ID!]!
+#   target: [ID!]!
+# }
 `, BuiltIn: false},
 	{Name: "../../../gql/workspace.graphql", Input: `type Workspace implements Node {
   id: ID!
@@ -4672,6 +4738,50 @@ func (ec *executionContext) fieldContext_Project_updatedAt(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_version(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_version(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_name(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_name(ctx, field)
 	if err != nil {
@@ -4962,6 +5072,8 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 				return ec.fieldContext_Project_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "version":
+				return ec.fieldContext_Project_version(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -5169,6 +5281,8 @@ func (ec *executionContext) fieldContext_ProjectEdge_node(_ context.Context, fie
 				return ec.fieldContext_Project_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "version":
+				return ec.fieldContext_Project_version(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -5237,6 +5351,8 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "version":
+				return ec.fieldContext_Project_version(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "description":
@@ -9892,6 +10008,11 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Project_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "version":
+			out.Values[i] = ec._Project_version(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

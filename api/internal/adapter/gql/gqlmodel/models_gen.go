@@ -136,6 +136,7 @@ type Project struct {
 	BasicAuthPassword string     `json:"basicAuthPassword"`
 	CreatedAt         time.Time  `json:"createdAt"`
 	UpdatedAt         time.Time  `json:"updatedAt"`
+	Version           int        `json:"version"`
 	Name              string     `json:"name"`
 	Description       string     `json:"description"`
 	WorkspaceID       ID         `json:"workspaceId"`
