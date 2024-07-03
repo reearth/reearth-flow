@@ -17,5 +17,6 @@ reviews:
     - '!**/*.xml'
     - '!**/*.md'
     - '!**/*.txt'
+    - '!**/*.lock'
 chat:
   auto_reply: true
