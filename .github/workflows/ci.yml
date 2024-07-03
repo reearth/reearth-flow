@@ -19,7 +19,7 @@ jobs:
         uses: tj-actions/changed-files@v41
         with:
           files: |
-            ui/**
+            ui
             .github/workflows/ci.yml
             .github/workflows/ci_ui.yml
             .github/workflows/build_ui.yml
@@ -28,10 +28,10 @@ jobs:
 
       - name: changed files for api
         id: api
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v36
         with:
           files: |
-            api/**
+            api
             .github/workflows/ci.yml
             .github/workflows/ci_api.yml
             .github/workflows/build_api.yml

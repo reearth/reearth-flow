@@ -6,6 +6,5 @@ linters:
     - gofmt
     - goimports
 
-linters-settings:
-  gofumpt:
-    module-path: "reearth-flow"
+goimports:
+  local-prefixes: github.com/reearth/reearth-backend
