@@ -1,7 +1,7 @@
 type Workflow implements Node {
   id: ID!
-  nodes: [NodeType]
-  edges: [Edge]
+  wNodes: [NodeType]!
+  wEdges: [Edge]
   isMain: Boolean
 }
 
@@ -12,8 +12,8 @@ type NodeType {
 
 type Data {
   name: String
-  inputs: [Input]!
-  outputs: [Output]!
+  inputs: [String]!
+  outputs: [String]!
   actionId: ID
   params: [Param]
 }
