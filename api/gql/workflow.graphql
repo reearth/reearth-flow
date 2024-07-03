@@ -3,23 +3,23 @@ type Workflow implements Node {
   name: String!
   createdAt: DateTime!
   updatedAt: DateTime!
-  nodes: [NodeType]
-  edges: [Edge]
+  nodes: [WorkflowNode]
+  edges: [WorkflowEdge]
   isMain: Boolean
   version: Int!
   projectId: ID!
   workspaceId: ID!
 }
 
-type NodeType {
+type WorkflowNode {
   id: ID!
   data: Data!
 }
 
 type Data {
   name: String
-  inputs: [Input]!
-  outputs: [Output]!
+  inputs: [String]!
+  outputs: [String]!
   status: Status
   content: String
   transformerId: ID
@@ -40,7 +40,7 @@ enum ParamValue {
   ARRAY
 }
 
-type Edge {
+type WorkflowEdge {
   id: ID!
   source: [ID!]!
   target: [ID!]!
