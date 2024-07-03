@@ -1,14 +1,8 @@
 type Workflow implements Node {
   id: ID!
-  name: String!
-  createdAt: DateTime!
-  updatedAt: DateTime!
   nodes: [NodeType]
   edges: [Edge]
   isMain: Boolean
-  version: Int!
-  projectId: ID!
-  workspaceId: ID!
 }
 
 type NodeType {
@@ -17,12 +11,9 @@ type NodeType {
 }
 
 type Data {
-  name: String
   inputs: [Input]!
   outputs: [Output]!
-  status: Status
-  content: String
-  transformerId: ID
+  actionId: ID
   params: [Param]
 }
 
