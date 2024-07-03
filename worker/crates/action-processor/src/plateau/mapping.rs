@@ -4,12 +4,12 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
+    attribute_flattener::AttributeFlattenerFactory,
     dictionaries_initiator::DictionariesInitiatorFactory,
     domain_of_definition_validator::DomainOfDefinitionValidatorFactory,
     max_lod_extractor::MaxLodExtractorFactory, udx_folder_extractor::UdxFolderExtractorFactory,
     unmatched_xlink_detector::UnmatchedXlinkDetectorFactory,
     xml_attribute_extractor::XmlAttributeExtractorFactory,
-    attribute_flattener::AttributeFlattenerFactory,
 };
 
 pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
