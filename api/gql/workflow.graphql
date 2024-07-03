@@ -11,8 +11,8 @@ type NodeType {
 }
 
 type Data {
-  inputs: [Input]!
-  outputs: [Output]!
+  inputs: [String]!
+  outputs: [String]!
   actionId: ID
   params: [Param]
 }
