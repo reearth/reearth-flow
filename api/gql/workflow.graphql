@@ -18,11 +18,9 @@ type WorkflowNode {
 
 type Data {
   name: String
-  inputs: [String]!
-  outputs: [String]!
-  status: Status
-  content: String
-  transformerId: ID
+  inputs: [ID]!
+  outputs: [ID]!
+  actionId: ID
   params: [Param]
 }
 
