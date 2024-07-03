@@ -5,6 +5,3 @@ linters:
   enable:
     - gofmt
     - goimports
-
-goimports:
-  local-prefixes: github.com/reearth/reearth-backend
