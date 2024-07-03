@@ -2,60 +2,47 @@ package workflow
 
 import "testing"
 
-func TestWorkflow_ID(t *testing.T) {
-	wID := NewID()
-	w := &Workflow{id: wID}
-	if w.ID() != wID {
-		t.Errorf("TestWorkflow_ID failed")
+func TestWorkflow_SetID(t *testing.T) {
+	w := &Workflow{}
+	wId := NewID()
+	w.SetID(wId)
+	if w.id != wId {
+		t.Errorf("expected %s, got %s", wId, w.id)
 	}
 }
 
-func TestWorkflow_SetNodes(t *testing.T) {
+func TestWorkflow_SetName(t *testing.T) {
 	w := &Workflow{}
-	w.SetNodes([]NodeType{{}})
-	if len(w.nodes) != 1 {
-		t.Errorf("TestWorkflow_SetNodes failed")
+	wName := "name"
+	w.SetName(wName)
+	if w.name != wName {
+		t.Errorf("expected %s, got %s", wName, w.name)
 	}
 }
 
-func TestWorkflow_SetEdges(t *testing.T) {
+func TestWorkflow_SetEntryGraphId(t *testing.T) {
 	w := &Workflow{}
-	w.SetEdges([]Edges{{}})
-	if len(w.edges) != 1 {
-		t.Errorf("TestWorkflow_SetEdges failed")
+	wEntryGraphId := "entryGraphId"
+	w.SetEntryGraphId(wEntryGraphId)
+	if w.entryGraphId != wEntryGraphId {
+		t.Errorf("expected %s, got %s", wEntryGraphId, w.entryGraphId)
 	}
 }
 
-func TestWorkflow_SetIsMain(t *testing.T) {
+func TestWorkflow_SetWith(t *testing.T) {
 	w := &Workflow{}
-	w.SetIsMain(true)
-	if w.isMain != true {
-		t.Errorf("TestWorkflow_SetIsMain failed")
+	wWith := map[string]interface{}{"key": "value"}
+	w.SetWith(wWith)
+	if w.with["key"] != "value" {
+		t.Errorf("expected %v, got %v", wWith, w.with)
 	}
 }
 
-func TestWorkflow_SetProjectVersion(t *testing.T) {
+func TestWorkflow_SetGraphs(t *testing.T) {
 	w := &Workflow{}
-	w.SetProjectVersion(1)
-	if w.projectVersion != 1 {
-		t.Errorf("TestWorkflow_SetProjectVersion failed")
-	}
-}
-
-func TestWorkflow_SetProjectID(t *testing.T) {
-	w := &Workflow{}
-	pID := NewProjectID()
-	w.SetProjectID(pID)
-	if w.projectID != pID {
-		t.Errorf("TestWorkflow_SetProjectID failed")
-	}
-}
-
-func TestWorkflow_SetWorkspaceID(t *testing.T) {
-	w := &Workflow{}
-	wID := NewWorkspaceID()
-	w.SetWorkspaceID(wID)
-	if w.workspaceID != wID {
-		t.Errorf("TestWorkflow_SetWorkspaceID failed")
+	wGraphs := []Graph{{}}
+	w.SetGraphs(wGraphs)
+	if len(w.graphs) != 1 {
+		t.Errorf("expected %v, got %v", wGraphs, w.graphs)
 	}
 }

@@ -1,36 +1,49 @@
 package workflow
 
-type NodeType struct {
-	id   string
-	data Data
-}
-
-type Data struct {
+type Node struct {
+	id       string
 	name     string
-	inputs   []string
-	outputs  []string
-	actionID string
-	params   map[string]interface{}
+	nodeType string
+	action   string
+	with     map[string]interface{}
 }
 
-func (n *NodeType) ID() string {
+func (n *Node) ID() string {
 	return n.id
 }
 
-func (n *NodeType) Data() Data {
-	return Data{
-		name:     n.data.name,
-		inputs:   n.data.inputs,
-		outputs:  n.data.outputs,
-		actionID: n.data.actionID,
-		params:   n.data.params,
-	}
+func (n *Node) Name() string {
+	return n.name
 }
 
-func (n *NodeType) SetData(data Data) {
-	n.data = data
+func (n *Node) NodeType() string {
+	return n.nodeType
 }
 
-func (n *NodeType) SetID(id string) {
+func (n *Node) Action() string {
+	return n.action
+}
+
+func (n *Node) With() map[string]interface{} {
+	return n.with
+}
+
+func (n *Node) SetID(id string) {
 	n.id = id
+}
+
+func (n *Node) SetName(name string) {
+	n.name = name
+}
+
+func (n *Node) SetNodeType(nodeType string) {
+	n.nodeType = nodeType
+}
+
+func (n *Node) SetAction(action string) {
+	n.action = action
+}
+
+func (n *Node) SetWith(with map[string]interface{}) {
+	n.with = with
 }

@@ -6,31 +6,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEdge_ID(t *testing.T) {
-	e := &Edges{id: "id"}
-	assert.Equal(t, "id", e.ID())
+func TestEdge_SetID(t *testing.T) {
+	e := &Edge{}
+	e.SetID("id")
+	assert.Equal(t, "id", e.id)
 }
 
-func TestEdge_SetSource(t *testing.T) {
-	e := &Edges{}
-	e.SetSource([]string{"source"})
-	assert.Equal(t, []string{"source"}, e.source)
+func TestEdge_SetFrom(t *testing.T) {
+	e := &Edge{}
+	e.SetFrom([]string{"from"})
+	assert.Equal(t, []string{"from"}, e.from)
 }
 
-func TestEdge_SetSourceHandle(t *testing.T) {
-	e := &Edges{}
-	e.SetSourceHandle("sourceHandle")
-	assert.Equal(t, "sourceHandle", e.sourceHandle)
+func TestEdge_SetTo(t *testing.T) {
+	e := &Edge{}
+	e.SetTo([]string{"to"})
+	assert.Equal(t, []string{"to"}, e.to)
 }
 
-func TestEdge_SetTarget(t *testing.T) {
-	e := &Edges{}
-	e.SetTarget([]string{"target"})
-	assert.Equal(t, []string{"target"}, e.target)
+func TestEdge_SetFromPort(t *testing.T) {
+	e := &Edge{}
+	e.SetFromPort("fromPort")
+	assert.Equal(t, "fromPort", e.fromPort)
 }
 
-func TestEdge_SetTargetHandle(t *testing.T) {
-	e := &Edges{}
-	e.SetTargetHandle("targetHandle")
-	assert.Equal(t, "targetHandle", e.targetHandle)
+func TestEdge_SetToPort(t *testing.T) {
+	e := &Edge{}
+	e.SetToPort("toPort")
+	assert.Equal(t, "toPort", e.toPort)
 }

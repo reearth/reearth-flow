@@ -1,67 +1,49 @@
 package workflow
 
 type Workflow struct {
-	id             ID
-	nodes          []NodeType
-	edges          []Edges
-	isMain         bool
-	projectVersion int
-	projectID      ProjectID
-	workspaceID    WorkspaceID
+	id           ID
+	name         string
+	entryGraphId string
+	with         map[string]interface{}
+	graphs       []Graph
 }
 
 func (w *Workflow) ID() ID {
 	return w.id
 }
 
-func (w *Workflow) Nodes() []NodeType {
-	return w.nodes
+func (w *Workflow) Name() string {
+	return w.name
 }
 
-func (w *Workflow) Edges() []Edges {
-	return w.edges
+func (w *Workflow) EntryGraphId() string {
+	return w.entryGraphId
 }
 
-func (w *Workflow) IsMain() bool {
-	return w.isMain
+func (w *Workflow) With() map[string]interface{} {
+	return w.with
 }
 
-func (w *Workflow) ProjectVersion() int {
-	return w.projectVersion
-}
-
-func (w *Workflow) ProjectID() ProjectID {
-	return w.projectID
-}
-
-func (w *Workflow) WorkspaceID() WorkspaceID {
-	return w.workspaceID
+func (w *Workflow) Graphs() []Graph {
+	return w.graphs
 }
 
 func (w *Workflow) SetID(id ID) {
 	w.id = id
 }
 
-func (w *Workflow) SetNodes(nodes []NodeType) {
-	w.nodes = nodes
+func (w *Workflow) SetName(name string) {
+	w.name = name
 }
 
-func (w *Workflow) SetEdges(edges []Edges) {
-	w.edges = edges
+func (w *Workflow) SetEntryGraphId(entryGraphId string) {
+	w.entryGraphId = entryGraphId
 }
 
-func (w *Workflow) SetIsMain(isMain bool) {
-	w.isMain = isMain
+func (w *Workflow) SetWith(with map[string]interface{}) {
+	w.with = with
 }
 
-func (w *Workflow) SetProjectVersion(projectVersion int) {
-	w.projectVersion = projectVersion
-}
-
-func (w *Workflow) SetProjectID(projectID ProjectID) {
-	w.projectID = projectID
-}
-
-func (w *Workflow) SetWorkspaceID(workspaceID WorkspaceID) {
-	w.workspaceID = workspaceID
+func (w *Workflow) SetGraphs(graphs []Graph) {
+	w.graphs = graphs
 }

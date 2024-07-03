@@ -1,49 +1,49 @@
 package workflow
 
-type Edges struct {
-	id           string
-	source       []string
-	sourceHandle string
-	target       []string
-	targetHandle string
+type Edge struct {
+	id       string
+	from     []string
+	to       []string
+	fromPort string
+	toPort   string
 }
 
-func (e *Edges) ID() string {
+func (e *Edge) ID() string {
 	return e.id
 }
 
-func (e *Edges) Source() []string {
-	return e.source
+func (e *Edge) From() []string {
+	return e.from
 }
 
-func (e *Edges) SourceHandle() string {
-	return e.sourceHandle
+func (e *Edge) To() []string {
+	return e.to
 }
 
-func (e *Edges) Target() []string {
-	return e.target
+func (e *Edge) FromPort() string {
+	return e.fromPort
 }
 
-func (e *Edges) TargetHandle() string {
-	return e.targetHandle
+func (e *Edge) ToPort() string {
+	return e.toPort
 }
 
-func (e *Edges) SetID(id string) {
+func (e *Edge) SetID(id string) {
 	e.id = id
 }
 
-func (e *Edges) SetSource(source []string) {
-	e.source = source
+func (e *Edge) SetFrom(from []string) {
+	e.from = from
 }
 
-func (e *Edges) SetSourceHandle(sourceHandle string) {
-	e.sourceHandle = sourceHandle
+func (e *Edge) SetTo(to []string) {
+	e.to = to
 }
 
-func (e *Edges) SetTarget(target []string) {
-	e.target = target
+func (e *Edge) SetFromPort(fromPort string) {
+	e.fromPort = fromPort
 }
 
-func (e *Edges) SetTargetHandle(targetHandle string) {
-	e.targetHandle = targetHandle
+func (e *Edge) SetToPort(toPort string) {
+	e.toPort = toPort
 }
