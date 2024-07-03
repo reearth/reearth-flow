@@ -5,3 +5,7 @@ linters:
   enable:
     - gofmt
     - goimports
+
+linters-settings:
+  gofumpt:
+    module-path: "reearth-flow"
