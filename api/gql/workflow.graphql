@@ -1,29 +1,34 @@
-type Workflow implements Node {
+input InputWorkflow {
   id: ID!
-  nodes: [NodeType]
-  edges: [Edge]
+  name: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  nodes: [InputWorkflowNode]
+  edges: [InputWorkflowEdge]
   isMain: Boolean
 }
 
-type NodeType {
+input InputWorkflowNode {
   id: ID!
-  data: Data!
+  data: InputData!
 }
 
-type Data {
-  inputs: [String]!
-  outputs: [String]!
+input InputData {
+  name: String
+  inputs: [ID]!
+  outputs: [ID]!
   actionId: ID
-  params: [Param]
+  params: [InputParam]
 }
 
-type Param {
+input InputParam {
   id: ID!
   name: String!
-  value: ParamValue!
+  type: InputParamType!
+  value: Any
 }
 
-enum ParamValue {
+enum InputParamType {
   STRING
   NUMBER
   BOOLEAN
@@ -31,7 +36,7 @@ enum ParamValue {
   ARRAY
 }
 
-type Edge {
+input InputWorkflowEdge {
   id: ID!
   source: [ID!]!
   target: [ID!]!

@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -62,4 +63,17 @@ func (r *mutationResolver) DeleteProject(ctx context.Context, input gqlmodel.Del
 	}
 
 	return &gqlmodel.DeleteProjectPayload{ProjectID: input.ProjectID}, nil
+}
+
+func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunProjectInput) (*gqlmodel.RunProjectPayload, error) {
+	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("ExecuteProjectRun id", pid)
+
+	// TODO: Implement usecases(ctx).Project.Run and hook it up here
+
+	return &gqlmodel.RunProjectPayload{ProjectID: input.ProjectID, Started: true}, nil
 }
