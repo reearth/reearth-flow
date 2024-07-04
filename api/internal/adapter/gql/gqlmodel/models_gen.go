@@ -101,6 +101,45 @@ type DeleteWorkspacePayload struct {
 	WorkspaceID ID `json:"workspaceId"`
 }
 
+type InputData struct {
+	Name     *string       `json:"name,omitempty"`
+	Inputs   []*ID         `json:"inputs"`
+	Outputs  []*ID         `json:"outputs"`
+	ActionID *ID           `json:"actionId,omitempty"`
+	Params   []*InputParam `json:"params,omitempty"`
+}
+
+type InputParam struct {
+	ID    ID             `json:"id"`
+	Name  string         `json:"name"`
+	Type  InputParamType `json:"type"`
+	Value interface{}    `json:"value,omitempty"`
+}
+
+type InputWorkflow struct {
+	ID          ID                   `json:"id"`
+	Name        string               `json:"name"`
+	CreatedAt   time.Time            `json:"createdAt"`
+	UpdatedAt   time.Time            `json:"updatedAt"`
+	Nodes       []*InputWorkflowNode `json:"nodes,omitempty"`
+	Edges       []*InputWorkflowEdge `json:"edges,omitempty"`
+	IsMain      *bool                `json:"isMain,omitempty"`
+	Version     int                  `json:"version"`
+	ProjectID   ID                   `json:"projectId"`
+	WorkspaceID ID                   `json:"workspaceId"`
+}
+
+type InputWorkflowEdge struct {
+	ID     ID   `json:"id"`
+	Source []ID `json:"source"`
+	Target []ID `json:"target"`
+}
+
+type InputWorkflowNode struct {
+	ID   ID         `json:"id"`
+	Data *InputData `json:"data"`
+}
+
 type Me struct {
 	ID            ID           `json:"id"`
 	Name          string       `json:"name"`
@@ -184,6 +223,16 @@ type RemoveMemberFromWorkspacePayload struct {
 
 type RemoveMyAuthInput struct {
 	Auth string `json:"auth"`
+}
+
+type RunProjectInput struct {
+	ProjectID ID             `json:"projectId"`
+	Workflows *InputWorkflow `json:"workflows"`
+}
+
+type RunProjectPayload struct {
+	ProjectID ID   `json:"projectId"`
+	Started   bool `json:"started"`
 }
 
 type SignupInput struct {
@@ -305,6 +354,53 @@ func (e *AssetSortType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e AssetSortType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type InputParamType string
+
+const (
+	InputParamTypeString  InputParamType = "STRING"
+	InputParamTypeNumber  InputParamType = "NUMBER"
+	InputParamTypeBoolean InputParamType = "BOOLEAN"
+	InputParamTypeObject  InputParamType = "OBJECT"
+	InputParamTypeArray   InputParamType = "ARRAY"
+)
+
+var AllInputParamType = []InputParamType{
+	InputParamTypeString,
+	InputParamTypeNumber,
+	InputParamTypeBoolean,
+	InputParamTypeObject,
+	InputParamTypeArray,
+}
+
+func (e InputParamType) IsValid() bool {
+	switch e {
+	case InputParamTypeString, InputParamTypeNumber, InputParamTypeBoolean, InputParamTypeObject, InputParamTypeArray:
+		return true
+	}
+	return false
+}
+
+func (e InputParamType) String() string {
+	return string(e)
+}
+
+func (e *InputParamType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = InputParamType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid InputParamType", str)
+	}
+	return nil
+}
+
+func (e InputParamType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
