@@ -72,11 +72,8 @@ func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunPro
 	}
 
 	fmt.Println("ExecuteProjectRun id", pid)
-	fmt.Println("ExecuteProjectRun id", pid)
-	fmt.Println("ExecuteProjectRun id", pid)
-	// if err := usecases(ctx).Project.Delete(ctx, pid, getOperator(ctx)); err != nil {
-	// 	return nil, err
-	// }
+
+	// TODO: Implement usecases(ctx).Project.Run and hook it up here
 
 	return &gqlmodel.RunProjectPayload{ProjectID: input.ProjectID, Started: true}, nil
 }
