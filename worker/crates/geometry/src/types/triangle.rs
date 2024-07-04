@@ -49,6 +49,12 @@ impl<IC: Into<Coordinate<T, Z>> + Copy, T: CoordNum, Z: CoordNum> From<[IC; 3]> 
     }
 }
 
+impl From<Triangle3D<f64>> for Triangle2D<f64> {
+    fn from(p: Triangle3D<f64>) -> Triangle2D<f64> {
+        Triangle2D::new(p.0.into(), p.1.into(), p.2.into())
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum> Surface for Triangle<T, Z> {}
 
 impl<T, Z> RelativeEq for Triangle<T, Z>

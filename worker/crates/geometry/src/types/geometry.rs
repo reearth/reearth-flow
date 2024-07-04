@@ -56,6 +56,30 @@ impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
     }
 }
 
+impl From<Geometry3D<f64>> for Geometry2D<f64> {
+    fn from(geos: Geometry3D<f64>) -> Self {
+        match geos {
+            Geometry3D::Point(p) => Geometry2D::Point(p.into()),
+            Geometry3D::Line(l) => Geometry2D::Line(l.into()),
+            Geometry3D::LineString(ls) => Geometry2D::LineString(ls.into()),
+            Geometry3D::Polygon(p) => Geometry2D::Polygon(p.into()),
+            Geometry3D::MultiPoint(mp) => Geometry2D::MultiPoint(mp.into()),
+            Geometry3D::MultiLineString(mls) => Geometry2D::MultiLineString(mls.into()),
+            Geometry3D::MultiPolygon(mp) => Geometry2D::MultiPolygon(mp.into()),
+            Geometry3D::Rect(rect) => Geometry2D::Rect(rect.into()),
+            Geometry3D::Triangle(triangle) => Geometry2D::Triangle(triangle.into()),
+            Geometry3D::Solid(solid) => Geometry2D::Solid(solid.into()),
+            Geometry3D::GeometryCollection(gc) => {
+                let mut new_gc = Vec::new();
+                for g in gc {
+                    new_gc.push(g.into());
+                }
+                Geometry2D::GeometryCollection(new_gc)
+            }
+        }
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for Geometry<T, Z> {
     fn from(x: Point<T, Z>) -> Self {
         Self::Point(x)

@@ -20,6 +20,9 @@ pub enum Error {
 
     #[error("DirError: {0}")]
     Dir(String),
+
+    #[error("StrError: {0}")]
+    Str(String),
 }
 
 impl Error {

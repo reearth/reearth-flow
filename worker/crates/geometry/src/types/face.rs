@@ -15,3 +15,9 @@ impl<T: CoordNum, Z: CoordNum> Face<T, Z> {
         Self(points)
     }
 }
+
+impl From<Face3D<f64>> for Face2D<f64> {
+    fn from(p: Face3D<f64>) -> Face2D<f64> {
+        Face2D::new(p.0.into_iter().map(|c| c.into()).collect())
+    }
+}

@@ -1,6 +1,24 @@
 {
   "actions": [
     {
+      "name": "AreaOnAreaOverlayer",
+      "type": "processor",
+      "description": "Overlays an area on another area",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
+        "remnants",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "AttributeAggregator",
       "type": "processor",
       "description": "Aggregates features by attributes",
@@ -234,6 +252,48 @@
       ],
       "categories": [
         "Attribute"
+      ]
+    },
+    {
+      "name": "Bufferer",
+      "type": "processor",
+      "description": "Buffers a geometry",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "BufferType": {
+            "enum": [
+              "area2d"
+            ],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "buffer_type": {
+            "$ref": "#/definitions/BufferType"
+          },
+          "distance": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "buffer_type",
+          "distance"
+        ],
+        "title": "Bufferer",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
       ]
     },
     {
@@ -992,6 +1052,39 @@
         "multiPoint",
         "point",
         "tin"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryReplacer",
+      "type": "processor",
+      "description": "Replaces the geometry of a feature with a new geometry.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "sourceAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "sourceAttribute"
+        ],
+        "title": "GeometryReplacer",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
       ],
       "categories": [
         "Geometry"

@@ -88,6 +88,10 @@ impl<T: CoordNum, Z: CoordNum> MultiPolygon<T, Z> {
             .unwrap()
             .interiors_mut(|interiors| interiors.push(iter));
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 impl<T: CoordNum, Z: CoordNum> Default for MultiPolygon<T, Z> {
@@ -107,6 +111,13 @@ impl<'a> From<NMultiPolygon3<'a>> for MultiPolygon<f64> {
     #[inline]
     fn from(mpoly: NMultiPolygon3<'a>) -> Self {
         mpoly.iter().map(Polygon::from).collect()
+    }
+}
+
+impl From<MultiPolygon3D<f64>> for MultiPolygon2D<f64> {
+    #[inline]
+    fn from(mpoly: MultiPolygon3D<f64>) -> Self {
+        MultiPolygon2D::new(mpoly.0.into_iter().map(Polygon2D::from).collect())
     }
 }
 
