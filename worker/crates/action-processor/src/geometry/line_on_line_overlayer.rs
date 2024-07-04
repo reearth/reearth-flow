@@ -165,7 +165,7 @@ impl LineOnLineOverlayer {
                 let lines = line_string.lines();
                 self.handle_2d_lines(feature, geometry, lines.into_iter().collect(), ctx, fw);
             }
-            _ => unimplemented!(),
+            _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
         }
         fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
     }
@@ -240,7 +240,7 @@ impl LineOnLineOverlayer {
                 let lines = line_string.lines();
                 self.handle_3d_lines(feature, geometry, lines.into_iter().collect(), ctx, fw);
             }
-            _ => unimplemented!(),
+            _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
         }
         fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
     }
