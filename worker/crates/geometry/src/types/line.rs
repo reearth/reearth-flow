@@ -90,6 +90,12 @@ impl<T: CoordNum> Line2D<T> {
     }
 }
 
+impl From<Line3D<f64>> for Line2D<f64> {
+    fn from(line: Line3D<f64>) -> Self {
+        Line::new(line.start.x_y(), line.end.x_y())
+    }
+}
+
 impl<T: CoordNum> From<[(T, T); 2]> for Line<T, NoValue> {
     fn from(coord: [(T, T); 2]) -> Self {
         Line::new(coord[0], coord[1])

@@ -74,4 +74,33 @@ mod tests {
         let polygon = line.to_polygon(0.5, 4);
         println!("{:?}", polygon);
     }
+    #[test]
+    fn test_polygon_to_polygon() {
+        let polygon = Polygon2D::new(
+            vec![
+                coord! { x: 0.0, y: 0.0 },
+                coord! { x: 1.0, y: 0.0 },
+                coord! { x: 1.0, y: 1.0 },
+                coord! { x: 0.0, y: 1.0 },
+                coord! { x: 0.0, y: 0.0 },
+            ]
+            .into(),
+            Vec::new(),
+        );
+        let buffered_polygon = polygon.to_polygon(0.005, 1);
+        // Expected polygon with 4 segments (square around the original polygon)
+        let expected_polygon = Polygon2D::new(
+            vec![
+                coord! { x: 0.5, y: -0.5 },
+                coord! { x: 1.5, y: -0.5 },
+                coord! { x: 1.5, y: 1.5 },
+                coord! { x: -0.5, y: 1.5 },
+                coord! { x: 0.5, y: -0.5 },
+            ]
+            .into(),
+            Vec::new(),
+        );
+        println!("{:?}", buffered_polygon);
+        println!("{:?}", expected_polygon);
+    }
 }
