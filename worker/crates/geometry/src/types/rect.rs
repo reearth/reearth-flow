@@ -125,6 +125,13 @@ impl From<Rect3D<f64>> for Vec<NaPoint3<f64>> {
     }
 }
 
+impl From<Rect3D<f64>> for Rect2D<f64> {
+    #[inline]
+    fn from(p: Rect3D<f64>) -> Rect2D<f64> {
+        Rect2D::new(p.min.x_y(), p.max.x_y())
+    }
+}
+
 impl<T: CoordFloat> Rect<T, NoValue> {
     pub fn center(self) -> Coordinate<T, NoValue> {
         let two = T::one() + T::one();

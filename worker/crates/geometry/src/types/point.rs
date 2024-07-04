@@ -16,6 +16,12 @@ pub struct Point<T: CoordNum = f64, Z: CoordNum = f64>(pub Coordinate<T, Z>);
 pub type Point2D<T> = Point<T, NoValue>;
 pub type Point3D<T> = Point<T, T>;
 
+impl From<Point3D<f64>> for Point2D<f64> {
+    fn from(p: Point3D<f64>) -> Point2D<f64> {
+        Point2D::new(p.0.x, p.0.y)
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum> From<Coordinate<T, Z>> for Point<T, Z> {
     fn from(coords: Coordinate<T, Z>) -> Self {
         Self(coords)

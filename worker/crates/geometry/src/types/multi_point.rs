@@ -75,6 +75,13 @@ impl<T: CoordNum, Z: CoordNum> MultiPoint<T, Z> {
     }
 }
 
+impl From<MultiPoint3D<f64>> for MultiPoint2D<f64> {
+    #[inline]
+    fn from(mp: MultiPoint3D<f64>) -> Self {
+        MultiPoint2D::new(mp.0.into_iter().map(|p| p.into()).collect())
+    }
+}
+
 impl<'a> From<NMultiPoint2<'a>> for MultiPoint2D<f64> {
     #[inline]
     fn from(line_strings: NMultiPoint2<'a>) -> Self {

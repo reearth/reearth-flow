@@ -237,6 +237,48 @@
       ]
     },
     {
+      "name": "Bufferer",
+      "type": "processor",
+      "description": "Coerces the geometry of a feature to a specific geometry",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "BufferType": {
+            "enum": [
+              "area2d"
+            ],
+            "type": "string"
+          }
+        },
+        "properties": {
+          "buffer_type": {
+            "$ref": "#/definitions/BufferType"
+          },
+          "distance": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "buffer_type",
+          "distance"
+        ],
+        "title": "Bufferer",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "CoordinateSystemSetter",
       "type": "processor",
       "description": "Sets the coordinate system of a feature",
