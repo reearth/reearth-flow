@@ -1058,6 +1058,39 @@
       ]
     },
     {
+      "name": "GeometryReplacer",
+      "type": "processor",
+      "description": "Replaces the geometry of a feature with a new geometry.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "sourceAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "required": [
+          "sourceAttribute"
+        ],
+        "title": "GeometryReplacer",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "GeometrySplitter",
       "type": "processor",
       "description": "Split geometry by type",

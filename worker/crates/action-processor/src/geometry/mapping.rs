@@ -10,7 +10,8 @@ use super::{
     hole_counter::HoleCounterFactory, hole_extractor::HoleExtractorFactory,
     line_on_line_overlayer::LineOnLineOverlayerFactory,
     orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
-    reprojector::ReprojectorFactory, splitter::GeometrySplitterFactory,
+    replacer::GeometryReplacerFactory, reprojector::ReprojectorFactory,
+    splitter::GeometrySplitterFactory,
     three_dimention_box_replacer::ThreeDimentionBoxReplacerFactory,
     two_dimention_forcer::TwoDimentionForcerFactory, validator::GeometryValidatorFactory,
 };
@@ -35,6 +36,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<LineOnLineOverlayerFactory>::default(),
         Box::<BuffererFactory>::default(),
         Box::<AreaOnAreaOverlayerFactory>::default(),
+        Box::<GeometryReplacerFactory>::default(),
     ];
     factories
         .into_iter()
