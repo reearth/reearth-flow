@@ -38,17 +38,17 @@ strip = true
 flow-websocket-domain = {path = "crates/domain"}
 
 async-trait = "0.1.80"
-chrono = {version = "0.4", features = ["serde"]}
-google-cloud-storage = "0.18"
+chrono = {version = "0.4.38", features = ["serde"]}
+google-cloud-storage = "0.20.0"
 redis = {version = "0.25.4", features = ["aio", "tokio-comp"]}
-rslock = "0.3.0"
-serde = {version = "1.0", features = ["derive"]}
-serde_json = {version = "1.0.117", features = ["arbitrary_precision"]}
+rslock = "0.4.0"
+serde = {version = "1.0.203", features = ["derive"]}
+serde_json = {version = "1.0.120", features = ["arbitrary_precision"]}
 tokio = {version = "1.38.0", features = ["full", "time"]}
-uuid = {version = "1.8.0", features = [
+uuid = {version = "1.9.1", features = [
   "v4",
   "fast-rng",
   "macro-diagnostics",
   "serde",
 ]}
-yrs = "0.18"
+yrs = "0.18.8"

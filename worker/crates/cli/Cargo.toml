@@ -25,7 +25,7 @@ reearth-flow-telemetry.workspace = true
 reearth-flow-types.workspace = true
 
 bytes.workspace = true
-clap = {version = "4.5.4", features = ["env", "string"]}
+clap = {version = "4.5.8", features = ["env", "string"]}
 colored = "2.1.0"
 directories.workspace = true
 opentelemetry.workspace = true
