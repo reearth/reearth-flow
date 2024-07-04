@@ -12,6 +12,7 @@ pub mod line_on_line_overlayer;
 pub mod mapping;
 pub mod orientation_extractor;
 pub mod planarity_filter;
+pub mod replacer;
 pub mod reprojector;
 pub mod splitter;
 pub mod three_dimention_box_replacer;
