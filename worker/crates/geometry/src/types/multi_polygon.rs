@@ -110,6 +110,13 @@ impl<'a> From<NMultiPolygon3<'a>> for MultiPolygon<f64> {
     }
 }
 
+impl From<MultiPolygon3D<f64>> for MultiPolygon2D<f64> {
+    #[inline]
+    fn from(mpoly: MultiPolygon3D<f64>) -> Self {
+        MultiPolygon2D::new(mpoly.0.into_iter().map(Polygon2D::from).collect())
+    }
+}
+
 pub struct Iter<'a, T: CoordNum> {
     mpoly: &'a MultiPolygon<T>,
     pos: usize,

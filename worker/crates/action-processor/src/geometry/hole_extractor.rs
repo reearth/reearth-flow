@@ -3,6 +3,7 @@ use std::{collections::HashMap, vec};
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::{
     geometry::{Geometry2D, Geometry3D},
+    multi_polygon::{MultiPolygon2D, MultiPolygon3D},
     polygon::{Polygon2D, Polygon3D},
 };
 use reearth_flow_runtime::{
@@ -150,15 +151,34 @@ fn handle_polygon2d(
         exterior_feature.geometry = Some(exterior_geometry);
         fw.send(ctx.new_with_feature_and_port(exterior_feature, OUTERSHELL_PORT.clone()));
     }
-    for interior in polygon.interiors().iter() {
-        let interior_polygon = Polygon2D::new(interior.clone(), vec![]);
-        if let Some(ref geometry) = &feature.geometry {
-            let mut interior_feature = feature.clone();
-            let mut interior_geometry = geometry.clone();
-            interior_geometry.value =
-                GeometryValue::FlowGeometry2D(Geometry2D::Polygon(interior_polygon));
-            interior_feature.geometry = Some(interior_geometry);
-            fw.send(ctx.new_with_feature_and_port(interior_feature, OUTERSHELL_PORT.clone()));
+    match polygon.interiors().len() {
+        0 => (),
+        1 => {
+            let interior = polygon.interiors().first().unwrap();
+            let interior_polygon = Polygon2D::new(interior.clone(), vec![]);
+            if let Some(ref geometry) = &feature.geometry {
+                let mut interior_feature = feature.clone();
+                let mut interior_geometry = geometry.clone();
+                interior_geometry.value =
+                    GeometryValue::FlowGeometry2D(Geometry2D::Polygon(interior_polygon));
+                interior_feature.geometry = Some(interior_geometry);
+                fw.send(ctx.new_with_feature_and_port(interior_feature, HOLE_PORT.clone()));
+            }
+        }
+        _ => {
+            let mut polygons = Vec::<Polygon2D<f64>>::new();
+            for interior in polygon.interiors().iter() {
+                polygons.push(Polygon2D::new(interior.clone(), vec![]));
+            }
+            if let Some(ref geometry) = &feature.geometry {
+                let mut interior_feature = feature.clone();
+                let mut interior_geometry = geometry.clone();
+                interior_geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::MultiPolygon(
+                    MultiPolygon2D::new(polygons),
+                ));
+                interior_feature.geometry = Some(interior_geometry);
+                fw.send(ctx.new_with_feature_and_port(interior_feature, HOLE_PORT.clone()));
+            }
         }
     }
 }
@@ -179,15 +199,34 @@ fn handle_polygon3d(
         exterior_feature.geometry = Some(exterior_geometry);
         fw.send(ctx.new_with_feature_and_port(exterior_feature, OUTERSHELL_PORT.clone()));
     }
-    for interior in polygon.interiors().iter() {
-        let interior_polygon = Polygon3D::new(interior.clone(), vec![]);
-        if let Some(ref geometry) = &feature.geometry {
-            let mut interior_feature = feature.clone();
-            let mut interior_geometry = geometry.clone();
-            interior_geometry.value =
-                GeometryValue::FlowGeometry3D(Geometry3D::Polygon(interior_polygon));
-            interior_feature.geometry = Some(interior_geometry);
-            fw.send(ctx.new_with_feature_and_port(interior_feature, OUTERSHELL_PORT.clone()));
+    match polygon.interiors().len() {
+        0 => (),
+        1 => {
+            let interior = polygon.interiors().first().unwrap();
+            let interior_polygon = Polygon3D::new(interior.clone(), vec![]);
+            if let Some(ref geometry) = &feature.geometry {
+                let mut interior_feature = feature.clone();
+                let mut interior_geometry = geometry.clone();
+                interior_geometry.value =
+                    GeometryValue::FlowGeometry3D(Geometry3D::Polygon(interior_polygon));
+                interior_feature.geometry = Some(interior_geometry);
+                fw.send(ctx.new_with_feature_and_port(interior_feature, HOLE_PORT.clone()));
+            }
+        }
+        _ => {
+            let mut polygons = Vec::<Polygon3D<f64>>::new();
+            for interior in polygon.interiors().iter() {
+                polygons.push(Polygon3D::new(interior.clone(), vec![]));
+            }
+            if let Some(ref geometry) = &feature.geometry {
+                let mut interior_feature = feature.clone();
+                let mut interior_geometry = geometry.clone();
+                interior_geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::MultiPolygon(
+                    MultiPolygon3D::new(polygons),
+                ));
+                interior_feature.geometry = Some(interior_geometry);
+                fw.send(ctx.new_with_feature_and_port(interior_feature, HOLE_PORT.clone()));
+            }
         }
     }
 }

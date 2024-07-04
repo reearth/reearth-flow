@@ -77,7 +77,14 @@ impl Processor for TwoDimentionForcer {
             GeometryValue::FlowGeometry2D(_) => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
             }
-            GeometryValue::FlowGeometry3D(_) => unimplemented!(),
+            GeometryValue::FlowGeometry3D(geos) => {
+                let value: Geometry2D = geos.clone().into();
+                let mut geometry = geometry.clone();
+                geometry.value = GeometryValue::FlowGeometry2D(value);
+                let mut feature = feature.clone();
+                feature.geometry = Some(geometry);
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            }
             GeometryValue::CityGmlGeometry(gml) => {
                 let value: Geometry2D = gml.clone().into();
                 let mut geometry = geometry.clone();

@@ -51,6 +51,10 @@ pub(super) enum GeometryProcessorError {
     LineOnLineOverlayerFactory(String),
     #[error("LineOnLineOverlayer error: {0}")]
     LineOnLineOverlayer(String),
+    #[error("Bufferer Factory error: {0}")]
+    BuffererFactory(String),
+    #[error("Bufferer error: {0}")]
+    Bufferer(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
