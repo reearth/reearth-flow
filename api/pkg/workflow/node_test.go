@@ -6,32 +6,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNode_SetID(t *testing.T) {
+func TestNodeSetters(t *testing.T) {
 	n := &Node{}
-	n.SetID("id")
-	assert.Equal(t, "id", n.id)
-}
+	n.SetID("testID")
+	assert.Equal(t, "testID", n.id, "SetID should correctly set the id field")
+	n.SetName("testName")
+	assert.Equal(t, "testName", n.name, "SetName should correctly set the name field")
+	n.SetNodeType("testType")
+	assert.Equal(t, "testType", n.nodeType, "SetNodeType should correctly set the nodeType field")
+	n.SetAction("testAction")
+	assert.Equal(t, "testAction", n.action, "SetAction should correctly set the action field")
+	with := map[string]interface{}{"key": "value"}
+	n.SetWith(with)
+	assert.Equal(t, with, n.with, "SetWith should correctly set the with field")
 
-func TestNode_SetName(t *testing.T) {
-	n := &Node{}
-	n.SetName("name")
-	assert.Equal(t, "name", n.name)
-}
-
-func TestNode_SetNodeType(t *testing.T) {
-	n := &Node{}
-	n.SetNodeType("type")
-	assert.Equal(t, "type", n.nodeType)
-}
-
-func TestNode_SetAction(t *testing.T) {
-	n := &Node{}
-	n.SetAction("action")
-	assert.Equal(t, "action", n.action)
-}
-
-func TestNode_SetWith(t *testing.T) {
-	n := &Node{}
-	n.SetWith(map[string]interface{}{"key": "value"})
-	assert.Equal(t, map[string]interface{}{"key": "value"}, n.with)
 }

@@ -6,32 +6,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEdge_SetID(t *testing.T) {
+func TestEdgeSetters(t *testing.T) {
 	e := &Edge{}
-	e.SetID("id")
-	assert.Equal(t, "id", e.id)
-}
-
-func TestEdge_SetFrom(t *testing.T) {
-	e := &Edge{}
-	e.SetFrom([]string{"from"})
-	assert.Equal(t, []string{"from"}, e.from)
-}
-
-func TestEdge_SetTo(t *testing.T) {
-	e := &Edge{}
-	e.SetTo([]string{"to"})
-	assert.Equal(t, []string{"to"}, e.to)
-}
-
-func TestEdge_SetFromPort(t *testing.T) {
-	e := &Edge{}
+	e.SetID("testID")
+	assert.Equal(t, "testID", e.id, "SetID should correctly set the id field")
+	fromNodes := []string{"node1", "node2"}
+	e.SetFrom(fromNodes)
+	assert.Equal(t, fromNodes, e.from, "SetFrom should correctly set the from field")
+	toNodes := []string{"node3", "node4"}
+	e.SetTo(toNodes)
+	assert.Equal(t, toNodes, e.to, "SetTo should correctly set the to field")
 	e.SetFromPort("fromPort")
-	assert.Equal(t, "fromPort", e.fromPort)
-}
-
-func TestEdge_SetToPort(t *testing.T) {
-	e := &Edge{}
+	assert.Equal(t, "fromPort", e.fromPort, "SetFromPort should correctly set the fromPort field")
 	e.SetToPort("toPort")
-	assert.Equal(t, "toPort", e.toPort)
+	assert.Equal(t, "toPort", e.toPort, "SetToPort should correctly set the toPort field")
 }
