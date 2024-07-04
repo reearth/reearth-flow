@@ -1,6 +1,6 @@
 services:
   jaeger:
-    image: "jaegertracing/all-in-one:1.57"
+    image: "jaegertracing/all-in-one:1.58"
     ports:
       - "16686:16686"
       - "14268:14268"
@@ -9,7 +9,7 @@ services:
       - COLLECTOR_OTLP_ENABLED=true
 
   otel-collector:
-    image: otel/opentelemetry-collector:0.101.0
+    image: otel/opentelemetry-collector:0.104.0
     restart: always
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:

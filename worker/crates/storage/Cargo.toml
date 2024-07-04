@@ -17,7 +17,7 @@ object_store.workspace = true
 opendal.workspace = true
 parking_lot.workspace = true
 reearth-flow-common.workspace = true
-reqwest = {version = "0.12.4", features = ["blocking"]}
+reqwest = {version = "0.12.5", features = ["blocking"]}
 serde.workspace = true
 serde_json.workspace = true
 serde_with.workspace = true

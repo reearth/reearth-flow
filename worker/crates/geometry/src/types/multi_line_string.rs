@@ -50,6 +50,13 @@ impl From<MultiLineString3D<f64>> for Vec<NaPoint3<f64>> {
     }
 }
 
+impl From<MultiLineString3D<f64>> for MultiLineString2D<f64> {
+    #[inline]
+    fn from(p: MultiLineString3D<f64>) -> MultiLineString2D<f64> {
+        MultiLineString2D::new(p.0.into_iter().map(|c| c.into()).collect())
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum, ILS: Into<LineString<T, Z>>> From<ILS> for MultiLineString<T, Z> {
     fn from(ls: ILS) -> Self {
         Self(vec![ls.into()])
