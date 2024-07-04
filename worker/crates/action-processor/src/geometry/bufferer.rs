@@ -28,7 +28,7 @@ impl ProcessorFactory for BuffererFactory {
     }
 
     fn description(&self) -> &str {
-        "Coerces the geometry of a feature to a specific geometry"
+        "Buffers a geometry"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

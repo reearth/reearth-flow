@@ -1,6 +1,24 @@
 {
   "actions": [
     {
+      "name": "AreaOnAreaOverlayer",
+      "type": "processor",
+      "description": "Overlays an area on another area",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
+        "remnants",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "AttributeAggregator",
       "type": "processor",
       "description": "Aggregates features by attributes",
@@ -239,7 +257,7 @@
     {
       "name": "Bufferer",
       "type": "processor",
-      "description": "Coerces the geometry of a feature to a specific geometry",
+      "description": "Buffers a geometry",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "definitions": {

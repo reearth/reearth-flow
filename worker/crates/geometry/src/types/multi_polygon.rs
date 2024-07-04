@@ -88,6 +88,10 @@ impl<T: CoordNum, Z: CoordNum> MultiPolygon<T, Z> {
             .unwrap()
             .interiors_mut(|interiors| interiors.push(iter));
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 impl<T: CoordNum, Z: CoordNum> Default for MultiPolygon<T, Z> {
