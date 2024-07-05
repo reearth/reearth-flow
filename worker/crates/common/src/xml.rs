@@ -7,6 +7,8 @@ use libxml::schemas::SchemaValidationContext;
 use libxml::tree::document;
 use libxml::xpath::Context;
 
+use crate::uri::Uri;
+
 pub type XmlDocument = document::Document;
 pub type XmlXpathValue = libxml::xpath::Object;
 pub type XmlContext = libxml::xpath::Context;
@@ -132,6 +134,17 @@ pub fn get_node_tag(node: &XmlNode) -> String {
         Some(ns) => format!("{}:{}", ns.get_prefix(), node.get_name()).to_string(),
         None => node.get_name(),
     }
+}
+
+pub fn get_node_id(uri: &Uri, node: &XmlNode) -> String {
+    let tag = get_node_tag(node);
+    let mut key_values = node
+        .get_properties()
+        .iter()
+        .map(|(k, v)| format!("{}={}", k, v))
+        .collect::<Vec<_>>();
+    key_values.sort();
+    format!("{}:{}[{}]", uri, tag, key_values.join(","))
 }
 
 pub fn get_readonly_node_tag(node: &XmlRoNode) -> String {

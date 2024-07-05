@@ -250,7 +250,7 @@ fn action_value_to_fragment(
     let document = xml::parse(raw_xml.as_str())
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?;
 
-    let fragments = generate_fragment(&document, &elements_to_match, &elements_to_exclude)?;
+    let fragments = generate_fragment(&url, &document, &elements_to_match, &elements_to_exclude)?;
     let xml_id_maps = fragments
         .into_iter()
         .map(|fragment| (fragment.xml_id.clone(), (uuid::Uuid::new_v4(), fragment)))
@@ -268,6 +268,7 @@ fn action_value_to_fragment(
 }
 
 fn generate_fragment(
+    uri: &Uri,
     document: &XmlDocument,
     elements_to_match: &[String],
     elements_to_exclude: &[String],
@@ -312,6 +313,7 @@ fn generate_fragment(
             .get_type()
             .ok_or(XmlProcessorError::Fragmenter("No node type".to_string()))?;
         if node_type == xml::XmlNodeType::ElementNode {
+            let xml_id = xml::get_node_id(uri, node);
             let tag = xml::get_node_tag(node);
             let fragment = {
                 for ns in root.get_namespace_declarations().iter() {
@@ -330,21 +332,14 @@ fn generate_fragment(
                 xml::node_to_xml_string(document, node)
                     .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?
             };
-            let xml_id = reearth_flow_common::str::to_hash(&fragment);
-            let parent_fragment = if let Some(mut parent) = node.get_parent() {
-                if let Ok(fragment) = xml::node_to_xml_string(document, &mut parent) {
-                    Some(reearth_flow_common::str::to_hash(&fragment))
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
+            let xml_parent_id = node
+                .get_parent()
+                .map(|parent| xml::get_node_id(uri, &parent));
             result.push(XmlFragment {
                 xml_id,
                 fragment,
                 matched_tag: tag,
-                xml_parent_id: parent_fragment,
+                xml_parent_id,
             });
         }
     }
