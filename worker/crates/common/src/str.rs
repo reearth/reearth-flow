@@ -13,6 +13,13 @@ pub fn base64_encode<T: AsRef<[u8]>>(s: T) -> String {
     general_purpose::STANDARD.encode(s)
 }
 
+pub fn base64_decode<T: AsRef<[u8]>>(s: T) -> crate::Result<String> {
+    let result = general_purpose::STANDARD
+        .decode(s)
+        .map_err(|e| crate::Error::Str(format!("{}", e)))?;
+    String::from_utf8(result).map_err(|e| crate::Error::Str(format!("{}", e)))
+}
+
 pub fn remove_trailing_slash(s: &str) -> String {
     if s.ends_with('/') {
         s.strip_suffix('/').unwrap_or_default().to_string()
