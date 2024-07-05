@@ -138,3 +138,25 @@ where
         }
     }
 }
+
+pub fn insert_map_element<K, V>(
+    map: &mut HashMap<K, HashMap<K, V>>,
+    source_key: K,
+    key: K,
+    value: V,
+) where
+    K: Eq + Hash,
+{
+    match map.entry(source_key) {
+        Entry::Occupied(mut entry) => {
+            entry.get_mut().insert(key, value);
+        }
+        Entry::Vacant(entry) => {
+            entry.insert({
+                let mut new_map = HashMap::new();
+                new_map.insert(key, value);
+                new_map
+            });
+        }
+    }
+}
