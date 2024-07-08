@@ -1,14 +1,16 @@
 package workflow
 
+import "github.com/reearth/reearth-flow/api/pkg/id"
+
 type Node struct {
-	id       string
+	id       id.NodeID
 	name     string
 	nodeType string
 	action   string
 	with     map[string]interface{}
 }
 
-func (n *Node) ID() string {
+func (n *Node) ID() id.NodeID {
 	return n.id
 }
 
@@ -28,7 +30,7 @@ func (n *Node) With() map[string]interface{} {
 	return n.with
 }
 
-func (n *Node) SetID(id string) {
+func (n *Node) SetID(id id.NodeID) {
 	n.id = id
 }
 

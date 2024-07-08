@@ -4,7 +4,7 @@ import "testing"
 
 func TestGraph_SetID(t *testing.T) {
 	g := &Graph{}
-	gId := NewID()
+	gId := NewGraphID()
 	g.SetID(gId)
 	if g.id != gId {
 		t.Errorf("expected %s, got %s", gId, g.id)
