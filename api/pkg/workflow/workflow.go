@@ -8,6 +8,16 @@ type Workflow struct {
 	graphs       []Graph
 }
 
+func NewWorkflow(id ID, name string, entryGraphId string, with map[string]interface{}, graphs []Graph) *Workflow {
+	return &Workflow{
+		id:           id,
+		name:         name,
+		entryGraphId: entryGraphId,
+		with:         with,
+		graphs:       graphs,
+	}
+}
+
 func (w *Workflow) ID() ID {
 	return w.id
 }
@@ -26,24 +36,4 @@ func (w *Workflow) With() map[string]interface{} {
 
 func (w *Workflow) Graphs() []Graph {
 	return w.graphs
-}
-
-func (w *Workflow) SetID(id ID) {
-	w.id = id
-}
-
-func (w *Workflow) SetName(name string) {
-	w.name = name
-}
-
-func (w *Workflow) SetEntryGraphId(entryGraphId string) {
-	w.entryGraphId = entryGraphId
-}
-
-func (w *Workflow) SetWith(with map[string]interface{}) {
-	w.with = with
-}
-
-func (w *Workflow) SetGraphs(graphs []Graph) {
-	w.graphs = graphs
 }

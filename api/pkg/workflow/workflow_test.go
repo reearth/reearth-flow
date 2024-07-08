@@ -1,30 +1,28 @@
 package workflow
 
-import "testing"
+import (
+	"testing"
 
-func TestWorkflowSetters(t *testing.T) {
-	w := &Workflow{}
-	wId := NewID()
-	w.SetID(wId)
-	if w.id != wId {
-		t.Errorf("expected %s, got %s", wId, w.id)
+	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestNewWorkflow(t *testing.T) {
+	id := id.NewWorkflowID()
+	name := "Test Workflow"
+	entryGraphId := "graph1"
+	with := map[string]interface{}{"key": "value"}
+	graphs := []Graph{{}}
+
+	w := NewWorkflow(id, name, entryGraphId, with, graphs)
+
+	want := &Workflow{
+		id:           id,
+		name:         name,
+		entryGraphId: entryGraphId,
+		with:         with,
+		graphs:       graphs,
 	}
-	w.SetName("testName")
-	if w.name != "testName" {
-		t.Errorf("expected %s, got %s", "testName", w.name)
-	}
-	w.SetEntryGraphId("testEntryGraphId")
-	if w.entryGraphId != "testEntryGraphId" {
-		t.Errorf("expected %s, got %s", "testEntryGraphId", w.entryGraphId)
-	}
-	wWith := map[string]interface{}{"key": "value"}
-	w.SetWith(wWith)
-	if w.with["key"] != "value" {
-		t.Errorf("expected %v, got %v", wWith, w.with)
-	}
-	wGraphs := []Graph{{}}
-	w.SetGraphs(wGraphs)
-	if len(w.graphs) != 1 {
-		t.Errorf("expected %v, got %v", wGraphs, w.graphs)
-	}
+
+	assert.Equal(t, w, want)
 }
