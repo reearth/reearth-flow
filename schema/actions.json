@@ -1269,6 +1269,22 @@
       ]
     },
     {
+      "name": "PLATEAU.AttributeFlattener",
+      "type": "processor",
+      "description": "AttributeFlattener",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU.DictionariesInitiator",
       "type": "processor",
       "description": "Initializes dictionaries for PLATEAU",
