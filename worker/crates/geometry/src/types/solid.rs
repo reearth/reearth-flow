@@ -27,3 +27,13 @@ impl<T: CoordNum, Z: CoordNum> Solid<T, Z> {
             .collect()
     }
 }
+
+impl From<Solid3D<f64>> for Solid2D<f64> {
+    fn from(p: Solid3D<f64>) -> Solid2D<f64> {
+        Solid2D::new(
+            p.bottom.into_iter().map(|c| c.into()).collect(),
+            p.top.into_iter().map(|c| c.into()).collect(),
+            p.sides.into_iter().map(|c| c.into()).collect(),
+        )
+    }
+}

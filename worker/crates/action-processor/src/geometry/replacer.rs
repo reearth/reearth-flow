@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use reearth_flow_common::str::base64_encode;
+use reearth_flow_common::str::base64_decode;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{Attribute, AttributeValue, Geometry};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -16,19 +16,19 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct GeometryExtractorFactory;
+pub struct GeometryReplacerFactory;
 
-impl ProcessorFactory for GeometryExtractorFactory {
+impl ProcessorFactory for GeometryReplacerFactory {
     fn name(&self) -> &str {
-        "GeometryExtractor"
+        "GeometryReplacer"
     }
 
     fn description(&self) -> &str {
-        "Extracts geometry from a feature and adds it as an attribute."
+        "Replaces the geometry of a feature with a new geometry."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(GeometryExtractor))
+        Some(schemars::schema_for!(GeometryReplacer))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -50,21 +50,21 @@ impl ProcessorFactory for GeometryExtractorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let processor: GeometryExtractor = if let Some(with) = with {
+        let processor: GeometryReplacer = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::GeometryExtractorFactory(format!(
+                GeometryProcessorError::GeometryReplacerFactory(format!(
                     "Failed to serialize with: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::GeometryExtractorFactory(format!(
+                GeometryProcessorError::GeometryReplacerFactory(format!(
                     "Failed to deserialize with: {}",
                     e
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::GeometryExtractorFactory(
+            return Err(GeometryProcessorError::GeometryReplacerFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -75,11 +75,11 @@ impl ProcessorFactory for GeometryExtractorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct GeometryExtractor {
-    output_attribute: Attribute,
+pub struct GeometryReplacer {
+    source_attribute: Attribute,
 }
 
-impl Processor for GeometryExtractor {
+impl Processor for GeometryReplacer {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
@@ -92,22 +92,18 @@ impl Processor for GeometryExtractor {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+        let mut feature = feature.clone();
+        let Some(source) = feature.attributes.get(&self.source_attribute) else {
+            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             return Ok(());
         };
-        let mut feature = feature.clone();
-        let value = serde_json::to_value(geometry).map_err(|e| {
-            GeometryProcessorError::GeometryExtractor(format!(
-                "Failed to serialize geometry: {}",
-                e
-            ))
-        })?;
-        let dump = serde_json::to_string(&value)?;
-        let dump = base64_encode(dump);
-        feature
-            .attributes
-            .insert(self.output_attribute.clone(), AttributeValue::String(dump));
+        let AttributeValue::String(dump) = source else {
+            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            return Ok(());
+        };
+        let decoded = base64_decode(dump)?;
+        let geometry: Geometry = serde_json::from_str(&decoded)?;
+        feature.geometry = Some(geometry);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
@@ -121,6 +117,6 @@ impl Processor for GeometryExtractor {
     }
 
     fn name(&self) -> &str {
-        "GeometryExtractor"
+        "GeometryReplacer"
     }
 }

@@ -29,7 +29,7 @@ pub(crate) static FILE_PATH_PORT: Lazy<Port> = Lazy::new(|| Port::new("filePath"
 pub(crate) static ATTRIBUTE_FEATURE_PORT: Lazy<Port> = Lazy::new(|| Port::new("attributeFeature"));
 pub(crate) static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
 
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 struct Attributes(HashMap<String, serde_json::Value>);
 
 impl Attributes {
@@ -50,7 +50,7 @@ impl Attributes {
     }
 
     fn contains_key(&self, key: &str) -> bool {
-        !self.0.contains_key(key)
+        self.0.contains_key(key)
     }
 
     fn extend(&mut self, other: Self) {
@@ -151,6 +151,7 @@ struct GenericAttribute {
     r#type: String,
     name: String,
     value: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
     uom: Option<String>,
 }
 
@@ -168,6 +169,7 @@ impl TryFrom<GenericAttribute> for serde_json::Value {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 struct LodCount {
+    lod0: i32,
     lod1: i32,
     lod2: i32,
     lod3: i32,
@@ -181,6 +183,7 @@ impl LodCount {
 
     fn plus_str(&mut self, lod: String) {
         match lod.as_str() {
+            "0" => self.lod0 += 1,
             "1" => self.lod1 += 1,
             "2" => self.lod2 += 1,
             "3" => self.lod3 += 1,
@@ -190,6 +193,7 @@ impl LodCount {
     }
     fn plus_i32(&mut self, lod: i32) {
         match lod {
+            0 => self.lod0 += 1,
             1 => self.lod1 += 1,
             2 => self.lod2 += 1,
             3 => self.lod3 += 1,
@@ -285,6 +289,7 @@ struct FeatureResponse {
     city_name: String,
     feature_type: String,
     attributes: HashMap<String, serde_json::Value>,
+    num_lod0: i32,
     num_lod1: i32,
     num_lod2: i32,
     num_lod3: i32,
@@ -642,6 +647,7 @@ impl Processor for XmlAttributeExtractor {
                     &document,
                     root,
                     tag.clone(),
+                    true,
                 )
                 .map_err(|e| {
                     PlateauProcessorError::XmlAttributeExtractor(format!(
@@ -649,7 +655,15 @@ impl Processor for XmlAttributeExtractor {
                         e
                     ))
                 })?;
+                let Some(lod) = lod else {
+                    continue;
+                };
                 total_lod.plus(&lod);
+                attr.set("gml:Id".to_string(), serde_json::Value::String(gid.clone()));
+                attr.set(
+                    "meshCode".to_string(),
+                    serde_json::Value::String(mcode.clone()),
+                );
                 let xml_id = feature
                     .get(&Attribute::new("xmlId"))
                     .map(|v| match v {
@@ -674,6 +688,10 @@ impl Processor for XmlAttributeExtractor {
                     AttributeValue::String(mcode.clone()),
                 );
                 result_feature.insert(Attribute::new("gmlId"), AttributeValue::String(gid.clone()));
+                result_feature.insert(
+                    Attribute::new("lod0"),
+                    AttributeValue::Number(serde_json::Number::from(lod.lod0)),
+                );
                 result_feature.insert(
                     Attribute::new("lod1"),
                     AttributeValue::Number(serde_json::Number::from(lod.lod1)),
@@ -896,6 +914,14 @@ fn create_feature_response(
                 _ => HashMap::new(),
             })
             .unwrap_or_default(),
+        num_lod0: feature
+            .get(&Attribute::new("lod1"))
+            .map(|v| match v {
+                AttributeValue::Number(v) => v.as_i64().unwrap_or(0) as i32,
+                _ => 0,
+            })
+            .unwrap_or_default(),
+
         num_lod1: feature
             .get(&Attribute::new("lod1"))
             .map(|v| match v {
@@ -1082,7 +1108,8 @@ fn walk_node(
     document: &XmlDocument,
     parent: &XmlRoNode,
     xpath: String,
-) -> super::errors::Result<(Attributes, LodCount)> {
+    _lod_count: bool,
+) -> super::errors::Result<(Attributes, Option<LodCount>)> {
     let ctx = xml::create_context(document).map_err(|e| {
         PlateauProcessorError::XmlAttributeExtractor(format!(
             "Cannot create context with error = {:?}",
@@ -1097,7 +1124,7 @@ fn walk_node(
     })?;
     let mut lod_count = LodCount::new();
     let mut result = Attributes::new();
-
+    let attr_types = GEN_ATTR_TYPES.keys().copied().collect::<Vec<_>>();
     for node in nodes {
         let tag = xml::get_readonly_node_tag(&node);
         if let Some(cap) = LOD_PATTERN.captures(tag.as_str()) {
@@ -1112,7 +1139,6 @@ fn walk_node(
                 lod_count.plus_i32(lod);
             }
         }
-        let attr_types = GEN_ATTR_TYPES.keys().copied().collect::<Vec<_>>();
         if attr_types.contains(&tag.as_str()) {
             let generic_attribute = walk_generic_node(document, &node).map_err(|e| {
                 PlateauProcessorError::XmlAttributeExtractor(format!(
@@ -1120,15 +1146,30 @@ fn walk_node(
                     e
                 ))
             })?;
-            result.set(
-                "gen:genericAttribute".to_string(),
-                serde_json::Value::Array(
-                    generic_attribute
-                        .into_iter()
-                        .map(|x| serde_json::to_value(x).unwrap())
-                        .collect(),
-                ),
-            );
+            if result.contains_key("gen:genericAttribute") {
+                let mut target = result
+                    .get("gen:genericAttribute")
+                    .map(|v| match v {
+                        serde_json::Value::Array(v) => v.clone(),
+                        _ => vec![],
+                    })
+                    .unwrap_or_default();
+                target.extend(generic_attribute.into_iter().flat_map(|x| x.try_into()));
+                result.set(
+                    "gen:genericAttribute".to_string(),
+                    serde_json::Value::Array(target),
+                );
+            } else {
+                result.set(
+                    "gen:genericAttribute".to_string(),
+                    serde_json::Value::Array(
+                        generic_attribute
+                            .into_iter()
+                            .map(|x| serde_json::to_value(x).unwrap())
+                            .collect(),
+                    ),
+                );
+            }
             continue;
         }
         let props = schema_def.get(format!("{}/{}", xpath, tag).as_str());
@@ -1167,13 +1208,14 @@ fn walk_node(
                 continue;
             }
             "role" => {
-                let (attr, lod) = walk_node(
+                let (attr, _lod) = walk_node(
                     city_gml_path,
                     codelists,
                     schema_def,
                     document,
                     &node,
-                    xpath.clone(),
+                    format!("{}/{}", xpath, tag),
+                    false,
                 )
                 .map_err(|e| {
                     PlateauProcessorError::XmlAttributeExtractor(format!(
@@ -1182,17 +1224,17 @@ fn walk_node(
                     ))
                 })?;
                 result.extend(attr);
-                lod_count.plus(&lod);
                 continue;
             }
             "parent" => {
-                let (attr, lod) = walk_node(
+                let (attr, _lod) = walk_node(
                     city_gml_path,
                     codelists,
                     schema_def,
                     document,
                     &node,
-                    xpath.clone(),
+                    format!("{}/{}", xpath, tag),
+                    false,
                 )
                 .map_err(|e| {
                     PlateauProcessorError::XmlAttributeExtractor(format!(
@@ -1200,7 +1242,6 @@ fn walk_node(
                         e
                     ))
                 })?;
-                lod_count.plus(&lod);
                 if multi {
                     result.append(
                         tag,
@@ -1292,7 +1333,7 @@ fn walk_node(
             }
         }
     }
-    Ok((result, lod_count))
+    Ok((result, Some(lod_count)))
 }
 
 fn walk_generic_node(
@@ -1331,7 +1372,7 @@ fn walk_generic_node(
         if !attribute_set.is_empty() {
             result.push(GenericAttribute {
                 r#type: typ.to_string(),
-                name: tag.clone(),
+                name: node.get_name(),
                 value: serde_json::Value::Array(
                     attribute_set
                         .into_iter()
@@ -1361,7 +1402,10 @@ fn walk_generic_node(
             ))?;
         result.push(GenericAttribute {
             r#type: typ.to_string(),
-            name: tag.clone(),
+            name: node
+                .get_attribute_node("name")
+                .map(|attr| attr.get_content())
+                .unwrap_or_default(),
             value: serde_json::Value::String(value.get_content()),
             uom: if typ == "measure" {
                 value

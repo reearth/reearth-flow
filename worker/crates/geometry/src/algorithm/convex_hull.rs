@@ -1,3 +1,20 @@
+use super::{coords_iter::CoordsIter, GeoNum};
+
+pub mod qhull;
+pub use qhull::quick_hull;
+
+pub mod graham;
+pub use graham::graham_hull;
+
+use crate::{
+    algorithm::{
+        kernels::{Orientation, RobustKernel},
+        utils::lex_cmp,
+        winding_order::Winding,
+    },
+    types::{coordinate::Coordinate, line_string::LineString, polygon::Polygon},
+};
+
 pub trait ConvexHull<'a, T, Z> {
     type ScalarXY: GeoNum;
     type ScalarZ: GeoNum;
@@ -19,26 +36,6 @@ where
     }
 }
 
-pub mod qhull;
-pub use qhull::quick_hull;
-
-pub mod graham;
-pub use graham::graham_hull;
-
-use crate::{
-    algorithm::{
-        kernels::{Orientation, RobustKernel},
-        utils::lex_cmp,
-    },
-    types::{coordinate::Coordinate, line_string::LineString, polygon::Polygon},
-};
-
-use super::{coords_iter::CoordsIter, GeoNum};
-
-// Helper function that outputs the convex hull in the
-// trivial case: input with at most 3 points. It ensures the
-// output is ccw, and does not repeat points unless
-// required.
 fn trivial_hull<T, Z>(points: &mut [Coordinate<T, Z>], include_on_hull: bool) -> LineString<T, Z>
 where
     T: GeoNum,
@@ -66,8 +63,6 @@ where
     let mut ls = LineString::new(ls);
     ls.close();
 
-    // Maintain the CCW invariance
-    use super::winding_order::Winding;
     ls.make_ccw_winding();
     ls
 }

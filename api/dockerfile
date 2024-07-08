@@ -17,7 +17,7 @@ RUN CGO_ENABLED=0 go build -tags "${TAG}" "-ldflags=-X main.version=${VERSION} -
 FROM scratch
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=build /reearth-flow/reearth-flow /reearth-flow/reearth-flow
+COPY --from=build /reearth/reearth-flow /reearth/reearth-flow
 COPY ui* /reearth/ui/
 
 WORKDIR /reearth-flow
