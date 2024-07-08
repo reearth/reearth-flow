@@ -39,8 +39,8 @@ const MembersSettings: React.FC = () => {
   ];
 
   const members = currentWorkspace?.members?.filter(
-    (m): m is UserMember => "userId" in m && (currentFilter === "all" || m.role === currentFilter),
-  );
+    m => "userId" in m && (currentFilter === "all" || m.role === currentFilter),
+  ) as UserMember[];
 
   const handleAddMember = async (email: string) => {
     setError(undefined);
