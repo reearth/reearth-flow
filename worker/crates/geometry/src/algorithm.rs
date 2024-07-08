@@ -25,6 +25,7 @@ pub mod line_intersection;
 pub mod map_coords;
 pub mod relate;
 pub mod remove_repeated_points;
+pub mod simplify;
 pub mod sweep;
 pub mod utils;
 pub mod winding_order;
