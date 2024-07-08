@@ -36,9 +36,9 @@ input DeleteProjectInput {
   projectId: ID!
 }
 
-input ExecuteWorkflowRunInput {
+input RunProjectInput {
   projectId: ID!
-  workflows: [Workflow!]!
+  workflows: InputWorkflow!
 }
 
 # Payload
@@ -51,7 +51,7 @@ type DeleteProjectPayload {
   projectId: ID!
 }
 
-type WorkflowRunPayload {
+type RunProjectPayload {
   projectId: ID!
   started: Boolean!
 }
@@ -78,5 +78,5 @@ extend type Mutation {
   createProject(input: CreateProjectInput!): ProjectPayload
   updateProject(input: UpdateProjectInput!): ProjectPayload
   deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
-  executeWorkflowRun(input: ExecuteWorkflowRunInput!): WorkflowRunPayload
+  runProject(input: RunProjectInput!): RunProjectPayload
 }
