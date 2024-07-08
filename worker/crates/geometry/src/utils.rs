@@ -25,9 +25,10 @@ where
     get_bounding_rect(line_string.coords().cloned())
 }
 
-pub fn line_bounding_rect<T>(line: Line<T, T>) -> Rect<T, T>
+pub fn line_bounding_rect<T, Z>(line: Line<T, Z>) -> Rect<T, Z>
 where
     T: CoordNum,
+    Z: CoordNum,
 {
     Rect::new(line.start, line.end)
 }
@@ -111,12 +112,80 @@ where
     line_segment_distance(p.into(), l.start, l.end)
 }
 
-pub fn point_contains_point<T>(p1: Point<T, T>, p2: Point<T, T>) -> bool
+pub fn point_contains_point<T, Z>(p1: Point<T, Z>, p2: Point<T, Z>) -> bool
 where
     T: CoordFloat,
+    Z: CoordFloat,
 {
     let distance = line_euclidean_length(Line::new_(p1, p2)).to_f32().unwrap();
     approx::relative_eq!(distance, 0.0)
+}
+
+pub fn point_line_string_euclidean_distance<T, Z>(p: Point<T, Z>, l: &LineString<T, Z>) -> T
+where
+    T: CoordFloat,
+    Z: CoordFloat,
+{
+    if line_string_contains_point(l, p) || l.0.is_empty() {
+        return T::zero();
+    }
+    l.lines()
+        .map(|line| line_segment_distance(p.0, line.start, line.end))
+        .fold(T::max_value(), |accum, val| accum.min(val))
+}
+
+pub fn line_string_contains_point<T, Z>(line_string: &LineString<T, Z>, point: Point<T, Z>) -> bool
+where
+    T: CoordFloat,
+    Z: CoordFloat,
+{
+    // LineString without points
+    if line_string.0.is_empty() {
+        return false;
+    }
+    // LineString with one point equal p
+    if line_string.0.len() == 1 {
+        return point_contains_point(Point::from(line_string[0]), point);
+    }
+    // check if point is a vertex
+    if line_string.0.contains(&point.0) {
+        return true;
+    }
+    for line in line_string.lines() {
+        // This is a duplicate of the line-contains-point logic in the "intersects" module
+        let tx = if line.dx() == T::zero() {
+            None
+        } else {
+            Some((point.x() - line.start.x) / line.dx())
+        };
+        let ty = if line.dy() == T::zero() {
+            None
+        } else {
+            Some((point.y() - line.start.y) / line.dy())
+        };
+        let contains = match (tx, ty) {
+            (None, None) => {
+                // Degenerate line
+                point.0 == line.start
+            }
+            (Some(t), None) => {
+                // Horizontal line
+                point.y() == line.start.y && T::zero() <= t && t <= T::one()
+            }
+            (None, Some(t)) => {
+                // Vertical line
+                point.x() == line.start.x && T::zero() <= t && t <= T::one()
+            }
+            (Some(t_x), Some(t_y)) => {
+                // All other lines
+                (t_x - t_y).abs() <= T::epsilon() && T::zero() <= t_x && t_x <= T::one()
+            }
+        };
+        if contains {
+            return true;
+        }
+    }
+    false
 }
 
 #[macro_export]

@@ -14,6 +14,8 @@ pub mod convex_hull;
 pub mod coordinate_position;
 pub mod coords_iter;
 pub mod dimensions;
+pub mod euclidean_distance;
+pub mod euclidean_length;
 pub mod geometry_cow;
 pub mod hole;
 pub mod intersects;

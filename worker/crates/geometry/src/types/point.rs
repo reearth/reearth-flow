@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use approx::{AbsDiffEq, RelativeEq};
@@ -76,8 +77,8 @@ impl<T: CoordNum> Point<T, NoValue> {
     }
 }
 
-impl<T: CoordNum> Point<T, T> {
-    pub fn new_(x: T, y: T, z: T) -> Self {
+impl<T: CoordNum, Z: CoordNum> Point<T, Z> {
+    pub fn new_(x: T, y: T, z: Z) -> Self {
         point! { x: x, y: y, z: z }
     }
 }
@@ -267,5 +268,34 @@ where
     #[inline]
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
         self.0.abs_diff_eq(&other.0, epsilon)
+    }
+}
+
+impl<T, Z> rstar::Point for Point<T, Z>
+where
+    T: num_traits::Float + rstar::RTreeNum + Debug + Default,
+    Z: num_traits::Float + rstar::RTreeNum + Debug + Default,
+{
+    type Scalar = T;
+
+    const DIMENSIONS: usize = 3;
+
+    fn generate(mut generator: impl FnMut(usize) -> Self::Scalar) -> Self {
+        Point::new_(generator(0), generator(1), Z::zero())
+    }
+
+    fn nth(&self, index: usize) -> Self::Scalar {
+        match index {
+            0 => self.0.x,
+            1 => self.0.y,
+            _ => unreachable!(),
+        }
+    }
+    fn nth_mut(&mut self, index: usize) -> &mut Self::Scalar {
+        match index {
+            0 => &mut self.0.x,
+            1 => &mut self.0.y,
+            _ => unreachable!(),
+        }
     }
 }
