@@ -6,10 +6,16 @@ import (
 )
 
 type ID = id.WorkflowID
+type EdgeID = id.EdgeID
+type NodeID = id.NodeID
+type GraphID = id.GraphID
 type ProjectID = id.ProjectID
 type WorkspaceID = accountdomain.WorkspaceID
 
 var NewID = id.NewWorkflowID
+var NewNodeID = id.NewNodeID
+var NewEdgeID = id.NewEdgeID
+var NewGraphID = id.NewGraphID
 var NewProjectID = id.NewProjectID
 var NewWorkspaceID = accountdomain.NewWorkspaceID
 

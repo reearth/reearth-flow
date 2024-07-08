@@ -8,12 +8,13 @@ import (
 
 func TestEdgeSetters(t *testing.T) {
 	e := &Edge{}
-	e.SetID("testID")
-	assert.Equal(t, "testID", e.id, "SetID should correctly set the id field")
-	fromNodes := []string{"node1", "node2"}
+	edgeID := NewEdgeID()
+	e.SetID(edgeID)
+	assert.Equal(t, edgeID, e.id, "SetID should correctly set the id field")
+	fromNodes := "node1"
 	e.SetFrom(fromNodes)
 	assert.Equal(t, fromNodes, e.from, "SetFrom should correctly set the from field")
-	toNodes := []string{"node3", "node4"}
+	toNodes := "node2"
 	e.SetTo(toNodes)
 	assert.Equal(t, toNodes, e.to, "SetTo should correctly set the to field")
 	e.SetFromPort("fromPort")

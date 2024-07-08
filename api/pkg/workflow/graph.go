@@ -1,13 +1,15 @@
 package workflow
 
+import "github.com/reearth/reearth-flow/api/pkg/id"
+
 type Graph struct {
-	id    ID
+	id    id.GraphID
 	name  string
 	nodes []Node
 	edges []Edge
 }
 
-func (g *Graph) ID() ID {
+func (g *Graph) ID() id.GraphID {
 	return g.id
 }
 
@@ -23,7 +25,7 @@ func (g *Graph) Edges() []Edge {
 	return g.edges
 }
 
-func (g *Graph) SetID(id ID) {
+func (g *Graph) SetID(id id.GraphID) {
 	g.id = id
 }
 

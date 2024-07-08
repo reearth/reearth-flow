@@ -1,22 +1,24 @@
 package workflow
 
+import "github.com/reearth/reearth-flow/api/pkg/id"
+
 type Edge struct {
-	id       string
-	from     []string
-	to       []string
+	id       id.EdgeID
+	from     string
+	to       string
 	fromPort string
 	toPort   string
 }
 
-func (e *Edge) ID() string {
+func (e *Edge) ID() id.EdgeID {
 	return e.id
 }
 
-func (e *Edge) From() []string {
+func (e *Edge) From() string {
 	return e.from
 }
 
-func (e *Edge) To() []string {
+func (e *Edge) To() string {
 	return e.to
 }
 
@@ -28,15 +30,15 @@ func (e *Edge) ToPort() string {
 	return e.toPort
 }
 
-func (e *Edge) SetID(id string) {
+func (e *Edge) SetID(id id.EdgeID) {
 	e.id = id
 }
 
-func (e *Edge) SetFrom(from []string) {
+func (e *Edge) SetFrom(from string) {
 	e.from = from
 }
 
-func (e *Edge) SetTo(to []string) {
+func (e *Edge) SetTo(to string) {
 	e.to = to
 }
 
