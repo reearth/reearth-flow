@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::Lazy;
+use reearth_flow_common::collection::insert_map_element;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -131,7 +132,6 @@ pub(super) fn generate_xpath_to_properties(
             e
         ))
     })?;
-    let mut xpath_to_properties: HashMap<String, HashMap<String, SchemaFeature>> = HashMap::new();
     let mut complex_types = schema
         .complex_types
         .iter()
@@ -158,23 +158,22 @@ pub(super) fn generate_xpath_to_properties(
         })
         .collect::<HashMap<_, _>>();
 
+    let mut xpath_to_properties: HashMap<String, HashMap<String, SchemaFeature>> = HashMap::new();
     for (key, items) in schema.features.iter() {
         let mut complex_type = Vec::new();
         complex_type.extend(COMMON_ITEMS.clone());
         complex_type.extend(items.clone());
         complex_types.insert(key.clone(), complex_type);
         for obj in items.iter() {
-            let properties = create_xpath(&complex_types, key.clone(), key.clone(), obj)?;
-            xpath_to_properties.insert(
-                key.to_string(),
-                properties
-                    .iter()
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                    .collect::<HashMap<_, _>>(),
-            );
+            create_xpath(
+                &complex_types,
+                key.clone(),
+                key.clone(),
+                obj,
+                &mut xpath_to_properties,
+            )?;
         }
     }
-
     Ok(xpath_to_properties)
 }
 
@@ -183,12 +182,14 @@ fn create_xpath(
     key: String,
     xpath: String,
     item: &SchemaFeature,
-) -> super::errors::Result<Vec<(String, SchemaFeature)>> {
+    xpath_to_properties: &mut HashMap<String, HashMap<String, SchemaFeature>>,
+) -> super::errors::Result<()> {
     let xpath = format!("{}/{}", xpath, item.name);
-    let mut xpath_to_properties = Vec::<(String, SchemaFeature)>::new();
     match &item.children {
         Some(children) => {
-            xpath_to_properties.push((
+            insert_map_element(
+                xpath_to_properties,
+                key.clone(),
                 xpath.clone(),
                 SchemaFeature {
                     name: item.name.clone(),
@@ -198,10 +199,12 @@ fn create_xpath(
                     flag: Some("role".to_string()),
                     children: item.children.clone(),
                 },
-            ));
+            );
             for child in children {
                 let xp = format!("{}/{}", xpath, child);
-                xpath_to_properties.push((
+                insert_map_element(
+                    xpath_to_properties,
+                    key.clone(),
                     xp.clone(),
                     SchemaFeature {
                         name: child.clone(),
@@ -211,21 +214,23 @@ fn create_xpath(
                         flag: Some("parent".to_string()),
                         children: item.children.clone(),
                     },
-                ));
-                let child = match complex_types.get(child) {
-                    Some(child) => child,
-                    None => continue,
-                };
-                for c in child {
-                    let properties = create_xpath(complex_types, key.clone(), xpath.clone(), c)?;
-                    properties.iter().for_each(|(xpath, item)| {
-                        xpath_to_properties.push((xpath.clone(), item.clone()));
-                    });
+                );
+                let child = complex_types.get(child).cloned().unwrap_or_default();
+                for c in child.iter() {
+                    create_xpath(
+                        complex_types,
+                        key.clone(),
+                        xp.clone(),
+                        c,
+                        xpath_to_properties,
+                    )?;
                 }
             }
         }
         None => {
-            xpath_to_properties.push((
+            insert_map_element(
+                xpath_to_properties,
+                key.clone(),
                 xpath.clone(),
                 SchemaFeature {
                     name: item.name.clone(),
@@ -235,8 +240,8 @@ fn create_xpath(
                     flag: item.flag.clone(),
                     children: None,
                 },
-            ));
+            );
         }
     }
-    Ok(xpath_to_properties)
+    Ok(())
 }
