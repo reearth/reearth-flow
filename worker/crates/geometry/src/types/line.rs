@@ -1,5 +1,9 @@
+use std::fmt::Debug;
+
 use approx::{AbsDiffEq, RelativeEq};
 use serde::{Deserialize, Serialize};
+
+use crate::utils::{line_bounding_rect, point_line_euclidean_distance};
 
 use super::coordinate::Coordinate;
 use super::coordnum::CoordNum;
@@ -143,5 +147,29 @@ impl<T: AbsDiffEq<Epsilon = T> + CoordNum, Z: AbsDiffEq<Epsilon = Z> + CoordNum>
     #[inline]
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
         self.start.abs_diff_eq(&other.start, epsilon) && self.end.abs_diff_eq(&other.end, epsilon)
+    }
+}
+
+impl<T, Z> rstar::RTreeObject for Line<T, Z>
+where
+    T: num_traits::Float + rstar::RTreeNum + CoordNum,
+    Z: num_traits::Float + rstar::RTreeNum + CoordNum,
+{
+    type Envelope = rstar::AABB<Point<T, Z>>;
+
+    fn envelope(&self) -> Self::Envelope {
+        let bounding_rect = line_bounding_rect(*self);
+        rstar::AABB::from_corners(bounding_rect.min().into(), bounding_rect.max().into())
+    }
+}
+
+impl<T, Z> rstar::PointDistance for Line<T, Z>
+where
+    T: num_traits::Float + rstar::RTreeNum + CoordNum,
+    Z: num_traits::Float + rstar::RTreeNum + CoordNum,
+{
+    fn distance_2(&self, point: &Point<T, Z>) -> T {
+        let d = point_line_euclidean_distance(*point, *self);
+        d.powi(2)
     }
 }
