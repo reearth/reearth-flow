@@ -297,6 +297,24 @@
       ]
     },
     {
+      "name": "ClosedCurveFilter",
+      "type": "processor",
+      "description": "Checks if curves form closed loops",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "closed",
+        "line",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "CoordinateSystemSetter",
       "type": "processor",
       "description": "Sets the coordinate system of a feature",
