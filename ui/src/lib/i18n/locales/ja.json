@@ -131,9 +131,14 @@
   "Integrations": "",
   "Change role": "",
   "Remove selected": "",
+  "Could not find the user": "",
+  "Failed to add member": "",
+  "Failed to change role of the member": "",
+  "Failed to remove member": "",
   "Members Settings": "",
   "Enter email": "",
   "Add Member": "",
   "Members": "",
+  "Remove": "",
   "General": ""
 }
