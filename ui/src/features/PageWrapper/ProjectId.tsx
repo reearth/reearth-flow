@@ -33,7 +33,7 @@ const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
     return;
   }, [project, setCurrentProject, currentProject, currentWorkspace]);
 
-  if (isLoading || !project) return <Loading />;
+  if (isLoading) return <Loading />;
 
   if (!project) return <NotFoundPage message={`Project with id: "${projectId}" not found.`} />;
 
