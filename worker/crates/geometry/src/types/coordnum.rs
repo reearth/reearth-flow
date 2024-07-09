@@ -27,3 +27,10 @@ impl<
 
 pub trait CoordFloat: CoordNum + Float {}
 impl<T: CoordNum + Float> CoordFloat for T {}
+
+pub trait CoordNumT: CoordNum {}
+
+impl CoordNumT for i32 {}
+impl CoordNumT for i64 {}
+impl CoordNumT for f32 {}
+impl CoordNumT for f64 {}
