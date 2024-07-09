@@ -43,7 +43,6 @@ where
             .into_iter()
             .map(|rdpindex| rdpindex.coord)
             .collect();
-    debug_assert_eq!(simplified_coords.len(), simplified_len);
     simplified_coords
 }
 
@@ -64,13 +63,11 @@ where
     }
 
     let mut simplified_len = rdp_indices.len();
-    let simplified_coords =
-        compute_rdp::<T, Z, INITIAL_MIN>(rdp_indices, &mut simplified_len, epsilon)
-            .into_iter()
-            .map(|rdpindex| rdpindex.index)
-            .collect::<Vec<usize>>();
-    debug_assert_eq!(simplified_len, simplified_coords.len());
-    simplified_coords
+
+    compute_rdp::<T, Z, INITIAL_MIN>(rdp_indices, &mut simplified_len, epsilon)
+        .into_iter()
+        .map(|rdpindex| rdpindex.index)
+        .collect::<Vec<usize>>()
 }
 
 fn compute_rdp<T, Z, const INITIAL_MIN: usize>(

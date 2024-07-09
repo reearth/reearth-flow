@@ -14,6 +14,7 @@ use super::{
     splitter::GeometrySplitterFactory,
     three_dimention_box_replacer::ThreeDimentionBoxReplacerFactory,
     two_dimention_forcer::TwoDimentionForcerFactory, validator::GeometryValidatorFactory,
+    vertex_remover::VertexRemoverFactory,
 };
 
 pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -38,6 +39,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<AreaOnAreaOverlayerFactory>::default(),
         Box::<GeometryReplacerFactory>::default(),
         Box::<ClosedCurveFilterFactory>::default(),
+        Box::<VertexRemoverFactory>::default(),
     ];
     factories
         .into_iter()
