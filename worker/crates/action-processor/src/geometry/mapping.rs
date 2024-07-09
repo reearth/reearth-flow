@@ -5,15 +5,16 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
     area_on_area_overlayer::AreaOnAreaOverlayerFactory, bufferer::BuffererFactory,
-    coercer::GeometryCoercerFactory, coordinate_system_setter::CoordinateSystemSetterFactory,
-    extractor::GeometryExtractorFactory, extruder::ExtruderFactory, filter::GeometryFilterFactory,
-    hole_counter::HoleCounterFactory, hole_extractor::HoleExtractorFactory,
-    line_on_line_overlayer::LineOnLineOverlayerFactory,
+    closed_curve_filter::ClosedCurveFilterFactory, coercer::GeometryCoercerFactory,
+    coordinate_system_setter::CoordinateSystemSetterFactory, extractor::GeometryExtractorFactory,
+    extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
+    hole_extractor::HoleExtractorFactory, line_on_line_overlayer::LineOnLineOverlayerFactory,
     orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
     replacer::GeometryReplacerFactory, reprojector::ReprojectorFactory,
     splitter::GeometrySplitterFactory,
     three_dimention_box_replacer::ThreeDimentionBoxReplacerFactory,
     two_dimention_forcer::TwoDimentionForcerFactory, validator::GeometryValidatorFactory,
+    vertex_remover::VertexRemoverFactory,
 };
 
 pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -37,6 +38,8 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<BuffererFactory>::default(),
         Box::<AreaOnAreaOverlayerFactory>::default(),
         Box::<GeometryReplacerFactory>::default(),
+        Box::<ClosedCurveFilterFactory>::default(),
+        Box::<VertexRemoverFactory>::default(),
     ];
     factories
         .into_iter()

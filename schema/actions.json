@@ -297,6 +297,24 @@
       ]
     },
     {
+      "name": "ClosedCurveFilter",
+      "type": "processor",
+      "description": "Checks if curves form closed loops",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "closed",
+        "line",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "CoordinateSystemSetter",
       "type": "processor",
       "description": "Sets the coordinate system of a feature",
@@ -1506,6 +1524,23 @@
       ],
       "outputPorts": [
         "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "VertexRemover",
+      "type": "processor",
+      "description": "Removes specific vertices from a feature’s geometry",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
       ],
       "categories": [
         "Geometry"
