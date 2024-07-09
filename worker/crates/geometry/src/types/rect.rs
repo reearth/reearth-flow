@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::polygon;
 
 use super::{
-    coordinate::Coordinate,
-    coordnum::{CoordFloat, CoordNum},
+    coordinate::{Coordinate, Coordinate2D, Coordinate3D},
+    coordnum::{CoordFloat, CoordNum, CoordNumT},
     no_value::NoValue,
     polygon::Polygon,
 };
@@ -132,12 +132,23 @@ impl From<Rect3D<f64>> for Rect2D<f64> {
     }
 }
 
-impl<T: CoordFloat> Rect<T, NoValue> {
-    pub fn center(self) -> Coordinate<T, NoValue> {
+impl<T: CoordFloat> Rect2D<T> {
+    pub fn center(self) -> Coordinate2D<T> {
         let two = T::one() + T::one();
         Coordinate::new_(
             (self.max.x + self.min.x) / two,
             (self.max.y + self.min.y) / two,
+        )
+    }
+}
+
+impl<T: CoordFloat + CoordNumT> Rect3D<T> {
+    pub fn center(self) -> Coordinate3D<T> {
+        let two = T::one() + T::one();
+        Coordinate::new__(
+            (self.max.x + self.min.x) / two,
+            (self.max.y + self.min.y) / two,
+            (self.max.z + self.min.z) / two,
         )
     }
 }

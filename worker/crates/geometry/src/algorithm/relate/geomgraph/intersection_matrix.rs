@@ -62,6 +62,7 @@ impl std::fmt::Debug for IntersectionMatrix {
                 Dimensions::ZeroDimensional => "0",
                 Dimensions::OneDimensional => "1",
                 Dimensions::TwoDimensional => "2",
+                Dimensions::ThreeDimensional => "3",
             }
         }
         let text = self

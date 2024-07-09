@@ -230,6 +230,23 @@ where
     }
 }
 
+impl<T, Z> Mul for Coordinate<T, Z>
+where
+    T: CoordNum,
+    Z: CoordNum + Mul<T, Output = Z>,
+{
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, rhs: Self) -> Self {
+        coord! {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+            z: self.z * rhs.z,
+        }
+    }
+}
+
 impl<T, Z> Div<T> for Coordinate<T, Z>
 where
     T: CoordNum,
@@ -243,6 +260,23 @@ where
             x: self.x / rhs,
             y: self.y / rhs,
             z: self.z / rhs,
+        }
+    }
+}
+
+impl<T, Z> Div for Coordinate<T, Z>
+where
+    T: CoordNum,
+    Z: CoordNum + Div<T, Output = Z>,
+{
+    type Output = Self;
+
+    #[inline]
+    fn div(self, rhs: Self) -> Self {
+        coord! {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
+            z: self.z / rhs.z,
         }
     }
 }
