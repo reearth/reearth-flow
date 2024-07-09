@@ -1530,6 +1530,23 @@
       ]
     },
     {
+      "name": "VertexRemover",
+      "type": "processor",
+      "description": "Removes specific vertices from a feature’s geometry",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "XMLFragmenter",
       "type": "processor",
       "description": "Fragment XML",
