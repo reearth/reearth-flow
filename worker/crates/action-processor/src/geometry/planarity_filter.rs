@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::GeometryValue;
+use reearth_flow_types::{AttributeValue, GeometryValue};
 use serde_json::Value;
 
 pub static PLANARITY_PORT: Lazy<Port> = Lazy::new(|| Port::new("planarity"));
@@ -88,8 +88,46 @@ impl Processor for PlanarityFilter {
                 }
             }
             GeometryValue::FlowGeometry3D(geometry) => {
-                if geometry.are_points_coplanar() {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), PLANARITY_PORT.clone()));
+                let result = geometry.are_points_coplanar();
+                if let Some(result) = result {
+                    let mut feature = feature.clone();
+                    feature.insert(
+                        "surfaceNormalX".to_string(),
+                        AttributeValue::Number(
+                            serde_json::Number::from_f64(result.normal.x()).unwrap(),
+                        ),
+                    );
+                    feature.insert(
+                        "surfaceNormalY".to_string(),
+                        AttributeValue::Number(
+                            serde_json::Number::from_f64(result.normal.y()).unwrap(),
+                        ),
+                    );
+                    feature.insert(
+                        "surfaceNormalZ".to_string(),
+                        AttributeValue::Number(
+                            serde_json::Number::from_f64(result.normal.z()).unwrap(),
+                        ),
+                    );
+                    feature.insert(
+                        "pointOnSurfaceX".to_string(),
+                        AttributeValue::Number(
+                            serde_json::Number::from_f64(result.center.x()).unwrap(),
+                        ),
+                    );
+                    feature.insert(
+                        "pointOnSurfaceY".to_string(),
+                        AttributeValue::Number(
+                            serde_json::Number::from_f64(result.center.y()).unwrap(),
+                        ),
+                    );
+                    feature.insert(
+                        "pointOnSurfaceZ".to_string(),
+                        AttributeValue::Number(
+                            serde_json::Number::from_f64(result.center.z()).unwrap(),
+                        ),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, PLANARITY_PORT.clone()));
                 } else {
                     fw.send(
                         ctx.new_with_feature_and_port(feature.clone(), NOT_PLANARITY_PORT.clone()),

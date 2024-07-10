@@ -1,3 +1,4 @@
+use nalgebra::DMatrix;
 use num_traits::FromPrimitive;
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
         coordnum::{CoordFloat, CoordNum},
         line::Line,
         line_string::LineString,
-        point::Point,
+        point::{Point, Point3D},
         rect::Rect,
     },
 };
@@ -274,26 +275,55 @@ pub fn linestring_has_self_intersection<T: GeoNum, Z: GeoNum>(geom: &LineString<
     false
 }
 
-pub fn are_points_coplanar(points: Vec<nalgebra::Point3<f64>>, epsilon: f64) -> bool {
-    if points.len() < 4 {
-        return true; // Three points or less are always on the same plane.
+pub struct PointsCoplanar {
+    pub normal: Point3D<f64>,
+    pub center: Point3D<f64>,
+}
+
+pub fn are_points_coplanar(
+    points: Vec<nalgebra::Point3<f64>>,
+    tolerance: f64,
+) -> Option<PointsCoplanar> {
+    let n = points.len();
+    if points.len() < 3 {
+        return None; // Three points or less are always on the same plane.
     }
 
-    let a = points[0];
-    let b = points[1];
-    let c = points[2];
+    // Calculate the mean value of the point cloud.
+    let mean: nalgebra::Vector3<f64> = points
+        .iter()
+        .map(|p| p.coords)
+        .sum::<nalgebra::Vector3<f64>>()
+        / (n as f64);
 
-    let ab = b - a;
-    let ac = c - a;
-
-    let normal = ab.cross(&ac);
-
-    for point in points.iter().skip(3) {
-        let ap = point - a;
-        if normal.dot(&ap).abs() >= epsilon {
-            return false;
-        }
+    // Calculate the covariance matrix
+    let mut covariance_matrix = DMatrix::<f64>::zeros(3, 3);
+    for point in points {
+        let centered = point.coords - mean;
+        covariance_matrix += centered * centered.transpose();
     }
+    covariance_matrix /= n as f64;
+    // Calculate eigenvalues and eigenvectors
+    let eig = covariance_matrix.symmetric_eigen();
 
-    true
+    // Get the smallest eigenvalue
+    let min_eigenvalue = eig.eigenvalues.min();
+
+    // Get the eigenvector corresponding to the smallest eigenvalue
+    let min_eigenvalue_index = eig.eigenvalues.imin();
+    let normal_vector = eig.eigenvectors.column(min_eigenvalue_index).into_owned();
+
+    // If the smallest eigenvalue is smaller than the tolerance, it is considered flat.
+    let is_planar = min_eigenvalue < tolerance;
+
+    let normal_point = nalgebra::Point3::new(normal_vector[0], normal_vector[1], normal_vector[2]);
+    let center_point = nalgebra::Point3::new(mean[0], mean[1], mean[2]);
+    if is_planar {
+        Some(PointsCoplanar {
+            normal: Point3D::new_(normal_point.x, normal_point.y, normal_point.z),
+            center: Point3D::new_(center_point.x, center_point.y, center_point.z),
+        })
+    } else {
+        None
+    }
 }
