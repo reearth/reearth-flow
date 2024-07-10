@@ -17,6 +17,7 @@ use super::rect::Rect;
 use super::solid::Solid;
 use super::triangle::Triangle;
 use crate::error::Error;
+use crate::utils::PointsCoplanar;
 
 static EPSILON: f64 = 1e-10;
 
@@ -174,10 +175,10 @@ impl Geometry2D<f64> {
 }
 
 impl Geometry3D<f64> {
-    pub fn are_points_coplanar(&self) -> bool {
+    pub fn are_points_coplanar(&self) -> Option<PointsCoplanar> {
         match self {
-            Geometry::Point(_) => true,
-            Geometry::Line(_) => true,
+            Geometry::Point(_) => None,
+            Geometry::Line(_) => None,
             Geometry::LineString(ls) => {
                 crate::utils::are_points_coplanar(ls.clone().into(), EPSILON)
             }
@@ -196,9 +197,7 @@ impl Geometry3D<f64> {
             Geometry::Rect(rect) => crate::utils::are_points_coplanar((*rect).into(), EPSILON),
             Geometry::Triangle(_) => unimplemented!(),
             Geometry::Solid(_) => unimplemented!(),
-            Geometry::GeometryCollection(gc) => {
-                gc.iter().all(|geometry| geometry.are_points_coplanar())
-            }
+            Geometry::GeometryCollection(_) => unimplemented!(),
         }
     }
 }

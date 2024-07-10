@@ -393,10 +393,10 @@ impl CityGmlGeometry {
     }
     pub fn are_points_coplanar(&self) -> bool {
         self.features.iter().all(|feature| {
-            feature
-                .polygons
-                .iter()
-                .all(|poly| are_points_coplanar(poly.clone().into(), EPSILON))
+            feature.polygons.iter().all(|poly| {
+                let result = are_points_coplanar(poly.clone().into(), EPSILON);
+                result.is_some()
+            })
         })
     }
 }
