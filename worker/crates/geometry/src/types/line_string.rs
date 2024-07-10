@@ -7,6 +7,7 @@ use std::ops::{Index, IndexMut};
 use nusamai_geometry::{LineString2 as NLineString2, LineString3 as NLineString3};
 
 use crate::error::Error;
+use crate::utils::line_string_bounding_rect;
 
 use super::coordinate::{self, Coordinate};
 use super::coordnum::CoordNum;
@@ -317,5 +318,36 @@ impl<
         }
         let mut points_zipper = self.points().zip(other.points());
         points_zipper.all(|(lhs, rhs)| lhs.abs_diff_eq(&rhs, epsilon))
+    }
+}
+
+impl<T, Z> rstar::RTreeObject for LineString<T, Z>
+where
+    T: num_traits::Float + rstar::RTreeNum + CoordNum,
+    Z: num_traits::Float + rstar::RTreeNum + CoordNum,
+{
+    type Envelope = rstar::AABB<Point<T, Z>>;
+
+    fn envelope(&self) -> Self::Envelope {
+        use num_traits::Bounded;
+        let bounding_rect = line_string_bounding_rect(self);
+        match bounding_rect {
+            None => rstar::AABB::from_corners(
+                Point::new_(
+                    Bounded::min_value(),
+                    Bounded::min_value(),
+                    Bounded::min_value(),
+                ),
+                Point::new_(
+                    Bounded::max_value(),
+                    Bounded::max_value(),
+                    Bounded::max_value(),
+                ),
+            ),
+            Some(b) => rstar::AABB::from_corners(
+                Point::new_(b.min().x, b.min().y, b.min().z),
+                Point::new_(b.max().x, b.max().y, b.max().z),
+            ),
+        }
     }
 }

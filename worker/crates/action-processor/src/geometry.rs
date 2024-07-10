@@ -1,5 +1,7 @@
 pub mod area_on_area_overlayer;
 pub mod bufferer;
+pub mod center_point_replacer;
+pub mod closed_curve_filter;
 pub mod coercer;
 pub mod coordinate_system_setter;
 pub mod errors;
@@ -19,3 +21,4 @@ pub mod three_dimention_box_replacer;
 pub mod two_dimention_forcer;
 pub(super) mod types;
 pub mod validator;
+pub mod vertex_remover;

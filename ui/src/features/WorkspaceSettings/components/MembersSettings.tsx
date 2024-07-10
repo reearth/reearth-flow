@@ -46,7 +46,7 @@ const MembersSettings: React.FC = () => {
     setError(undefined);
     if (!currentWorkspace?.id) return;
 
-    const alreadyExists = members.find(m => m.user?.email === email);
+    const alreadyExists = members?.find(m => m.user?.email === email);
 
     if (alreadyExists) {
       setError("User already exists");
@@ -112,7 +112,7 @@ const MembersSettings: React.FC = () => {
           <div className="flex justify-between items-center gap-2 p-2 border-b border-zinc-700 h-[42px]">
             <div className="flex items-center gap-2">
               <User weight="thin" />
-              <p>{`${members.length} ${t("Members")}`}</p>
+              <p>{`${members?.length} ${t("Members")}`}</p>
             </div>
             <div>
               <DropdownMenu>
@@ -135,7 +135,7 @@ const MembersSettings: React.FC = () => {
             </div>
           </div>
           <div className="max-h-[50vh] overflow-auto">
-            {members.map(m => (
+            {members?.map(m => (
               <div key={m.userId} className="flex gap-4 px-4 py-2">
                 <p className="flex-1">{m.user?.name}</p>
                 <p className="flex-1 px-4 font-thin capitalize text-sm">{m.role}</p>

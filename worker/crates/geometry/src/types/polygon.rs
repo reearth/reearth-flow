@@ -14,6 +14,7 @@ use super::face::Face;
 use super::line::Line;
 use super::line_string::LineString;
 use super::no_value::NoValue;
+use super::point::Point;
 use super::rect::Rect;
 use super::solid::Solid;
 use super::traits::Surface;
@@ -446,5 +447,17 @@ impl<'a, T: CoordNum> Iterator for Iter<'a, T> {
         } else {
             None
         }
+    }
+}
+
+impl<T, Z> rstar::RTreeObject for Polygon<T, Z>
+where
+    T: num_traits::Float + rstar::RTreeNum + CoordNum,
+    Z: num_traits::Float + rstar::RTreeNum + CoordNum,
+{
+    type Envelope = ::rstar::AABB<Point<T, Z>>;
+
+    fn envelope(&self) -> Self::Envelope {
+        self.exterior.envelope()
     }
 }

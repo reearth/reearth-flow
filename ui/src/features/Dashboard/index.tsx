@@ -1,4 +1,4 @@
-import { ErrorPage } from "@flow/features/ErrorPage";
+import { Loading } from "@flow/components";
 import { TopNavigation } from "@flow/features/TopNavigation";
 import { useCurrentWorkspace } from "@flow/stores";
 
@@ -16,7 +16,7 @@ const Dashboard: React.FC = () => {
       </div>
     </div>
   ) : (
-    <ErrorPage errorMessage={"Workspace not set"} />
+    <Loading />
   );
 };
 
