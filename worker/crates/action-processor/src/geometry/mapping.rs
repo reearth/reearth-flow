@@ -14,6 +14,7 @@ use super::{
     replacer::GeometryReplacerFactory, reprojector::ReprojectorFactory,
     splitter::GeometrySplitterFactory,
     three_dimention_box_replacer::ThreeDimentionBoxReplacerFactory,
+    three_dimention_rotator::ThreeDimentionRotatorFactory,
     two_dimention_forcer::TwoDimentionForcerFactory, validator::GeometryValidatorFactory,
     vertex_remover::VertexRemoverFactory,
 };
@@ -42,6 +43,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<ClosedCurveFilterFactory>::default(),
         Box::<VertexRemoverFactory>::default(),
         Box::<CenterPointReplacerFactory>::default(),
+        Box::<ThreeDimentionRotatorFactory>::default(),
     ];
     factories
         .into_iter()
