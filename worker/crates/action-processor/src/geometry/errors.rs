@@ -63,6 +63,10 @@ pub(super) enum GeometryProcessorError {
     GeometryReplacerFactory(String),
     #[error("GeometryReplacer error: {0}")]
     GeometryReplacer(String),
+    #[error("ThreeDimentionRotator Factory error: {0}")]
+    ThreeDimentionRotatorFactory(String),
+    #[error("ThreeDimentionRotator error: {0}")]
+    ThreeDimentionRotator(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
