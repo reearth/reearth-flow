@@ -49,6 +49,7 @@ var MustUserID = idx.Must[User]
 
 var AssetIDFrom = idx.From[Asset]
 var AuthRequestIDFrom = idx.From[AuthRequest]
+var NodeIDFrom = idx.From[Node]
 var WorkflowIDFrom = idx.From[Workflow]
 var ProjectIDFrom = idx.From[Project]
 var WorkspaceIDFrom = idx.From[Workspace]
