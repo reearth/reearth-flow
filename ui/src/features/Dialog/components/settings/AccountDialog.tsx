@@ -18,14 +18,14 @@ const AccountDialogContent: React.FC = () => {
           content={
             <div className="flex flex-col gap-6 mt-2">
               <FieldWrapper>
-                <div className="mr-4">
+                <div>
                   <p className="text-md">{t("Name")}</p>
                   <p className="text-xs text-zinc-400">{me?.name}</p>
                 </div>
               </FieldWrapper>
               <FieldWrapper>
-                <div className="mr-4">
-                  <p className="mr-4 text-md">{t("Email address")}</p>
+                <div>
+                  <p className="text-md">{t("Email address")}</p>
                   <p className="text-xs text-zinc-400">{me?.email}</p>
                 </div>
               </FieldWrapper>

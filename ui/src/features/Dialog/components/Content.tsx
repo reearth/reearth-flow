@@ -53,7 +53,7 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
       onEscapeKeyDown={e => disableClickAway && e.preventDefault()}>
       <div className="flex">
         {content.length > 1 && (
-          <div className={`flex flex-col gap-4 pr-5 py-6 border-r border-zinc-800`}>
+          <div className={`flex flex-col gap-4 px-5 py-6 border-r border-zinc-800`}>
             {content.map(c => (
               <IconButton
                 key={c.id}
