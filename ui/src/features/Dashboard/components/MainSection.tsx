@@ -147,7 +147,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
       <Dialog open={!!editProject}>
         <DialogContent hideCloseButton={true}>
           <DialogHeader>
-            <DialogTitle>{editProject?.name}</DialogTitle>
+            <DialogTitle>{t("Edit Project")}</DialogTitle>
             <DialogDescription className="px-6">
               <div className="flex flex-col gap-4 mt-4">
                 <div className="flex flex-col gap-2">
