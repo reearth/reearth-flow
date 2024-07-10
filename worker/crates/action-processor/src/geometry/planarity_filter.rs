@@ -91,21 +91,22 @@ impl Processor for PlanarityFilter {
                 let result = geometry.are_points_coplanar();
                 if let Some(result) = result {
                     let mut feature = feature.clone();
-                    let insert_number = |key: &str, value: f64| {
-                        feature.insert(key.to_string(), AttributeValue::Number(serde_json::Number::from_f64(value).unwrap()));
+                    let mut insert_number = |key: &str, value: f64| {
+                        feature.insert(
+                            key.to_string(),
+                            AttributeValue::Number(
+                                serde_json::Number::from_f64(value)
+                                    .unwrap_or_else(|| serde_json::Number::from(0)),
+                            ),
+                        );
                     };
-
                     insert_number("surfaceNormalX", result.normal.x());
                     insert_number("surfaceNormalY", result.normal.y());
                     insert_number("surfaceNormalZ", result.normal.z());
                     insert_number("pointOnSurfaceX", result.center.x());
                     insert_number("pointOnSurfaceY", result.center.y());
                     insert_number("pointOnSurfaceZ", result.center.z());
-
                     fw.send(ctx.new_with_feature_and_port(feature, PLANARITY_PORT.clone()));
-                } else {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), NOT_PLANARITY_PORT.clone()));
-                }
                 } else {
                     fw.send(
                         ctx.new_with_feature_and_port(feature.clone(), NOT_PLANARITY_PORT.clone()),
