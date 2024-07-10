@@ -10,6 +10,16 @@ type Edge struct {
 	toPort   string
 }
 
+func NewEdge(id id.EdgeID, from, to, fromPort, toPort string) *Edge {
+	return &Edge{
+		id:       id,
+		from:     from,
+		to:       to,
+		fromPort: fromPort,
+		toPort:   toPort,
+	}
+}
+
 func (e *Edge) ID() id.EdgeID {
 	return e.id
 }
@@ -28,24 +38,4 @@ func (e *Edge) FromPort() string {
 
 func (e *Edge) ToPort() string {
 	return e.toPort
-}
-
-func (e *Edge) SetID(id id.EdgeID) {
-	e.id = id
-}
-
-func (e *Edge) SetFrom(from string) {
-	e.from = from
-}
-
-func (e *Edge) SetTo(to string) {
-	e.to = to
-}
-
-func (e *Edge) SetFromPort(fromPort string) {
-	e.fromPort = fromPort
-}
-
-func (e *Edge) SetToPort(toPort string) {
-	e.toPort = toPort
 }

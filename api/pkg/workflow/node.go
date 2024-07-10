@@ -10,6 +10,16 @@ type Node struct {
 	with     map[string]interface{}
 }
 
+func NewNode(id id.NodeID, name, nodeType, action string, with map[string]interface{}) *Node {
+	return &Node{
+		id:       id,
+		name:     name,
+		nodeType: nodeType,
+		action:   action,
+		with:     with,
+	}
+}
+
 func (n *Node) ID() id.NodeID {
 	return n.id
 }
@@ -28,24 +38,4 @@ func (n *Node) Action() string {
 
 func (n *Node) With() map[string]interface{} {
 	return n.with
-}
-
-func (n *Node) SetID(id id.NodeID) {
-	n.id = id
-}
-
-func (n *Node) SetName(name string) {
-	n.name = name
-}
-
-func (n *Node) SetNodeType(nodeType string) {
-	n.nodeType = nodeType
-}
-
-func (n *Node) SetAction(action string) {
-	n.action = action
-}
-
-func (n *Node) SetWith(with map[string]interface{}) {
-	n.with = with
 }

@@ -8,6 +8,8 @@ import (
 )
 
 func TestNewWorkflow(t *testing.T) {
+	workspaceID := NewWorkspaceID()
+	projectID := id.NewProjectID()
 	workflowID := id.NewWorkflowID()
 	name := "Test Workflow"
 	entryGraphId := "graph1"
@@ -18,11 +20,11 @@ func TestNewWorkflow(t *testing.T) {
 
 	edgeID1 := id.NewEdgeID()
 
-	graphs := []Graph{
+	graphs := []*Graph{
 		{
 			id:   id.NewGraphID(),
 			name: "Test Graph",
-			nodes: []Node{
+			nodes: []*Node{
 				{
 					id:       nodeID1,
 					name:     "Test Node",
@@ -38,7 +40,7 @@ func TestNewWorkflow(t *testing.T) {
 					with:     map[string]interface{}{"key2": "value2"},
 				},
 			},
-			edges: []Edge{
+			edges: []*Edge{
 				{
 					id:       edgeID1,
 					from:     nodeID1.String(),
@@ -50,10 +52,12 @@ func TestNewWorkflow(t *testing.T) {
 		},
 	}
 
-	result := NewWorkflow(workflowID, name, entryGraphId, with, graphs)
+	result := NewWorkflow(workflowID, workspaceID, projectID, name, entryGraphId, with, graphs)
 
 	want := &Workflow{
 		id:           workflowID,
+		workspace:    workspaceID,
+		project:      projectID,
 		name:         name,
 		entryGraphId: entryGraphId,
 		with:         with,

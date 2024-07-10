@@ -1,39 +1,26 @@
 package workflow
 
-import "testing"
+import (
+	"testing"
 
-func TestGraph_SetID(t *testing.T) {
-	g := &Graph{}
-	gId := NewGraphID()
-	g.SetID(gId)
-	if g.id != gId {
-		t.Errorf("expected %s, got %s", gId, g.id)
-	}
-}
+	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/stretchr/testify/assert"
+)
 
-func TestGraph_SetName(t *testing.T) {
-	g := &Graph{}
-	gName := "name"
-	g.SetName(gName)
-	if g.name != gName {
-		t.Errorf("expected %s, got %s", gName, g.name)
-	}
-}
+func TestNewGraph(t *testing.T) {
+	graphID := id.NewGraphID()
+	name := "name"
+	nodes := []*Node{}
+	edges := []*Edge{}
 
-func TestGraph_SetNodes(t *testing.T) {
-	g := &Graph{}
-	gNodes := []Node{{}}
-	g.SetNodes(gNodes)
-	if len(g.nodes) != 1 {
-		t.Errorf("expected %v, got %v", gNodes, g.nodes)
-	}
-}
+	result := NewGraph(graphID, name, nodes, edges)
 
-func TestGraph_SetEdges(t *testing.T) {
-	g := &Graph{}
-	gEdges := []Edge{{}}
-	g.SetEdges(gEdges)
-	if len(g.edges) != 1 {
-		t.Errorf("expected %v, got %v", gEdges, g.edges)
+	want := &Graph{
+		id:    graphID,
+		name:  name,
+		nodes: nodes,
+		edges: edges,
 	}
+
+	assert.Equal(t, result, want)
 }
