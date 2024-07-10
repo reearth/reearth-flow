@@ -7,6 +7,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"github.com/reearth/reearth-flow/api/pkg/workflow"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/usecasex"
 )
@@ -28,6 +29,10 @@ type UpdateProjectParam struct {
 	BasicAuthPassword *string
 }
 
+type RunProjectParam struct {
+	Workflow *workflow.Workflow
+}
+
 var (
 	ErrProjectAliasIsNotSet    error = errors.New("project alias is not set")
 	ErrProjectAliasAlreadyUsed error = errors.New("project alias is already used by another project")
@@ -39,4 +44,5 @@ type Project interface {
 	Create(context.Context, CreateProjectParam, *usecase.Operator) (*project.Project, error)
 	Update(context.Context, UpdateProjectParam, *usecase.Operator) (*project.Project, error)
 	Delete(context.Context, id.ProjectID, *usecase.Operator) error
+	Run(context.Context, RunProjectParam, *usecase.Operator) (bool, error)
 }

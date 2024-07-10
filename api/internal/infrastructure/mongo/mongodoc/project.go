@@ -26,12 +26,9 @@ type ProjectDocument struct {
 	PublicImage       string
 	PublicNoIndex     bool
 	Workspace         string // DON'T CHANGE NAME'
-	Visualizer        string
-	PublishmentStatus string
-	CoreSupport       bool
+	Workflow          string
 	EnableGA          bool
 	TrackingID        string
-	// Scene             string
 }
 
 type ProjectConsumer = Consumer[*ProjectDocument, *project.Project]
@@ -55,6 +52,7 @@ func NewProject(project *project.Project) (*ProjectDocument, string) {
 		Name:              project.Name(),
 		Description:       project.Description(),
 		Workspace:         project.Workspace().String(),
+		Workflow:          project.Workflow().String(),
 	}, pid
 }
 
@@ -68,6 +66,8 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 		return nil, err
 	}
 
+	wid, _ := id.WorkflowIDFrom(d.Workflow)
+
 	return project.New().
 		ID(pid).
 		IsArchived(d.Archived).
@@ -78,5 +78,6 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 		Name(d.Name).
 		Description(d.Description).
 		Workspace(tid).
+		Workflow(wid).
 		Build()
 }

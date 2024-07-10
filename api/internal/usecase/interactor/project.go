@@ -177,3 +177,41 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *
 	tx.Commit()
 	return nil
 }
+
+func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (started bool, err error) {
+	var runStarted = false
+
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return runStarted, err
+	}
+
+	ctx = tx.Context()
+	defer func() {
+		if err2 := tx.End(ctx); err == nil && err2 != nil {
+			err = err2
+		}
+	}()
+
+	prj, err := i.projectRepo.FindByID(ctx, p.Workflow.Project())
+	if err != nil {
+		return runStarted, err
+	}
+
+	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
+		return runStarted, err
+	}
+
+	if p.Workflow != nil {
+		prj.UpdateWorkflow(p.Workflow.ID())
+
+		runStarted = true
+	}
+
+	if err := i.projectRepo.Save(ctx, prj); err != nil {
+		return runStarted, err
+	}
+
+	tx.Commit()
+	return runStarted, nil
+}
