@@ -151,14 +151,15 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
             <DialogDescription className="px-6">
               <div className="flex flex-col gap-4 mt-4">
                 <div className="flex flex-col gap-2">
-                  <Label>{t("Project Name: ")}</Label>
+                  <Label>{t("Project Name")}</Label>
                   <Input
                     value={editProject?.name}
+                    placeholder={t("Project Name")}
                     onChange={e => handleUpdateValue("name", e.target.value)}
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label>{t("Project Description: ")}</Label>
+                  <Label>{t("Project Description")}</Label>
                   <Input
                     placeholder={t("Project Description")}
                     value={editProject?.description}
