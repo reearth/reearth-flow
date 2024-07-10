@@ -91,43 +91,21 @@ impl Processor for PlanarityFilter {
                 let result = geometry.are_points_coplanar();
                 if let Some(result) = result {
                     let mut feature = feature.clone();
-                    feature.insert(
-                        "surfaceNormalX".to_string(),
-                        AttributeValue::Number(
-                            serde_json::Number::from_f64(result.normal.x()).unwrap(),
-                        ),
-                    );
-                    feature.insert(
-                        "surfaceNormalY".to_string(),
-                        AttributeValue::Number(
-                            serde_json::Number::from_f64(result.normal.y()).unwrap(),
-                        ),
-                    );
-                    feature.insert(
-                        "surfaceNormalZ".to_string(),
-                        AttributeValue::Number(
-                            serde_json::Number::from_f64(result.normal.z()).unwrap(),
-                        ),
-                    );
-                    feature.insert(
-                        "pointOnSurfaceX".to_string(),
-                        AttributeValue::Number(
-                            serde_json::Number::from_f64(result.center.x()).unwrap(),
-                        ),
-                    );
-                    feature.insert(
-                        "pointOnSurfaceY".to_string(),
-                        AttributeValue::Number(
-                            serde_json::Number::from_f64(result.center.y()).unwrap(),
-                        ),
-                    );
-                    feature.insert(
-                        "pointOnSurfaceZ".to_string(),
-                        AttributeValue::Number(
-                            serde_json::Number::from_f64(result.center.z()).unwrap(),
-                        ),
-                    );
+                    let insert_number = |key: &str, value: f64| {
+                        feature.insert(key.to_string(), AttributeValue::Number(serde_json::Number::from_f64(value).unwrap()));
+                    };
+
+                    insert_number("surfaceNormalX", result.normal.x());
+                    insert_number("surfaceNormalY", result.normal.y());
+                    insert_number("surfaceNormalZ", result.normal.z());
+                    insert_number("pointOnSurfaceX", result.center.x());
+                    insert_number("pointOnSurfaceY", result.center.y());
+                    insert_number("pointOnSurfaceZ", result.center.z());
+
                     fw.send(ctx.new_with_feature_and_port(feature, PLANARITY_PORT.clone()));
+                } else {
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), NOT_PLANARITY_PORT.clone()));
+                }
                 } else {
                     fw.send(
                         ctx.new_with_feature_and_port(feature.clone(), NOT_PLANARITY_PORT.clone()),
