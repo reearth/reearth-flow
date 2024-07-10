@@ -38,7 +38,7 @@ input DeleteProjectInput {
 
 input RunProjectInput {
   projectId: ID!
-  workflows: InputWorkflow!
+  workflows: [InputWorkflow!]!
 }
 
 # Payload

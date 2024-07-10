@@ -2,7 +2,6 @@ package gql
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -71,9 +70,12 @@ func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunPro
 		return nil, err
 	}
 
-	fmt.Println("ExecuteProjectRun id", pid)
+	res, err := usecases(ctx).Project.Run(ctx, interfaces.RunProjectParam{
+		Workflow: gqlmodel.FromInputWorkflow(pid, input.Workflows),
+	}, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
 
-	// TODO: Implement usecases(ctx).Project.Run and hook it up here
-
-	return &gqlmodel.RunProjectPayload{ProjectID: input.ProjectID, Started: true}, nil
+	return &gqlmodel.RunProjectPayload{ProjectID: input.ProjectID, Started: res}, nil
 }
