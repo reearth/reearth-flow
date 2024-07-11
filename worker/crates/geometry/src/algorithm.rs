@@ -10,6 +10,7 @@ pub mod bool_ops;
 pub mod bounding_rect;
 pub mod bufferable;
 pub mod centroid;
+pub mod clipper;
 pub mod contains;
 pub mod convex_hull;
 pub mod coordinate_position;
