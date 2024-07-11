@@ -29,14 +29,14 @@ graphs:
         type: action
         action: PLATEAU.AttributeFlattener
 
-      # - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-      #   name: fileWriter
-      #   type: action
-      #   action: FileWriter
-      #   with:
-      #     format: csv
-      #     output: |
-      #       env.get("outputPath")
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: fileWriter
+        type: action
+        action: FileWriter
+        with:
+          format: csv
+          output: |
+            env.get("outputPath")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
@@ -44,8 +44,8 @@ graphs:
         to: 43325e92-fad8-4d52-b09f-740dd5a6a9cd
         fromPort: attributeFeature
         toPort: default
-      # - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
-      #   from: d3773442-1ba8-47c1-b7c1-0bafa23adec6
-      #   to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-      #   fromPort: default
-      #   toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+        from: 43325e92-fad8-4d52-b09f-740dd5a6a9cd
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: default
+        toPort: default

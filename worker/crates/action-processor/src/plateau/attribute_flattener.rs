@@ -1,4 +1,5 @@
 use super::errors::PlateauProcessorError;
+use itertools::Itertools;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -12,8 +13,9 @@ use std::collections::{HashMap, HashSet};
 
 const DELIM: &str = "_";
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Default)]
 struct Flattener {
+    flatten_attrs_data: Vec<(&'static str, &'static str, &'static str)>,
     flatten_attrs: HashMap<&'static str, Vec<&'static str>>,
     existing_flatten_attrs: HashSet<String>,
     risk_to_attr_defs: HashMap<String, HashMap<String, String>>,
@@ -178,11 +180,12 @@ impl Flattener {
         ];
 
         let mut flatten_attrs = HashMap::new();
-        for (t1, t2, _) in flatten_attrs_data {
+        for (t1, t2, _) in flatten_attrs_data.clone() {
             flatten_attrs.entry(t1).or_insert_with(Vec::new).push(t2);
         }
 
         Flattener {
+            flatten_attrs_data,
             flatten_attrs,
             existing_flatten_attrs: HashSet::new(),
             risk_to_attr_defs: HashMap::new(),
@@ -236,96 +239,82 @@ impl Flattener {
         feature: &mut Feature,
         all_attrib: HashMap<String, AttributeValue>,
     ) {
-        if let Some(AttributeValue::Array(disaster_risks)) =
-            all_attrib.get("uro:BuildingRiverFloodingRiskAttribute")
-        {
-            for risk in disaster_risks {
-                if let AttributeValue::Map(risk_map) = risk {
-                    let desc = risk_map.get("uro:description").and_then(|v| {
-                        if let AttributeValue::String(s) = v {
-                            Some(s)
-                        } else {
-                            None
-                        }
-                    });
-                    let admin = risk_map.get("uro:adminType").and_then(|v| {
-                        if let AttributeValue::String(s) = v {
-                            Some(s)
-                        } else {
-                            None
-                        }
-                    });
-                    let scale = risk_map.get("uro:scale").and_then(|v| {
-                        if let AttributeValue::String(s) = v {
-                            Some(s)
-                        } else {
-                            None
-                        }
-                    });
+        let disaster_risks = match all_attrib.get("uro:BuildingRiverFloodingRiskAttribute") {
+            Some(AttributeValue::Array(disaster_risks)) => disaster_risks,
+            _ => return,
+        };
+        for risk in disaster_risks {
+            let risk_map = match risk {
+                AttributeValue::Map(risk_map) => risk_map,
+                _ => continue,
+            };
+            let desc = risk_map.get("uro:description").map(|v| v.to_string());
+            let admin = risk_map.get("uro:adminType").map(|v| v.to_string());
+            let scale = risk_map.get("uro:scale").map(|v| v.to_string());
 
-                    if desc.is_none() || admin.is_none() || scale.is_none() {
-                        continue;
-                    }
+            if desc.is_none() || admin.is_none() || scale.is_none() {
+                continue;
+            }
 
-                    let basename = format!(
-                        "{}（{}管理区間）_{}",
-                        desc.unwrap(),
-                        admin.unwrap(),
-                        scale.unwrap()
-                    );
+            let basename = format!(
+                "{}（{}管理区間）_{}",
+                desc.unwrap(),
+                admin.unwrap(),
+                scale.unwrap()
+            );
 
-                    let rank = risk_map
-                        .get("uro:rank")
-                        .or_else(|| risk_map.get("uro:rankOrg"));
-                    let rank_code = risk_map
-                        .get("uro:rank_code")
-                        .or_else(|| risk_map.get("uro:rankOrg_code"));
-                    let depth = risk_map.get("uro:depth");
-                    let duration = risk_map.get("uro:duration");
+            let rank = risk_map
+                .get("uro:rank")
+                .or_else(|| risk_map.get("uro:rankOrg"));
+            let rank_code = risk_map
+                .get("uro:rank_code")
+                .or_else(|| risk_map.get("uro:rankOrg_code"));
+            let depth = risk_map.get("uro:depth");
+            let duration = risk_map.get("uro:duration");
 
-                    let attrib = vec![
-                        ("浸水ランク", rank, "fme_buffer", 1),
-                        ("浸水ランクコード", rank_code, "fme_uint16", 2),
-                        ("浸水深", depth, "fme_real64", 3),
-                        ("浸水継続時間", duration, "fme_real64", 4),
-                    ];
+            let attrib = vec![
+                ("浸水ランク", rank, "fme_buffer", 1),
+                ("浸水ランクコード", rank_code, "fme_uint16", 2),
+                ("浸水深", depth, "fme_real64", 3),
+                ("浸水継続時間", duration, "fme_real64", 4),
+            ];
 
-                    let desc_code = risk_map.get("uro:description_code");
-                    if desc_code.is_none() {
-                        continue;
-                    }
-                    let desc_code = match desc_code {
-                        Some(AttributeValue::Number(n)) => n.as_i64().unwrap(),
-                        _ => continue,
-                    };
+            let desc_code = risk_map.get("uro:description_code");
+            if desc_code.is_none() {
+                continue;
+            }
+            let desc_code = match desc_code {
+                Some(AttributeValue::Number(n)) => n.as_i64().unwrap(),
+                _ => continue,
+            };
 
-                    let admin_code = risk_map.get("uro:adminType_code");
-                    let admin_code = match admin_code {
-                        Some(AttributeValue::Number(n)) => n.as_i64().unwrap(),
-                        _ => continue,
-                    };
+            let admin_code = risk_map.get("uro:adminType_code");
+            let admin_code = match admin_code {
+                Some(AttributeValue::Number(n)) => n.as_i64().unwrap(),
+                _ => continue,
+            };
 
-                    let scale_code = risk_map.get("uro:scale_code");
-                    let scale_code = match scale_code {
-                        Some(AttributeValue::Number(n)) => n.as_i64().unwrap(),
-                        _ => continue,
-                    };
+            let scale_code = risk_map.get("uro:scale_code");
+            let scale_code = match scale_code {
+                Some(AttributeValue::Number(n)) => n.as_i64().unwrap(),
+                _ => continue,
+            };
 
-                    for (k, v, t, order) in attrib {
-                        if let Some(value) = v {
-                            let name = format!("{}_{}", basename, k);
-                            let attribute_name = Attribute::new(name.clone());
-                            feature.attributes.insert(attribute_name, value.clone());
-                            self.risk_to_attr_defs
-                                .entry("fld".to_string())
-                                .or_default()
-                                .insert(name.clone(), t.to_string());
+            for (k, v, t, order) in attrib {
+                let value = match v {
+                    Some(value) => value,
+                    None => continue,
+                };
+                let name = format!("{}_{}", basename, k);
+                let attribute_name = Attribute::new(name.clone());
+                feature.attributes.insert(attribute_name, value.clone());
+                self.risk_to_attr_defs
+                    .entry("fld".to_string())
+                    .or_default()
+                    .insert(name.clone(), t.to_string());
 
-                            self.fld_attrs_sorter
-                                .insert((desc_code, admin_code, scale_code, order), name);
-                        }
-                    }
-                }
+                self.fld_attrs_sorter
+                    .insert((desc_code, admin_code, scale_code, order), name);
             }
         }
     }
@@ -346,48 +335,50 @@ impl Flattener {
         ];
 
         for (tag, title, package) in src {
-            if let Some(AttributeValue::Array(disaster_risks)) = all_attrib.get(tag) {
-                for risk in disaster_risks {
-                    if let AttributeValue::Map(risk_map) = risk {
-                        let desc = risk_map.get("uro:description").and_then(|v| {
-                            if let AttributeValue::String(s) = v {
-                                Some(s)
-                            } else {
-                                None
-                            }
-                        });
-                        if desc.is_none() {
-                            continue;
-                        }
+            let disaster_risks = match all_attrib.get(tag) {
+                Some(AttributeValue::Array(disaster_risks)) => disaster_risks,
+                _ => continue,
+            };
 
-                        let basename = format!("{}_{}", title, desc.unwrap());
+            for risk in disaster_risks {
+                let risk_map = match risk {
+                    AttributeValue::Map(risk_map) => risk_map,
+                    _ => continue,
+                };
 
-                        let rank = risk_map
-                            .get("uro:rank")
-                            .or_else(|| risk_map.get("uro:rankOrg"));
-                        let rank_code = risk_map
-                            .get("uro:rank_code")
-                            .or_else(|| risk_map.get("uro:rankOrg_code"));
-                        let depth = risk_map.get("uro:depth");
+                let desc = risk_map.get("uro:description").map(|v| v.to_string());
+                if desc.is_none() {
+                    continue;
+                }
 
-                        let attrib = vec![
-                            ("浸水ランク", rank, "fme_buffer"),
-                            ("浸水ランクコード", rank_code, "fme_uint16"),
-                            ("浸水深", depth, "fme_real64"),
-                        ];
+                let basename = format!("{}_{}", title, desc.unwrap());
 
-                        for (k, v, t) in attrib {
-                            if let Some(value) = v {
-                                let name = format!("{}_{}", basename, k);
-                                let attribute_name = Attribute::new(name.clone());
-                                feature.attributes.insert(attribute_name, value.clone());
-                                self.risk_to_attr_defs
-                                    .entry(package.to_string())
-                                    .or_default()
-                                    .insert(name, t.to_string());
-                            }
-                        }
-                    }
+                let rank = risk_map
+                    .get("uro:rank")
+                    .or_else(|| risk_map.get("uro:rankOrg"));
+                let rank_code = risk_map
+                    .get("uro:rank_code")
+                    .or_else(|| risk_map.get("uro:rankOrg_code"));
+                let depth = risk_map.get("uro:depth");
+
+                let attrib = vec![
+                    ("浸水ランク", rank, "fme_buffer"),
+                    ("浸水ランクコード", rank_code, "fme_uint16"),
+                    ("浸水深", depth, "fme_real64"),
+                ];
+
+                for (k, v, t) in attrib {
+                    let value = match v {
+                        Some(value) => value,
+                        None => continue,
+                    };
+                    let name = format!("{}_{}", basename, k);
+                    let attribute_name = Attribute::new(name.clone());
+                    feature.attributes.insert(attribute_name, value.clone());
+                    self.risk_to_attr_defs
+                        .entry(package.to_string())
+                        .or_default()
+                        .insert(name, t.to_string());
                 }
             }
         }
@@ -398,49 +389,201 @@ impl Flattener {
         feature: &mut Feature,
         all_attrib: HashMap<String, AttributeValue>,
     ) {
-        if let Some(AttributeValue::Array(disaster_risks)) =
-            all_attrib.get("uro:BuildingLandSlideRiskAttribute")
-        {
-            for risk in disaster_risks {
-                if let AttributeValue::Map(risk_map) = risk {
-                    let desc = risk_map.get("uro:description");
-                    let area_type = risk_map.get("uro:areaType");
-                    let area_type_code = risk_map.get("uro:areaType_code");
-                    let area_type_code_count = match area_type_code {
-                        Some(AttributeValue::Number(n)) => n.as_i64(),
-                        _ => None,
-                    };
-                    if desc.is_none()
-                        || area_type_code.is_none()
-                        || area_type_code_count.unwrap() > 2
-                    {
-                        continue;
-                    }
+        let disaster_risks = match all_attrib.get("uro:BuildingLandSlideRiskAttribute") {
+            Some(AttributeValue::Array(disaster_risks)) => disaster_risks,
+            _ => return,
+        };
+        for risk in disaster_risks {
+            let risk_map = match risk {
+                AttributeValue::Map(risk_map) => risk_map,
+                _ => continue,
+            };
+            let desc = risk_map.get("uro:description");
+            let area_type = risk_map.get("uro:areaType");
+            let area_type_code = risk_map.get("uro:areaType_code");
+            let area_type_code_count = match area_type_code {
+                Some(AttributeValue::Number(n)) => n.as_i64(),
+                _ => None,
+            };
+            if desc.is_none() || area_type_code.is_none() || area_type_code_count.unwrap() > 2 {
+                continue;
+            }
 
-                    let attrib = vec![
-                        (
-                            format!("土砂災害リスク_{}_区域区分", desc.unwrap()),
-                            area_type,
-                            "fme_buffer",
-                        ),
-                        (
-                            format!("土砂災害リスク_{}_区域区分コード", desc.unwrap()),
-                            area_type_code,
-                            "fme_uint16",
-                        ),
-                    ];
+            let attrib = vec![
+                (
+                    format!("土砂災害リスク_{}_区域区分", desc.unwrap()),
+                    area_type,
+                    "fme_buffer",
+                ),
+                (
+                    format!("土砂災害リスク_{}_区域区分コード", desc.unwrap()),
+                    area_type_code,
+                    "fme_uint16",
+                ),
+            ];
 
-                    for (k, v, t) in attrib {
-                        if let Some(value) = v {
-                            let attribute_name = Attribute::new(k.clone());
-                            feature.attributes.insert(attribute_name, value.clone());
-                            self.risk_to_attr_defs
-                                .entry("lsld".to_string())
-                                .or_default()
-                                .insert(k, t.to_string());
-                        }
+            for (k, v, t) in attrib {
+                let value = match v {
+                    Some(value) => value,
+                    None => continue,
+                };
+                let attribute_name = Attribute::new(k.clone());
+                feature.attributes.insert(attribute_name, value.clone());
+                self.risk_to_attr_defs
+                    .entry("lsld".to_string())
+                    .or_default()
+                    .insert(k, t.to_string());
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct CommonAttributeProcessor {
+    gen_attr_to_type: HashMap<String, String>,
+    max_lod: i64,
+    gml_path_to_max_lod: HashMap<String, i64>,
+}
+
+impl CommonAttributeProcessor {
+    fn get_generic_schema(&self) -> Vec<(String, String)> {
+        let gen_type_to_fme_type = HashMap::from([
+            ("string", "fme_buffer"),
+            ("int", "fme_int32"),
+            ("double", "fme_real64"),
+            ("date", "fme_date"),
+            ("uri", "fme_buffer"),
+            ("measure", "fme_real64"),
+        ]);
+
+        let mut schema = Vec::new();
+        for (name, gen_type) in &self.gen_attr_to_type {
+            if let Some(fme_type) = gen_type_to_fme_type.get(gen_type.as_str()) {
+                schema.push((name.clone(), fme_type.to_string()));
+            }
+        }
+        schema
+    }
+
+    fn flatten_generic_attributes(
+        &mut self,
+        feature: &mut Feature,
+        attrib: HashMap<String, AttributeValue>,
+    ) {
+        fn flatten(
+            feat: &mut Feature,
+            obj: &HashMap<String, AttributeValue>,
+            gen_attr_to_type: &mut HashMap<String, String>,
+            prefix: String,
+        ) {
+            let name = match obj.get("name") {
+                Some(AttributeValue::String(name)) => name.clone(),
+                _ => return,
+            };
+            let type_ = match obj.get("type") {
+                Some(AttributeValue::String(type_)) => type_.clone(),
+                _ => return,
+            };
+            let name = format!("{}{}", prefix, name);
+            let value = obj.get("value");
+
+            if type_ == "attributeSet" {
+                let subs = match value {
+                    Some(AttributeValue::Array(subs)) => subs,
+                    _ => return,
+                };
+                let new_prefix = format!("{}_{}", name, "");
+                for sub in subs {
+                    if let AttributeValue::Map(sub_map) = sub {
+                        flatten(feat, sub_map, gen_attr_to_type, new_prefix.clone());
                     }
                 }
+            } else if let Some(value) = value {
+                let attribute_name = Attribute::new(name.clone());
+                feat.attributes.insert(attribute_name, value.clone());
+                gen_attr_to_type.insert(name.clone(), type_.clone());
+
+                if type_ == "measure" {
+                    let uom = match obj.get("uom") {
+                        Some(AttributeValue::String(uom)) => uom.clone(),
+                        _ => return,
+                    };
+                    let name_uom = format!("{}_uom", name);
+                    let attribute_name = Attribute::new(name_uom.clone());
+                    feat.attributes
+                        .insert(attribute_name, AttributeValue::String(uom.clone()));
+                    gen_attr_to_type.insert(name_uom, "string".to_string());
+                }
+            }
+        }
+
+        let generic_attributes = match attrib.get("gen:genericAttribute") {
+            Some(AttributeValue::Array(generic_attributes)) => generic_attributes,
+            _ => return,
+        };
+        for obj in generic_attributes {
+            if let AttributeValue::Map(obj_map) = obj {
+                flatten(feature, obj_map, &mut self.gen_attr_to_type, "".to_string());
+            }
+        }
+    }
+
+    fn update_max_lod(&mut self, feature: &Feature) {
+        let gml_path = match feature.attributes.get(&Attribute::new("cityGmlPath")) {
+            Some(AttributeValue::String(gml_path)) => gml_path.clone(),
+            _ => return,
+        };
+        let mut gml_max_lod = *self.gml_path_to_max_lod.get(&gml_path).unwrap_or(&0);
+        for lod in 0..5 {
+            let key = format!("numLod{}", lod);
+            let attribute_name = Attribute::new(key.clone());
+            let num_lod = match feature.attributes.get(&attribute_name) {
+                Some(AttributeValue::Number(num_lod)) => num_lod,
+                _ => continue,
+            };
+            if num_lod.as_i64().unwrap() > 0 {
+                if self.max_lod < lod {
+                    self.max_lod = lod;
+                }
+                if gml_max_lod < lod {
+                    gml_max_lod = lod;
+                    self.gml_path_to_max_lod
+                        .insert(gml_path.clone(), gml_max_lod);
+                }
+            }
+        }
+    }
+
+    fn extract_lod_types(
+        &self,
+        feature: &mut Feature,
+        attrib: HashMap<String, AttributeValue>,
+        parent_tag: &str,
+    ) {
+        let parent_attr = match attrib.get(parent_tag) {
+            Some(AttributeValue::Array(parent_attr)) => parent_attr,
+            _ => return,
+        };
+        if parent_attr.is_empty() {
+            return;
+        }
+        let first_element = match &parent_attr[0] {
+            AttributeValue::Map(first_element) => first_element,
+            _ => return,
+        };
+        let lod_types = match first_element.get("uro:lodType") {
+            Some(AttributeValue::Array(lod_types)) => lod_types,
+            _ => return,
+        };
+        for lod_type in lod_types {
+            let s = match lod_type.to_string().chars().next() {
+                Some(s) => s,
+                None => continue,
+            };
+            if s.to_string() == "2" || s.to_string() == "3" || s.to_string() == "4" {
+                let key = format!("lod_type_{}", s);
+                let attribute_name = Attribute::new(key.clone());
+                feature.attributes.insert(attribute_name, lod_type.clone());
             }
         }
     }
@@ -481,13 +624,28 @@ impl ProcessorFactory for AttributeFlattenerFactory {
         _action: String,
         _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let process = AttributeFlattener {};
+        let flattener = Flattener::new();
+        let common_processor = CommonAttributeProcessor {
+            gen_attr_to_type: HashMap::new(),
+            max_lod: 0,
+            gml_path_to_max_lod: HashMap::new(),
+        };
+
+        let process = AttributeFlattener {
+            flattener,
+            common_processor,
+            features: Vec::new(),
+        };
         Ok(Box::new(process))
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct AttributeFlattener {}
+pub struct AttributeFlattener {
+    flattener: Flattener,
+    common_processor: CommonAttributeProcessor,
+    features: Vec<Feature>,
+}
 
 impl Processor for AttributeFlattener {
     fn initialize(&mut self, _ctx: NodeContext) {}
@@ -499,11 +657,9 @@ impl Processor for AttributeFlattener {
     fn process(
         &mut self,
         mut ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        _fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &mut ctx.feature;
-
-        let mut flattener = Flattener::new();
 
         let attributes = feature.attributes.clone();
 
@@ -520,30 +676,243 @@ impl Processor for AttributeFlattener {
             }
         };
 
-        let flattened = flattener.flatten_attributes(all_attrib.clone());
-
-        println!("{:?}", flattened);
+        let mut flattened = self.flattener.flatten_attributes(all_attrib.clone());
 
         if ftype == &AttributeValue::String("bldg::Building".to_string()) {
             // 災害リスク属性の抽出
-            flattener.extract_fld_risk_attribute(feature, all_attrib.clone());
-            flattener.extract_tnm_htd_ifld_risk_attribute(feature, all_attrib.clone());
-            flattener.extract_lsld_risk_attribute(feature, all_attrib.clone());
+            self.flattener
+                .extract_fld_risk_attribute(feature, all_attrib.clone());
+            self.flattener
+                .extract_tnm_htd_ifld_risk_attribute(feature, all_attrib.clone());
+            self.flattener
+                .extract_lsld_risk_attribute(feature, all_attrib.clone());
+
+            self.common_processor
+                .flatten_generic_attributes(feature, all_attrib.clone());
+            self.common_processor.extract_lod_types(
+                feature,
+                all_attrib.clone(),
+                "uro:BuildingDataQualityAttribute",
+            )
         } else {
             // 子要素の場合はルート要素（Building）の属性を抽出してマージする。
+            let root_all_attrib = match attributes.get(&Attribute::new("ancestors")) {
+                Some(AttributeValue::Map(attributes)) => attributes.clone(),
+                _ =>
+                // default to empty
+                {
+                    HashMap::new()
+                }
+            };
+            let froot = self.flattener.flatten_attributes(root_all_attrib.clone());
+            for (name, vroot) in &froot {
+                let v = flattened.get(name);
+
+                let value = if v.is_none() || v == Some(vroot) {
+                    vroot.clone()
+                } else {
+                    AttributeValue::String(format!(
+                        "{} {}",
+                        match &vroot {
+                            AttributeValue::String(s) => s,
+                            _ => panic!("Expected AttributeValue::String"),
+                        },
+                        match v {
+                            Some(AttributeValue::String(ref s)) => s,
+                            _ => panic!("Expected Some(AttributeValue::String)"),
+                        }
+                    ))
+                };
+                flattened.insert(name.clone(), value.clone());
+            }
+
+            if ftype == &AttributeValue::String("bldg::BuildingPart".to_string()) {
+                self.flattener
+                    .extract_fld_risk_attribute(feature, root_all_attrib.clone());
+                self.flattener
+                    .extract_tnm_htd_ifld_risk_attribute(feature, root_all_attrib.clone());
+                self.flattener
+                    .extract_lsld_risk_attribute(feature, root_all_attrib.clone());
+
+                // BuildingPart に記述されている災害リスク属性も抽出する。
+                // 規格外ではあるが BuildingPart 下位に災害リスク属性が記述されているデータもあるため。
+                self.flattener
+                    .extract_fld_risk_attribute(feature, all_attrib.clone());
+                self.flattener
+                    .extract_tnm_htd_ifld_risk_attribute(feature, all_attrib.clone());
+                self.flattener
+                    .extract_lsld_risk_attribute(feature, all_attrib.clone());
+            }
+
+            // フラットにする属性の設定
+            for (name, value) in &flattened {
+                feature
+                    .attributes
+                    .insert(Attribute::new(name.clone()), value.clone());
+            }
+
+            self.common_processor.update_max_lod(feature);
+            self.features.push(feature.clone());
         }
-
-        let feature = feature.clone();
-
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 
     fn finish(
         &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
+        ctx: NodeContext,
+        fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        if self.features.is_empty() {
+            return Ok(());
+        }
+
+        // スキーマ定義名
+        let first_feature = &self.features[0];
+        let city_code = match first_feature.attributes.get(&Attribute::new("cityCode")) {
+            Some(AttributeValue::String(s)) => s.clone(),
+            _ => {
+                return Err(PlateauProcessorError::AttributeFlattener(
+                    "No city code found".to_string(),
+                )
+                .into())
+            }
+        };
+        let schema_definition = format!("building_{}", city_code);
+
+        // スキーマ属性を作成してデータフィーチャーに設定、出力
+        let mut attrib = HashMap::new();
+        attrib.insert(
+            "schema_definition".to_string(),
+            AttributeValue::String(schema_definition),
+        );
+        attrib.insert(
+            "max_lod".to_string(),
+            AttributeValue::Number(self.common_processor.max_lod.into()),
+        );
+
+        let mut schema = vec![
+            ("meshcode".to_string(), "fme_varchar(16)".to_string()),
+            ("feature_type".to_string(), "fme_buffer".to_string()),
+            ("city_code".to_string(), "fme_varchar(8)".to_string()),
+            ("city_name".to_string(), "fme_varchar(64)".to_string()),
+            ("gml_id".to_string(), "fme_varchar(64)".to_string()),
+            ("attributes".to_string(), "fme_json".to_string()),
+        ];
+
+        // フラットにする属性のスキーマ定義を追加
+        for (t1, t2, attr_type) in self.flattener.flatten_attrs_data.clone() {
+            let name = if !t2.is_empty() {
+                format!("{}{}{}", t1, DELIM, t2)
+            } else {
+                t1.to_string()
+            };
+            if self.flattener.existing_flatten_attrs.contains(&name) {
+                schema.push((name, attr_type.to_string()));
+            } else {
+                schema.push((name, "fme_buffer".to_string()));
+            }
+        }
+
+        // 汎用属性のスキーマ定義を追加
+        schema.extend(self.common_processor.get_generic_schema());
+
+        // 災害リスク属性のスキーマ定義を追加
+        for t in &["fld", "tnm", "htd", "ifld", "lsld"] {
+            let name_to_type = match self.flattener.risk_to_attr_defs.get(*t) {
+                Some(name_to_type) => name_to_type,
+                None => continue,
+            };
+            if *t == "fld" {
+                for key in self.flattener.fld_attrs_sorter.keys().sorted() {
+                    if let Some(name) = self.flattener.fld_attrs_sorter.get(key) {
+                        if let Some(attr_type) = name_to_type.get(name) {
+                            schema.push((name.clone(), attr_type.clone()));
+                        }
+                    }
+                }
+            } else {
+                for (name, attr_type) in name_to_type {
+                    schema.push((name.clone(), attr_type.clone()));
+                }
+            }
+        }
+
+        // その他属性のスキーマ定義を追加
+        schema.extend(vec![
+            ("lod".to_string(), "fme_uint16".to_string()),
+            ("lod_type".to_string(), "fme_varchar(8)".to_string()),
+            ("x".to_string(), "fme_real64".to_string()),
+            ("y".to_string(), "fme_real64".to_string()),
+            ("xmin".to_string(), "fme_real64".to_string()),
+            ("xmax".to_string(), "fme_real64".to_string()),
+            ("ymin".to_string(), "fme_real64".to_string()),
+            ("ymax".to_string(), "fme_real64".to_string()),
+            ("zmin".to_string(), "fme_real64".to_string()),
+            ("zmax".to_string(), "fme_real64".to_string()),
+        ]);
+
+        // データフィーチャーにスキーマ属性設定、出力
+        for (i, (name, attr_type)) in schema.iter().enumerate() {
+            let prefix = format!("attribute{}", i);
+            attrib.insert(
+                format!("{}.name", prefix),
+                AttributeValue::String(name.clone()),
+            );
+            attrib.insert(
+                format!("{}.fme_data_type", prefix),
+                AttributeValue::String(attr_type.clone()),
+            );
+        }
+        for mut feature in self.features.clone() {
+            for (name, value) in &attrib {
+                let attribute_name = Attribute::new(name.clone());
+                feature.attributes.insert(attribute_name, value.clone());
+            }
+            // self.pyoutput(feature); TODO
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature.clone(),
+                DEFAULT_PORT.clone(),
+            ));
+        }
+
+        // ファイルパスフィーチャー
+        // let mut path_features = Vec::new(); // TODO no need?
+
+        for path in self.common_processor.gml_path_to_max_lod.keys().sorted() {
+            // let mut feature = Feature {
+            //     id: Uuid::new_v4(),
+            //     attributes: HashMap::new(),
+            //     geometry: None,
+            // };
+            let mut feature = first_feature.clone();
+
+            attrib.insert(
+                "city_code".to_string(),
+                AttributeValue::String(city_code.clone()),
+            );
+            attrib.insert("gml_path".to_string(), AttributeValue::String(path.clone()));
+            attrib.insert(
+                "max_lod".to_string(),
+                AttributeValue::Number(self.common_processor.gml_path_to_max_lod[path].into()),
+            );
+            attrib.insert(
+                "_is_filepath_feature".to_string(),
+                AttributeValue::String("Yes".to_string()),
+            );
+            for (name, value) in &attrib {
+                let attribute_name = Attribute::new(name.clone());
+                feature.attributes.insert(attribute_name, value.clone());
+            }
+            // path_features.push(feature.clone()); // TODO no need?
+
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature.clone(),
+                DEFAULT_PORT.clone(),
+            ));
+        }
+
         Ok(())
     }
 
