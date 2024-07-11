@@ -1433,12 +1433,12 @@
           "epsgCode": {
             "format": "uint16",
             "minimum": 0.0,
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
-        "required": [
-          "epsgCode"
-        ],
         "title": "ReprojectorParam",
         "type": "object"
       },
