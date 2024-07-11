@@ -12,9 +12,9 @@ use super::traits::Surface;
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Triangle<T: CoordNum = f64, Z: CoordNum = f64>(
-    pub Coordinate<T, Z>,
-    pub Coordinate<T, Z>,
-    pub Coordinate<T, Z>,
+    pub(crate) Coordinate<T, Z>,
+    pub(crate) Coordinate<T, Z>,
+    pub(crate) Coordinate<T, Z>,
 );
 
 pub type Triangle2D<T> = Triangle<T, NoValue>;

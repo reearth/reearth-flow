@@ -1,17 +1,15 @@
 use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-use crate::coord;
-use crate::error::Error;
 use approx::{AbsDiffEq, RelativeEq, UlpsEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
-use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
 use super::no_value::NoValue;
 use super::point::Point;
+use crate::coord;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash, Default)]
 pub struct Coordinate<T: CoordNum = f64, Z: CoordNum = f64> {
@@ -300,21 +298,6 @@ impl<T: CoordNum, Z: CoordNum> Zero for Coordinate<T, Z> {
     #[inline]
     fn is_zero(&self) -> bool {
         self.x.is_zero() && self.y.is_zero() && self.z.is_zero()
-    }
-}
-
-impl Coordinate3D<f64> {
-    pub fn projection(
-        &mut self,
-        projection: &ExtendedTransverseMercatorProjection,
-    ) -> Result<(), Error> {
-        let (y, x, z) = projection
-            .project_forward(self.y, self.x, self.z)
-            .map_err(Error::projection)?;
-        self.x = x;
-        self.y = y;
-        self.z = z;
-        Ok(())
     }
 }
 

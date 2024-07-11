@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use nusamai_projection::{crs::*, etmerc::ExtendedTransverseMercatorProjection, jprect::JPRZone};
+use reearth_flow_geometry::algorithm::proj::Projection;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
