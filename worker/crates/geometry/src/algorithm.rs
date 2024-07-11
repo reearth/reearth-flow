@@ -24,6 +24,7 @@ pub mod is_convex;
 pub mod kernels;
 pub mod line_intersection;
 pub mod map_coords;
+pub mod proj;
 pub mod relate;
 pub mod remove_repeated_points;
 pub mod rotate_3d;

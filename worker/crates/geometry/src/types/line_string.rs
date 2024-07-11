@@ -1,12 +1,10 @@
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
-use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
 use nusamai_geometry::{LineString2 as NLineString2, LineString3 as NLineString3};
 
-use crate::error::Error;
 use crate::utils::line_string_bounding_rect;
 
 use super::coordinate::{self, Coordinate};
@@ -255,18 +253,6 @@ impl<'a> From<NLineString3<'a>> for LineString<f64> {
                 .map(|a| coordinate::Coordinate3D::new__(a[0], a[1], a[2]))
                 .collect::<Vec<_>>(),
         )
-    }
-}
-
-impl LineString3D<f64> {
-    pub fn projection(
-        &mut self,
-        projection: &ExtendedTransverseMercatorProjection,
-    ) -> Result<(), Error> {
-        for coord in &mut self.0 {
-            coord.projection(projection)?;
-        }
-        Ok(())
     }
 }
 
