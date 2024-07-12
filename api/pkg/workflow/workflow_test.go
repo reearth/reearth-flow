@@ -49,6 +49,7 @@ func TestToWorkflowYaml(t *testing.T) {
 
 	expected := map[string]interface{}{
 		"id":           wfid.String(),
+		"name":         name,
 		"entryGraphID": entryGraphID,
 		"with":         &with,
 		"graphs":       graphs,

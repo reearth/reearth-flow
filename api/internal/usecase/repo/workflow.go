@@ -10,7 +10,7 @@ import (
 
 type Workflow interface {
 	Filtered(WorkspaceFilter) Workflow
-	FindByID(context.Context, id.WorkflowID) (*workflow.Workflow, error)
+	FindByID(context.Context, accountdomain.WorkspaceID, id.WorkflowID) (*workflow.Workflow, error)
 	Save(context.Context, accountdomain.WorkspaceID, *workflow.Workflow) error
 	Remove(context.Context, accountdomain.WorkspaceID, id.WorkflowID) error
 }

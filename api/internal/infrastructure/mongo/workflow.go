@@ -37,7 +37,7 @@ func (r *Workflow) Filtered(f repo.WorkspaceFilter) repo.Workflow {
 	}
 }
 
-func (r *Workflow) FindByID(ctx context.Context, id id.WorkflowID) (*workflow.Workflow, error) {
+func (r *Workflow) FindByID(ctx context.Context, workspaceID accountdomain.WorkspaceID, id id.WorkflowID) (*workflow.Workflow, error) {
 	return r.findOne(ctx, bson.M{
 		"id": id.String(),
 	}, true)
