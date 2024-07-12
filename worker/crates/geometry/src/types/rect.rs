@@ -13,8 +13,8 @@ use super::{
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash)]
 pub struct Rect<T: CoordNum = f64, Z: CoordNum = f64> {
-    min: Coordinate<T, Z>,
-    max: Coordinate<T, Z>,
+    pub(crate) min: Coordinate<T, Z>,
+    pub(crate) max: Coordinate<T, Z>,
 }
 
 pub type Rect2D<T> = Rect<T, NoValue>;

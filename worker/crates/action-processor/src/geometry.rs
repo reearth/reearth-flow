@@ -18,6 +18,7 @@ pub mod replacer;
 pub mod reprojector;
 pub mod splitter;
 pub mod three_dimention_box_replacer;
+pub mod three_dimention_rotator;
 pub mod two_dimention_forcer;
 pub(super) mod types;
 pub mod validator;

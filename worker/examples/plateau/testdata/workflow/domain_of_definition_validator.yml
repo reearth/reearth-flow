@@ -4,7 +4,7 @@ name: "PLATEAU.DomainOfDefinitionValidator"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   cityGmlPath:
-  cityCode: "11234"
+  cityCode:
   codelistsPath:
   schemasPath:
   schemaJson: !include ../config/schema.txt

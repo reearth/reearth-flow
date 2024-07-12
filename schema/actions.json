@@ -1433,12 +1433,12 @@
           "epsgCode": {
             "format": "uint16",
             "minimum": 0.0,
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
-        "required": [
-          "epsgCode"
-        ],
         "title": "ReprojectorParam",
         "type": "object"
       },
@@ -1517,6 +1517,63 @@
           "minZ"
         ],
         "title": "ThreeDimentionBoxReplacer",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "ThreeDimentionRotator",
+      "type": "processor",
+      "description": "Replaces a three dimention box with a polygon.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "angleDegree": {
+            "$ref": "#/definitions/Expr"
+          },
+          "directionX": {
+            "$ref": "#/definitions/Expr"
+          },
+          "directionY": {
+            "$ref": "#/definitions/Expr"
+          },
+          "directionZ": {
+            "$ref": "#/definitions/Expr"
+          },
+          "originX": {
+            "$ref": "#/definitions/Expr"
+          },
+          "originY": {
+            "$ref": "#/definitions/Expr"
+          },
+          "originZ": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "required": [
+          "angleDegree",
+          "directionX",
+          "directionY",
+          "directionZ",
+          "originX",
+          "originY",
+          "originZ"
+        ],
+        "title": "ThreeDimentionRotatorParam",
         "type": "object"
       },
       "builtin": true,

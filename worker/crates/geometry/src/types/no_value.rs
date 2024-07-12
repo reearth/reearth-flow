@@ -108,6 +108,30 @@ impl ToPrimitive for NoValue {
     }
 }
 
+impl From<NoValue> for f64 {
+    fn from(_: NoValue) -> Self {
+        0.0
+    }
+}
+
+impl From<NoValue> for f32 {
+    fn from(_: NoValue) -> Self {
+        0.0
+    }
+}
+
+impl From<NoValue> for i32 {
+    fn from(_: NoValue) -> Self {
+        0
+    }
+}
+
+impl From<NoValue> for i64 {
+    fn from(_: NoValue) -> Self {
+        0
+    }
+}
+
 impl NumCast for NoValue {
     fn from<T: ToPrimitive>(_: T) -> Option<Self> {
         None
