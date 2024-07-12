@@ -23,7 +23,7 @@ func NewWorkflow(id ID, project ProjectID, workspace WorkspaceID, yaml *string) 
 	}
 }
 
-func ToWorkflowYaml(id ID, name, entryGraphID string, with *map[string]interface{}, graphs []*Graph) *string {
+func ToWorkflowYaml(id ID, name, entryGraphID string, with *map[string]interface{}, graphs []*Graph) (*string, error) {
 	w := map[string]interface{}{
 		"id":           id.String(),
 		"name":         name,
@@ -34,7 +34,7 @@ func ToWorkflowYaml(id ID, name, entryGraphID string, with *map[string]interface
 
 	yamlData, err := yaml.Marshal(w)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	fileName := id.String() + "-workflow" + ".yaml"
@@ -47,12 +47,12 @@ func ToWorkflowYaml(id ID, name, entryGraphID string, with *map[string]interface
 
 	if _, err := f.Write(yamlData); err != nil {
 		f.Close()
-		return nil
+		return nil, err
 	}
 	if err := f.Close(); err != nil {
 		log.Fatal(err)
 	}
 
 	stringifiedYaml := string(yamlData)
-	return &stringifiedYaml
+	return &stringifiedYaml, nil
 }

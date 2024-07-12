@@ -61,7 +61,10 @@ func TestToWorkflowYaml(t *testing.T) {
 	}
 
 	expectedString := string(expectedYaml)
-	result := ToWorkflowYaml(wfid, name, entryGraphID, &with, graphs)
+	result, err := ToWorkflowYaml(wfid, name, entryGraphID, &with, graphs)
+	if err != nil {
+		t.Fatalf("Failed to convert to yaml: %v", err)
+	}
 
 	if result == nil {
 		t.Fatalf("Expected non-nil result, got nil")

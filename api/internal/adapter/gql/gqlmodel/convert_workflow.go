@@ -14,8 +14,18 @@ func FromInputWorkflow(pid id.ProjectID, wsid idx.ID[accountdomain.Workspace], w
 
 	wfid := workflow.NewWorkflowID()
 
-	var entryGraphID string
+	entryGraphID, graphs := convertWorkflows(w)
 
+	yaml, err := workflow.ToWorkflowYaml(wfid, "Debug workflow", entryGraphID, nil, graphs)
+	if err != nil {
+		return nil
+	}
+
+	return workflow.NewWorkflow(wfid, pid, wsid, yaml)
+}
+
+func convertWorkflows(w []*InputWorkflow) (string, []*workflow.Graph) {
+	var entryGraphID string
 	graphs := []*workflow.Graph{}
 
 	for _, v := range w {
@@ -26,21 +36,30 @@ func FromInputWorkflow(pid id.ProjectID, wsid idx.ID[accountdomain.Workspace], w
 			}
 		}
 
-		nodes := []*workflow.Node{}
-		for _, n := range v.Nodes {
-			nID, _ := ToID[id.Node](n.ID)
-			nodes = append(nodes, workflow.NewNode(nID, n.Data.Name, n.Type.String(), string(n.Data.ActionID), nil)) // TODO: Need to add params here
-		}
-		edges := []*workflow.Edge{}
-		for _, e := range v.Edges {
-			eID, _ := ToID[id.Edge](e.ID)
-			edges = append(edges, workflow.NewEdge(eID, string(e.Source), string(e.Target), e.SourceHandle, e.TargetHandle))
-		}
-
+		nodes := convertNodes(v.Nodes)
+		edges := convertEdges(v.Edges)
 		graphs = append(graphs, workflow.NewGraph(workflow.NewGraphID(), v.Name, nodes, edges))
 	}
 
-	yaml := workflow.ToWorkflowYaml(wfid, "Debug workflow", entryGraphID, nil, graphs)
+	return entryGraphID, graphs
+}
 
-	return workflow.NewWorkflow(wfid, pid, wsid, yaml)
+func convertNodes(inputNodes []*InputWorkflowNode) []*workflow.Node {
+	nodes := []*workflow.Node{}
+	for _, n := range inputNodes {
+		nID, _ := ToID[id.Node](n.ID)
+		newNode := workflow.NewNode(nID, n.Data.Name, n.Type.String(), string(n.Data.ActionID), nil) // TODO: Need to add params here
+		nodes = append(nodes, newNode)
+	}
+	return nodes
+}
+
+func convertEdges(inputEdges []*InputWorkflowEdge) []*workflow.Edge {
+	edges := []*workflow.Edge{}
+	for _, e := range inputEdges {
+		eID, _ := ToID[id.Edge](e.ID)
+		newEdge := workflow.NewEdge(eID, string(e.Source), string(e.Target), e.SourceHandle, e.TargetHandle)
+		edges = append(edges, newEdge)
+	}
+	return edges
 }
