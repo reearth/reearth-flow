@@ -34,7 +34,6 @@ pub struct Geometry {
     pub name: Option<String>,
     pub epsg: Option<EpsgCode>,
     pub value: GeometryValue,
-    pub attributes: Option<serde_json::Value>,
 }
 
 impl TryFrom<Entity> for Geometry {
@@ -58,7 +57,6 @@ impl TryFrom<Entity> for Geometry {
         let ObjectStereotype::Feature { id, geometries } = &obj.stereotype else {
             return Err(Error::unsupported_feature("no feature found"));
         };
-        let attributes = entity.root.to_attribute_json();
         let mut geometry_features = Vec::<GeometryFeature>::new();
         let operation = |geometry: &GeometryRef| -> Option<GeometryFeature> {
             match geometry.ty {
@@ -225,7 +223,6 @@ impl TryFrom<Entity> for Geometry {
             Some(name),
             epsg,
             GeometryValue::CityGmlGeometry(geometry_entity),
-            Some(attributes),
         ))
     }
 }
@@ -237,25 +234,17 @@ impl Default for Geometry {
             name: Some("".to_string()),
             epsg: None,
             value: GeometryValue::Null,
-            attributes: None,
         }
     }
 }
 
 impl Geometry {
-    pub fn new(
-        id: String,
-        name: Option<String>,
-        epsg: EpsgCode,
-        value: GeometryValue,
-        attributes: Option<serde_json::Value>,
-    ) -> Self {
+    pub fn new(id: String, name: Option<String>, epsg: EpsgCode, value: GeometryValue) -> Self {
         Self {
             id,
             name,
             epsg: Some(epsg),
             value,
-            attributes,
         }
     }
 
@@ -265,7 +254,6 @@ impl Geometry {
             name: None,
             epsg: None,
             value,
-            attributes: None,
         }
     }
 }

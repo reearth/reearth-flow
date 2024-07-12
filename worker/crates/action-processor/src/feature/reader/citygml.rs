@@ -10,7 +10,7 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder, executor_operation::ExecutorContext, node::DEFAULT_PORT,
 };
-use reearth_flow_types::{geometry::Geometry, Feature};
+use reearth_flow_types::{geometry::Geometry, Attribute, Feature};
 use url::Url;
 
 use super::CompiledCommonPropertySchema;
@@ -124,11 +124,15 @@ fn parse_tree_reader<R: BufRead>(
                 &geom_store.surface_spans,
             );
         }
+        let attributes = entity.root.to_attribute_json();
         let geometry: Geometry = entity.try_into().map_err(|e| {
             super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
         })?;
         let mut feature = Feature::new_with_attributes(ctx.feature.attributes.clone());
         feature.geometry = Some(geometry);
+        feature
+            .attributes
+            .insert(Attribute::new("cityGmlAttributes"), attributes.into());
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
     }
     Ok(())
