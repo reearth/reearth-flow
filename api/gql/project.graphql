@@ -38,6 +38,7 @@ input DeleteProjectInput {
 
 input RunProjectInput {
   projectId: ID!
+  workspaceId: ID!
   workflows: [InputWorkflow!]!
 }
 

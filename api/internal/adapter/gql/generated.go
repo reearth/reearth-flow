@@ -1345,6 +1345,7 @@ input DeleteProjectInput {
 
 input RunProjectInput {
   projectId: ID!
+  workspaceId: ID!
   workflows: [InputWorkflow!]!
 }
 
@@ -9461,7 +9462,7 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "workflows"}
+	fieldsInOrder := [...]string{"projectId", "workspaceId", "workflows"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -9475,6 +9476,13 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 				return it, err
 			}
 			it.ProjectID = data
+		case "workspaceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
 		case "workflows":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflows"))
 			data, err := ec.unmarshalNInputWorkflow2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐInputWorkflowᚄ(ctx, v)

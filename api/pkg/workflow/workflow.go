@@ -1,51 +1,58 @@
 package workflow
 
+import (
+	"log"
+	"os"
+
+	"gopkg.in/yaml.v2"
+)
+
 type Workflow struct {
-	id           ID
-	workspace    WorkspaceID
-	project      ProjectID
-	name         string
-	entryGraphId string
-	with         map[string]interface{}
-	graphs       []*Graph
+	ID         ID `json:"id"`
+	Project    ProjectID
+	Workspace  WorkspaceID
+	YamlString *string
 }
 
-func NewWorkflow(id ID, workspace WorkspaceID, project ProjectID, name string, entryGraphId string, with map[string]interface{}, graphs []*Graph) *Workflow {
+func NewWorkflow(id ID, project ProjectID, workspace WorkspaceID, yaml *string) *Workflow {
 	return &Workflow{
-		id:           id,
-		workspace:    workspace,
-		project:      project,
-		name:         name,
-		entryGraphId: entryGraphId,
-		with:         with,
-		graphs:       graphs,
+		ID:         id,
+		Project:    project,
+		Workspace:  workspace,
+		YamlString: yaml,
 	}
 }
 
-func (w *Workflow) ID() ID {
-	return w.id
-}
+func ToWorkflowYaml(id ID, name, entryGraphID string, with *map[string]interface{}, graphs []*Graph) *string {
+	w := map[string]interface{}{
+		"id":           id.String(),
+		"name":         name,
+		"entryGraphID": entryGraphID,
+		"with":         with,
+		"graphs":       graphs,
+	}
 
-func (w *Workflow) Workspace() WorkspaceID {
-	return w.workspace
-}
+	yamlData, err := yaml.Marshal(w)
+	if err != nil {
+		return nil
+	}
 
-func (w *Workflow) Project() ProjectID {
-	return w.project
-}
+	fileName := id.String() + "-workflow" + ".yaml"
 
-func (w *Workflow) Name() string {
-	return w.name
-}
+	f, err := os.CreateTemp("", fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.Remove(f.Name())
 
-func (w *Workflow) EntryGraphId() string {
-	return w.entryGraphId
-}
+	if _, err := f.Write(yamlData); err != nil {
+		f.Close()
+		return nil
+	}
+	if err := f.Close(); err != nil {
+		log.Fatal(err)
+	}
 
-func (w *Workflow) With() map[string]interface{} {
-	return w.with
-}
-
-func (w *Workflow) Graphs() []*Graph {
-	return w.graphs
+	stringifiedYaml := string(yamlData)
+	return &stringifiedYaml
 }

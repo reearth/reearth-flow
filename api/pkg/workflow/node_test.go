@@ -17,11 +17,11 @@ func TestNewNode(t *testing.T) {
 	result := NewNode(nodeID, name, nodeType, action, with)
 
 	want := &Node{
-		id:       nodeID,
-		name:     name,
-		nodeType: nodeType,
-		action:   action,
-		with:     with,
+		ID:       nodeID,
+		Name:     name,
+		NodeType: nodeType,
+		Action:   action,
+		With:     with,
 	}
 
 	assert.Equal(t, result, want)

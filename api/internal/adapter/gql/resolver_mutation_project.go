@@ -70,8 +70,10 @@ func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunPro
 		return nil, err
 	}
 
+	wsid, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
+
 	res, err := usecases(ctx).Project.Run(ctx, interfaces.RunProjectParam{
-		Workflow: gqlmodel.FromInputWorkflow(pid, input.Workflows),
+		Workflow: gqlmodel.FromInputWorkflow(pid, wsid, input.Workflows),
 	}, getOperator(ctx))
 	if err != nil {
 		return nil, err

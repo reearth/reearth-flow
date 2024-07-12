@@ -17,6 +17,7 @@ import (
 type Project struct {
 	common
 	assetRepo     repo.Asset
+	workflowRepo  repo.Workflow
 	projectRepo   repo.Project
 	userRepo      accountrepo.User
 	workspaceRepo accountrepo.Workspace
@@ -27,6 +28,7 @@ type Project struct {
 func NewProject(r *repo.Container, gr *gateway.Container) interfaces.Project {
 	return &Project{
 		assetRepo:     r.Asset,
+		workflowRepo:  r.Workflow,
 		projectRepo:   r.Project,
 		userRepo:      r.User,
 		workspaceRepo: r.Workspace,
@@ -179,11 +181,13 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *
 }
 
 func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (started bool, err error) {
-	var runStarted = false
+	if p.Workflow == nil {
+		return false, nil
+	}
 
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
-		return runStarted, err
+		return false, err
 	}
 
 	ctx = tx.Context()
@@ -193,25 +197,34 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 		}
 	}()
 
-	prj, err := i.projectRepo.FindByID(ctx, p.Workflow.Project())
+	prj, err := i.projectRepo.FindByID(ctx, p.Workflow.Project)
 	if err != nil {
-		return runStarted, err
+		return false, err
 	}
 
 	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
-		return runStarted, err
+		return false, err
 	}
 
-	if p.Workflow != nil {
-		prj.UpdateWorkflow(p.Workflow.ID())
-
-		runStarted = true
+	prevWf, _ := i.workflowRepo.FindByID(ctx, prj.Workflow())
+	if prevWf == nil && prevWf.ID == prj.Workflow() {
+		// Remove old workflow if found
+		i.workflowRepo.Remove(ctx, prevWf.Workspace, prevWf.ID)
 	}
 
+	// Save new workflow
+	if err := i.workflowRepo.Save(ctx, prj.Workspace(), p.Workflow); err != nil {
+		return false, err
+	}
+
+	// Update project's workflow ID and save
+	prj.UpdateWorkflow(p.Workflow.ID)
 	if err := i.projectRepo.Save(ctx, prj); err != nil {
-		return runStarted, err
+		return false, err
 	}
+
+	// TODO: Send workflow to worker
 
 	tx.Commit()
-	return runStarted, nil
+	return true, nil
 }

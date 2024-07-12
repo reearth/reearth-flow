@@ -222,8 +222,9 @@ type RemoveMyAuthInput struct {
 }
 
 type RunProjectInput struct {
-	ProjectID ID               `json:"projectId"`
-	Workflows []*InputWorkflow `json:"workflows"`
+	ProjectID   ID               `json:"projectId"`
+	WorkspaceID ID               `json:"workspaceId"`
+	Workflows   []*InputWorkflow `json:"workflows"`
 }
 
 type RunProjectPayload struct {

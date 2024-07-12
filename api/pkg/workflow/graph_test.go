@@ -16,10 +16,10 @@ func TestNewGraph(t *testing.T) {
 	result := NewGraph(graphID, name, nodes, edges)
 
 	want := &Graph{
-		id:    graphID,
-		name:  name,
-		nodes: nodes,
-		edges: edges,
+		ID:    graphID,
+		Name:  name,
+		Nodes: nodes,
+		Edges: edges,
 	}
 
 	assert.Equal(t, result, want)

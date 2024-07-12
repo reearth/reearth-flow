@@ -17,11 +17,11 @@ func TestNewEdge(t *testing.T) {
 	result := NewEdge(edgeID, from, to, fromPort, toPort)
 
 	want := &Edge{
-		id:       edgeID,
-		from:     from,
-		to:       to,
-		fromPort: fromPort,
-		toPort:   toPort,
+		ID:       edgeID,
+		From:     from,
+		To:       to,
+		FromPort: fromPort,
+		ToPort:   toPort,
 	}
 
 	assert.Equal(t, result, want)
