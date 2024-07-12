@@ -73,13 +73,13 @@ const Logs = <TData, TValue>({
 
   return (
     <div>
-      <div className="flex items-center py-4 gap-4">
+      <div className="flex items-center p-2 gap-4 text-white bg-zinc-900 rounded-t">
         {showFiltering && (
           <Input
             placeholder={t("Search") + "..."}
             value={globalFilter ?? ""}
             onChange={e => setGlobalFilter(String(e.target.value))}
-            className="max-w-sm"
+            className="max-w-[20rem]"
           />
         )}
         {selectColumns && (
@@ -108,7 +108,7 @@ const Logs = <TData, TValue>({
           </DropdownMenu>
         )}
       </div>
-      <div className="text- bg-zinc-900 rounded text-white">
+      <div className="text- bg-zinc-900 rounded-b text-white">
         <div className="border-b border-gray-400 h-16 flex w-full items-center justify-between p-2">
           <h2 className="text-lg">{t("Log")}</h2>
           <div className="flex gap-2">
