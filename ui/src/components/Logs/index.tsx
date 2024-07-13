@@ -72,8 +72,31 @@ const Logs = <TData, TValue>({
   });
 
   return (
-    <div>
-      <div className="flex items-center py-4 gap-4">
+    <div className="text- bg-zinc-900 rounded text-white">
+      <div className="h-16 flex w-full items-center justify-between p-2">
+        <h2 className="text-lg">{t("Log")}</h2>
+        <div className="flex gap-2">
+          <Button variant="outline" size="icon">
+            <CrossCircledIcon />
+          </Button>
+          <Button variant="outline" size="icon">
+            <ExclamationTriangleIcon />
+          </Button>
+          <Button variant="outline" size="icon">
+            <InfoCircledIcon />
+          </Button>
+          <Button variant="outline" size="icon">
+            <ClockIcon />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <CaretSortIcon />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <UpdateIcon />
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center p-4 gap-4">
         {showFiltering && (
           <Input
             placeholder={t("Search") + "..."}
@@ -108,52 +131,28 @@ const Logs = <TData, TValue>({
           </DropdownMenu>
         )}
       </div>
-      <div className="text- bg-zinc-900 rounded text-white">
-        <div className="border-b border-gray-400 h-16 flex w-full items-center justify-between p-2">
-          <h2 className="text-lg">{t("Log")}</h2>
-          <div className="flex gap-2">
-            <Button variant="outline" size="icon">
-              <CrossCircledIcon />
-            </Button>
-            <Button variant="outline" size="icon">
-              <ExclamationTriangleIcon />
-            </Button>
-            <Button variant="outline" size="icon">
-              <InfoCircledIcon />
-            </Button>
-            <Button variant="outline" size="icon">
-              <ClockIcon />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <CaretSortIcon />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <UpdateIcon />
-            </Button>
-          </div>
-        </div>
-        <Table>
-          <TableBody className="">
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map(row => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                  {row.getVisibleCells().map(cell => (
-                    <TableCell className="cursor-pointer" key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  {t("No Results")}
-                </TableCell>
+      <div className="border-b border-gray-400" />
+      <Table>
+        <TableBody className="">
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map(row => (
+              <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                {row.getVisibleCells().map(cell => (
+                  <TableCell className="cursor-pointer" key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center">
+                {t("No Results")}
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 };
