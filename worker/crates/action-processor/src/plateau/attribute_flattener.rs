@@ -677,7 +677,6 @@ impl Processor for AttributeFlattener {
                 let attribute_name = Attribute::new(name.clone());
                 feature.attributes.insert(attribute_name, value.clone());
             }
-            // self.pyoutput(feature); TODO
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature.clone(),
