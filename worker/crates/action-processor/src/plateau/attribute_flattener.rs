@@ -15,7 +15,6 @@ const DELIM: &str = "_";
 
 #[derive(Debug, Clone, Default)]
 struct Flattener {
-    flatten_attrs_data: Vec<(&'static str, &'static str, &'static str)>,
     flatten_attrs: HashMap<&'static str, Vec<&'static str>>,
     existing_flatten_attrs: HashSet<String>,
     risk_to_attr_defs: HashMap<String, HashMap<String, String>>,
@@ -25,167 +24,74 @@ struct Flattener {
 impl Flattener {
     fn new() -> Self {
         let flatten_attrs_data = vec![
-            ("gml:name", "", ""),
-            ("bldg:class", "", ""),
-            ("bldg:usage", "", ""),
-            ("bldg:yearOfConstruction", "", "fme_int16"),
-            ("bldg:measuredHeight", "", "fme_real64"),
-            ("bldg:storeysAboveGround", "", "fme_int16"),
-            ("bldg:storeysBelowGround", "", "fme_int16"),
-            ("bldg:address", "", ""),
-            ("uro:BuildingIDAttribute", "uro:buildingID", ""),
-            ("uro:BuildingIDAttribute", "uro:branchID", "fme_int16"),
-            ("uro:BuildingIDAttribute", "uro:partID", "fme_int16"),
-            ("uro:BuildingIDAttribute", "uro:prefecture", ""),
-            ("uro:BuildingIDAttribute", "uro:city", ""),
+            ("gml:name", ""),
+            ("bldg:class", ""),
+            ("bldg:usage", ""),
+            ("bldg:yearOfConstruction", ""),
+            ("bldg:measuredHeight", ""),
+            ("bldg:storeysAboveGround", ""),
+            ("bldg:storeysBelowGround", ""),
+            ("bldg:address", ""),
+            ("uro:BuildingIDAttribute", "uro:buildingID"),
+            ("uro:BuildingIDAttribute", "uro:branchID"),
+            ("uro:BuildingIDAttribute", "uro:partID"),
+            ("uro:BuildingIDAttribute", "uro:prefecture"),
+            ("uro:BuildingIDAttribute", "uro:city"),
             (
                 "uro:BuildingDetailAttribute",
                 "uro:serialNumberOfBuildingCertification",
-                "",
             ),
-            ("uro:BuildingDetailAttribute", "uro:siteArea", "fme_real64"),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:totalFloorArea",
-                "fme_real64",
-            ),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:buildingFootprintArea",
-                "fme_real64",
-            ),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:buildingRoofEdgeArea",
-                "fme_real64",
-            ),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:buildingStructureType",
-                "",
-            ),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:fireproofStructureType",
-                "",
-            ),
-            ("uro:BuildingDetailAttribute", "uro:urbanPlanType", ""),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:areaClassificationType",
-                "",
-            ),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:districtsAndZonesType",
-                "",
-            ),
-            ("uro:BuildingDetailAttribute", "uro:landUseType", ""),
-            ("uro:BuildingDetailAttribute", "uro:vacancy", ""),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:buildingCoverageRate",
-                "fme_real64",
-            ),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:floorAreaRate",
-                "fme_real64",
-            ),
+            ("uro:BuildingDetailAttribute", "uro:siteArea"),
+            ("uro:BuildingDetailAttribute", "uro:totalFloorArea"),
+            ("uro:BuildingDetailAttribute", "uro:buildingFootprintArea"),
+            ("uro:BuildingDetailAttribute", "uro:buildingRoofEdgeArea"),
+            ("uro:BuildingDetailAttribute", "uro:buildingStructureType"),
+            ("uro:BuildingDetailAttribute", "uro:fireproofStructureType"),
+            ("uro:BuildingDetailAttribute", "uro:urbanPlanType"),
+            ("uro:BuildingDetailAttribute", "uro:areaClassificationType"),
+            ("uro:BuildingDetailAttribute", "uro:districtsAndZonesType"),
+            ("uro:BuildingDetailAttribute", "uro:landUseType"),
+            ("uro:BuildingDetailAttribute", "uro:vacancy"),
+            ("uro:BuildingDetailAttribute", "uro:buildingCoverageRate"),
+            ("uro:BuildingDetailAttribute", "uro:floorAreaRate"),
             (
                 "uro:BuildingDetailAttribute",
                 "uro:specifiedBuildingCoverageRate",
-                "fme_real64",
             ),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:specifiedFloorAreaRate",
-                "fme_real64",
-            ),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:standardFloorAreaRate",
-                "fme_real64",
-            ),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:buildingHeight",
-                "fme_real64",
-            ),
-            (
-                "uro:BuildingDetailAttribute",
-                "uro:eaveHeight",
-                "fme_real64",
-            ),
-            ("uro:BuildingDetailAttribute", "uro:surveyYear", "fme_int16"),
-            ("uro:LargeCustomerFacilityAttribute", "uro:class", ""),
-            ("uro:LargeCustomerFacilityAttribute", "uro:name", ""),
-            (
-                "uro:LargeCustomerFacilityAttribute",
-                "uro:capacity",
-                "fme_int32",
-            ),
-            (
-                "uro:LargeCustomerFacilityAttribute",
-                "uro:totalFloorArea",
-                "fme_real64",
-            ),
-            (
-                "uro:LargeCustomerFacilityAttribute",
-                "uro:inauguralDate",
-                "fme_date",
-            ),
-            (
-                "uro:LargeCustomerFacilityAttribute",
-                "uro:yearOpened",
-                "fme_int16",
-            ),
-            (
-                "uro:LargeCustomerFacilityAttribute",
-                "uro:yearClosed",
-                "fme_int16",
-            ),
-            (
-                "uro:LargeCustomerFacilityAttribute",
-                "uro:urbanPlanType",
-                "",
-            ),
+            ("uro:BuildingDetailAttribute", "uro:specifiedFloorAreaRate"),
+            ("uro:BuildingDetailAttribute", "uro:standardFloorAreaRate"),
+            ("uro:BuildingDetailAttribute", "uro:buildingHeight"),
+            ("uro:BuildingDetailAttribute", "uro:eaveHeight"),
+            ("uro:BuildingDetailAttribute", "uro:surveyYear"),
+            ("uro:LargeCustomerFacilityAttribute", "uro:class"),
+            ("uro:LargeCustomerFacilityAttribute", "uro:name"),
+            ("uro:LargeCustomerFacilityAttribute", "uro:capacity"),
+            ("uro:LargeCustomerFacilityAttribute", "uro:totalFloorArea"),
+            ("uro:LargeCustomerFacilityAttribute", "uro:inauguralDate"),
+            ("uro:LargeCustomerFacilityAttribute", "uro:yearOpened"),
+            ("uro:LargeCustomerFacilityAttribute", "uro:yearClosed"),
+            ("uro:LargeCustomerFacilityAttribute", "uro:urbanPlanType"),
             (
                 "uro:LargeCustomerFacilityAttribute",
                 "uro:areaClassificationType",
-                "",
             ),
             (
                 "uro:LargeCustomerFacilityAttribute",
                 "uro:districtsAndZonesType",
-                "",
             ),
-            ("uro:LargeCustomerFacilityAttribute", "uro:landUseType", ""),
-            (
-                "uro:LargeCustomerFacilityAttribute",
-                "uro:surveyYear",
-                "fme_int16",
-            ),
-            ("uro:BuildingDataQualityAttribute", "uro:lod1HeightType", ""),
-            (
-                "uro:RealEstateIDAttribute",
-                "uro:realEstateIDOfBuilding",
-                "",
-            ),
-            (
-                "uro:RealEstateIDAttribute",
-                "uro:matchingScore",
-                "fme_int16",
-            ),
+            ("uro:LargeCustomerFacilityAttribute", "uro:landUseType"),
+            ("uro:LargeCustomerFacilityAttribute", "uro:surveyYear"),
+            ("uro:BuildingDataQualityAttribute", "uro:lod1HeightType"),
+            ("uro:RealEstateIDAttribute", "uro:realEstateIDOfBuilding"),
+            ("uro:RealEstateIDAttribute", "uro:matchingScore"),
         ];
 
         let mut flatten_attrs = HashMap::new();
-        for (t1, t2, _) in flatten_attrs_data.clone() {
+        for (t1, t2) in flatten_attrs_data.clone() {
             flatten_attrs.entry(t1).or_insert_with(Vec::new).push(t2);
         }
 
         Flattener {
-            flatten_attrs_data,
             flatten_attrs,
             existing_flatten_attrs: HashSet::new(),
             risk_to_attr_defs: HashMap::new(),
@@ -273,10 +179,10 @@ impl Flattener {
             let duration = risk_map.get("uro:duration");
 
             let attrib = vec![
-                ("浸水ランク", rank, "fme_buffer", 1),
-                ("浸水ランクコード", rank_code, "fme_uint16", 2),
-                ("浸水深", depth, "fme_real64", 3),
-                ("浸水継続時間", duration, "fme_real64", 4),
+                ("浸水ランク", rank, 1),
+                ("浸水ランクコード", rank_code, 2),
+                ("浸水深", depth, 3),
+                ("浸水継続時間", duration, 4),
             ];
 
             let desc_code = risk_map.get("uro:description_code");
@@ -300,7 +206,7 @@ impl Flattener {
                 _ => continue,
             };
 
-            for (k, v, t, order) in attrib {
+            for (k, v, order) in attrib {
                 let value = match v {
                     Some(value) => value,
                     None => continue,
@@ -308,10 +214,7 @@ impl Flattener {
                 let name = format!("{}_{}", basename, k);
                 let attribute_name = Attribute::new(name.clone());
                 feature.attributes.insert(attribute_name, value.clone());
-                self.risk_to_attr_defs
-                    .entry("fld".to_string())
-                    .or_default()
-                    .insert(name.clone(), t.to_string());
+                self.risk_to_attr_defs.entry("fld".to_string()).or_default();
 
                 self.fld_attrs_sorter
                     .insert((desc_code, admin_code, scale_code, order), name);
@@ -362,12 +265,12 @@ impl Flattener {
                 let depth = risk_map.get("uro:depth");
 
                 let attrib = vec![
-                    ("浸水ランク", rank, "fme_buffer"),
-                    ("浸水ランクコード", rank_code, "fme_uint16"),
-                    ("浸水深", depth, "fme_real64"),
+                    ("浸水ランク", rank),
+                    ("浸水ランクコード", rank_code),
+                    ("浸水深", depth),
                 ];
 
-                for (k, v, t) in attrib {
+                for (k, v) in attrib {
                     let value = match v {
                         Some(value) => value,
                         None => continue,
@@ -377,8 +280,7 @@ impl Flattener {
                     feature.attributes.insert(attribute_name, value.clone());
                     self.risk_to_attr_defs
                         .entry(package.to_string())
-                        .or_default()
-                        .insert(name, t.to_string());
+                        .or_default();
                 }
             }
         }
@@ -413,16 +315,14 @@ impl Flattener {
                 (
                     format!("土砂災害リスク_{}_区域区分", desc.unwrap()),
                     area_type,
-                    "fme_buffer",
                 ),
                 (
                     format!("土砂災害リスク_{}_区域区分コード", desc.unwrap()),
                     area_type_code,
-                    "fme_uint16",
                 ),
             ];
 
-            for (k, v, t) in attrib {
+            for (k, v) in attrib {
                 let value = match v {
                     Some(value) => value,
                     None => continue,
@@ -431,8 +331,7 @@ impl Flattener {
                 feature.attributes.insert(attribute_name, value.clone());
                 self.risk_to_attr_defs
                     .entry("lsld".to_string())
-                    .or_default()
-                    .insert(k, t.to_string());
+                    .or_default();
             }
         }
     }
@@ -446,25 +345,6 @@ struct CommonAttributeProcessor {
 }
 
 impl CommonAttributeProcessor {
-    fn get_generic_schema(&self) -> Vec<(String, String)> {
-        let gen_type_to_fme_type = HashMap::from([
-            ("string", "fme_buffer"),
-            ("int", "fme_int32"),
-            ("double", "fme_real64"),
-            ("date", "fme_date"),
-            ("uri", "fme_buffer"),
-            ("measure", "fme_real64"),
-        ]);
-
-        let mut schema = Vec::new();
-        for (name, gen_type) in &self.gen_attr_to_type {
-            if let Some(fme_type) = gen_type_to_fme_type.get(gen_type.as_str()) {
-                schema.push((name.clone(), fme_type.to_string()));
-            }
-        }
-        schema
-    }
-
     fn flatten_generic_attributes(
         &mut self,
         feature: &mut Feature,
@@ -782,87 +662,16 @@ impl Processor for AttributeFlattener {
         // スキーマ属性を作成してデータフィーチャーに設定、出力
         let mut attrib = HashMap::new();
         attrib.insert(
-            "schema_definition".to_string(),
+            "schemaDefinition".to_string(),
             AttributeValue::String(schema_definition),
         );
         attrib.insert(
-            "max_lod".to_string(),
+            "maxLod".to_string(),
             AttributeValue::Number(self.common_processor.max_lod.into()),
         );
 
-        let mut schema = vec![
-            ("meshcode".to_string(), "fme_varchar(16)".to_string()),
-            ("feature_type".to_string(), "fme_buffer".to_string()),
-            ("city_code".to_string(), "fme_varchar(8)".to_string()),
-            ("city_name".to_string(), "fme_varchar(64)".to_string()),
-            ("gml_id".to_string(), "fme_varchar(64)".to_string()),
-            ("attributes".to_string(), "fme_json".to_string()),
-        ];
+        attrib.insert("isFilepathFeature".to_string(), AttributeValue::Bool(false));
 
-        // フラットにする属性のスキーマ定義を追加
-        for (t1, t2, attr_type) in self.flattener.flatten_attrs_data.clone() {
-            let name = if !t2.is_empty() {
-                format!("{}{}{}", t1, DELIM, t2)
-            } else {
-                t1.to_string()
-            };
-            if self.flattener.existing_flatten_attrs.contains(&name) {
-                schema.push((name, attr_type.to_string()));
-            } else {
-                schema.push((name, "fme_buffer".to_string()));
-            }
-        }
-
-        // 汎用属性のスキーマ定義を追加
-        schema.extend(self.common_processor.get_generic_schema());
-
-        // 災害リスク属性のスキーマ定義を追加
-        for t in &["fld", "tnm", "htd", "ifld", "lsld"] {
-            let name_to_type = match self.flattener.risk_to_attr_defs.get(*t) {
-                Some(name_to_type) => name_to_type,
-                None => continue,
-            };
-            if *t == "fld" {
-                for key in self.flattener.fld_attrs_sorter.keys().sorted() {
-                    if let Some(name) = self.flattener.fld_attrs_sorter.get(key) {
-                        if let Some(attr_type) = name_to_type.get(name) {
-                            schema.push((name.clone(), attr_type.clone()));
-                        }
-                    }
-                }
-            } else {
-                for (name, attr_type) in name_to_type {
-                    schema.push((name.clone(), attr_type.clone()));
-                }
-            }
-        }
-
-        // その他属性のスキーマ定義を追加
-        schema.extend(vec![
-            ("lod".to_string(), "fme_uint16".to_string()),
-            ("lod_type".to_string(), "fme_varchar(8)".to_string()),
-            ("x".to_string(), "fme_real64".to_string()),
-            ("y".to_string(), "fme_real64".to_string()),
-            ("xmin".to_string(), "fme_real64".to_string()),
-            ("xmax".to_string(), "fme_real64".to_string()),
-            ("ymin".to_string(), "fme_real64".to_string()),
-            ("ymax".to_string(), "fme_real64".to_string()),
-            ("zmin".to_string(), "fme_real64".to_string()),
-            ("zmax".to_string(), "fme_real64".to_string()),
-        ]);
-
-        // データフィーチャーにスキーマ属性設定、出力
-        for (i, (name, attr_type)) in schema.iter().enumerate() {
-            let prefix = format!("attribute{}", i);
-            attrib.insert(
-                format!("{}.name", prefix),
-                AttributeValue::String(name.clone()),
-            );
-            attrib.insert(
-                format!("{}.fme_data_type", prefix),
-                AttributeValue::String(attr_type.clone()),
-            );
-        }
         for mut feature in self.features.clone() {
             for (name, value) in &attrib {
                 let attribute_name = Attribute::new(name.clone());
@@ -876,36 +685,26 @@ impl Processor for AttributeFlattener {
             ));
         }
 
-        // ファイルパスフィーチャー
-        // let mut path_features = Vec::new(); // TODO no need?
-
         for path in self.common_processor.gml_path_to_max_lod.keys().sorted() {
-            // let mut feature = Feature {
-            //     id: Uuid::new_v4(),
-            //     attributes: HashMap::new(),
-            //     geometry: None,
-            // };
             let mut feature = first_feature.clone();
 
             attrib.insert(
-                "city_code".to_string(),
+                "cityCode".to_string(),
                 AttributeValue::String(city_code.clone()),
             );
-            attrib.insert("gml_path".to_string(), AttributeValue::String(path.clone()));
             attrib.insert(
-                "max_lod".to_string(),
+                "cityGmlPath".to_string(),
+                AttributeValue::String(path.clone()),
+            );
+            attrib.insert(
+                "maxLod".to_string(),
                 AttributeValue::Number(self.common_processor.gml_path_to_max_lod[path].into()),
             );
-            attrib.insert(
-                "_is_filepath_feature".to_string(),
-                AttributeValue::String("Yes".to_string()),
-            );
+            attrib.insert("isFilepathFeature".to_string(), AttributeValue::Bool(true));
             for (name, value) in &attrib {
                 let attribute_name = Attribute::new(name.clone());
                 feature.attributes.insert(attribute_name, value.clone());
             }
-            // path_features.push(feature.clone()); // TODO no need?
-
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature.clone(),
