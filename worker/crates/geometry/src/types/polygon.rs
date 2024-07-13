@@ -1,19 +1,18 @@
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
-use nusamai_projection::etmerc::ExtendedTransverseMercatorProjection;
 use serde::{Deserialize, Serialize};
 
 use crate::algorithm::contains::Contains;
 use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
 use crate::algorithm::GeoFloat;
-use crate::error::Error;
 
 use super::coordnum::CoordNum;
 use super::face::Face;
 use super::line::Line;
 use super::line_string::LineString;
 use super::no_value::NoValue;
+use super::point::Point;
 use super::rect::Rect;
 use super::solid::Solid;
 use super::traits::Surface;
@@ -22,8 +21,8 @@ use super::validation::Validation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub struct Polygon<T: CoordNum = f64, Z: CoordNum = f64> {
-    exterior: LineString<T, Z>,
-    interiors: Vec<LineString<T, Z>>,
+    pub(crate) exterior: LineString<T, Z>,
+    pub(crate) interiors: Vec<LineString<T, Z>>,
 }
 
 pub type Polygon2D<T> = Polygon<T, NoValue>;
@@ -354,23 +353,6 @@ impl<'a> From<NPolygon3<'a>> for Polygon<f64> {
     }
 }
 
-impl Polygon3D<f64> {
-    pub fn projection(
-        &mut self,
-        projection: &ExtendedTransverseMercatorProjection,
-    ) -> Result<(), Error> {
-        self.exterior.projection(projection)?;
-        self.exterior.close();
-        for interior in &mut self.interiors {
-            interior.projection(projection)?;
-        }
-        for interior in &mut self.interiors {
-            interior.close();
-        }
-        Ok(())
-    }
-}
-
 impl<T: CoordNum, Z: CoordNum> Surface for Polygon<T, Z> {}
 
 impl<T, Z> RelativeEq for Polygon<T, Z>
@@ -446,5 +428,17 @@ impl<'a, T: CoordNum> Iterator for Iter<'a, T> {
         } else {
             None
         }
+    }
+}
+
+impl<T, Z> rstar::RTreeObject for Polygon<T, Z>
+where
+    T: num_traits::Float + rstar::RTreeNum + CoordNum,
+    Z: num_traits::Float + rstar::RTreeNum + CoordNum,
+{
+    type Envelope = ::rstar::AABB<Point<T, Z>>;
+
+    fn envelope(&self) -> Self::Envelope {
+        self.exterior.envelope()
     }
 }

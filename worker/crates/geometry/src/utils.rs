@@ -1,3 +1,4 @@
+use nalgebra::DMatrix;
 use num_traits::FromPrimitive;
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
         coordnum::{CoordFloat, CoordNum},
         line::Line,
         line_string::LineString,
-        point::Point,
+        point::{Point, Point3D},
         rect::Rect,
     },
 };
@@ -25,9 +26,10 @@ where
     get_bounding_rect(line_string.coords().cloned())
 }
 
-pub fn line_bounding_rect<T>(line: Line<T, T>) -> Rect<T, T>
+pub fn line_bounding_rect<T, Z>(line: Line<T, Z>) -> Rect<T, Z>
 where
     T: CoordNum,
+    Z: CoordNum,
 {
     Rect::new(line.start, line.end)
 }
@@ -111,12 +113,80 @@ where
     line_segment_distance(p.into(), l.start, l.end)
 }
 
-pub fn point_contains_point<T>(p1: Point<T, T>, p2: Point<T, T>) -> bool
+pub fn point_contains_point<T, Z>(p1: Point<T, Z>, p2: Point<T, Z>) -> bool
 where
     T: CoordFloat,
+    Z: CoordFloat,
 {
     let distance = line_euclidean_length(Line::new_(p1, p2)).to_f32().unwrap();
     approx::relative_eq!(distance, 0.0)
+}
+
+pub fn point_line_string_euclidean_distance<T, Z>(p: Point<T, Z>, l: &LineString<T, Z>) -> T
+where
+    T: CoordFloat,
+    Z: CoordFloat,
+{
+    if line_string_contains_point(l, p) || l.0.is_empty() {
+        return T::zero();
+    }
+    l.lines()
+        .map(|line| line_segment_distance(p.0, line.start, line.end))
+        .fold(T::max_value(), |accum, val| accum.min(val))
+}
+
+pub fn line_string_contains_point<T, Z>(line_string: &LineString<T, Z>, point: Point<T, Z>) -> bool
+where
+    T: CoordFloat,
+    Z: CoordFloat,
+{
+    // LineString without points
+    if line_string.0.is_empty() {
+        return false;
+    }
+    // LineString with one point equal p
+    if line_string.0.len() == 1 {
+        return point_contains_point(Point::from(line_string[0]), point);
+    }
+    // check if point is a vertex
+    if line_string.0.contains(&point.0) {
+        return true;
+    }
+    for line in line_string.lines() {
+        // This is a duplicate of the line-contains-point logic in the "intersects" module
+        let tx = if line.dx() == T::zero() {
+            None
+        } else {
+            Some((point.x() - line.start.x) / line.dx())
+        };
+        let ty = if line.dy() == T::zero() {
+            None
+        } else {
+            Some((point.y() - line.start.y) / line.dy())
+        };
+        let contains = match (tx, ty) {
+            (None, None) => {
+                // Degenerate line
+                point.0 == line.start
+            }
+            (Some(t), None) => {
+                // Horizontal line
+                point.y() == line.start.y && T::zero() <= t && t <= T::one()
+            }
+            (None, Some(t)) => {
+                // Vertical line
+                point.x() == line.start.x && T::zero() <= t && t <= T::one()
+            }
+            (Some(t_x), Some(t_y)) => {
+                // All other lines
+                (t_x - t_y).abs() <= T::epsilon() && T::zero() <= t_x && t_x <= T::one()
+            }
+        };
+        if contains {
+            return true;
+        }
+    }
+    false
 }
 
 #[macro_export]
@@ -205,26 +275,92 @@ pub fn linestring_has_self_intersection<T: GeoNum, Z: GeoNum>(geom: &LineString<
     false
 }
 
-pub fn are_points_coplanar(points: Vec<nalgebra::Point3<f64>>, epsilon: f64) -> bool {
-    if points.len() < 4 {
-        return true; // Three points or less are always on the same plane.
+pub struct PointsCoplanar {
+    pub normal: Point3D<f64>,
+    pub center: Point3D<f64>,
+}
+
+pub fn are_points_coplanar(
+    points: Vec<nalgebra::Point3<f64>>,
+    tolerance: f64,
+) -> Option<PointsCoplanar> {
+    let n = points.len();
+    if points.len() < 3 {
+        return None; // Three points or less are always on the same plane.
     }
 
-    let a = points[0];
-    let b = points[1];
-    let c = points[2];
+    // Calculate the mean value of the point cloud.
+    let mean: nalgebra::Vector3<f64> = points
+        .iter()
+        .map(|p| p.coords)
+        .sum::<nalgebra::Vector3<f64>>()
+        / (n as f64);
 
-    let ab = b - a;
-    let ac = c - a;
-
-    let normal = ab.cross(&ac);
-
-    for point in points.iter().skip(3) {
-        let ap = point - a;
-        if normal.dot(&ap).abs() >= epsilon {
-            return false;
-        }
+    // Calculate the covariance matrix
+    let mut covariance_matrix = DMatrix::<f64>::zeros(3, 3);
+    for point in points {
+        let centered = point.coords - mean;
+        covariance_matrix += centered * centered.transpose();
     }
+    covariance_matrix /= n as f64;
+    // Calculate eigenvalues and eigenvectors
+    let eig = covariance_matrix.symmetric_eigen();
 
-    true
+    // Get the smallest eigenvalue
+    let min_eigenvalue = eig.eigenvalues.min();
+
+    // Get the eigenvector corresponding to the smallest eigenvalue
+    let min_eigenvalue_index = eig.eigenvalues.imin();
+    let normal_vector = eig.eigenvectors.column(min_eigenvalue_index).into_owned();
+
+    // If the smallest eigenvalue is smaller than the tolerance, it is considered flat.
+    let is_planar = min_eigenvalue < tolerance;
+
+    let normal_point = nalgebra::Point3::new(normal_vector[0], normal_vector[1], normal_vector[2]);
+    let center_point = nalgebra::Point3::new(mean[0], mean[1], mean[2]);
+    if is_planar {
+        Some(PointsCoplanar {
+            normal: Point3D::new_(normal_point.x, normal_point.y, normal_point.z),
+            center: Point3D::new_(center_point.x, center_point.y, center_point.z),
+        })
+    } else {
+        None
+    }
+}
+
+pub(crate) fn rotate_3d_custom_axis(
+    points: Vec<nalgebra::Point3<f64>>,
+    angle_degrees: f64,
+    origin: Option<Point3D<f64>>,
+    direction: Point3D<f64>,
+) -> Vec<nalgebra::Point3<f64>> {
+    // Origin of rotation
+    let angle_degrees = angle_degrees.to_radians();
+    let origin = origin.map(|p| nalgebra::Vector3::new(p.x(), p.y(), p.z()));
+
+    // Rotational axis vector
+    let direction = nalgebra::Vector3::new(direction.x(), direction.y(), direction.z()).normalize();
+
+    // Create a rotation matrix around the rotation axis.
+    let rotation = nalgebra::Rotation3::from_axis_angle(
+        &nalgebra::Unit::new_normalize(direction),
+        angle_degrees,
+    );
+
+    points
+        .iter()
+        .map(|point| {
+            let translated_point = if let Some(origin) = origin {
+                point.coords - origin
+            } else {
+                point.coords
+            };
+            let rotated_point = if let Some(origin) = origin {
+                rotation * translated_point + origin
+            } else {
+                rotation * translated_point
+            };
+            nalgebra::Point3::from(rotated_point)
+        })
+        .collect()
 }

@@ -119,6 +119,50 @@ export type DeleteWorkspacePayload = {
   workspaceId: Scalars['ID']['output'];
 };
 
+export type InputData = {
+  actionId?: InputMaybe<Scalars['ID']['input']>;
+  inputs: Array<InputMaybe<Scalars['ID']['input']>>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  outputs: Array<InputMaybe<Scalars['ID']['input']>>;
+  params?: InputMaybe<Array<InputMaybe<InputParam>>>;
+};
+
+export type InputParam = {
+  id: Scalars['ID']['input'];
+  name: Scalars['String']['input'];
+  type: InputParamType;
+  value?: InputMaybe<Scalars['Any']['input']>;
+};
+
+export enum InputParamType {
+  Array = 'ARRAY',
+  Boolean = 'BOOLEAN',
+  Number = 'NUMBER',
+  Object = 'OBJECT',
+  String = 'STRING'
+}
+
+export type InputWorkflow = {
+  createdAt: Scalars['DateTime']['input'];
+  edges?: InputMaybe<Array<InputMaybe<InputWorkflowEdge>>>;
+  id: Scalars['ID']['input'];
+  isMain?: InputMaybe<Scalars['Boolean']['input']>;
+  name: Scalars['String']['input'];
+  nodes?: InputMaybe<Array<InputMaybe<InputWorkflowNode>>>;
+  updatedAt: Scalars['DateTime']['input'];
+};
+
+export type InputWorkflowEdge = {
+  id: Scalars['ID']['input'];
+  source: Array<Scalars['ID']['input']>;
+  target: Array<Scalars['ID']['input']>;
+};
+
+export type InputWorkflowNode = {
+  data: InputData;
+  id: Scalars['ID']['input'];
+};
+
 export type Me = {
   __typename?: 'Me';
   auths: Array<Scalars['String']['output']>;
@@ -142,6 +186,7 @@ export type Mutation = {
   removeAsset?: Maybe<RemoveAssetPayload>;
   removeMemberFromWorkspace?: Maybe<RemoveMemberFromWorkspacePayload>;
   removeMyAuth?: Maybe<UpdateMePayload>;
+  runProject?: Maybe<RunProjectPayload>;
   signup?: Maybe<SignupPayload>;
   updateMe?: Maybe<UpdateMePayload>;
   updateMemberOfWorkspace?: Maybe<UpdateMemberOfWorkspacePayload>;
@@ -197,6 +242,11 @@ export type MutationRemoveMemberFromWorkspaceArgs = {
 
 export type MutationRemoveMyAuthArgs = {
   input: RemoveMyAuthInput;
+};
+
+
+export type MutationRunProjectArgs = {
+  input: RunProjectInput;
 };
 
 
@@ -261,6 +311,7 @@ export type Project = Node & {
   isBasicAuthActive: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
+  version: Scalars['Int']['output'];
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
 };
@@ -358,6 +409,17 @@ export enum Role {
   Reader = 'READER',
   Writer = 'WRITER'
 }
+
+export type RunProjectInput = {
+  projectId: Scalars['ID']['input'];
+  workflows: InputWorkflow;
+};
+
+export type RunProjectPayload = {
+  __typename?: 'RunProjectPayload';
+  projectId: Scalars['ID']['output'];
+  started: Scalars['Boolean']['output'];
+};
 
 export type SignupInput = {
   secret?: InputMaybe<Scalars['String']['input']>;

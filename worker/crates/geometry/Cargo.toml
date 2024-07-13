@@ -17,6 +17,7 @@ nusamai-projection.workspace = true
 
 approx.workspace = true
 bytes.workspace = true
+clipper-sys = "0.7.2"
 float_next_after.workspace = true
 nalgebra-glm.workspace = true
 nalgebra.workspace = true
