@@ -297,6 +297,41 @@
       ]
     },
     {
+      "name": "CenterPointReplacer",
+      "type": "processor",
+      "description": "Replaces the geometry of the feature with a point that is either in the center of the feature's bounding box, at the center of mass of the feature, or somewhere guaranteed to be inside the feature's area.",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "point",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "ClosedCurveFilter",
+      "type": "processor",
+      "description": "Checks if curves form closed loops",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "closed",
+        "line",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "CoordinateSystemSetter",
       "type": "processor",
       "description": "Sets the coordinate system of a feature",
@@ -1414,12 +1449,12 @@
           "epsgCode": {
             "format": "uint16",
             "minimum": 0.0,
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
-        "required": [
-          "epsgCode"
-        ],
         "title": "ReprojectorParam",
         "type": "object"
       },
@@ -1512,6 +1547,63 @@
       ]
     },
     {
+      "name": "ThreeDimentionRotator",
+      "type": "processor",
+      "description": "Replaces a three dimention box with a polygon.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "angleDegree": {
+            "$ref": "#/definitions/Expr"
+          },
+          "directionX": {
+            "$ref": "#/definitions/Expr"
+          },
+          "directionY": {
+            "$ref": "#/definitions/Expr"
+          },
+          "directionZ": {
+            "$ref": "#/definitions/Expr"
+          },
+          "originX": {
+            "$ref": "#/definitions/Expr"
+          },
+          "originY": {
+            "$ref": "#/definitions/Expr"
+          },
+          "originZ": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "required": [
+          "angleDegree",
+          "directionX",
+          "directionY",
+          "directionZ",
+          "originX",
+          "originY",
+          "originZ"
+        ],
+        "title": "ThreeDimentionRotatorParam",
+        "type": "object"
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "TwoDimentionForcer",
       "type": "processor",
       "description": "Forces a geometry to be two dimentional.",
@@ -1522,6 +1614,23 @@
       ],
       "outputPorts": [
         "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "VertexRemover",
+      "type": "processor",
+      "description": "Removes specific vertices from a feature’s geometry",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
       ],
       "categories": [
         "Geometry"

@@ -17,6 +17,12 @@ impl<T: CoordNum, Z: CoordNum> Default for GeometryCollection<T, Z> {
     }
 }
 
+impl<T: CoordNum, Z: CoordNum> GeometryCollection<T, Z> {
+    pub fn new(items: Vec<Geometry<T, Z>>) -> Self {
+        Self(items)
+    }
+}
+
 pub type GeometryCollection2D<T> = GeometryCollection<T, NoValue>;
 pub type GeometryCollection3D<T> = GeometryCollection<T, T>;
 
