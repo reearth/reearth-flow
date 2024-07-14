@@ -7,6 +7,7 @@ use libxml::schemas::SchemaValidationContext;
 use libxml::tree::document;
 use libxml::xpath::Context;
 
+use crate::str::to_hash;
 use crate::uri::Uri;
 
 pub type XmlDocument = document::Document;
@@ -144,7 +145,7 @@ pub fn get_node_id(uri: &Uri, node: &XmlNode) -> String {
         .map(|(k, v)| format!("{}={}", k, v))
         .collect::<Vec<_>>();
     key_values.sort();
-    format!("{}:{}[{}]", uri, tag, key_values.join(","))
+    to_hash(format!("{}:{}[{}]", uri, tag, key_values.join(",")).as_str())
 }
 
 pub fn get_readonly_node_tag(node: &XmlRoNode) -> String {
