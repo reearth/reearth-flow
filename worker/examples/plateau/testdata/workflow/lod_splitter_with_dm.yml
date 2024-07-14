@@ -88,7 +88,7 @@ graphs:
       - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
         to: 3c0bc9cd-284d-4553-83ae-f90365c5930c
-        fromPort: default
+        fromPort: filePath
         toPort: default
       - id: e1c7680d-5830-4e48-8cd8-8d9d762c76ff
         from: 3c0bc9cd-284d-4553-83ae-f90365c5930c
