@@ -362,6 +362,20 @@
       ]
     },
     {
+      "name": "Echo",
+      "type": "sink",
+      "description": "Echo features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "Debug"
+      ]
+    },
+    {
       "name": "Extruder",
       "type": "processor",
       "description": "Extrudes a polygon by a distance",
