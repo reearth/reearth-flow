@@ -4,6 +4,7 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
+    attribute_flattener::AttributeFlattenerFactory,
     dictionaries_initiator::DictionariesInitiatorFactory,
     domain_of_definition_validator::DomainOfDefinitionValidatorFactory,
     max_lod_extractor::MaxLodExtractorFactory, udx_folder_extractor::UdxFolderExtractorFactory,
@@ -19,6 +20,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<XmlAttributeExtractorFactory>::default(),
         Box::<UnmatchedXlinkDetectorFactory>::default(),
         Box::<MaxLodExtractorFactory>::default(),
+        Box::<AttributeFlattenerFactory>::default(),
     ];
     factories
         .into_iter()

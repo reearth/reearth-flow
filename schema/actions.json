@@ -24,8 +24,26 @@
       "description": "Aggregates features by attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeAggregatorParam",
+        "type": "object",
+        "required": [
+          "aggregations"
+        ],
+        "properties": {
+          "aggregations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Aggregation"
+            }
+          }
+        },
         "definitions": {
           "Aggregation": {
+            "type": "object",
+            "required": [
+              "attribute",
+              "method"
+            ],
             "properties": {
               "attribute": {
                 "$ref": "#/definitions/Attribute"
@@ -33,39 +51,21 @@
               "method": {
                 "$ref": "#/definitions/Method"
               }
-            },
-            "required": [
-              "attribute",
-              "method"
-            ],
-            "type": "object"
+            }
           },
           "Attribute": {
             "type": "string"
           },
           "Method": {
+            "type": "string",
             "enum": [
               "max",
               "min",
               "sum",
               "avg"
-            ],
-            "type": "string"
+            ]
           }
-        },
-        "properties": {
-          "aggregations": {
-            "items": {
-              "$ref": "#/definitions/Aggregation"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "aggregations"
-        ],
-        "title": "AttributeAggregatorParam",
-        "type": "object"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -84,24 +84,24 @@
       "description": "Filters features by duplicate attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeDuplicateFilterParam",
+        "type": "object",
+        "required": [
+          "filterBy"
+        ],
+        "properties": {
+          "filterBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
         "definitions": {
           "Attribute": {
             "type": "string"
           }
-        },
-        "properties": {
-          "filterBy": {
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "filterBy"
-        ],
-        "title": "AttributeDuplicateFilterParam",
-        "type": "object"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -120,21 +120,21 @@
       "description": "Extracts file path information from attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        },
+        "title": "AttributeFilePathInfoExtractor",
+        "type": "object",
+        "required": [
+          "attribute"
+        ],
         "properties": {
           "attribute": {
             "$ref": "#/definitions/Attribute"
           }
         },
-        "required": [
-          "attribute"
-        ],
-        "title": "AttributeFilePathInfoExtractor",
-        "type": "object"
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -154,24 +154,24 @@
       "description": "Keeps only specified attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeKeeper",
+        "type": "object",
+        "required": [
+          "keepAttributes"
+        ],
+        "properties": {
+          "keepAttributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
         "definitions": {
           "Attribute": {
             "type": "string"
           }
-        },
-        "properties": {
-          "keepAttributes": {
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "keepAttributes"
-        ],
-        "title": "AttributeKeeper",
-        "type": "object"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -190,20 +190,38 @@
       "description": "Manages attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeManagerParam",
+        "type": "object",
+        "required": [
+          "operations"
+        ],
+        "properties": {
+          "operations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Operation"
+            }
+          }
+        },
         "definitions": {
           "Expr": {
             "type": "string"
           },
           "Method": {
+            "type": "string",
             "enum": [
               "convert",
               "create",
               "rename",
               "remove"
-            ],
-            "type": "string"
+            ]
           },
           "Operation": {
+            "type": "object",
+            "required": [
+              "attribute",
+              "method"
+            ],
             "properties": {
               "attribute": {
                 "type": "string"
@@ -221,27 +239,9 @@
                   }
                 ]
               }
-            },
-            "required": [
-              "attribute",
-              "method"
-            ],
-            "type": "object"
+            }
           }
-        },
-        "properties": {
-          "operations": {
-            "items": {
-              "$ref": "#/definitions/Operation"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "operations"
-        ],
-        "title": "AttributeManagerParam",
-        "type": "object"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -260,29 +260,29 @@
       "description": "Buffers a geometry",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "BufferType": {
-            "enum": [
-              "area2d"
-            ],
-            "type": "string"
-          }
-        },
+        "title": "Bufferer",
+        "type": "object",
+        "required": [
+          "buffer_type",
+          "distance"
+        ],
         "properties": {
           "buffer_type": {
             "$ref": "#/definitions/BufferType"
           },
           "distance": {
-            "format": "double",
-            "type": "number"
+            "type": "number",
+            "format": "double"
           }
         },
-        "required": [
-          "buffer_type",
-          "distance"
-        ],
-        "title": "Bufferer",
-        "type": "object"
+        "definitions": {
+          "BufferType": {
+            "type": "string",
+            "enum": [
+              "area2d"
+            ]
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -337,18 +337,18 @@
       "description": "Sets the coordinate system of a feature",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "properties": {
-          "epsgCode": {
-            "format": "uint16",
-            "minimum": 0.0,
-            "type": "integer"
-          }
-        },
+        "title": "CoordinateSystemSetter",
+        "type": "object",
         "required": [
           "epsgCode"
         ],
-        "title": "CoordinateSystemSetter",
-        "type": "object"
+        "properties": {
+          "epsgCode": {
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -362,26 +362,40 @@
       ]
     },
     {
+      "name": "Echo",
+      "type": "sink",
+      "description": "Echo features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "Debug"
+      ]
+    },
+    {
       "name": "Extruder",
       "type": "processor",
       "description": "Extrudes a polygon by a distance",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          }
-        },
+        "title": "ExtruderParam",
+        "type": "object",
+        "required": [
+          "distance"
+        ],
         "properties": {
           "distance": {
             "$ref": "#/definitions/Expr"
           }
         },
-        "required": [
-          "distance"
-        ],
-        "title": "ExtruderParam",
-        "type": "object"
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -400,35 +414,35 @@
       "description": "Counts features",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        },
+        "title": "FeatureCounterParam",
+        "type": "object",
+        "required": [
+          "countStart",
+          "outputAttribute"
+        ],
         "properties": {
           "countStart": {
-            "format": "int64",
-            "type": "integer"
+            "type": "integer",
+            "format": "int64"
           },
           "groupBy": {
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            },
             "type": [
               "array",
               "null"
-            ]
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
           },
           "outputAttribute": {
             "type": "string"
           }
         },
-        "required": [
-          "countStart",
-          "outputAttribute"
-        ],
-        "title": "FeatureCounterParam",
-        "type": "object"
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -447,8 +461,26 @@
       "description": "Filters features based on conditions",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureFilterParam",
+        "type": "object",
+        "required": [
+          "conditions"
+        ],
+        "properties": {
+          "conditions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Condition"
+            }
+          }
+        },
         "definitions": {
           "Condition": {
+            "type": "object",
+            "required": [
+              "expr",
+              "outputPort"
+            ],
             "properties": {
               "expr": {
                 "$ref": "#/definitions/Expr"
@@ -456,12 +488,7 @@
               "outputPort": {
                 "$ref": "#/definitions/Port"
               }
-            },
-            "required": [
-              "expr",
-              "outputPort"
-            ],
-            "type": "object"
+            }
           },
           "Expr": {
             "type": "string"
@@ -469,20 +496,7 @@
           "Port": {
             "type": "string"
           }
-        },
-        "properties": {
-          "conditions": {
-            "items": {
-              "$ref": "#/definitions/Condition"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "conditions"
-        ],
-        "title": "FeatureFilterParam",
-        "type": "object"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -501,11 +515,26 @@
       "description": "Merges features by attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureMergerParam",
+        "type": "object",
+        "required": [
+          "join"
+        ],
+        "properties": {
+          "join": {
+            "$ref": "#/definitions/Join"
+          }
+        },
         "definitions": {
           "Attribute": {
             "type": "string"
           },
           "Join": {
+            "type": "object",
+            "required": [
+              "requestor",
+              "supplier"
+            ],
             "properties": {
               "requestor": {
                 "$ref": "#/definitions/Attribute"
@@ -513,24 +542,9 @@
               "supplier": {
                 "$ref": "#/definitions/Attribute"
               }
-            },
-            "required": [
-              "requestor",
-              "supplier"
-            ],
-            "type": "object"
+            }
           }
-        },
-        "properties": {
-          "join": {
-            "$ref": "#/definitions/Join"
-          }
-        },
-        "required": [
-          "join"
-        ],
-        "title": "FeatureMergerParam",
-        "type": "object"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -551,84 +565,84 @@
       "description": "Filters features based on conditions",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureReaderParam",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "citygml"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              "offset": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint",
+                "minimum": 0.0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              },
+              "offset": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint",
+                "minimum": 0.0
+              }
+            }
+          }
+        ],
         "definitions": {
           "Expr": {
             "type": "string"
           }
-        },
-        "oneOf": [
-          {
-            "properties": {
-              "dataset": {
-                "$ref": "#/definitions/Expr"
-              },
-              "format": {
-                "enum": [
-                  "citygml"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "dataset",
-              "format"
-            ],
-            "type": "object"
-          },
-          {
-            "properties": {
-              "dataset": {
-                "$ref": "#/definitions/Expr"
-              },
-              "format": {
-                "enum": [
-                  "csv"
-                ],
-                "type": "string"
-              },
-              "offset": {
-                "format": "uint",
-                "minimum": 0.0,
-                "type": [
-                  "integer",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "dataset",
-              "format"
-            ],
-            "type": "object"
-          },
-          {
-            "properties": {
-              "dataset": {
-                "$ref": "#/definitions/Expr"
-              },
-              "format": {
-                "enum": [
-                  "tsv"
-                ],
-                "type": "string"
-              },
-              "offset": {
-                "format": "uint",
-                "minimum": 0.0,
-                "type": [
-                  "integer",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "dataset",
-              "format"
-            ],
-            "type": "object"
-          }
-        ],
-        "title": "FeatureReaderParam"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -647,18 +661,36 @@
       "description": "Sorts features by attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureSorterParam",
+        "type": "object",
+        "required": [
+          "sortBy"
+        ],
+        "properties": {
+          "sortBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/SortBy"
+            }
+          }
+        },
         "definitions": {
           "Attribute": {
             "type": "string"
           },
           "Order": {
+            "type": "string",
             "enum": [
               "ascending",
               "descending"
-            ],
-            "type": "string"
+            ]
           },
           "SortBy": {
+            "type": "object",
+            "required": [
+              "attribute",
+              "order"
+            ],
             "properties": {
               "attribute": {
                 "$ref": "#/definitions/Attribute"
@@ -666,27 +698,9 @@
               "order": {
                 "$ref": "#/definitions/Order"
               }
-            },
-            "required": [
-              "attribute",
-              "order"
-            ],
-            "type": "object"
+            }
           }
-        },
-        "properties": {
-          "sortBy": {
-            "items": {
-              "$ref": "#/definitions/SortBy"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "sortBy"
-        ],
-        "title": "FeatureSorterParam",
-        "type": "object"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -705,35 +719,35 @@
       "description": "Transforms features by expressions",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureTransformerParam",
+        "type": "object",
+        "required": [
+          "transformers"
+        ],
+        "properties": {
+          "transformers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Transform"
+            }
+          }
+        },
         "definitions": {
           "Expr": {
             "type": "string"
           },
           "Transform": {
+            "type": "object",
+            "required": [
+              "expr"
+            ],
             "properties": {
               "expr": {
                 "$ref": "#/definitions/Expr"
               }
-            },
-            "required": [
-              "expr"
-            ],
-            "type": "object"
+            }
           }
-        },
-        "properties": {
-          "transformers": {
-            "items": {
-              "$ref": "#/definitions/Transform"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "transformers"
-        ],
-        "title": "FeatureTransformerParam",
-        "type": "object"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -752,11 +766,12 @@
       "description": "Extracts files from a directory or an archive",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          }
-        },
+        "title": "FilePathExtractor",
+        "type": "object",
+        "required": [
+          "extractArchive",
+          "sourceDataset"
+        ],
         "properties": {
           "extractArchive": {
             "type": "boolean"
@@ -765,12 +780,11 @@
             "$ref": "#/definitions/Expr"
           }
         },
-        "required": [
-          "extractArchive",
-          "sourceDataset"
-        ],
-        "title": "FilePathExtractor",
-        "type": "object"
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [],
@@ -787,102 +801,102 @@
       "description": "Reads features from a file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FileReader",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              "offset": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint",
+                "minimum": 0.0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              },
+              "offset": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint",
+                "minimum": 0.0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "json"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "citygml"
+                ]
+              }
+            }
+          }
+        ],
         "definitions": {
           "Expr": {
             "type": "string"
           }
-        },
-        "oneOf": [
-          {
-            "properties": {
-              "dataset": {
-                "$ref": "#/definitions/Expr"
-              },
-              "format": {
-                "enum": [
-                  "csv"
-                ],
-                "type": "string"
-              },
-              "offset": {
-                "format": "uint",
-                "minimum": 0.0,
-                "type": [
-                  "integer",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "dataset",
-              "format"
-            ],
-            "type": "object"
-          },
-          {
-            "properties": {
-              "dataset": {
-                "$ref": "#/definitions/Expr"
-              },
-              "format": {
-                "enum": [
-                  "tsv"
-                ],
-                "type": "string"
-              },
-              "offset": {
-                "format": "uint",
-                "minimum": 0.0,
-                "type": [
-                  "integer",
-                  "null"
-                ]
-              }
-            },
-            "required": [
-              "dataset",
-              "format"
-            ],
-            "type": "object"
-          },
-          {
-            "properties": {
-              "dataset": {
-                "$ref": "#/definitions/Expr"
-              },
-              "format": {
-                "enum": [
-                  "json"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "dataset",
-              "format"
-            ],
-            "type": "object"
-          },
-          {
-            "properties": {
-              "dataset": {
-                "$ref": "#/definitions/Expr"
-              },
-              "format": {
-                "enum": [
-                  "citygml"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "dataset",
-              "format"
-            ],
-            "type": "object"
-          }
-        ],
-        "title": "FileReader"
+        }
       },
       "builtin": true,
       "inputPorts": [],
@@ -899,20 +913,12 @@
       "description": "Writes features to a file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          },
-          "Format": {
-            "enum": [
-              "csv",
-              "tsv",
-              "json",
-              "excel"
-            ],
-            "type": "string"
-          }
-        },
+        "title": "FileWriterParam",
+        "type": "object",
+        "required": [
+          "format",
+          "output"
+        ],
         "properties": {
           "format": {
             "$ref": "#/definitions/Format"
@@ -921,12 +927,20 @@
             "$ref": "#/definitions/Expr"
           }
         },
-        "required": [
-          "format",
-          "output"
-        ],
-        "title": "FileWriterParam",
-        "type": "object"
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "Format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "tsv",
+              "json",
+              "excel"
+            ]
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -943,24 +957,24 @@
       "description": "Coerces the geometry of a feature to a specific geometry",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "CoercerType": {
-            "enum": [
-              "lineString"
-            ],
-            "type": "string"
-          }
-        },
+        "title": "GeometryCoercer",
+        "type": "object",
+        "required": [
+          "coercer_type"
+        ],
         "properties": {
           "coercer_type": {
             "$ref": "#/definitions/CoercerType"
           }
         },
-        "required": [
-          "coercer_type"
-        ],
-        "title": "GeometryCoercer",
-        "type": "object"
+        "definitions": {
+          "CoercerType": {
+            "type": "string",
+            "enum": [
+              "lineString"
+            ]
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -979,21 +993,21 @@
       "description": "Extracts geometry from a feature and adds it as an attribute.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        },
+        "title": "GeometryExtractor",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
         "properties": {
           "outputAttribute": {
             "$ref": "#/definitions/Attribute"
           }
         },
-        "required": [
-          "outputAttribute"
-        ],
-        "title": "GeometryExtractor",
-        "type": "object"
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -1012,51 +1026,51 @@
       "description": "Filter geometry by type",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryFilterParam",
         "oneOf": [
           {
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
             "properties": {
               "filterType": {
+                "type": "string",
                 "enum": [
                   "none"
-                ],
-                "type": "string"
+                ]
               }
-            },
+            }
+          },
+          {
+            "type": "object",
             "required": [
               "filterType"
             ],
-            "type": "object"
-          },
-          {
             "properties": {
               "filterType": {
+                "type": "string",
                 "enum": [
                   "multiple"
-                ],
-                "type": "string"
+                ]
               }
-            },
-            "required": [
-              "filterType"
-            ],
-            "type": "object"
+            }
           },
           {
-            "properties": {
-              "filterType": {
-                "enum": [
-                  "featureType"
-                ],
-                "type": "string"
-              }
-            },
+            "type": "object",
             "required": [
               "filterType"
             ],
-            "type": "object"
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "featureType"
+                ]
+              }
+            }
           }
-        ],
-        "title": "GeometryFilterParam"
+        ]
       },
       "builtin": true,
       "inputPorts": [
@@ -1098,21 +1112,21 @@
       "description": "Replaces the geometry of a feature with a new geometry.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        },
+        "title": "GeometryReplacer",
+        "type": "object",
+        "required": [
+          "sourceAttribute"
+        ],
         "properties": {
           "sourceAttribute": {
             "$ref": "#/definitions/Attribute"
           }
         },
-        "required": [
-          "sourceAttribute"
-        ],
-        "title": "GeometryReplacer",
-        "type": "object"
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -1147,29 +1161,29 @@
       "description": "Validates the geometry of a feature",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryValidator",
+        "type": "object",
+        "required": [
+          "validationTypes"
+        ],
+        "properties": {
+          "validationTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ValidationType"
+            }
+          }
+        },
         "definitions": {
           "ValidationType": {
+            "type": "string",
             "enum": [
               "duplicatePoints",
               "corruptGeometry",
               "selfIntersection"
-            ],
-            "type": "string"
+            ]
           }
-        },
-        "properties": {
-          "validationTypes": {
-            "items": {
-              "$ref": "#/definitions/ValidationType"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "validationTypes"
-        ],
-        "title": "GeometryValidator",
-        "type": "object"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -1190,21 +1204,21 @@
       "description": "Counts the number of holes in a geometry and adds it as an attribute.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        },
+        "title": "HoleCounterParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
         "properties": {
           "outputAttribute": {
             "$ref": "#/definitions/Attribute"
           }
         },
-        "required": [
-          "outputAttribute"
-        ],
-        "title": "HoleCounterParam",
-        "type": "object"
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -1241,21 +1255,21 @@
       "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        },
+        "title": "LineOnLineOverlayerParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
         "properties": {
           "outputAttribute": {
             "$ref": "#/definitions/Attribute"
           }
         },
-        "required": [
-          "outputAttribute"
-        ],
-        "title": "LineOnLineOverlayerParam",
-        "type": "object"
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -1276,21 +1290,21 @@
       "description": "Extracts the orientation of a geometry from a feature and adds it as an attribute.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        },
+        "title": "OrientationExtractorParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
         "properties": {
           "outputAttribute": {
             "$ref": "#/definitions/Attribute"
           }
         },
-        "required": [
-          "outputAttribute"
-        ],
-        "title": "OrientationExtractorParam",
-        "type": "object"
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -1301,6 +1315,22 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "PLATEAU.AttributeFlattener",
+      "type": "processor",
+      "description": "AttributeFlattener",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
       ]
     },
     {
@@ -1429,18 +1459,18 @@
       "description": "Reprojects the geometry of a feature to a specified coordinate system",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ReprojectorParam",
+        "type": "object",
         "properties": {
           "epsgCode": {
-            "format": "uint16",
-            "minimum": 0.0,
             "type": [
               "integer",
               "null"
-            ]
+            ],
+            "format": "uint16",
+            "minimum": 0.0
           }
-        },
-        "title": "ReprojectorParam",
-        "type": "object"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -1459,16 +1489,16 @@
       "description": "Action for last port forwarding for sub-workflows.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Router",
+        "type": "object",
+        "required": [
+          "routingPort"
+        ],
         "properties": {
           "routingPort": {
             "type": "string"
           }
-        },
-        "required": [
-          "routingPort"
-        ],
-        "title": "Router",
-        "type": "object"
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -1483,11 +1513,16 @@
       "description": "Replaces a three dimention box with a polygon.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        },
+        "title": "ThreeDimentionBoxReplacer",
+        "type": "object",
+        "required": [
+          "maxX",
+          "maxY",
+          "maxZ",
+          "minX",
+          "minY",
+          "minZ"
+        ],
         "properties": {
           "maxX": {
             "$ref": "#/definitions/Attribute"
@@ -1508,16 +1543,11 @@
             "$ref": "#/definitions/Attribute"
           }
         },
-        "required": [
-          "maxX",
-          "maxY",
-          "maxZ",
-          "minX",
-          "minY",
-          "minZ"
-        ],
-        "title": "ThreeDimentionBoxReplacer",
-        "type": "object"
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -1536,11 +1566,17 @@
       "description": "Replaces a three dimention box with a polygon.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          }
-        },
+        "title": "ThreeDimentionRotatorParam",
+        "type": "object",
+        "required": [
+          "angleDegree",
+          "directionX",
+          "directionY",
+          "directionZ",
+          "originX",
+          "originY",
+          "originZ"
+        ],
         "properties": {
           "angleDegree": {
             "$ref": "#/definitions/Expr"
@@ -1564,17 +1600,11 @@
             "$ref": "#/definitions/Expr"
           }
         },
-        "required": [
-          "angleDegree",
-          "directionX",
-          "directionY",
-          "directionZ",
-          "originX",
-          "originY",
-          "originZ"
-        ],
-        "title": "ThreeDimentionRotatorParam",
-        "type": "object"
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -1626,16 +1656,16 @@
       "description": "Fragment XML",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
-            "type": "string"
-          }
-        },
+        "title": "XmlFragmenterParam",
         "oneOf": [
           {
+            "type": "object",
+            "required": [
+              "attribute",
+              "elementsToExclude",
+              "elementsToMatch",
+              "source"
+            ],
             "properties": {
               "attribute": {
                 "$ref": "#/definitions/Attribute"
@@ -1647,22 +1677,22 @@
                 "$ref": "#/definitions/Expr"
               },
               "source": {
+                "type": "string",
                 "enum": [
                   "url"
-                ],
-                "type": "string"
+                ]
               }
-            },
-            "required": [
-              "attribute",
-              "elementsToExclude",
-              "elementsToMatch",
-              "source"
-            ],
-            "type": "object"
+            }
           }
         ],
-        "title": "XmlFragmenterParam"
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -1681,26 +1711,13 @@
       "description": "Validates XML content",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
-          "ValidationType": {
-            "enum": [
-              "syntax",
-              "syntaxAndNamespace",
-              "syntaxAndSchema"
-            ],
-            "type": "string"
-          },
-          "XmlInputType": {
-            "enum": [
-              "file",
-              "text"
-            ],
-            "type": "string"
-          }
-        },
+        "title": "XmlValidatorParam",
+        "type": "object",
+        "required": [
+          "attribute",
+          "inputType",
+          "validationType"
+        ],
         "properties": {
           "attribute": {
             "$ref": "#/definitions/Attribute"
@@ -1712,13 +1729,26 @@
             "$ref": "#/definitions/ValidationType"
           }
         },
-        "required": [
-          "attribute",
-          "inputType",
-          "validationType"
-        ],
-        "title": "XmlValidatorParam",
-        "type": "object"
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "ValidationType": {
+            "type": "string",
+            "enum": [
+              "syntax",
+              "syntaxAndNamespace",
+              "syntaxAndSchema"
+            ]
+          },
+          "XmlInputType": {
+            "type": "string",
+            "enum": [
+              "file",
+              "text"
+            ]
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
