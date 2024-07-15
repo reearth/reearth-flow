@@ -61,17 +61,17 @@ import (
 // }
 
 func TestConvertWorkflows(t *testing.T) {
-	nodeID1 := ID("node1")
-	edgeID1 := ID("edge1")
-
+	workflowID := workflow.NewID()
+	nodeID1 := workflow.NewNodeID()
+	edgeID1 := workflow.NewEdgeID()
 	input := []*InputWorkflow{
 		{
-			ID:     "workflow1",
+			ID:     IDFrom(workflowID),
 			Name:   "Test Workflow",
 			IsMain: ptrBool(true),
 			Nodes: []*InputWorkflowNode{
 				{
-					ID:   "node1",
+					ID:   IDFrom(nodeID1),
 					Type: "READER",
 					Data: &InputData{
 						Name:     "Node 1",
@@ -81,7 +81,7 @@ func TestConvertWorkflows(t *testing.T) {
 			},
 			Edges: []*InputWorkflowEdge{
 				{
-					ID:           "edge1",
+					ID:           IDFrom(edgeID1),
 					Source:       "node1",
 					Target:       "node2",
 					SourceHandle: "handle1",
@@ -91,20 +91,17 @@ func TestConvertWorkflows(t *testing.T) {
 		},
 	}
 
-	expectedEntryGraphID := "workflow1"
-	expectedNodeID1, _ := ToID[id.Node](nodeID1)
-	expectedEdgeID1, _ := ToID[id.Edge](edgeID1)
-
+	graph1ID, _ := id.GraphIDFrom(workflowID.String())
 	expectedGraphs := []*workflow.Graph{
-		workflow.NewGraph(workflow.NewGraphID(), "Test Workflow", []*workflow.Node{
-			workflow.NewNode(expectedNodeID1, "Node 1", "READER", "action1", nil),
+		workflow.NewGraph(graph1ID, "Test Workflow", []*workflow.Node{
+			workflow.NewNode(nodeID1, "Node 1", "READER", "action1", nil),
 		}, []*workflow.Edge{
-			workflow.NewEdge(expectedEdgeID1, "node1", "node2", "handle1", "handle2"),
+			workflow.NewEdge(edgeID1, "node1", "node2", "handle1", "handle2"),
 		}),
 	}
 
 	entryGraphID, graphs := convertWorkflows(input)
-	assert.Equal(t, expectedEntryGraphID, entryGraphID)
+	assert.Equal(t, workflowID.String(), entryGraphID)
 	assert.Equal(t, expectedGraphs, graphs)
 }
 

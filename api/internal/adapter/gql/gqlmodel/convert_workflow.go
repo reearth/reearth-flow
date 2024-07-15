@@ -29,16 +29,18 @@ func convertWorkflows(w []*InputWorkflow) (string, []*workflow.Graph) {
 	graphs := []*workflow.Graph{}
 
 	for _, v := range w {
+		graphID := workflow.NewGraphID()
 		if *v.IsMain {
 			eGraphID, err := ToID[id.Graph](v.ID)
 			if err == nil {
 				entryGraphID = eGraphID.String()
+				graphID = eGraphID
 			}
 		}
 
 		nodes := convertNodes(v.Nodes)
 		edges := convertEdges(v.Edges)
-		graphs = append(graphs, workflow.NewGraph(workflow.NewGraphID(), v.Name, nodes, edges))
+		graphs = append(graphs, workflow.NewGraph(graphID, v.Name, nodes, edges))
 	}
 
 	return entryGraphID, graphs
