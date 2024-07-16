@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use reearth_flow_types::{CityGmlGeometry, GeometryValue};
@@ -69,11 +69,11 @@ impl ProcessorFactory for BoundsExtractorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![Port::new("lod1")]
+        vec![DEFAULT_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -128,7 +128,7 @@ impl Processor for BoundsExtractor {
             };
             fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         } else {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
         };
         Ok(())
     }
