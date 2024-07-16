@@ -116,9 +116,6 @@ impl Processor for FeatureFilter {
         ctx: ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-
-        println!("==================feature======================");
-        
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
         let mut routing = false;

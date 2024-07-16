@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
 id: a7fc8f35-b84f-496b-a2cb-65be3bfec285
-name: "building_proccessor"
+name: "bounds_extractor"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   cityGmlPath:
@@ -84,6 +84,11 @@ graphs:
                 env.get("lod") == "4"
               outputPort: lod4
 
+      - id: 91b750a5-b5fa-4a28-8661-2dbc574a9e83
+        name: bounds_extractor
+        type: action
+        action: BoundsExtractor
+
     edges:
       - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
@@ -114,4 +119,9 @@ graphs:
         from: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
         to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
         fromPort: default
+        toPort: default
+      - id: 7a54780f-1fb5-4e9b-b7ae-299eab24ca8a
+        from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+        to: 91b750a5-b5fa-4a28-8661-2dbc574a9e83
+        fromPort: lod1
         toPort: default

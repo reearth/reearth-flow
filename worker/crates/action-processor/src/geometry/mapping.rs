@@ -4,8 +4,8 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
-    area_on_area_overlayer::AreaOnAreaOverlayerFactory, bufferer::BuffererFactory,
-    center_point_replacer::CenterPointReplacerFactory,
+    area_on_area_overlayer::AreaOnAreaOverlayerFactory, bounds_extractor::BoundsExtractorFactory,
+    bufferer::BuffererFactory, center_point_replacer::CenterPointReplacerFactory,
     closed_curve_filter::ClosedCurveFilterFactory, coercer::GeometryCoercerFactory,
     coordinate_system_setter::CoordinateSystemSetterFactory, extractor::GeometryExtractorFactory,
     extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
@@ -44,6 +44,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<VertexRemoverFactory>::default(),
         Box::<CenterPointReplacerFactory>::default(),
         Box::<ThreeDimentionRotatorFactory>::default(),
+        Box::<BoundsExtractorFactory>::default(),
     ];
     factories
         .into_iter()
