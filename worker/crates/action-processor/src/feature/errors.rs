@@ -27,6 +27,10 @@ pub(crate) enum FeatureProcessorError {
     FileCityGmlReader(String),
     #[error("Feature File Csv Reader error: {0}")]
     FileCsvReader(String),
+    #[error("RhaiCallerFactory error: {0}")]
+    RhaiCallerFactory(String),
+    #[error("RhaiCaller error: {0}")]
+    RhaiCaller(String),
 }
 
 #[allow(dead_code)]

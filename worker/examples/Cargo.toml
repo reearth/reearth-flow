@@ -51,3 +51,7 @@ path = "plateau/lod_splitter_with_dm.rs"
 [[example]]
 name = "max_lod_extractor"
 path = "plateau/max_lod_extractor.rs"
+
+[[example]]
+name = "example_feature_transformer"
+path = "plateau/example_feature_transformer.rs"

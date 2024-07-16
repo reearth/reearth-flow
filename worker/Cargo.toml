@@ -96,7 +96,7 @@ quick-xml = "0.35.0"
 rand = "0.8.5"
 rayon = "1.10.0"
 regex = "1.10.5"
-rhai = {version = "1.19.0", features = ["internals", "sync", "serde"]}
+rhai = {version = "1.19.0", features = ["internals", "sync", "serde", "metadata"]}
 robust = "1.1.0"
 rstar = "0.12.0"
 rstest = "0.21.0"

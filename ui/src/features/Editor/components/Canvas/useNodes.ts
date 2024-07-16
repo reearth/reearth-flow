@@ -1,6 +1,7 @@
 import {
   Connection,
   OnNodesChange,
+  XYPosition,
   addEdge,
   applyNodeChanges,
   getBezierPath,
@@ -82,17 +83,42 @@ export default ({ nodes, edges, setNodes, setEdges, onNodeLocking }: Props) => {
         const targetNode = nodes.find(n => n.id === e.target);
         if (!sourceNode || !targetNode) return;
 
+        let sourceNodeXYPosition: XYPosition = sourceNode.position;
+        let targetNodeXYPosition: XYPosition = targetNode.position;
+
+        // If source or target node is inside a group, calculate its position relative to the group
+        if (sourceNode.parentId) {
+          const parentNode = nodes.find(n => n.id === sourceNode.parentId);
+          if (parentNode) {
+            sourceNodeXYPosition = {
+              x: parentNode.position.x + sourceNode.position.x,
+              y: parentNode.position.y + sourceNode.position.y,
+            };
+          }
+        }
+        if (targetNode.parentId) {
+          const parentNode = nodes.find(n => n.id === targetNode.parentId);
+          if (parentNode) {
+            targetNodeXYPosition = {
+              x: parentNode.position.x + targetNode.position.x,
+              y: parentNode.position.y + targetNode.position.y,
+            };
+          }
+        }
+
         // Get middle of edge
         const [, labelX, labelY] = getBezierPath({
-          sourceX: sourceNode.position.x,
-          sourceY: sourceNode.position.y,
+          sourceX: sourceNodeXYPosition.x,
+          sourceY: sourceNodeXYPosition.y,
           sourcePosition: sourceNode.sourcePosition,
-          targetX: targetNode.position.x,
-          targetY: targetNode.position.y,
+          targetX: targetNodeXYPosition.x,
+          targetY: targetNodeXYPosition.y,
           targetPosition: targetNode.targetPosition,
         });
 
         // Check if dropped node is intersecting with edge's middle
+        // console.log("labelX", labelX, "labelY", labelY);
+        // console.log("droppedNode", droppedNode);
         if (
           isNodeIntersecting(
             droppedNode,

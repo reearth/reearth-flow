@@ -19,6 +19,7 @@ colorsys.workspace = true
 directories.workspace = true
 futures.workspace = true
 home = "0.5.9"
+jsonpath_lib.workspace = true
 libxml.workspace = true
 parking_lot.workspace = true
 petgraph.workspace = true
