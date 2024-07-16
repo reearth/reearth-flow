@@ -122,8 +122,7 @@ const rawText = `Timestamp,Status,Transformer,Message
 2022-01-31 14:00:00,INFO,DataTransformer,Data processing started
 2022-01-31 14:05:00,ERROR,DataTransformer,Error processing data
 2022-01-31 14:10:00,INFO,DataTransformer,Data processing completed successfully
-2022-01-31 14:15:00,WARNING,DataTransformer,Data quality check failed
-`;
+2022-01-31 14:15:00,WARNING,DataTransformer,Data quality check failed`;
 
 const rows = rawText.split("\n").slice(1); // Split the text by lines and remove the header row
 

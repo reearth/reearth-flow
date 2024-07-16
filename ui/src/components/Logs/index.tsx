@@ -72,7 +72,7 @@ const Logs = <TData, TValue>({
   });
 
   return (
-    <div className="text- bg-zinc-900 rounded-t text-white">
+    <div className="text- bg-zinc-900 rounded text-white">
       <div className="h-16 flex w-full items-center justify-between p-2">
         <h2 className="text-lg">{t("Log")}</h2>
         <div className="flex gap-2">
@@ -96,7 +96,7 @@ const Logs = <TData, TValue>({
           </Button>
         </div>
       </div>
-      <div className="flex items-center p-2 gap-4 text-white bg-zinc-900">
+      <div className="flex items-center p-4 gap-4">
         {showFiltering && (
           <Input
             placeholder={t("Search") + "..."}
