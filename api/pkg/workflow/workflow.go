@@ -43,14 +43,18 @@ func ToWorkflowYaml(id ID, name, entryGraphID string, with *map[string]interface
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer os.Remove(f.Name())
+
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Println("Error closing file:", err)
+		}
+		if err := os.Remove(f.Name()); err != nil {
+			log.Println("Error removing file:", err)
+		}
+	}()
 
 	if _, err := f.Write(yamlData); err != nil {
-		f.Close()
 		return nil, err
-	}
-	if err := f.Close(); err != nil {
-		log.Fatal(err)
 	}
 
 	stringifiedYaml := string(yamlData)
