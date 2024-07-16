@@ -8,7 +8,7 @@ pub(crate) mod env_module {
         let v = engine
             .get(name)
             .unwrap_or_else(|| panic!("fail to get engine '{name}'"));
-        utils::value_to_dymainc(&v)
+        utils::value_to_dynamic(&v)
     }
 
     pub fn set(engine: &mut Engine, name: &str, value: Dynamic) {
@@ -22,7 +22,7 @@ pub(crate) mod scope_module {
 
     pub fn get(env: &mut Scope, name: &str) -> Dynamic {
         if let Some(v) = env.get(name) {
-            return utils::value_to_dymainc(&v);
+            return utils::value_to_dynamic(&v);
         }
 
         Dynamic::UNIT

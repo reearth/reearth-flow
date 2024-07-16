@@ -1,3 +1,4 @@
+pub mod attribute_flattener;
 pub mod dictionaries_initiator;
 pub mod domain_of_definition_validator;
 pub mod errors;

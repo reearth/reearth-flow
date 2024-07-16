@@ -27,6 +27,8 @@ pub(super) enum PlateauProcessorError {
     UnmatchedXlinkDetector(String),
     #[error("Max Lod Extractor error: {0}")]
     MaxLodExtractor(String),
+    #[error("Attribute Flattener error: {0}")]
+    AttributeFlattener(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

@@ -4,5 +4,6 @@ pub mod filter;
 pub mod mapping;
 pub mod merger;
 pub mod reader;
+pub mod rhai;
 pub mod sorter;
 pub mod transformer;

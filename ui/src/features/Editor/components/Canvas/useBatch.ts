@@ -10,23 +10,20 @@ export default () => {
     (draggedNode: Node, hoveredNode: Node, setNodes: Dispatch<SetStateAction<Node[]>>) => {
       // Check if dragged node isn't already a child to the group
       if (!draggedNode.parentId) {
-        draggedNode.parentId = hoveredNode.id;
-        const posX = getInternalNode(draggedNode.id)?.position.x;
-        const posY = getInternalNode(draggedNode.id)?.position.y;
+        const updatedNode = { ...draggedNode, parentId: hoveredNode.id };
+        const posX = getInternalNode(updatedNode.id)?.position.x;
+        const posY = getInternalNode(updatedNode.id)?.position.y;
         if (posX && posY) {
-          draggedNode.position = {
+          updatedNode.position = {
             x: posX - hoveredNode.position.x,
             y: posY - hoveredNode.position.y,
           };
         }
-        setNodes(nodes =>
-          nodes.map(n => {
-            if (n.id === draggedNode.id) {
-              n = draggedNode;
-            }
-            return n;
-          }),
-        );
+        setNodes(nodes => {
+          const newNodes: Node[] = nodes.filter(n => n.id !== updatedNode.id);
+          newNodes.push(updatedNode);
+          return newNodes;
+        });
       }
     },
     [getInternalNode],

@@ -4,7 +4,7 @@ use crate::{error::Error, Value};
 use rhai::{Dynamic, Map};
 use serde_json::Map as JsonMap;
 
-pub fn value_to_dymainc(v: &Value) -> Dynamic {
+pub fn value_to_dynamic(v: &Value) -> Dynamic {
     match v {
         Value::Null => Dynamic::UNIT,
         Value::Bool(b) => Dynamic::from(*b),
@@ -33,8 +33,17 @@ pub fn dynamic_to_value(value: &Dynamic) -> Value {
     } else if value.is::<rhai::Array>() {
         let arr = value.clone().into_array().unwrap();
         let arr_values: Vec<_> = arr.iter().map(dynamic_to_value).collect();
-
         return Value::Array(arr_values);
+    } else if value.is_map() {
+        let map: rhai::Map = value.clone_cast();
+        if map.len() == 1 && *map.first_key_value().unwrap().0 == "String" {
+            return serde_json::Value::String(map.first_key_value().unwrap().1.to_string());
+        }
+        let mut map_values = JsonMap::new();
+        for (k, v) in map {
+            map_values.insert(k.to_string(), dynamic_to_value(&v));
+        }
+        return Value::Object(map_values);
     }
     Value::Null
 }
@@ -42,7 +51,7 @@ pub fn dynamic_to_value(value: &Dynamic) -> Value {
 pub fn array_to_dynamic(values: &Vec<Value>) -> Vec<Dynamic> {
     let mut ret = Vec::new();
     for v in values {
-        ret.push(value_to_dymainc(v));
+        ret.push(value_to_dynamic(v));
     }
     ret
 }
@@ -51,7 +60,7 @@ pub fn map_to_dynamic(map: &JsonMap<String, Value>) -> Map {
     let mut ret: Map = Map::new();
     for (k, v) in map {
         let key = k.to_string();
-        ret.insert(key.into(), value_to_dymainc(v));
+        ret.insert(key.into(), value_to_dynamic(v));
     }
     ret
 }

@@ -23,6 +23,9 @@ pub enum Error {
 
     #[error("StrError: {0}")]
     Str(String),
+
+    #[error("JsonError: {0}")]
+    Json(String),
 }
 
 impl Error {
@@ -53,6 +56,10 @@ impl Error {
     pub fn dir<T: ToString>(message: T) -> Self {
         Self::Dir(message.to_string())
     }
+
+    pub fn json<T: ToString>(message: T) -> Self {
+        Self::Json(message.to_string())
+    }
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -63,6 +70,7 @@ pub mod csv;
 pub mod dir;
 pub mod fs;
 pub mod future;
+pub mod json;
 pub mod serde;
 pub mod str;
 pub mod uri;
