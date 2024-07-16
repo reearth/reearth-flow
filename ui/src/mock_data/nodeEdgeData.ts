@@ -143,7 +143,7 @@ export const initialEdges: Edge[] = [
 //   dragHandle?: string;
 //   width?: number | null;
 //   height?: number | null;
-//   parentNode?: string;
+//   parentId?: string;
 //   zIndex?: number;
 //   extent?: 'parent' | CoordinateExtent;
 //   expandParent?: boolean;

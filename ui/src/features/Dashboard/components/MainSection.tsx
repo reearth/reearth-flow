@@ -1,6 +1,6 @@
 import { Plus } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import projectImage from "@flow/assets/project-screenshot.png"; // TODO: replace with actual project image
 import {
@@ -28,7 +28,6 @@ import {
 } from "@flow/components/";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { generateWorkflows } from "@flow/mock_data/workflowData";
 import { useCurrentProject, useDialogType } from "@flow/stores";
 import type { Project, Workspace } from "@flow/types";
 import { formatDate } from "@flow/utils";
@@ -44,7 +43,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   const { useGetWorkspaceProjects, deleteProject, updateProject } = useProject();
   const [, setDialogType] = useDialogType();
   const { projects } = useGetWorkspaceProjects(workspace.id);
-  const [editProject, setEditProject] = useState<undefined | Project>(projects?.[0]);
+  const [editProject, setEditProject] = useState<undefined | Project>(undefined);
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
 
@@ -52,14 +51,6 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
     setCurrentProject(p);
     navigate({ to: `/workspace/${workspace.id}/project/${p.id}` });
   };
-
-  // TODO: Using sample workflows at the moment
-  useEffect(() => {
-    if (!projects) return;
-    projects.forEach(p => {
-      p.workflows = generateWorkflows(4);
-    });
-  }, [projects]);
 
   const handleDeleteProject = async (id: string) => {
     // TODO: this trigger a pop up for confirming
