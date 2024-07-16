@@ -314,6 +314,25 @@
       ]
     },
     {
+      "name": "Clipper",
+      "type": "processor",
+      "description": "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "clipper",
+        "candidate"
+      ],
+      "outputPorts": [
+        "inside",
+        "outside",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "ClosedCurveFilter",
       "type": "processor",
       "description": "Checks if curves form closed loops",
