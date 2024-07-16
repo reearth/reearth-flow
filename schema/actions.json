@@ -261,10 +261,11 @@
       "parameter": null,
       "builtin": true,
       "inputPorts": [
-        "lod1"
+        "default"
       ],
       "outputPorts": [
-        "default"
+        "default",
+        "rejected"
       ],
       "categories": [
         "Geometry"
