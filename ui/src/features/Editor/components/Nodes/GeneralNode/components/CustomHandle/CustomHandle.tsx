@@ -9,7 +9,7 @@ import {
 import { memo, useMemo } from "react";
 
 const selector = (s: ReactFlowState) => ({
-  nodeInternals: s.nodeLookup,
+  nodeLookup: s.nodeLookup,
   edges: s.edges,
 });
 
@@ -19,18 +19,18 @@ type Props = Omit<HandleProps, "isConnectable"> & {
 };
 
 const CustomHandle: React.FC<Props> = ({ className, ...props }) => {
-  const { nodeInternals, edges } = useStore(selector);
+  const { nodeLookup, edges } = useStore(selector);
   const nodeId = useNodeId();
 
   const isHandleConnectable = useMemo(() => {
     if (nodeId && props.isConnectable) {
-      const node = nodeInternals.get(nodeId);
+      const node = nodeLookup.get(nodeId);
       if (!node) return false;
       const connectedEdges = getConnectedEdges([node], edges);
 
       return connectedEdges.length < props.isConnectable;
     }
-  }, [nodeInternals, edges, nodeId, props.isConnectable]);
+  }, [nodeLookup, edges, nodeId, props.isConnectable]);
 
   return (
     <Handle
