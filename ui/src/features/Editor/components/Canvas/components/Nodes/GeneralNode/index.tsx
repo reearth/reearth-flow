@@ -56,9 +56,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
       // onMouseEnter={() => setHovered(true)}
       // onMouseLeave={() => setHovered(false)}
       onDoubleClick={handleDoubleClick}>
-      <div
-        className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm bg-zinc-900/50"
-        style={{ zIndex: 1001 }}>
+      <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm bg-zinc-900/50">
         <div
           className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : "border-zinc-500"} ${className}`}>
           {type === "reader" ? (
