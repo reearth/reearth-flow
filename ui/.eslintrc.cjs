@@ -3,6 +3,7 @@ module.exports = {
     "reearth",
     "plugin:storybook/recommended",
     "plugin:@tanstack/eslint-plugin-query/recommended",
+    "plugin:tailwindcss/recommended",
   ],
   root: true,
   env: { browser: true, es2020: true },
