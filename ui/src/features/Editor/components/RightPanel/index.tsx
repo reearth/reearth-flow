@@ -4,15 +4,15 @@ import { MouseEvent, useCallback } from "react";
 import { IconButton } from "@flow/components";
 import { Node } from "@flow/types";
 
-import { ParamEditor } from "../Editor/components";
+import { ParamEditor } from "./components";
 
 type Props = {
   selected?: Node;
 };
 
 const RightPanel: React.FC<Props> = ({ selected }) => {
-  // @KaWaite This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
-  // to unlock the node when user wants to close the right panel.
+  // This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
+  // to unlock the node when user wants to close the right panel. - @KaWaite
   const handleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation();
 
@@ -61,4 +61,4 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
   );
 };
 
-export default RightPanel;
+export { RightPanel };

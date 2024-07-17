@@ -1,6 +1,8 @@
 pub mod area_on_area_overlayer;
+pub mod bounds_extractor;
 pub mod bufferer;
 pub mod center_point_replacer;
+pub mod clipper;
 pub mod closed_curve_filter;
 pub mod coercer;
 pub mod coordinate_system_setter;

@@ -255,6 +255,23 @@
       ]
     },
     {
+      "name": "BoundsExtractor",
+      "type": "processor",
+      "description": "Bounds Extractor",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "Bufferer",
       "type": "processor",
       "description": "Buffers a geometry",
@@ -307,6 +324,25 @@
       ],
       "outputPorts": [
         "point",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "Clipper",
+      "type": "processor",
+      "description": "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "clipper",
+        "candidate"
+      ],
+      "outputPorts": [
+        "inside",
+        "outside",
         "rejected"
       ],
       "categories": [

@@ -32,10 +32,10 @@ export const useQueries = () => {
           role: m.role,
           user: m.user
             ? {
-                id: m.user?.id,
-                name: m.user?.name,
-                email: m.user?.email,
-              }
+              id: m.user?.id,
+              name: m.user?.name,
+              email: m.user?.email,
+            }
             : undefined,
         }),
       ),
@@ -81,15 +81,16 @@ export const useQueries = () => {
       staleTime: Infinity,
     });
 
-  const useGetWorkspaceByIdQuery = (workspaceId: string) =>
+  const useGetWorkspaceByIdQuery = (workspaceId?: string) =>
     useQuery({
       queryKey: [WorkspaceQueryKeys.GetWorkspace, workspaceId],
       queryFn: async () => {
-        const data = await graphQLContext?.GetWorkspaceById({ workspaceId });
+        const data = await graphQLContext?.GetWorkspaceById({ workspaceId: workspaceId ?? "" });
         return data?.node?.__typename === "Workspace"
           ? createNewWorkspaceObject(data.node)
           : undefined;
       },
+      enabled: !!workspaceId,
       staleTime: Infinity,
     });
 

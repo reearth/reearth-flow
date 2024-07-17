@@ -1,10 +1,6 @@
-import LeftPanel from "@flow/features/LeftPanel";
-import RightPanel from "@flow/features/RightPanel";
 import type { Workflow } from "@flow/types";
 
-import BottomPanel from "../BottomPanel";
-
-import { Canvas, OverlayUI } from "./components";
+import { RightPanel, BottomPanel, LeftPanel, Canvas, OverlayUI } from "./components";
 import useHooks from "./hooks";
 
 type EditorProps = {
