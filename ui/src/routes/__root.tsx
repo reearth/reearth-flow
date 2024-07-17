@@ -5,7 +5,7 @@ import { TooltipProvider } from "@flow/components";
 import { config } from "@flow/config";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import Dialog from "@flow/features/Dialog";
-import NotFoundPage from "@flow/features/NotFoundPage";
+import NotFoundPage from "@flow/features/NotFound";
 import { AuthProvider } from "@flow/lib/auth";
 import { GraphQLProvider } from "@flow/lib/gql";
 import { I18nProvider } from "@flow/lib/i18n";
