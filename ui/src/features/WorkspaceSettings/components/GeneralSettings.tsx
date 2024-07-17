@@ -28,7 +28,7 @@ const GeneralSettings: React.FC = () => {
       setShowError("delete");
       return;
     }
-    navigate({ to: "/workspace" });
+    navigate({ to: "/" });
   };
 
   const handleUpdateWorkspace = async () => {
