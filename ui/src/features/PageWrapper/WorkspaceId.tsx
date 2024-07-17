@@ -24,16 +24,15 @@ const WorkspaceIdWrapper: React.FC<Props> = ({ children }) => {
   useEffect(() => {
     if (!workspace) return;
     setCurrentWorkspace(workspace);
-
-    return;
   }, [workspace, setCurrentWorkspace]);
 
-  if (isLoading) return <Loading />;
-
-  if (!workspace)
-    return <NotFoundPage message={`Workspace with id: "${workspaceId}" not found.`} />;
-
-  return children;
+  return isLoading ? (
+    <Loading />
+  ) : !workspace ? (
+    <NotFoundPage message={`Workspace with id: "${workspaceId}" not found.`} />
+  ) : (
+    children
+  );
 };
 
 export { WorkspaceIdWrapper };

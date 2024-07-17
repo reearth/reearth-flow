@@ -20,9 +20,9 @@ const NotFoundPage: React.FC<Props> = ({ message }) => {
           <p className="text-zinc-300 text-4xl font-extralight">{t("Not Found")}</p>
         </div>
         {message && <p className="text-red-500 font-extralight">{message}</p>}
-        <Link to={"/workspace"}>
+        <Link to={"/"}>
           <Button variant="outline">
-            <p className="text-zinc-300 font-extralight italic">{t("Go to Dashboard")}</p>
+            <p className="text-zinc-300 font-extralight italic">{t("Go to Home")}</p>
           </Button>
         </Link>
       </div>

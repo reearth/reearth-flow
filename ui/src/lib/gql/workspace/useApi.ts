@@ -37,7 +37,7 @@ export const useWorkspace = () => {
     };
   };
 
-  const useGetWorkspace = (workspaceId: string): GetWorkspace => {
+  const useGetWorkspace = (workspaceId?: string): GetWorkspace => {
     const { data: workspace, ...rest } = useGetWorkspaceByIdQuery(workspaceId);
     return {
       workspace,
