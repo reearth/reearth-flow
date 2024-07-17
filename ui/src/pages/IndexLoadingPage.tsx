@@ -5,7 +5,7 @@ import { Loading } from "@flow/components";
 import { ErrorPage } from "@flow/features/ErrorPage";
 import { useUser } from "@flow/lib/gql";
 
-const LoadingPage: React.FC = () => {
+const IndexLoadingPage: React.FC = () => {
   const navigate = useNavigate();
   const { useGetMe } = useUser();
   const { me, isLoading } = useGetMe();
@@ -22,4 +22,4 @@ const LoadingPage: React.FC = () => {
   ) : null;
 };
 
-export { LoadingPage };
+export { IndexLoadingPage };
