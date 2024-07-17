@@ -16,7 +16,6 @@ import { Route as rootRoute } from './routes/__root'
 
 // Create Virtual Routes
 
-const WorkspaceLazyImport = createFileRoute('/workspace')()
 const IndexLazyImport = createFileRoute('/')()
 const WorkspaceWorkspaceIdLazyImport = createFileRoute(
   '/workspace/$workspaceId',
@@ -32,11 +31,6 @@ const WorkspaceWorkspaceIdProjectProjectIdLazyImport = createFileRoute(
 )()
 
 // Create/Update Routes
-
-const WorkspaceLazyRoute = WorkspaceLazyImport.update({
-  path: '/workspace',
-  getParentRoute: () => rootRoute,
-} as any).lazy(() => import('./routes/workspace.lazy').then((d) => d.Route))
 
 const IndexLazyRoute = IndexLazyImport.update({
   path: '/',
@@ -91,13 +85,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexLazyImport
       parentRoute: typeof rootRoute
     }
-    '/workspace': {
-      id: '/workspace'
-      path: '/workspace'
-      fullPath: '/workspace'
-      preLoaderRoute: typeof WorkspaceLazyImport
-      parentRoute: typeof rootRoute
-    }
     '/workspace/$workspaceId': {
       id: '/workspace/$workspaceId'
       path: '/workspace/$workspaceId'
@@ -133,7 +120,6 @@ declare module '@tanstack/react-router' {
 
 export const routeTree = rootRoute.addChildren({
   IndexLazyRoute,
-  WorkspaceLazyRoute,
   WorkspaceWorkspaceIdLazyRoute,
   WorkspaceWorkspaceIdProjectProjectIdLazyRoute,
   WorkspaceWorkspaceIdRunsTabLazyRoute,
@@ -149,7 +135,6 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/workspace",
         "/workspace/$workspaceId",
         "/workspace/$workspaceId/project/$projectId",
         "/workspace/$workspaceId/runs/$tab",
@@ -158,9 +143,6 @@ export const routeTree = rootRoute.addChildren({
     },
     "/": {
       "filePath": "index.lazy.tsx"
-    },
-    "/workspace": {
-      "filePath": "workspace.lazy.tsx"
     },
     "/workspace/$workspaceId": {
       "filePath": "workspace_.$workspaceId.lazy.tsx"

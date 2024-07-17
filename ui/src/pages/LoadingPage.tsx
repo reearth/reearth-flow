@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import { Loading } from "@flow/components";
 import { ErrorPage } from "@flow/features/ErrorPage";
@@ -9,12 +10,16 @@ const LoadingPage: React.FC = () => {
   const { useGetMe } = useUser();
   const { me, isLoading } = useGetMe();
 
-  if (isLoading) return <Loading />;
+  useEffect(() => {
+    if (!me || !me?.myWorkspaceId) return;
+    navigate({ to: `/workspace/${me?.myWorkspaceId}`, replace: true });
+  }, [me, navigate]);
 
-  if (!me || !me?.myWorkspaceId) return <ErrorPage errorMessage={"Could not fetch user"} />;
-
-  // TODO: This gives error in the console
-  navigate({ to: `/workspace/${me?.myWorkspaceId}`, replace: true });
+  return isLoading ? (
+    <Loading />
+  ) : !me || !me?.myWorkspaceId ? (
+    <ErrorPage errorMessage={"Could not fetch user"} />
+  ) : null;
 };
 
 export { LoadingPage };

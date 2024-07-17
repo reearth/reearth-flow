@@ -23,28 +23,27 @@ const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
   const { project, isLoading } = useGetProject(projectId);
 
   useEffect(() => {
-    if (!project) return;
-
-    if (currentWorkspace && project.workspaceId != currentWorkspace?.id) return;
-
-    if (currentProject?.id === project.id) return;
+    if (
+      !project ||
+      project.workspaceId !== currentWorkspace?.id ||
+      currentProject?.id === project.id
+    )
+      return;
 
     setCurrentProject(project);
-    return;
   }, [project, setCurrentProject, currentProject, currentWorkspace]);
 
-  if (isLoading) return <Loading />;
-
-  if (!project) return <NotFoundPage message={`Project with id: "${projectId}" not found.`} />;
-
-  if (currentWorkspace && project.workspaceId != currentWorkspace?.id)
-    return (
-      <NotFoundPage
-        message={`Project : "${project.name}" not found in the workspace "${currentWorkspace?.name}"`}
-      />
-    );
-
-  return children;
+  return isLoading ? (
+    <Loading />
+  ) : !project ? (
+    <NotFoundPage message={`Project with id: "${projectId}" not found.`} />
+  ) : currentWorkspace && project.workspaceId !== currentWorkspace.id ? (
+    <NotFoundPage
+      message={`Project : "${project.name}" not found in the workspace "${currentWorkspace?.name}"`}
+    />
+  ) : (
+    children
+  );
 };
 
 export { ProjectIdWrapper };
