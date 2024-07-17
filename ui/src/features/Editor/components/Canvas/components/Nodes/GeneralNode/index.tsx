@@ -6,11 +6,11 @@ import { memo, useEffect, useState } from "react";
 import { IconButton } from "@flow/components";
 import { useDoubleClick } from "@flow/hooks";
 import { Node } from "@flow/types";
+import type { NodePosition, NodeType } from "@flow/types";
 
 import { getPropsFrom } from "../utils";
 
 import { Handles } from "./components";
-import type { NodePosition, NodeType } from "./types";
 
 export type GeneralNodeProps = NodeProps<Node> & {
   className?: string;

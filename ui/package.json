@@ -70,7 +70,8 @@
     "react-resizable-panels": "2.0.20",
     "tailwind-merge": "2.4.0",
     "tailwindcss-animate": "1.0.7",
-    "use-resize-observer": "9.1.0"
+    "use-resize-observer": "9.1.0",
+    "yjs": "13.6.18"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "5.0.2",

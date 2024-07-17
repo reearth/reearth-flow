@@ -7,7 +7,7 @@ type Props = {
   message?: string;
 };
 
-const NotFoundPage: React.FC<Props> = ({ message }) => {
+const NotFound: React.FC<Props> = ({ message }) => {
   const t = useT();
 
   return (
@@ -30,4 +30,4 @@ const NotFoundPage: React.FC<Props> = ({ message }) => {
   );
 };
 
-export default NotFoundPage;
+export default NotFound;

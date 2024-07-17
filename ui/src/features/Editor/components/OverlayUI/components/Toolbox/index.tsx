@@ -11,8 +11,7 @@ import { type DragEvent } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-
-import { type NodeType } from "../../../Nodes/GeneralNode/types";
+import { type NodeType } from "@flow/types";
 
 type ToolboxItem<T> = {
   id: T;

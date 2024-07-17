@@ -2,9 +2,8 @@ import { PlugsConnected, Toolbox, UsersThree } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { TopNavigation } from "@flow/features/TopNavigation";
 import { useT } from "@flow/lib/i18n";
-
-import { TopNavigation } from "../TopNavigation";
 
 import { GeneralSettings, IntegrationsSettings, MembersSettings } from "./components";
 

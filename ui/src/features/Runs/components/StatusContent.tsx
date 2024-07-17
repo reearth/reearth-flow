@@ -5,7 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@flow/compo
 import { useT } from "@flow/lib/i18n";
 import { Run } from "@flow/types";
 
-import { LogConsole } from "../../BottomPanel/components";
+import { LogConsole } from "../../Editor/components/BottomPanel/components";
 
 import { RunsTable } from "./RunsTable";
 
