@@ -5,7 +5,7 @@ import { Loading } from "@flow/components";
 import { useWorkspace } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
 
-import NotFoundPage from "../NotFoundPage";
+import NotFoundPage from "../NotFound";
 
 type Props = {
   children: React.ReactNode;

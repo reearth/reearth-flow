@@ -5,7 +5,7 @@ import { IconButton } from "@flow/components";
 import { useStateManager } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 
-import { WorkflowTabs } from "../Editor/components";
+import { WorkflowTabs } from "..";
 
 import { DataTable, LogConsole, Map } from "./components";
 
@@ -131,7 +131,7 @@ const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) =
   );
 };
 
-export default BottomPanel;
+export { BottomPanel };
 
 const BaseActionButtons: React.FC<{
   panelContents?: PanelContent[];

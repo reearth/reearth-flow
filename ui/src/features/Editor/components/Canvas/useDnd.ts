@@ -4,8 +4,8 @@ import { Dispatch, DragEvent, SetStateAction, useCallback } from "react";
 import { Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
-import { baseBatchNode } from "../Nodes/BatchNode";
-import { baseNoteNode } from "../Nodes/NoteNode";
+import { baseBatchNode } from "./components/Nodes/BatchNode";
+import { baseNoteNode } from "./components/Nodes/NoteNode";
 
 type Props = {
   setNodes: Dispatch<SetStateAction<Node[]>>;

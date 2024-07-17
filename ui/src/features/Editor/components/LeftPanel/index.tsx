@@ -10,11 +10,10 @@ import { Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
+import { UserNavigation } from "@flow/features/TopNavigation/components";
 import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 import { Workflow } from "@flow/types";
-
-import { UserNavigation } from "../TopNavigation/components";
 
 import { TransformerList, Resources } from "./components";
 
@@ -163,4 +162,4 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
   );
 };
 
-export default LeftPanel;
+export { LeftPanel };
