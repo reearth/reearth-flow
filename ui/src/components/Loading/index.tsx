@@ -6,7 +6,7 @@ import "./styles.css";
 
 const Loading: React.FC<{ show?: boolean }> = () => {
   return (
-    <div className="absolute top-0 z-40 flex h-screen w-full justify-center bg-zinc-900">
+    <div className="absolute left-0 top-0 z-40 flex h-screen w-full justify-center bg-zinc-900">
       <div className="flex h-full items-center">
         <div className="flex flex-col gap-5">
           <div className="flex gap-3">
