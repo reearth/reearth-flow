@@ -255,6 +255,23 @@
       ]
     },
     {
+      "name": "BoundsExtractor",
+      "type": "processor",
+      "description": "Bounds Extractor",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "Bufferer",
       "type": "processor",
       "description": "Buffers a geometry",

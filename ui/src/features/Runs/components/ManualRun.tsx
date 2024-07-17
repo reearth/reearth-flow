@@ -10,14 +10,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@flow/components";
+import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Project } from "@flow/types";
 
 const ManualRun: React.FC = () => {
   const t = useT();
-  const [currentWorkspace] = useCurrentWorkspace();
+  const { useGetWorkspaceProjects } = useProject();
+
   const [selectedProject, selectProject] = useState<Project>();
+  const [currentWorkspace] = useCurrentWorkspace();
+  const { projects } = useGetWorkspaceProjects(currentWorkspace?.id);
+
   return (
     <div className="flex-1 p-8">
       <div className="flex gap-2 items-center text-lg font-extralight">
@@ -35,7 +40,7 @@ const ManualRun: React.FC = () => {
                 <SelectValue placeholder={t("Select from published projects")} />
               </SelectTrigger>
               <SelectContent>
-                {currentWorkspace?.projects?.map(p => (
+                {projects?.map(p => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
                   </SelectItem>

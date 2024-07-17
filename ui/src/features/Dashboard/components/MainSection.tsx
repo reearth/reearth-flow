@@ -5,7 +5,6 @@ import { useState } from "react";
 import projectImage from "@flow/assets/project-screenshot.png"; // TODO: replace with actual project image
 import {
   Button,
-  ButtonWithTooltip,
   Card,
   CardContent,
   CardDescription,
@@ -90,14 +89,13 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
       <div className="flex flex-col flex-1 gap-8 p-8">
         <div className="flex gap-2 justify-between items-center border-b border-zinc-700 pb-4">
           <p className="text-lg font-extralight">{t("Projects")}</p>
-          <ButtonWithTooltip
+          <Button
             className="flex gap-2 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
             variant="outline"
-            tooltipText={t("Create new project")}
             onClick={() => setDialogType("add-project")}>
             <Plus weight="thin" />
             <p className="text-xs font-light">{t("New Project")}</p>
-          </ButtonWithTooltip>
+          </Button>
         </div>
         <div className="flex flex-col flex-1 justify-between overflow-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-auto">

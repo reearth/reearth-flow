@@ -30,6 +30,8 @@ export type NodeData = {
   textColor?: string;
 };
 
+export type NodePosition = { x: number; y: number };
+
 export type NodeType = "reader" | "writer" | "transformer" | "batch" | "note";
 
 export type Node = ReactFlowNode<NodeData>;
