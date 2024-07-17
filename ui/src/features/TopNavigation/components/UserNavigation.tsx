@@ -44,14 +44,14 @@ const UserNavigation: React.FC<Props> = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <div className={`flex gap-2 mr-2 ${className}`}>
-          <Avatar className="h-8 w-8">
+        <div className={`mr-2 flex gap-2 ${className}`}>
+          <Avatar className="size-8">
             <AvatarImage src={user?.picture} />
             <AvatarFallback>{me?.name ? me.name.charAt(0).toUpperCase() : "F"}</AvatarFallback>
           </Avatar>
           {!iconOnly ? (
             <div className="flex items-center gap-2 self-center">
-              <p className="text-zinc-300 text-sm font-extralight max-w-28 truncate transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
+              <p className="max-w-28 truncate text-sm font-extralight text-zinc-300 transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
                 {me?.name ? me.name : "User"}
               </p>
               <CaretDown className="w-[12px]" weight="thin" />
@@ -60,7 +60,7 @@ const UserNavigation: React.FC<Props> = ({
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="text-zinc-300 w-[200px]"
+        className="w-[200px] text-zinc-300"
         side={dropdownPosition ?? "bottom"}
         align="end"
         sideOffset={dropdownOffset ?? 4}>
@@ -86,7 +86,7 @@ const UserNavigation: React.FC<Props> = ({
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="gap-2">
-          <SignOut className="w-[15px] h-[15px] stroke-1" />
+          <SignOut className="size-[15px] stroke-1" />
           <p>{t("Log out")}</p>
         </DropdownMenuItem>
       </DropdownMenuContent>

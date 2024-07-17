@@ -20,9 +20,9 @@ export default function Editor({ workflows }: EditorProps) {
   } = useHooks({ workflows });
 
   return (
-    <div className="flex flex-1 relative">
+    <div className="relative flex flex-1">
       <LeftPanel data={currentWorkflow} />
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-1 flex-col">
         <OverlayUI hoveredDetails={hoveredDetails}>
           <Canvas
             workflow={currentWorkflow}

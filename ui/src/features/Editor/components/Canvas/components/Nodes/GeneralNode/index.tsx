@@ -52,15 +52,13 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
 
   return (
     <div
-      className="bg-zinc-800 rounded-sm"
+      className="rounded-sm bg-zinc-800"
       // onMouseEnter={() => setHovered(true)}
       // onMouseLeave={() => setHovered(false)}
       onDoubleClick={handleDoubleClick}>
-      <div
-        className="flex relative w-[150px] z-[1001] rounded-sm bg-zinc-900/50 h-[25px]"
-        style={{ zIndex: 1001 }}>
+      <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm bg-zinc-900/50">
         <div
-          className={`flex justify-center w-4 rounded-l-sm border-t border-l border-b ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : "border-zinc-500"} ${className}`}>
+          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : "border-zinc-500"} ${className}`}>
           {type === "reader" ? (
             <Database className={typeIconClasses} />
           ) : type === "writer" ? (
@@ -70,12 +68,12 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
           ) : null}
         </div>
         <div
-          className={`flex justify-between gap-2 flex-1 px-1 leading-none truncate rounded-r-sm border-t border-r border-b ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : "border-zinc-500"}`}>
-          <p className="text-[10px] text-zinc-300 font-light truncate self-center">{name}</p>
-          <div className={`w-[8px] h-[8px] rounded self-center ${metaProps.style}`} />
+          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : "border-zinc-500"}`}>
+          <p className="self-center truncate text-[10px] font-light text-zinc-300">{name}</p>
+          <div className={`size-[8px] self-center rounded ${metaProps.style}`} />
         </div>
         {selected && !locked && (
-          <div className="absolute flex items-center justify-center h-[25px] w-[95%] bg-zinc-900 rounded-t-lg bottom-[25px] right-[50%] translate-x-1/2">
+          <div className="absolute bottom-[25px] right-1/2 flex h-[25px] w-[95%] translate-x-1/2 items-center justify-center rounded-t-lg bg-zinc-900">
             <IconButton
               className="h-full flex-1 rounded-b-none"
               size="icon"

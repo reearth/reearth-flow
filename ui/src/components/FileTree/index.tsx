@@ -157,14 +157,14 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                         )}
                         {!item.icon && FolderIcon && (
                           <FolderIcon
-                            className="h-4 w-4 shrink-0 mr-2 text-zinc-300"
+                            className="mr-2 size-4 shrink-0 text-zinc-300"
                             weight="thin"
                             aria-hidden="true"
                           />
                         )}
-                        <span className="text-xs font-extralight truncate">{item.name}</span>
+                        <span className="truncate text-xs font-extralight">{item.name}</span>
                       </AccordionTrigger>
-                      <AccordionContent className="pl-6 border-l border-zinc-700 ml-4">
+                      <AccordionContent className="ml-4 border-l border-zinc-700 pl-6">
                         <TreeItem
                           className="-ml-4"
                           data={item.children ? item.children : item}
@@ -234,9 +234,9 @@ const Leaf = forwardRef<
         />
       )}
       {!item.icon && Icon && (
-        <Icon className="h-4 w-4 shrink-0 mr-2 text-zinc-300" weight="thin" aria-hidden="true" />
+        <Icon className="mr-2 size-4 shrink-0 text-zinc-300" weight="thin" aria-hidden="true" />
       )}
-      <span className="flex-grow text-xs font-extralight truncate">{item.name}</span>
+      <span className="grow truncate text-xs font-extralight">{item.name}</span>
     </div>
   );
 });
@@ -256,7 +256,7 @@ const AccordionTrigger = forwardRef<
       )}
       {...props}>
       {children}
-      <CaretRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-zinc-300/60 ml-auto" />
+      <CaretRight className="ml-auto size-4 shrink-0 text-zinc-300/60 transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));

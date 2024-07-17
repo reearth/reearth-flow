@@ -19,7 +19,7 @@ function Editor() {
   const [currentProject] = useCurrentProject();
 
   return (
-    <div className="flex flex-col bg-zinc-900 text-zinc-300 h-screen">
+    <div className="flex h-screen flex-col bg-zinc-900 text-zinc-300">
       <ReactFlowProvider>
         <Canvas workflows={currentProject?.workflows} />
       </ReactFlowProvider>

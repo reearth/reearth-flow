@@ -65,12 +65,12 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
     {
       id: "undo",
       name: t("Undo last action"),
-      icon: <ArrowArcLeft className="h-4 w-4 stroke-1" weight="thin" />,
+      icon: <ArrowArcLeft className="size-4 stroke-1" weight="thin" />,
     },
     {
       id: "redo",
       name: t("Redo action"),
-      icon: <ArrowArcRight className="h-4 w-4 stroke-1" weight="thin" />,
+      icon: <ArrowArcRight className="size-4 stroke-1" weight="thin" />,
     },
   ];
 
@@ -80,9 +80,9 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
   };
 
   return (
-    <div className="absolute left-2 top-2 bottom-1 flex flex-shrink-0 gap-2 pointer-events-none [&>*]:pointer-events-auto">
-      <div className="bg-zinc-800 self-start">
-        <div className="flex flex-col flex-wrap bg-zinc-900/50 border border-zinc-700 rounded-md text-zinc-400 transition-all">
+    <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
+      <div className="self-start bg-zinc-800">
+        <div className="flex flex-col flex-wrap rounded-md border border-zinc-700 bg-zinc-900/50 text-zinc-400 transition-all">
           {availableTools.map(tool => (
             <IconButton
               key={tool.id}
@@ -94,7 +94,7 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
               draggable
             />
           ))}
-          {availableActions && <div className="w-full border-t border-zinc-700 my-2" />}
+          {availableActions && <div className="my-2 w-full border-t border-zinc-700" />}
           {availableActions.map(action => (
             <IconButton
               key={action.id}
