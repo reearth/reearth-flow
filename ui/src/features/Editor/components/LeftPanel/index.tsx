@@ -117,7 +117,7 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
           <p className="text-lg font-thin">{tabs?.find(tc => tc.id === selectedTab)?.title}</p>
         </div>
         <div className="flex flex-col gap-2 overflow-auto">
-          {/* {content.title && <p className="text-md">{content.title}</p>} */}
+          {/* {content.title && <p>{content.title}</p>} */}
           {tabs?.find(tc => tc.id === selectedTab)?.component}
         </div>
       </div>

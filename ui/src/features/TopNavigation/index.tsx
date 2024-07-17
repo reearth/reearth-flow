@@ -21,7 +21,7 @@ const TopNavigation: React.FC = () => {
             onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}` })}>
             <FlowLogo className="size-5" />
           </div>
-          <h1 className="text-md select-none font-extralight">
+          <h1 className="select-none font-extralight">
             {brandName ?? "Re:Earth Flow"}{" "}
             <span className="text-xs font-thin">v{version ?? "X.X.X"}</span>
           </h1>

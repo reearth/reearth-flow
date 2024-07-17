@@ -19,13 +19,13 @@ const WorkflowDialogContent: React.FC = () => {
           content={
             <div className="mt-2 flex flex-col gap-6">
               <FieldWrapper>
-                <p className="text-md mr-4">Setting 1</p>
+                <p className="mr-4">Setting 1</p>
                 <Button variant="outline" size="sm">
                   Change setting
                 </Button>
               </FieldWrapper>
               <FieldWrapper>
-                <p className="text-md mr-4">Setting 2</p>
+                <p className="mr-4">Setting 2</p>
                 <Button variant="outline" size="sm">
                   Change setting 2
                 </Button>
