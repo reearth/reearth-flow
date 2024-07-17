@@ -62,4 +62,10 @@ module.exports = {
     schema: "../api/gql/*.graphql",
     operations: "src/lib/gql/**/*.graphql",
   },
+  settings: {
+    tailwindcss: {
+      // Custom or third party lib CSS classes
+      whitelist: ["nopan", "nodrag", "nowheel", "dndnode-"],
+    },
+  },
 };
