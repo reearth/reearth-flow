@@ -66,7 +66,7 @@ const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) =
 
   return (
     <div
-      className="transition-width box-content flex flex-col justify-end border-t border-zinc-700 bg-zinc-800 backdrop-blur-md duration-300 ease-in-out"
+      className="box-content flex flex-col justify-end border-t border-zinc-700 bg-zinc-800 backdrop-blur-md duration-300 ease-in-out"
       style={{
         height: isPanelOpen ? (windowSize === "max" ? "calc(100vh - 1px)" : "50vh") : "29px",
       }}>

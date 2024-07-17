@@ -36,7 +36,7 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
         }}>
         <div className="fixed right-[350px] z-[1] flex justify-end p-4">
           <IconButton
-            className="before:-z-1 relative before:absolute before:inset-y-0 before:right-0 before:bg-green-500 before:content-['']"
+            className="relative before:absolute before:inset-y-0 before:right-0 before:-z-10 before:bg-green-500 before:content-['']"
             icon={<X className="size-[30px]" weight="thin" />}
             onClick={handleClick}
           />
