@@ -32,10 +32,10 @@ export const useQueries = () => {
           role: m.role,
           user: m.user
             ? {
-              id: m.user?.id,
-              name: m.user?.name,
-              email: m.user?.email,
-            }
+                id: m.user?.id,
+                name: m.user?.name,
+                email: m.user?.email,
+              }
             : undefined,
         }),
       ),

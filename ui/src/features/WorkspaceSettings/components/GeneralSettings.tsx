@@ -51,7 +51,7 @@ const GeneralSettings: React.FC = () => {
   return (
     <div>
       <p className="text-lg font-extralight">{t("General Settings")}</p>
-      <div className="flex flex-col gap-6 mt-4 max-w-[700px]">
+      <div className="mt-4 flex max-w-[700px] flex-col gap-6">
         <div className="flex flex-col gap-2">
           <Label htmlFor="workspace-name">{t("Workspace Name")}</Label>
           <Input
@@ -75,7 +75,7 @@ const GeneralSettings: React.FC = () => {
           onClick={() => handleDeleteWorkspace()}>
           {t("Delete Workspace")}
         </Button>
-        <div className={`text-xs text-red-400 self-end ${showError ? "opacity-70" : "opacity-0"}`}>
+        <div className={`self-end text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}>
           {showError === "delete" && t("Failed to delete Workspace")}
           {showError === "update" && t("Failed to update Workspace")}
         </div>

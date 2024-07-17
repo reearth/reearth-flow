@@ -69,9 +69,9 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
         />
       )}
       {/* <div className={`bg-orange-400/60 w-[${width}px] h-[${height}px]`} style={{ width, height }}> */}
-      <div className={`bg-blue-300/50 rounded-sm h-full z-0 p-2`}>
+      <div className={`z-0 h-full rounded-sm bg-blue-300/50 p-2`}>
         <textarea
-          className="resize-none w-full h-full bg-transparent nowheel"
+          className="nowheel size-full resize-none bg-transparent"
           defaultValue={data.content}
           onMouseDown={e => e.stopPropagation()}
           // onMouseUp={e => e.}

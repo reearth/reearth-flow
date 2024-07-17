@@ -65,7 +65,7 @@ function DataTable<TData, TValue>({
 
   return (
     <div>
-      <div className="flex items-center py-4 gap-4">
+      <div className="flex items-center gap-4 py-4">
         {showFiltering && (
           <Input
             placeholder={t("Search") + "..."}

@@ -61,10 +61,10 @@ const Map: React.FC<Props> = () => {
 
   return (
     <div className="relative w-6/12">
-      <div className="flex flex-col flex-wrap bg-zinc-900/50 border border-zinc-700 rounded-md text-zinc-400 transition-all top-2 left-2 absolute z-10">
+      <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border border-zinc-700 bg-zinc-900/50 text-zinc-400 transition-all">
         {sceneModes.map(b => (
           <Button
-            className={`transition-all text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 cursor-pointer ${sceneMode === b ? "bg-zinc-800 text-zinc-300" : ""}`}
+            className={`cursor-pointer text-zinc-400 transition-all hover:bg-zinc-700 hover:text-zinc-100 ${sceneMode === b ? "bg-zinc-800 text-zinc-300" : ""}`}
             variant="ghost"
             size="icon"
             key={b}

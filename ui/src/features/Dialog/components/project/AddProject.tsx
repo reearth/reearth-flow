@@ -45,7 +45,7 @@ export const AddProject: React.FC = () => {
       <ContentSection
         title=""
         content={
-          <div className="flex flex-col gap-6 mt-2">
+          <div className="mt-2 flex flex-col gap-6">
             <Input
               placeholder={t("Project name")}
               value={name}
