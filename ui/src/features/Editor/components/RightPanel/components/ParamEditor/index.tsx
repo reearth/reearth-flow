@@ -59,7 +59,7 @@ const ParamEditor: React.FC<Props> = ({
 
   return (
     <div>
-      <div className="flex gap-4 mb-3 justify-between">
+      <div className="mb-3 flex justify-between gap-4">
         <div className="flex gap-2">
           <IconButton
             className={actionButtonClasses}
@@ -109,7 +109,7 @@ const ParamEditor: React.FC<Props> = ({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="params">
-          <Card className="bg-transparent text-zinc-300 font-extralight border-zinc-700">
+          <Card className="border-zinc-700 bg-transparent font-extralight text-zinc-300">
             <CardHeader>
               <CardTitle>{t("Parameter Editor")}</CardTitle>
               <CardDescription>
@@ -149,7 +149,7 @@ const ParamEditor: React.FC<Props> = ({
           </Card>
         </TabsContent>
         <TabsContent value="data">
-          <Card className="bg-transparent text-zinc-300 border-zinc-700">
+          <Card className="border-zinc-700 bg-transparent text-zinc-300">
             <CardHeader>
               <CardTitle>Node data</CardTitle>
             </CardHeader>

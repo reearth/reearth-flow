@@ -28,30 +28,30 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
     <>
       <div
         id="right-panel-overlay"
-        className="bg-black/25 border-l border-zinc-700 fixed right-0 h-full w-full"
+        className="fixed right-0 size-full border-l border-zinc-700 bg-black/25"
         style={{
           transform: `translateX(${selected ? "0" : "100%"})`,
           transitionDuration: "0ms",
           transitionProperty: "transform",
         }}>
-        <div className="flex justify-end fixed right-[350px] p-4 z-[1]">
+        <div className="fixed right-[350px] z-[1] flex justify-end p-4">
           <IconButton
-            className="relative before:absolute before:top-0 before:bottom-0 before:right-0 before:-z-1 before:content-[''] before:bg-green-500"
-            icon={<X className="w-[30px] h-[30px]" weight="thin" />}
+            className="before:-z-1 relative before:absolute before:inset-y-0 before:right-0 before:bg-green-500 before:content-['']"
+            icon={<X className="size-[30px]" weight="thin" />}
             onClick={handleClick}
           />
         </div>
       </div>
       <div
         id="right-panel"
-        className="flex bg-zinc-800 border-l border-zinc-700 fixed right-0 h-full w-[350px] transition-all"
+        className="fixed right-0 flex h-full w-[350px] border-l border-zinc-700 bg-zinc-800 transition-all"
         style={{
           transform: `translateX(${selected ? "0" : "100%"})`,
           transitionDuration: selected ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
-        <div className="bg-zinc-900/50 w-full h-full py-4 pl-4 pr-2">
+        <div className="size-full bg-zinc-900/50 py-4 pl-4 pr-2">
           {selected && (
             <ParamEditor nodeId={selected.id} nodeMeta={selected.data} nodeType="transformer" />
           )}

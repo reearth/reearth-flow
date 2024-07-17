@@ -6,16 +6,16 @@ import "./styles.css";
 
 const Loading: React.FC<{ show?: boolean }> = () => {
   return (
-    <div className="absolute top-0 z-40 flex justify-center h-[100vh] w-full bg-zinc-900">
-      <div className="flex items-center h-full">
+    <div className="absolute top-0 z-40 flex h-screen w-full justify-center bg-zinc-900">
+      <div className="flex h-full items-center">
         <div className="flex flex-col gap-5">
           <div className="flex gap-3">
             <FlowLogo
               id="loading-svg"
-              className="bg-red-900 bg-opacity-50 text-zinc-200 rounded-lg p-1 mb-8"
+              className="mb-8 rounded-lg bg-red-900 bg-opacity-50 p-1 text-zinc-200"
               style={{ height: "110px", width: "110px" }}
             />
-            <DoubleArrowRightIcon className="w-[110px] h-[110px] text-zinc-600" />
+            <DoubleArrowRightIcon className="size-[110px] text-zinc-600" />
           </div>
         </div>
       </div>

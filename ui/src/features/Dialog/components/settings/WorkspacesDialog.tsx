@@ -17,15 +17,15 @@ const WorkspacesDialogContent: React.FC = () => {
         <ContentSection
           title={t("Settings section 1")}
           content={
-            <div className="flex flex-col gap-6 mt-2">
+            <div className="mt-2 flex flex-col gap-6">
               <FieldWrapper>
-                <p className="mr-4 text-md">Setting 1</p>
+                <p className="text-md mr-4">Setting 1</p>
                 <Button variant="outline" size="sm">
                   Change setting
                 </Button>
               </FieldWrapper>
               <FieldWrapper>
-                <p className="mr-4 text-md">Setting 2</p>
+                <p className="text-md mr-4">Setting 2</p>
                 <Button variant="outline" size="sm">
                   Change setting 2
                 </Button>

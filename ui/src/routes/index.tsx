@@ -29,16 +29,16 @@ function Index() {
 function ErrorPage({ errorMessage }: { errorMessage: string }) {
   const t = useT();
   return (
-    <div className="bg-zinc-800 h-[100vh] flex justify-center items-center">
-      <div className="flex flex-col gap-10 items-center">
-        <div className="flex gap-4 items-center">
-          <div className="bg-red-900 p-2 rounded">
-            <FlowLogo className="h-[75px] w-[75px]" />
+    <div className="flex h-screen items-center justify-center bg-zinc-800">
+      <div className="flex flex-col items-center gap-10">
+        <div className="flex items-center gap-4">
+          <div className="rounded bg-red-900 p-2">
+            <FlowLogo className="size-[75px]" />
           </div>
         </div>
-        <p className=" text-red-500 font-extralight">{errorMessage}</p>
+        <p className=" font-extralight text-red-500">{errorMessage}</p>
         <Button variant="outline" onClick={() => window.location.reload()}>
-          <p className="text-zinc-300 font-extralight">{t("Reload")}</p>
+          <p className="font-extralight text-zinc-300">{t("Reload")}</p>
         </Button>
       </div>
     </div>

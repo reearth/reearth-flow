@@ -5,7 +5,7 @@ type Props = {
 const LogConsole: React.FC<Props> = ({ className }) => {
   return (
     <div
-      className={`bg-zinc-900 text-yellow-600 text-xs  w-[100%] overflow-scroll rounded-md p-1 ${className}`}>
+      className={`w-full overflow-scroll rounded-md  bg-zinc-900 p-1 text-xs text-yellow-600 ${className}`}>
       <ol>
         <li>.....aaaasldfkjasldfkjsf....aslkdfjalskdfjasldfkjsdfa123.....</li>
         <li>

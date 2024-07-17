@@ -16,7 +16,7 @@ const AccountDialogContent: React.FC = () => {
         <ContentSection
           title={t("Basic information")}
           content={
-            <div className="flex flex-col gap-6 mt-2">
+            <div className="mt-2 flex flex-col gap-6">
               <FieldWrapper>
                 <div>
                   <p className="text-md">{t("Name")}</p>

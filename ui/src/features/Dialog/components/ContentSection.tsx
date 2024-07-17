@@ -5,9 +5,9 @@ type Props = {
 };
 
 const ContentSection: React.FC<Props> = ({ className, title, content }) => (
-  <div className="mb-4 px-6 flex-1">
+  <div className="mb-4 flex-1 px-6">
     <h2 className="text-xs uppercase">{title}</h2>
-    <div className={`border-t border-zinc-700 pt-4 mt-2 ${className}`}>{content}</div>
+    <div className={`mt-2 border-t border-zinc-700 pt-4 ${className}`}>{content}</div>
   </div>
 );
 

@@ -25,11 +25,11 @@ const ManualRun: React.FC = () => {
 
   return (
     <div className="flex-1 p-8">
-      <div className="flex gap-2 items-center text-lg font-extralight">
+      <div className="flex items-center gap-2 text-lg font-extralight">
         <p>{t("Manual Run")}</p>
       </div>
-      <div className="flex flex-col gap-6 mt-4 max-w-[1200px]">
-        <div className="flex flex-col gap-4 w-[50%] max-w-[900px]">
+      <div className="mt-4 flex max-w-[1200px] flex-col gap-6">
+        <div className="flex w-[50%] max-w-[900px] flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="manual-run-project">{t("Project")}</Label>
             <Select

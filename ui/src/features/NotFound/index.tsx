@@ -11,18 +11,18 @@ const NotFound: React.FC<Props> = ({ message }) => {
   const t = useT();
 
   return (
-    <div className="bg-zinc-800 h-[100vh] flex justify-center items-center">
-      <div className="flex flex-col gap-10 items-center">
-        <div className="flex gap-4 items-center">
-          <div className="bg-red-900 p-2 rounded">
-            <FlowLogo className="h-[75px] w-[75px]" />
+    <div className="flex h-screen items-center justify-center bg-zinc-800">
+      <div className="flex flex-col items-center gap-10">
+        <div className="flex items-center gap-4">
+          <div className="rounded bg-red-900 p-2">
+            <FlowLogo className="size-[75px]" />
           </div>
-          <p className="text-zinc-300 text-4xl font-extralight">{t("Not Found")}</p>
+          <p className="text-4xl font-extralight text-zinc-300">{t("Not Found")}</p>
         </div>
-        {message && <p className="text-red-500 font-extralight">{message}</p>}
+        {message && <p className="font-extralight text-red-500">{message}</p>}
         <Link to={"/"}>
           <Button variant="outline">
-            <p className="text-zinc-300 font-extralight italic">{t("Go to Home")}</p>
+            <p className="font-extralight italic text-zinc-300">{t("Go to Home")}</p>
           </Button>
         </Link>
       </div>
