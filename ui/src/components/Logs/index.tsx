@@ -175,7 +175,7 @@ const Logs = <TData, TValue>({
       </div>
       <div className="border-b border-gray-400" />
       <Table>
-        <TableBody className="">
+        <TableBody>
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map(row => (
               <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>

@@ -5089,7 +5089,6 @@ __metadata:
     eslint-plugin-react-hooks: "npm:4.6.2"
     eslint-plugin-react-refresh: "npm:0.4.8"
     eslint-plugin-storybook: "npm:0.8.0"
-    eslint-plugin-tailwindcss: "npm:3.17.4"
     graphql: "npm:16.9.0"
     i18next: "npm:23.12.1"
     i18next-browser-languagedetector: "npm:8.0.0"
@@ -11729,18 +11728,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-tailwindcss@npm:3.17.4":
-  version: 3.17.4
-  resolution: "eslint-plugin-tailwindcss@npm:3.17.4"
-  dependencies:
-    fast-glob: "npm:^3.2.5"
-    postcss: "npm:^8.4.4"
-  peerDependencies:
-    tailwindcss: ^3.4.0
-  checksum: 10c0/39cc8a9f8aad86da2a6d21e96c190cd660b6fd667e1502a4f96ae7176c00f708c2ed8220c78e6c2bfb1f988541c4f27f74e3defe209ad442b3aaa297d86a4917
-  languageName: node
-  linkType: hard
-
 "eslint-plugin-testing-library@npm:6.1.2":
   version: 6.1.2
   resolution: "eslint-plugin-testing-library@npm:6.1.2"
@@ -12059,7 +12046,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-glob@npm:^3.2.12, fast-glob@npm:^3.2.5, fast-glob@npm:^3.2.9, fast-glob@npm:^3.3.0, fast-glob@npm:^3.3.2":
+"fast-glob@npm:^3.2.12, fast-glob@npm:^3.2.9, fast-glob@npm:^3.3.0, fast-glob@npm:^3.3.2":
   version: 3.3.2
   resolution: "fast-glob@npm:3.3.2"
   dependencies:
@@ -15991,7 +15978,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"postcss@npm:8.4.39, postcss@npm:^8.4.39, postcss@npm:^8.4.4":
+"postcss@npm:8.4.39, postcss@npm:^8.4.39":
   version: 8.4.39
   resolution: "postcss@npm:8.4.39"
   dependencies:

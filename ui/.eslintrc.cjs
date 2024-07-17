@@ -3,8 +3,6 @@ module.exports = {
     "reearth",
     "plugin:storybook/recommended",
     "plugin:@tanstack/eslint-plugin-query/recommended",
-    // TODO: too many warnings now. WIll fix in another PR
-    // "plugin:tailwindcss/recommended",
   ],
   root: true,
   env: { browser: true, es2020: true },
