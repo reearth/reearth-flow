@@ -8,6 +8,7 @@ import {
 } from "@radix-ui/react-icons";
 import {
   ColumnDef,
+  ColumnFiltersState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -16,7 +17,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   DropdownMenu,
@@ -37,6 +38,8 @@ interface LogProps<TData, TValue> {
   showFiltering?: boolean;
 }
 
+type STATUS = "WARNING" | "INFO" | "ERROR";
+
 const Logs = <TData, TValue>({
   columns,
   data,
@@ -48,6 +51,7 @@ const Logs = <TData, TValue>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const table = useReactTable({
     data,
@@ -63,35 +67,73 @@ const Logs = <TData, TValue>({
     // Filtering
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
+    // Column Filtering
+    onColumnFiltersChange: setColumnFilters,
     state: {
       sorting,
       columnVisibility,
       rowSelection,
       globalFilter,
+      columnFilters,
     },
   });
 
+  const handleStatusChange = (status: STATUS) => {
+    getStatusValue === status
+      ? setColumnFilters([])
+      : setColumnFilters([{ id: "status", value: status }]);
+  };
+
+  const handleTimeStampColumnVisibility = () => {
+    const column = table.getColumn("timestamp");
+
+    column?.toggleVisibility(!column.getIsVisible());
+    return;
+  };
+
+  const handleResetTable = () => {
+    setColumnFilters([]);
+    table.getColumn("timestamp")?.toggleVisibility(true);
+  };
+
+  const getStatusValue = useMemo(() => {
+    const value = columnFilters.find(id => id.id === "status");
+    return value?.value;
+  }, [columnFilters]);
+
   return (
-    <div className="text- bg-zinc-900 rounded text-white">
+    <div className="bg-zinc-900 rounded text-white w-full overflow-auto">
       <div className="h-16 flex w-full items-center justify-between p-2">
         <h2 className="text-lg">{t("Log")}</h2>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon">
+          <Button
+            variant={getStatusValue === "ERROR" ? "default" : "outline"}
+            size="icon"
+            onClick={() => handleStatusChange("ERROR")}>
             <CrossCircledIcon />
           </Button>
-          <Button variant="outline" size="icon">
+          <Button
+            variant={getStatusValue === "WARNING" ? "default" : "outline"}
+            size="icon"
+            onClick={() => handleStatusChange("WARNING")}>
             <ExclamationTriangleIcon />
           </Button>
-          <Button variant="outline" size="icon">
+          <Button
+            variant={getStatusValue === "INFO" ? "default" : "outline"}
+            size="icon"
+            onClick={() => handleStatusChange("INFO")}>
             <InfoCircledIcon />
           </Button>
-          <Button variant="outline" size="icon">
+          <Button
+            variant={table.getColumn("timestamp")?.getIsVisible() ? "default" : "outline"}
+            size="icon"
+            onClick={handleTimeStampColumnVisibility}>
             <ClockIcon />
           </Button>
           <Button variant="ghost" size="icon">
             <CaretSortIcon />
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={handleResetTable}>
             <UpdateIcon />
           </Button>
         </div>
