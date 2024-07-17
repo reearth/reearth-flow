@@ -34,7 +34,7 @@ export const useProject = () => {
     }
   };
 
-  const useGetWorkspaceProjects = (workspaceId: string): GetWorkspaceProjects => {
+  const useGetWorkspaceProjects = (workspaceId?: string): GetWorkspaceProjects => {
     const { data, ...rest } = useGetProjectsQuery(workspaceId);
     return {
       projects: data?.projects,
@@ -43,7 +43,7 @@ export const useProject = () => {
     };
   };
 
-  const useGetProject = (projectId: string): GetProject => {
+  const useGetProject = (projectId?: string): GetProject => {
     const { data, ...rest } = useGetProjectByIdQuery(projectId);
     return {
       project: data,
