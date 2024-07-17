@@ -208,18 +208,15 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 
 	prevWf, _ := i.workflowRepo.FindByID(ctx, prj.Workspace(), prj.Workflow())
 	if prevWf != nil && prevWf.ID == prj.Workflow() {
-		// Remove old workflow if found
 		if err := i.workflowRepo.Remove(ctx, prevWf.Workspace, prevWf.ID); err != nil {
 			return false, err
 		}
 	}
 
-	// Save new workflow
 	if err := i.workflowRepo.Save(ctx, prj.Workspace(), p.Workflow); err != nil {
 		return false, err
 	}
 
-	// Update project's workflow ID and save
 	prj.UpdateWorkflow(p.Workflow.ID)
 	if err := i.projectRepo.Save(ctx, prj); err != nil {
 		return false, err
