@@ -23,6 +23,8 @@ pub(super) enum AttributeProcessorError {
     FilePathInfoExtractorFactory(String),
     #[error("Attribute FilePathInfoExtractor error: {0}")]
     FilePathInfoExtractor(String),
+    #[error("StatisticsCalculator Factory error: {0}")]
+    StatisticsCalculatorFactory(String),
 }
 
 #[allow(dead_code)]

@@ -8,7 +8,7 @@
   "scripts": {
     "start": "yarn && vite",
     "serve": "vite preview",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "storybook dev -p 6006 --no-open",
     "build": "tsc && vite build",
     "build-storybook": "storybook build",
     "type": "tsc",
