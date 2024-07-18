@@ -1,6 +1,6 @@
-import { cancellableDebounce } from './cancellableDebounce';
+import { cancellableDebounce } from "./cancellableDebounce";
 
-describe('cancellableDebounce', () => {
+describe("cancellableDebounce", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -10,7 +10,7 @@ describe('cancellableDebounce', () => {
     vi.useRealTimers();
   });
 
-  it('should debounce the function call', () => {
+  it("should debounce the function call", () => {
     const func = vi.fn();
     const wait = 100;
     const debouncedFunc = cancellableDebounce(func, wait);
@@ -24,7 +24,7 @@ describe('cancellableDebounce', () => {
     expect(func).toHaveBeenCalled();
   });
 
-  it('should cancel the debounced function call', () => {
+  it("should cancel the debounced function call", () => {
     const func = vi.fn();
     const wait = 100;
     const debouncedFunc = cancellableDebounce(func, wait);
@@ -37,7 +37,7 @@ describe('cancellableDebounce', () => {
     expect(func).not.toHaveBeenCalled();
   });
 
-  it('should debounce successive calls and only call the last one', () => {
+  it("should debounce successive calls and only call the last one", () => {
     const func = vi.fn();
     const wait = 100;
     const debouncedFunc = cancellableDebounce(func, wait);
@@ -57,15 +57,15 @@ describe('cancellableDebounce', () => {
     expect(func).toHaveBeenCalledTimes(1);
   });
 
-  it('should pass the correct arguments to the debounced function', () => {
+  it("should pass the correct arguments to the debounced function", () => {
     const func = vi.fn();
     const wait = 100;
     const debouncedFunc = cancellableDebounce(func, wait);
 
-    debouncedFunc('arg1', 'arg2');
+    debouncedFunc("arg1", "arg2");
 
     vi.advanceTimersByTime(wait);
 
-    expect(func).toHaveBeenCalledWith('arg1', 'arg2');
+    expect(func).toHaveBeenCalledWith("arg1", "arg2");
   });
 });

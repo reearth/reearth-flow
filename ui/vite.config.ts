@@ -31,10 +31,10 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    setupFiles: ['./src/testing/setup.ts'],
+    setupFiles: ["./src/testing/setup.ts"],
     globals: true,
     coverage: {
-      reporter: ['text'],
+      reporter: ["text"],
       include: ["src/**/*.{ts, tsx}"],
       exclude: ["/node_modules/", "/testing/", "src/**/*.test.ts"],
     },
