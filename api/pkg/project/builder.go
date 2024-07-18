@@ -80,3 +80,8 @@ func (b *Builder) Workspace(workspace WorkspaceID) *Builder {
 	b.p.workspace = workspace
 	return b
 }
+
+func (b *Builder) Workflow(workflow WorkflowID) *Builder {
+	b.p.workflow = workflow
+	return b
+}

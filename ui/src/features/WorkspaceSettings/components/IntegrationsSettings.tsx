@@ -43,16 +43,16 @@ const IntegrationsSettings: React.FC = () => {
 
   return (
     <div>
-      <div className="flex flex-col gap-6 mt-4 max-w-[800px]">
+      <div className="mt-4 flex max-w-[800px] flex-col gap-6">
         <div className="flex justify-between">
           <p className="text-lg font-extralight">{t("Integrations Settings")}</p>
           <Button>{t("Connect Integration")}</Button>
         </div>
-        <div className="border border-zinc-700 rounded font-extralight">
-          <div className="flex justify-between items-center gap-2 p-2 border-b border-zinc-700 h-[42px]">
+        <div className="rounded border border-zinc-700 font-extralight">
+          <div className="flex h-[42px] items-center justify-between gap-2 border-b border-zinc-700 p-2">
             <div className="flex items-center gap-2">
               <Checkbox
-                className="border-zinc-600 mx-2"
+                className="mx-2 border-zinc-600"
                 checked={selectedIntegrations.length === integrations.length}
                 onClick={() =>
                   setSelectedIntegrations(
@@ -74,7 +74,7 @@ const IntegrationsSettings: React.FC = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger className="flex items-center gap-1">
                     <p className="text-sm">{t("Change role")}</p>
-                    <CaretDown className="w-2 h-2" />
+                    <CaretDown className="size-2" />
                   </DropdownMenuTrigger>
 
                   <DropdownMenuContent className="min-w-[70px]">
@@ -94,14 +94,14 @@ const IntegrationsSettings: React.FC = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center gap-2">
                   <p>{filters.find(f => f.id === currentFilter)?.title}</p>
-                  <CaretDown className="w-3 h-3" />
+                  <CaretDown className="size-3" />
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent className="min-w-[70px]">
                   {filters.map((filter, idx) => (
                     <DropdownMenuItem
                       key={idx}
-                      className={`justify-center h-[25px] ${filter.id === currentFilter ? "bg-zinc-700/50" : undefined}`}
+                      className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-zinc-700/50" : undefined}`}
                       onClick={() => setFilter(filter.id)}>
                       {filter.title}
                     </DropdownMenuItem>
@@ -125,7 +125,7 @@ const IntegrationsSettings: React.FC = () => {
                   }
                 />
                 <p>{integration.integration?.name}</p>
-                <p className="px-4 font-thin capitalize text-sm">{integration.integrationRole}</p>
+                <p className="px-4 text-sm font-thin capitalize">{integration.integrationRole}</p>
               </div>
             ))}
           </div>

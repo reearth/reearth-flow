@@ -102,10 +102,8 @@ type DeleteWorkspacePayload struct {
 }
 
 type InputData struct {
-	Name     *string       `json:"name,omitempty"`
-	Inputs   []*ID         `json:"inputs"`
-	Outputs  []*ID         `json:"outputs"`
-	ActionID *ID           `json:"actionId,omitempty"`
+	Name     string        `json:"name"`
+	ActionID ID            `json:"actionId"`
 	Params   []*InputParam `json:"params,omitempty"`
 }
 
@@ -117,24 +115,25 @@ type InputParam struct {
 }
 
 type InputWorkflow struct {
-	ID        ID                   `json:"id"`
-	Name      string               `json:"name"`
-	CreatedAt time.Time            `json:"createdAt"`
-	UpdatedAt time.Time            `json:"updatedAt"`
-	Nodes     []*InputWorkflowNode `json:"nodes,omitempty"`
-	Edges     []*InputWorkflowEdge `json:"edges,omitempty"`
-	IsMain    *bool                `json:"isMain,omitempty"`
+	ID     ID                   `json:"id"`
+	Name   string               `json:"name"`
+	Nodes  []*InputWorkflowNode `json:"nodes"`
+	Edges  []*InputWorkflowEdge `json:"edges"`
+	IsMain *bool                `json:"isMain,omitempty"`
 }
 
 type InputWorkflowEdge struct {
-	ID     ID   `json:"id"`
-	Source []ID `json:"source"`
-	Target []ID `json:"target"`
+	ID           ID     `json:"id"`
+	Source       ID     `json:"source"`
+	Target       ID     `json:"target"`
+	SourceHandle string `json:"sourceHandle"`
+	TargetHandle string `json:"targetHandle"`
 }
 
 type InputWorkflowNode struct {
-	ID   ID         `json:"id"`
-	Data *InputData `json:"data"`
+	ID   ID                    `json:"id"`
+	Type InputWorkflowNodeType `json:"type"`
+	Data *InputData            `json:"data"`
 }
 
 type Me struct {
@@ -223,8 +222,9 @@ type RemoveMyAuthInput struct {
 }
 
 type RunProjectInput struct {
-	ProjectID ID             `json:"projectId"`
-	Workflows *InputWorkflow `json:"workflows"`
+	ProjectID   ID               `json:"projectId"`
+	WorkspaceID ID               `json:"workspaceId"`
+	Workflows   []*InputWorkflow `json:"workflows"`
 }
 
 type RunProjectPayload struct {
@@ -398,6 +398,49 @@ func (e *InputParamType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e InputParamType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type InputWorkflowNodeType string
+
+const (
+	InputWorkflowNodeTypeReader      InputWorkflowNodeType = "READER"
+	InputWorkflowNodeTypeWriter      InputWorkflowNodeType = "WRITER"
+	InputWorkflowNodeTypeTransformer InputWorkflowNodeType = "TRANSFORMER"
+)
+
+var AllInputWorkflowNodeType = []InputWorkflowNodeType{
+	InputWorkflowNodeTypeReader,
+	InputWorkflowNodeTypeWriter,
+	InputWorkflowNodeTypeTransformer,
+}
+
+func (e InputWorkflowNodeType) IsValid() bool {
+	switch e {
+	case InputWorkflowNodeTypeReader, InputWorkflowNodeTypeWriter, InputWorkflowNodeTypeTransformer:
+		return true
+	}
+	return false
+}
+
+func (e InputWorkflowNodeType) String() string {
+	return string(e)
+}
+
+func (e *InputWorkflowNodeType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = InputWorkflowNodeType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid InputWorkflowNodeType", str)
+	}
+	return nil
+}
+
+func (e InputWorkflowNodeType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

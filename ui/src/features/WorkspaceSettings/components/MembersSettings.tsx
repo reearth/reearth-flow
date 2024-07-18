@@ -89,11 +89,11 @@ const MembersSettings: React.FC = () => {
 
   return (
     <div>
-      <div className="flex flex-col gap-6 mt-4 max-w-[800px]">
+      <div className="mt-4 flex max-w-[800px] flex-col gap-6">
         <div className="flex justify-between">
           <p className="text-lg font-extralight">{t("Members Settings")}</p>
         </div>
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           {/* TODO: This will be a dialog component */}
           <Input
             className="w-2/4"
@@ -108,8 +108,8 @@ const MembersSettings: React.FC = () => {
             {t("Add Member")}
           </Button>
         </div>
-        <div className="border border-zinc-700 rounded font-extralight">
-          <div className="flex justify-between items-center gap-2 p-2 border-b border-zinc-700 h-[42px]">
+        <div className="rounded border border-zinc-700 font-extralight">
+          <div className="flex h-[42px] items-center justify-between gap-2 border-b border-zinc-700 p-2">
             <div className="flex items-center gap-2">
               <User weight="thin" />
               <p>{`${members?.length} ${t("Members")}`}</p>
@@ -118,14 +118,14 @@ const MembersSettings: React.FC = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center gap-2">
                   <p>{filters.find(f => f.id === currentFilter)?.title}</p>
-                  <CaretDown className="w-3 h-3" />
+                  <CaretDown className="size-3" />
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent className="min-w-[70px]">
                   {filters.map((filter, idx) => (
                     <DropdownMenuItem
                       key={idx}
-                      className={`justify-center h-[25px] ${filter.id === currentFilter ? "bg-zinc-700/50" : undefined}`}
+                      className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-zinc-700/50" : undefined}`}
                       onClick={() => setFilter(filter.id)}>
                       {filter.title}
                     </DropdownMenuItem>
@@ -138,13 +138,13 @@ const MembersSettings: React.FC = () => {
             {members?.map(m => (
               <div key={m.userId} className="flex gap-4 px-4 py-2">
                 <p className="flex-1">{m.user?.name}</p>
-                <p className="flex-1 px-4 font-thin capitalize text-sm">{m.role}</p>
+                <p className="flex-1 px-4 text-sm font-thin capitalize">{m.role}</p>
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={m.userId === me?.id}
-                    className={`flex-1 flex items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}>
+                    className={`flex flex-1 items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}>
                     <p className="text-sm">{t("Change role")}</p>
-                    <CaretDown className="w-2 h-2" />
+                    <CaretDown className="size-2" />
                   </DropdownMenuTrigger>
 
                   <DropdownMenuContent className="min-w-[70px]">
@@ -156,7 +156,7 @@ const MembersSettings: React.FC = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Button
-                  className="flex-1 h-[25px]"
+                  className="h-[25px] flex-1"
                   size="sm"
                   variant="outline"
                   disabled={m.userId === me?.id}

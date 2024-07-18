@@ -18,10 +18,10 @@ const RunsSection: React.FC = () => {
 
   return (
     <div>
-      <div className="flex gap-2 justify-between items-center border-b border-zinc-700 p-2">
+      <div className="flex items-center justify-between gap-2 border-b border-zinc-700 p-2">
         <p className="text-lg font-extralight">{t("Runs")}</p>
         <Button
-          className="flex gap-2 h-[30px] bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
+          className="flex h-[30px] gap-2 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
           variant="outline"
           onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/manual` })}>
           <Play weight="thin" />
@@ -30,21 +30,21 @@ const RunsSection: React.FC = () => {
       </div>
       <div className="flex flex-col gap-1 p-4">
         <div
-          className="flex justify-between py-1 -my-1 px-2 -mx-2 rounded-md hover:bg-zinc-800 hover:cursor-pointer"
+          className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-zinc-800"
           onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/running` })}>
           <p className="font-thin">{t("Running: ")}</p>
           <p className="font-thin">{runningRuns.length}</p>
         </div>
         <div
-          className="flex justify-between py-1 -my-1 px-2 -mx-2 rounded-md hover:bg-zinc-800 hover:cursor-pointer"
+          className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-zinc-800"
           onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/queued` })}>
           <p className="font-thin">{t("Queued: ")}</p>
           <p className="font-thin">{queuedRuns.length}</p>
         </div>
-        <div className="border-t border-zinc-700 my-1" />
+        <div className="my-1 border-t border-zinc-700" />
         <div className="flex flex-col">
           <div
-            className="flex justify-between py-1 -my-1 px-2 -mx-2 rounded-md hover:bg-zinc-800 hover:cursor-pointer"
+            className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-zinc-800"
             onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/completed` })}>
             <p className="font-thin">{t("Completed (today): ")}</p>
             <p className="font-thin">{completeRuns.length + failedRuns.length}</p>
@@ -52,8 +52,8 @@ const RunsSection: React.FC = () => {
           {failedRuns.length && (
             <div className="ml-3 mt-1">
               <div className="flex justify-between">
-                <p className="font-thin text-sm text-green-500">{t("Successful: ")}</p>
-                <p className="font-thin text-sm">
+                <p className="text-sm font-thin text-green-500">{t("Successful: ")}</p>
+                <p className="text-sm font-thin">
                   {completeRuns.filter(r => r.status === "completed").length}
                 </p>
               </div>

@@ -19,6 +19,7 @@ type Container struct {
 	AuthRequest authserver.RequestRepo
 	Config      Config
 	Lock        Lock
+	Workflow    Workflow
 	Project     Project
 	Workspace   accountrepo.Workspace
 	User        accountrepo.User
@@ -43,6 +44,7 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		AuthRequest: c.AuthRequest,
 		Config:      c.Config,
 		Lock:        c.Lock,
+		Workflow:    c.Workflow.Filtered(workspace),
 		Project:     c.Project.Filtered(workspace),
 		Transaction: c.Transaction,
 		User:        c.User,

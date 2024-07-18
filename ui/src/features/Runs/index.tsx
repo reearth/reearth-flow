@@ -58,10 +58,10 @@ const Runs: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col bg-zinc-800 text-zinc-300 h-[100vh]">
+    <div className="flex h-screen flex-col bg-zinc-800 text-zinc-300">
       <TopNavigation />
       <div className="flex flex-1">
-        <div className="flex flex-col gap-3 px-2 py-4 bg-zinc-900/50 border-r border-zinc-700 w-[250px]">
+        <div className="flex w-[250px] flex-col gap-3 border-r border-zinc-700 bg-zinc-900/50 px-2 py-4">
           <div className="flex p-2">
             <Button
               className="flex-1 gap-2"
@@ -73,12 +73,12 @@ const Runs: React.FC = () => {
             </Button>
           </div>
           <div className="flex-1">
-            <p className="font-thin text-lg border-b border-zinc-700 py-2 px-4">{t("Status")}</p>
+            <p className="border-b border-zinc-700 px-4 py-2 text-lg font-thin">{t("Status")}</p>
             <div className="flex flex-col gap-4 p-4">
               {statuses.map(({ id, name }) => (
                 <div
                   key={id}
-                  className={`flex justify-between py-1 -my-1 px-2 -mx-2 rounded-md border-l-2 border-transparent hover:bg-zinc-700/50 hover:cursor-pointer ${tab === id ? "bg-zinc-700/50 text-white border-red-800/50" : undefined}`}
+                  className={`-mx-2 -my-1 flex justify-between rounded-md border-l-2 border-transparent px-2 py-1 hover:cursor-pointer hover:bg-zinc-700/50 ${tab === id ? "border-red-800/50 bg-zinc-700/50 text-white" : undefined}`}
                   onClick={() => handleTabChange(id)}>
                   <p className="font-thin">{name}</p>
                 </div>
@@ -86,7 +86,7 @@ const Runs: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-1 flex-col">
           <div className="flex-1">
             {tab === "manual" ? (
               <ManualRun />
