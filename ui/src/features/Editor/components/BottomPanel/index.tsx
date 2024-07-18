@@ -2,7 +2,6 @@ import { CornersIn, CornersOut, Globe, Terminal } from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 
 import { IconButton } from "@flow/components";
-import { useStateManager } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 
 import { WorkflowTabs } from "..";
@@ -24,9 +23,11 @@ type PanelContent = {
 type WindowSize = "min" | "max";
 
 const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) => {
-  const [isPanelOpen, handlePanelToggle] = useStateManager(false);
   const t = useT();
   const [windowSize, setWindowSize] = useState<WindowSize>("min");
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  const handlePanelToggle = useCallback((open: boolean) => setIsPanelOpen(open), []);
 
   const panelContents: PanelContent[] = [
     {
