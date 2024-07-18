@@ -15,9 +15,9 @@
     "type": "tsc",
     "clean": "del coverage dist node_modules/.cache",
     "test": "vitest",
-    "lint": "eslint . --ext ts,tsx,graphql",
+    "lint": "eslint . --ext ts,tsx,graphql && prettier -c **/**.css",
     "eslint-debug": "eslint --debug",
-    "format": "eslint . --ext ts,tsx,graphql --fix",
+    "format": "eslint . --ext ts,tsx,graphql --fix && prettier -w **.css",
     "gql": "graphql-codegen",
     "gql:watch": "graphql-codegen --watch"
   },
