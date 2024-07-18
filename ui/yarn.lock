@@ -5069,6 +5069,7 @@ __metadata:
     "@tanstack/react-table": "npm:8.19.3"
     "@tanstack/router-devtools": "npm:1.45.2"
     "@tanstack/router-vite-plugin": "npm:1.45.2"
+    "@types/jsdom": "npm:21.1.7"
     "@types/lodash-es": "npm:4.17.12"
     "@types/react": "npm:18.3.3"
     "@types/react-dom": "npm:18.3.0"
@@ -7674,6 +7675,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/jsdom@npm:21.1.7":
+  version: 21.1.7
+  resolution: "@types/jsdom@npm:21.1.7"
+  dependencies:
+    "@types/node": "npm:*"
+    "@types/tough-cookie": "npm:*"
+    parse5: "npm:^7.0.0"
+  checksum: 10c0/c0c0025adc2b193e85453eeeea168bb909f0ebad08d6552be7474a407e9c163db8f696dcf1e3cbe8cb9c9d970ba45f4386171794509c1a0fe5d1fed72c91679d
+  languageName: node
+  linkType: hard
+
 "@types/json-schema@npm:^7.0.12, @types/json-schema@npm:^7.0.9":
   version: 7.0.15
   resolution: "@types/json-schema@npm:7.0.15"
@@ -7864,6 +7876,13 @@ __metadata:
   version: 1.2.2
   resolution: "@types/symlink-or-copy@npm:1.2.2"
   checksum: 10c0/09ee39bd319f39c775c4e2049fc4018212b9b6043736bd2046537acbb59c98af7aa725c539f32672cd2ca27144073fa1f1101b4c0ed7db3fbddb305b638895b2
+  languageName: node
+  linkType: hard
+
+"@types/tough-cookie@npm:*":
+  version: 4.0.5
+  resolution: "@types/tough-cookie@npm:4.0.5"
+  checksum: 10c0/68c6921721a3dcb40451543db2174a145ef915bc8bcbe7ad4e59194a0238e776e782b896c7a59f4b93ac6acefca9161fccb31d1ce3b3445cb6faa467297fb473
   languageName: node
   linkType: hard
 
