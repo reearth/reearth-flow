@@ -11,15 +11,16 @@
     "storybook": "storybook dev -p 6006",
     "build": "tsc && vite build",
     "build-storybook": "storybook build",
-    "i18n": "i18next",
     "type": "tsc",
-    "clean": "del coverage dist node_modules/.cache",
     "test": "vitest",
+    "coverage": "vitest --coverage",
     "lint": "eslint . --ext ts,tsx,graphql",
     "eslint-debug": "eslint --debug",
     "format": "eslint . --ext ts,tsx,graphql --fix",
+    "i18n": "i18next",
     "gql": "graphql-codegen",
-    "gql:watch": "graphql-codegen --watch"
+    "gql:watch": "graphql-codegen --watch",
+    "clean": "del coverage dist node_modules/.cache"
   },
   "engines": {
     "node": ">=20.13.0"
@@ -98,6 +99,7 @@
     "@typescript-eslint/eslint-plugin": "7.16.1",
     "@typescript-eslint/parser": "7.16.1",
     "@vitejs/plugin-react": "4.3.1",
+    "@vitest/coverage-v8": "2.0.3",
     "autoprefixer": "10.4.19",
     "del-cli": "5.1.0",
     "eslint": "8.57.0",

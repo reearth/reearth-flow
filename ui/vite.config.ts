@@ -30,6 +30,9 @@ export default defineConfig({
     alias: [{ find: "@flow", replacement: resolve(__dirname, "./src") }],
   },
   test: {
+    coverage: {
+      exclude: ["/node_modules/", "/testing/", "src/**/*.test.ts"],
+    },
     environment: "jsdom",
     setupFiles: ['./src/testing/setup.ts'],
   },
