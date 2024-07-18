@@ -1,7 +1,8 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use axum::{routing::get, Router};
-use socket::ws_handler;
+use socket::{ws_handler, AppState};
 use tower_http::{
     services::ServeDir,
     trace::{DefaultMakeSpan, TraceLayer},
@@ -19,13 +20,15 @@ async fn main() -> std::io::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    let state = Arc::new(AppState::new());
     let app = Router::new()
         .fallback_service(ServeDir::new("assets").append_index_html_on_directories(true))
         .route("/ws", get(ws_handler))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::default().include_headers(true)),
-        );
+        )
+        .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:8000")
         .await
