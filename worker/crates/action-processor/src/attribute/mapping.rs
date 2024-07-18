@@ -7,6 +7,7 @@ use super::{
     aggregator::AttributeAggregatorFactory, duplicate_filter::AttributeDuplicateFilterFactory,
     file_path_info_extractor::AttributeFilePathInfoExtractorFactory,
     keeper::AttributeKeeperFactory, manager::AttributeManagerFactory,
+    statistics_calculator::StatisticsCalculatorFactory,
 };
 
 pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -16,6 +17,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<AttributeAggregatorFactory>::default(),
         Box::<AttributeDuplicateFilterFactory>::default(),
         Box::<AttributeFilePathInfoExtractorFactory>::default(),
+        Box::<StatisticsCalculatorFactory>::default(),
     ];
     factories
         .into_iter()

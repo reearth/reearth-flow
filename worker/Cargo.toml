@@ -112,7 +112,7 @@ slog = {version = "2.7.0", features = ["release_max_level_trace", "max_level_tra
 strum = "0.26.3"
 strum_macros = "0.26.4"
 tempfile = "3.10.1"
-thiserror = "1.0.62"
+thiserror = "1.0.63"
 time = {version = "0.3.36", features = ["formatting"]}
 tokio = {version = "1.38.1", features = ["full", "time"]}
 tokio-stream = {version = "0.1.15", features = ["sync"]}

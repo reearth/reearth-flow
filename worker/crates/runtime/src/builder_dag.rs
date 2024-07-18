@@ -133,7 +133,12 @@ impl BuilderDag {
                     continue;
                 };
                 let sources = std::mem::take(&mut affecting_sources[node_index]);
-                let source = sources.into_iter().next().expect("sink must have a source");
+                let source = sources
+                    .into_iter()
+                    .next()
+                    .ok_or(ExecutionError::InvalidSink(
+                        format!("Target source is not exists. with {:?}", node).to_string(),
+                    ))?;
                 let node_index = NodeIndex::new(node_index);
                 if sink.name() != node.node.action() {
                     return Err(ExecutionError::ActionNameMismatch(

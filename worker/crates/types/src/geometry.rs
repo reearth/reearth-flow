@@ -30,8 +30,6 @@ pub enum GeometryValue {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Geometry {
-    pub id: String,
-    pub name: Option<String>,
     pub epsg: Option<EpsgCode>,
     pub value: GeometryValue,
 }
@@ -41,7 +39,6 @@ impl TryFrom<Entity> for Geometry {
 
     fn try_from(entity: Entity) -> Result<Self, Self::Error> {
         let app = entity.appearance_store.read().unwrap();
-        let name = entity.name.clone();
         let theme = {
             app.themes
                 .get("rgbTexture")
@@ -54,7 +51,7 @@ impl TryFrom<Entity> for Geometry {
         let Value::Object(obj) = &entity.root else {
             return Err(Error::unsupported_feature("no object found"));
         };
-        let ObjectStereotype::Feature { id, geometries } = &obj.stereotype else {
+        let ObjectStereotype::Feature { id: _, geometries } = &obj.stereotype else {
             return Err(Error::unsupported_feature("no feature found"));
         };
         let mut geometry_features = Vec::<GeometryFeature>::new();
@@ -219,8 +216,6 @@ impl TryFrom<Entity> for Geometry {
             geometry_entity.polygon_uv = Some(poly_uvs.into());
         }
         Ok(Geometry::new(
-            id.to_string(),
-            Some(name),
             epsg,
             GeometryValue::CityGmlGeometry(geometry_entity),
         ))
@@ -230,8 +225,6 @@ impl TryFrom<Entity> for Geometry {
 impl Default for Geometry {
     fn default() -> Self {
         Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            name: Some("".to_string()),
             epsg: None,
             value: GeometryValue::Null,
         }
@@ -239,22 +232,15 @@ impl Default for Geometry {
 }
 
 impl Geometry {
-    pub fn new(id: String, name: Option<String>, epsg: EpsgCode, value: GeometryValue) -> Self {
+    pub fn new(epsg: EpsgCode, value: GeometryValue) -> Self {
         Self {
-            id,
-            name,
             epsg: Some(epsg),
             value,
         }
     }
 
     pub fn with_value(value: GeometryValue) -> Self {
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            name: None,
-            epsg: None,
-            value,
-        }
+        Self { epsg: None, value }
     }
 }
 
