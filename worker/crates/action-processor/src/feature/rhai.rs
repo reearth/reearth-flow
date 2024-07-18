@@ -121,13 +121,29 @@ impl Processor for RhaiCaller {
         }
         let new_value = scope.eval_ast::<Dynamic>(&self.process);
         if let Ok(new_value) = new_value {
-            if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
-                let mut feature = feature.clone();
-                feature.attributes = new_value
-                    .iter()
-                    .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
-                    .collect();
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            if new_value.is::<rhai::Map>() {
+                if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
+                    let mut feature = feature.clone();
+                    feature.attributes = new_value
+                        .iter()
+                        .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
+                        .collect();
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    return Ok(());
+                }
+            } else if new_value.is::<rhai::Array>() {
+                let array_values = new_value.clone().into_array().unwrap();
+                for new_value in array_values {
+                    if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
+                        let mut feature = feature.clone();
+                        feature.id = uuid::Uuid::new_v4();
+                        feature.attributes = new_value
+                            .iter()
+                            .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
+                            .collect();
+                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    }
+                }
                 return Ok(());
             }
         }
