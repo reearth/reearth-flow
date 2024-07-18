@@ -27,6 +27,7 @@ import {
   Button,
   Input,
 } from "@flow/components";
+import { STATUS } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
 
 import { Table, TableBody, TableCell, TableRow } from "../Table";
@@ -37,8 +38,6 @@ interface LogProps<TData, TValue> {
   selectColumns?: boolean;
   showFiltering?: boolean;
 }
-
-type STATUS = "WARNING" | "INFO" | "ERROR";
 
 const Logs = <TData, TValue>({
   columns,
