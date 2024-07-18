@@ -1,4 +1,3 @@
-import { expect, test } from 'vitest'
 import { randomID } from './randomID'
 
 test('random id with a default length of 10', () => {

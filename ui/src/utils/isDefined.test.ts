@@ -1,4 +1,3 @@
-import { expect, test } from 'vitest'
 import { isDefined } from './isDefined'
 
 test('check if not defined', () => {

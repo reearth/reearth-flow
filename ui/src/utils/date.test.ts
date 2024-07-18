@@ -1,4 +1,3 @@
-import { expect, test } from 'vitest'
 import { formatDate } from './date'
 
 test('format date to be human readable', () => {
