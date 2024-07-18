@@ -93,8 +93,8 @@ graphs:
             - newAttribute: BuildingInstallation
               expr: |
                 let attributes = env.get("cityGmlAttributes") ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:BuildingInstallation" { sum + 1 } else { sum } }, 0)
+                let building_installations = attributes["bldg:outerBuildingInstallation"] ?? [];
+                building_installations.reduce(|sum| { if this["type"] == "bldg:BuildingInstallation" { sum + 1 } else { sum } }, 0)
 
             - newAttribute: Door
               expr: |
@@ -145,9 +145,13 @@ graphs:
                 bounded_by.reduce(|sum| { if this["type"] == "bldg:BuildingFurniture" { sum + 1 } else { sum } }, 0)
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: Echo
+        name: fileWriter
         type: action
-        action: Echo
+        action: FileWriter
+        with:
+          format: csv
+          output: |
+            env.get("outputPath") + "地物インスタンス数.csv"
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
