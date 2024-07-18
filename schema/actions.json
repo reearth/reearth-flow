@@ -1581,6 +1581,75 @@
       "categories": []
     },
     {
+      "name": "StatisticsCalculator",
+      "type": "processor",
+      "description": "Calculates statistics of features",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "StatisticsCalculatorParam",
+        "type": "object",
+        "required": [
+          "aggregateName",
+          "calculations"
+        ],
+        "properties": {
+          "aggregateAttribute": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aggregateName": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "calculations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Calculation"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Calculation": {
+            "type": "object",
+            "required": [
+              "expr",
+              "newAttribute"
+            ],
+            "properties": {
+              "expr": {
+                "$ref": "#/definitions/Expr"
+              },
+              "newAttribute": {
+                "$ref": "#/definitions/Attribute"
+              }
+            }
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "complete"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "ThreeDimentionBoxReplacer",
       "type": "processor",
       "description": "Replaces a three dimention box with a polygon.",

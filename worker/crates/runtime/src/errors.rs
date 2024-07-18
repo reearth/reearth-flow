@@ -96,6 +96,8 @@ pub enum ExecutionError {
     CheckpointWriterThreadPanicked,
     #[error("Failed to serialize record writer: {0}")]
     SerializeRecordWriter(#[source] SerializationError),
+    #[error("InValid Sink: {0}")]
+    InvalidSink(String),
 }
 
 impl<T> From<crossbeam::channel::SendError<T>> for ExecutionError {
