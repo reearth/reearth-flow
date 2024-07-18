@@ -17,6 +17,7 @@ import (
 type Project struct {
 	common
 	assetRepo     repo.Asset
+	workflowRepo  repo.Workflow
 	projectRepo   repo.Project
 	userRepo      accountrepo.User
 	workspaceRepo accountrepo.Workspace
@@ -27,6 +28,7 @@ type Project struct {
 func NewProject(r *repo.Container, gr *gateway.Container) interfaces.Project {
 	return &Project{
 		assetRepo:     r.Asset,
+		workflowRepo:  r.Workflow,
 		projectRepo:   r.Project,
 		userRepo:      r.User,
 		workspaceRepo: r.Workspace,
@@ -176,4 +178,52 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *
 
 	tx.Commit()
 	return nil
+}
+
+func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (started bool, err error) {
+	if p.Workflow == nil {
+		return false, nil
+	}
+
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	ctx = tx.Context()
+	defer func() {
+		if err2 := tx.End(ctx); err == nil && err2 != nil {
+			err = err2
+		}
+	}()
+
+	prj, err := i.projectRepo.FindByID(ctx, p.Workflow.Project)
+	if err != nil {
+		return false, err
+	}
+
+	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
+		return false, err
+	}
+
+	prevWf, _ := i.workflowRepo.FindByID(ctx, prj.Workspace(), prj.Workflow())
+	if prevWf != nil && prevWf.ID == prj.Workflow() {
+		if err := i.workflowRepo.Remove(ctx, prevWf.Workspace, prevWf.ID); err != nil {
+			return false, err
+		}
+	}
+
+	if err := i.workflowRepo.Save(ctx, prj.Workspace(), p.Workflow); err != nil {
+		return false, err
+	}
+
+	prj.UpdateWorkflow(p.Workflow.ID)
+	if err := i.projectRepo.Save(ctx, prj); err != nil {
+		return false, err
+	}
+
+	// TODO: Send workflow to worker
+
+	tx.Commit()
+	return true, nil
 }

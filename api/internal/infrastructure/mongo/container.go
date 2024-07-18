@@ -31,6 +31,7 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		Asset:       NewAsset(client),
 		AuthRequest: authserver.NewMongo(client.WithCollection("authRequest")),
 		Config:      NewConfig(db.Collection("config"), lock),
+		Workflow:    NewWorkflow(client),
 		Project:     NewProject(client),
 		Lock:        lock,
 		Transaction: client.Transaction(),
@@ -60,6 +61,7 @@ func Init(r *repo.Container) error {
 	return util.Try(
 		func() error { return r.Asset.(*Asset).Init(ctx) },
 		func() error { return r.AuthRequest.(*authserver.Mongo).Init(ctx) },
+		func() error { return r.Workflow.(*Workflow).Init(ctx) },
 		func() error { return r.Project.(*Project).Init(ctx) },
 		func() error { return r.User.(*accountmongo.User).Init() },
 		func() error { return r.Workspace.(*accountmongo.Workspace).Init() },

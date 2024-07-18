@@ -16,6 +16,7 @@ var NewID = id.NewWorkflowID
 var NewNodeID = id.NewNodeID
 var NewEdgeID = id.NewEdgeID
 var NewGraphID = id.NewGraphID
+var NewWorkflowID = id.NewWorkflowID
 var NewProjectID = id.NewProjectID
 var NewWorkspaceID = accountdomain.NewWorkspaceID
 

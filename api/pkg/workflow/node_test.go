@@ -7,19 +7,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNodeSetters(t *testing.T) {
-	n := &Node{}
+func TestNewNode(t *testing.T) {
 	nodeID := id.NewNodeID()
-	n.SetID(nodeID)
-	assert.Equal(t, nodeID, n.id, "SetID should correctly set the id field")
-	n.SetName("testName")
-	assert.Equal(t, "testName", n.name, "SetName should correctly set the name field")
-	n.SetNodeType("testType")
-	assert.Equal(t, "testType", n.nodeType, "SetNodeType should correctly set the nodeType field")
-	n.SetAction("testAction")
-	assert.Equal(t, "testAction", n.action, "SetAction should correctly set the action field")
+	name := "name"
+	nodeType := "type"
+	action := "action"
 	with := map[string]interface{}{"key": "value"}
-	n.SetWith(with)
-	assert.Equal(t, with, n.with, "SetWith should correctly set the with field")
 
+	result := NewNode(nodeID, name, nodeType, action, with)
+
+	want := &Node{
+		ID:       nodeID,
+		Name:     name,
+		NodeType: nodeType,
+		Action:   action,
+		With:     with,
+	}
+
+	assert.Equal(t, result, want)
 }
