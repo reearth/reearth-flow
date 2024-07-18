@@ -103,6 +103,11 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		apiPrivate.POST("/password-reset", PasswordReset())
 	}
 
+	if err := loadActionsData(); err != nil {
+		log.Errorf("Failed to load actions data: %v", err)
+	}
+	SetupActionRoutes(e)
+
 	serveFiles(e, cfg.Gateways.File)
 
 	Web(e, cfg.Config.WebConfig(), cfg.Config.AuthForWeb(), cfg.Config.Web_Disabled, nil)
