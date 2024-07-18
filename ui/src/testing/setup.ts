@@ -1,4 +1,5 @@
 import { JSDOM } from 'jsdom';
+import '@testing-library/jest-dom';
 
 const { window } = new JSDOM('<!doctype html><html><body></body></html>');
 
