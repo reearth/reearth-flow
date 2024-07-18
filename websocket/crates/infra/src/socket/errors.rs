@@ -1,3 +1,7 @@
+use std::error::Error;
+
+pub type Result<T> = std::result::Result<T, WsError>;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum WsError {
     WsError,

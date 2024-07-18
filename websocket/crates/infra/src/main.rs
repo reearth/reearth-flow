@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{routing::get, Router};
-use socket::{ws_handler, AppState};
+use socket::{handler::ws_handler, state::AppState};
 use tower_http::{
     services::ServeDir,
     trace::{DefaultMakeSpan, TraceLayer},
