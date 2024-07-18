@@ -7,9 +7,11 @@ import (
 
 type ID = id.ProjectID
 type WorkspaceID = accountdomain.WorkspaceID
+type WorkflowID = id.WorkflowID
 
 var NewID = id.NewProjectID
 var NewWorkspaceID = accountdomain.NewWorkspaceID
+var NewWorkflowID = id.NewWorkflowID
 
 var MustID = id.MustProjectID
 var MustWorkspaceID = id.MustWorkspaceID

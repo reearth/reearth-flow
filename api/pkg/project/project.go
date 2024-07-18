@@ -19,6 +19,7 @@ type Project struct {
 	name              string
 	description       string
 	workspace         WorkspaceID
+	workflow          WorkflowID
 }
 
 func (p *Project) ID() ID {
@@ -57,6 +58,10 @@ func (p *Project) Workspace() WorkspaceID {
 	return p.workspace
 }
 
+func (p *Project) Workflow() WorkflowID {
+	return p.workflow
+}
+
 func (p *Project) CreatedAt() time.Time {
 	return p.id.Timestamp()
 }
@@ -91,4 +96,8 @@ func (p *Project) UpdateDescription(description string) {
 
 func (p *Project) UpdateWorkspace(workspace WorkspaceID) {
 	p.workspace = workspace
+}
+
+func (p *Project) UpdateWorkflow(workflow WorkflowID) {
+	p.workflow = workflow
 }

@@ -5,7 +5,6 @@ import { useState } from "react";
 import projectImage from "@flow/assets/project-screenshot.png"; // TODO: replace with actual project image
 import {
   Button,
-  ButtonWithTooltip,
   Card,
   CardContent,
   CardDescription,
@@ -86,21 +85,20 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   };
 
   return (
-    <div className="flex flex-col flex-1">
-      <div className="flex flex-col flex-1 gap-8 p-8">
-        <div className="flex gap-2 justify-between items-center border-b border-zinc-700 pb-4">
+    <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col gap-8 p-8">
+        <div className="flex items-center justify-between gap-2 border-b border-zinc-700 pb-4">
           <p className="text-lg font-extralight">{t("Projects")}</p>
-          <ButtonWithTooltip
+          <Button
             className="flex gap-2 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
             variant="outline"
-            tooltipText={t("Create new project")}
             onClick={() => setDialogType("add-project")}>
             <Plus weight="thin" />
             <p className="text-xs font-light">{t("New Project")}</p>
-          </ButtonWithTooltip>
+          </Button>
         </div>
-        <div className="flex flex-col flex-1 justify-between overflow-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-auto">
+        <div className="flex flex-1 flex-col justify-between overflow-auto">
+          <div className="grid grid-cols-1 gap-4 overflow-auto sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {projects?.map(p => (
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger>
@@ -108,15 +106,15 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
                     className={`cursor-pointer bg-zinc-900/50 ${currentProject && currentProject.id === p.id ? "border-zinc-600" : "hover:border-zinc-600"}`}
                     key={p.id}
                     onClick={() => handleProjectSelect(p)}>
-                    <CardContent className="p-0 rounded">
+                    <CardContent className="rounded p-0">
                       <img className="rounded-t-lg" src={projectImage} />
                     </CardContent>
                     <CardHeader className="p-3">
                       <CardTitle className="truncate font-extralight">{p.name}</CardTitle>
                       <CardDescription className="min-h-5">{p.description ?? ""}</CardDescription>
                     </CardHeader>
-                    <CardFooter className="px-3 pt-0 pb-2 flex">
-                      <p className="font-thin text-xs">
+                    <CardFooter className="flex px-3 pb-2 pt-0">
+                      <p className="text-xs font-thin">
                         {t("Last modified:")} {formatDate(p.updatedAt)}
                       </p>
                     </CardFooter>
@@ -140,7 +138,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
           <DialogHeader>
             <DialogTitle>{t("Edit Project")}</DialogTitle>
             <DialogDescription className="px-6">
-              <div className="flex flex-col gap-4 mt-4">
+              <div className="mt-4 flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
                   <Label>{t("Project Name")}</Label>
                   <Input
@@ -159,12 +157,12 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
                 </div>
               </div>
               <div
-                className={`text-xs text-red-400 mt-2 ${showError ? "opacity-70" : "opacity-0"}`}>
+                className={`mt-2 text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}>
                 {t("Failed to update project")}
               </div>
             </DialogDescription>
 
-            <div className="px-6 pb-6 flex gap-4 justify-end">
+            <div className="flex justify-end gap-4 px-6 pb-6">
               <Button disabled={buttonDisabled || !editProject?.name} onClick={handleUpdateProject}>
                 {t("Save")}
               </Button>
@@ -179,7 +177,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
         </DialogContent>
       </Dialog>
       <div>
-        <p className="font-extralight text-center py-1">
+        <p className="py-1 text-center font-extralight">
           {t("Total Projects")}: {projects?.length ?? 0}
         </p>
       </div>

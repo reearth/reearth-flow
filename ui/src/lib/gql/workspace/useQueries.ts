@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { isDefined } from "@flow/lib/utils";
 import { Member, Workspace } from "@flow/types";
+import { isDefined } from "@flow/utils";
 
 import {
   AddMemberToWorkspaceInput,
@@ -81,15 +81,16 @@ export const useQueries = () => {
       staleTime: Infinity,
     });
 
-  const useGetWorkspaceByIdQuery = (workspaceId: string) =>
+  const useGetWorkspaceByIdQuery = (workspaceId?: string) =>
     useQuery({
       queryKey: [WorkspaceQueryKeys.GetWorkspace, workspaceId],
       queryFn: async () => {
-        const data = await graphQLContext?.GetWorkspaceById({ workspaceId });
+        const data = await graphQLContext?.GetWorkspaceById({ workspaceId: workspaceId ?? "" });
         return data?.node?.__typename === "Workspace"
           ? createNewWorkspaceObject(data.node)
           : undefined;
       },
+      enabled: !!workspaceId,
       staleTime: Infinity,
     });
 

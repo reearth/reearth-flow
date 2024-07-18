@@ -10,10 +10,7 @@ import { Dispatch, MouseEvent, SetStateAction, memo } from "react";
 
 import type { Edge, Node, Workflow } from "@flow/types";
 
-import CustomConnectionLine, { connectionLineStyle } from "../CustomConnectionLine";
-import { edgeTypes } from "../CustomEdge";
-import { nodeTypes } from "../Nodes";
-
+import { CustomConnectionLine, edgeTypes, connectionLineStyle, nodeTypes } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";

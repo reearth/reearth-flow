@@ -47,8 +47,7 @@ impl Executor {
             ACTION_MAPPINGS.clone(),
             workflow.with,
         )
-        .await
-        .unwrap();
+        .await?;
         Ok(executor)
     }
 }
