@@ -99,7 +99,7 @@ graphs:
             - expr: |
                 env.get("feature_type") == "bldg:BuildingInstallation"
               outputPort: BldgBuildingInstallation
-        
+
       - id: 968f28c2-2958-43bf-9735-8a93ad03d038
         name: geometry_refiner
         type: action
@@ -146,4 +146,3 @@ graphs:
         to: 968f28c2-2958-43bf-9735-8a93ad03d038
         fromPort: BldgBuilding
         toPort: default
-
