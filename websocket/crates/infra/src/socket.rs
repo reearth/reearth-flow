@@ -1,6 +1,5 @@
 use std::{
     collections::{HashMap, HashSet},
-    error::Error,
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
@@ -12,25 +11,15 @@ use axum::{
     },
     response::IntoResponse,
 };
+use errors::WsError;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
+
+mod errors;
 
 struct Room {
     users: Mutex<HashSet<String>>,
     tx: broadcast::Sender<String>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-enum WsError {
-    WsError,
-}
-
-impl Error for WsError {}
-
-impl std::fmt::Display for WsError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "WebSocket error")
-    }
 }
 
 impl Room {
