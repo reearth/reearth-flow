@@ -71,7 +71,7 @@ const StatusContent: React.FC<Props> = ({ label, runs, selectedRun, onRunSelect 
                   </>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <LogConsole className="overflow-auto" />
+                  <LogConsole />
                 </CollapsibleContent>
               </Collapsible>
             </div>
