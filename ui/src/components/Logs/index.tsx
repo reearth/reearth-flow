@@ -102,8 +102,8 @@ const Logs = <TData, TValue>({
   }, [columnFilters]);
 
   return (
-    <div className="bg-zinc-900 rounded text-white w-full overflow-auto">
-      <div className="h-16 flex w-full items-center justify-between p-2">
+    <div className="w-full overflow-auto rounded bg-zinc-900 text-white">
+      <div className="flex h-16 w-full items-center justify-between p-2">
         <h2 className="text-lg">{t("Log")}</h2>
         <div className="flex gap-2">
           <Button
@@ -138,13 +138,13 @@ const Logs = <TData, TValue>({
           </Button>
         </div>
       </div>
-      <div className="flex items-center p-4 gap-4">
+      <div className="flex items-center gap-4 p-4">
         {showFiltering && (
           <Input
             placeholder={t("Search") + "..."}
             value={globalFilter ?? ""}
             onChange={e => setGlobalFilter(String(e.target.value))}
-            className="max-w-[20rem]"
+            className="max-w-80"
           />
         )}
         {selectColumns && (
