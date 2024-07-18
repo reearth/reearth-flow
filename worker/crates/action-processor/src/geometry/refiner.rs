@@ -82,8 +82,6 @@ impl Processor for Refiner {
         let geometry_value = geometry.clone().unwrap().value.clone();
 
         let gc = geometry.clone().unwrap();
-        let geom_id = gc.id;
-        let geom_name = gc.name;
         let geom_epsg = gc.epsg;
         let attributes = feature.attributes.clone();
 
@@ -100,8 +98,6 @@ impl Processor for Refiner {
                     let feature = Feature {
                         id: Uuid::new_v4(),
                         geometry: Some(TypeGeometry {
-                            id: geom_id.clone(),
-                            name: geom_name.clone(),
                             epsg: geom_epsg,
                             value: GeometryValue::FlowGeometry2D(geo),
                         }),
@@ -116,8 +112,6 @@ impl Processor for Refiner {
                     let feature = Feature {
                         id: Uuid::new_v4(),
                         geometry: Some(TypeGeometry {
-                            id: geom_id.clone(),
-                            name: geom_name.clone(),
                             epsg: geom_epsg,
                             value: GeometryValue::FlowGeometry3D(geo),
                         }),
