@@ -1,5 +1,5 @@
 mod helper;
 
 fn main() {
-    helper::execute("example_feature_transformer.yml");
+    helper::execute("quality-check/02-bldg/c02.yml");
 }
