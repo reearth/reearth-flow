@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { isDefined } from "@flow/lib/utils";
+import { isDefined } from "@flow/utils";
 import { Member, Workspace } from "@flow/types";
 
 import {
@@ -32,10 +32,10 @@ export const useQueries = () => {
           role: m.role,
           user: m.user
             ? {
-                id: m.user?.id,
-                name: m.user?.name,
-                email: m.user?.email,
-              }
+              id: m.user?.id,
+              name: m.user?.name,
+              email: m.user?.email,
+            }
             : undefined,
         }),
       ),

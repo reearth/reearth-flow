@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { isDefined } from "@flow/lib/utils";
+import { isDefined } from "@flow/utils";
 import { Project } from "@flow/types";
 
 import {
