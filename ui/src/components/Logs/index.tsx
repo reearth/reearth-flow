@@ -28,7 +28,7 @@ import {
   Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { STATUS } from "@flow/types";
+import { LogStatus } from "@flow/types";
 
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
@@ -77,7 +77,7 @@ const Logs = <TData, TValue>({
     },
   });
 
-  const handleStatusChange = (status: STATUS) => {
+  const handleStatusChange = (status: LogStatus) => {
     getStatusValue === status
       ? setColumnFilters([])
       : setColumnFilters([{ id: "status", value: status }]);

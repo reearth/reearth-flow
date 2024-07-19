@@ -1,1 +1,1 @@
-export type STATUS = "WARNING" | "INFO" | "ERROR";
+export type LogStatus = "WARNING" | "INFO" | "ERROR";
