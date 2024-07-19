@@ -116,6 +116,7 @@
     "jsdom": "24.1.0",
     "postcss": "8.4.39",
     "prettier": "3.3.3",
+    "react-yjs": "2.0.0",
     "read-env": "2.0.0",
     "storybook": "8.2.4",
     "tailwindcss": "3.4.5",
