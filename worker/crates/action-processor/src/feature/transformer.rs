@@ -142,12 +142,8 @@ impl Processor for FeatureTransformer {
     }
 }
 
-fn mapper(row: &Feature, expr: &rhai::AST, expr_engine: Arc<Engine>) -> Feature {
-    let scope = expr_engine.new_scope();
-    for (k, v) in row.attributes.iter() {
-        scope.set(k.inner().as_str(), v.clone().into());
-    }
-    scope.set("__all", serde_json::to_value(&row.attributes).unwrap());
+fn mapper(feature: &Feature, expr: &rhai::AST, expr_engine: Arc<Engine>) -> Feature {
+    let scope = feature.new_scope(expr_engine.clone());
     let new_value = scope.eval_ast::<Dynamic>(expr);
     if let Ok(new_value) = new_value {
         if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
@@ -159,5 +155,5 @@ fn mapper(row: &Feature, expr: &rhai::AST, expr_engine: Arc<Engine>) -> Feature 
             );
         }
     }
-    row.clone()
+    feature.clone()
 }

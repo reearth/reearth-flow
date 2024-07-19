@@ -21,7 +21,7 @@ graphs:
         with:
           conditions:
             - expr: |
-                env.get("city") in ["Tokyo", "Osaka"]
+                env.get("__value").city in ["Tokyo", "Osaka"]
               outputPort: default
 
     edges:

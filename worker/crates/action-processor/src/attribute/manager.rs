@@ -154,19 +154,17 @@ impl Processor for AttributeManager {
     }
 }
 
-fn process_feature(row: &Feature, operations: &[Operate], expr_engine: Arc<Engine>) -> Feature {
-    let mut result = row.clone();
+fn process_feature(feature: &Feature, operations: &[Operate], expr_engine: Arc<Engine>) -> Feature {
+    let mut result = feature.clone();
     for operation in operations {
         match operation {
             Operate::Convert { expr, attribute } => {
-                let value = row.get(attribute);
+                let value = feature.get(attribute);
                 if value.is_none() {
                     continue;
                 }
-                let scope = expr_engine.new_scope();
-                for (k, v) in row.iter() {
-                    scope.set(k.inner().as_str(), v.clone().into());
-                }
+
+                let scope = feature.new_scope(expr_engine.clone());
                 if let Some(expr) = expr {
                     let new_value = scope.eval_ast::<Dynamic>(expr);
                     if let Ok(new_value) = new_value {
@@ -177,10 +175,7 @@ fn process_feature(row: &Feature, operations: &[Operate], expr_engine: Arc<Engin
                 }
             }
             Operate::Create { expr, attribute } => {
-                let scope = expr_engine.new_scope();
-                for (k, v) in row.iter() {
-                    scope.set(k.inner().as_str(), v.clone().into());
-                }
+                let scope = feature.new_scope(expr_engine.clone());
                 if let Some(expr) = expr {
                     let new_value = scope.eval_ast::<Dynamic>(expr);
                     if let Ok(new_value) = new_value {
@@ -191,7 +186,7 @@ fn process_feature(row: &Feature, operations: &[Operate], expr_engine: Arc<Engin
                 }
             }
             Operate::Rename { new_key, attribute } => {
-                let value = row.get(attribute);
+                let value = feature.get(attribute);
                 if value.is_none() {
                     continue;
                 }
@@ -199,7 +194,7 @@ fn process_feature(row: &Feature, operations: &[Operate], expr_engine: Arc<Engin
                 result.insert(new_key.clone(), value.unwrap().clone());
             }
             Operate::Remove { attribute } => {
-                let value = row.get(attribute);
+                let value = feature.get(attribute);
                 if value.is_none() {
                     continue;
                 }

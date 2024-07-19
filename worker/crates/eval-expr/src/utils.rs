@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use crate::{error::Error, Value};
 use rhai::{Dynamic, Map};
@@ -8,11 +8,18 @@ pub fn value_to_dynamic(v: &Value) -> Dynamic {
     match v {
         Value::Null => Dynamic::UNIT,
         Value::Bool(b) => Dynamic::from(*b),
-        Value::String(s) => Dynamic::from(s.clone()),
+        Value::String(s) => Dynamic::from_str(s).unwrap_or_default(),
         Value::Number(n) if n.is_i64() => Dynamic::from(n.as_i64().unwrap()),
         Value::Number(n) if n.is_f64() => Dynamic::from(n.as_f64().unwrap()),
         Value::Array(s) => Dynamic::from(array_to_dynamic(s)),
-        Value::Object(m) => Dynamic::from(map_to_dynamic(m)),
+        Value::Object(m) => {
+            if m.len() == 1 && m.contains_key("String") {
+                let s = m.get("String").unwrap().as_str().unwrap();
+                Dynamic::from_str(s).unwrap_or_default()
+            } else {
+                Dynamic::from(map_to_dynamic(m))
+            }
+        }
         _ => Dynamic::default(),
     }
 }

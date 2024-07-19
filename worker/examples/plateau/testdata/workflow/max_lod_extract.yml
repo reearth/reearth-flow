@@ -40,7 +40,7 @@ graphs:
         with:
           format: csv
           output: |
-            env.get("outputPath")
+            env.get("__value").outputPath
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

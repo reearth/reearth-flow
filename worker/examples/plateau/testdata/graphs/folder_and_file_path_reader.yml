@@ -17,7 +17,7 @@ nodes:
     with:
       conditions:
         - expr: |
-            env.get("extension") == "gml"
+            env.get("__value").extension == "gml"
           outputPort: default
 
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cc
@@ -26,7 +26,7 @@ nodes:
     action: PLATEAU.UDXFolderExtractor
     with:
       cityGmlPath: |
-        env.get("path")
+        env.get("__value")["path"]
 
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cd
     name: FeatureFilter02
@@ -35,7 +35,7 @@ nodes:
     with:
       conditions:
         - expr: |
-            (env.get("targetPackages") ?? []).is_empty() || env.get("package") in env.get("targetPackages")
+            (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
           outputPort: default
 
   - id: b1a91180-ab88-4c1a-aab5-48c242a218ce

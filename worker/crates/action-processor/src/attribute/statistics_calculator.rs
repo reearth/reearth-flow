@@ -137,10 +137,7 @@ impl Processor for StatisticsCalculator {
     ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
-        let scope = expr_engine.new_scope();
-        for (k, v) in &feature.attributes {
-            scope.set(k.inner().as_str(), v.clone().into());
-        }
+        let scope = feature.new_scope(expr_engine.clone());
         let aggregate = self
             .aggregate_attribute
             .clone()
