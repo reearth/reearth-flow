@@ -1,7 +1,6 @@
 use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::geometry::{Geometry, Geometry2D, Geometry3D};
 use reearth_flow_geometry::types::line_string::LineString;
-use reearth_flow_geometry::types::no_value::NoValue;
 use reearth_flow_geometry::types::point::Point;
 use reearth_flow_geometry::types::polygon::Polygon;
 
@@ -146,32 +145,32 @@ impl Refiner {
         Vec::new()
     }
 
-    fn refine_2d(geos: &Geometry2D) -> Vec<Geometry<f64, NoValue>> {
+    fn refine_2d(geos: &Geometry2D) -> Vec<Geometry2D<f64>> {
         let (points, lines, polygons) = Self::refine_geometry(geos.clone());
-        let mut geometories: Vec<Geometry<f64, NoValue>> = Vec::new();
+        let mut geometories: Vec<Geometry2D<f64>> = Vec::new();
         for point in points {
-            geometories.push(Geometry::Point(point));
+            geometories.push(Geometry2D::Point(point));
         }
         for line in lines {
-            geometories.push(Geometry::LineString(line));
+            geometories.push(Geometry2D::LineString(line));
         }
         for polygon in polygons {
-            geometories.push(Geometry::Polygon(polygon));
+            geometories.push(Geometry2D::Polygon(polygon));
         }
         geometories
     }
 
-    fn refine_3d(geos: &Geometry3D) -> Vec<Geometry<f64, f64>> {
+    fn refine_3d(geos: &Geometry3D) -> Vec<Geometry3D<f64>> {
         let (points, lines, polygons) = Self::refine_geometry(geos.clone());
-        let mut geometories: Vec<Geometry<f64, f64>> = Vec::new();
+        let mut geometories: Vec<Geometry3D<f64>> = Vec::new();
         for point in points {
-            geometories.push(Geometry::Point(point));
+            geometories.push(Geometry3D::Point(point));
         }
         for line in lines {
-            geometories.push(Geometry::LineString(line));
+            geometories.push(Geometry3D::LineString(line));
         }
         for polygon in polygons {
-            geometories.push(Geometry::Polygon(polygon));
+            geometories.push(Geometry3D::Polygon(polygon));
         }
         geometories
     }
