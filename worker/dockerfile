@@ -32,12 +32,10 @@ RUN apt-get update && \
     && locale-gen \
     && echo "install rust tools"
 
-COPY Cargo.toml .
-COPY Cargo.lock .
-COPY crates crates
-COPY examples examples
-COPY tests tests
-
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+COPY examples ./examples
+COPY tests ./tests
 RUN cargo build --release
 
 FROM debian:bookworm-slim
