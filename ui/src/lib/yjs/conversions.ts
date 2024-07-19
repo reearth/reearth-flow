@@ -1,10 +1,10 @@
 import * as Y from "yjs";
 
-export const toYjsMap = (map: Map<string, any>) => {
+export const toYjsMap = (obj: { [key: string]: any }): Y.Map<any> => {
   const yMap = new Y.Map();
-  map.forEach((value, key) => {
+  for (const [key, value] of Object.entries(obj)) {
     yMap.set(key, value);
-  });
+  }
   return yMap;
 };
 
@@ -24,10 +24,18 @@ export const toYjsArray = (array: any[]) => {
   return yArray;
 };
 
+export const fromYjsArray = (yArray: Y.Array<any>) => {
+  return yArray.toArray();
+};
+
 export const toYjsText = (text: string) => {
   const yText = new Y.Text();
   yText.insert(0, text);
   return yText;
+};
+
+export const fromYjsText = (yText: Y.Text) => {
+  return yText.toString();
 };
 
 export const toYjsXmlFragment = (xml: string) => {
@@ -37,10 +45,18 @@ export const toYjsXmlFragment = (xml: string) => {
   return yXmlFragment;
 };
 
+export const fromYjsXmlFragment = (yXmlFragment: Y.XmlFragment) => {
+  return yXmlFragment.toString();
+};
+
 export const toYjsXmlText = (xml: string) => {
   const yXmlText = new Y.XmlText();
   yXmlText.insert(0, xml);
   return yXmlText;
+};
+
+export const fromYjsXmlText = (yXmlText: Y.XmlText) => {
+  return yXmlText.toString();
 };
 
 export const toYjsXmlElement = (tagName: string) => {
@@ -48,3 +64,6 @@ export const toYjsXmlElement = (tagName: string) => {
   return yXmlElement;
 };
 
+export const fromYjsXmlElement = (yXmlElement: Y.XmlElement) => {
+  return yXmlElement.toString();
+};
