@@ -197,7 +197,7 @@ impl Processor for XmlFragmenter {
 
 fn action_value_to_fragment(
     ctx: &ExecutorContext,
-    row: &Feature,
+    feature: &Feature,
     attribute: &Attribute,
     elements_to_match_ast: &rhai::AST,
     elements_to_exclude_ast: &rhai::AST,
@@ -206,10 +206,7 @@ fn action_value_to_fragment(
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let expr_engine = Arc::clone(&ctx.expr_engine);
 
-    let scope = expr_engine.new_scope();
-    for (k, v) in &row.attributes {
-        scope.set(k.clone().into_inner().as_str(), v.clone().into());
-    }
+    let scope = feature.new_scope(expr_engine.clone());
     let elements_to_match = scope
         .eval_ast::<rhai::Array>(elements_to_match_ast)
         .map_err(|e| {
@@ -233,7 +230,7 @@ fn action_value_to_fragment(
         .map(|v| v.clone().into_string().unwrap_or_default())
         .collect::<Vec<String>>();
 
-    let url = match row.get(attribute) {
+    let url = match feature.get(attribute) {
         Some(AttributeValue::String(url)) => {
             Uri::from_str(url).map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?
         }
@@ -256,7 +253,7 @@ fn action_value_to_fragment(
         .map(|fragment| (fragment.xml_id.clone(), (uuid::Uuid::new_v4(), fragment)))
         .collect::<HashMap<String, (Uuid, XmlFragment)>>();
     for (_xml_id, (feature_id, fragment)) in xml_id_maps.into_iter() {
-        let mut value = Feature::new_with_id_and_attributes(feature_id, row.attributes.clone());
+        let mut value = Feature::new_with_id_and_attributes(feature_id, feature.attributes.clone());
         XmlFragment::to_hashmap(fragment)
             .into_iter()
             .for_each(|(k, v)| {

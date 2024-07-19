@@ -30,7 +30,7 @@ graphs:
         with:
           format: citygml
           dataset: |
-            env.get("cityGmlPath")
+            env.get("__value").cityGmlPath
 
       - id: 278ab965-ce22-473d-98c6-c7b381c38679
         name: geometryFilter_01
@@ -53,7 +53,7 @@ graphs:
             - attribute: lod
               method: create
               value: |
-                env.get("geometryName")[3]
+                env.get("__value").geometryName[3]
 
       - id: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
         name: reprojector_01
@@ -69,19 +69,19 @@ graphs:
         with:
           conditions:
             - expr: |
-                env.get("lod") == "0"
+                env.get("__value").lod == "0"
               outputPort: lod0
             - expr: |
-                env.get("lod") == "1"
+                env.get("__value").lod == "1"
               outputPort: lod1
             - expr: |
-                env.get("lod") == "2"
+                env.get("__value").lod == "2"
               outputPort: lod2
             - expr: |
-                env.get("lod") == "3"
+                env.get("__value").lod == "3"
               outputPort: lod3
             - expr: |
-                env.get("lod") == "4"
+                env.get("__value").lod == "4"
               outputPort: lod4
 
     edges:

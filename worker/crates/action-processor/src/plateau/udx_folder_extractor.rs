@@ -185,7 +185,7 @@ impl Processor for UdxFolderExtractor {
 }
 
 fn mapper(
-    row: &Feature,
+    feature: &Feature,
     expr: &rhai::AST,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
@@ -193,10 +193,7 @@ fn mapper(
     schemas_path: &Option<String>,
 ) -> super::errors::Result<Response> {
     let city_gml_path = {
-        let scope = expr_engine.new_scope();
-        for (k, v) in &row.attributes {
-            scope.set(k.clone().into_inner().as_str(), v.clone().into());
-        }
+        let scope = feature.new_scope(expr_engine.clone());
         scope
             .eval_ast::<String>(expr)
             .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?

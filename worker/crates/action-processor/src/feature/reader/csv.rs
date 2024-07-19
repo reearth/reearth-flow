@@ -26,10 +26,7 @@ pub(crate) fn read_csv(
     let feature = &ctx.feature;
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let storage_resolver = &ctx.storage_resolver;
-    let scope = expr_engine.new_scope();
-    for (k, v) in &feature.attributes {
-        scope.set(k.inner().as_str(), v.clone().into());
-    }
+    let scope = feature.new_scope(expr_engine.clone());
     let csv_path = scope.eval_ast::<String>(&params.expr).map_err(|e| {
         super::errors::FeatureProcessorError::FileCsvReader(format!(
             "Failed to evaluate expr: {}",

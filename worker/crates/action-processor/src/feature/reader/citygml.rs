@@ -23,10 +23,7 @@ pub(crate) fn read_citygml(
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let feature = &ctx.feature;
-    let scope = expr_engine.new_scope();
-    for (k, v) in &feature.attributes {
-        scope.set(k.inner().as_str(), v.clone().into());
-    }
+    let scope = feature.new_scope(expr_engine.clone());
     let city_gml_path = scope.eval_ast::<String>(&params.expr).map_err(|e| {
         super::errors::FeatureProcessorError::FileCityGmlReader(format!(
             "Failed to evaluate expr: {}",
