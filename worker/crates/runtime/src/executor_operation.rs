@@ -116,7 +116,6 @@ impl ExecutorContext {
     pub fn error_span(&self) -> tracing::Span {
         error_span!("action")
     }
-
 }
 
 #[derive(Debug, Clone)]
