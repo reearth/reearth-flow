@@ -6,7 +6,7 @@ import {
   ProOptions,
   SnapGrid,
 } from "@xyflow/react";
-import { Dispatch, MouseEvent, SetStateAction, memo } from "react";
+import { MouseEvent, memo } from "react";
 
 import type { Edge, Node, Workflow } from "@flow/types";
 
@@ -25,7 +25,7 @@ type Props = {
   workflow?: Workflow;
   lockedNodeIds: string[];
   canvasLock: boolean;
-  onNodeLocking: (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => void;
+  onNodeLocking: (nodeId: string, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => void;
   onNodeHover: (e: MouseEvent, node?: Node) => void;
   onEdgeHover: (e: MouseEvent, edge?: Edge) => void;
 };
