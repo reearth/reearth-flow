@@ -110,7 +110,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/core@npm:^7.14.0, @babel/core@npm:^7.18.9, @babel/core@npm:^7.22.9, @babel/core@npm:^7.23.0, @babel/core@npm:^7.23.7, @babel/core@npm:^7.24.5":
+"@babel/core@npm:^7.14.0, @babel/core@npm:^7.18.9, @babel/core@npm:^7.22.9, @babel/core@npm:^7.23.0, @babel/core@npm:^7.24.5":
   version: 7.24.7
   resolution: "@babel/core@npm:7.24.7"
   dependencies:
@@ -133,7 +133,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/core@npm:^7.24.4, @babel/core@npm:^7.24.8":
+"@babel/core@npm:^7.23.7, @babel/core@npm:^7.24.4, @babel/core@npm:^7.24.8":
   version: 7.24.9
   resolution: "@babel/core@npm:7.24.9"
   dependencies:
@@ -5081,8 +5081,8 @@ __metadata:
     "@tanstack/react-query-devtools": "npm:5.51.1"
     "@tanstack/react-router": "npm:1.45.2"
     "@tanstack/react-table": "npm:8.19.3"
-    "@tanstack/router-devtools": "npm:1.45.2"
-    "@tanstack/router-vite-plugin": "npm:1.45.2"
+    "@tanstack/router-devtools": "npm:1.45.6"
+    "@tanstack/router-vite-plugin": "npm:1.45.3"
     "@testing-library/dom": "npm:10.3.2"
     "@testing-library/jest-dom": "npm:6.4.6"
     "@testing-library/react": "npm:16.0.0"
@@ -5881,17 +5881,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/router-devtools@npm:1.45.2":
-  version: 1.45.2
-  resolution: "@tanstack/router-devtools@npm:1.45.2"
+"@tanstack/router-devtools@npm:1.45.6":
+  version: 1.45.6
+  resolution: "@tanstack/router-devtools@npm:1.45.6"
   dependencies:
     clsx: "npm:^2.1.1"
     goober: "npm:^2.1.14"
   peerDependencies:
-    "@tanstack/react-router": ^1.45.2
+    "@tanstack/react-router": ^1.45.6
     react: ">=18"
     react-dom: ">=18"
-  checksum: 10c0/0dc66cd7b45c4cff19ef459abf259484f1d380a4e3e9045fcb33f0ce79418cc78493041316fb28e047273f41e47ec57c3dd5dcb5648638c244e846cb4f4992ae
+  checksum: 10c0/e828ab8bd9e3febb5001af381c09645181ff50b28e7ca9cdf7b48f6a78a97108a03e1019bbbe22d3f39567d692b9cb66b9c648531bd6ca8999d012c619d0d3e0
   languageName: node
   linkType: hard
 
@@ -5905,9 +5905,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/router-plugin@npm:^1.45.2":
-  version: 1.45.2
-  resolution: "@tanstack/router-plugin@npm:1.45.2"
+"@tanstack/router-plugin@npm:^1.45.3":
+  version: 1.45.3
+  resolution: "@tanstack/router-plugin@npm:1.45.3"
   dependencies:
     "@babel/core": "npm:^7.24.8"
     "@babel/generator": "npm:^7.24.8"
@@ -5937,16 +5937,16 @@ __metadata:
       optional: true
     webpack:
       optional: true
-  checksum: 10c0/bab92b4ee32af8622e9c76d28f5d1cbbb41d3169b97c30f9fd963ca28c67383ff6a8d7530cb77ddba35d5d88e508a1ad7662d6146be4a9240ba466ce39a5c51b
+  checksum: 10c0/0e48462325e44a5bd089cd04459ea6552cf6ae665f3334a9276a7951ea477bffb4d172f43c32a08f346f8e1b00d596a93d952a4e67916f25cbacc87b2218e40b
   languageName: node
   linkType: hard
 
-"@tanstack/router-vite-plugin@npm:1.45.2":
-  version: 1.45.2
-  resolution: "@tanstack/router-vite-plugin@npm:1.45.2"
+"@tanstack/router-vite-plugin@npm:1.45.3":
+  version: 1.45.3
+  resolution: "@tanstack/router-vite-plugin@npm:1.45.3"
   dependencies:
-    "@tanstack/router-plugin": "npm:^1.45.2"
-  checksum: 10c0/49631146c258af65e222600bf99ca43e3e7bd4d04453edd1d3425173feb4378913e197e2528fb22e3c16cab7c1c017dd5e9abb86cd8276e255765202709561fa
+    "@tanstack/router-plugin": "npm:^1.45.3"
+  checksum: 10c0/ff5c124edbcf0d59738892c3232eb611f93aed7d737081eaa7ea036a6d76a2256b6ce3e7348032922ad2fe97dfef4b7cdef8e705bb401051867ed6af4bd0c70d
   languageName: node
   linkType: hard
 
