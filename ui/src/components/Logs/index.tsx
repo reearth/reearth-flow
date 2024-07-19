@@ -27,8 +27,8 @@ import {
   Button,
   Input,
 } from "@flow/components";
-import { STATUS } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
+import { STATUS } from "@flow/types";
 
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
