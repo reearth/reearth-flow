@@ -29,7 +29,7 @@ nodes:
     with:
       source: url
       elementsToMatch: |
-        env.get("featureTypesWithPrefix")
+        env.get("__value").featureTypesWithPrefix
       elementsToExclude: |
         (env.get("exceptFeatureTypes") ?? [])
       attribute: cityGmlPath
