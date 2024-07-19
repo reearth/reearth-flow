@@ -104,10 +104,7 @@ impl Processor for Extruder {
     ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
-        let scope = expr_engine.new_scope();
-        for (k, v) in &feature.attributes {
-            scope.set(k.inner().as_str(), v.clone().into());
-        }
+        let scope = feature.new_scope(expr_engine.clone());
         let Ok(height) = scope.eval_ast::<f64>(&self.distance) else {
             return Err(GeometryProcessorError::Extruder(
                 "Failed to evaluate distance".to_string(),

@@ -23,7 +23,7 @@ graphs:
           transformers:
             - expr: |
                 #{
-                  result: json::find_value_by_json_path(env.get("__all"), "$[?(@.capital == 'admin')]")
+                  result: json::find_value_by_json_path(env.get("__value"), "$[?(@.capital == 'admin')]")
                 }
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c

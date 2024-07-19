@@ -147,6 +147,9 @@ fn write_csv(
     delimiter: Delimiter,
     storage_resolver: Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
+    if features.is_empty() {
+        return Ok(());
+    }
     let mut wtr = csv::WriterBuilder::new()
         .delimiter(delimiter.into())
         .quote_style(csv::QuoteStyle::NonNumeric)

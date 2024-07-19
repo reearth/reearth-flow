@@ -147,10 +147,7 @@ impl Processor for ThreeDimentionRotator {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let scope = &ctx.expr_engine.new_scope();
-        for (k, v) in &feature.attributes {
-            scope.set(k.inner().as_str(), v.clone().into());
-        }
+        let scope = feature.new_scope(ctx.expr_engine.clone());
         let angle_degree = scope.eval_ast::<f64>(&self.angle_degree)?;
         let origin_x = scope.eval_ast::<f64>(&self.origin_x)?;
         let origin_y = scope.eval_ast::<f64>(&self.origin_y)?;

@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use reearth_flow_action_log::action_error_log;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -119,11 +120,8 @@ impl Processor for FeatureFilter {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
         let mut routing = false;
+        let scope = feature.new_scope(expr_engine.clone());
         for condition in &self.conditions {
-            let scope = expr_engine.new_scope();
-            for (k, v) in &feature.attributes {
-                scope.set(k.inner().as_str(), v.clone().into());
-            }
             let eval = scope.eval_ast::<bool>(&condition.expr);
             match eval {
                 Ok(eval) if eval => {
@@ -135,7 +133,11 @@ impl Processor for FeatureFilter {
                     );
                     routing = true;
                 }
-                _ => {
+                Ok(_) => {}
+                Err(err) => {
+                    action_error_log!(
+                        parent: ctx.error_span(), ctx.logger.action_logger("FeatureFilter"), "filter eval error = {:?}", err,
+                    );
                     continue;
                 }
             }

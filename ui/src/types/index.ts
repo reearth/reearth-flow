@@ -7,3 +7,4 @@ export * from "./node";
 export * from "./run";
 export * from "./workspace";
 export * from "./api";
+export * from "./log";
