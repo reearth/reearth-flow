@@ -40,12 +40,11 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && \
-    apt-get install -y \
+RUN apt-get update && apt-get install -y \
     openssl \
     libxml2 \
-    ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
