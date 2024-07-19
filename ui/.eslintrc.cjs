@@ -64,7 +64,7 @@ module.exports = {
   },
   settings: {
     tailwindcss: {
-      // Custom or third party lib CSS classes
+      // Mention extra CSS classes that are not part of tailwind here
       whitelist: ["nopan", "nodrag", "nowheel", "dndnode-"],
     },
   },
