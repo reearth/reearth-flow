@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
+id: fefb4c7e-3b0e-4a34-a672-cb564cefa14a
+name: "QualityCheck-02-t-bldg-02"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../../../config/schema.txt
+  targetPackages:
+    - bldg
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+  outputPath:
+graphs:
+  - !include ../../../graphs/folder_and_file_path_reader.yml
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        name: FolderAndfilePathReader01
+        type: subGraph
+        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+
+      - id: 278ab965-ce22-473d-98c6-c7b381c38679
+        name: rhaiCaller01
+        type: action
+        action: RhaiCaller
+        with:
+          isTarget: |
+            true
+          process: |
+            [
+              env.get("__all") + #{
+                "name": "Building",
+              },
+              env.get("__all") + #{
+                "name": "Watter",
+              },
+            ]
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: echo01
+        type: action
+        action: Echo
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        to: 278ab965-ce22-473d-98c6-c7b381c38679
+        fromPort: default
+        toPort: default
+
+      - id: f23b1f56-c5d8-4311-9239-6dd205b538ab
+        from: 278ab965-ce22-473d-98c6-c7b381c38679
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: default
+        toPort: default
