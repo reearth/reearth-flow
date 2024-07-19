@@ -13,8 +13,8 @@ nodes:
     with:
       transformers:
         - expr: |
-            env.get("__all") + #{
-              meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("cityGmlPath")))
+            env.get("__value") + #{
+              meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("__value").cityGmlPath))
             }
 
   - id: b90a3d22-7aaf-4e1c-9e27-d9f01b75d82d
@@ -29,7 +29,7 @@ nodes:
     with:
       source: url
       elementsToMatch: |
-        env.get("featureTypesWithPrefix")
+        env.get("__value").featureTypesWithPrefix
       elementsToExclude: |
         (env.get("exceptFeatureTypes") ?? [])
       attribute: cityGmlPath

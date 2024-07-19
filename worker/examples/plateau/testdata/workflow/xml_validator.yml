@@ -22,7 +22,7 @@ graphs:
         action: FilePathExtractor
         with:
           sourceDataset: |
-            env.get("cityGmlPath")
+            env.get("__value").cityGmlPath
           extractArchive: true
 
       - id: 278ab965-ce22-473d-98c6-c7b381c38679
@@ -32,7 +32,7 @@ graphs:
         with:
           conditions:
             - expr: |
-                env.get("extension") == "gml"
+                env.get("__value").extension == "gml"
               outputPort: default
 
       - id: 6b810200-1499-41df-99a2-40f970623826
@@ -41,7 +41,7 @@ graphs:
         action: PLATEAU.UDXFolderExtractor
         with:
           cityGmlPath: |
-            env.get("path")
+            env.get("__value").path
 
       - id: 7946c8f9-0939-46c5-98ae-0e635ff28017
         name: PLATEAU.XMLValidator_01

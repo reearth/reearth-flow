@@ -9,7 +9,7 @@ nodes:
       transformers:
         - expr: |
             env.get("__all") + #{
-              meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("cityGmlPath")))
+              meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("__value").cityGmlPath))
             }
 
   - id: 747d2fa3-2527-4324-b630-92fba84a548c
@@ -24,28 +24,28 @@ nodes:
     with:
       conditions:
         - expr: |
-            env.get("flag") == "Summary"
+            env.get("__value").flag == "Summary"
           outputPort: summary
         - expr: |
-            env.get("flag") == "CodeValidation"
+            env.get("__value").flag == "CodeValidation"
           outputPort: codeValidation
         - expr: |
-            env.get("flag") == "ExtentsValidation"
+            env.get("__value").flag == "ExtentsValidation"
           outputPort: extentsValidation
         - expr: |
-            env.get("flag") == "GMLID_NotWellFormed"
+            env.get("__value").flag == "GMLID_NotWellFormed"
           outputPort: gmlIdNotWellFormed
         - expr: |
-            env.get("flag") == "GMLID_NotUnique"
+            env.get("__value").flag == "GMLID_NotUnique"
           outputPort: gmlIdNotUnique
         - expr: |
-            env.get("flag") == "XLink_NoReference"
+            env.get("__value").flag == "XLink_NoReference"
           outputPort: xlinkNoReference
         - expr: |
-            env.get("flag") == "XLink_InvalidObjectType"
+            env.get("__value").flag == "XLink_InvalidObjectType"
           outputPort: xLinkInvalidObjectType
         - expr: |
-            env.get("flag") == "InvalidLodXGeometry"
+            env.get("__value").flag == "InvalidLodXGeometry"
           outputPort: invalidLodXGeometry
 
 edges:

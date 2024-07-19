@@ -1,6 +1,5 @@
 use std::{collections::HashMap, sync::Arc};
 
-use reearth_flow_eval_expr::{engine::Engine, scope::Scope};
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -8,7 +7,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Expr};
 use rhai::Dynamic;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -110,7 +109,7 @@ impl Processor for RhaiCaller {
     ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
-        let scope = new_scope(feature, expr_engine);
+        let scope = feature.new_scope(expr_engine.clone());
         let is_target = scope.eval_ast::<bool>(&self.is_target);
         if let Err(e) = is_target {
             return Err(FeatureProcessorError::RhaiCaller(format!("{:?}", e)).into());
@@ -162,13 +161,4 @@ impl Processor for RhaiCaller {
     fn name(&self) -> &str {
         "RhaiCaller"
     }
-}
-
-fn new_scope(row: &Feature, expr_engine: Arc<Engine>) -> Scope {
-    let scope = expr_engine.new_scope();
-    for (k, v) in row.attributes.iter() {
-        scope.set(k.inner().as_str(), v.clone().into());
-    }
-    scope.set("__all", serde_json::to_value(&row.attributes).unwrap());
-    scope
 }

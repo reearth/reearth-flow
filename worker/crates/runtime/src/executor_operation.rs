@@ -5,7 +5,7 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
-use tracing::info_span;
+use tracing::{error_span, info_span};
 
 use crate::{
     kvs::KvStore,
@@ -111,6 +111,10 @@ impl ExecutorContext {
 
     pub fn info_span(&self) -> tracing::Span {
         info_span!("action")
+    }
+
+    pub fn error_span(&self) -> tracing::Span {
+        error_span!("action")
     }
 }
 

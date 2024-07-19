@@ -10,7 +10,7 @@ import {
   getOutgoers,
   useReactFlow,
 } from "@xyflow/react";
-import { Dispatch, MouseEvent, SetStateAction, useCallback } from "react";
+import { MouseEvent, useCallback } from "react";
 
 import type { Edge, Node } from "@flow/types";
 
@@ -20,28 +20,38 @@ import useDnd from "./useDnd";
 type Props = {
   nodes: Node[];
   edges: Edge[];
-  setNodes: Dispatch<SetStateAction<Node[]>>;
-  setEdges: Dispatch<SetStateAction<Edge[]>>;
-  onNodeLocking: (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => void;
+  onNodesChange: (newNodes: Node[]) => void;
+  onEdgesChange: (edges: Edge[]) => void;
+  onNodeLocking: (nodeId: string, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => void;
 };
 
-export default ({ nodes, edges, setNodes, setEdges, onNodeLocking }: Props) => {
+export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: Props) => {
   const { isNodeIntersecting } = useReactFlow();
   const { handleNodeDropInBatch } = useBatch();
-  const { handleNodeDragOver, handleNodeDrop } = useDnd({ setNodes, onNodeLocking });
+
+  const handleNodeLocking = useCallback(
+    (nodeId: string) => onNodeLocking(nodeId, nodes, onNodesChange),
+    [nodes, onNodeLocking, onNodesChange],
+  );
+
+  const { handleNodeDragOver, handleNodeDrop } = useDnd({
+    nodes,
+    onNodesChange,
+    onNodeLocking: handleNodeLocking,
+  });
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
     changes => {
-      setNodes(nds => applyNodeChanges<Node>(changes, nds));
+      onNodesChange(applyNodeChanges<Node>(changes, nodes));
     },
-    [setNodes],
+    [nodes, onNodesChange],
   );
 
   const handleNodesDelete = useCallback(
     (deleted: Node[]) => {
       // If a deleted node is connected between two remaining nodes,
       // on removal, create a new connection between those nodes
-      setEdges(
+      onEdgesChange(
         deleted.reduce((acc, node) => {
           const incomers = getIncomers(node, nodes, edges);
           const outgoers = getOutgoers(node, nodes, edges);
@@ -57,7 +67,7 @@ export default ({ nodes, edges, setNodes, setEdges, onNodeLocking }: Props) => {
         }, edges),
       );
     },
-    [edges, nodes, setEdges],
+    [edges, nodes, onEdgesChange],
   );
 
   const handleNodeDropOnEdge = useCallback(
@@ -146,26 +156,26 @@ export default ({ nodes, edges, setNodes, setEdges, onNodeLocking }: Props) => {
           };
           newEdges = addEdge(newConnectionB, newEdges);
 
-          setEdges(newEdges);
+          onEdgesChange(newEdges);
 
           // Set edge creation complete to stop loop
           edgeCreationComplete = true;
         }
       }
     },
-    [edges, isNodeIntersecting, nodes, setEdges],
+    [edges, isNodeIntersecting, nodes, onEdgesChange],
   );
 
   const handleNodeDragStop = useCallback(
     (_evt: MouseEvent, node: Node) => {
       if (node.type !== "batch") {
-        handleNodeDropInBatch(node, nodes, setNodes);
+        handleNodeDropInBatch(node, nodes, onNodesChange);
         if (node.type !== "note") {
           handleNodeDropOnEdge(node);
         }
       }
     },
-    [handleNodeDropInBatch, handleNodeDropOnEdge, nodes, setNodes],
+    [handleNodeDropInBatch, handleNodeDropOnEdge, nodes, onNodesChange],
   );
 
   return {

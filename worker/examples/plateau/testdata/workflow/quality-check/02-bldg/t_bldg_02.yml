@@ -32,10 +32,10 @@ graphs:
             true
           process: |
             [
-              env.get("__all") + #{
+              env.get("__value") + #{
                 "name": "Building",
               },
-              env.get("__all") + #{
+              env.get("__value") + #{
                 "name": "Watter",
               },
             ]
