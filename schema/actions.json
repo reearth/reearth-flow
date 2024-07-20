@@ -1490,6 +1490,23 @@
       ]
     },
     {
+      "name": "Refiner",
+      "type": "processor",
+      "description": "Geometry Refiner",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "remain"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "Reprojector",
       "type": "processor",
       "description": "Reprojects the geometry of a feature to a specified coordinate system",
