@@ -38,7 +38,7 @@ const WorkflowTabs: React.FC<Props> = ({
 
   return (
     <div className="w-[75vw] bg-background-800">
-      <div className="flex h-[29px] flex-1 items-center bg-zinc-900/50">
+      <div className="flex h-[29px] flex-1 items-center bg-background-900/50">
         <div
           className={`mx-1 flex w-28 cursor-pointer items-center justify-center rounded px-[6px] py-[2px] text-zinc-400 ${currentWorkflowId === mainWorkflow?.id ? "bg-background-700 text-zinc-300" : "hover:bg-background-600"}`}
           onClick={() => onWorkflowChange(mainWorkflow?.id)}>

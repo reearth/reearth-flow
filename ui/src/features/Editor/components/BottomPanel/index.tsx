@@ -72,7 +72,7 @@ const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) =
         height: isPanelOpen ? (windowSize === "max" ? "calc(100vh - 1px)" : "50vh") : "29px",
       }}>
       {isPanelOpen && (
-        <div id="top-edge" className="flex h-[29px] shrink-0 items-center gap-1 bg-zinc-900/50">
+        <div id="top-edge" className="flex h-[29px] shrink-0 items-center gap-1 bg-background-900/50">
           <div className="flex h-full flex-1 items-center justify-end gap-1 px-1">
             <BaseActionButtons
               panelContents={panelContents}
@@ -115,7 +115,7 @@ const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) =
       </div>
       <div
         id="bottom-edge"
-        className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-zinc-900/50">
+        className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-background-900/50">
         <WorkflowTabs currentWorkflowId={currentWorkflowId} onWorkflowChange={onWorkflowChange} />
         <div className="h-full border-r border-zinc-700" />
         <div className="mx-4 flex h-full flex-1 items-center justify-end gap-1">

@@ -51,7 +51,7 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
-        <div className="size-full bg-zinc-900/50 py-4 pl-4 pr-2">
+        <div className="size-full bg-background-900/50 py-4 pl-4 pr-2">
           {selected && (
             <ParamEditor nodeId={selected.id} nodeMeta={selected.data} nodeType="transformer" />
           )}

@@ -7,7 +7,7 @@ type Props = {
 const Infobar: React.FC<Props> = ({ hoveredDetails }) => {
   return hoveredDetails ? (
     <div className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded-md border border-zinc-700 bg-background-800">
-      <div className="flex justify-center gap-5 rounded-md bg-zinc-900/50 px-4 py-2">
+      <div className="flex justify-center gap-5 rounded-md bg-background-900/50 px-4 py-2">
         {"source" in hoveredDetails ? (
           <>
             <p className="text-xs text-zinc-400">Source ID: {hoveredDetails.source}</p>

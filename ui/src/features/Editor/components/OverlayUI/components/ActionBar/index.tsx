@@ -11,7 +11,7 @@ const ActionBar = () => {
   return (
     <div className="absolute right-1 top-1">
       <div className="m-1 rounded-md border border-zinc-700 bg-background-800">
-        <div className="flex rounded-md bg-zinc-900/50 p-1">
+        <div className="flex rounded-md bg-background-900/50 p-1">
           <div className="flex align-middle">
             {/* <IconButton
             tooltipText={t("Publish workflow")}

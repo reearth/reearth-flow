@@ -106,7 +106,7 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
   return (
     <>
       <div
-        className="absolute left-12 z-10 flex h-full w-[300px] flex-1 flex-col gap-3 overflow-auto border-r border-zinc-700 bg-zinc-900 transition-all"
+        className="absolute left-12 z-10 flex h-full w-[300px] flex-1 flex-col gap-3 overflow-auto border-r border-zinc-700 bg-background-900 transition-all"
         style={{
           transform: `translateX(${isPanelOpen ? "8px" : "-100%"})`,
           transitionDuration: isPanelOpen ? "500ms" : "300ms",
@@ -122,7 +122,7 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
         </div>
       </div>
       <aside className="relative z-10 w-14  border-r border-zinc-700 bg-background-800">
-        <div className="flex h-full flex-col bg-zinc-900/50">
+        <div className="flex h-full flex-col bg-background-900/50">
           <nav className="flex flex-col items-center gap-4 p-2">
             <Link
               to={`/workspace/${workspaceId}`}

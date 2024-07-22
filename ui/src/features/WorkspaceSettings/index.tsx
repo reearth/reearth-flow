@@ -49,7 +49,7 @@ const WorkspaceSettings: React.FC = () => {
     <div className="flex h-screen flex-col bg-background-800 text-zinc-300">
       <TopNavigation />
       <div className="flex flex-1">
-        <div className="flex w-[250px] flex-col gap-3 border-r border-zinc-700 bg-zinc-900/50 px-2 py-4">
+        <div className="flex w-[250px] flex-col gap-3 border-r border-zinc-700 bg-background-900/50 px-2 py-4">
           {content.map(({ id, name, icon }) => (
             <div
               key={id}

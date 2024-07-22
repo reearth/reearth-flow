@@ -30,7 +30,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
       )}
       <div
         id="handle-wrapper"
-        className="absolute inset-x-0 mx-auto w-[95%] rounded-b-md bg-zinc-900 text-zinc-400">
+        className="absolute inset-x-0 mx-auto w-[95%] rounded-b-md bg-background-900 text-zinc-400">
         <div className="relative">
           {inputs &&
             inputs.length > 1 &&

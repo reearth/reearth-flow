@@ -109,7 +109,7 @@ const Canvas: React.FC<Props> = ({
       onConnect={handleConnect}
       proOptions={proOptions}>
       {/* <MiniMap
-      className="bg-zinc-900"
+      className="bg-background-900"
       nodeColor="purple"
       maskStrokeColor="red"
       maskStrokeWidth={3}

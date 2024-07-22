@@ -56,7 +56,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
       // onMouseEnter={() => setHovered(true)}
       // onMouseLeave={() => setHovered(false)}
       onDoubleClick={handleDoubleClick}>
-      <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm bg-zinc-900/50">
+      <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm bg-background-900/50">
         <div
           className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : "border-zinc-500"} ${className}`}>
           {type === "reader" ? (
@@ -73,7 +73,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
           <div className={`size-[8px] self-center rounded ${metaProps.style}`} />
         </div>
         {selected && !locked && (
-          <div className="absolute bottom-[25px] right-1/2 flex h-[25px] w-[95%] translate-x-1/2 items-center justify-center rounded-t-lg bg-zinc-900">
+          <div className="absolute bottom-[25px] right-1/2 flex h-[25px] w-[95%] translate-x-1/2 items-center justify-center rounded-t-lg bg-background-900">
             <IconButton
               className="h-full flex-1 rounded-b-none"
               size="icon"
