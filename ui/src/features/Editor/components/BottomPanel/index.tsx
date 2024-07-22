@@ -1,5 +1,5 @@
 import { CornersIn, CornersOut, Globe, Terminal } from "@phosphor-icons/react";
-import { useCallback, useState } from "react";
+import { memo, useCallback, useState } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -132,20 +132,28 @@ const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) =
   );
 };
 
-export { BottomPanel };
+export default memo(BottomPanel);
 
 const BaseActionButtons: React.FC<{
   panelContents?: PanelContent[];
   selected?: PanelContent;
   onSelection?: (content: PanelContent) => void;
-}> = ({ panelContents, selected, onSelection }) => {
-  return panelContents?.map(content => (
-    <div
-      key={content.id}
-      className={`flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-zinc-700/75 hover:text-white ${selected?.id === content.id ? "bg-zinc-700/75 text-white" : undefined}`}
-      onClick={() => onSelection?.(content)}>
-      {content.icon}
-      <p className="text-sm font-thin">{content.title}</p>
-    </div>
-  ));
-};
+}> = memo(({ panelContents, selected, onSelection }) => {
+  return (
+    <>
+      {panelContents?.map(content => (
+        <div
+          key={content.id}
+          className={`flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-zinc-700/75 hover:text-white ${
+            selected?.id === content.id ? "bg-zinc-700/75 text-white" : ""
+          }`}
+          onClick={() => onSelection?.(content)}>
+          {content.icon}
+          <p className="text-sm font-thin">{content.title}</p>
+        </div>
+      ))}
+    </>
+  );
+});
+
+BaseActionButtons.displayName = "BaseActionButtons";

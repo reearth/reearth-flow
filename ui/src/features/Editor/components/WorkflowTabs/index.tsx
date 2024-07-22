@@ -1,4 +1,5 @@
 import { Plus, X } from "@phosphor-icons/react";
+import { memo } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -79,4 +80,4 @@ const WorkflowTabs: React.FC<Props> = ({
   );
 };
 
-export { WorkflowTabs };
+export default memo(WorkflowTabs);

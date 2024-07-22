@@ -7,7 +7,7 @@ import {
   TreeView,
 } from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
 import { UserNavigation } from "@flow/features/TopNavigation/components";
@@ -162,4 +162,4 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
   );
 };
 
-export { LeftPanel };
+export default memo(LeftPanel);
