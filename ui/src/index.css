@@ -40,6 +40,18 @@
     --ring: 222.2 84% 4.9%;
 
     --radius: 0.5rem;
+
+    /* Flow Colors. Derived from tailwind.zinc */
+    /** 
+    * TODO: These are for dark mode (since it's the default). Light mode will look broken with these colors. 
+    * Copy these colors to dark class below and change the values here to fix light mode 
+    +*/
+    --background-400: 240 5% 65%;
+    --background-500: 240 4% 46%;
+    --background-600: 240 5% 34%;
+    --background-700: 240 5% 26%;
+    --background-800: 240 4% 16%;
+    --background-900: 240 6% 10%;
   }
 
   .dark {
