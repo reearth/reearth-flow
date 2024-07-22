@@ -36,7 +36,7 @@ const CustomHandle: React.FC<Props> = ({ className, ...props }) => {
     <Handle
       {...props}
       isConnectable={isHandleConnectable}
-      className={`h-full border-none bg-transparent hover:bg-zinc-600/40 ${className}`}
+      className={`h-full border-none bg-transparent hover:bg-background-600/40 ${className}`}
     />
   );
 };
