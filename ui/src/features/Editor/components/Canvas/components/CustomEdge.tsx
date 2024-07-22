@@ -34,7 +34,7 @@ const CustomEdge: React.FC<CustomEdgeProps> = ({
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
             pointerEvents: "all",
           }}
-          className="nodrag nopan size-[12px] rounded bg-zinc-400"
+          className="nodrag nopan size-[12px] rounded bg-background-400"
           onClick={() => console.log("I AM JUST A NUMBER")}>
           <p className="text-center align-middle text-[8px] text-black">4</p>
         </div>
