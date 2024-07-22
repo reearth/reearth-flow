@@ -1,7 +1,8 @@
 import { DefaultEdgeOptions } from "@xyflow/react";
-import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { Edge, type Node, type Workflow } from "@flow/types";
+import { useYjsStore } from "@flow/lib/yjs";
+import type { Node, Workflow } from "@flow/types";
 
 import useEdges from "./useEdges";
 import useNodes from "./useNodes";
@@ -9,7 +10,7 @@ import useNodes from "./useNodes";
 type Props = {
   workflow?: Workflow;
   lockedNodeIds: string[];
-  onNodeLocking: (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => void;
+  onNodeLocking: (nodeId: string, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => void;
 };
 
 export const defaultEdgeOptions: DefaultEdgeOptions = {
@@ -32,8 +33,7 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
 export default ({ workflow, lockedNodeIds, onNodeLocking }: Props) => {
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(workflow?.id ?? "");
 
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>(workflow?.edges ?? []);
+  const { nodes, edges, handleNodesUpdate, handleEdgesUpdate } = useYjsStore();
 
   const processNode = useCallback(
     (node: Node) => {
@@ -42,21 +42,21 @@ export default ({ workflow, lockedNodeIds, onNodeLocking }: Props) => {
         data: {
           ...node.data,
           locked: lockedNodeIds.includes(node.id),
-          onLock: () => onNodeLocking(node.id, setNodes),
+          onLock: () => onNodeLocking(node.id, nodes, handleNodesUpdate),
         },
       };
     },
-    [lockedNodeIds, setNodes, onNodeLocking],
+    [nodes, lockedNodeIds, onNodeLocking, handleNodesUpdate],
   );
 
   useEffect(() => {
     if (workflow && workflow.id !== currentWorkflowId) {
-      setNodes(workflow.nodes?.map(n => processNode(n)) ?? []);
-      setEdges(workflow.edges ?? []);
+      handleNodesUpdate(workflow.nodes?.map(n => processNode(n)) ?? []);
+      handleEdgesUpdate(workflow.edges ?? []);
 
       setCurrentWorkflowId(workflow.id);
     }
-  }, [currentWorkflowId, workflow, processNode, setNodes, setEdges]);
+  }, [currentWorkflowId, workflow, processNode, handleNodesUpdate, handleEdgesUpdate]);
 
   const {
     handleNodesChange,
@@ -67,12 +67,15 @@ export default ({ workflow, lockedNodeIds, onNodeLocking }: Props) => {
   } = useNodes({
     nodes,
     edges,
-    setNodes,
-    setEdges,
+    onNodesChange: handleNodesUpdate,
+    onEdgesChange: handleEdgesUpdate,
     onNodeLocking,
   });
 
-  const { handleEdgesChange, handleConnect } = useEdges({ setEdges });
+  const { handleEdgesChange, handleConnect } = useEdges({
+    edges,
+    onEdgeChange: handleEdgesUpdate,
+  });
 
   return {
     nodes,

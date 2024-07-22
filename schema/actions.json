@@ -1370,6 +1370,22 @@
       ]
     },
     {
+      "name": "PLATEAU.BuildingInstallationGeometryTypeExtractor",
+      "type": "processor",
+      "description": "Extracts BuildingInstallationGeometryType",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU.DictionariesInitiator",
       "type": "processor",
       "description": "Initializes dictionaries for PLATEAU",
@@ -1484,6 +1500,23 @@
       "outputPorts": [
         "planarity",
         "notplanarity"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "Refiner",
+      "type": "processor",
+      "description": "Geometry Refiner",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "remain"
       ],
       "categories": [
         "Geometry"

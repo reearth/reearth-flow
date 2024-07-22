@@ -1,6 +1,6 @@
-import { Dispatch, MouseEvent, SetStateAction, useCallback, useState } from "react";
+import { MouseEvent, useCallback, useState } from "react";
 
-import { Edge, Node, Workflow } from "@flow/types";
+import type { Edge, Node, Workflow } from "@flow/types";
 import { cancellableDebounce } from "@flow/utils";
 
 export default ({ workflows }: { workflows?: Workflow[] }) => {
@@ -14,8 +14,8 @@ export default ({ workflows }: { workflows?: Workflow[] }) => {
 
   // consider making a node context and supplying vars and functions like this to the nodes that way
   const handleNodeLocking = useCallback(
-    (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => {
-      setNodes(nodes =>
+    (nodeId: string, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => {
+      onNodesChange(
         nodes.map(n => {
           if (n.id === nodeId) {
             const newNode = {

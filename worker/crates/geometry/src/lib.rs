@@ -1,3 +1,4 @@
+#![recursion_limit = "2048"]
 extern crate alloc;
 
 pub mod algorithm;
