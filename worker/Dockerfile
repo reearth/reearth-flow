@@ -8,7 +8,7 @@ ENV CARGO_TARGET_DIR=/tmp/target \
     LC_CTYPE=ja_JP.utf8 \
     LANG=ja_JP.utf8
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     locales \
     git \
@@ -36,14 +36,16 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     libxml2 \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 WORKDIR /app
-
 COPY --from=builder /tmp/target/release/reearth-flow /app
+RUN useradd -d /home/flow -m -s /bin/bash flow && chown -R flow:flow /app
+USER flow
 
 ENTRYPOINT [ "/app/reearth-flow" ]
