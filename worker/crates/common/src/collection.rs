@@ -160,3 +160,13 @@ pub fn insert_map_element<K, V>(
         }
     }
 }
+
+pub fn flatten_vec_hashmap(vec: Vec<HashMap<String, String>>) -> HashMap<String, String> {
+    let mut result = HashMap::new();
+    for map in vec {
+        for (key, value) in map {
+            result.insert(key, value);
+        }
+    }
+    result
+}
