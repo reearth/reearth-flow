@@ -1,4 +1,5 @@
 pub mod attribute_flattener;
+pub mod building_installation_geometry_type_extractor;
 pub mod dictionaries_initiator;
 pub mod domain_of_definition_validator;
 pub mod errors;

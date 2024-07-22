@@ -24,21 +24,9 @@ graphs:
         subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
       - id: 278ab965-ce22-473d-98c6-c7b381c38679
-        name: rhaiCaller01
+        name: buildingInstallationGeometryTypeExtractor01
         type: action
-        action: RhaiCaller
-        with:
-          isTarget: |
-            true
-          process: |
-            [
-              env.get("__value") + #{
-                "name": "Building",
-              },
-              env.get("__value") + #{
-                "name": "Watter",
-              },
-            ]
+        action: PLATEAU.BuildingInstallationGeometryTypeExtractor
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: echo01

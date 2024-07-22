@@ -27,8 +27,6 @@ RUN apt-get update && apt-get install -y \
     && echo "ja_JP UTF-8" > /etc/locale.gen \
     && locale-gen \
     && echo "install rust tools"
-    && locale-gen \
-    && echo "install rust tools"
 
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
