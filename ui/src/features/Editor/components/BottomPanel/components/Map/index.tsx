@@ -64,7 +64,7 @@ const Map: React.FC<Props> = () => {
       <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border border-zinc-700 bg-zinc-900/50 text-zinc-400 transition-all">
         {sceneModes.map(b => (
           <Button
-            className={`cursor-pointer text-zinc-400 transition-all hover:bg-background-700 hover:text-zinc-100 ${sceneMode === b ? "bg-zinc-800 text-zinc-300" : ""}`}
+            className={`cursor-pointer text-zinc-400 transition-all hover:bg-background-700 hover:text-zinc-100 ${sceneMode === b ? "bg-background-800 text-zinc-300" : ""}`}
             variant="ghost"
             size="icon"
             key={b}

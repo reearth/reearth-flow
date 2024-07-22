@@ -44,7 +44,7 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
       </div>
       <div
         id="right-panel"
-        className="fixed right-0 flex h-full w-[350px] border-l border-zinc-700 bg-zinc-800 transition-all"
+        className="fixed right-0 flex h-full w-[350px] border-l border-zinc-700 bg-background-800 transition-all"
         style={{
           transform: `translateX(${selected ? "0" : "100%"})`,
           transitionDuration: selected ? "500ms" : "300ms",

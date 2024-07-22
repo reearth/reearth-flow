@@ -57,7 +57,7 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
             {content.map(c => (
               <IconButton
                 key={c.id}
-                className={`${tab === c.id ? "bg-zinc-800" : undefined}`}
+                className={`${tab === c.id ? "bg-background-800" : undefined}`}
                 tooltipText={c.title}
                 tooltipPosition="left"
                 tooltipOffset={20}

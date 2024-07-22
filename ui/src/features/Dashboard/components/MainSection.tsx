@@ -90,7 +90,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
         <div className="flex items-center justify-between gap-2 border-b border-zinc-700 pb-4">
           <p className="text-lg font-extralight">{t("Projects")}</p>
           <Button
-            className="flex gap-2 bg-zinc-800 text-zinc-300 hover:bg-background-700 hover:text-zinc-300"
+            className="flex gap-2 bg-background-800 text-zinc-300 hover:bg-background-700 hover:text-zinc-300"
             variant="outline"
             onClick={() => setDialogType("add-project")}>
             <Plus weight="thin" />

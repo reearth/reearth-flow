@@ -33,7 +33,7 @@ const WorkspaceNavigation: React.FC = () => {
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="min-w-[150px] max-w-[300px] border bg-zinc-800"
+        className="min-w-[150px] max-w-[300px] border bg-background-800"
         sideOffset={5}
         align="center">
         <DropdownMenuGroup className="max-h-[300px] overflow-auto">

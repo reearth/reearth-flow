@@ -115,7 +115,7 @@ const Canvas: React.FC<Props> = ({
       maskStrokeWidth={3}
     /> */}
       <Background
-        className="bg-zinc-800"
+        className="bg-background-800"
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}
         color="rgba(63, 63, 70, 0.3)"

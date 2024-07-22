@@ -11,7 +11,7 @@ const NotFound: React.FC<Props> = ({ message }) => {
   const t = useT();
 
   return (
-    <div className="flex h-screen items-center justify-center bg-zinc-800">
+    <div className="flex h-screen items-center justify-center bg-background-800">
       <div className="flex flex-col items-center gap-10">
         <div className="flex items-center gap-4">
           <div className="rounded bg-red-900 p-2">

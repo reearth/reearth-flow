@@ -67,7 +67,7 @@ const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) =
 
   return (
     <div
-      className="box-content flex flex-col justify-end border-t border-zinc-700 bg-zinc-800 backdrop-blur-md duration-300 ease-in-out"
+      className="box-content flex flex-col justify-end border-t border-zinc-700 bg-background-800 backdrop-blur-md duration-300 ease-in-out"
       style={{
         height: isPanelOpen ? (windowSize === "max" ? "calc(100vh - 1px)" : "50vh") : "29px",
       }}>
@@ -106,7 +106,7 @@ const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) =
       )}
       <div
         id="content"
-        className={`flex h-[calc(100%-64px)] flex-1 bg-zinc-800 ${isPanelOpen ? "flex" : "hidden"}`}>
+        className={`flex h-[calc(100%-64px)] flex-1 bg-background-800 ${isPanelOpen ? "flex" : "hidden"}`}>
         {panelContents.map(p => (
           <div className={`flex-1 ${selected?.id === p.id ? "flex" : "hidden"}`} key={p.id}>
             {p.component}

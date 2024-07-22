@@ -121,7 +121,7 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
           {tabs?.find(tc => tc.id === selectedTab)?.component}
         </div>
       </div>
-      <aside className="relative z-10 w-14  border-r border-zinc-700 bg-zinc-800">
+      <aside className="relative z-10 w-14  border-r border-zinc-700 bg-background-800">
         <div className="flex h-full flex-col bg-zinc-900/50">
           <nav className="flex flex-col items-center gap-4 p-2">
             <Link

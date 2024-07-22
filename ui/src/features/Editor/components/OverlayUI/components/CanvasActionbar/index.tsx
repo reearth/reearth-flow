@@ -20,7 +20,7 @@ const CanvasActionBar = () => {
 
   return (
     <div className="absolute bottom-2 right-2">
-      <div className="m-1 rounded-md border border-zinc-700 bg-zinc-800">
+      <div className="m-1 rounded-md border border-zinc-700 bg-background-800">
         <div className="flex rounded-md bg-zinc-900/50 p-1">
           <div className="flex flex-1 flex-col justify-end align-middle">
             <IconButton

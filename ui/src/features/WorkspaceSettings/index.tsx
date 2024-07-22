@@ -46,7 +46,7 @@ const WorkspaceSettings: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-zinc-800 text-zinc-300">
+    <div className="flex h-screen flex-col bg-background-800 text-zinc-300">
       <TopNavigation />
       <div className="flex flex-1">
         <div className="flex w-[250px] flex-col gap-3 border-r border-zinc-700 bg-zinc-900/50 px-2 py-4">
