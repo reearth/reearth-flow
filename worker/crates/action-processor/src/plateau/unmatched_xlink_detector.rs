@@ -236,11 +236,7 @@ impl Processor for UnmatchedXlinkDetector {
                 .into());
             }
         };
-        let nodes = xml::find_readonly_nodes_in_elements(
-            &xml_ctx,
-            &root_node,
-            &["bldg:Building", "bldg:BuildingPart", "bldg:Room"],
-        )
+        let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, "//bldg:Building[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:BuildingPart[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:Room[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface]" , &root_node)
         .map_err(|e| {
             PlateauProcessorError::UnmatchedXlinkDetector(format!(
                 "Failed to find_readonly_nodes_in_elements with {}",
@@ -267,15 +263,16 @@ impl Processor for UnmatchedXlinkDetector {
             }
             for port in ports {
                 let mut feature = feature.clone();
+                feature.id = uuid::Uuid::new_v4();
                 let attributes: HashMap<Attribute, AttributeValue> = response.clone().into();
                 feature.attributes.extend(attributes);
                 fw.send(ctx.new_with_feature_and_port(feature, port.clone()));
             }
         }
         let mut feature = feature.clone();
-        let attributes: HashMap<Attribute, AttributeValue> = summary.into();
+        let attributes: HashMap<Attribute, AttributeValue> = summary.clone().into();
         feature.attributes.extend(attributes);
-        fw.send(ctx.new_with_feature_and_port(feature, SUMMARY_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature.clone(), SUMMARY_PORT.clone()));
         Ok(())
     }
 
@@ -296,72 +293,53 @@ fn extract_xlink_gml_element(
     xml_ctx: &XmlContext,
     node: &XmlRoNode,
 ) -> Result<Option<XlinkGmlElement>> {
-    let children = xml::find_readonly_nodes_in_elements(
-        xml_ctx,
-        node,
-        &[
-            "bldg:lod2Solid",
-            "bldg:lod3Solid",
-            "bldg:lod4Solid",
-            "bldg:lod4MultiSurface",
-        ],
-    )
-    .map_err(|e| {
-        PlateauProcessorError::UnmatchedXlinkDetector(format!(
-            "Failed to find_readonly_nodes_in_elements with {}",
-            e
-        ))
-    })?;
-    if children.is_empty() {
-        return Ok(None);
-    }
     let gml_id = node
         .get_attribute_ns("id", "http://www.opengis.net/gml")
         .ok_or(PlateauProcessorError::UnmatchedXlinkDetector(
             "Failed to get gml id".to_string(),
         ))?;
-    let mut from = HashMap::<String, String>::new();
-    for child in children {
-        let surfaces = xml::find_readonly_nodes_in_elements(
+    let mut xlink_from = HashMap::<String, String>::new();
+    let mut xlink_to = HashMap::<String, String>::new();
+    for tag in ["lod2Solid", "lod3Solid", "lod4Solid", "lod4MultiSurface"] {
+        let elements = xml::find_readonly_nodes_by_xpath(
             xml_ctx,
-            &child,
-            &["gml:surfaceMember", "gml:baseSurface"],
-        )
-        .map_err(|e| {
+            format!("bldg:{tag}//gml:surfaceMember[@xlink:href] | bldg:{tag}//gml:baseSurface[@xlink:href]").as_str() ,
+            node,
+        ).map_err(|e| {
             PlateauProcessorError::UnmatchedXlinkDetector(format!(
                 "Failed to find_readonly_nodes_in_elements with {}",
                 e
             ))
         })?;
-        let tag = xml::get_readonly_node_tag(&child);
-        for surface in surfaces {
-            if let Some(href) = surface.get_attribute_ns("href", "http://www.w3.org/1999/xlink") {
-                from.insert(href[1..].to_string(), tag.clone());
-            }
-        }
+        let from = elements
+            .iter()
+            .flat_map(|element| {
+                let xlink = element.get_attribute_ns("href", "http://www.w3.org/1999/xlink")?;
+                Some((xlink, tag.to_string()))
+            })
+            .collect::<HashMap<String, String>>();
+        xlink_from.extend(from);
     }
-    let mut to = HashMap::<String, String>::new();
-    let boundeds = xml::find_readonly_nodes_in_elements(xml_ctx, node, &["bldg:boundedBy"])
-        .map_err(|e| {
-            PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                "Failed to find_readonly_nodes_in_elements with {}",
-                e
-            ))
-        })?;
-    for bounded in boundeds {
-        let tag = xml::get_readonly_node_tag(&bounded);
-        let polygons = xml::find_readonly_nodes_in_elements(xml_ctx, &bounded, &["gml:Polygon"])
+    let elements =
+        xml::find_readonly_nodes_by_xpath(xml_ctx, "bldg:boundedBy/*//gml:Polygon[@gml:id]", node)
             .map_err(|e| {
                 PlateauProcessorError::UnmatchedXlinkDetector(format!(
                     "Failed to find_readonly_nodes_in_elements with {}",
                     e
                 ))
             })?;
-        for polygon in polygons {
-            if let Some(gml_id) = polygon.get_attribute_ns("id", "http://www.opengis.net/gml") {
-                to.insert(gml_id, tag.clone());
-            }
-        }
+    for element in &elements {
+        let gml_id = element
+            .get_attribute_ns("id", "http://www.opengis.net/gml")
+            .ok_or(PlateauProcessorError::UnmatchedXlinkDetector(
+                "Failed to get gml id".to_string(),
+            ))?;
+
+        xlink_to.insert(gml_id, xml::get_readonly_node_tag(element));
     }
-    Ok(Some(XlinkGmlElement { gml_id, from, to }))
+    Ok(Some(XlinkGmlElement {
+        gml_id,
+        from: xlink_from,
+        to: xlink_to,
+    }))
 }

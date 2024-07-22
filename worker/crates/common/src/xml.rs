@@ -27,6 +27,14 @@ pub struct XmlSchemaValidationContext {
 unsafe impl Send for XmlSchemaValidationContext {}
 unsafe impl Sync for XmlSchemaValidationContext {}
 
+pub struct XmlSafeContext {
+    inner: parking_lot::RwLock<Context>,
+    _marker: PhantomData<*mut ()>,
+}
+
+unsafe impl Send for XmlSafeContext {}
+unsafe impl Sync for XmlSafeContext {}
+
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct XmlRoNamespace {
     pub prefix: String,
@@ -97,6 +105,23 @@ pub fn create_context(document: &XmlDocument) -> crate::Result<XmlContext> {
             .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
     }
     Ok(context)
+}
+
+pub fn create_safe_context(document: &XmlDocument) -> crate::Result<XmlSafeContext> {
+    let context = Context::new(document)
+        .map_err(|_| crate::Error::Xml("Failed to initialize xpath context".to_string()))?;
+    let root = document
+        .get_root_element()
+        .ok_or(crate::Error::Xml("No root element".to_string()))?;
+    for ns in root.get_namespace_declarations().iter() {
+        context
+            .register_namespace(ns.get_prefix().as_str(), ns.get_href().as_str())
+            .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
+    }
+    Ok(XmlSafeContext {
+        inner: parking_lot::RwLock::new(context),
+        _marker: PhantomData,
+    })
 }
 
 pub fn collect_text_values(xpath_value: &XmlXpathValue) -> Vec<String> {
@@ -303,6 +328,30 @@ pub fn find_readonly_nodes_by_xpath(
     Ok(result)
 }
 
+pub fn find_safe_readonly_nodes_by_xpath(
+    ctx: &XmlSafeContext,
+    xpath: &str,
+    node: &XmlRoNode,
+) -> crate::Result<Vec<XmlRoNode>> {
+    let result = ctx
+        .inner
+        .read()
+        .node_evaluate_readonly(xpath, *node)
+        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
+    let result = result
+        .get_readonly_nodes_as_vec()
+        .into_iter()
+        .filter(|node| {
+            if let Some(node_type) = node.get_type() {
+                node_type == XmlNodeType::ElementNode
+            } else {
+                false
+            }
+        })
+        .collect::<Vec<_>>();
+    Ok(result)
+}
+
 pub fn find_readonly_nodes_in_elements(
     ctx: &XmlContext,
     node: &XmlRoNode,
@@ -316,6 +365,23 @@ pub fn find_readonly_nodes_in_elements(
     let elements_to_match_query = format!("({})", elements_to_match_query);
     let xpath = format!("//*[{}]", elements_to_match_query);
     let nodes = find_readonly_nodes_by_xpath(ctx, &xpath, node)
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath with {}", e)))?;
+    Ok(nodes)
+}
+
+pub fn find_safe_readonly_nodes_in_elements(
+    ctx: &XmlSafeContext,
+    node: &XmlRoNode,
+    elements_to_match: &[&str],
+) -> crate::Result<Vec<XmlRoNode>> {
+    let elements_to_match = elements_to_match
+        .iter()
+        .map(|element| format!("name()='{}'", element))
+        .collect::<Vec<_>>();
+    let elements_to_match_query = elements_to_match.join(" or ");
+    let elements_to_match_query = format!("({})", elements_to_match_query);
+    let xpath = format!("//*[{}]", elements_to_match_query);
+    let nodes = find_safe_readonly_nodes_by_xpath(ctx, &xpath, node)
         .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath with {}", e)))?;
     Ok(nodes)
 }
