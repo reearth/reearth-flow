@@ -22,7 +22,7 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
 };
 
 const highlightClass =
-  "text-zinc-foreground before:opacity-100  before:rounded-md before:bg-zinc-700/50 before:border before:border-zinc-700/50 before:border-l-2 before:border-l-red-800/50 dark:before:border-0";
+  "text-zinc-foreground before:opacity-100  before:rounded-md before:bg-background-700/50 before:border before:border-zinc-700/50 before:border-l-2 before:border-l-red-800/50 dark:before:border-0";
 
 const Tree = forwardRef<HTMLDivElement, TreeProps>(
   (
@@ -137,7 +137,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                     <AccordionPrimitive.Item value={item.id}>
                       <AccordionTrigger
                         className={cn(
-                          "px-2 hover:before:opacity-100 before:absolute before:left-0 before:w-full before:opacity-0 before:bg-zinc-700/50 before:rounded-md before:h-[1.75rem] before:-z-10",
+                          "px-2 hover:before:opacity-100 before:absolute before:left-0 before:w-full before:opacity-0 before:bg-background-700/50 before:rounded-md before:h-[1.75rem] before:-z-10",
                           selectedItemId === item.id &&
                             highlightClass +
                               " " +
@@ -218,7 +218,7 @@ const Leaf = forwardRef<
       ref={ref}
       className={cn(
         "flex items-center py-2 px-2 cursor-pointer \
-        hover:before:opacity-100 before:absolute before:left-0 before:right-1 before:w-full before:opacity-0 before:bg-zinc-700/50 before:rounded-md before:h-[1.75rem] before:-z-10",
+        hover:before:opacity-100 before:absolute before:left-0 before:right-1 before:w-full before:opacity-0 before:bg-background-700/50 before:rounded-md before:h-[1.75rem] before:-z-10",
         className,
         isSelected && highlightClass + " " + "text-zinc-300 dark:before:border-0",
       )}

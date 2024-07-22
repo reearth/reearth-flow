@@ -21,7 +21,7 @@ const RunsSection: React.FC = () => {
       <div className="flex items-center justify-between gap-2 border-b border-zinc-700 p-2">
         <p className="text-lg font-extralight">{t("Runs")}</p>
         <Button
-          className="flex h-[30px] gap-2 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-300"
+          className="flex h-[30px] gap-2 bg-zinc-800 text-zinc-300 hover:bg-background-700 hover:text-zinc-300"
           variant="outline"
           onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/manual` })}>
           <Play weight="thin" />

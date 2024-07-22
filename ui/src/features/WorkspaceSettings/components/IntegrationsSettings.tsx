@@ -101,7 +101,7 @@ const IntegrationsSettings: React.FC = () => {
                   {filters.map((filter, idx) => (
                     <DropdownMenuItem
                       key={idx}
-                      className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-zinc-700/50" : undefined}`}
+                      className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-background-700/50" : undefined}`}
                       onClick={() => setFilter(filter.id)}>
                       {filter.title}
                     </DropdownMenuItem>

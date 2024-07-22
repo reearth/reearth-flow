@@ -25,7 +25,7 @@ const DropdownMenuSubTrigger = forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      "flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-zinc-700 data-[state=open]:bg-zinc-700",
+      "flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-background-700 data-[state=open]:bg-background-700",
       inset && "pl-8",
       className,
     )}
@@ -80,7 +80,7 @@ const DropdownMenuItem = forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-zinc-700 focus:text-zinc-200 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-background-700 focus:text-zinc-200 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       inset && "pl-8",
       className,
     )}
@@ -152,7 +152,7 @@ const DropdownMenuSeparator = forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-zinc-700", className)}
+    className={cn("-mx-1 my-1 h-px bg-background-700", className)}
     {...props}
   />
 ));

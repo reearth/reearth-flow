@@ -133,7 +133,7 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
             {tabs.map(tab => (
               <IconButton
                 key={tab.id}
-                className={`flex size-9 items-center justify-center rounded text-zinc-500 transition-colors hover:text-zinc-300 md:size-8 ${selectedTab === tab.id && "bg-zinc-700/80 text-zinc-300"}`}
+                className={`flex size-9 items-center justify-center rounded text-zinc-500 transition-colors hover:text-zinc-300 md:size-8 ${selectedTab === tab.id && "bg-background-700/80 text-zinc-300"}`}
                 icon={tab.icon}
                 onClick={() => handleTabChange(tab.id)}
               />

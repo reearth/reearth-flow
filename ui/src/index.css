@@ -97,13 +97,13 @@
 /* Animation for active node */
 @keyframes cycleColors {
   0% {
-    background-color: #3f3f46; /* bg-zinc-700 */
+    background-color: #3f3f46; /* bg-background-700 */
   }
   50% {
     background-color: white; /* bg-white */
   }
   100% {
-    background-color: #3f3f46; /* bg-zinc-700 */
+    background-color: #3f3f46; /* bg-background-700 */
   }
 }
 

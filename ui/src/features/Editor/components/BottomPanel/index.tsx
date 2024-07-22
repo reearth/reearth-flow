@@ -142,7 +142,7 @@ const BaseActionButtons: React.FC<{
   return panelContents?.map(content => (
     <div
       key={content.id}
-      className={`flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-zinc-700/75 hover:text-white ${selected?.id === content.id ? "bg-zinc-700/75 text-white" : undefined}`}
+      className={`flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-background-700/75 hover:text-white ${selected?.id === content.id ? "bg-background-700/75 text-white" : undefined}`}
       onClick={() => onSelection?.(content)}>
       {content.icon}
       <p className="text-sm font-thin">{content.title}</p>

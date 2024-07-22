@@ -78,7 +78,7 @@ const Runs: React.FC = () => {
               {statuses.map(({ id, name }) => (
                 <div
                   key={id}
-                  className={`-mx-2 -my-1 flex justify-between rounded-md border-l-2 border-transparent px-2 py-1 hover:cursor-pointer hover:bg-zinc-700/50 ${tab === id ? "border-red-800/50 bg-zinc-700/50 text-white" : undefined}`}
+                  className={`-mx-2 -my-1 flex justify-between rounded-md border-l-2 border-transparent px-2 py-1 hover:cursor-pointer hover:bg-background-700/50 ${tab === id ? "border-red-800/50 bg-background-700/50 text-white" : undefined}`}
                   onClick={() => handleTabChange(id)}>
                   <p className="font-thin">{name}</p>
                 </div>

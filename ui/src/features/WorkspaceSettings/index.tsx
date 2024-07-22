@@ -53,7 +53,7 @@ const WorkspaceSettings: React.FC = () => {
           {content.map(({ id, name, icon }) => (
             <div
               key={id}
-              className={`flex cursor-pointer items-center gap-2 rounded border-l-2 border-transparent px-2 py-1 hover:bg-zinc-700/50 ${selectedTab === id ? "border-red-800/50 bg-zinc-700/50" : undefined}`}
+              className={`flex cursor-pointer items-center gap-2 rounded border-l-2 border-transparent px-2 py-1 hover:bg-background-700/50 ${selectedTab === id ? "border-red-800/50 bg-background-700/50" : undefined}`}
               onClick={() => handleTabChange(id)}>
               {icon}
               <p className="font-extralight">{name}</p>

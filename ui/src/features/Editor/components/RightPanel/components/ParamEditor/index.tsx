@@ -144,7 +144,7 @@ const ParamEditor: React.FC<Props> = ({
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="bg-zinc-700">Save changes</Button>
+              <Button className="bg-background-700">Save changes</Button>
             </CardFooter>
           </Card>
         </TabsContent>
