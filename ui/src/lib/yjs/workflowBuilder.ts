@@ -4,11 +4,11 @@ import { Edge, Node } from "@flow/types";
 
 export type YWorkflow = Y.Map<Y.Text | YNodesArray | YEdgesArray>;
 
-type YNodesArray = Y.Array<Node>;
+export type YNodesArray = Y.Array<Node>;
 
-type YEdgesArray = Y.Array<Edge>;
+export type YEdgesArray = Y.Array<Edge>;
 
-export const yWorkflowBuilder = (id: string, name: string): { yWorkflow: YWorkflow } => {
+export const yWorkflowBuilder = (id: string, name: string) => {
   const yWorkflow = new Y.Map<Y.Text | YNodesArray | YEdgesArray>();
 
   const yId = new Y.Text(id);
@@ -20,5 +20,5 @@ export const yWorkflowBuilder = (id: string, name: string): { yWorkflow: YWorkfl
   yWorkflow.set("name", yName);
   yWorkflow.set("nodes", yNodes);
   yWorkflow.set("edges", yEdges);
-  return { yWorkflow };
+  return yWorkflow;
 };

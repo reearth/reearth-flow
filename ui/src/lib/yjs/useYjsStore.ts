@@ -3,15 +3,10 @@ import { useY } from "react-yjs";
 import * as Y from "yjs";
 
 import type { Edge, Node } from "@flow/types";
+import { randomID } from "@flow/utils";
 
 import { fromYjsText } from "./conversions";
-import { yWorkflowBuilder } from "./workflowBuilder";
-
-type YWorkflow = Y.Map<Y.Text | YNodesArray | YEdgesArray> | undefined;
-
-type YNodesArray = Y.Array<Node>;
-
-type YEdgesArray = Y.Array<Edge>;
+import { yWorkflowBuilder, type YWorkflow, YNodesArray, YEdgesArray } from "./workflowBuilder";
 
 export default ({
   workflowId,
@@ -21,9 +16,10 @@ export default ({
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
   const [{ yWorkflows }] = useState(() => {
+    // TODO: setup middleware/websocket provider and conditionally create new yDoc if no yDoc exists
     const yDoc = new Y.Doc();
     const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-    const { yWorkflow } = yWorkflowBuilder("main", "Main Workflow");
+    const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
     yWorkflows.push([yWorkflow]);
 
     return { yWorkflows };
@@ -52,12 +48,41 @@ export default ({
     const workflowId = yWorkflows.length.toString() + "-workflow";
     const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
 
-    const yWorkflow = yWorkflowBuilder(workflowId, workflowName).yWorkflow;
+    const yWorkflow = yWorkflowBuilder(workflowId, workflowName);
+
+    const newEntranceNode: Node = {
+      id: randomID(),
+      type: "entrance",
+      position: { x: 200, y: 200 },
+      data: {
+        name: `New Entrance node`,
+        outputs: ["target"],
+        status: "idle",
+        // locked: false,
+        // onLock: onNodeLocking,
+      },
+    };
+    const newExitNode: Node = {
+      id: randomID(),
+      type: "exit",
+      position: { x: 1000, y: 200 },
+      data: {
+        name: `New Exit node`,
+        inputs: ["source"],
+        status: "idle",
+        // locked: false,
+        // onLock: onNodeLocking,
+      },
+    };
+    const yNodes = new Y.Array<Node>();
+    yNodes.insert(0, [newEntranceNode, newExitNode]);
+    yWorkflow.set("nodes", yNodes);
+
     yWorkflows.push([yWorkflow]);
 
     setWorkflows(w => [...w, { id: workflowId, name: workflowName }]);
-    handleWorkflowIdChange(workflowId);
-  }, [yWorkflows, handleWorkflowIdChange]);
+    // handleWorkflowIdChange(workflowId);
+  }, [yWorkflows]);
 
   const handleWorkflowRemove = useCallback(
     (workflowId: string) => {
