@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::{net::SocketAddr, time::Duration};
 
 use axum::{error_handling::HandleErrorLayer, routing::get, Router};
@@ -6,6 +5,7 @@ use socket::{
     handler::{handle_error, handle_upgrade},
     state::AppState,
 };
+use tower::timeout::TimeoutLayer;
 use tower::ServiceBuilder;
 use tower_http::{
     services::ServeDir,
@@ -24,18 +24,19 @@ async fn main() -> std::io::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let state = Arc::new(AppState::new());
+    let state = AppState::new();
     let app = Router::new()
         .fallback_service(ServeDir::new("assets").append_index_html_on_directories(true))
-        .route("/ws", get(handle_upgrade(ws, connect_info, state)))
+        .route("/ws", get(handle_upgrade))
         .layer(
             ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(handle_error))
+                .layer(TimeoutLayer::new(Duration::from_secs(10)))
                 .layer(
                     TraceLayer::new_for_http()
                         .make_span_with(DefaultMakeSpan::default().include_headers(true)),
                 )
-                .layer(HandleErrorLayer::new(handle_error))
-                .timeout(Duration::from_secs(10)),
+                .into_inner(),
         )
         .with_state(state);
 

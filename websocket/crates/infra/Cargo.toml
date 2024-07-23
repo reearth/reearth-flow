@@ -15,6 +15,7 @@ flow-websocket-domain.workspace = true
 
 async-trait.workspace = true
 axum-extra.workspace = true
+axum-macros.workspace = true
 axum.workspace = true
 chrono.workspace = true
 google-cloud-storage.workspace = true

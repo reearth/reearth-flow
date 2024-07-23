@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use super::errors::{Result, WsError};
 use super::room::Room;
 
+#[derive(Clone)]
 pub struct AppState {
     pub rooms: Arc<Mutex<HashMap<String, Room>>>,
 }

@@ -3,7 +3,6 @@ use std::{net::SocketAddr, sync::Arc};
 use super::errors::{Result, WsError};
 use super::state::AppState;
 use axum::http::{Method, StatusCode, Uri};
-use axum::BoxError;
 use axum::{
     extract::{
         ws::{Message, WebSocket},
@@ -12,6 +11,7 @@ use axum::{
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
+use tower::BoxError;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "tag", content = "content")]
@@ -29,12 +29,12 @@ struct FlowMessage {
 pub async fn handle_upgrade(
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    State(state): State<Arc<AppState>>,
+    State(state): State<AppState>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, addr, state))
 }
 
-async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: Arc<AppState>) {
+async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: AppState) {
     if socket.send(Message::Ping(vec![4])).await.is_ok() {
         println!("pinned to {addr}");
     } else {
@@ -54,7 +54,7 @@ async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: Arc<AppSt
     }
 }
 
-async fn handle_message(msg: Message, addr: SocketAddr, state: Arc<AppState>) -> Result<()> {
+async fn handle_message(msg: Message, addr: SocketAddr, state: AppState) -> Result<()> {
     match msg {
         Message::Text(t) => {
             let msg: FlowMessage = serde_json::from_str(&t).unwrap();
@@ -91,7 +91,7 @@ async fn handle_message(msg: Message, addr: SocketAddr, state: Arc<AppState>) ->
     }
 }
 
-pub async fn handle_error(_method: Method, _uri: Uri, err: BoxError) -> (StatusCode, String) {
+pub async fn handle_error(_method: Method, _uri: Uri, err: BoxError) -> impl IntoResponse {
     if err.is::<tower::timeout::error::Elapsed>() {
         (StatusCode::REQUEST_TIMEOUT, "timeout".to_string())
     } else {
