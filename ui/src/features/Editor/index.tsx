@@ -1,44 +1,52 @@
-import type { Workflow } from "@flow/types";
-
-import { RightPanel, BottomPanel, LeftPanel, Canvas, OverlayUI } from "./components";
+import { BottomPanel, Canvas, LeftPanel, OverlayUI, RightPanel } from "./components";
 import useHooks from "./hooks";
 
-type EditorProps = {
-  workflows?: Workflow[];
-};
-
-export default function Editor({ workflows }: EditorProps) {
+export default function Editor() {
   const {
-    currentWorkflow,
-    lockedNodeIds,
+    currentWorkflowId,
+    workflows,
+    nodes,
+    edges,
+    // lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,
-    handleNodeLocking,
+    handleWorkflowAdd,
+    handleWorkflowRemove,
     handleWorkflowChange,
+    handleNodesUpdate,
     handleNodeHover,
+    handleNodeLocking,
+    handleEdgesUpdate,
     handleEdgeHover,
-  } = useHooks({ workflows });
+  } = useHooks();
 
   return (
-    <div className="relative flex flex-1">
-      <LeftPanel data={currentWorkflow} />
-      <div className="flex flex-1 flex-col">
-        <OverlayUI hoveredDetails={hoveredDetails}>
-          <Canvas
-            workflow={currentWorkflow}
-            lockedNodeIds={lockedNodeIds}
-            canvasLock={!!locallyLockedNode}
-            onNodeLocking={handleNodeLocking}
-            onNodeHover={handleNodeHover}
-            onEdgeHover={handleEdgeHover}
+    <div className="flex h-screen flex-col bg-zinc-900 text-zinc-300">
+      <div className="relative flex flex-1">
+        <LeftPanel nodes={nodes} />
+        <div className="flex flex-1 flex-col">
+          <OverlayUI hoveredDetails={hoveredDetails}>
+            <Canvas
+              nodes={nodes}
+              edges={edges}
+              canvasLock={!!locallyLockedNode}
+              onNodesUpdate={handleNodesUpdate}
+              onNodeHover={handleNodeHover}
+              onNodeLocking={handleNodeLocking}
+              onEdgesUpdate={handleEdgesUpdate}
+              onEdgeHover={handleEdgeHover}
+            />
+          </OverlayUI>
+          <BottomPanel
+            currentWorkflowId={currentWorkflowId}
+            workflows={workflows}
+            onWorkflowAdd={handleWorkflowAdd}
+            onWorkflowRemove={handleWorkflowRemove}
+            onWorkflowChange={handleWorkflowChange}
           />
-        </OverlayUI>
-        <BottomPanel
-          currentWorkflowId={currentWorkflow?.id}
-          onWorkflowChange={handleWorkflowChange}
-        />
+        </div>
+        <RightPanel selected={locallyLockedNode} />
       </div>
-      <RightPanel selected={locallyLockedNode} />
     </div>
   );
 }

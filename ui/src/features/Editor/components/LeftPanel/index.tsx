@@ -7,23 +7,23 @@ import {
   TreeView,
 } from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
 import { UserNavigation } from "@flow/features/TopNavigation/components";
 import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
-import { Workflow } from "@flow/types";
+import type { Node } from "@flow/types";
 
 import { ActionsList, Resources } from "./components";
 
 type Tab = "navigator" | "action-list" | "resources";
 
 type Props = {
-  data?: Workflow;
+  nodes: Node[];
 };
 
-const LeftPanel: React.FC<Props> = ({ data }) => {
+const LeftPanel: React.FC<Props> = ({ nodes }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   // TODO: Temporary for dev. Don't forget to revert
@@ -35,14 +35,14 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
   const [, setDialogType] = useDialogType();
 
   const treeContent: TreeDataItem[] = [
-    ...(data?.nodes
+    ...(nodes
       ?.filter(n => n.type === "reader")
       .map(n => ({
         id: n.id,
         name: n.data.name ?? "untitled",
         icon: Database,
       })) ?? []),
-    ...(data?.nodes
+    ...(nodes
       ?.filter(n => n.type === "writer")
       .map(n => ({
         id: n.id,
@@ -53,7 +53,7 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
       id: "transformer",
       name: t("Transformers"),
       icon: Lightning,
-      children: data?.nodes
+      children: nodes
         ?.filter(n => n.type === "transformer")
         .map(n => ({
           id: n.id,
@@ -68,7 +68,7 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
       id: "navigator",
       title: t("Canvas Navigation"),
       icon: <TreeView className="size-5" weight="thin" />,
-      component: data && (
+      component: nodes && (
         <Tree
           data={treeContent}
           className="w-full shrink-0 truncate rounded px-1 text-zinc-300"
@@ -163,4 +163,4 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
   );
 };
 
-export { LeftPanel };
+export default memo(LeftPanel);

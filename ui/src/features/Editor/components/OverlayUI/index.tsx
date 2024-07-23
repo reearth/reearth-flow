@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { Edge, Node } from "@flow/types";
 
 import { ActionBar, CanvasActionBar, Toolbox, Breadcrumb, Infobar } from "./components";
@@ -22,4 +24,4 @@ const OverlayUI: React.FC<OverlayUIProps> = ({ hoveredDetails, children: canvas 
   );
 };
 
-export { OverlayUI };
+export default memo(OverlayUI);

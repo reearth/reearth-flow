@@ -1,5 +1,5 @@
 import { CornersIn, CornersOut, Globe, Terminal } from "@phosphor-icons/react";
-import { useCallback, useState } from "react";
+import { memo, useCallback, useState } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -10,6 +10,12 @@ import { DataTable, LogConsole, Map } from "./components";
 
 type Props = {
   currentWorkflowId?: string;
+  workflows: {
+    id: string;
+    name: string;
+  }[];
+  onWorkflowAdd: () => void;
+  onWorkflowRemove: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
 };
 
@@ -22,7 +28,13 @@ type PanelContent = {
 
 type WindowSize = "min" | "max";
 
-const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) => {
+const BottomPanel: React.FC<Props> = ({
+  currentWorkflowId,
+  workflows,
+  onWorkflowAdd,
+  onWorkflowRemove,
+  onWorkflowChange,
+}) => {
   const t = useT();
   const [windowSize, setWindowSize] = useState<WindowSize>("min");
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -116,7 +128,13 @@ const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) =
       <div
         id="bottom-edge"
         className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-zinc-900/50">
-        <WorkflowTabs currentWorkflowId={currentWorkflowId} onWorkflowChange={onWorkflowChange} />
+        <WorkflowTabs
+          currentWorkflowId={currentWorkflowId}
+          workflows={workflows}
+          onWorkflowAdd={onWorkflowAdd}
+          onWorkflowRemove={onWorkflowRemove}
+          onWorkflowChange={onWorkflowChange}
+        />
         <div className="h-full border-r border-zinc-700" />
         <div className="mx-4 flex h-full flex-1 items-center justify-end gap-1">
           {!isPanelOpen && (
@@ -132,20 +150,28 @@ const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) =
   );
 };
 
-export { BottomPanel };
+export default memo(BottomPanel);
 
 const BaseActionButtons: React.FC<{
   panelContents?: PanelContent[];
   selected?: PanelContent;
   onSelection?: (content: PanelContent) => void;
-}> = ({ panelContents, selected, onSelection }) => {
-  return panelContents?.map(content => (
-    <div
-      key={content.id}
-      className={`flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-zinc-700/75 hover:text-white ${selected?.id === content.id ? "bg-zinc-700/75 text-white" : undefined}`}
-      onClick={() => onSelection?.(content)}>
-      {content.icon}
-      <p className="text-sm font-thin">{content.title}</p>
-    </div>
-  ));
-};
+}> = memo(({ panelContents, selected, onSelection }) => {
+  return (
+    <>
+      {panelContents?.map(content => (
+        <div
+          key={content.id}
+          className={`flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-zinc-700/75 hover:text-white ${
+            selected?.id === content.id ? "bg-zinc-700/75 text-white" : ""
+          }`}
+          onClick={() => onSelection?.(content)}>
+          {content.icon}
+          <p className="text-sm font-thin">{content.title}</p>
+        </div>
+      ))}
+    </>
+  );
+});
+
+BaseActionButtons.displayName = "BaseActionButtons";

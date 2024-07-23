@@ -1,5 +1,5 @@
-export * from "./ActionBar";
-export * from "./Breadcrumb";
-export * from "./CanvasActionbar";
-export * from "./Infobar";
-export * from "./Toolbox";
+export { default as ActionBar } from "./ActionBar";
+export { default as Breadcrumb } from "./Breadcrumb";
+export { default as CanvasActionBar } from "./CanvasActionbar";
+export { default as Infobar } from "./Infobar";
+export { default as Toolbox } from "./Toolbox";

@@ -1,15 +1,16 @@
 import { DefaultEdgeOptions } from "@xyflow/react";
-import { useCallback, useEffect, useState } from "react";
 
-import { useYjsStore } from "@flow/lib/yjs";
-import type { Node, Workflow } from "@flow/types";
+import type { Edge, Node, Workflow } from "@flow/types";
 
 import useEdges from "./useEdges";
 import useNodes from "./useNodes";
 
 type Props = {
   workflow?: Workflow;
-  lockedNodeIds: string[];
+  nodes: Node[];
+  edges: Edge[];
+  onNodesUpdate: (newNodes: Node[]) => void;
+  onEdgesUpdate: (newEdges: Edge[]) => void;
   onNodeLocking: (nodeId: string, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => void;
 };
 
@@ -30,34 +31,7 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
   // animated: true,
 };
 
-export default ({ workflow, lockedNodeIds, onNodeLocking }: Props) => {
-  const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(workflow?.id ?? "");
-
-  const { nodes, edges, handleNodesUpdate, handleEdgesUpdate } = useYjsStore();
-
-  const processNode = useCallback(
-    (node: Node) => {
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          locked: lockedNodeIds.includes(node.id),
-          onLock: () => onNodeLocking(node.id, nodes, handleNodesUpdate),
-        },
-      };
-    },
-    [nodes, lockedNodeIds, onNodeLocking, handleNodesUpdate],
-  );
-
-  useEffect(() => {
-    if (workflow && workflow.id !== currentWorkflowId) {
-      handleNodesUpdate(workflow.nodes?.map(n => processNode(n)) ?? []);
-      handleEdgesUpdate(workflow.edges ?? []);
-
-      setCurrentWorkflowId(workflow.id);
-    }
-  }, [currentWorkflowId, workflow, processNode, handleNodesUpdate, handleEdgesUpdate]);
-
+export default ({ nodes, edges, onNodeLocking, onNodesUpdate, onEdgesUpdate }: Props) => {
   const {
     handleNodesChange,
     handleNodesDelete,
@@ -67,19 +41,17 @@ export default ({ workflow, lockedNodeIds, onNodeLocking }: Props) => {
   } = useNodes({
     nodes,
     edges,
-    onNodesChange: handleNodesUpdate,
-    onEdgesChange: handleEdgesUpdate,
+    onNodesChange: onNodesUpdate,
+    onEdgesChange: onEdgesUpdate,
     onNodeLocking,
   });
 
   const { handleEdgesChange, handleConnect } = useEdges({
     edges,
-    onEdgeChange: handleEdgesUpdate,
+    onEdgeChange: onEdgesUpdate,
   });
 
   return {
-    nodes,
-    edges,
     handleNodesChange,
     handleNodesDelete,
     handleNodeDragStop,
