@@ -15,9 +15,9 @@ import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 import { Workflow } from "@flow/types";
 
-import { TransformerList, Resources } from "./components";
+import { ActionsList, Resources } from "./components";
 
-type Tab = "navigator" | "transformer-list" | "resources";
+type Tab = "navigator" | "action-list" | "resources";
 
 type Props = {
   data?: Workflow;
@@ -26,8 +26,9 @@ type Props = {
 const LeftPanel: React.FC<Props> = ({ data }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
-  const [isPanelOpen, setPanelOpen] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<Tab>("navigator");
+  // TODO: Temporary for dev. Don't forget to revert
+  const [isPanelOpen, setPanelOpen] = useState(true);
+  const [selectedTab, setSelectedTab] = useState<Tab>("action-list");
 
   const [_content, setContent] = useState("Admin Page");
 
@@ -79,10 +80,10 @@ const LeftPanel: React.FC<Props> = ({ data }) => {
       ),
     },
     {
-      id: "transformer-list",
-      title: t("Transformer list"),
+      id: "action-list",
+      title: t("Action list"),
       icon: <Lightning className="size-5" weight="thin" />,
-      component: <TransformerList />,
+      component: <ActionsList />,
     },
     {
       id: "resources",
