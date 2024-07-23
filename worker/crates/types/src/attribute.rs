@@ -477,10 +477,11 @@ mod tests {
         );
         map.insert("nested".to_string(), AttributeValue::Map(nested_map));
 
-        let keys = all_attribute_keys(&map);
+        let mut keys = all_attribute_keys(&map);
+        keys.sort();
         assert_eq!(
             keys,
-            vec!["key1".to_string(), "nested".to_string(), "key2".to_string()]
+            vec!["key1".to_string(), "key2".to_string(), "nested".to_string()]
         );
     }
 }
