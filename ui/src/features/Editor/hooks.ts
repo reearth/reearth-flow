@@ -1,10 +1,33 @@
 import { MouseEvent, useCallback, useState } from "react";
 
-import type { Edge, Node, Workflow } from "@flow/types";
+import { useYjsStore } from "@flow/lib/yjs";
+import { useCurrentWorkflowId } from "@flow/stores";
+import type { Edge, Node } from "@flow/types";
 import { cancellableDebounce } from "@flow/utils";
 
-export default ({ workflows }: { workflows?: Workflow[] }) => {
-  const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | undefined>(workflows?.[0]);
+export default () => {
+  const [currentWorkflowId, setCurrentWorkflowId] = useCurrentWorkflowId();
+
+  const handleWorkflowIdChange = useCallback(
+    (id?: string) => {
+      if (!id) return setCurrentWorkflowId(undefined);
+      setCurrentWorkflowId(id);
+    },
+    [setCurrentWorkflowId],
+  );
+
+  const {
+    workflows,
+    nodes,
+    edges,
+    handleWorkflowAdd,
+    handleWorkflowRemove,
+    handleNodesUpdate,
+    handleEdgesUpdate,
+  } = useYjsStore({
+    workflowId: currentWorkflowId,
+    handleWorkflowIdChange,
+  });
 
   // Will be used to keep track of all locked nodes, local and for other users (while collaborative editing)
   const [lockedNodeIds, setLockedNodeIds] = useState<string[]>([]);
@@ -44,15 +67,6 @@ export default ({ workflows }: { workflows?: Workflow[] }) => {
     [],
   );
 
-  const handleWorkflowChange = useCallback(
-    (workflowId?: string) => {
-      if (!workflowId) return setCurrentWorkflow(workflows?.[0]);
-      const workflow = workflows?.find(w => w.id === workflowId);
-      setCurrentWorkflow(workflow);
-    },
-    [workflows],
-  );
-
   const [hoveredDetails, setHoveredDetails] = useState<Node | Edge | undefined>();
 
   const hoverActionDebounce = cancellableDebounce((callback: () => void) => callback(), 100);
@@ -81,13 +95,20 @@ export default ({ workflows }: { workflows?: Workflow[] }) => {
   );
 
   return {
-    currentWorkflow,
+    currentWorkflowId,
+    workflows,
+    nodes,
+    edges,
     lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,
-    handleNodeLocking,
-    handleWorkflowChange,
+    handleWorkflowAdd,
+    handleWorkflowRemove,
+    handleWorkflowChange: handleWorkflowIdChange,
+    handleNodesUpdate,
     handleNodeHover,
+    handleNodeLocking,
+    handleEdgesUpdate,
     handleEdgeHover,
   };
 };
