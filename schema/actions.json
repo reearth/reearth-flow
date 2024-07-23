@@ -1388,7 +1388,7 @@
     {
       "name": "PLATEAU.BuildingUsageAttributeValidator",
       "type": "processor",
-      "description": "Validates Building Usage attributes",
+      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [

@@ -462,4 +462,25 @@ mod tests {
         let number2 = Number::from(42);
         assert_eq!(compare_numbers(&number1, &number2), Some(Ordering::Greater));
     }
+
+    #[test]
+    fn test_all_attribute_keys() {
+        let mut map = HashMap::new();
+        map.insert(
+            "key1".to_string(),
+            AttributeValue::String("value1".to_string()),
+        );
+        let mut nested_map = HashMap::new();
+        nested_map.insert(
+            "key2".to_string(),
+            AttributeValue::String("value2".to_string()),
+        );
+        map.insert("nested".to_string(), AttributeValue::Map(nested_map));
+
+        let keys = all_attribute_keys(&map);
+        assert_eq!(
+            keys,
+            vec!["key1".to_string(), "nested".to_string(), "key2".to_string()]
+        );
+    }
 }

@@ -47,7 +47,7 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Validates Building Usage attributes"
+        "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -214,25 +214,27 @@ impl Processor for BuildingUsageAttributeValidator {
             )
             .into());
         };
-        let survey_year = if let Some(AttributeValue::Array(detail_attributes)) =
-            gml_attributes.get("uro:buildingDetailAttribute")
-        {
-            detail_attributes.first().map(|detail_attribute| {
-                if let AttributeValue::Map(details_attribute) = detail_attribute {
-                    if let Some(AttributeValue::String(survey_year)) =
-                        details_attribute.get("uro:surveyYear")
-                    {
-                        survey_year.clone()
-                    } else {
-                        "".to_string()
-                    }
+        let survey_year = gml_attributes
+            .get("uro:buildingDetailAttribute")
+            .and_then(|attr| {
+                if let AttributeValue::Array(detail_attributes) = attr {
+                    detail_attributes.first().and_then(|detail_attribute| {
+                        if let AttributeValue::Map(details_attribute) = detail_attribute {
+                            details_attribute.get("uro:surveyYear").and_then(|year| {
+                                if let AttributeValue::String(survey_year) = year {
+                                    Some(survey_year.clone())
+                                } else {
+                                    None
+                                }
+                            })
+                        } else {
+                            None
+                        }
+                    })
                 } else {
-                    "".to_string()
+                    None
                 }
-            })
-        } else {
-            None
-        };
+            });
         let mut error_messages = Vec::<String>::new();
         let all_keys = feature.all_attribute_keys();
         for (key, value) in USAGE_ATTRIBUTES.iter() {
