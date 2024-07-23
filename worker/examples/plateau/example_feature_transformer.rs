@@ -1,5 +1,5 @@
 mod helper;
 
 fn main() {
-    helper::execute("quality-check/02-bldg/t_bldg_06.yml");
+    helper::execute("quality-check/02-bldg/l_bldg_04_05.yml");
 }
