@@ -1,17 +1,17 @@
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use super::errors::{Result, WsError};
 use super::room::Room;
 
 pub struct AppState {
-    pub rooms: Mutex<HashMap<String, Room>>,
+    pub rooms: Arc<Mutex<HashMap<String, Room>>>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         AppState {
-            rooms: Mutex::new(HashMap::new()),
+            rooms: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 

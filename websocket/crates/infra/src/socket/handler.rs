@@ -2,6 +2,8 @@ use std::{net::SocketAddr, sync::Arc};
 
 use super::errors::{Result, WsError};
 use super::state::AppState;
+use axum::http::{Method, StatusCode, Uri};
+use axum::BoxError;
 use axum::{
     extract::{
         ws::{Message, WebSocket},
@@ -24,7 +26,7 @@ struct FlowMessage {
     event: Event,
 }
 
-pub async fn ws_handler(
+pub async fn handle_upgrade(
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(state): State<Arc<AppState>>,
@@ -84,6 +86,18 @@ async fn handle_message(msg: Message, addr: SocketAddr, state: Arc<AppState>) ->
             }
             Err(WsError::WsError)
         }
+        // reply to ping automatically
         _ => Ok(()),
+    }
+}
+
+pub async fn handle_error(_method: Method, _uri: Uri, err: BoxError) -> (StatusCode, String) {
+    if err.is::<tower::timeout::error::Elapsed>() {
+        (StatusCode::REQUEST_TIMEOUT, "timeout".to_string())
+    } else {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("unhandled error: {err}"),
+        )
     }
 }

@@ -1,19 +1,19 @@
 use std::collections::HashSet;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 
 use super::errors::{Result, WsError};
 
 pub struct Room {
-    users: Mutex<HashSet<String>>,
-    tx: broadcast::Sender<String>,
+    users: Arc<Mutex<HashSet<String>>>,
+    tx: Arc<broadcast::Sender<String>>,
 }
 
 impl Room {
     pub fn new() -> Self {
         Room {
-            users: Mutex::new(HashSet::new()),
-            tx: broadcast::Sender::new(100),
+            users: Arc::new(Mutex::new(HashSet::new())),
+            tx: Arc::new(broadcast::Sender::new(100)),
         }
     }
 
