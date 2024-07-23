@@ -3,39 +3,31 @@ import { memo } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentProject } from "@flow/stores";
 import { Workflow } from "@flow/types";
 
 type Props = {
   currentWorkflowId?: string;
+  workflows: {
+    id: string;
+    name: string;
+  }[];
   onWorkflowChange: (workflowId?: string) => void;
-  // onWorkflowAdd: (projectId?: string) => void;
-  // onWorkflowRemove: (workflowId?: string) => void;
+  onWorkflowAdd: () => void;
+  onWorkflowRemove: (workflowId: string) => void;
 };
 
 const WorkflowTabs: React.FC<Props> = ({
   currentWorkflowId,
-  // onWorkflowAdd,
-  // onWorkflowRemove,
+  workflows,
+  onWorkflowAdd,
+  onWorkflowRemove,
   onWorkflowChange,
 }) => {
   const t = useT();
 
-  const [currentProject] = useCurrentProject();
+  const mainWorkflow = workflows?.[0];
 
-  const mainWorkflow = currentProject?.workflows?.[0];
-
-  const subWorkflows: Workflow[] | undefined = currentProject?.workflows?.slice(1);
-
-  // const handleWorkflowRemove = (workflowId: string) => {
-  //   const newSubWorkflows = subWorkflows?.filter(w => w.id !== workflowId);
-  //   setSubWorkflows(newSubWorkflows);
-  // };
-
-  // const handleWorkflowAdd = () => {
-  //   const newWorkflow = generateWorkflows(1)[0];
-  //   setSubWorkflows([...(subWorkflows ?? []), newWorkflow]);
-  // };
+  const subWorkflows: Workflow[] | undefined = workflows?.slice(1);
 
   return (
     <div className="w-[75vw] bg-zinc-800">
@@ -58,7 +50,7 @@ const WorkflowTabs: React.FC<Props> = ({
                 onClick={() => onWorkflowChange(sw.id)}>
                 <X
                   className="absolute right-[2px] hidden size-[15px] group-hover:block group-hover:bg-zinc-600"
-                  // onClick={() => onWorkflowRemove(sw.id)}
+                  onClick={() => onWorkflowRemove(sw.id)}
                 />
                 <p
                   className={`truncate text-center text-xs font-extralight group-hover:text-zinc-300 ${currentWorkflowId === sw?.id && "text-zinc-300"}`}>
@@ -72,7 +64,7 @@ const WorkflowTabs: React.FC<Props> = ({
             className="h-[25px]"
             icon={<Plus weight="light" />}
             tooltipText={t("Create new sub workflow")}
-            // onClick={() => onWorkflowAdd(currentProject?.id)}
+            onClick={() => onWorkflowAdd()}
           />
         </div>
       </div>
