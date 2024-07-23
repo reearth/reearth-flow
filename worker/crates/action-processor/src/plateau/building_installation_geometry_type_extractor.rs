@@ -56,7 +56,7 @@ impl ProcessorFactory for BuildingInstallationGeometryTypeExtractorFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct BuildingInstallationGeometryTypeExtractor {}
+pub struct BuildingInstallationGeometryTypeExtractor;
 
 impl Processor for BuildingInstallationGeometryTypeExtractor {
     fn initialize(&mut self, _ctx: NodeContext) {}

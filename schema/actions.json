@@ -1386,6 +1386,24 @@
       ]
     },
     {
+      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "type": "processor",
+      "description": "Validates Building Usage attributes",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "lBldgError",
+        "codeError",
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU.DictionariesInitiator",
       "type": "processor",
       "description": "Initializes dictionaries for PLATEAU",

@@ -376,6 +376,17 @@ fn compare_numbers(n1: &Number, n2: &Number) -> Option<Ordering> {
     None
 }
 
+pub(crate) fn all_attribute_keys(items: &HashMap<String, AttributeValue>) -> Vec<String> {
+    let mut keys = Vec::new();
+    for (key, value) in items {
+        keys.push(key.clone());
+        if let AttributeValue::Map(map) = value {
+            keys.extend(all_attribute_keys(map));
+        }
+    }
+    keys
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
