@@ -37,13 +37,13 @@ const WorkflowTabs: React.FC<Props> = ({
   // };
 
   return (
-    <div className="w-[75vw] bg-background-800">
-      <div className="flex h-[29px] flex-1 items-center bg-background-900/50">
+    <div className="w-[75vw]">
+      <div className="flex h-[29px] flex-1 items-center">
         <div
-          className={`mx-1 flex w-28 cursor-pointer items-center justify-center rounded px-[6px] py-[2px] text-zinc-400 ${currentWorkflowId === mainWorkflow?.id ? "bg-background-700 text-zinc-300" : "hover:bg-background-600"}`}
+          className={`mx-1 flex w-28 cursor-pointer items-center justify-center rounded px-[6px] py-[2px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"}`}
           onClick={() => onWorkflowChange(mainWorkflow?.id)}>
           <p
-            className={`truncate text-center text-xs font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-zinc-300"}`}>
+            className={`truncate text-center text-xs font-extralight ${currentWorkflowId === mainWorkflow?.id && "bg-primary/50"}`}>
             {t("Main Workflow")}
           </p>
         </div>
@@ -53,14 +53,14 @@ const WorkflowTabs: React.FC<Props> = ({
             subWorkflows.map(sw => (
               <div
                 key={sw.id}
-                className={`relative flex w-28 items-center justify-center rounded px-[6px] py-[2px] text-zinc-400 transition-colors ${currentWorkflowId === sw?.id ? "bg-background-700" : "hover:bg-background-600 hover:text-zinc-300"} group cursor-pointer`}
+                className={`relative flex w-28 items-center justify-center rounded px-[6px] py-[2px] transition-colors ${currentWorkflowId === sw?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"} group cursor-pointer`}
                 onClick={() => onWorkflowChange(sw.id)}>
                 <X
-                  className="absolute right-[2px] hidden size-[15px] group-hover:block group-hover:bg-background-600"
+                  className="absolute right-[2px] hidden size-[15px] group-hover:block group-hover:bg-primary/50"
                   // onClick={() => onWorkflowRemove(sw.id)}
                 />
                 <p
-                  className={`truncate text-center text-xs font-extralight group-hover:text-zinc-300 ${currentWorkflowId === sw?.id && "text-zinc-300"}`}>
+                  className={`truncate text-center text-xs font-extralight group-hover:text-primary/50 ${currentWorkflowId === sw?.id && "text-primary/50"}`}>
                   {sw.name}
                 </p>
               </div>
