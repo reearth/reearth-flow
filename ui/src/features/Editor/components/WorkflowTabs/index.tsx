@@ -29,6 +29,12 @@ const WorkflowTabs: React.FC<Props> = ({
 
   const subWorkflows: Workflow[] | undefined = workflows?.slice(1);
 
+  const handleWorkflowRemove =
+    (workflowId: string) => (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+      e.stopPropagation();
+      onWorkflowRemove(workflowId);
+    };
+
   return (
     <div className="w-[75vw] bg-zinc-800">
       <div className="flex h-[29px] flex-1 items-center bg-zinc-900/50">
@@ -50,7 +56,7 @@ const WorkflowTabs: React.FC<Props> = ({
                 onClick={() => onWorkflowChange(sw.id)}>
                 <X
                   className="absolute right-[2px] hidden size-[15px] group-hover:block group-hover:bg-zinc-600"
-                  onClick={() => onWorkflowRemove(sw.id)}
+                  onClick={handleWorkflowRemove(sw.id)}
                 />
                 <p
                   className={`truncate text-center text-xs font-extralight group-hover:text-zinc-300 ${currentWorkflowId === sw?.id && "text-zinc-300"}`}>

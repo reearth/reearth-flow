@@ -45,11 +45,9 @@ export default ({
   const edges = useY(yWorkflow?.get("edges") ?? new Y.Array<Edge>()) as Edge[];
 
   const handleWorkflowAdd = useCallback(() => {
+    // New workflow
     const workflowId = yWorkflows.length.toString() + "-workflow";
     const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
-
-    const yWorkflow = yWorkflowBuilder(workflowId, workflowName);
-
     const newEntranceNode: Node = {
       id: randomID(),
       type: "entrance",
@@ -74,14 +72,30 @@ export default ({
         // onLock: onNodeLocking,
       },
     };
-    const yNodes = new Y.Array<Node>();
-    yNodes.insert(0, [newEntranceNode, newExitNode]);
-    yWorkflow.set("nodes", yNodes);
+
+    const yWorkflow = yWorkflowBuilder(workflowId, workflowName, [newEntranceNode, newExitNode]);
+
+    // Update main workflow
+    const newSubworkflowNode: Node = {
+      id: workflowId,
+      type: "subworkflow",
+      position: { x: 600, y: 200 },
+      data: {
+        name: workflowName,
+        status: "idle",
+        inputs: ["source"],
+        outputs: ["target"],
+        // locked: false,
+        // onLock: onNodeLocking,
+      },
+    };
+    const mainWorkflow = yWorkflows.get(0);
+
+    const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray | undefined;
+    mainWorkflowNodes?.push([newSubworkflowNode]);
 
     yWorkflows.push([yWorkflow]);
-
     setWorkflows(w => [...w, { id: workflowId, name: workflowName }]);
-    // handleWorkflowIdChange(workflowId);
   }, [yWorkflows]);
 
   const handleWorkflowRemove = useCallback(
@@ -93,9 +107,20 @@ export default ({
         handleWorkflowIdChange("main");
       }
       yWorkflows.delete(index);
+
+      // Remove subworkflow node from main workflow
+      const mainWorkflow = yWorkflows.get(0);
+      const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray | undefined;
+      const subworkflowIndex = mainWorkflowNodes
+        ?.toJSON()
+        .findIndex((n: Node) => n.id === workflowId);
+      if (subworkflowIndex !== undefined && subworkflowIndex !== -1) {
+        mainWorkflowNodes?.delete(subworkflowIndex);
+      }
     },
     [workflows, yWorkflows, currentWorkflowIndex, handleWorkflowIdChange],
   );
+  console.log("id", workflowId);
 
   const handleNodesUpdate = (newNodes: Node[]) => {
     const yNodes = yWorkflow?.get("nodes") as YNodesArray | undefined;
