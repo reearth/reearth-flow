@@ -10,6 +10,7 @@ use tracing_subscriber::EnvFilter;
 use yaml_include::Transformer;
 
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
+use reearth_flow_action_plateau_processor::mapping::ACTION_MAPPINGS as PLATEAU_MAPPINGS;
 use reearth_flow_action_processor::mapping::ACTION_MAPPINGS as PROCESSOR_MAPPINGS;
 use reearth_flow_action_sink::mapping::ACTION_MAPPINGS as SINK_MAPPINGS;
 use reearth_flow_action_source::mapping::ACTION_MAPPINGS as SOURCE_MAPPINGS;
@@ -29,6 +30,16 @@ pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = La
     common.extend(source);
     common.extend(processor);
     common
+});
+
+pub(crate) static PLATEAU_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> =
+    Lazy::new(|| PLATEAU_MAPPINGS.clone());
+
+pub(crate) static ALL_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+    let mut all = HashMap::new();
+    all.extend(BUILTIN_ACTION_FACTORIES.clone());
+    all.extend(PLATEAU_ACTION_FACTORIES.clone());
+    all
 });
 
 #[allow(dead_code)]
@@ -60,7 +71,7 @@ pub(crate) fn execute(workflow: &str) {
     Runner::run(
         job_id.to_string(),
         workflow,
-        BUILTIN_ACTION_FACTORIES.clone(),
+        ALL_ACTION_FACTORIES.clone(),
         logger_factory,
         storage_resolver,
         state,

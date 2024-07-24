@@ -4,7 +4,7 @@ use clap::Command;
 use reearth_flow_runtime::node::{NodeKind, RouterFactory};
 use serde::{Deserialize, Serialize};
 
-use crate::factory::BUILTIN_ACTION_FACTORIES;
+use crate::factory::{BUILTIN_ACTION_FACTORIES, PLATEAU_ACTION_FACTORIES};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -70,8 +70,14 @@ impl SchemaActionCliCommand {
         let mut actions = builtin_action_factories
             .clone()
             .values()
-            .map(create_action_schema)
+            .map(|kind| create_action_schema(kind, true))
             .collect::<Vec<_>>();
+        let plateau_actions = PLATEAU_ACTION_FACTORIES
+            .clone()
+            .values()
+            .map(|kind| create_action_schema(kind, false))
+            .collect::<Vec<_>>();
+        actions.extend(plateau_actions);
         actions.sort_by(|a, b| a.name.cmp(&b.name));
         let root = RootActionSchema { actions };
         println!("{}", serde_json::to_string_pretty(&root).unwrap());
@@ -79,7 +85,7 @@ impl SchemaActionCliCommand {
     }
 }
 
-fn create_action_schema(kind: &NodeKind) -> ActionSchema {
+fn create_action_schema(kind: &NodeKind, builtin: bool) -> ActionSchema {
     let (name, description, parameter, input_ports, output_ports, categories) = match kind {
         NodeKind::Source(factory) => (
             factory.name().to_string(),
@@ -144,7 +150,7 @@ fn create_action_schema(kind: &NodeKind) -> ActionSchema {
         },
         description,
         parameter,
-        true,
+        builtin,
         input_ports,
         output_ports,
         categories,
