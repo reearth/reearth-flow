@@ -53,11 +53,11 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
       onEscapeKeyDown={e => disableClickAway && e.preventDefault()}>
       <div className="flex">
         {content.length > 1 && (
-          <div className={`flex flex-col gap-4 border-r border-zinc-800 px-5 py-6`}>
+          <div className={`flex flex-col gap-4 border-r px-5 py-6`}>
             {content.map(c => (
               <IconButton
                 key={c.id}
-                className={`${tab === c.id ? "bg-background-800" : undefined}`}
+                className={`${tab === c.id ? "bg-popover" : undefined}`}
                 tooltipText={c.title}
                 tooltipPosition="left"
                 tooltipOffset={20}
