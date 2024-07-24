@@ -87,10 +87,10 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-8 p-8">
-        <div className="flex items-center justify-between gap-2 border-b border-zinc-700 pb-4">
+        <div className="flex items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg font-extralight">{t("Projects")}</p>
           <Button
-            className="flex gap-2 bg-background-800 text-zinc-300 hover:bg-background-700 hover:text-zinc-300"
+            className="flex gap-2"
             variant="outline"
             onClick={() => setDialogType("add-project")}>
             <Plus weight="thin" />
@@ -103,7 +103,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger>
                   <Card
-                    className={`cursor-pointer bg-background-900/50 ${currentProject && currentProject.id === p.id ? "border-zinc-600" : "hover:border-zinc-600"}`}
+                    className={`cursor-pointer bg-secondary ${currentProject && currentProject.id === p.id ? "" : "hover:border-primary/50"}`}
                     key={p.id}
                     onClick={() => handleProjectSelect(p)}>
                     <CardContent className="rounded p-0">
