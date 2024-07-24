@@ -10,12 +10,12 @@ import { DataTable, LogConsole, Map } from "./components";
 
 type Props = {
   currentWorkflowId?: string;
-  workflows: {
+  openWorkflows: {
     id: string;
     name: string;
   }[];
+  onWorkflowClose: (workflowId: string) => void;
   onWorkflowAdd: () => void;
-  onWorkflowRemove: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
 };
 
@@ -30,9 +30,9 @@ type WindowSize = "min" | "max";
 
 const BottomPanel: React.FC<Props> = ({
   currentWorkflowId,
-  workflows,
+  openWorkflows,
+  onWorkflowClose,
   onWorkflowAdd,
-  onWorkflowRemove,
   onWorkflowChange,
 }) => {
   const t = useT();
@@ -130,9 +130,9 @@ const BottomPanel: React.FC<Props> = ({
         className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-zinc-900/50">
         <WorkflowTabs
           currentWorkflowId={currentWorkflowId}
-          workflows={workflows}
+          openWorkflows={openWorkflows}
+          onWorkflowClose={onWorkflowClose}
           onWorkflowAdd={onWorkflowAdd}
-          onWorkflowRemove={onWorkflowRemove}
           onWorkflowChange={onWorkflowChange}
         />
         <div className="h-full border-r border-zinc-700" />

@@ -17,11 +17,11 @@ export default () => {
   );
 
   const {
-    workflows,
+    openWorkflows,
     nodes,
     edges,
     handleWorkflowAdd,
-    handleWorkflowRemove,
+    handleWorkflowClose,
     handleNodesUpdate,
     handleEdgesUpdate,
   } = useYjsStore({
@@ -96,14 +96,14 @@ export default () => {
 
   return {
     currentWorkflowId,
-    workflows,
+    openWorkflows,
     nodes,
     edges,
     lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,
+    handleWorkflowClose,
     handleWorkflowAdd,
-    handleWorkflowRemove,
     handleWorkflowChange: handleWorkflowIdChange,
     handleNodesUpdate,
     handleNodeHover,

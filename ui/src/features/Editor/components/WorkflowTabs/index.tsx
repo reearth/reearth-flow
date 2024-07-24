@@ -7,32 +7,32 @@ import { Workflow } from "@flow/types";
 
 type Props = {
   currentWorkflowId?: string;
-  workflows: {
+  openWorkflows: {
     id: string;
     name: string;
   }[];
+  onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
   onWorkflowAdd: () => void;
-  onWorkflowRemove: (workflowId: string) => void;
 };
 
 const WorkflowTabs: React.FC<Props> = ({
   currentWorkflowId,
-  workflows,
+  openWorkflows,
+  onWorkflowClose,
   onWorkflowAdd,
-  onWorkflowRemove,
   onWorkflowChange,
 }) => {
   const t = useT();
 
-  const mainWorkflow = workflows?.[0];
+  const mainWorkflow = openWorkflows?.[0];
 
-  const subWorkflows: Workflow[] | undefined = workflows?.slice(1);
+  const subWorkflows: Workflow[] | undefined = openWorkflows?.slice(1);
 
-  const handleWorkflowRemove =
+  const handleWorkflowClose =
     (workflowId: string) => (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
       e.stopPropagation();
-      onWorkflowRemove(workflowId);
+      onWorkflowClose(workflowId);
     };
 
   return (
@@ -56,7 +56,7 @@ const WorkflowTabs: React.FC<Props> = ({
                 onClick={() => onWorkflowChange(sw.id)}>
                 <X
                   className="absolute right-[2px] hidden size-[15px] group-hover:block group-hover:bg-zinc-600"
-                  onClick={handleWorkflowRemove(sw.id)}
+                  onClick={handleWorkflowClose(sw.id)}
                 />
                 <p
                   className={`truncate text-center text-xs font-extralight group-hover:text-zinc-300 ${currentWorkflowId === sw?.id && "text-zinc-300"}`}>

@@ -22,21 +22,23 @@ const typeIconClasses = "w-[10px] h-[100%]";
 const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, selected, id }) => {
   // const [hovered, setHovered] = useState(false);
 
-  const { name, status, inputs, outputs, locked, onLock } = data;
+  const { name, status, inputs, outputs, locked, onDoubleClick } = data;
+
+  console.log("data", data);
 
   const [hardSelect, setHardSelect] = useState<boolean>(!!locked);
 
   const [_, handleDoubleClick] = useDoubleClick(undefined, () => {
     setHardSelect(!hardSelect);
-    onLock?.(id);
+    onDoubleClick?.(id);
   });
 
   useEffect(() => {
     if (!selected && hardSelect) {
       setHardSelect(false);
-      onLock?.(id);
+      onDoubleClick?.(id);
     }
-  }, [id, selected, hardSelect, onLock]);
+  }, [id, selected, hardSelect, onDoubleClick]);
   // console.log("D", data);
   // const onChange = useCallback(
   //   (evt: any) => {

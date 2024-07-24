@@ -16,7 +16,7 @@ export default ({
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
   const [{ yWorkflows }] = useState(() => {
-    // TODO: setup middleware/websocket provider and conditionally create new yDoc if no yDoc exists
+    // TODO: setup middleware/websocket provider
     const yDoc = new Y.Doc();
     const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
     const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
@@ -32,6 +32,39 @@ export default ({
       id: fromYjsText(w2?.id as Y.Text),
       name: fromYjsText(w2?.name as Y.Text),
     })),
+  );
+
+  const [openWorkflowIds, setOpenWorkflowIds] = useState<string[]>(
+    workflows.filter(w => w.id === "main").map(w => w.id),
+  );
+
+  const openWorkflows: {
+    id: string;
+    name: string;
+  }[] = useMemo(
+    () => workflows.filter(w => openWorkflowIds.includes(w.id)),
+    [workflows, openWorkflowIds],
+  );
+
+  const handleWorkflowOpen = useCallback(
+    (workflowId: string) => {
+      setOpenWorkflowIds(ids => {
+        handleWorkflowIdChange(workflowId);
+        if (ids.includes(workflowId)) return ids;
+        return [...ids, workflowId];
+      });
+    },
+    [handleWorkflowIdChange],
+  );
+
+  const handleWorkflowClose = useCallback(
+    (workflowId: string) => {
+      setOpenWorkflowIds(ids => ids.filter(id => id !== workflowId));
+      if (workflowId === "main") {
+        handleWorkflowIdChange("main");
+      }
+    },
+    [handleWorkflowIdChange],
   );
 
   const currentWorkflowIndex = useMemo(
@@ -85,8 +118,7 @@ export default ({
         status: "idle",
         inputs: ["source"],
         outputs: ["target"],
-        // locked: false,
-        // onLock: onNodeLocking,
+        onDoubleClick: handleWorkflowOpen,
       },
     };
     const mainWorkflow = yWorkflows.get(0);
@@ -96,7 +128,8 @@ export default ({
 
     yWorkflows.push([yWorkflow]);
     setWorkflows(w => [...w, { id: workflowId, name: workflowName }]);
-  }, [yWorkflows]);
+    setOpenWorkflowIds(ids => [...ids, workflowId]);
+  }, [yWorkflows, handleWorkflowOpen]);
 
   const handleWorkflowRemove = useCallback(
     (workflowId: string) => {
@@ -136,7 +169,8 @@ export default ({
   return {
     nodes,
     edges,
-    workflows,
+    openWorkflows,
+    handleWorkflowClose,
     handleWorkflowAdd,
     handleWorkflowRemove,
     handleNodesUpdate,
