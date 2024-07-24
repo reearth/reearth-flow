@@ -120,7 +120,6 @@ export default ({
     },
     [workflows, yWorkflows, currentWorkflowIndex, handleWorkflowIdChange],
   );
-  console.log("id", workflowId);
 
   const handleNodesUpdate = (newNodes: Node[]) => {
     const yNodes = yWorkflow?.get("nodes") as YNodesArray | undefined;
