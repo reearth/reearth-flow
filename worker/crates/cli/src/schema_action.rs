@@ -80,76 +80,73 @@ impl SchemaActionCliCommand {
 }
 
 fn create_action_schema(kind: &NodeKind) -> ActionSchema {
-    match kind {
-        NodeKind::Source(factory) => {
-            let parameter = match factory.parameter_schema() {
-                Some(schema) => {
+    let (name, description, parameter, input_ports, output_ports, categories) = match kind {
+        NodeKind::Source(factory) => (
+            factory.name().to_string(),
+            factory.description().to_string(),
+            factory
+                .parameter_schema()
+                .map_or(serde_json::Value::Null, |schema| {
                     serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str()).unwrap()
-                }
-                None => serde_json::Value::Null,
-            };
-            ActionSchema::new(
-                factory.name().to_string(),
-                "source".to_string(),
-                factory.description().to_string(),
-                parameter,
-                true,
-                vec![],
-                factory
-                    .get_output_ports()
-                    .iter()
-                    .map(|p| p.to_string())
-                    .collect(),
-                factory.categories().iter().map(|c| c.to_string()).collect(),
-            )
-        }
-        NodeKind::Processor(factory) => {
-            let parameter = match factory.parameter_schema() {
-                Some(schema) => {
+                }),
+            vec![],
+            factory
+                .get_output_ports()
+                .iter()
+                .map(|p| p.to_string())
+                .collect(),
+            factory.categories().iter().map(|c| c.to_string()).collect(),
+        ),
+        NodeKind::Processor(factory) => (
+            factory.name().to_string(),
+            factory.description().to_string(),
+            factory
+                .parameter_schema()
+                .map_or(serde_json::Value::Null, |schema| {
                     serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str()).unwrap()
-                }
-                None => serde_json::Value::Null,
-            };
-            ActionSchema::new(
-                factory.name().to_string(),
-                "processor".to_string(),
-                factory.description().to_string(),
-                parameter,
-                true,
-                factory
-                    .get_input_ports()
-                    .iter()
-                    .map(|p| p.to_string())
-                    .collect(),
-                factory
-                    .get_output_ports()
-                    .iter()
-                    .map(|p| p.to_string())
-                    .collect(),
-                factory.categories().iter().map(|c| c.to_string()).collect(),
-            )
-        }
-        NodeKind::Sink(factory) => {
-            let parameter = match factory.parameter_schema() {
-                Some(schema) => {
+                }),
+            factory
+                .get_input_ports()
+                .iter()
+                .map(|p| p.to_string())
+                .collect(),
+            factory
+                .get_output_ports()
+                .iter()
+                .map(|p| p.to_string())
+                .collect(),
+            factory.categories().iter().map(|c| c.to_string()).collect(),
+        ),
+        NodeKind::Sink(factory) => (
+            factory.name().to_string(),
+            factory.description().to_string(),
+            factory
+                .parameter_schema()
+                .map_or(serde_json::Value::Null, |schema| {
                     serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str()).unwrap()
-                }
-                None => serde_json::Value::Null,
-            };
-            ActionSchema::new(
-                factory.name().to_string(),
-                "sink".to_string(),
-                factory.description().to_string(),
-                parameter,
-                true,
-                factory
-                    .get_input_ports()
-                    .iter()
-                    .map(|p| p.to_string())
-                    .collect(),
-                vec![],
-                factory.categories().iter().map(|c| c.to_string()).collect(),
-            )
-        }
-    }
+                }),
+            factory
+                .get_input_ports()
+                .iter()
+                .map(|p| p.to_string())
+                .collect(),
+            vec![],
+            factory.categories().iter().map(|c| c.to_string()).collect(),
+        ),
+    };
+
+    ActionSchema::new(
+        name,
+        match kind {
+            NodeKind::Source(_) => "source".to_string(),
+            NodeKind::Processor(_) => "processor".to_string(),
+            NodeKind::Sink(_) => "sink".to_string(),
+        },
+        description,
+        parameter,
+        true,
+        input_ports,
+        output_ports,
+        categories,
+    )
 }
