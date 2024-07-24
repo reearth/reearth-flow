@@ -11,6 +11,8 @@ use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve;
 
+use crate::factory::BUILTIN_ACTION_FACTORIES;
+
 pub fn build_run_command() -> Command {
     Command::new("run")
         .about("Start a workflow.")
@@ -160,6 +162,7 @@ impl RunCliCommand {
         Runner::run(
             job_id.to_string(),
             workflow,
+            BUILTIN_ACTION_FACTORIES.clone(),
             logger_factory,
             storage_resolver,
             state,

@@ -1,13 +1,14 @@
 use std::io;
 
 use clap::{Arg, ArgMatches, Command};
-use reearth_flow_runner::executor::ACTION_MAPPINGS;
 use reearth_flow_runtime::dag_schemas::DagSchemas;
 use reearth_flow_types::Workflow;
 use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve;
+
+use crate::factory::BUILTIN_ACTION_FACTORIES;
 
 pub fn build_dot_command() -> Command {
     Command::new("dot")
@@ -57,7 +58,7 @@ impl DotCliCommand {
         let dag = DagSchemas::from_graphs(
             workflow.entry_graph_id,
             workflow.graphs,
-            ACTION_MAPPINGS.clone(),
+            BUILTIN_ACTION_FACTORIES.clone(),
             None,
         );
         println!("{}", dag.to_dot());

@@ -39,11 +39,10 @@ impl DagExecutor {
         entry_graph_id: uuid::Uuid,
         graphs: Vec<Graph>,
         options: ExecutorOptions,
-        action_mappings: HashMap<String, crate::node::NodeKind>,
+        factories: HashMap<String, crate::node::NodeKind>,
         global_params: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<Self, ExecutionError> {
-        let dag_schemas =
-            DagSchemas::from_graphs(entry_graph_id, graphs, action_mappings, global_params);
+        let dag_schemas = DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params);
         let builder_dag = BuilderDag::new(ctx, dag_schemas, options.event_hub_capacity).await?;
 
         Ok(Self {
