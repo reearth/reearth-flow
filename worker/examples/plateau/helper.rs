@@ -1,9 +1,8 @@
+use std::collections::HashMap;
 use std::{env, fs, path::Path, sync::Arc};
 
 use directories::ProjectDirs;
-use reearth_flow_runner::runner::Runner;
-use reearth_flow_state::State;
-use reearth_flow_types::Workflow;
+use once_cell::sync::Lazy;
 use tracing::Level;
 use tracing_subscriber::fmt::time::UtcTime;
 use tracing_subscriber::prelude::*;
@@ -11,8 +10,26 @@ use tracing_subscriber::EnvFilter;
 use yaml_include::Transformer;
 
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
+use reearth_flow_action_processor::mapping::ACTION_MAPPINGS as PROCESSOR_MAPPINGS;
+use reearth_flow_action_sink::mapping::ACTION_MAPPINGS as SINK_MAPPINGS;
+use reearth_flow_action_source::mapping::ACTION_MAPPINGS as SOURCE_MAPPINGS;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_runner::runner::Runner;
+use reearth_flow_runtime::node::NodeKind;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
+use reearth_flow_types::Workflow;
+
+pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+    let mut common = HashMap::new();
+    let sink = SINK_MAPPINGS.clone();
+    let source = SOURCE_MAPPINGS.clone();
+    let processor = PROCESSOR_MAPPINGS.clone();
+    common.extend(sink);
+    common.extend(source);
+    common.extend(processor);
+    common
+});
 
 #[allow(dead_code)]
 pub(crate) fn execute(workflow: &str) {
@@ -43,6 +60,7 @@ pub(crate) fn execute(workflow: &str) {
     Runner::run(
         job_id.to_string(),
         workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
         logger_factory,
         storage_resolver,
         state,

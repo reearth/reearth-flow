@@ -12,9 +12,6 @@ version.workspace = true
 
 [dependencies]
 reearth-flow-action-log.workspace = true
-reearth-flow-action-processor.workspace = true
-reearth-flow-action-sink.workspace = true
-reearth-flow-action-source.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
 reearth-flow-runtime.workspace = true
