@@ -1358,7 +1358,7 @@
       "type": "processor",
       "description": "AttributeFlattener",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1374,7 +1374,7 @@
       "type": "processor",
       "description": "Extracts BuildingInstallationGeometryType",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1390,7 +1390,7 @@
       "type": "processor",
       "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1408,7 +1408,7 @@
       "type": "processor",
       "description": "Initializes dictionaries for PLATEAU",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1425,7 +1425,7 @@
       "type": "processor",
       "description": "Validates domain of definition of CityGML features",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1442,7 +1442,7 @@
       "type": "processor",
       "description": "Extracts maxLod",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1458,7 +1458,7 @@
       "type": "processor",
       "description": "Extracts UDX folders from cityGML path",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1475,7 +1475,7 @@
       "type": "processor",
       "description": "Detect unmatched xlink for PLATEAU",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1493,7 +1493,7 @@
       "type": "processor",
       "description": "Extracts attributes from XML fragments based on a schema definition",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
