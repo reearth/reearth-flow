@@ -58,27 +58,27 @@ const Runs: React.FC = () => {
   ];
 
   return (
-    <div className="flex h-screen flex-col bg-background-800 text-zinc-300">
+    <div className="flex h-screen flex-col">
       <TopNavigation />
       <div className="flex flex-1">
-        <div className="flex w-[250px] flex-col gap-3 border-r border-zinc-700 bg-background-900/50 px-2 py-4">
+        <div className="flex w-[250px] flex-col gap-3 border-r bg-secondary px-2 py-4">
           <div className="flex p-2">
             <Button
               className="flex-1 gap-2"
               size="sm"
-              // variant="ghost"
+              variant="outline"
               onClick={() => handleTabChange("manual")}>
               <Play />
               <p className="font-extralight">{t("Manual Run")}</p>
             </Button>
           </div>
           <div className="flex-1">
-            <p className="border-b border-zinc-700 px-4 py-2 text-lg font-thin">{t("Status")}</p>
+            <p className="border-b  px-4 py-2 text-lg font-thin">{t("Status")}</p>
             <div className="flex flex-col gap-4 p-4">
               {statuses.map(({ id, name }) => (
                 <div
                   key={id}
-                  className={`-mx-2 -my-1 flex justify-between rounded-md border-l-2 border-transparent px-2 py-1 hover:cursor-pointer hover:bg-background-700/50 ${tab === id ? "border-red-800/50 bg-background-700/50 text-white" : undefined}`}
+                  className={`-mx-2 -my-1 flex justify-between rounded-md border-l-2 border-transparent px-2 py-1 hover:cursor-pointer hover:bg-accent ${tab === id ? "bg-accent text-accent-foreground" : undefined}`}
                   onClick={() => handleTabChange(id)}>
                   <p className="font-thin">{name}</p>
                 </div>
