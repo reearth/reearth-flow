@@ -108,8 +108,8 @@ const MembersSettings: React.FC = () => {
             {t("Add Member")}
           </Button>
         </div>
-        <div className="rounded border border-zinc-700 font-extralight">
-          <div className="flex h-[42px] items-center justify-between gap-2 border-b border-zinc-700 p-2">
+        <div className="rounded border font-extralight">
+          <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
             <div className="flex items-center gap-2">
               <User weight="thin" />
               <p>{`${members?.length} ${t("Members")}`}</p>
@@ -125,7 +125,7 @@ const MembersSettings: React.FC = () => {
                   {filters.map((filter, idx) => (
                     <DropdownMenuItem
                       key={idx}
-                      className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-background-700/50" : undefined}`}
+                      className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
                       onClick={() => setFilter(filter.id)}>
                       {filter.title}
                     </DropdownMenuItem>

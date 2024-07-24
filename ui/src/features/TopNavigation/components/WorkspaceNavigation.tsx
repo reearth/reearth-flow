@@ -26,26 +26,23 @@ const WorkspaceNavigation: React.FC = () => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="-mx-2 flex max-w-[30vw] items-center rounded-md px-2 py-1 hover:bg-background-700/50">
+      <DropdownMenuTrigger className="-mx-2 flex max-w-[30vw] items-center rounded-md px-2 py-1 hover:bg-background">
         <p className="truncate text-lg font-thin">{currentWorkspace?.name}</p>
         <div className="ml-2">
           <CaretDown size="12px" />
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="min-w-[150px] max-w-[300px] border bg-background-800"
+        className="min-w-[150px] max-w-[300px] border"
         sideOffset={5}
         align="center">
         <DropdownMenuGroup className="max-h-[300px] overflow-auto">
           {workspaces?.map(workspace => (
             <DropdownMenuItem
               key={workspace.id}
-              className={cn(
-                "rounded-md my-1",
-                currentWorkspace?.id === workspace.id ? "bg-background-700/50" : undefined,
-              )}
+              className={`my-1 rounded-md  ${currentWorkspace?.id === workspace.id ? "bg-accent" : ""}`}
               onClick={() => handleWorkspaceChange(workspace)}>
-              <p className="w-full truncate text-center font-thin">{workspace.name}</p>
+              <p className="w-full truncate text-center">{workspace.name}</p>
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>

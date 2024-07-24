@@ -43,7 +43,7 @@ const WorkflowTabs: React.FC<Props> = ({
           className={`mx-1 flex w-28 cursor-pointer items-center justify-center rounded px-[6px] py-[2px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"}`}
           onClick={() => onWorkflowChange(mainWorkflow?.id)}>
           <p
-            className={`truncate text-center text-xs font-extralight ${currentWorkflowId === mainWorkflow?.id && "bg-primary/50"}`}>
+            className={`truncate text-center text-xs font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-primary/50"}`}>
             {t("Main Workflow")}
           </p>
         </div>

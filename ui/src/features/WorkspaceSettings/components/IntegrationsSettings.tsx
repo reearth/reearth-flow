@@ -46,13 +46,13 @@ const IntegrationsSettings: React.FC = () => {
       <div className="mt-4 flex max-w-[800px] flex-col gap-6">
         <div className="flex justify-between">
           <p className="text-lg font-extralight">{t("Integrations Settings")}</p>
-          <Button>{t("Connect Integration")}</Button>
+          <Button variant="outline">{t("Connect Integration")}</Button>
         </div>
-        <div className="rounded border border-zinc-700 font-extralight">
-          <div className="flex h-[42px] items-center justify-between gap-2 border-b border-zinc-700 p-2">
+        <div className="rounded border font-extralight">
+          <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
             <div className="flex items-center gap-2">
               <Checkbox
-                className="mx-2 border-zinc-600"
+                className="mx-2"
                 checked={selectedIntegrations.length === integrations.length}
                 onClick={() =>
                   setSelectedIntegrations(
@@ -101,7 +101,7 @@ const IntegrationsSettings: React.FC = () => {
                   {filters.map((filter, idx) => (
                     <DropdownMenuItem
                       key={idx}
-                      className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-background-700/50" : undefined}`}
+                      className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
                       onClick={() => setFilter(filter.id)}>
                       {filter.title}
                     </DropdownMenuItem>
@@ -114,7 +114,6 @@ const IntegrationsSettings: React.FC = () => {
             {integrations.map(integration => (
               <div key={integration.id} className="flex items-center gap-4 px-4 py-2">
                 <Checkbox
-                  className="border-zinc-600"
                   checked={selectedIntegrations.includes(integration.id)}
                   onClick={() =>
                     setSelectedIntegrations(prev =>
