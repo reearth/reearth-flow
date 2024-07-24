@@ -16,6 +16,7 @@ path = "src/main.rs"
 
 [dependencies]
 reearth-flow-action-log.workspace = true
+reearth-flow-action-plateau-processor.workspace = true
 reearth-flow-action-processor.workspace = true
 reearth-flow-action-sink.workspace = true
 reearth-flow-action-source.workspace = true

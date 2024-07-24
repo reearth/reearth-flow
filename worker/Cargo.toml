@@ -37,6 +37,7 @@ strip = true
 
 [workspace.dependencies]
 reearth-flow-action-log = {path = "crates/action-log"}
+reearth-flow-action-plateau-processor = {path = "crates/action-plateau-processor"}
 reearth-flow-action-processor = {path = "crates/action-processor"}
 reearth-flow-action-sink = {path = "crates/action-sink"}
 reearth-flow-action-source = {path = "crates/action-source"}

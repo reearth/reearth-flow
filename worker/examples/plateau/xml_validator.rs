@@ -1,4 +1,4 @@
-use helper::{create_workflow, BUILTIN_ACTION_FACTORIES};
+use helper::{create_workflow, ALL_ACTION_FACTORIES};
 use reearth_flow_runtime::dag_schemas::DagSchemas;
 
 mod helper;
@@ -8,7 +8,7 @@ fn main() {
     let dag = DagSchemas::from_graphs(
         workflow.entry_graph_id,
         workflow.graphs,
-        BUILTIN_ACTION_FACTORIES.clone(),
+        ALL_ACTION_FACTORIES.clone(),
         workflow.with,
     );
     let dot = dag.to_dot();

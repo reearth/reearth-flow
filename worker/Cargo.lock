@@ -2665,6 +2665,49 @@ dependencies = [
 ]
 
 [[package]]
+name = "reearth-flow-action-plateau-processor"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "approx",
+ "async-trait",
+ "bytes",
+ "chrono",
+ "csv",
+ "itertools 0.13.0",
+ "num-traits",
+ "nusamai-citygml",
+ "nusamai-plateau",
+ "nusamai-projection",
+ "once_cell",
+ "opentelemetry 0.24.0",
+ "parking_lot",
+ "petgraph",
+ "pretty_assertions",
+ "quick-xml 0.36.0",
+ "reearth-flow-action-log",
+ "reearth-flow-common",
+ "reearth-flow-eval-expr",
+ "reearth-flow-geometry",
+ "reearth-flow-runtime",
+ "reearth-flow-state",
+ "reearth-flow-storage",
+ "reearth-flow-types",
+ "regex",
+ "rhai",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "typetag",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "reearth-flow-action-processor"
 version = "0.1.0"
 dependencies = [
@@ -2788,6 +2831,7 @@ dependencies = [
  "opentelemetry 0.24.0",
  "opentelemetry_sdk 0.24.0",
  "reearth-flow-action-log",
+ "reearth-flow-action-plateau-processor",
  "reearth-flow-action-processor",
  "reearth-flow-action-sink",
  "reearth-flow-action-source",
@@ -2866,6 +2910,7 @@ dependencies = [
  "once_cell",
  "pretty_assertions",
  "reearth-flow-action-log",
+ "reearth-flow-action-plateau-processor",
  "reearth-flow-action-processor",
  "reearth-flow-action-sink",
  "reearth-flow-action-source",
