@@ -18,10 +18,10 @@ const RunsSection: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-2 border-b border-zinc-700 p-2">
+      <div className="flex items-center justify-between gap-2 border-b  p-2">
         <p className="text-lg font-extralight">{t("Runs")}</p>
         <Button
-          className="flex h-[30px] gap-2 bg-background-800 text-zinc-300 hover:bg-background-700 hover:text-zinc-300"
+          className="flex h-[30px] gap-2"
           variant="outline"
           onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/manual` })}>
           <Play weight="thin" />
@@ -30,21 +30,21 @@ const RunsSection: React.FC = () => {
       </div>
       <div className="flex flex-col gap-1 p-4">
         <div
-          className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-background-800"
+          className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent/50"
           onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/running` })}>
           <p className="font-thin">{t("Running: ")}</p>
           <p className="font-thin">{runningRuns.length}</p>
         </div>
         <div
-          className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-background-800"
+          className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent/50"
           onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/queued` })}>
           <p className="font-thin">{t("Queued: ")}</p>
           <p className="font-thin">{queuedRuns.length}</p>
         </div>
-        <div className="my-1 border-t border-zinc-700" />
+        <div className="my-1 border-t" />
         <div className="flex flex-col">
           <div
-            className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-background-800"
+            className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent/50"
             onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}/runs/completed` })}>
             <p className="font-thin">{t("Completed (today): ")}</p>
             <p className="font-thin">{completeRuns.length + failedRuns.length}</p>
