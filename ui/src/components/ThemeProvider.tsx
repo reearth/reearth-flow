@@ -2,6 +2,9 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "dark" | "light" | "system";
 
+// TODO: Should be 'system' once the light mode is fixed
+const DEFAULT_THEME: Theme = "dark";
+
 type ThemeProviderProps = {
   children: React.ReactNode;
   defaultTheme?: Theme;
@@ -14,7 +17,7 @@ type ThemeProviderState = {
 };
 
 const initialState: ThemeProviderState = {
-  theme: "system",
+  theme: DEFAULT_THEME,
   setTheme: () => null,
 };
 
@@ -22,7 +25,7 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = DEFAULT_THEME,
   storageKey = "vite-ui-theme",
   ...props
 }: ThemeProviderProps) {

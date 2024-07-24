@@ -10,6 +10,7 @@
 }
 
 @layer base {
+  /* TODO: Fix light mode colors and enable light mode */
   :root {
     --background: 0 0% 100%;
     --foreground: 240 4% 16%;
