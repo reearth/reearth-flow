@@ -28,7 +28,7 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
     <>
       <div
         id="right-panel-overlay"
-        className="fixed right-0 size-full border-l border-zinc-700 bg-black/25"
+        className="fixed right-0 size-full border-l bg-black/25"
         style={{
           transform: `translateX(${selected ? "0" : "100%"})`,
           transitionDuration: "0ms",
@@ -44,14 +44,14 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
       </div>
       <div
         id="right-panel"
-        className="fixed right-0 flex h-full w-[350px] border-l border-zinc-700 bg-background-800 transition-all"
+        className="fixed right-0 flex h-full w-[350px] border-l bg-background transition-all"
         style={{
           transform: `translateX(${selected ? "0" : "100%"})`,
           transitionDuration: selected ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
-        <div className="size-full bg-background-900/50 py-4 pl-4 pr-2">
+        <div className="size-full py-4 pl-4 pr-2">
           {selected && (
             <ParamEditor nodeId={selected.id} nodeMeta={selected.data} nodeType="transformer" />
           )}
