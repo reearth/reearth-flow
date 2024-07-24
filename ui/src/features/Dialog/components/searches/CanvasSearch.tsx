@@ -47,7 +47,7 @@ const CanvasSearch: React.FC = () => {
       <CommandList className="border-none">
         {searchValue.length ? (
           <>
-            <div className="border-t border-zinc-700" />
+            <div className="border-t" />
             {/* <CommandEmpty>{t("No results found.")}</CommandEmpty> */}
             <CommandGroup heading="Readers">
               {filteredReaders.map(n => {
