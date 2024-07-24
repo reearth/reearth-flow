@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from "@flow/components";
 import { useWorkspace } from "@flow/lib/gql";
-import { cn } from "@flow/lib/utils";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Workspace } from "@flow/types";
 
