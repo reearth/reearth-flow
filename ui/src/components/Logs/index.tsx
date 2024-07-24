@@ -101,7 +101,7 @@ const Logs = <TData, TValue>({
   }, [columnFilters]);
 
   return (
-    <div className="w-full overflow-auto rounded bg-secondary">
+    <div className="w-full overflow-auto rounded">
       <div className="flex h-16 w-full items-center justify-between p-2">
         <h2 className="text-lg">{t("Log")}</h2>
         <div className="flex gap-2">

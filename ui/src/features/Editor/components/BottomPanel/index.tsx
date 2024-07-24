@@ -67,12 +67,12 @@ const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) =
 
   return (
     <div
-      className="box-content flex flex-col justify-end border-t border-zinc-700 bg-background-800 backdrop-blur-md duration-300 ease-in-out"
+      className="box-content flex flex-col justify-end border-t bg-secondary backdrop-blur-md duration-300 ease-in-out"
       style={{
         height: isPanelOpen ? (windowSize === "max" ? "calc(100vh - 1px)" : "50vh") : "29px",
       }}>
       {isPanelOpen && (
-        <div id="top-edge" className="flex h-[29px] shrink-0 items-center gap-1 bg-background-900/50">
+        <div id="top-edge" className="flex h-[29px] shrink-0 items-center gap-1">
           <div className="flex h-full flex-1 items-center justify-end gap-1 px-1">
             <BaseActionButtons
               panelContents={panelContents}
@@ -106,18 +106,15 @@ const BottomPanel: React.FC<Props> = ({ currentWorkflowId, onWorkflowChange }) =
       )}
       <div
         id="content"
-        className={`flex h-[calc(100%-64px)] flex-1 bg-background-800 ${isPanelOpen ? "flex" : "hidden"}`}>
+        className={`flex h-[calc(100%-64px)] flex-1 bg-background ${isPanelOpen ? "flex" : "hidden"}`}>
         {panelContents.map(p => (
           <div className={`flex-1 ${selected?.id === p.id ? "flex" : "hidden"}`} key={p.id}>
             {p.component}
           </div>
         ))}
       </div>
-      <div
-        id="bottom-edge"
-        className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-background-900/50">
+      <div id="bottom-edge" className="flex h-[29px] shrink-0 items-center justify-end gap-1">
         <WorkflowTabs currentWorkflowId={currentWorkflowId} onWorkflowChange={onWorkflowChange} />
-        <div className="h-full border-r border-zinc-700" />
         <div className="mx-4 flex h-full flex-1 items-center justify-end gap-1">
           {!isPanelOpen && (
             <BaseActionButtons
@@ -142,7 +139,7 @@ const BaseActionButtons: React.FC<{
   return panelContents?.map(content => (
     <div
       key={content.id}
-      className={`flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-background-700/75 hover:text-white ${selected?.id === content.id ? "bg-background-700/75 text-white" : undefined}`}
+      className={`hover: flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-popover hover:text-popover-foreground ${selected?.id === content.id ? " bg-popover text-popover-foreground" : undefined}`}
       onClick={() => onSelection?.(content)}>
       {content.icon}
       <p className="text-sm font-thin">{content.title}</p>
