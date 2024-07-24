@@ -81,8 +81,8 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
 
   return (
     <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
-      <div className="self-start bg-background-800">
-        <div className="flex flex-col flex-wrap rounded-md border border-zinc-700 bg-background-900/50 text-zinc-400 transition-all">
+      <div className="self-start bg-background">
+        <div className="flex flex-col flex-wrap rounded-md border transition-all">
           {availableTools.map(tool => (
             <IconButton
               key={tool.id}
@@ -94,7 +94,7 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
               draggable
             />
           ))}
-          {availableActions && <div className="my-2 w-full border-t border-zinc-700" />}
+          {availableActions && <div className="my-2 w-full border-t" />}
           {availableActions.map(action => (
             <IconButton
               key={action.id}
