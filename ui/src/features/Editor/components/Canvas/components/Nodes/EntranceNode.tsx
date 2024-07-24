@@ -8,14 +8,15 @@ type Props = GeneralNodeProps;
 
 const EntranceNode: React.FC<Props> = ({ data }) => {
   return (
-    <div className="rounded-l-sm rounded-r-3xl border border-[#a21caf] bg-[#a21caf]/40 px-3 py-4">
-      {/* <Intersection className="rotate-90" weight="thin" /> */}
-      <CustomHandle
-        id={data.inputs?.[0]}
-        className="right-3 z-[1001] rounded-l-sm rounded-r-3xl px-3 py-4"
-        type="source"
-        position={Position.Right}
-      />
+    <div className="rounded-l-sm rounded-r-3xl border border-[#a21caf] bg-[#a21caf]/40 px-4 py-6">
+      <div>
+        <CustomHandle
+          id={data.inputs?.[0]}
+          className="right-[10px] z-[1001] h-3/4 rounded-l-sm rounded-r-full px-2"
+          type="source"
+          position={Position.Right}
+        />
+      </div>
     </div>
   );
 };

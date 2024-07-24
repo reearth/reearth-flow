@@ -1,4 +1,4 @@
-import { Database, Disc, Lightning } from "@phosphor-icons/react";
+import { Database, Disc, Graph, Lightning } from "@phosphor-icons/react";
 import { GearIcon, DoubleArrowRightIcon, PlayIcon } from "@radix-ui/react-icons";
 import { NodeProps } from "@xyflow/react";
 import { memo, useEffect, useState } from "react";
@@ -58,17 +58,19 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
       onDoubleClick={handleDoubleClick}>
       <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm bg-zinc-900/50">
         <div
-          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : "border-zinc-500"} ${className}`}>
+          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : type === "subworkflow" ? "border-none" : "border-zinc-500"} ${className}`}>
           {type === "reader" ? (
             <Database className={typeIconClasses} />
           ) : type === "writer" ? (
             <Disc className={typeIconClasses} />
           ) : type === "transformer" ? (
             <Lightning className={typeIconClasses} />
+          ) : type === "subworkflow" ? (
+            <Graph className={typeIconClasses} />
           ) : null}
         </div>
         <div
-          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : "border-zinc-500"}`}>
+          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : type === "subworkflow" ? "border-[#a21caf]/60" : "border-zinc-500"}`}>
           <p className="self-center truncate text-[10px] font-light text-zinc-300">{name}</p>
           <div className={`size-[8px] self-center rounded ${metaProps.style}`} />
         </div>
