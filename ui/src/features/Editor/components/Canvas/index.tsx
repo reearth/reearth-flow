@@ -109,13 +109,11 @@ const Canvas: React.FC<Props> = ({
       onConnect={handleConnect}
       proOptions={proOptions}>
       {/* <MiniMap
-      className="bg-background-900"
       nodeColor="purple"
       maskStrokeColor="red"
       maskStrokeWidth={3}
     /> */}
       <Background
-        className="bg-background-800"
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}
         color="rgba(63, 63, 70, 0.3)"
