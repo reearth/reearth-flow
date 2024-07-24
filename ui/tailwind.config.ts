@@ -23,15 +23,7 @@ const config = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        background: {
-          DEFAULT: "hsl(var(--background))",
-          "400": "hsl(var(--background-400))",
-          "500": "hsl(var(--background-500))",
-          "600": "hsl(var(--background-600))",
-          "700": "hsl(var(--background-700))",
-          "800": "hsl(var(--background-800))",
-          "900": "hsl(var(--background-900))",
-        },
+        background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
