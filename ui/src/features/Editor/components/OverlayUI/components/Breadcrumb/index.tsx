@@ -1,5 +1,5 @@
 import { CaretRight } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 
@@ -38,4 +38,4 @@ const Breadcrumb: React.FC = () => {
   );
 };
 
-export { Breadcrumb };
+export default memo(Breadcrumb);

@@ -1,4 +1,5 @@
 import { DownloadSimple, FloppyDiskBack, Play, Stop } from "@phosphor-icons/react";
+import { memo } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -45,4 +46,4 @@ const ActionBar = () => {
   );
 };
 
-export { ActionBar };
+export default memo(ActionBar);

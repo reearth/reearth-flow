@@ -8,7 +8,7 @@ import {
 } from "@xyflow/react";
 import { MouseEvent, memo } from "react";
 
-import type { Edge, Node, Workflow } from "@flow/types";
+import type { Edge, Node } from "@flow/types";
 
 import { CustomConnectionLine, edgeTypes, connectionLineStyle, nodeTypes } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
@@ -22,25 +22,27 @@ const snapGrid: SnapGrid = [gridSize, gridSize];
 const proOptions: ProOptions = { hideAttribution: true };
 
 type Props = {
-  workflow?: Workflow;
-  lockedNodeIds: string[];
+  nodes: Node[];
+  edges: Edge[];
   canvasLock: boolean;
+  onNodesUpdate: (newNodes: Node[]) => void;
   onNodeLocking: (nodeId: string, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => void;
   onNodeHover: (e: MouseEvent, node?: Node) => void;
+  onEdgesUpdate: (newEdges: Edge[]) => void;
   onEdgeHover: (e: MouseEvent, edge?: Edge) => void;
 };
 
 const Canvas: React.FC<Props> = ({
-  workflow,
-  lockedNodeIds,
   canvasLock,
+  nodes,
+  edges,
+  onNodesUpdate,
   onNodeLocking,
   onNodeHover,
   onEdgeHover,
+  onEdgesUpdate,
 }) => {
   const {
-    nodes,
-    edges,
     handleNodesChange,
     handleNodesDelete,
     handleNodeDragStop,
@@ -49,8 +51,10 @@ const Canvas: React.FC<Props> = ({
     handleEdgesChange,
     handleConnect,
   } = useHooks({
-    workflow,
-    lockedNodeIds,
+    nodes,
+    edges,
+    onNodesUpdate,
+    onEdgesUpdate,
     onNodeLocking,
   });
 
@@ -59,7 +63,6 @@ const Canvas: React.FC<Props> = ({
       // minZoom={0.7}
       // maxZoom={1}
       // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
-      // panOnDrag={false}
       // nodeDragThreshold={60}
       // translateExtent={[
       //   [-1000, -1000],
@@ -69,7 +72,7 @@ const Canvas: React.FC<Props> = ({
       // selectNodesOnDrag={false}
       // fitViewOptions={{ padding: 0.5 }}
       // fitView
-      // snapToGrid
+
       // Locking props START
       nodesDraggable={!canvasLock}
       nodesConnectable={!canvasLock}
@@ -108,11 +111,6 @@ const Canvas: React.FC<Props> = ({
       onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
       proOptions={proOptions}>
-      {/* <MiniMap
-      nodeColor="purple"
-      maskStrokeColor="red"
-      maskStrokeWidth={3}
-    /> */}
       <Background
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}

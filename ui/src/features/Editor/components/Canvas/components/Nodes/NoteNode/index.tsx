@@ -1,5 +1,5 @@
 import { NodeProps, NodeResizer } from "@xyflow/react";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import { Node } from "@flow/types";
 
@@ -81,4 +81,4 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
   );
 };
 
-export default NoteNode;
+export default memo(NoteNode);

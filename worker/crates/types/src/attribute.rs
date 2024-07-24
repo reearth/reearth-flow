@@ -376,6 +376,17 @@ fn compare_numbers(n1: &Number, n2: &Number) -> Option<Ordering> {
     None
 }
 
+pub(crate) fn all_attribute_keys(items: &HashMap<String, AttributeValue>) -> Vec<String> {
+    let mut keys = Vec::new();
+    for (key, value) in items {
+        keys.push(key.clone());
+        if let AttributeValue::Map(map) = value {
+            keys.extend(all_attribute_keys(map));
+        }
+    }
+    keys
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -450,5 +461,27 @@ mod tests {
         let number1 = Number::from(43);
         let number2 = Number::from(42);
         assert_eq!(compare_numbers(&number1, &number2), Some(Ordering::Greater));
+    }
+
+    #[test]
+    fn test_all_attribute_keys() {
+        let mut map = HashMap::new();
+        map.insert(
+            "key1".to_string(),
+            AttributeValue::String("value1".to_string()),
+        );
+        let mut nested_map = HashMap::new();
+        nested_map.insert(
+            "key2".to_string(),
+            AttributeValue::String("value2".to_string()),
+        );
+        map.insert("nested".to_string(), AttributeValue::Map(nested_map));
+
+        let mut keys = all_attribute_keys(&map);
+        keys.sort();
+        assert_eq!(
+            keys,
+            vec!["key1".to_string(), "key2".to_string(), "nested".to_string()]
+        );
     }
 }

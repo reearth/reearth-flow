@@ -1,5 +1,5 @@
 import { X } from "@phosphor-icons/react";
-import { MouseEvent, useCallback } from "react";
+import { memo, MouseEvent, useCallback } from "react";
 
 import { IconButton } from "@flow/components";
 import { Node } from "@flow/types";
@@ -61,4 +61,4 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
   );
 };
 
-export { RightPanel };
+export default memo(RightPanel);

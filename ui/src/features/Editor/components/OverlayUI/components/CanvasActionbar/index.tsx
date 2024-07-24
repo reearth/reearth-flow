@@ -6,6 +6,7 @@ import {
   MagnifyingGlassPlus,
 } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
+import { memo } from "react";
 
 import { IconButton } from "@flow/components";
 import { useFullscreen } from "@flow/hooks";
@@ -67,4 +68,4 @@ const CanvasActionBar = () => {
   );
 };
 
-export { CanvasActionBar };
+export default memo(CanvasActionBar);

@@ -7,7 +7,7 @@ import {
   Note,
   RectangleDashed,
 } from "@phosphor-icons/react";
-import { type DragEvent } from "react";
+import { memo, type DragEvent } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -112,4 +112,4 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
   );
 };
 
-export { Toolbox };
+export default memo(Toolbox);

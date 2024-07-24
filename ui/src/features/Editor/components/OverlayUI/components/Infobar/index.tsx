@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { Edge, Node } from "@flow/types";
 
 type Props = {
@@ -26,4 +28,4 @@ const Infobar: React.FC<Props> = ({ hoveredDetails }) => {
   ) : null;
 };
 
-export { Infobar };
+export default memo(Infobar);
