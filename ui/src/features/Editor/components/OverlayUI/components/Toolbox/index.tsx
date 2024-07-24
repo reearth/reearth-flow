@@ -82,7 +82,7 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
   return (
     <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
       <div className="self-start bg-background">
-        <div className="flex flex-col flex-wrap rounded-md border transition-all">
+        <div className="flex flex-col flex-wrap rounded-md border p-1 transition-all">
           {availableTools.map(tool => (
             <IconButton
               key={tool.id}
