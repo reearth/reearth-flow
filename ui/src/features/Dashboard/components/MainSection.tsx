@@ -103,7 +103,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger>
                   <Card
-                    className={`cursor-pointer bg-secondary ${currentProject && currentProject.id === p.id ? "" : "hover:border-primary/50"}`}
+                    className={`cursor-pointer border-transparent bg-secondary ${currentProject && currentProject.id === p.id ? "border-border" : "hover:border-border"}`}
                     key={p.id}
                     onClick={() => handleProjectSelect(p)}>
                     <CardContent className="rounded p-0">

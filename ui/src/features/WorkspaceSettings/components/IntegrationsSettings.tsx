@@ -46,7 +46,7 @@ const IntegrationsSettings: React.FC = () => {
       <div className="mt-4 flex max-w-[800px] flex-col gap-6">
         <div className="flex justify-between">
           <p className="text-lg font-extralight">{t("Integrations Settings")}</p>
-          <Button variant="outline">{t("Connect Integration")}</Button>
+          <Button>{t("Connect Integration")}</Button>
         </div>
         <div className="rounded border font-extralight">
           <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">

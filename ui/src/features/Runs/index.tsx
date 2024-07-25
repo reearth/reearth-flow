@@ -63,11 +63,7 @@ const Runs: React.FC = () => {
       <div className="flex flex-1">
         <div className="flex w-[250px] flex-col gap-3 border-r bg-secondary px-2 py-4">
           <div className="flex p-2">
-            <Button
-              className="flex-1 gap-2"
-              size="sm"
-              variant="outline"
-              onClick={() => handleTabChange("manual")}>
+            <Button className="flex-1 gap-2" size="sm" onClick={() => handleTabChange("manual")}>
               <Play />
               <p className="font-extralight">{t("Manual Run")}</p>
             </Button>
