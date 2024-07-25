@@ -12,26 +12,26 @@
 @layer base {
   /* TODO: Fix light mode colors and enable light mode */
   :root {
-    --background: rgb(255, 255, 255);
+    --background: rgb(250, 250, 250);
     --foreground: rgb(39, 39, 42);
 
-    --card: rgb(255, 255, 255);
+    --card: rgb(250, 250, 250);
     --card-foreground: rgb(39, 39, 42);
 
-    --popover: rgb(255, 255, 255);
-    --popover-foreground: rgb(39, 39, 42);
+    --popover: rgb(250, 250, 250);
+    --popover-foreground: rgb(49, 49, 42);
 
-    --primary: rgb(24, 24, 27);
-    --primary-foreground: rgb(250, 250, 250);
+    --primary: rgb(126, 126, 129);
+    --primary-foreground: rgb(51, 51, 56);
 
-    --secondary: rgb(244, 244, 245);
-    --secondary-foreground: rgb(24, 24, 27);
+    --secondary: rgb(250, 250, 250);
+    --secondary-foreground: rgb(31, 31, 34);
 
-    --muted: rgb(244, 244, 245);
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: rgb(161, 161, 170);
+    --muted-foreground: rgb(26, 26, 26);
 
-    --accent: rgb(244, 244, 245);
-    --accent-foreground: rgb(24, 24, 27);
+    --accent: rgb(212, 212, 216);
+    --accent-foreground: rgb(63, 63, 70);
 
     --destructive: rgb(239, 68, 68);
     --destructive-foreground: rgb(250, 250, 250);
