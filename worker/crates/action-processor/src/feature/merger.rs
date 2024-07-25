@@ -1,4 +1,7 @@
-use std::collections::{hash_map::Entry, HashMap};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
@@ -8,7 +11,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -50,7 +53,7 @@ impl ProcessorFactory for FeatureMergerFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -68,8 +71,29 @@ impl ProcessorFactory for FeatureMergerFactory {
             )
             .into());
         };
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let requestor_attribute = expr_engine
+            .compile(params.requestor_attribute.as_ref())
+            .map_err(|e| {
+                FeatureProcessorError::MergerFactory(format!(
+                    "Failed to compile requestor attribute: {}",
+                    e
+                ))
+            })?;
+        let supplier_attribute = expr_engine
+            .compile(params.supplier_attribute.as_ref())
+            .map_err(|e| {
+                FeatureProcessorError::MergerFactory(format!(
+                    "Failed to compile supplier attribute: {}",
+                    e
+                ))
+            })?;
+
         let process = FeatureMerger {
-            params,
+            params: CompliledParam {
+                requestor_attribute,
+                supplier_attribute,
+            },
             request_features: vec![],
             supplier_buffer: HashMap::new(),
         };
@@ -79,22 +103,22 @@ impl ProcessorFactory for FeatureMergerFactory {
 
 #[derive(Debug, Clone)]
 pub struct FeatureMerger {
-    params: FeatureMergerParam,
+    params: CompliledParam,
     request_features: Vec<Feature>,
-    supplier_buffer: HashMap<AttributeValue, Vec<Feature>>,
+    supplier_buffer: HashMap<String, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureMergerParam {
-    join: Join,
+    requestor_attribute: Expr,
+    supplier_attribute: Expr,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-struct Join {
-    requestor: Attribute,
-    supplier: Attribute,
+#[derive(Debug, Clone)]
+struct CompliledParam {
+    requestor_attribute: rhai::AST,
+    supplier_attribute: rhai::AST,
 }
 
 impl Processor for FeatureMerger {
@@ -116,14 +140,22 @@ impl Processor for FeatureMerger {
             }
             port if port == SUPPLIER_PORT.clone() => {
                 let feature = ctx.feature;
-                if let Some(value) = feature.attributes.get(&self.params.join.supplier) {
-                    match self.supplier_buffer.entry(value.clone()) {
-                        Entry::Occupied(entry) => {
-                            entry.into_mut().push(feature);
-                        }
-                        Entry::Vacant(entry) => {
-                            entry.insert(vec![feature]);
-                        }
+                let expr_engine = Arc::clone(&ctx.expr_engine);
+                let scope = feature.new_scope(expr_engine.clone());
+                let value = scope
+                    .eval_ast::<String>(&self.params.supplier_attribute)
+                    .map_err(|e| {
+                        FeatureProcessorError::Merger(format!(
+                            "Failed to evaluate supplier attribute: {}",
+                            e
+                        ))
+                    })?;
+                match self.supplier_buffer.entry(value) {
+                    Entry::Occupied(mut entry) => {
+                        entry.get_mut().push(feature);
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(vec![feature]);
                     }
                 }
             }
@@ -137,14 +169,19 @@ impl Processor for FeatureMerger {
         ctx: NodeContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        let expr_engine = Arc::clone(&ctx.expr_engine);
         for request_feature in self.request_features.iter() {
-            let request_value = request_feature
-                .attributes
-                .get(&self.params.join.requestor)
-                .ok_or(FeatureProcessorError::Merger(
-                    "No Requestor Value".to_string(),
-                ))?;
-            let Some(supplier_features) = self.supplier_buffer.get(request_value) else {
+            let scope = request_feature.new_scope(expr_engine.clone());
+            let request_value = scope
+                .eval_ast::<String>(&self.params.requestor_attribute)
+                .map_err(|e| {
+                    FeatureProcessorError::Merger(format!(
+                        "Failed to evaluate requestor attribute: {}",
+                        e
+                    ))
+                })?;
+
+            let Some(supplier_features) = self.supplier_buffer.get(&request_value) else {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     request_feature.clone(),
