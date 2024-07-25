@@ -10,7 +10,7 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder, executor_operation::ExecutorContext, node::DEFAULT_PORT,
 };
-use reearth_flow_types::{geometry::Geometry, Feature};
+use reearth_flow_types::{geometry::Geometry, Attribute, AttributeValue, Feature};
 use url::Url;
 
 use super::CompiledCommonPropertySchema;
@@ -23,10 +23,7 @@ pub(crate) fn read_citygml(
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let feature = &ctx.feature;
-    let scope = expr_engine.new_scope();
-    for (k, v) in &feature.attributes {
-        scope.set(k.inner().as_str(), v.clone().into());
-    }
+    let scope = feature.new_scope(expr_engine.clone());
     let city_gml_path = scope.eval_ast::<String>(&params.expr).map_err(|e| {
         super::errors::FeatureProcessorError::FileCityGmlReader(format!(
             "Failed to evaluate expr: {}",
@@ -124,10 +121,24 @@ fn parse_tree_reader<R: BufRead>(
                 &geom_store.surface_spans,
             );
         }
+        let attributes = entity.root.to_attribute_json();
+
+        let name = entity.name.clone();
+        let gml_id = entity.id.clone();
+
         let geometry: Geometry = entity.try_into().map_err(|e| {
             super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
         })?;
         let mut feature = Feature::new_with_attributes(ctx.feature.attributes.clone());
+        feature
+            .attributes
+            .insert(Attribute::new("cityGmlAttributes"), attributes.into());
+        feature
+            .attributes
+            .insert(Attribute::new("gmlName"), AttributeValue::String(name));
+        feature
+            .attributes
+            .insert(Attribute::new("gmlId"), AttributeValue::String(gml_id));
         feature.geometry = Some(geometry);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
     }

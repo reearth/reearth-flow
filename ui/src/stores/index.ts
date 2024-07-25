@@ -15,6 +15,9 @@ export type DialogType =
 const dialogType = atom<DialogType | undefined>(undefined);
 export const useDialogType = () => useAtom(dialogType);
 
+const currentWorkflowId = atom<string | undefined>("main");
+export const useCurrentWorkflowId = () => useAtom(currentWorkflowId);
+
 const currentProject = atom<Project | undefined>(undefined);
 export const useCurrentProject = () => useAtom(currentProject);
 

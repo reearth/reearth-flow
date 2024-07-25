@@ -10,21 +10,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@flow/components";
+import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Project } from "@flow/types";
 
 const ManualRun: React.FC = () => {
   const t = useT();
-  const [currentWorkspace] = useCurrentWorkspace();
+  const { useGetWorkspaceProjects } = useProject();
+
   const [selectedProject, selectProject] = useState<Project>();
+  const [currentWorkspace] = useCurrentWorkspace();
+  const { projects } = useGetWorkspaceProjects(currentWorkspace?.id);
+
   return (
     <div className="flex-1 p-8">
-      <div className="flex gap-2 items-center text-lg font-extralight">
+      <div className="flex items-center gap-2 text-lg font-extralight">
         <p>{t("Manual Run")}</p>
       </div>
-      <div className="flex flex-col gap-6 mt-4 max-w-[1200px]">
-        <div className="flex flex-col gap-4 w-[50%] max-w-[900px]">
+      <div className="mt-4 flex max-w-[1200px] flex-col gap-6">
+        <div className="flex w-1/2 max-w-[900px] flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="manual-run-project">{t("Project")}</Label>
             <Select
@@ -35,7 +40,7 @@ const ManualRun: React.FC = () => {
                 <SelectValue placeholder={t("Select from published projects")} />
               </SelectTrigger>
               <SelectContent>
-                {currentWorkspace?.projects?.map(p => (
+                {projects?.map(p => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
                   </SelectItem>

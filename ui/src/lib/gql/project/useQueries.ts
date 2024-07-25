@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { isDefined } from "@flow/lib/utils";
 import { Project } from "@flow/types";
+import { isDefined } from "@flow/utils";
 
 import {
   CreateProjectInput,
@@ -45,10 +45,11 @@ export const useQueries = () => {
       }),
   });
 
-  const useGetProjectsQuery = (workspaceId: string) =>
+  const useGetProjectsQuery = (workspaceId?: string) =>
     useQuery({
       queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
-      queryFn: () => graphQLContext?.GetProjects({ workspaceId, first: 20 }),
+      queryFn: () => graphQLContext?.GetProjects({ workspaceId: workspaceId ?? "", first: 20 }),
+      enabled: !!workspaceId,
       select: data => {
         if (!data) return {};
         const {
@@ -62,10 +63,11 @@ export const useQueries = () => {
       },
     });
 
-  const useGetProjectByIdQuery = (projectId: string) =>
+  const useGetProjectByIdQuery = (projectId?: string) =>
     useQuery({
       queryKey: [ProjectQueryKeys.GetProject, projectId],
-      queryFn: () => graphQLContext?.GetProjectById({ projectId }),
+      queryFn: () => graphQLContext?.GetProjectById({ projectId: projectId ?? "" }),
+      enabled: !!projectId,
       select: data =>
         data?.node?.__typename === "Project" ? createNewProjectObject(data.node) : undefined,
     });

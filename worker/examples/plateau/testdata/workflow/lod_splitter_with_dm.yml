@@ -4,7 +4,7 @@ name: "lod_splitter_with_dm"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   cityGmlPath:
-  cityCode: "11234"
+  cityCode:
   codelistsPath:
   schemasPath:
   schemaJson: !include ../config/schema.txt
@@ -13,14 +13,15 @@ with:
   addNsprefixToFeatureTypes: true
   extractDmGeometryAsXmlFragment: false
 graphs:
+  - !include ../graphs/attribute_reader.yml
   - !include ../graphs/folder_and_file_path_reader.yml
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
     nodes:
       - id: d3773442-1ba8-47c1-b7c1-0bafa23adec9
-        name: folderAndfilePathReader01
+        name: AttributeReader01
         type: subGraph
-        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+        subGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
 
       - id: 3c0bc9cd-284d-4553-83ae-f90365c5930c
         name: featureReader_01
@@ -29,7 +30,7 @@ graphs:
         with:
           format: citygml
           dataset: |
-            env.get("cityGmlPath")
+            env.get("__value").cityGmlPath
 
       - id: 278ab965-ce22-473d-98c6-c7b381c38679
         name: geometryFilter_01
@@ -52,7 +53,7 @@ graphs:
             - attribute: lod
               method: create
               value: |
-                env.get("geometryName")[3]
+                env.get("__value").geometryName[3]
 
       - id: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
         name: reprojector_01
@@ -68,26 +69,26 @@ graphs:
         with:
           conditions:
             - expr: |
-                env.get("lod") == "0"
+                env.get("__value").lod == "0"
               outputPort: lod0
             - expr: |
-                env.get("lod") == "1"
+                env.get("__value").lod == "1"
               outputPort: lod1
             - expr: |
-                env.get("lod") == "2"
+                env.get("__value").lod == "2"
               outputPort: lod2
             - expr: |
-                env.get("lod") == "3"
+                env.get("__value").lod == "3"
               outputPort: lod3
             - expr: |
-                env.get("lod") == "4"
+                env.get("__value").lod == "4"
               outputPort: lod4
 
     edges:
       - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
         to: 3c0bc9cd-284d-4553-83ae-f90365c5930c
-        fromPort: default
+        fromPort: filePath
         toPort: default
       - id: e1c7680d-5830-4e48-8cd8-8d9d762c76ff
         from: 3c0bc9cd-284d-4553-83ae-f90365c5930c

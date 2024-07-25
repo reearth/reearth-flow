@@ -1,7 +1,5 @@
-use once_cell::sync::Lazy;
-use reearth_flow_action_processor::mapping::ACTION_MAPPINGS as PROCESSOR_MAPPINGS;
-use reearth_flow_action_sink::mapping::ACTION_MAPPINGS as SINK_MAPPINGS;
-use reearth_flow_action_source::mapping::ACTION_MAPPINGS as SOURCE_MAPPINGS;
+use std::{collections::HashMap, sync::Arc};
+
 use reearth_flow_common::future::SharedFuture;
 use reearth_flow_runtime::{
     executor::dag_executor::DagExecutor,
@@ -11,24 +9,9 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_state::State;
 use reearth_flow_types::workflow::Workflow;
-use std::{collections::HashMap, sync::Arc};
 use tokio::runtime::Runtime;
 
 use crate::errors::OrchestrationError;
-
-pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
-    let mut common = HashMap::from([(
-        "Router".to_string(),
-        NodeKind::Processor(Box::<RouterFactory>::default()),
-    )]);
-    let sink = SINK_MAPPINGS.clone();
-    let source = SOURCE_MAPPINGS.clone();
-    let processor = PROCESSOR_MAPPINGS.clone();
-    common.extend(sink);
-    common.extend(source);
-    common.extend(processor);
-    common
-});
 
 pub struct Executor;
 
@@ -37,18 +20,23 @@ impl Executor {
         self,
         ctx: NodeContext,
         workflow: Workflow,
+        factories: HashMap<String, NodeKind>,
         executor_options: ExecutorOptions,
     ) -> Result<DagExecutor, OrchestrationError> {
+        let mut factories = factories.clone();
+        factories.insert(
+            "Router".to_string(),
+            NodeKind::Processor(Box::<RouterFactory>::default()),
+        );
         let executor = DagExecutor::new(
             ctx,
             workflow.entry_graph_id,
             workflow.graphs,
             executor_options,
-            ACTION_MAPPINGS.clone(),
+            factories,
             workflow.with,
         )
-        .await
-        .unwrap();
+        .await?;
         Ok(executor)
     }
 }

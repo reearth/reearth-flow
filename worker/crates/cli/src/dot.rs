@@ -1,13 +1,17 @@
-use std::io;
+use std::{collections::HashMap, io};
 
 use clap::{Arg, ArgMatches, Command};
-use reearth_flow_runner::executor::ACTION_MAPPINGS;
-use reearth_flow_runtime::dag_schemas::DagSchemas;
+use reearth_flow_runtime::{
+    dag_schemas::DagSchemas,
+    node::{NodeKind, RouterFactory},
+};
 use reearth_flow_types::Workflow;
 use tracing::debug;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve;
+
+use crate::factory::ALL_ACTION_FACTORIES;
 
 pub fn build_dot_command() -> Command {
     Command::new("dot")
@@ -53,13 +57,15 @@ impl DotCliCommand {
                 .map_err(crate::Error::init)?;
             String::from_utf8(bytes.to_vec()).map_err(crate::Error::init)?
         };
-        let workflow = Workflow::try_from_str(&json);
-        let dag = DagSchemas::from_graphs(
-            workflow.entry_graph_id,
-            workflow.graphs,
-            ACTION_MAPPINGS.clone(),
-            None,
+        let mut factories = HashMap::new();
+        factories.extend(ALL_ACTION_FACTORIES.clone());
+        factories.insert(
+            "Router".to_string(),
+            NodeKind::Processor(Box::<RouterFactory>::default()),
         );
+        let workflow = Workflow::try_from_str(&json);
+        let dag =
+            DagSchemas::from_graphs(workflow.entry_graph_id, workflow.graphs, factories, None);
         println!("{}", dag.to_dot());
         Ok(())
     }

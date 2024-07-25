@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { Edge, Node } from "@flow/types";
 
 import { ActionBar, CanvasActionBar, Toolbox, Breadcrumb, Infobar } from "./components";
@@ -10,7 +12,7 @@ type OverlayUIProps = {
 const OverlayUI: React.FC<OverlayUIProps> = ({ hoveredDetails, children: canvas }) => {
   // const { devMode } = config();
   return (
-    <div className="relative flex flex-col flex-1">
+    <div className="relative flex flex-1 flex-col">
       {/* {devMode && <DevTools />} */}
       {canvas}
       <Breadcrumb />
@@ -22,4 +24,4 @@ const OverlayUI: React.FC<OverlayUIProps> = ({ hoveredDetails, children: canvas 
   );
 };
 
-export { OverlayUI };
+export default memo(OverlayUI);

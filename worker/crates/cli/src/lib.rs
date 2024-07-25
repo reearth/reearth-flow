@@ -1,5 +1,6 @@
 pub mod cli;
 pub mod dot;
+pub(crate) mod factory;
 pub mod logger;
 pub mod run;
 pub mod schema_action;

@@ -1,4 +1,5 @@
 import { DownloadSimple, FloppyDiskBack, Play, Stop } from "@phosphor-icons/react";
+import { memo } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -9,8 +10,8 @@ const ActionBar = () => {
   const t = useT();
 
   return (
-    <div className="absolute top-1 right-1">
-      <div className="bg-zinc-800 rounded-md m-1 border border-zinc-700">
+    <div className="absolute right-1 top-1">
+      <div className="m-1 rounded-md border border-zinc-700 bg-zinc-800">
         <div className="flex rounded-md bg-zinc-900/50 p-1">
           <div className="flex align-middle">
             {/* <IconButton
@@ -45,4 +46,4 @@ const ActionBar = () => {
   );
 };
 
-export { ActionBar };
+export default memo(ActionBar);

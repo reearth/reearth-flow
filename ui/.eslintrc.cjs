@@ -3,6 +3,7 @@ module.exports = {
     "reearth",
     "plugin:storybook/recommended",
     "plugin:@tanstack/eslint-plugin-query/recommended",
+    "plugin:tailwindcss/recommended",
   ],
   root: true,
   env: { browser: true, es2020: true },
@@ -60,5 +61,11 @@ module.exports = {
     skipGraphQLConfig: true,
     schema: "../api/gql/*.graphql",
     operations: "src/lib/gql/**/*.graphql",
+  },
+  settings: {
+    tailwindcss: {
+      // Mention extra CSS classes that are not part of tailwind here
+      whitelist: ["nopan", "nodrag", "nowheel", "dndnode-"],
+    },
   },
 };

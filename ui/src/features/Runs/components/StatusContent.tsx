@@ -5,7 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@flow/compo
 import { useT } from "@flow/lib/i18n";
 import { Run } from "@flow/types";
 
-import { LogConsole } from "../../BottomPanel/components";
+import { LogConsole } from "../../Editor/components/BottomPanel/components";
 
 import { RunsTable } from "./RunsTable";
 
@@ -22,20 +22,20 @@ const StatusContent: React.FC<Props> = ({ label, runs, selectedRun, onRunSelect 
 
   return (
     <div className="flex-1 p-8">
-      <div className="flex gap-2 items-center text-lg font-extralight">
+      <div className="flex items-center gap-2 text-lg font-extralight">
         <p>{t("Runs Manager")}</p>
         <p className="text-sm font-thin text-zinc-400">({label})</p>
       </div>
-      <div className="flex flex-col gap-6 mt-4 max-w-[1200px]">
+      <div className="mt-4 flex max-w-[1200px] flex-col gap-6">
         <div className="max-h-[30vh] overflow-auto rounded-md px-2">
           <RunsTable runs={runs} selectedRun={selectedRun} onRunSelect={onRunSelect} />
         </div>
         {selectedRun && (
-          <div className="rounded-md border border-zinc-700 mx-4 text-zinc-300 font-thin">
-            <div className="py-2 px-4 border-b border-zinc-700">
+          <div className="mx-4 rounded-md border border-zinc-700 font-thin text-zinc-300">
+            <div className="border-b border-zinc-700 px-4 py-2">
               <p className="text-xl">{t("Run details")}</p>
             </div>
-            <div className="max-h-[45vh] flex flex-col gap-2 p-4">
+            <div className="flex max-h-[45vh] flex-col gap-2 p-4">
               <p>
                 {t("ID:")} <span className="font-normal">{selectedRun.id}</span>
               </p>
@@ -59,19 +59,19 @@ const StatusContent: React.FC<Props> = ({ label, runs, selectedRun, onRunSelect 
               <p>
                 {t("Status:")}{" "}
                 <span
-                  className={`font-normal ${selectedRun.status === "failed" ? "text-red-600 font-bold uppercase" : undefined}`}>
+                  className={`font-normal ${selectedRun.status === "failed" ? "font-bold uppercase text-red-600" : undefined}`}>
                   {selectedRun.status}
                 </span>
               </p>
               <Collapsible className="overflow-auto" open={showLogs} onOpenChange={setShowLogs}>
-                <CollapsibleTrigger className="flex justify-between w-full">
+                <CollapsibleTrigger className="flex w-full justify-between">
                   <>
                     <p>{t("Logs:")}</p>
                     {showLogs ? <CaretUp /> : <CaretDown />}
                   </>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <LogConsole className="overflow-auto" />
+                  <LogConsole />
                 </CollapsibleContent>
               </Collapsible>
             </div>

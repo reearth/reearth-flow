@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     executor_operation::NodeContext,
     node::{IngestionMessage, Port, DEFAULT_PORT},
 };
-use reearth_flow_types::{geometry::Geometry, Feature};
+use reearth_flow_types::{geometry::Geometry, Attribute, AttributeValue, Feature};
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
@@ -117,10 +117,23 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                 &geom_store.surface_spans,
             );
         }
+        let attributes = entity.root.to_attribute_json();
+        let name = entity.name.clone();
+        let gml_id = entity.id.clone();
         let geometry: Geometry = entity
             .try_into()
             .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-        let feature: Feature = geometry.into();
+
+        let mut feature: Feature = geometry.into();
+        feature
+            .attributes
+            .insert(Attribute::new("cityGmlAttributes"), attributes.into());
+        feature
+            .attributes
+            .insert(Attribute::new("gmlName"), AttributeValue::String(name));
+        feature
+            .attributes
+            .insert(Attribute::new("gmlId"), AttributeValue::String(gml_id));
         sender
             .send((
                 DEFAULT_PORT.clone(),

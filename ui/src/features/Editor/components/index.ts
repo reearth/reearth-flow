@@ -1,6 +1,6 @@
-export * from "./CustomConnectionLine";
-export * from "./Nodes";
-export * from "./OverlayUI";
+export { default as OverlayUI } from "./OverlayUI";
 export { default as Canvas } from "./Canvas";
-export * from "./WorkflowTabs";
-export { default as ParamEditor } from "./ParamEditor";
+export { default as BottomPanel } from "./BottomPanel";
+export { default as WorkflowTabs } from "./WorkflowTabs";
+export { default as LeftPanel } from "./LeftPanel";
+export { default as RightPanel } from "./RightPanel";

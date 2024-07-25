@@ -10,6 +10,7 @@ func New() *repo.Container {
 	return &repo.Container{
 		Asset:       NewAsset(),
 		Config:      NewConfig(),
+		Workflow:    NewWorkflow(),
 		Project:     NewProject(),
 		Workspace:   accountmemory.NewWorkspace(),
 		Lock:        NewLock(),

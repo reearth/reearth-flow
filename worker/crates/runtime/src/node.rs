@@ -18,6 +18,7 @@ use crate::executor_operation::{ExecutorContext, NodeContext};
 pub static DEFAULT_PORT: Lazy<Port> = Lazy::new(|| Port::new("default"));
 pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 pub static ROUTING_PARAM_KEY: &str = "routingPort";
+pub static REMAIN_PORT: Lazy<Port> = Lazy::new(|| Port::new("remain"));
 
 pub(super) type NodeId = uuid::Uuid;
 pub(super) type GraphId = uuid::Uuid;

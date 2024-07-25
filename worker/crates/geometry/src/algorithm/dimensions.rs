@@ -23,6 +23,8 @@ pub enum Dimensions {
     OneDimensional,
     /// Dimension of a surface
     TwoDimensional,
+
+    ThreeDimensional,
 }
 
 pub trait HasDimensions {
@@ -159,7 +161,7 @@ impl<T: CoordNum, Z: CoordNum> HasDimensions for LineString<T, Z> {
         match self.dimensions() {
             Dimensions::Empty | Dimensions::ZeroDimensional => Dimensions::Empty,
             Dimensions::OneDimensional => Dimensions::ZeroDimensional,
-            Dimensions::TwoDimensional => unreachable!("line_string cannot be 2 dimensional"),
+            _ => unreachable!("line_string cannot be 2 or 3 dimensional"),
         }
     }
 }
@@ -223,7 +225,7 @@ impl<T: CoordNum, Z: CoordNum> HasDimensions for MultiLineString<T, Z> {
                     // 1-d
                     return Dimensions::OneDimensional;
                 }
-                Dimensions::TwoDimensional => unreachable!("MultiLineString cannot be 2d"),
+                _ => unreachable!("MultiLineString cannot be 2d or 3d"),
             }
         }
         max
@@ -237,7 +239,7 @@ impl<T: CoordNum, Z: CoordNum> HasDimensions for MultiLineString<T, Z> {
         match self.dimensions() {
             Dimensions::Empty | Dimensions::ZeroDimensional => Dimensions::Empty,
             Dimensions::OneDimensional => Dimensions::ZeroDimensional,
-            Dimensions::TwoDimensional => unreachable!("line_string cannot be 2 dimensional"),
+            _ => unreachable!("line_string cannot be 2 or 3 dimensional"),
         }
     }
 }
@@ -289,6 +291,7 @@ impl<T: CoordNum, Z: CoordNum> HasDimensions for Rect<T, Z> {
             Dimensions::ZeroDimensional => Dimensions::Empty,
             Dimensions::OneDimensional => Dimensions::ZeroDimensional,
             Dimensions::TwoDimensional => Dimensions::OneDimensional,
+            Dimensions::ThreeDimensional => Dimensions::TwoDimensional,
         }
     }
 }
@@ -320,6 +323,7 @@ impl<T: GeoNum, Z: GeoNum> HasDimensions for Triangle<T, Z> {
             Dimensions::ZeroDimensional => Dimensions::Empty,
             Dimensions::OneDimensional => Dimensions::ZeroDimensional,
             Dimensions::TwoDimensional => Dimensions::OneDimensional,
+            Dimensions::ThreeDimensional => Dimensions::TwoDimensional,
         }
     }
 }

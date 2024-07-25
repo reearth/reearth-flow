@@ -6,7 +6,7 @@ use opentelemetry::trace::TracerProvider;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{
     metrics::{MeterProviderBuilder, SdkMeterProvider},
-    trace::Tracer,
+    trace::{Config, Tracer},
 };
 
 static OTEL_COLLECTOR_ENDPOINT: Lazy<Mutex<Option<String>>> =
@@ -69,22 +69,7 @@ pub fn init_tracing(service_name: String) -> Result<Tracer> {
                     .with_endpoint(endpoint),
             )
             .with_trace_config(
-                opentelemetry_sdk::trace::config()
-                    .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
-                    .with_id_generator(opentelemetry_sdk::trace::RandomIdGenerator::default())
-                    .with_resource(opentelemetry_sdk::Resource::new(vec![
-                        opentelemetry::KeyValue::new(
-                            opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                            service_name,
-                        ),
-                    ])),
-            )
-            .install_batch(opentelemetry_sdk::runtime::Tokio)
-            .map_err(|e| Error::Tracing(format!("Failed to build metrics controller: {}", e)))?,
-        None => opentelemetry_sdk::trace::TracerProvider::builder()
-            .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
-            .with_config(
-                opentelemetry_sdk::trace::config()
+                Config::default()
                     .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
                     .with_id_generator(opentelemetry_sdk::trace::RandomIdGenerator::default())
                     .with_resource(opentelemetry_sdk::Resource::new(vec![
@@ -94,8 +79,22 @@ pub fn init_tracing(service_name: String) -> Result<Tracer> {
                         ),
                     ])),
             )
-            .build()
-            .tracer(service_name.clone()),
+            .install_batch(opentelemetry_sdk::runtime::Tokio)
+            .map_err(|e| Error::Tracing(format!("Failed to build metrics controller: {}", e)))?,
+        None => opentelemetry_sdk::trace::TracerProvider::builder()
+            .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
+            .with_config(
+                Config::default()
+                    .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
+                    .with_id_generator(opentelemetry_sdk::trace::RandomIdGenerator::default())
+                    .with_resource(opentelemetry_sdk::Resource::new(vec![
+                        opentelemetry::KeyValue::new(
+                            opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                            service_name.clone(),
+                        ),
+                    ])),
+            )
+            .build(),
     };
-    Ok(tracer)
+    Ok(tracer.tracer(service_name.clone()))
 }

@@ -1,5 +1,5 @@
 import { CaretRight } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 
@@ -16,12 +16,12 @@ const Breadcrumb: React.FC = () => {
   }, [isHovered]);
 
   return (
-    <div className="absolute top-0 left-0 right-0 flex flex-shrink-0 justify-center pointer-events-none [&>*]:pointer-events-auto">
+    <div className="pointer-events-none absolute inset-x-0 top-0 flex shrink-0 justify-center [&>*]:pointer-events-auto">
       <div
-        className="py-1 px-2 flex items-center gap-3 rounded-br-md cursor-default select-none"
+        className="flex cursor-default select-none items-center gap-3 rounded-br-md px-2 py-1"
         onMouseLeave={() => setIsHovered(undefined)}>
         <p
-          className={`font-extralight text-zinc-400 max-w-[100px] truncate transition-all delay-0 duration-500 ${isHovered?.includes("workspace") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
+          className={`max-w-[100px] truncate font-extralight text-zinc-400 transition-all delay-0 duration-500 ${isHovered?.includes("workspace") ? "max-w-[50vw] select-text delay-500" : undefined}`}
           onMouseEnter={() => setIsHovered(h => [...(h ?? []), "workspace"])}>
           {currentWorkspace?.name}
         </p>
@@ -29,7 +29,7 @@ const Breadcrumb: React.FC = () => {
           <CaretRight />
         </p>
         <p
-          className={`font-extralight text-zinc-400 max-w-[100px] truncate transition-all delay-0 duration-500 ${isHovered?.includes("project") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
+          className={`max-w-[100px] truncate font-extralight text-zinc-400 transition-all delay-0 duration-500 ${isHovered?.includes("project") ? "max-w-[50vw] select-text delay-500" : undefined}`}
           onMouseEnter={() => setIsHovered(h => [...(h ?? []), "project"])}>
           {currentProject?.name}
         </p>
@@ -38,4 +38,4 @@ const Breadcrumb: React.FC = () => {
   );
 };
 
-export { Breadcrumb };
+export default memo(Breadcrumb);

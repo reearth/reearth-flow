@@ -1,23 +1,28 @@
 input InputWorkflow {
   id: ID!
   name: String!
-  createdAt: DateTime!
-  updatedAt: DateTime!
-  nodes: [InputWorkflowNode]
-  edges: [InputWorkflowEdge]
+  nodes: [InputWorkflowNode!]!
+  edges: [InputWorkflowEdge!]!
   isMain: Boolean
+}
+
+enum InputWorkflowNodeType {
+  READER
+  WRITER
+  TRANSFORMER
+  # BATCH
+  # NOTE
 }
 
 input InputWorkflowNode {
   id: ID!
+  type: InputWorkflowNodeType!
   data: InputData!
 }
 
 input InputData {
-  name: String
-  inputs: [ID]!
-  outputs: [ID]!
-  actionId: ID
+  name: String!
+  actionId: ID!
   params: [InputParam]
 }
 
@@ -38,6 +43,8 @@ enum InputParamType {
 
 input InputWorkflowEdge {
   id: ID!
-  source: [ID!]!
-  target: [ID!]!
+  source: ID!
+  target: ID!
+  sourceHandle: String!
+  targetHandle: String!
 }

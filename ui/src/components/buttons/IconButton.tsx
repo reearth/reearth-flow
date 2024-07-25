@@ -9,7 +9,7 @@ type Props = Omit<ButtonWithTooltipProps, "tooltipText"> & {
 const IconButton: React.FC<Props> = ({ className, icon, tooltipText, ...props }) => {
   return tooltipText ? (
     <ButtonWithTooltip
-      className={`transition-all text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 cursor-pointer ${className}`}
+      className={`cursor-pointer text-zinc-400 transition-all hover:bg-zinc-700 hover:text-zinc-100 ${className}`}
       variant="ghost"
       size="icon"
       tooltipText={tooltipText}
@@ -18,7 +18,7 @@ const IconButton: React.FC<Props> = ({ className, icon, tooltipText, ...props })
     </ButtonWithTooltip>
   ) : (
     <Button
-      className={`transition-all text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100 cursor-pointer ${className}`}
+      className={`cursor-pointer text-zinc-400 transition-all hover:bg-zinc-700 hover:text-zinc-100 ${className}`}
       variant="ghost"
       size="icon"
       {...props}>

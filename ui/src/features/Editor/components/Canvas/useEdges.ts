@@ -1,21 +1,22 @@
 import { OnConnect, OnEdgesChange, addEdge, applyEdgeChanges } from "@xyflow/react";
-import { Dispatch, SetStateAction, useCallback } from "react";
+import { useCallback } from "react";
 
 import { Edge } from "@flow/types";
 
 type Props = {
-  setEdges: Dispatch<SetStateAction<Edge[]>>;
+  edges: Edge[];
+  onEdgeChange: (edges: Edge[]) => void;
 };
 
-export default ({ setEdges }: Props) => {
+export default ({ edges, onEdgeChange }: Props) => {
   const handleEdgesChange: OnEdgesChange = useCallback(
-    changes => setEdges(eds => applyEdgeChanges(changes, eds)),
-    [setEdges],
+    changes => onEdgeChange(applyEdgeChanges(changes, edges)),
+    [edges, onEdgeChange],
   );
 
   const handleConnect: OnConnect = useCallback(
-    connection => setEdges(eds => addEdge(connection, eds)),
-    [setEdges],
+    connection => onEdgeChange(addEdge(connection, edges)),
+    [edges, onEdgeChange],
   );
 
   return {

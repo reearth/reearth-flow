@@ -103,6 +103,11 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		apiPrivate.POST("/password-reset", PasswordReset())
 	}
 
+	if err := loadActionsData(); err != nil {
+		log.Errorf("Failed to load actions data: %v", err)
+	}
+	SetupActionRoutes(e)
+
 	serveFiles(e, cfg.Gateways.File)
 
 	Web(e, cfg.Config.WebConfig(), cfg.Config.AuthForWeb(), cfg.Config.Web_Disabled, nil)
@@ -137,7 +142,7 @@ func allowedOrigins(cfg *ServerConfig) []string {
 	}
 	origins := append([]string{}, cfg.Config.Origins...)
 	if cfg.Debug {
-		origins = append(origins, "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8081")
+		origins = append(origins, "http://localhost:*")
 	}
 	return origins
 }

@@ -5,3 +5,4 @@ pub mod file_path_info_extractor;
 pub mod keeper;
 pub mod manager;
 pub mod mapping;
+pub mod statistics_calculator;

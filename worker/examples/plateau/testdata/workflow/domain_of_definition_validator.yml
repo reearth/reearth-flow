@@ -4,7 +4,7 @@ name: "PLATEAU.DomainOfDefinitionValidator"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   cityGmlPath:
-  cityCode: "11234"
+  cityCode:
   codelistsPath:
   schemasPath:
   schemaJson: !include ../config/schema.txt
@@ -19,7 +19,7 @@ graphs:
         action: FilePathExtractor
         with:
           sourceDataset: |
-            env.get("cityGmlPath")
+            env.get("__value").cityGmlPath
           extractArchive: true
 
       - id: bd9e2a7b-b89e-4b95-8456-641a3673a3e1
@@ -29,7 +29,7 @@ graphs:
         with:
           conditions:
             - expr: |
-                env.get("extension") == "gml"
+                env.get("__value").extension == "gml"
               outputPort: default
 
       - id: a15932ee-2589-443d-ba70-e1797d3c9f9e
@@ -38,7 +38,7 @@ graphs:
         action: PLATEAU.UDXFolderExtractor
         with:
           cityGmlPath: |
-            env.get("path")
+            env.get("__value").path
 
       - id: 747d2fa3-2527-4324-b630-92fba84a548c
         name: PLATEAU.DomainOfDefinitionValidator_01

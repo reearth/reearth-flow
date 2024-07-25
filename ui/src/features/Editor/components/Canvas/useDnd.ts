@@ -1,20 +1,21 @@
 import { useReactFlow } from "@xyflow/react";
-import { Dispatch, DragEvent, SetStateAction, useCallback } from "react";
+import { DragEvent, useCallback } from "react";
 
 import { Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
-import { baseBatchNode } from "../Nodes/BatchNode";
-import { baseNoteNode } from "../Nodes/NoteNode";
+import { baseBatchNode } from "./components/Nodes/BatchNode";
+import { baseNoteNode } from "./components/Nodes/NoteNode";
 
 type Props = {
-  setNodes: Dispatch<SetStateAction<Node[]>>;
-  onNodeLocking: (nodeId: string, setNodes: Dispatch<SetStateAction<Node[]>>) => void;
+  nodes: Node[];
+  onNodesChange: (nodes: Node[]) => void;
+  onNodeLocking: (nodeId: string) => void;
 };
 
 // This is used for drag and drop functionality in to the canvas
 // This is not used for node dnd within the canvas. That is done internally by react-flow
-export default ({ setNodes, onNodeLocking }: Props) => {
+export default ({ nodes, onNodesChange, onNodeLocking }: Props) => {
   const { screenToFlowPosition } = useReactFlow();
 
   const handleNodeDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
@@ -38,9 +39,6 @@ export default ({ setNodes, onNodeLocking }: Props) => {
 
       let newNode: Node;
 
-      const handleNodeLocking = (setNodes: Dispatch<SetStateAction<Node[]>>) => (nodeId: string) =>
-        onNodeLocking(nodeId, setNodes);
-
       // TODO: Once we have access to transformers list, we can set the newNode based on the selected type
       newNode = {
         id: randomID(),
@@ -52,7 +50,7 @@ export default ({ setNodes, onNodeLocking }: Props) => {
           outputs: type === "writer" ? undefined : ["target"],
           status: "idle",
           locked: false,
-          onLock: handleNodeLocking(setNodes),
+          onLock: onNodeLocking,
         },
       };
 
@@ -67,9 +65,9 @@ export default ({ setNodes, onNodeLocking }: Props) => {
         };
       }
 
-      setNodes(nds => nds.concat(newNode));
+      onNodesChange(nodes.concat(newNode));
     },
-    [onNodeLocking, screenToFlowPosition, setNodes],
+    [nodes, onNodeLocking, screenToFlowPosition, onNodesChange],
   );
 
   return { handleNodeDragOver, handleNodeDrop };

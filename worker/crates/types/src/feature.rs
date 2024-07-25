@@ -1,10 +1,11 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, sync::Arc};
 
 use reearth_flow_common::{str, xml::XmlXpathValue};
+use reearth_flow_eval_expr::{engine::Engine, scope::Scope};
 use serde::{Deserialize, Serialize};
 
 pub use crate::attribute::AttributeValue;
-use crate::{attribute::Attribute, geometry::Geometry};
+use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feature {
@@ -248,5 +249,29 @@ impl Feature {
 
     pub fn iter(&self) -> impl Iterator<Item = (&Attribute, &AttributeValue)> {
         self.attributes.iter()
+    }
+
+    pub fn new_scope(&self, engine: Arc<Engine>) -> Scope {
+        let scope = engine.new_scope();
+        let value: serde_json::Value = serde_json::Value::Object(
+            self.attributes
+                .clone()
+                .into_iter()
+                .map(|(k, v)| (k.into_inner().to_string(), v.into()))
+                .collect::<serde_json::Map<_, _>>(),
+        );
+        scope.set("__value", value);
+        scope
+    }
+
+    pub fn all_attribute_keys(&self) -> Vec<String> {
+        let mut keys = Vec::new();
+        for (key, value) in &self.attributes {
+            keys.push(key.clone().to_string());
+            if let AttributeValue::Map(map) = value {
+                keys.extend(all_attribute_keys(map));
+            }
+        }
+        keys
     }
 }
