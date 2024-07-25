@@ -72,12 +72,12 @@ impl ProcessorFactory for AttributeAggregatorFactory {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let mut aggregate_attributes = Vec::<CompliledAggregateAttribute>::new();
         for aggregte_attribute in &params.aggregate_attributes {
-            let expr = &aggregte_attribute.aggregation;
+            let expr = &aggregte_attribute.attribute_value;
             let template_ast = expr_engine
                 .compile(expr.as_ref())
                 .map_err(|e| AttributeProcessorError::AggregatorFactory(format!("{:?}", e)))?;
             aggregate_attributes.push(CompliledAggregateAttribute {
-                aggregation: template_ast,
+                attribute_value: template_ast,
                 new_attribute: aggregte_attribute.new_attribute.clone(),
             });
         }
@@ -122,14 +122,14 @@ pub struct AttributeAggregatorParam {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AggregateAttribute {
-    aggregation: Expr,
     new_attribute: Attribute,
+    attribute_value: Expr,
 }
 
 #[derive(Debug, Clone)]
 struct CompliledAggregateAttribute {
-    aggregation: rhai::AST,
     new_attribute: Attribute,
+    attribute_value: rhai::AST,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -161,7 +161,7 @@ impl Processor for AttributeAggregator {
         let mut aggregates = Vec::new();
         for aggregate_attribute in &self.aggregate_attributes {
             let result = scope
-                .eval_ast::<String>(&aggregate_attribute.aggregation)
+                .eval_ast::<String>(&aggregate_attribute.attribute_value)
                 .map_err(|e| {
                     AttributeProcessorError::Aggregator(format!(
                         "Failed to evaluate aggregation: {}",
