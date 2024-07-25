@@ -1,4 +1,4 @@
-FROM rust:1.79-slim-bookworm as builder
+FROM rust:1.80-slim-bookworm as builder
 
 ARG NAME=reearth-flow
 WORKDIR /usr/src/${NAME}

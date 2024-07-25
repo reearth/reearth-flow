@@ -121,6 +121,7 @@ impl From<MultiPolygon3D<f64>> for MultiPolygon2D<f64> {
     }
 }
 
+#[allow(dead_code)]
 pub struct Iter<'a, T: CoordNum> {
     mpoly: &'a MultiPolygon<T>,
     pos: usize,
