@@ -27,33 +27,48 @@
         "title": "AttributeAggregatorParam",
         "type": "object",
         "required": [
-          "aggregations"
+          "aggregateAttributes",
+          "calculation",
+          "calculationAttribute",
+          "method"
         ],
         "properties": {
-          "aggregations": {
+          "aggregateAttributes": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/Aggregation"
+              "$ref": "#/definitions/AggregateAttribute"
             }
+          },
+          "calculation": {
+            "$ref": "#/definitions/Expr"
+          },
+          "calculationAttribute": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "method": {
+            "$ref": "#/definitions/Method"
           }
         },
         "definitions": {
-          "Aggregation": {
+          "AggregateAttribute": {
             "type": "object",
             "required": [
-              "attribute",
-              "method"
+              "aggregation",
+              "newAttribute"
             ],
             "properties": {
-              "attribute": {
-                "$ref": "#/definitions/Attribute"
+              "aggregation": {
+                "$ref": "#/definitions/Expr"
               },
-              "method": {
-                "$ref": "#/definitions/Method"
+              "newAttribute": {
+                "$ref": "#/definitions/Attribute"
               }
             }
           },
           "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
             "type": "string"
           },
           "Method": {
@@ -61,8 +76,7 @@
             "enum": [
               "max",
               "min",
-              "sum",
-              "avg"
+              "count"
             ]
           }
         }

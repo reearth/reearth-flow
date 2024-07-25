@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -44,7 +44,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -69,9 +69,33 @@ impl ProcessorFactory for AttributeAggregatorFactory {
             .into());
         };
 
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let mut aggregate_attributes = Vec::<CompliledAggregateAttribute>::new();
+        for aggregte_attribute in &params.aggregate_attributes {
+            let expr = &aggregte_attribute.aggregation;
+            let template_ast = expr_engine
+                .compile(expr.as_ref())
+                .map_err(|e| AttributeProcessorError::AggregatorFactory(format!("{:?}", e)))?;
+            aggregate_attributes.push(CompliledAggregateAttribute {
+                aggregation: template_ast,
+                new_attribute: aggregte_attribute.new_attribute.clone(),
+            });
+        }
+        let calculation = expr_engine
+            .compile(params.calculation.as_ref())
+            .map_err(|e| {
+                AttributeProcessorError::AggregatorFactory(format!(
+                    "Failed to compile calculation: {}",
+                    e
+                ))
+            })?;
+
         let process = AttributeAggregator {
-            params,
-            buffer: Vec::new(),
+            aggregate_attributes,
+            calculation,
+            calculation_attribute: params.calculation_attribute,
+            method: params.method,
+            buffer: HashMap::new(),
         };
         Ok(Box::new(process))
     }
@@ -79,21 +103,33 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 
 #[derive(Debug, Clone)]
 pub struct AttributeAggregator {
-    params: AttributeAggregatorParam,
-    buffer: Vec<Feature>,
+    aggregate_attributes: Vec<CompliledAggregateAttribute>,
+    calculation: rhai::AST,
+    calculation_attribute: Attribute,
+    method: Method,
+    buffer: HashMap<String, i64>, // string is tab
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeAggregatorParam {
-    aggregations: Vec<Aggregation>,
+    aggregate_attributes: Vec<AggregateAttribute>,
+    calculation: Expr,
+    calculation_attribute: Attribute,
+    method: Method,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-struct Aggregation {
-    attribute: Attribute,
-    method: Method,
+struct AggregateAttribute {
+    aggregation: Expr,
+    new_attribute: Attribute,
+}
+
+#[derive(Debug, Clone)]
+struct CompliledAggregateAttribute {
+    aggregation: rhai::AST,
+    new_attribute: Attribute,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -102,10 +138,8 @@ pub(super) enum Method {
     Max,
     #[serde(rename = "min")]
     Min,
-    #[serde(rename = "sum")]
-    Sum,
-    #[serde(rename = "avg")]
-    Avg,
+    #[serde(rename = "count")]
+    Count,
 }
 
 impl Processor for AttributeAggregator {
@@ -121,7 +155,39 @@ impl Processor for AttributeAggregator {
         _fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = ctx.feature;
-        self.buffer.push(feature);
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let scope = feature.new_scope(expr_engine.clone());
+
+        let mut aggregates = Vec::new();
+        for aggregate_attribute in &self.aggregate_attributes {
+            let result = scope
+                .eval_ast::<String>(&aggregate_attribute.aggregation)
+                .map_err(|e| {
+                    AttributeProcessorError::Aggregator(format!(
+                        "Failed to evaluate aggregation: {}",
+                        e
+                    ))
+                })?;
+            aggregates.push(result);
+        }
+        let calc = scope.eval_ast::<i64>(&self.calculation).map_err(|e| {
+            AttributeProcessorError::Aggregator(format!("Failed to evaluate calculation: {}", e))
+        })?;
+        let key = generate_aggregate_key(&aggregates);
+        match &self.method {
+            Method::Max => {
+                let value = self.buffer.entry(key).or_insert(0);
+                *value = std::cmp::max(*value, calc);
+            }
+            Method::Min => {
+                let value = self.buffer.entry(key).or_insert(i64::MAX);
+                *value = std::cmp::min(*value, calc);
+            }
+            Method::Count => {
+                let value = self.buffer.entry(key).or_insert(0);
+                *value += calc;
+            }
+        }
         Ok(())
     }
 
@@ -130,98 +196,32 @@ impl Processor for AttributeAggregator {
         ctx: NodeContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let mut feature = Feature::new();
-        for aggregation in &self.params.aggregations {
-            match aggregation.method {
-                Method::Max => {
-                    let result = self
-                        .buffer
-                        .iter()
-                        .filter_map(|row| row.attributes.get(&aggregation.attribute))
-                        .max_by(|&a, &b| a.partial_cmp(b).unwrap());
-                    feature.insert(
-                        format!("max_{}", &aggregation.attribute),
-                        result
-                            .map(|v| v.to_owned())
-                            .unwrap_or(AttributeValue::Number(
-                                serde_json::Number::from_f64(0.0).unwrap(),
-                            )),
-                    );
-                }
-                Method::Min => {
-                    let result = self
-                        .buffer
-                        .iter()
-                        .filter_map(|row| row.get(&aggregation.attribute))
-                        .min_by(|a, b| a.partial_cmp(b).unwrap());
-                    feature.insert(
-                        format!("min_{}", &aggregation.attribute),
-                        result
-                            .map(|v| v.to_owned())
-                            .unwrap_or(AttributeValue::Number(
-                                serde_json::Number::from_f64(0.0).unwrap(),
-                            )),
-                    );
-                }
-                Method::Sum => {
-                    let result = self
-                        .buffer
-                        .iter()
-                        .filter_map(|row| {
-                            row.get(&aggregation.attribute).and_then(|v| {
-                                if let AttributeValue::Number(v) = v {
-                                    v.as_f64()
-                                } else {
-                                    None
-                                }
-                            })
-                        })
-                        .collect::<Vec<f64>>();
-                    feature.insert(
-                        format!("sum_{}", &aggregation.attribute),
-                        AttributeValue::Number(
-                            serde_json::Number::from_f64(result.iter().sum::<f64>()).unwrap(),
-                        ),
-                    );
-                }
-                Method::Avg => {
-                    let result = self
-                        .buffer
-                        .iter()
-                        .filter_map(|row| {
-                            row.get(&aggregation.attribute).and_then(|v| {
-                                if let AttributeValue::Number(v) = v {
-                                    v.as_f64()
-                                } else {
-                                    None
-                                }
-                            })
-                        })
-                        .collect::<Vec<f64>>();
-                    if result.is_empty() {
-                        feature.insert(
-                            format!("avg_{}", &aggregation.attribute),
-                            AttributeValue::Number(serde_json::Number::from_f64(0.0).unwrap()),
-                        );
-                        continue;
-                    }
-                    let result = result.iter().sum::<f64>() / result.len() as f64;
-                    feature.insert(
-                        format!("avg_{}", &aggregation.attribute),
-                        AttributeValue::Number(serde_json::Number::from_f64(result).unwrap()),
-                    );
-                }
+        for (key, value) in &self.buffer {
+            let mut feature = Feature::new();
+            for (i, aggregate_attribute) in self.aggregate_attributes.iter().enumerate() {
+                feature.attributes.insert(
+                    aggregate_attribute.new_attribute.clone(),
+                    AttributeValue::String(key.split('\t').nth(i).unwrap_or_default().to_string()),
+                );
             }
+            feature.attributes.insert(
+                self.calculation_attribute.clone(),
+                AttributeValue::Number(serde_json::Number::from(*value)),
+            );
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature,
+                DEFAULT_PORT.clone(),
+            ));
         }
-        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-            &ctx,
-            feature.clone(),
-            DEFAULT_PORT.clone(),
-        ));
         Ok(())
     }
 
     fn name(&self) -> &str {
         "AttributeAggregator"
     }
+}
+
+fn generate_aggregate_key(values: &[String]) -> String {
+    values.join("\t")
 }
