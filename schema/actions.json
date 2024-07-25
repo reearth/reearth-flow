@@ -53,11 +53,11 @@
           "AggregateAttribute": {
             "type": "object",
             "required": [
-              "aggregation",
+              "attributeValue",
               "newAttribute"
             ],
             "properties": {
-              "aggregation": {
+              "attributeValue": {
                 "$ref": "#/definitions/Expr"
               },
               "newAttribute": {
