@@ -58,7 +58,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
       onDoubleClick={handleDoubleClick}>
       <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
         <div
-          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : "border-primary/20") : "border-primary/50"} ${className}`}>
+          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : "border-primary/50") : "border-primary/20"} ${className}`}>
           {type === "reader" ? (
             <Database className={typeIconClasses} />
           ) : type === "writer" ? (
@@ -68,7 +68,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
           ) : null}
         </div>
         <div
-          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? (hardSelect ? "border-red-300" : "border-primary/20") : "border-primary/50"}`}>
+          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? (hardSelect ? "border-red-300" : "border-primary/50") : "border-primary/20"}`}>
           <p className="self-center truncate text-[10px] font-light">{name}</p>
           <div className={`size-[8px] self-center rounded ${metaProps.style}`} />
         </div>

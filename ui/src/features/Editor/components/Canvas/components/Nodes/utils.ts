@@ -8,7 +8,7 @@ export const getPropsFrom = (status?: Status) => {
         ? "bg-red-500"
         : status === "active"
           ? "active-node-status"
-          : "bg-background-500";
+          : "bg-primary/50";
 
   const isAnimated = status === "active";
   return {
