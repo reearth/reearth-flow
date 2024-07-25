@@ -127,7 +127,7 @@ const BottomPanel: React.FC<Props> = ({
       </div>
       <div
         id="bottom-edge"
-        className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-zinc-900/50">
+        className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-secondary">
         <WorkflowTabs
           currentWorkflowId={currentWorkflowId}
           workflows={workflows}
@@ -135,7 +135,7 @@ const BottomPanel: React.FC<Props> = ({
           onWorkflowRemove={onWorkflowRemove}
           onWorkflowChange={onWorkflowChange}
         />
-        <div className="h-full border-r border-zinc-700" />
+        <div className="h-full border-r" />
         <div className="mx-4 flex h-full flex-1 items-center justify-end gap-1">
           {!isPanelOpen && (
             <BaseActionButtons
@@ -163,7 +163,7 @@ const BaseActionButtons: React.FC<{
         <div
           key={content.id}
           className={`flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-popover hover:text-popover-foreground ${
-            selected?.id === content.id ? "hover:bg-popover hover:text-popover-foreground" : ""
+            selected?.id === content.id ? "bg-popover text-popover-foreground" : ""
           }`}
           onClick={() => onSelection?.(content)}>
           {content.icon}

@@ -11,7 +11,7 @@ const ActionBar = () => {
 
   return (
     <div className="absolute right-1 top-1">
-      <div className="m-1 rounded-md border bg-background">
+      <div className="m-1 rounded-md border bg-secondary">
         <div className="flex rounded-md p-1">
           <div className="flex align-middle">
             {/* <IconButton

@@ -21,7 +21,7 @@ const CanvasActionBar = () => {
 
   return (
     <div className="absolute bottom-2 right-2">
-      <div className="m-1 rounded-md border bg-background">
+      <div className="m-1 rounded-md border bg-secondary">
         <div className="flex rounded-md">
           <div className="flex flex-1 flex-col justify-end align-middle">
             <IconButton
