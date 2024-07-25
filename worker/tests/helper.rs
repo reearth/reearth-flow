@@ -1,13 +1,29 @@
-use std::{env, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, env, path::PathBuf, sync::Arc};
 
-use reearth_flow_runner::runner::Runner;
-use reearth_flow_state::State;
-use reearth_flow_types::Workflow;
+use once_cell::sync::Lazy;
+use reearth_flow_runtime::node::NodeKind;
 use rust_embed::RustEmbed;
 
 use reearth_flow_action_log::factory::LoggerFactory;
+use reearth_flow_action_processor::mapping::ACTION_MAPPINGS as PROCESSOR_MAPPINGS;
+use reearth_flow_action_sink::mapping::ACTION_MAPPINGS as SINK_MAPPINGS;
+use reearth_flow_action_source::mapping::ACTION_MAPPINGS as SOURCE_MAPPINGS;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_runner::runner::Runner;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
+use reearth_flow_types::Workflow;
+
+pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+    let mut common = HashMap::new();
+    let sink = SINK_MAPPINGS.clone();
+    let source = SOURCE_MAPPINGS.clone();
+    let processor = PROCESSOR_MAPPINGS.clone();
+    common.extend(sink);
+    common.extend(source);
+    common.extend(processor);
+    common
+});
 
 #[derive(RustEmbed)]
 #[folder = "fixture/testdata/"]
@@ -50,6 +66,7 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) {
     Runner::run(
         job_id.to_string(),
         workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
         logger_factory,
         storage_resolver,
         state,

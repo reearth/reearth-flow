@@ -27,33 +27,48 @@
         "title": "AttributeAggregatorParam",
         "type": "object",
         "required": [
-          "aggregations"
+          "aggregateAttributes",
+          "calculation",
+          "calculationAttribute",
+          "method"
         ],
         "properties": {
-          "aggregations": {
+          "aggregateAttributes": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/Aggregation"
+              "$ref": "#/definitions/AggregateAttribute"
             }
+          },
+          "calculation": {
+            "$ref": "#/definitions/Expr"
+          },
+          "calculationAttribute": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "method": {
+            "$ref": "#/definitions/Method"
           }
         },
         "definitions": {
-          "Aggregation": {
+          "AggregateAttribute": {
             "type": "object",
             "required": [
-              "attribute",
-              "method"
+              "attributeValue",
+              "newAttribute"
             ],
             "properties": {
-              "attribute": {
-                "$ref": "#/definitions/Attribute"
+              "attributeValue": {
+                "$ref": "#/definitions/Expr"
               },
-              "method": {
-                "$ref": "#/definitions/Method"
+              "newAttribute": {
+                "$ref": "#/definitions/Attribute"
               }
             }
           },
           "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
             "type": "string"
           },
           "Method": {
@@ -61,8 +76,7 @@
             "enum": [
               "max",
               "min",
-              "sum",
-              "avg"
+              "count"
             ]
           }
         }
@@ -554,31 +568,20 @@
         "title": "FeatureMergerParam",
         "type": "object",
         "required": [
-          "join"
+          "requestorAttribute",
+          "supplierAttribute"
         ],
         "properties": {
-          "join": {
-            "$ref": "#/definitions/Join"
+          "requestorAttribute": {
+            "$ref": "#/definitions/Expr"
+          },
+          "supplierAttribute": {
+            "$ref": "#/definitions/Expr"
           }
         },
         "definitions": {
-          "Attribute": {
+          "Expr": {
             "type": "string"
-          },
-          "Join": {
-            "type": "object",
-            "required": [
-              "requestor",
-              "supplier"
-            ],
-            "properties": {
-              "requestor": {
-                "$ref": "#/definitions/Attribute"
-              },
-              "supplier": {
-                "$ref": "#/definitions/Attribute"
-              }
-            }
           }
         }
       },
@@ -1358,7 +1361,7 @@
       "type": "processor",
       "description": "AttributeFlattener",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1374,7 +1377,7 @@
       "type": "processor",
       "description": "Extracts BuildingInstallationGeometryType",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1386,11 +1389,29 @@
       ]
     },
     {
+      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "type": "processor",
+      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "lBldgError",
+        "codeError",
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU.DictionariesInitiator",
       "type": "processor",
       "description": "Initializes dictionaries for PLATEAU",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1407,7 +1428,7 @@
       "type": "processor",
       "description": "Validates domain of definition of CityGML features",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1424,7 +1445,7 @@
       "type": "processor",
       "description": "Extracts maxLod",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1440,7 +1461,7 @@
       "type": "processor",
       "description": "Extracts UDX folders from cityGML path",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1457,7 +1478,7 @@
       "type": "processor",
       "description": "Detect unmatched xlink for PLATEAU",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],
@@ -1475,7 +1496,7 @@
       "type": "processor",
       "description": "Extracts attributes from XML fragments based on a schema definition",
       "parameter": null,
-      "builtin": true,
+      "builtin": false,
       "inputPorts": [
         "default"
       ],

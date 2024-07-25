@@ -112,7 +112,7 @@ impl DagSchemas {
     pub fn from_graphs(
         entry_graph_id: GraphId,
         graphs: Vec<Graph>,
-        action_mappings: HashMap<String, NodeKind>,
+        factories: HashMap<String, NodeKind>,
         global_params: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> Self {
         let entry_graph = graphs.iter().find(|dag| dag.id == entry_graph_id).unwrap();
@@ -124,19 +124,19 @@ impl DagSchemas {
 
         let mut other_graph_schemas = HashMap::new();
         for (_, graph) in other_graphs.iter() {
-            let mut graph_schema = DagSchemas::from_graph(graph, &action_mappings, &global_params);
+            let mut graph_schema = DagSchemas::from_graph(graph, &factories, &global_params);
             let graph_nodes = graph_schema.collect_graph_nodes();
             for node in graph_nodes.iter() {
                 let Node::SubGraph { sub_graph_id, .. } = node.node else {
                     continue;
                 };
                 let subgraph = other_graphs.get(&sub_graph_id).unwrap();
-                let subgraph = DagSchemas::from_graph(subgraph, &action_mappings, &global_params);
+                let subgraph = DagSchemas::from_graph(subgraph, &factories, &global_params);
                 graph_schema.add_subgraph_after_node(node.handle.id, &global_params, &subgraph);
             }
             other_graph_schemas.insert(graph_schema.id, graph_schema);
         }
-        let mut entry_graph = DagSchemas::from_graph(entry_graph, &action_mappings, &global_params);
+        let mut entry_graph = DagSchemas::from_graph(entry_graph, &factories, &global_params);
         let graph_nodes = entry_graph.collect_graph_nodes();
         for node in graph_nodes.iter() {
             let Node::SubGraph { sub_graph_id, .. } = &node.node else {
@@ -154,7 +154,7 @@ impl DagSchemas {
 
     fn from_graph(
         graph: &Graph,
-        action_mappings: &HashMap<String, NodeKind>,
+        factories: &HashMap<String, NodeKind>,
         global_params: &Option<serde_json::Map<String, serde_json::Value>>,
     ) -> Self {
         let mut dag = Self {
@@ -177,7 +177,7 @@ impl DagSchemas {
             }
             let kind = match node {
                 Node::Action { .. } => {
-                    let Some(kind) = action_mappings.get(node.action()) else {
+                    let Some(kind) = factories.get(node.action()) else {
                         panic!("Action not found: {}", node.action());
                     };
                     Some(kind.clone())

@@ -5,7 +5,7 @@ use reearth_flow_eval_expr::{engine::Engine, scope::Scope};
 use serde::{Deserialize, Serialize};
 
 pub use crate::attribute::AttributeValue;
-use crate::{attribute::Attribute, geometry::Geometry};
+use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feature {
@@ -262,5 +262,16 @@ impl Feature {
         );
         scope.set("__value", value);
         scope
+    }
+
+    pub fn all_attribute_keys(&self) -> Vec<String> {
+        let mut keys = Vec::new();
+        for (key, value) in &self.attributes {
+            keys.push(key.clone().to_string());
+            if let AttributeValue::Map(map) = value {
+                keys.extend(all_attribute_keys(map));
+            }
+        }
+        keys
     }
 }
