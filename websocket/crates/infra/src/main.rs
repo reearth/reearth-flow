@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{error_handling::HandleErrorLayer, routing::get, Router};
 use socket::{
@@ -24,13 +24,16 @@ async fn main() -> std::io::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let state = AppState::new();
+    let state = Arc::new(AppState::new());
+    let state_err = state.clone();
     let app = Router::new()
         .fallback_service(ServeDir::new("assets").append_index_html_on_directories(true))
         .route("/ws", get(handle_upgrade))
         .layer(
             ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(handle_error))
+                .layer(HandleErrorLayer::new(move |method, uri, err| {
+                    handle_error(method, uri, err, state_err)
+                }))
                 .layer(TimeoutLayer::new(Duration::from_secs(10)))
                 .layer(
                     TraceLayer::new_for_http()

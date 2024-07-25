@@ -18,7 +18,7 @@ use tower::BoxError;
 enum Event {
     Join { room_id: String },
     Leave,
-    Emit { event: String },
+    Emit { data: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -29,12 +29,12 @@ struct FlowMessage {
 pub async fn handle_upgrade(
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    State(state): State<AppState>,
+    State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, addr, state))
 }
 
-async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: AppState) {
+async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: Arc<AppState>) {
     if socket.send(Message::Ping(vec![4])).await.is_ok() {
         println!("pinned to {addr}");
     } else {
@@ -54,21 +54,15 @@ async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: AppState)
     }
 }
 
-async fn handle_message(msg: Message, addr: SocketAddr, state: AppState) -> Result<()> {
+async fn handle_message(msg: Message, addr: SocketAddr, state: Arc<AppState>) -> Result<()> {
     match msg {
         Message::Text(t) => {
             let msg: FlowMessage = serde_json::from_str(&t).unwrap();
 
             match msg.event {
-                Event::Join { room_id } => state
-                    .rooms
-                    .try_lock()
-                    .or_else(|_| Err(WsError::WsError))?
-                    .get_mut(&room_id)
-                    .ok_or(WsError::WsError)?
-                    .join("brabrabra".to_string()),
-                Event::Leave => unimplemented!(),
-                Event::Emit { event } => unimplemented!(),
+                Event::Join { room_id } => state.join(&room_id).await,
+                Event::Leave => state.leave("brabra").await,
+                Event::Emit { data } => state.emit(&data).await,
             }
         }
         Message::Binary(d) => {
@@ -91,13 +85,43 @@ async fn handle_message(msg: Message, addr: SocketAddr, state: AppState) -> Resu
     }
 }
 
-pub async fn handle_error(_method: Method, _uri: Uri, err: BoxError) -> impl IntoResponse {
+pub async fn handle_error(
+    _method: Method,
+    _uri: Uri,
+    err: BoxError,
+    state: Arc<AppState>,
+) -> impl IntoResponse {
     if err.is::<tower::timeout::error::Elapsed>() {
+        state.timeout();
         (StatusCode::REQUEST_TIMEOUT, "timeout".to_string())
     } else {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("unhandled error: {err}"),
         )
+    }
+}
+
+impl AppState {
+    async fn on_disconnect(&self) {
+        unimplemented!()
+    }
+    async fn join(&self, room_id: &str) -> Result<()> {
+        self.rooms
+            .try_lock()
+            .or_else(|_| Err(WsError::WsError))?
+            .get_mut(room_id)
+            .ok_or(WsError::WsError)?
+            .join("brabrabra".to_string());
+        Ok(())
+    }
+    async fn leave(&self, room_id: &str) -> Result<()> {
+        unimplemented!()
+    }
+    async fn emit(&self, data: &str) -> Result<()> {
+        unimplemented!()
+    }
+    async fn timeout(&self) -> Result<()> {
+        unimplemented!()
     }
 }
