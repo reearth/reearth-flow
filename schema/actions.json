@@ -27,33 +27,48 @@
         "title": "AttributeAggregatorParam",
         "type": "object",
         "required": [
-          "aggregations"
+          "aggregateAttributes",
+          "calculation",
+          "calculationAttribute",
+          "method"
         ],
         "properties": {
-          "aggregations": {
+          "aggregateAttributes": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/Aggregation"
+              "$ref": "#/definitions/AggregateAttribute"
             }
+          },
+          "calculation": {
+            "$ref": "#/definitions/Expr"
+          },
+          "calculationAttribute": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "method": {
+            "$ref": "#/definitions/Method"
           }
         },
         "definitions": {
-          "Aggregation": {
+          "AggregateAttribute": {
             "type": "object",
             "required": [
-              "attribute",
-              "method"
+              "attributeValue",
+              "newAttribute"
             ],
             "properties": {
-              "attribute": {
-                "$ref": "#/definitions/Attribute"
+              "attributeValue": {
+                "$ref": "#/definitions/Expr"
               },
-              "method": {
-                "$ref": "#/definitions/Method"
+              "newAttribute": {
+                "$ref": "#/definitions/Attribute"
               }
             }
           },
           "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
             "type": "string"
           },
           "Method": {
@@ -61,8 +76,7 @@
             "enum": [
               "max",
               "min",
-              "sum",
-              "avg"
+              "count"
             ]
           }
         }
@@ -554,31 +568,20 @@
         "title": "FeatureMergerParam",
         "type": "object",
         "required": [
-          "join"
+          "requestorAttribute",
+          "supplierAttribute"
         ],
         "properties": {
-          "join": {
-            "$ref": "#/definitions/Join"
+          "requestorAttribute": {
+            "$ref": "#/definitions/Expr"
+          },
+          "supplierAttribute": {
+            "$ref": "#/definitions/Expr"
           }
         },
         "definitions": {
-          "Attribute": {
+          "Expr": {
             "type": "string"
-          },
-          "Join": {
-            "type": "object",
-            "required": [
-              "requestor",
-              "supplier"
-            ],
-            "properties": {
-              "requestor": {
-                "$ref": "#/definitions/Attribute"
-              },
-              "supplier": {
-                "$ref": "#/definitions/Attribute"
-              }
-            }
           }
         }
       },
