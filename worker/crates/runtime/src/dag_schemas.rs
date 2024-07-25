@@ -127,23 +127,57 @@ impl DagSchemas {
             let mut graph_schema = DagSchemas::from_graph(graph, &factories, &global_params);
             let graph_nodes = graph_schema.collect_graph_nodes();
             for node in graph_nodes.iter() {
-                let Node::SubGraph { sub_graph_id, .. } = node.node else {
+                let Node::SubGraph {
+                    sub_graph_id,
+                    entity,
+                } = &node.node
+                else {
                     continue;
                 };
-                let subgraph = other_graphs.get(&sub_graph_id).unwrap();
-                let subgraph = DagSchemas::from_graph(subgraph, &factories, &global_params);
-                graph_schema.add_subgraph_after_node(node.handle.id, &global_params, &subgraph);
+                let subgraph = other_graphs.get(sub_graph_id).unwrap();
+                let params = if let Some(with) = &entity.with {
+                    if let Some(global_params) = &global_params {
+                        let mut global_with = global_params.clone();
+                        global_with.extend(with.clone());
+                        Some(global_with)
+                    } else {
+                        Some(with.clone())
+                    }
+                } else {
+                    global_params.clone()
+                };
+                let subgraph = DagSchemas::from_graph(subgraph, &factories, &params);
+                graph_schema.add_subgraph_after_node(node.handle.id, &params, &subgraph);
+                let Some(target_node) = graph_schema.node_index_by_node_id(node.handle.id) else {
+                    continue;
+                };
+                graph_schema.graph.remove_node(*target_node);
             }
             other_graph_schemas.insert(graph_schema.id, graph_schema);
         }
         let mut entry_graph = DagSchemas::from_graph(entry_graph, &factories, &global_params);
         let graph_nodes = entry_graph.collect_graph_nodes();
         for node in graph_nodes.iter() {
-            let Node::SubGraph { sub_graph_id, .. } = &node.node else {
+            let Node::SubGraph {
+                sub_graph_id,
+                entity,
+            } = &node.node
+            else {
                 continue;
             };
+            let params = if let Some(with) = &entity.with {
+                if let Some(global_params) = &global_params {
+                    let mut global_with = global_params.clone();
+                    global_with.extend(with.clone());
+                    Some(global_with)
+                } else {
+                    Some(with.clone())
+                }
+            } else {
+                global_params.clone()
+            };
             let subgraph = other_graph_schemas.get(sub_graph_id).unwrap();
-            entry_graph.add_subgraph_after_node(node.handle.id, &global_params, subgraph);
+            entry_graph.add_subgraph_after_node(node.handle.id, &params, subgraph);
             let Some(target_node) = entry_graph.node_index_by_node_id(node.handle.id) else {
                 continue;
             };
