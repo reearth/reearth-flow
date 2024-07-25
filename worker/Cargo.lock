@@ -1492,15 +1492,6 @@ checksum = "f8478577c03552c21db0e2724ffb8986a5ce7af88107e6be5d2ee6e158c12800"
 
 [[package]]
 name = "itertools"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
@@ -2026,16 +2017,16 @@ dependencies = [
 
 [[package]]
 name = "object_store"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbebfd32c213ba1907fa7a9c9138015a8de2b43e30c5aa45b18f7deb46786ad6"
+checksum = "e6da452820c715ce78221e8202ccc599b4a52f3e1eb3eedb487b680c81a8e3f3"
 dependencies = [
  "async-trait",
  "bytes",
  "chrono",
  "futures",
  "humantime",
- "itertools 0.12.1",
+ "itertools",
  "parking_lot",
  "percent-encoding",
  "snafu",
@@ -2486,7 +2477,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18bec9b0adc4eba778b33684b7ba3e7137789434769ee3ce3930463ef904cfca"
 dependencies = [
  "anyhow",
- "itertools 0.13.0",
+ "itertools",
  "proc-macro2",
  "quote",
  "syn 2.0.71",
@@ -2665,6 +2656,49 @@ dependencies = [
 ]
 
 [[package]]
+name = "reearth-flow-action-plateau-processor"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "approx",
+ "async-trait",
+ "bytes",
+ "chrono",
+ "csv",
+ "itertools",
+ "num-traits",
+ "nusamai-citygml",
+ "nusamai-plateau",
+ "nusamai-projection",
+ "once_cell",
+ "opentelemetry 0.24.0",
+ "parking_lot",
+ "petgraph",
+ "pretty_assertions",
+ "quick-xml 0.36.0",
+ "reearth-flow-action-log",
+ "reearth-flow-common",
+ "reearth-flow-eval-expr",
+ "reearth-flow-geometry",
+ "reearth-flow-runtime",
+ "reearth-flow-state",
+ "reearth-flow-storage",
+ "reearth-flow-types",
+ "regex",
+ "rhai",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "typetag",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "reearth-flow-action-processor"
 version = "0.1.0"
 dependencies = [
@@ -2674,7 +2708,7 @@ dependencies = [
  "bytes",
  "chrono",
  "csv",
- "itertools 0.13.0",
+ "itertools",
  "num-traits",
  "nusamai-citygml",
  "nusamai-plateau",
@@ -2784,9 +2818,14 @@ dependencies = [
  "clap",
  "colored",
  "directories",
+ "once_cell",
  "opentelemetry 0.24.0",
  "opentelemetry_sdk 0.24.0",
  "reearth-flow-action-log",
+ "reearth-flow-action-plateau-processor",
+ "reearth-flow-action-processor",
+ "reearth-flow-action-sink",
+ "reearth-flow-action-source",
  "reearth-flow-common",
  "reearth-flow-runner",
  "reearth-flow-runtime",
@@ -2859,8 +2898,13 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "directories",
+ "once_cell",
  "pretty_assertions",
  "reearth-flow-action-log",
+ "reearth-flow-action-plateau-processor",
+ "reearth-flow-action-processor",
+ "reearth-flow-action-sink",
+ "reearth-flow-action-source",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-runner",
@@ -2927,9 +2971,6 @@ dependencies = [
  "petgraph",
  "pretty_assertions",
  "reearth-flow-action-log",
- "reearth-flow-action-processor",
- "reearth-flow-action-sink",
- "reearth-flow-action-source",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-runtime",
@@ -3042,8 +3083,12 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "directories",
+ "once_cell",
  "pretty_assertions",
  "reearth-flow-action-log",
+ "reearth-flow-action-processor",
+ "reearth-flow-action-sink",
+ "reearth-flow-action-source",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-runner",
@@ -3071,7 +3116,7 @@ dependencies = [
  "futures",
  "hashbrown 0.14.5",
  "indexmap 2.2.6",
- "itertools 0.13.0",
+ "itertools",
  "nusamai-citygml",
  "nusamai-geometry",
  "nusamai-plateau",
