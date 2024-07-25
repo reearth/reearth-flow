@@ -23,7 +23,7 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
 
 // TODO: Fix these classes later. Remove the specific red and opacity in border and background.
 const highlightClass =
-  "text-secondary-foreground before:opacity-100  before:rounded-md before:bg-secondary/50 before:border before:border-border/50 before:border-l-2 before:border-l-red-800/50";
+  "text-secondary-foreground before:opacity-100  before:rounded-md before:bg-secondary/50 before:border before:border-border/50 before:border-l-2 before:border-l-red-800/50 dark:before:border-0";
 
 const Tree = forwardRef<HTMLDivElement, TreeProps>(
   (
