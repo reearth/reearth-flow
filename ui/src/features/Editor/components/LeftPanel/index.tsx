@@ -134,7 +134,7 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
             {tabs.map(tab => (
               <IconButton
                 key={tab.id}
-                className={`flex size-9 items-center justify-center rounded text-popover-foreground/50 transition-colors hover:text-popover-foreground md:size-8 ${selectedTab === tab.id && "bg-popover text-popover-foreground"}`}
+                className={`text-popover-foreground/50 flex size-9 items-center justify-center rounded transition-colors hover:text-popover-foreground md:size-8 ${selectedTab === tab.id && "bg-popover text-popover-foreground"}`}
                 icon={tab.icon}
                 onClick={() => handleTabChange(tab.id)}
               />
@@ -142,7 +142,7 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
           </nav>
           <nav className="mt-auto flex flex-col items-center gap-4 p-2">
             <MagnifyingGlass
-              className="hover: size-6 cursor-pointer text-popover-foreground/50 hover:text-popover-foreground"
+              className="hover: text-popover-foreground/50 size-6 cursor-pointer hover:text-popover-foreground"
               weight="thin"
               onClick={() => setDialogType("canvas-search")}
             />

@@ -43,7 +43,7 @@ const ActionsList: React.FC = () => {
     <Tabs defaultValue={tabs[1].value}>
       <TabsList className="flex justify-between px-2 *:w-[31%]">
         {tabs.map(({ title, value }) => (
-          <TabsTrigger key={value} value={value} className="uppercase ">
+          <TabsTrigger key={value} value={value} className="uppercase">
             {title}
           </TabsTrigger>
         ))}
