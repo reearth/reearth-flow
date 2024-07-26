@@ -2,7 +2,6 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { FlowLogo } from "@flow/components";
 import { config } from "@flow/config";
-import { ThemeToggle } from "@flow/features/ThemeToggle";
 import { useCurrentWorkspace } from "@flow/stores";
 
 import { UserNavigation, WorkspaceNavigation } from "./components";

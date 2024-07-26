@@ -85,13 +85,13 @@
 /* Animation for active node */
 @keyframes cycleColors {
   0% {
-    @apply bg-background /* bg-background-700 */;
+    @apply bg-background;
   }
   50% {
-    @apply bg-foreground /* bg-white */;
+    @apply bg-foreground;
   }
   100% {
-    @apply bg-background /* bg-background-700 */;
+    @apply bg-background;
   }
 }
 
