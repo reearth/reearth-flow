@@ -112,7 +112,6 @@ const Canvas: React.FC<Props> = ({
       onConnect={handleConnect}
       proOptions={proOptions}>
       <Background
-        className="bg-zinc-800"
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}
         color="rgba(63, 63, 70, 0.3)"

@@ -20,13 +20,13 @@ const AccountDialogContent: React.FC = () => {
               <FieldWrapper>
                 <div>
                   <p>{t("Name")}</p>
-                  <p className="text-xs text-zinc-400">{me?.name}</p>
+                  <p className="text-xs">{me?.name}</p>
                 </div>
               </FieldWrapper>
               <FieldWrapper>
                 <div>
                   <p>{t("Email address")}</p>
-                  <p className="text-xs text-zinc-400">{me?.email}</p>
+                  <p className="text-xs">{me?.email}</p>
                 </div>
               </FieldWrapper>
             </div>

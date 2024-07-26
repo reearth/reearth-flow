@@ -10,66 +10,66 @@
 }
 
 @layer base {
+  /* TODO: Fix light mode colors and enable light mode */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: rgb(250, 250, 250);
+    --foreground: rgb(39, 39, 42);
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: rgb(250, 250, 250);
+    --card-foreground: rgb(39, 39, 42);
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: rgb(250, 250, 250);
+    --popover-foreground: rgb(49, 49, 42);
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: rgb(126, 126, 129);
+    --primary-foreground: rgb(51, 51, 56);
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: rgb(250, 250, 250);
+    --secondary-foreground: rgb(31, 31, 34);
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: rgb(161, 161, 170);
+    --muted-foreground: rgb(26, 26, 26);
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: rgb(212, 212, 216);
+    --accent-foreground: rgb(63, 63, 70);
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: rgb(239, 68, 68);
+    --destructive-foreground: rgb(250, 250, 250);
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
+    --border: rgb(228, 228, 231);
+    --input: rgb(228, 228, 231);
+    --ring: rgb(24, 24, 27);
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: rgb(39, 39, 42);
+    --foreground: rgb(250, 250, 250);
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: rgb(39, 39, 42);
+    --card-foreground: rgb(250, 250, 250);
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: rgb(49, 49, 53);
+    --popover-foreground: rgb(250, 250, 250);
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: rgb(51, 51, 56);
+    --primary-foreground: rgb(126, 126, 129);
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: rgb(31, 31, 34);
+    --secondary-foreground: rgb(250, 250, 250);
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: rgb(26, 26, 26);
+    --muted-foreground: rgb(161, 161, 170);
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: rgb(63, 63, 70);
+    --accent-foreground: rgb(212, 212, 216);
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: rgb(239, 67, 67);
+    --destructive-foreground: rgb(250, 250, 250);
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: rgb(63, 63, 70);
+    --input: rgb(26, 26, 26);
+    --ring: rgb(2, 8, 23);
   }
 }
 
@@ -85,13 +85,13 @@
 /* Animation for active node */
 @keyframes cycleColors {
   0% {
-    background-color: #3f3f46; /* bg-zinc-700 */
+    @apply bg-background;
   }
   50% {
-    background-color: white; /* bg-white */
+    @apply bg-foreground;
   }
   100% {
-    background-color: #3f3f46; /* bg-zinc-700 */
+    @apply bg-background;
   }
 }
 

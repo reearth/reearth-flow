@@ -24,15 +24,15 @@ const StatusContent: React.FC<Props> = ({ label, runs, selectedRun, onRunSelect 
     <div className="flex-1 p-8">
       <div className="flex items-center gap-2 text-lg font-extralight">
         <p>{t("Runs Manager")}</p>
-        <p className="text-sm font-thin text-zinc-400">({label})</p>
+        <p className="text-sm font-thin">({label})</p>
       </div>
       <div className="mt-4 flex max-w-[1200px] flex-col gap-6">
         <div className="max-h-[30vh] overflow-auto rounded-md px-2">
           <RunsTable runs={runs} selectedRun={selectedRun} onRunSelect={onRunSelect} />
         </div>
         {selectedRun && (
-          <div className="mx-4 rounded-md border border-zinc-700 font-thin text-zinc-300">
-            <div className="border-b border-zinc-700 px-4 py-2">
+          <div className="mx-4 rounded-md border font-thin ">
+            <div className="border-b px-4 py-2">
               <p className="text-xl">{t("Run details")}</p>
             </div>
             <div className="flex max-h-[45vh] flex-col gap-2 p-4">

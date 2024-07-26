@@ -2,6 +2,7 @@ import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { lazy } from "react";
 
 import { TooltipProvider } from "@flow/components";
+import { ThemeProvider } from "@flow/components/ThemeProvider";
 import { config } from "@flow/config";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import Dialog from "@flow/features/Dialog";
@@ -32,22 +33,24 @@ function RootRoute() {
 
   return (
     <AuthProvider>
-      <GraphQLProvider>
-        <I18nProvider>
-          <TooltipProvider>
-            <AuthenticationWrapper>
-              <Dialog />
-              <Outlet />
-              {devMode && (
-                <>
-                  <TanStackQueryDevtools initialIsOpen={false} />
-                  {/* <TanStackRouterDevtools /> */}
-                </>
-              )}
-            </AuthenticationWrapper>
-          </TooltipProvider>
-        </I18nProvider>
-      </GraphQLProvider>
+      <ThemeProvider>
+        <GraphQLProvider>
+          <I18nProvider>
+            <TooltipProvider>
+              <AuthenticationWrapper>
+                <Dialog />
+                <Outlet />
+                {devMode && (
+                  <>
+                    <TanStackQueryDevtools initialIsOpen={false} />
+                    {/* <TanStackRouterDevtools /> */}
+                  </>
+                )}
+              </AuthenticationWrapper>
+            </TooltipProvider>
+          </I18nProvider>
+        </GraphQLProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }
