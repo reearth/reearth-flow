@@ -54,8 +54,6 @@ const ActionsList: React.FC = () => {
       return;
     }
 
-    console.log(filter);
-
     const filteredActions = actions && getFilteredActions(filter, actions);
     setActions(filteredActions);
 

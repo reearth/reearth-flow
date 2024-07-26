@@ -26,9 +26,8 @@ type Props = {
 const LeftPanel: React.FC<Props> = ({ nodes }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
-  // TODO: Temporary for dev. Don't forget to revert
-  const [isPanelOpen, setPanelOpen] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<Tab>("action-list");
+  const [isPanelOpen, setPanelOpen] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
 
   const [_content, setContent] = useState("Admin Page");
 
@@ -96,11 +95,10 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
   const handleTabChange = (tab: Tab) => {
     if (tab === selectedTab) {
       setPanelOpen(!isPanelOpen);
+      setSelectedTab(undefined);
     } else {
       setSelectedTab(tab);
-      if (!isPanelOpen) {
-        setPanelOpen(true);
-      }
+      setPanelOpen(true);
     }
   };
 
