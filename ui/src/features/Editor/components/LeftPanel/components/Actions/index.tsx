@@ -9,9 +9,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@flow/components";
+import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
-import actions from "@flow/mock_data/actions";
-import actionsSegregated from "@flow/mock_data/actionsSegregated";
 import { Action, Segregated } from "@flow/types";
 
 import { ActionComponent } from "./SingleAction";
@@ -20,8 +19,12 @@ type ActionTab = "All" | "Category" | "Type";
 
 const ActionsList: React.FC = () => {
   const t = useT();
+  const { useGetActions, useGetActionSegregated } = useAction();
 
-  const tabs: { title: string; value: ActionTab; actions: Action[] | Segregated }[] = [
+  const { actions } = useGetActions();
+  const { actions: actionsSegregated } = useGetActionSegregated();
+
+  const tabs: { title: string; value: ActionTab; actions: Action[] | Segregated | undefined }[] = [
     {
       title: t("All"),
       value: "All",
@@ -30,12 +33,12 @@ const ActionsList: React.FC = () => {
     {
       title: t("Category"),
       value: "Category",
-      actions: actionsSegregated.byCategory,
+      actions: actionsSegregated?.byCategory,
     },
     {
       title: t("Type"),
       value: "Type",
-      actions: actionsSegregated.byType,
+      actions: actionsSegregated?.byType,
     },
   ];
 
@@ -58,16 +61,20 @@ const ActionsList: React.FC = () => {
               actions.map(action => <ActionComponent key={action.name} {...action} />)
             ) : (
               <Accordion type="single" collapsible>
-                {Object.keys(actions).map(key => (
-                  <AccordionItem key={key} value={key}>
-                    <AccordionTrigger>{key}</AccordionTrigger>
-                    <AccordionContent>
-                      {actions[key].map(action => (
-                        <ActionComponent key={action.name} {...action} />
-                      ))}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
+                {actions ? (
+                  Object.keys(actions).map(key => (
+                    <AccordionItem key={key} value={key}>
+                      <AccordionTrigger>{key}</AccordionTrigger>
+                      <AccordionContent>
+                        {actions[key].map(action => (
+                          <ActionComponent key={action.name} {...action} />
+                        ))}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))
+                ) : (
+                  <p className="mt-4 text-center">{t("Loading")}...</p>
+                )}
               </Accordion>
             )}
           </TabsContent>
