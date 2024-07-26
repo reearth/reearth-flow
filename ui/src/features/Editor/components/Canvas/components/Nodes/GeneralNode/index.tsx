@@ -52,13 +52,13 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
 
   return (
     <div
-      className="rounded-sm bg-zinc-800"
+      className="rounded-sm bg-secondary"
       // onMouseEnter={() => setHovered(true)}
       // onMouseLeave={() => setHovered(false)}
       onDoubleClick={handleDoubleClick}>
-      <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm bg-zinc-900/50">
+      <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
         <div
-          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : "border-zinc-500"} ${className}`}>
+          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : "border-primary/50") : "border-primary/20"} ${className}`}>
           {type === "reader" ? (
             <Database className={typeIconClasses} />
           ) : type === "writer" ? (
@@ -68,12 +68,12 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
           ) : null}
         </div>
         <div
-          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? (hardSelect ? "border-red-300" : "border-zinc-400") : "border-zinc-500"}`}>
-          <p className="self-center truncate text-[10px] font-light text-zinc-300">{name}</p>
+          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? (hardSelect ? "border-red-300" : "border-primary/50") : "border-primary/20"}`}>
+          <p className="self-center truncate text-[10px] font-light">{name}</p>
           <div className={`size-[8px] self-center rounded ${metaProps.style}`} />
         </div>
         {selected && !locked && (
-          <div className="absolute bottom-[25px] right-1/2 flex h-[25px] w-[95%] translate-x-1/2 items-center justify-center rounded-t-lg bg-zinc-900">
+          <div className="absolute bottom-[25px] right-1/2 flex h-[25px] w-[95%] translate-x-1/2 items-center justify-center rounded-t-lg bg-secondary">
             <IconButton
               className="h-full flex-1 rounded-b-none"
               size="icon"

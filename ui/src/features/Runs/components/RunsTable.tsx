@@ -151,7 +151,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="rounded-md border border-zinc-700">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (

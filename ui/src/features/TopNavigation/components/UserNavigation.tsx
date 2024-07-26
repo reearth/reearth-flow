@@ -51,7 +51,7 @@ const UserNavigation: React.FC<Props> = ({
           </Avatar>
           {!iconOnly ? (
             <div className="flex items-center gap-2 self-center">
-              <p className="max-w-28 truncate text-sm font-extralight text-zinc-300 transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
+              <p className="max-w-28 truncate text-sm font-extralight transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
                 {me?.name ? me.name : "User"}
               </p>
               <CaretDown className="w-[12px]" weight="thin" />
@@ -60,7 +60,7 @@ const UserNavigation: React.FC<Props> = ({
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-[200px] text-zinc-300"
+        className="w-[200px]"
         side={dropdownPosition ?? "bottom"}
         align="end"
         sideOffset={dropdownOffset ?? 4}>

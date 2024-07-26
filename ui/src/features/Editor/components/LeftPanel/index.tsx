@@ -71,7 +71,7 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
       component: nodes && (
         <Tree
           data={treeContent}
-          className="w-full shrink-0 truncate rounded px-1 text-zinc-300"
+          className="w-full shrink-0 truncate rounded px-1"
           // initialSlelectedItemId="1"
           onSelectChange={item => setContent(item?.name ?? "")}
           // folderIcon={Folder}
@@ -107,14 +107,14 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
   return (
     <>
       <div
-        className="absolute left-12 z-10 flex h-full w-[300px] flex-1 flex-col gap-3 overflow-auto border-r border-zinc-700 bg-zinc-900 transition-all"
+        className="absolute left-12 z-10 flex h-full w-[300px] flex-1 flex-col gap-3 overflow-auto border-r bg-secondary transition-all"
         style={{
           transform: `translateX(${isPanelOpen ? "8px" : "-100%"})`,
           transitionDuration: isPanelOpen ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
-        <div className="flex flex-col gap-2 border-b border-zinc-700/50 px-4 py-2">
+        <div className="flex flex-col gap-2 border-b px-4 py-2">
           <p className="text-lg font-thin">{tabs?.find(tc => tc.id === selectedTab)?.title}</p>
         </div>
         <div className="flex flex-col gap-2 overflow-auto">
@@ -122,19 +122,19 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
           {tabs?.find(tc => tc.id === selectedTab)?.component}
         </div>
       </div>
-      <aside className="relative z-10 w-14  border-r border-zinc-700 bg-zinc-800">
-        <div className="flex h-full flex-col bg-zinc-900/50">
+      <aside className="relative z-10 w-14 border-r bg-secondary  ">
+        <div className="flex h-full flex-col">
           <nav className="flex flex-col items-center gap-4 p-2">
             <Link
               to={`/workspace/${workspaceId}`}
-              className="flex shrink-0 items-center justify-center gap-2 rounded bg-red-800/50 p-2 text-lg font-semibold text-primary-foreground hover:bg-red-800/80 md:size-8 md:text-base">
+              className="flex shrink-0 items-center justify-center gap-2 rounded bg-red-800/50 p-2 text-lg font-semibold hover:bg-red-800/80 md:size-8 md:text-base">
               <FlowLogo className="size-5" />
               <span className="sr-only">{t("Dashboard")}</span>
             </Link>
             {tabs.map(tab => (
               <IconButton
                 key={tab.id}
-                className={`flex size-9 items-center justify-center rounded text-zinc-500 transition-colors hover:text-zinc-300 md:size-8 ${selectedTab === tab.id && "bg-zinc-700/80 text-zinc-300"}`}
+                className={`flex size-9 items-center justify-center rounded text-popover-foreground/50 transition-colors hover:text-popover-foreground md:size-8 ${selectedTab === tab.id && "bg-popover text-popover-foreground"}`}
                 icon={tab.icon}
                 onClick={() => handleTabChange(tab.id)}
               />
@@ -142,7 +142,7 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
           </nav>
           <nav className="mt-auto flex flex-col items-center gap-4 p-2">
             <MagnifyingGlass
-              className="size-6 cursor-pointer text-zinc-400 hover:text-zinc-300"
+              className="hover: size-6 cursor-pointer text-popover-foreground/50 hover:text-popover-foreground"
               weight="thin"
               onClick={() => setDialogType("canvas-search")}
             />
@@ -152,7 +152,7 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
               dropdownPosition="right"
             />
             {/* <ProjectSettings
-              className="flex items-center justify-center cursor-pointer rounded text-zinc-400 transition-colors hover:text-zinc-300 md:h-8 md:w-8"
+              className="flex items-center justify-center cursor-pointer rounded  transition-colors hover: md:h-8 md:w-8"
               dropdownPosition="right"
               dropdownOffset={15}
             /> */}

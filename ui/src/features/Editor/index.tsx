@@ -21,7 +21,7 @@ export default function Editor() {
   } = useHooks();
 
   return (
-    <div className="flex h-screen flex-col bg-zinc-900 text-zinc-300">
+    <div className="flex h-screen flex-col">
       <div className="relative flex flex-1">
         <LeftPanel nodes={nodes} />
         <div className="flex flex-1 flex-col">
