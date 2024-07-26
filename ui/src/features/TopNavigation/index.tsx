@@ -33,7 +33,7 @@ const TopNavigation: React.FC = () => {
           </div>
         </div>
         <div id="dashboard-right" className="z-10 flex items-center gap-5">
-          <ThemeToggle />
+          {/* <ThemeToggle /> */}
           <UserNavigation />
         </div>
       </div>
