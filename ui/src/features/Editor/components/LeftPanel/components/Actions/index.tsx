@@ -1,3 +1,6 @@
+import { debounce } from "lodash-es";
+import { useEffect, useState } from "react";
+
 import {
   Accordion,
   AccordionContent,
@@ -11,7 +14,7 @@ import {
 } from "@flow/components";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
-import { Action, Segregated } from "@flow/types";
+import { Action, ActionsSegregated, Segregated } from "@flow/types";
 
 import { ActionComponent } from "./SingleAction";
 
@@ -21,10 +24,62 @@ const ActionsList: React.FC = () => {
   const t = useT();
   const { useGetActions, useGetActionSegregated } = useAction();
 
-  const { actions } = useGetActions();
-  const { actions: actionsSegregated } = useGetActionSegregated();
+  const [actions, setActions] = useState<Action[] | undefined>();
 
-  const tabs: { title: string; value: ActionTab; actions: Action[] | Segregated | undefined }[] = [
+  const [actionsSegregated, setActionsSegregated] = useState<Segregated | undefined>();
+
+  const { actions: actionsData } = useGetActions();
+  const { actions: actionsSegregatedData } = useGetActionSegregated();
+
+  useEffect(() => {
+    if (actionsData) setActions(actionsData);
+    if (actionsSegregatedData) setActionsSegregated(actionsSegregatedData);
+  }, [actionsData, actionsSegregatedData]);
+
+  const getFilteredActions = (filter: string, actions?: Action[]): Action[] | undefined =>
+    actions?.filter(action =>
+      Object.values(action)
+        .reduce(
+          (result, value) => (result += result + (Array.isArray(value) ? value.join() : value)),
+          "",
+        )
+        .includes(filter),
+    );
+
+  // Don't worry too much about this implementation. It's only placeholder till we get an actual one using API
+  const handleSearch = debounce((filter: string) => {
+    if (!filter) {
+      setActions(actionsData);
+      setActionsSegregated(actionsSegregatedData);
+      return;
+    }
+
+    console.log(filter);
+
+    const filteredActions = actions && getFilteredActions(filter, actions);
+    setActions(filteredActions);
+
+    const filteredActionsSegregated =
+      actionsSegregated &&
+      Object.keys(actionsSegregated).reduce((obj, rootKey) => {
+        obj[rootKey] = Object.keys(actionsSegregated[rootKey]).reduce(
+          (obj: { [key: string]: Action[] | undefined }, key) => {
+            obj[key] = getFilteredActions(filter, actionsSegregated[rootKey][key]);
+            return obj;
+          },
+          {},
+        );
+        return obj;
+      }, {} as Segregated);
+
+    setActionsSegregated(filteredActionsSegregated);
+  }, 200);
+
+  const tabs: {
+    title: string;
+    value: ActionTab;
+    actions: Action[] | ActionsSegregated | undefined;
+  }[] = [
     {
       title: t("All"),
       value: "All",
@@ -52,7 +107,12 @@ const ActionsList: React.FC = () => {
         ))}
       </TabsList>
       <div className="px-2">
-        <Input className="mx-auto mt-2 w-full px-2" placeholder={t("Search")} disabled />
+        <Input
+          className="mx-auto mt-2 w-full px-2"
+          placeholder={t("Search")}
+          // value={search}
+          onChange={e => handleSearch(e.target.value)}
+        />
       </div>
       <div className="p-2">
         {tabs.map(({ value, actions }) => (
@@ -66,7 +126,7 @@ const ActionsList: React.FC = () => {
                     <AccordionItem key={key} value={key}>
                       <AccordionTrigger>{key}</AccordionTrigger>
                       <AccordionContent>
-                        {actions[key].map(action => (
+                        {actions[key]?.map(action => (
                           <ActionComponent key={action.name} {...action} />
                         ))}
                       </AccordionContent>

@@ -7,8 +7,12 @@ export type Action = {
   categories: string[];
 };
 
+export type ActionsSegregated = {
+  [bySegregated: string]: Action[] | undefined;
+};
+
 export type Segregated = {
-  [subKey: string]: Action[];
+  [key: string]: ActionsSegregated;
 };
 
 export type GetActions = {
