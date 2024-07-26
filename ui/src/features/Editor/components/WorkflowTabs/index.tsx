@@ -49,11 +49,11 @@ const WorkflowTabs: React.FC<Props> = ({
                 className={`relative flex w-28 items-center justify-center rounded px-[6px] py-[2px] transition-colors ${currentWorkflowId === sw?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"} group cursor-pointer`}
                 onClick={() => onWorkflowChange(sw.id)}>
                 <X
-                  className="absolute right-[2px] hidden size-[15px] group-hover:block group-hover:bg-primary/50"
+                  className="group-hover:bg-primary/50 absolute right-[2px] hidden size-[15px] group-hover:block"
                   onClick={() => onWorkflowRemove(sw.id)}
                 />
                 <p
-                  className={`truncate text-center text-xs font-extralight group-hover:text-primary/50 ${currentWorkflowId === sw?.id && "text-primary/50"}`}>
+                  className={`group-hover:text-primary/50 truncate text-center text-xs font-extralight ${currentWorkflowId === sw?.id && "text-primary/50"}`}>
                   {sw.name}
                 </p>
               </div>
