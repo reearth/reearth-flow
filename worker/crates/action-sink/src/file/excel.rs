@@ -168,7 +168,7 @@ fn write_map_entry(
                     .write_string_with_format(
                         *row_index as u32,
                         1,
-                        &n.to_string(),
+                        n.to_string(),
                         &Default::default(),
                     )
                     .map_err(crate::errors::SinkError::file_writer)?;
@@ -202,7 +202,7 @@ fn write_map_entry(
                                 .write_string_with_format(
                                     *row_index as u32,
                                     col_num as u16 + 1,
-                                    &n.to_string(),
+                                    n.to_string(),
                                     &Default::default(),
                                 )
                                 .map_err(crate::errors::SinkError::file_writer)?;
