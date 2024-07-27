@@ -1,14 +1,17 @@
-FROM rust:1.80-slim-bookworm as builder
+# syntax=docker/dockerfile:1
+FROM rust:1.80-slim-bookworm AS builder
 
 ARG NAME=reearth-flow
 WORKDIR /usr/src/${NAME}
 
-ENV CARGO_TARGET_DIR=/tmp/target \
-    DEBIAN_FRONTEND=noninteractive \
+ENV DEBIAN_FRONTEND=noninteractive \
     LC_CTYPE=ja_JP.utf8 \
     LANG=ja_JP.utf8
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y git \
     ca-certificates \
     locales \
     git \
@@ -23,25 +26,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     clang \
     strace  \
-    libdbus-1-dev \
-    && echo "ja_JP UTF-8" > /etc/locale.gen \
+    libdbus-1-dev
+
+RUN echo "ja_JP UTF-8" > /etc/locale.gen \
     && locale-gen \
     && echo "install rust tools"
 
-COPY Cargo.toml Cargo.lock ./
-COPY crates ./crates
-COPY examples ./examples
-COPY tests ./tests
-RUN cargo build --release
+RUN \
+    --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/src/${NAME}/target \
+    --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
+    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
+    --mount=type=bind,source=crates,target=crates \
+    --mount=type=bind,source=examples,target=examples \
+    --mount=type=bind,source=tests,target=tests \
+    cargo build --release && mv target/release/reearth-flow /tmp/reearth-flow
 
-FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+FROM debian:bookworm-slim AS final
+
+RUN \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y git \
     openssl \
     libxml2 \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    ca-certificates
 
 ARG UID=10001
 RUN adduser \
@@ -54,6 +64,6 @@ RUN adduser \
     flow
 USER flow
 
-COPY --from=builder /tmp/target/release/reearth-flow /bin
+COPY --from=builder /tmp/reearth-flow /bin
 
 ENTRYPOINT [ "/bin/reearth-flow" ]
