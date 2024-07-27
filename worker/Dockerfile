@@ -43,9 +43,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-WORKDIR /app
-COPY --from=builder /tmp/target/release/reearth-flow /app
-RUN useradd -d /home/flow -m -s /bin/bash flow && chown -R flow:flow /app
+ARG UID=10001
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/sbin/nologin" \
+    --no-create-home \
+    --uid "${UID}" \
+    flow
 USER flow
 
-ENTRYPOINT [ "/app/reearth-flow" ]
+COPY --from=builder /tmp/target/release/reearth-flow /bin
+
+ENTRYPOINT [ "/bin/reearth-flow" ]
