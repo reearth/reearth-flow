@@ -28,9 +28,7 @@ RUN \
     strace  \
     libdbus-1-dev
 
-RUN echo "ja_JP UTF-8" > /etc/locale.gen \
-    && locale-gen \
-    && echo "install rust tools"
+RUN echo "ja_JP UTF-8" > /etc/locale.gen && locale-gen
 
 RUN \
     --mount=type=cache,target=/usr/local/cargo/registry \
@@ -48,8 +46,7 @@ FROM debian:bookworm-slim AS final
 RUN \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    apt-get update && apt-get install -y git \
-    openssl \
+    apt-get update && apt-get install -y openssl \
     libxml2 \
     ca-certificates
 
