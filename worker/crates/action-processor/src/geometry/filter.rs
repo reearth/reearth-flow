@@ -150,7 +150,7 @@ impl Processor for GeometryFilter {
                     GeometryFilterParam::None.output_port(),
                 )),
                 Some(geomertry) => match geomertry.value {
-                    GeometryValue::Null => fw.send(ctx.new_with_feature_and_port(
+                    GeometryValue::None => fw.send(ctx.new_with_feature_and_port(
                         feature.clone(),
                         GeometryFilterParam::None.output_port(),
                     )),
@@ -195,7 +195,7 @@ fn filter_multiple_geometry(
     geometry: &Geometry,
 ) {
     match &geometry.value {
-        GeometryValue::Null => {
+        GeometryValue::None => {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
         }
         GeometryValue::FlowGeometry3D(geometry) => match geometry {
@@ -240,7 +240,7 @@ fn filter_feature_type(
     geometry: &Geometry,
 ) {
     match &geometry.value {
-        GeometryValue::Null => {
+        GeometryValue::None => {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
         }
         GeometryValue::FlowGeometry3D(geometry) => {
@@ -288,7 +288,7 @@ mod tests {
             ..Default::default()
         };
         let geometry = Geometry {
-            value: GeometryValue::Null,
+            value: GeometryValue::None,
             ..Default::default()
         };
         let ctx = create_default_execute_context(&feature);

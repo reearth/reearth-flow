@@ -93,7 +93,7 @@ impl Processor for Clipper {
             return Ok(());
         };
         match &geometry.value {
-            GeometryValue::Null => {
+            GeometryValue::None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
             GeometryValue::FlowGeometry2D(_) | GeometryValue::FlowGeometry3D(_) => {

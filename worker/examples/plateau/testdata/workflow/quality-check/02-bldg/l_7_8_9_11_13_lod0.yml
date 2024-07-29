@@ -7,15 +7,15 @@ with:
   cityCode:
   codelistsPath:
   schemasPath:
-  schemaJson: !include ../config/schema.txt
+  schemaJson: !include ../../../config/schema.txt
   targetPackages:
     - bldg
   addNsprefixToFeatureTypes: true
   extractDmGeometryAsXmlFragment: false
 graphs:
-  - !include ../graphs/attribute_reader.yml
-  - !include ../graphs/folder_and_file_path_reader.yml
-  - !include ../graphs/lod_splitter_with_dm.yml
+  - !include ../../../graphs/attribute_reader.yml
+  - !include ../../../graphs/folder_and_file_path_reader.yml
+  - !include ../../../graphs/lod_splitter_with_dm.yml
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
     nodes:
