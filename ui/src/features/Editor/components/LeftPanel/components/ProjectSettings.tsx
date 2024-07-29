@@ -25,7 +25,7 @@ const ProjectSettings: React.FC<Props> = ({ className, dropdownPosition, dropdow
         <Gear className="size-6" weight="thin" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-[200px] text-zinc-300"
+        className="w-[200px]"
         side={dropdownPosition ?? "bottom"}
         align="end"
         sideOffset={dropdownOffset ?? 4}>

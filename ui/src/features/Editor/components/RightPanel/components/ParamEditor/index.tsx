@@ -42,7 +42,7 @@ type Props = {
   nodeParameters?: any; // TODO: define type
 };
 
-const actionButtonClasses = "border border-zinc-500 h-[25px]";
+const actionButtonClasses = "border h-[25px]";
 
 const ParamEditor: React.FC<Props> = ({
   nodeId,
@@ -109,7 +109,7 @@ const ParamEditor: React.FC<Props> = ({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="params">
-          <Card className="border-zinc-700 bg-transparent font-extralight text-zinc-300">
+          <Card className="bg-transparent font-extralight">
             <CardHeader>
               <CardTitle>{t("Parameter Editor")}</CardTitle>
               <CardDescription>
@@ -144,12 +144,12 @@ const ParamEditor: React.FC<Props> = ({
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="bg-zinc-700">Save changes</Button>
+              <Button>Save changes</Button>
             </CardFooter>
           </Card>
         </TabsContent>
         <TabsContent value="data">
-          <Card className="border-zinc-700 bg-transparent text-zinc-300">
+          <Card className="bg-transparent">
             <CardHeader>
               <CardTitle>Node data</CardTitle>
             </CardHeader>

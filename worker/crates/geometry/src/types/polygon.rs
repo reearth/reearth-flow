@@ -409,6 +409,7 @@ impl<T: AbsDiffEq<Epsilon = T> + CoordNum, Z: AbsDiffEq<Epsilon = Z> + CoordNum>
     }
 }
 
+#[allow(dead_code)]
 pub struct Iter<'a, T: CoordNum> {
     poly: &'a Polygon<T, T>,
     pos: usize,

@@ -13,7 +13,7 @@ const TopNavigation: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className={`border-b border-zinc-700 bg-zinc-900/50`}>
+    <div className="border-b bg-secondary">
       <div className="relative flex h-14 items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-2">
           <div
@@ -31,7 +31,8 @@ const TopNavigation: React.FC = () => {
             <WorkspaceNavigation />
           </div>
         </div>
-        <div id="dashboard-right" className="z-10 flex items-center">
+        <div id="dashboard-right" className="z-10 flex items-center gap-5">
+          {/* <ThemeToggle /> */}
           <UserNavigation />
         </div>
       </div>

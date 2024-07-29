@@ -13,3 +13,5 @@ cmake-build-*/
 
 # MSVC Windows builds of rustc generate these, which store debugging information
 target/
+
+.env
