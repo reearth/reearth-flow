@@ -1,5 +1,5 @@
 import { debounce } from "lodash-es";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   Accordion,
@@ -36,15 +36,18 @@ const ActionsList: React.FC = () => {
     if (actionsSegregatedData) setActionsSegregated(actionsSegregatedData);
   }, [actionsData, actionsSegregatedData]);
 
-  const getFilteredActions = (filter: string, actions?: Action[]): Action[] | undefined =>
-    actions?.filter(action =>
-      Object.values(action)
-        .reduce(
-          (result, value) => (result += result + (Array.isArray(value) ? value.join() : value)),
-          "",
-        )
-        .includes(filter),
-    );
+  const getFilteredActions = useCallback(
+    (filter: string, actions?: Action[]): Action[] | undefined =>
+      actions?.filter(action =>
+        Object.values(action)
+          .reduce(
+            (result, value) => (result += result + (Array.isArray(value) ? value.join() : value)),
+            "",
+          )
+          .includes(filter),
+      ),
+    [],
+  );
 
   // Don't worry too much about this implementation. It's only placeholder till we get an actual one using API
   const handleSearch = debounce((filter: string) => {
@@ -54,15 +57,15 @@ const ActionsList: React.FC = () => {
       return;
     }
 
-    const filteredActions = actions && getFilteredActions(filter, actions);
+    const filteredActions = actionsData && getFilteredActions(filter, actionsData);
     setActions(filteredActions);
 
     const filteredActionsSegregated =
-      actionsSegregated &&
-      Object.keys(actionsSegregated).reduce((obj, rootKey) => {
-        obj[rootKey] = Object.keys(actionsSegregated[rootKey]).reduce(
+      actionsSegregatedData &&
+      Object.keys(actionsSegregatedData).reduce((obj, rootKey) => {
+        obj[rootKey] = Object.keys(actionsSegregatedData[rootKey]).reduce(
           (obj: { [key: string]: Action[] | undefined }, key) => {
-            obj[key] = getFilteredActions(filter, actionsSegregated[rootKey][key]);
+            obj[key] = getFilteredActions(filter, actionsSegregatedData[rootKey][key]);
             return obj;
           },
           {},
