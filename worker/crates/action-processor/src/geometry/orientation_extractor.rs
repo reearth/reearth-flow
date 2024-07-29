@@ -116,7 +116,7 @@ impl Processor for OrientationExtractor {
             return Ok(());
         };
         match &geometry.value {
-            GeometryValue::Null => {
+            GeometryValue::None => {
                 let mut feature = feature.clone();
                 feature.attributes.insert(
                     self.output_attribute.clone(),

@@ -109,7 +109,7 @@ impl Processor for FeatureFilter {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
-        10
+        5
     }
 
     fn process(

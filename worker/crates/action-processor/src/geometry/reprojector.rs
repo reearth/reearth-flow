@@ -206,7 +206,7 @@ impl Processor for Reprojector {
                     feature.geometry = Some(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
-                GeometryValue::Null => {
+                GeometryValue::None => {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()))
                 }
             }

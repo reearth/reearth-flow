@@ -17,7 +17,7 @@ use super::{
     three_dimention_box_replacer::ThreeDimentionBoxReplacerFactory,
     three_dimention_rotator::ThreeDimentionRotatorFactory,
     two_dimention_forcer::TwoDimentionForcerFactory, validator::GeometryValidatorFactory,
-    vertex_remover::VertexRemoverFactory,
+    value_filter::GeometryValueFilterFactory, vertex_remover::VertexRemoverFactory,
 };
 
 pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -48,6 +48,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<BoundsExtractorFactory>::default(),
         Box::<ClipperFactory>::default(),
         Box::<RefinerFactory>::default(),
+        Box::<GeometryValueFilterFactory>::default(),
     ];
     factories
         .into_iter()
