@@ -307,7 +307,7 @@ impl Appearance {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct CityGmlGeometry {
     pub features: Vec<GeometryFeature>,
     pub materials: Vec<Material>,
