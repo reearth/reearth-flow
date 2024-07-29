@@ -103,7 +103,7 @@ impl Processor for HoleCounter {
             return Ok(());
         };
         match &geometry.value {
-            GeometryValue::Null => {
+            GeometryValue::None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()))
             }
             GeometryValue::FlowGeometry2D(geometry) => {

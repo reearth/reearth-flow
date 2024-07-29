@@ -107,7 +107,7 @@ impl Processor for BoundsExtractor {
         let geometry = feature.geometry.clone();
         let geometry_value = geometry.unwrap().value.clone();
         let bounds = match geometry_value {
-            GeometryValue::Null => None,
+            GeometryValue::None => None,
             GeometryValue::CityGmlGeometry(city_gml) => Self::calc_city_gml(&city_gml),
             GeometryValue::FlowGeometry2D(flow_2d) => Self::calc_2d(&flow_2d),
             GeometryValue::FlowGeometry3D(flow_3d) => Self::calc_3d(&flow_3d),
