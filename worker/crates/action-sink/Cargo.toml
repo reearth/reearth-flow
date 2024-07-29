@@ -38,6 +38,17 @@ tracing.workspace = true
 typetag.workspace = true
 uuid.workspace = true
 
+# ADD by @dongri
+nusamai-gltf.workspace = true
+nusamai-citygml.workspace = true
+indexmap = { version = "2.2.6", features = ["serde", "rayon"] }
+ahash = "0.8.11"
+byteorder = "1.5.0"
+earcut = "0.4"
+url = "2.5.0"
+image = { version = "0.25.0", default-features = false, features = ["rayon", "tiff", "jpeg", "webp", "png"] }
+log = { version = "0.4.21" }
+
 [dev-dependencies]
 bytes.workspace = true
 pretty_assertions.workspace = true

@@ -18,6 +18,7 @@ use serde_json::Value;
 use crate::errors::SinkError;
 
 use super::excel::write_excel;
+use super::gltf::write_gltf;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileWriterSinkFactory;
@@ -97,6 +98,8 @@ enum Format {
     Json,
     #[serde(rename = "excel")]
     Excel,
+    #[serde(rename = "gltf")]
+    Gltf,
 }
 
 impl Sink for FileWriter {
@@ -118,6 +121,7 @@ impl Sink for FileWriter {
             Format::Csv => write_csv(&output, &self.buffer, Delimiter::Comma, storage_resolver),
             Format::Tsv => write_csv(&output, &self.buffer, Delimiter::Tab, storage_resolver),
             Format::Excel => write_excel(&output, &self.buffer, storage_resolver),
+            Format::Gltf => write_gltf(&output, &self.buffer, storage_resolver),
         };
         match result {
             Ok(_) => Ok(()),
