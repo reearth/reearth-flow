@@ -1238,6 +1238,25 @@
       ]
     },
     {
+      "name": "GeometryValueFilter",
+      "type": "processor",
+      "description": "Filter geometry by value",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "none",
+        "geometry2d",
+        "geometry3d",
+        "cityGml"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "HoleCounter",
       "type": "processor",
       "description": "Counts the number of holes in a geometry and adds it as an attribute.",

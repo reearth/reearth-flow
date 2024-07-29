@@ -25,4 +25,5 @@ pub mod three_dimention_rotator;
 pub mod two_dimention_forcer;
 pub(super) mod types;
 pub mod validator;
+pub mod value_filter;
 pub mod vertex_remover;
