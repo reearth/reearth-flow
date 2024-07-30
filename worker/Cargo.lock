@@ -1500,7 +1500,6 @@ checksum = "168fb715dda47215e360912c096649d23d58bf392ac62f73919e831745e40f26"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.5",
- "rayon",
  "serde",
 ]
 
@@ -2840,9 +2839,7 @@ dependencies = [
  "bytes",
  "csv",
  "earcut",
- "image",
  "indexmap 2.2.6",
- "log",
  "nusamai-citygml",
  "nusamai-gltf",
  "once_cell",
@@ -2867,7 +2864,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "typetag",
- "url",
  "uuid",
 ]
 
@@ -3195,6 +3191,7 @@ dependencies = [
 name = "reearth-flow-types"
 version = "0.1.0"
 dependencies = [
+ "ahash",
  "async-trait",
  "async_zip",
  "bytes",
@@ -3202,10 +3199,12 @@ dependencies = [
  "directories",
  "futures",
  "hashbrown 0.14.5",
+ "image",
  "indexmap 2.2.6",
  "itertools 0.13.0",
  "nusamai-citygml",
  "nusamai-geometry 0.1.0 (git+https://github.com/reearth/plateau-gis-converter)",
+ "nusamai-gltf",
  "nusamai-plateau",
  "nusamai-projection",
  "nutype",
@@ -3227,6 +3226,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "typetag",
+ "url",
  "uuid",
 ]
 

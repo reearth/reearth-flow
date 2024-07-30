@@ -46,3 +46,7 @@ tracing-subscriber.workspace = true
 tracing.workspace = true
 typetag.workspace = true
 uuid.workspace = true
+nusamai-gltf.workspace = true
+ahash.workspace = true
+url.workspace = true
+image.workspace = true

@@ -1,5 +1,5 @@
 extern crate nusamai_gltf;
-use super::material;
+// use super::material;
 use super::metadata::MetadataEncoder;
 use ahash::{HashSet, RandomState};
 use byteorder::{ByteOrder, LittleEndian};
@@ -14,6 +14,7 @@ use nusamai_gltf::nusamai_gltf_json::models::{
 };
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
+use reearth_flow_types::geometry::{Image as geometryImage, Material, Texture};
 use reearth_flow_types::{geometry, Attribute};
 use reearth_flow_types::{AttributeValue, Feature};
 use reearth_flow_types::{Geometry, GeometryValue};
@@ -30,7 +31,7 @@ pub struct PrimitiveInfo {
     pub feature_ids: HashSet<u32>,
 }
 
-pub type Primitives = HashMap<material::Material, PrimitiveInfo>;
+pub type Primitives = HashMap<Material, PrimitiveInfo>;
 
 pub(super) fn write_gltf(
     output: &Uri,
@@ -170,9 +171,9 @@ pub(super) fn write_gltf(
 
             let mut attributes = vec![("POSITION".to_string(), 0), ("NORMAL".to_string(), 1)];
             // TODO: For no-texture data, it's better to exclude u, v from the vertex buffer
-            if mat.base_texture.is_some() {
-                attributes.push(("TEXCOORD_0".to_string(), 2));
-            }
+            // if mat.base_texture.is_some() {
+            //     attributes.push(("TEXCOORD_0".to_string(), 2));
+            // }
             attributes.push(("_FEATURE_ID_0".to_string(), 3));
 
             gltf_primitives.push(MeshPrimitive {
@@ -212,8 +213,8 @@ pub(super) fn write_gltf(
         }
     }
 
-    let mut image_set: IndexSet<material::Image, ahash::RandomState> = Default::default();
-    let mut texture_set: IndexSet<material::Texture, ahash::RandomState> = Default::default();
+    let mut image_set: IndexSet<geometryImage, ahash::RandomState> = Default::default();
+    let mut texture_set: IndexSet<Texture, ahash::RandomState> = Default::default();
 
     // materials
     let gltf_materials = primitives
@@ -253,8 +254,6 @@ pub(super) fn write_gltf(
         }
         buffers
     };
-
-    // feedback.ensure_not_canceled()?;
 
     // Build the JSON part of glTF
     let gltf = Gltf {
