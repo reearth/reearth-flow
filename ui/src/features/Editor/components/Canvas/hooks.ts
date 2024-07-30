@@ -11,7 +11,7 @@ type Props = {
   edges: Edge[];
   onNodesUpdate: (newNodes: Node[]) => void;
   onEdgesUpdate: (newEdges: Edge[]) => void;
-  onNodeLocking: (nodeId: string, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => void;
+  onNodeLocking: (nodeId: string) => void;
 };
 
 export const defaultEdgeOptions: DefaultEdgeOptions = {

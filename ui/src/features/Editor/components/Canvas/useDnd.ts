@@ -50,7 +50,7 @@ export default ({ nodes, onNodesChange, onNodeLocking }: Props) => {
           outputs: type === "writer" ? undefined : ["target"],
           status: "idle",
           locked: false,
-          onLock: onNodeLocking,
+          onDoubleClick: onNodeLocking,
         },
       };
 

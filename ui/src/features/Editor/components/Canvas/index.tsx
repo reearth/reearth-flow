@@ -26,7 +26,7 @@ type Props = {
   edges: Edge[];
   canvasLock: boolean;
   onNodesUpdate: (newNodes: Node[]) => void;
-  onNodeLocking: (nodeId: string, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => void;
+  onNodeLocking: (nodeId: string) => void;
   onNodeHover: (e: MouseEvent, node?: Node) => void;
   onEdgesUpdate: (newEdges: Edge[]) => void;
   onEdgeHover: (e: MouseEvent, edge?: Edge) => void;

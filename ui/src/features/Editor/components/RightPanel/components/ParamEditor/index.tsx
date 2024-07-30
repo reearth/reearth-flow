@@ -53,7 +53,6 @@ const ParamEditor: React.FC<Props> = ({
   const t = useT();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
-  console.log("reactFlowInstance", nodeId);
 
   const handleFitView = () => fitView({ nodes: [{ id: nodeId }], duration: 400 });
 
