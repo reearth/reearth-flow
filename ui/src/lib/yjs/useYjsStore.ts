@@ -73,12 +73,10 @@ export default ({
     [workflowId, workflows],
   );
 
-  const nodes = useY(
-    yWorkflows.get(currentWorkflowIndex)?.get("nodes") ?? new Y.Array<Node>(),
-  ) as Node[];
-  const edges = useY(
-    yWorkflows.get(currentWorkflowIndex)?.get("edges") ?? new Y.Array<Edge>(),
-  ) as Edge[];
+  const workflow = yWorkflows.get(currentWorkflowIndex);
+
+  const nodes = useY(workflow?.get("nodes") ?? new Y.Array<Node>()) as Node[];
+  const edges = useY(workflow?.get("edges") ?? new Y.Array<Edge>()) as Edge[];
 
   const handleWorkflowAdd = useCallback(() => {
     // New workflow
@@ -157,25 +155,35 @@ export default ({
     [workflows, yWorkflows, currentWorkflowIndex, handleWorkflowIdChange],
   );
 
-  const handleNodesUpdate = (newNodes: Node[]) => {
-    const yNodes = yWorkflows.get(currentWorkflowIndex)?.get("nodes") as YNodesArray | undefined;
-    yNodes?.delete(0, nodes.length);
-    yNodes?.insert(0, newNodes);
-  };
+  const handleNodesUpdate = useCallback(
+    (newNodes: Node[]) => {
+      const yNodes = workflow?.get("nodes") as YNodesArray | undefined;
+      if (!yNodes) return;
 
-  const handleEdgesUpdate = (newEdges: Edge[]) => {
-    const yEdges = yWorkflows.get(currentWorkflowIndex)?.get("edges") as YEdgesArray | undefined;
-    if (!yEdges) return;
+      const n = yNodes.toJSON() as Node[];
 
-    const e = yEdges.toJSON() as Edge[];
+      if (isEqual(n, newNodes)) return;
 
-    if (isEqual(e, newEdges)) return;
+      yNodes.delete(0, n.length);
+      yNodes.insert(0, newNodes);
+    },
+    [workflow],
+  );
 
-    if (e.length !== 0) {
-      yEdges.delete(0, edges.length);
-    }
-    yEdges.insert(0, newEdges);
-  };
+  const handleEdgesUpdate = useCallback(
+    (newEdges: Edge[]) => {
+      const yEdges = workflow?.get("edges") as YEdgesArray | undefined;
+      if (!yEdges) return;
+
+      const e = yEdges.toJSON() as Edge[];
+
+      if (isEqual(e, newEdges)) return;
+
+      yEdges.delete(0, e.length);
+      yEdges.insert(0, newEdges);
+    },
+    [workflow],
+  );
 
   return {
     nodes,

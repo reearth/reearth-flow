@@ -20,11 +20,7 @@ export type GeneralNodeProps = NodeProps<Node> & {
 const typeIconClasses = "w-[10px] h-[100%]";
 
 const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, selected, id }) => {
-  // const [hovered, setHovered] = useState(false);
-
   const { name, status, inputs, outputs, locked, onDoubleClick } = data;
-
-  console.log("data", data);
 
   const [hardSelect, setHardSelect] = useState<boolean>(!!locked);
 
@@ -39,25 +35,11 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({ className, data, type, select
       onDoubleClick?.(id);
     }
   }, [id, selected, hardSelect, onDoubleClick]);
-  // console.log("D", data);
-  // const onChange = useCallback(
-  //   (evt: any) => {
-  //     console.log("EVT", evt.target.value);
-  //     console.log("data", data);
-  //   },
-  //   [data],
-  // );
-  // console.log("props: ", props);
-  // console.log("data: ", data);
 
   const metaProps = getPropsFrom(status);
 
   return (
-    <div
-      className="rounded-sm bg-secondary"
-      // onMouseEnter={() => setHovered(true)}
-      // onMouseLeave={() => setHovered(false)}
-      onDoubleClick={handleDoubleClick}>
+    <div className="rounded-sm bg-secondary" onDoubleClick={handleDoubleClick}>
       <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
         <div
           className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : "border-primary/50") : type === "subworkflow" ? "border-none" : "border-primary/20"} ${className}`}>
