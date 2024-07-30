@@ -36,15 +36,38 @@ const ActionsList: React.FC = () => {
     if (actionsSegregatedData) setActionsSegregated(actionsSegregatedData);
   }, [actionsData, actionsSegregatedData]);
 
+  const tabs: {
+    title: string;
+    value: ActionTab;
+    actions: Action[] | ActionsSegregated | undefined;
+  }[] = [
+    {
+      title: t("All"),
+      value: "All",
+      actions: actions,
+    },
+    {
+      title: t("Category"),
+      value: "Category",
+      actions: actionsSegregated?.byCategory,
+    },
+    {
+      title: t("Type"),
+      value: "Type",
+      actions: actionsSegregated?.byType,
+    },
+  ];
+
   const getFilteredActions = useCallback(
     (filter: string, actions?: Action[]): Action[] | undefined =>
       actions?.filter(action =>
         Object.values(action)
           .reduce(
-            (result, value) => (result += result + (Array.isArray(value) ? value.join() : value)),
+            (result, value) =>
+              (result += result + (Array.isArray(value) ? value.join() : value).toLowerCase()),
             "",
           )
-          .includes(filter),
+          .includes(filter.toLowerCase()),
       ),
     [],
   );
@@ -76,46 +99,26 @@ const ActionsList: React.FC = () => {
     setActionsSegregated(filteredActionsSegregated);
   }, 200);
 
-  const tabs: {
-    title: string;
-    value: ActionTab;
-    actions: Action[] | ActionsSegregated | undefined;
-  }[] = [
-    {
-      title: t("All"),
-      value: "All",
-      actions: actions,
-    },
-    {
-      title: t("Category"),
-      value: "Category",
-      actions: actionsSegregated?.byCategory,
-    },
-    {
-      title: t("Type"),
-      value: "Type",
-      actions: actionsSegregated?.byType,
-    },
-  ];
-
   return (
-    <Tabs defaultValue={tabs[1].value}>
-      <TabsList className="flex justify-between px-2 *:w-[31%]">
-        {tabs.map(({ title, value }) => (
-          <TabsTrigger key={value} value={value} className="uppercase">
-            {title}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      <div className="px-2">
-        <Input
-          className="mx-auto mt-2 w-full px-2"
-          placeholder={t("Search")}
-          // value={search}
-          onChange={e => handleSearch(e.target.value)}
-        />
+    <Tabs defaultValue={tabs[0].value}>
+      <div className="absolute w-full bg-secondary p-2">
+        <TabsList className="flex justify-between px-0">
+          {tabs.map(({ title, value }) => (
+            <TabsTrigger key={value} value={value} className="w-[31%] uppercase">
+              {title}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <div>
+          <Input
+            className="mx-auto mt-2 w-full px-2"
+            placeholder={t("Search")}
+            // value={search}
+            onChange={e => handleSearch(e.target.value)}
+          />
+        </div>
       </div>
-      <div className="p-2">
+      <div className="mt-20 p-2">
         {tabs.map(({ value, actions }) => (
           <TabsContent className="dark" key={value} value={value}>
             {Array.isArray(actions) ? (
