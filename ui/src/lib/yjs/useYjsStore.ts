@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
-import { useY } from "react-yjs";
 import * as Y from "yjs";
 
 import type { Edge, Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
 import { fromYjsText } from "./conversions";
+import { useY } from "./useY";
 import { yWorkflowBuilder, type YWorkflow, YNodesArray, YEdgesArray } from "./workflowBuilder";
 
 export default ({
