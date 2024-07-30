@@ -46,11 +46,11 @@ export const useQueries = () => {
     mutationFn: async (input: UpdateMeInput) => {
       const data = await graphQLContext?.UpdateMe({ input });
       if (data?.updateMe?.me) {
-        const me = data.updateMe.me;
+        const { id, name, email } = data.updateMe.me;
         return {
-          id: me.id,
-          name: me.name,
-          email: me.email,
+          id,
+          name,
+          email,
         };
       }
     },

@@ -18,7 +18,10 @@ const AccountDialogContent: React.FC = () => {
   const handleUpdateMe = async () => {
     setLoading(true);
     setShowError(false);
-    if (!userName || !email) return;
+    if (!userName || !email) {
+      setLoading(false);
+      return;
+    }
     const { me } = await updateMe({ name: userName, email });
     setLoading(false);
     if (!me) {
