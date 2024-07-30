@@ -483,25 +483,37 @@ impl<
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
-        for (j, line_string) in self.rings().iter().enumerate() {
-            if let Some(result) = line_string.validate(valid_type.clone()) {
-                for problem in result.0.iter() {
-                    reason.push(ValidationProblemAtPosition(
-                        problem.0.clone(),
-                        ValidationProblemPosition::Polygon(
-                            if j == 0 {
-                                RingRole::Exterior
-                            } else {
-                                RingRole::Interior(j as isize)
-                            },
-                            CoordinatePosition(j as isize),
-                        ),
-                    ));
+        match valid_type {
+            ValidationType::DuplicatePoints => {
+                let mut seen = ApproxHashSet::<Coordinate<T, Z>>::new();
+                let coords: Vec<Coordinate<T, Z>> = self.exterior().coords().cloned().collect();
+                for pt in coords[0..coords.len() - 1].iter() {
+                    if !seen.insert(*pt) {
+                        reason.push(ValidationProblemAtPosition(
+                            ValidationProblem::IdenticalCoords,
+                            ValidationProblemPosition::Polygon(
+                                RingRole::Exterior,
+                                CoordinatePosition(-1),
+                            ),
+                        ));
+                    }
+                }
+                let mut seen = ApproxHashSet::<Coordinate<T, Z>>::new();
+                for (j, interior) in self.interiors().iter().enumerate() {
+                    let coords: Vec<Coordinate<T, Z>> = interior.coords().cloned().collect();
+                    for pt in coords[0..coords.len() - 1].iter() {
+                        if !seen.insert(*pt) {
+                            reason.push(ValidationProblemAtPosition(
+                                ValidationProblem::IdenticalCoords,
+                                ValidationProblemPosition::Polygon(
+                                    RingRole::Interior(j as isize),
+                                    CoordinatePosition(-1),
+                                ),
+                            ));
+                        }
+                    }
                 }
             }
-        }
-        match valid_type {
-            ValidationType::DuplicatePoints => {}
             ValidationType::CorruptGeometry => {
                 let polygon_exterior = Polygon::new(self.exterior().clone(), vec![]);
                 for (j, interior) in self.interiors().iter().enumerate() {

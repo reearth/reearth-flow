@@ -38,6 +38,27 @@ graphs:
         type: subGraph
         subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
+      - id: 8a1e6f15-67c6-45ae-a1dc-8e4ae3217574
+        name: GeometryExtractor
+        type: action
+        action: GeometryExtractor
+        with:
+          outputAttribute: dumpGeometry
+
+      - id: 7a33c335-9b5c-479c-a94f-b4f53a008963
+        name: GeometryValidator
+        type: action
+        action: GeometryValidator
+        with:
+          validationTypes:
+            - duplicatePoints
+            - corruptGeometry
+
+      - id: 0361e205-4d43-442d-b004-2ea981dbca84
+        name: Echo
+        type: action
+        action: Echo
+
     edges:
       - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
@@ -48,4 +69,19 @@ graphs:
         from: 3c0bc9cd-284d-4553-83ae-f90365c5930c
         to: 1916fd78-c5f5-46b0-9b67-cfa324b26a5e
         fromPort: default
+        toPort: default
+      - id: 10f01a9c-0b0a-4add-bf72-94fe5e673c67
+        from: 1916fd78-c5f5-46b0-9b67-cfa324b26a5e
+        to: 8a1e6f15-67c6-45ae-a1dc-8e4ae3217574
+        fromPort: lod0
+        toPort: default
+      - id: f4e61527-710b-4e23-bb51-20820d650aed
+        from: 8a1e6f15-67c6-45ae-a1dc-8e4ae3217574
+        to: 7a33c335-9b5c-479c-a94f-b4f53a008963
+        fromPort: default
+        toPort: default
+      - id: 76faa5ea-8e4f-4831-aec6-0cf06ce931c2
+        from: 7a33c335-9b5c-479c-a94f-b4f53a008963
+        to: 0361e205-4d43-442d-b004-2ea981dbca84
+        fromPort: failed
         toPort: default
