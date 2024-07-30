@@ -39,7 +39,7 @@ export default ({
     handleWorkflowClose,
   } = useWorkflowTabs({ workflowId, rawWorkflows, handleWorkflowIdChange });
 
-  const { currentYWorkflow, handleWorkflowAdd, handleWorkflowRemove } = useYWorkflow({
+  const { currentYWorkflow, handleWorkflowAdd, handleWorkflowsRemove } = useYWorkflow({
     yWorkflows,
     workflows,
     currentWorkflowIndex,
@@ -52,7 +52,10 @@ export default ({
   const nodes = useY(currentYWorkflow?.get("nodes") ?? new Y.Array<Node>()) as Node[];
   const edges = useY(currentYWorkflow?.get("edges") ?? new Y.Array<Edge>()) as Edge[];
 
-  const { handleNodesUpdate } = useYNode(currentYWorkflow);
+  const { handleNodesUpdate } = useYNode({
+    currentYWorkflow,
+    handleWorkflowsRemove,
+  });
 
   const { handleEdgesUpdate } = useYEdge(currentYWorkflow);
 
@@ -62,7 +65,6 @@ export default ({
     openWorkflows,
     handleWorkflowClose,
     handleWorkflowAdd,
-    handleWorkflowRemove,
     handleNodesUpdate,
     handleEdgesUpdate,
   };

@@ -90,34 +90,33 @@ export default ({
     setOpenWorkflowIds(ids => [...ids, workflowId]);
   }, [yWorkflows, setOpenWorkflowIds, setWorkflows, handleWorkflowOpen]);
 
-  const handleWorkflowRemove = useCallback(
-    (workflowId: string) => {
-      const index = workflows.findIndex(w => w.id === workflowId);
-      if (index === -1) return;
-      setWorkflows(w => w.filter(w => w.id !== workflowId));
+  const handleWorkflowsRemove = useCallback(
+    (workflowIds: string[]) => {
+      workflowIds.forEach(wid => {
+        if (wid === "main") return;
+        const index = workflows.findIndex(w => w.id === wid);
+        if (index === -1) return;
+        if (index === currentWorkflowIndex) {
+          handleWorkflowIdChange("main");
+        }
+        yWorkflows.delete(index);
+      });
 
-      if (index === currentWorkflowIndex) {
-        handleWorkflowIdChange("main");
-      }
-      yWorkflows.delete(index);
-
-      // Remove subworkflow node from main workflow
-      const mainWorkflow = yWorkflows.get(0);
-      const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray | undefined;
-      if (!mainWorkflowNodes) return;
-
-      const subworkflowIndex = mainWorkflowNodes
-        .toJSON()
-        .findIndex((n: Node) => n.id === workflowId);
-      if (subworkflowIndex !== undefined && subworkflowIndex !== -1) {
-        mainWorkflowNodes?.delete(subworkflowIndex);
-      }
+      setWorkflows(w => w.filter(w => !workflowIds.includes(w.id)));
+      setOpenWorkflowIds(ids => ids.filter(id => !workflowIds.includes(id)));
     },
-    [workflows, yWorkflows, currentWorkflowIndex, setWorkflows, handleWorkflowIdChange],
+    [
+      workflows,
+      yWorkflows,
+      currentWorkflowIndex,
+      setWorkflows,
+      setOpenWorkflowIds,
+      handleWorkflowIdChange,
+    ],
   );
   return {
     currentYWorkflow,
     handleWorkflowAdd,
-    handleWorkflowRemove,
+    handleWorkflowsRemove,
   };
 };
