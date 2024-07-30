@@ -498,7 +498,6 @@ impl<
                         ));
                     }
                 }
-                let mut seen = ApproxHashSet::<Coordinate<T, Z>>::new();
                 for (j, interior) in self.interiors().iter().enumerate() {
                     let coords: Vec<Coordinate<T, Z>> = interior.coords().cloned().collect();
                     for pt in coords[0..coords.len() - 1].iter() {
