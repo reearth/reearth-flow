@@ -61,7 +61,7 @@ export default ({
   const handleWorkflowClose = useCallback(
     (workflowId: string) => {
       setOpenWorkflowIds(ids => ids.filter(id => id !== workflowId));
-      if (workflowId === "main") {
+      if (workflowId !== "main") {
         handleWorkflowIdChange("main");
       }
     },
