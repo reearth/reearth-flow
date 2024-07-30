@@ -5115,7 +5115,6 @@ __metadata:
     i18next-parser: "npm:9.0.0"
     jotai: "npm:2.9.0"
     jsdom: "npm:24.1.0"
-    lib0: "npm:0.2.95"
     lodash-es: "npm:4.17.21"
     postcss: "npm:8.4.39"
     prettier: "npm:3.3.3"
@@ -5123,6 +5122,7 @@ __metadata:
     react-dom: "npm:18.3.1"
     react-i18next: "npm:14.1.3"
     react-resizable-panels: "npm:2.0.20"
+    react-yjs: "npm:2.0.0"
     read-env: "npm:2.0.0"
     storybook: "npm:8.2.4"
     tailwind-merge: "npm:2.4.0"
@@ -14542,19 +14542,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lib0@npm:0.2.95":
-  version: 0.2.95
-  resolution: "lib0@npm:0.2.95"
-  dependencies:
-    isomorphic.js: "npm:^0.2.4"
-  bin:
-    0ecdsa-generate-keypair: bin/0ecdsa-generate-keypair.js
-    0gentesthtml: bin/gentesthtml.js
-    0serve: bin/0serve.js
-  checksum: 10c0/a65052082f3fb558a140246bb2ab18ad4295bede8615d40310cf9e1d7ca1488b4f5b661c27721226b1f270078d583d9ca33f1a12ebc1bbee5fa39e796aa4fa18
-  languageName: node
-  linkType: hard
-
 "lib0@npm:^0.2.86":
   version: 0.2.94
   resolution: "lib0@npm:0.2.94"
@@ -14565,6 +14552,19 @@ __metadata:
     0gentesthtml: bin/gentesthtml.js
     0serve: bin/0serve.js
   checksum: 10c0/241ee57ad36e3d265743d6a21a380dd077dad0b4d5f1a0fe7012ff2f813ea1a36f1c03ba04aecf9f2997049ed44c4044c02ef1ca542617b4ba9401161b803813
+  languageName: node
+  linkType: hard
+
+"lib0@npm:^0.2.94":
+  version: 0.2.95
+  resolution: "lib0@npm:0.2.95"
+  dependencies:
+    isomorphic.js: "npm:^0.2.4"
+  bin:
+    0ecdsa-generate-keypair: bin/0ecdsa-generate-keypair.js
+    0gentesthtml: bin/gentesthtml.js
+    0serve: bin/0serve.js
+  checksum: 10c0/a65052082f3fb558a140246bb2ab18ad4295bede8615d40310cf9e1d7ca1488b4f5b661c27721226b1f270078d583d9ca33f1a12ebc1bbee5fa39e796aa4fa18
   languageName: node
   linkType: hard
 
@@ -16879,6 +16879,18 @@ __metadata:
     react: "*"
     react-dom: "*"
   checksum: 10c0/b2e606338f329f8f26bccbd1ae428cf63e1d9b4a940cb327823270955a2aae35972be745d333d1a1bd0276a3650038d1f7f6ae1077af5cccba8234a3e7376754
+  languageName: node
+  linkType: hard
+
+"react-yjs@npm:2.0.0":
+  version: 2.0.0
+  resolution: "react-yjs@npm:2.0.0"
+  dependencies:
+    lib0: "npm:^0.2.94"
+  peerDependencies:
+    react: ^18 || ^19
+    yjs: ^13.6.16
+  checksum: 10c0/e604ed002a5d453b594819017349a55ad90332c90298fe69f02a5214f56b426a8757ff7801d495c1d6faaae38a22165d26a51ec3af21f503f4598112a9be21cd
   languageName: node
   linkType: hard
 
