@@ -41,9 +41,7 @@ export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: P
   });
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
-    changes => {
-      onNodesChange(applyNodeChanges<Node>(changes, nodes));
-    },
+    changes => onNodesChange(applyNodeChanges<Node>(changes, nodes)),
     [nodes, onNodesChange],
   );
 

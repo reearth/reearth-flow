@@ -1,3 +1,4 @@
+import isEqual from "lodash/isEqual";
 import { useCallback, useMemo, useState } from "react";
 import * as Y from "yjs";
 
@@ -72,10 +73,12 @@ export default ({
     [workflowId, workflows],
   );
 
-  const yWorkflow = yWorkflows.get(currentWorkflowIndex);
-
-  const nodes = useY(yWorkflow?.get("nodes") ?? new Y.Array<Node>()) as Node[];
-  const edges = useY(yWorkflow?.get("edges") ?? new Y.Array<Edge>()) as Edge[];
+  const nodes = useY(
+    yWorkflows.get(currentWorkflowIndex)?.get("nodes") ?? new Y.Array<Node>(),
+  ) as Node[];
+  const edges = useY(
+    yWorkflows.get(currentWorkflowIndex)?.get("edges") ?? new Y.Array<Edge>(),
+  ) as Edge[];
 
   const handleWorkflowAdd = useCallback(() => {
     // New workflow
@@ -155,15 +158,23 @@ export default ({
   );
 
   const handleNodesUpdate = (newNodes: Node[]) => {
-    const yNodes = yWorkflow?.get("nodes") as YNodesArray | undefined;
+    const yNodes = yWorkflows.get(currentWorkflowIndex)?.get("nodes") as YNodesArray | undefined;
     yNodes?.delete(0, nodes.length);
     yNodes?.insert(0, newNodes);
   };
 
   const handleEdgesUpdate = (newEdges: Edge[]) => {
-    const yEdges = yWorkflow?.get("edges") as YEdgesArray | undefined;
-    yEdges?.delete(0, edges.length);
-    yEdges?.insert(0, newEdges);
+    const yEdges = yWorkflows.get(currentWorkflowIndex)?.get("edges") as YEdgesArray | undefined;
+    if (!yEdges) return;
+
+    const e = yEdges.toJSON() as Edge[];
+
+    if (isEqual(e, newEdges)) return;
+
+    if (e.length !== 0) {
+      yEdges.delete(0, edges.length);
+    }
+    yEdges.insert(0, newEdges);
   };
 
   return {
