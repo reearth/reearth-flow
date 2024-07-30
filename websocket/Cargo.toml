@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "crates/*",
+  "bin",
 ]
 
 resolver = "2"
@@ -36,6 +37,7 @@ strip = true
 
 [workspace.dependencies]
 flow-websocket-domain = {path = "crates/domain"}
+flow-websocket-infra = {path = "crates/infra"}
 
 async-trait = "0.1.80"
 axum = {version = "0.7", features = ["ws"]}

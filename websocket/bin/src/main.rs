@@ -1,7 +1,7 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{error_handling::HandleErrorLayer, routing::get, Router};
-use socket::{
+use flow_websocket_infra::socket::{
     handler::{handle_error, handle_upgrade},
     state::AppState,
 };
@@ -12,14 +12,13 @@ use tower_http::{
     trace::{DefaultMakeSpan, TraceLayer},
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-mod socket;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_websockets=debug,tower_http=debug".into()),
+                .unwrap_or_else(|_| "bin=debug,tower_http=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();

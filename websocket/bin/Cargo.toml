@@ -1,6 +1,5 @@
 [package]
-description = "Re:Earth Flow Websocket Domain library"
-name = "flow-websocket-infra"
+name = "bin"
 
 authors.workspace = true
 edition.workspace = true
@@ -12,6 +11,7 @@ version.workspace = true
 
 [dependencies]
 flow-websocket-domain.workspace = true
+flow-websocket-infra.workspace = true
 
 async-trait.workspace = true
 axum-extra.workspace = true
