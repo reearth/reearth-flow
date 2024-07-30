@@ -4,22 +4,21 @@ ARG VERSION
 
 RUN apk add --update --no-cache git ca-certificates build-base
 
-COPY go.mod go.sum main.go /reearth-flow/
-WORKDIR /reearth-flow
+COPY go.mod go.sum main.go /api/
+WORKDIR /api
 RUN go mod download
 
-COPY cmd/ /reearth-flow/cmd/
-COPY pkg/ /reearth-flow/pkg/
-COPY internal/ /reearth-flow/internal/
+COPY cmd/ /api/cmd/
+COPY pkg/ /api/pkg/
+COPY internal/ /api/internal/
 
 RUN CGO_ENABLED=0 go build -tags "${TAG}" "-ldflags=-X main.version=${VERSION} -s -w -buildid=" -trimpath ./cmd/reearth-flow
 
 FROM scratch
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=build /reearth/reearth-flow /reearth/reearth-flow
-COPY ui* /reearth/ui/
+COPY --from=build /api /api
 
-WORKDIR /reearth-flow
+WORKDIR /api
 
 CMD [ "./reearth-flow" ]

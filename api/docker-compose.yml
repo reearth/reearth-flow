@@ -1,23 +1,26 @@
 version: "3"
 services:
   reearth-flow-api:
-    image: reearth/reearth-flow:latest
+    build: .
     environment:
-      REEARTH_DB: mongodb://reearth-flow-mongo
+      REEARTH_FLOW_DB: mongodb://reearth-flow-mongo
     ports:
       - "8081:8080"
     # env_file:
     #  - ./.env
-    links:
-      - reearth-flow-mongo
     depends_on:
       - reearth-flow-mongo
-    volumes:
-      - ./data:/reearth-flow/data
+
   reearth-flow-mongo:
     image: mongo:6-focal
-    ports:
-      - 12345:12345
     volumes:
-      - ./mongo:/data/db
-    command: mongod --port 12345
+      - type: volume
+        source: reearth-flow-mongo
+        target: /data/db
+        volume:
+          nocopy: true
+    command: mongod --port 27017 --bind_ip_all
+
+volumes:
+  reearth-flow-mongo:
+    driver: local
