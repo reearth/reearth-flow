@@ -14,3 +14,13 @@ query SearchUser($email: String!) {
     email
   }
 }
+
+mutation UpdateMe($input: UpdateMeInput!) {
+  updateMe(input: $input) {
+    me {
+      id
+      name
+      email
+    }
+  }
+}

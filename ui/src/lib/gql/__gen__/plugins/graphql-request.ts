@@ -121,10 +121,8 @@ export type DeleteWorkspacePayload = {
 };
 
 export type InputData = {
-  actionId?: InputMaybe<Scalars['ID']['input']>;
-  inputs: Array<InputMaybe<Scalars['ID']['input']>>;
-  name?: InputMaybe<Scalars['String']['input']>;
-  outputs: Array<InputMaybe<Scalars['ID']['input']>>;
+  actionId: Scalars['ID']['input'];
+  name: Scalars['String']['input'];
   params?: InputMaybe<Array<InputMaybe<InputParam>>>;
 };
 
@@ -144,25 +142,32 @@ export enum InputParamType {
 }
 
 export type InputWorkflow = {
-  createdAt: Scalars['DateTime']['input'];
-  edges?: InputMaybe<Array<InputMaybe<InputWorkflowEdge>>>;
+  edges: Array<InputWorkflowEdge>;
   id: Scalars['ID']['input'];
   isMain?: InputMaybe<Scalars['Boolean']['input']>;
   name: Scalars['String']['input'];
-  nodes?: InputMaybe<Array<InputMaybe<InputWorkflowNode>>>;
-  updatedAt: Scalars['DateTime']['input'];
+  nodes: Array<InputWorkflowNode>;
 };
 
 export type InputWorkflowEdge = {
   id: Scalars['ID']['input'];
-  source: Array<Scalars['ID']['input']>;
-  target: Array<Scalars['ID']['input']>;
+  source: Scalars['ID']['input'];
+  sourceHandle: Scalars['String']['input'];
+  target: Scalars['ID']['input'];
+  targetHandle: Scalars['String']['input'];
 };
 
 export type InputWorkflowNode = {
   data: InputData;
   id: Scalars['ID']['input'];
+  type: InputWorkflowNodeType;
 };
+
+export enum InputWorkflowNodeType {
+  Reader = 'READER',
+  Transformer = 'TRANSFORMER',
+  Writer = 'WRITER'
+}
 
 export type Me = {
   __typename?: 'Me';
@@ -413,7 +418,8 @@ export enum Role {
 
 export type RunProjectInput = {
   projectId: Scalars['ID']['input'];
-  workflows: InputWorkflow;
+  workflows: Array<InputWorkflow>;
+  workspaceId: Scalars['ID']['input'];
 };
 
 export type RunProjectPayload = {
@@ -569,6 +575,13 @@ export type SearchUserQueryVariables = Exact<{
 
 export type SearchUserQuery = { __typename?: 'Query', searchUser?: { __typename?: 'User', id: string, name: string, email: string } | null };
 
+export type UpdateMeMutationVariables = Exact<{
+  input: UpdateMeInput;
+}>;
+
+
+export type UpdateMeMutation = { __typename?: 'Mutation', updateMe?: { __typename?: 'UpdateMePayload', me: { __typename?: 'Me', id: string, name: string, email: string } } | null };
+
 export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
 
 export type CreateWorkspaceMutationVariables = Exact<{
@@ -719,6 +732,17 @@ export const SearchUserDocument = gql`
   }
 }
     `;
+export const UpdateMeDocument = gql`
+    mutation UpdateMe($input: UpdateMeInput!) {
+  updateMe(input: $input) {
+    me {
+      id
+      name
+      email
+    }
+  }
+}
+    `;
 export const CreateWorkspaceDocument = gql`
     mutation CreateWorkspace($input: CreateWorkspaceInput!) {
   createWorkspace(input: $input) {
@@ -816,6 +840,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     SearchUser(variables: SearchUserQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<SearchUserQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<SearchUserQuery>(SearchUserDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'SearchUser', 'query', variables);
+    },
+    UpdateMe(variables: UpdateMeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateMeMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateMeMutation>(UpdateMeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateMe', 'mutation', variables);
     },
     CreateWorkspace(variables: CreateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateWorkspaceMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkspaceMutation>(CreateWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateWorkspace', 'mutation', variables);
