@@ -93,6 +93,7 @@ export default ({
   const handleWorkflowRemove = useCallback(
     (workflowId: string) => {
       const index = workflows.findIndex(w => w.id === workflowId);
+      if (index === -1) return;
       setWorkflows(w => w.filter(w => w.id !== workflowId));
 
       if (index === currentWorkflowIndex) {
@@ -103,8 +104,10 @@ export default ({
       // Remove subworkflow node from main workflow
       const mainWorkflow = yWorkflows.get(0);
       const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray | undefined;
+      if (!mainWorkflowNodes) return;
+
       const subworkflowIndex = mainWorkflowNodes
-        ?.toJSON()
+        .toJSON()
         .findIndex((n: Node) => n.id === workflowId);
       if (subworkflowIndex !== undefined && subworkflowIndex !== -1) {
         mainWorkflowNodes?.delete(subworkflowIndex);
