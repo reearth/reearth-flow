@@ -6,7 +6,7 @@ import { useT } from "@flow/lib/i18n";
 
 import { ContentHeader, ContentSection } from "..";
 
-type Errors = "failed" | "passwordNotSame" | "passwordOrEmail";
+type Errors = "failed" | "passwordNotSame" | "passwordFailed" | "emailFailed";
 
 const AccountDialogContent: React.FC = () => {
   const t = useT();
@@ -28,21 +28,25 @@ const AccountDialogContent: React.FC = () => {
     }
     if (password != passwordConfirmation) {
       setShowError("passwordNotSame");
+      setLoading(false);
       return;
     }
 
-    // Can only update 1 at a time
-    if (password && email != me?.email) {
-      setShowError("passwordOrEmail");
-      return;
+    // Update the password if it's changed
+    if (password) {
+      const input = { name, password, passwordConfirmation };
+      const { me: user } = await updateMe(input);
+      if (!user) {
+        setShowError("passwordFailed");
+      }
     }
-    const input = password ? { name, password, passwordConfirmation } : { name, email };
+
+    const input = { name, email };
     const { me: user } = await updateMe(input);
-    setLoading(false);
     if (!user) {
-      setShowError("failed");
-      return;
+      showError === "passwordFailed" ? setShowError("failed") : setShowError("emailFailed");
     }
+    setLoading(false);
   };
 
   return (
@@ -68,7 +72,7 @@ const AccountDialogContent: React.FC = () => {
                 <Input
                   id="user-email"
                   placeholder={t("User Name")}
-                  disabled={isLoading || !!password}
+                  disabled={isLoading}
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                 />
@@ -78,7 +82,7 @@ const AccountDialogContent: React.FC = () => {
                 <Input
                   id="password"
                   placeholder={t("Password")}
-                  disabled={isLoading || email != me?.email}
+                  disabled={isLoading}
                   value={password}
                   type="password"
                   onChange={e => setPassword(e.target.value)}
@@ -89,7 +93,7 @@ const AccountDialogContent: React.FC = () => {
                 <Input
                   id="confirm-password"
                   placeholder={t("Confirm Password")}
-                  disabled={isLoading || email != me?.email}
+                  disabled={isLoading}
                   value={passwordConfirmation}
                   type="password"
                   onChange={e => setPasswordConfirmation(e.target.value)}
@@ -104,11 +108,11 @@ const AccountDialogContent: React.FC = () => {
                 </Button>
               </div>
               <div className={`text-xs text-destructive ${showError ? "opacity-70" : "opacity-0"}`}>
-                {showError === "failed" && t("Failed to update Account details")}
+                {showError === "failed" && t("Failed to update the user")}
                 {showError === "passwordNotSame" &&
                   t("Password and Confirm password are not the same")}
-                {showError === "passwordOrEmail" &&
-                  t("Can only change password or email but not both at the same time")}
+                {showError === "passwordFailed" && t("Failed to update the password")}
+                {showError === "emailFailed" && t("Failed to update email and name")}
               </div>
             </div>
           }
