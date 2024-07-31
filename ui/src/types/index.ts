@@ -8,3 +8,4 @@ export * from "./run";
 export * from "./workspace";
 export * from "./api";
 export * from "./log";
+export * from "./action";
