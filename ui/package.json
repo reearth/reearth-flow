@@ -105,7 +105,7 @@
     "autoprefixer": "10.4.19",
     "del-cli": "5.1.0",
     "eslint": "8.57.0",
-    "eslint-config-reearth": "0.3.5",
+    "eslint-config-reearth": "0.3.0",
     "eslint-plugin-import": "2.29.1",
     "eslint-plugin-react-hooks": "4.6.2",
     "eslint-plugin-react-refresh": "0.4.9",
