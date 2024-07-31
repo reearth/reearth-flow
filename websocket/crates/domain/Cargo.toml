@@ -16,3 +16,4 @@ async-trait.workspace = true
 chrono.workspace = true
 serde.workspace = true
 uuid.workspace = true
+anyhow.workspace = true

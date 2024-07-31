@@ -1,10 +1,10 @@
-use std::error::Error;
-
+use crate::{
+    repository::ProjectSnapshotRepository,
+    snapshot::{ObjectDelete, ObjectTenant, ProjectSnapshot},
+    utils::generate_id,
+};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-
-use crate::repository::ProjectSnapshotRepository;
-use crate::snapshot::{ObjectDelete, ObjectTenant, ProjectSnapshot};
-use crate::utils::generate_id;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
@@ -45,44 +45,41 @@ impl ProjectEditingSession {
     pub async fn start_or_join_session(
         &mut self,
         snapshot_repo: &impl ProjectSnapshotRepository,
-    ) -> Result<String, Box<dyn Error>> {
-        // Logic to start or join a session
+    ) -> Result<String> {
         let session_id = generate_id(14, "editor-session");
         self.session_id = Some(session_id.clone());
+
         if !self.session_setup_complete {
-            let latest_snapshot_state = snapshot_repo.get_latest_snapshot_state(&self.project_id).await?;
-            // Initialize Redis with latest snapshot state
+            let latest_snapshot_state = snapshot_repo
+                .get_latest_snapshot_state(&self.project_id)
+                .await
+                .context("Failed to get latest snapshot state")?;
+            // Initialize Redis with latest snapshot state here...
         }
+
         self.session_setup_complete = true;
         Ok(session_id)
     }
 
-    pub async fn get_diff_update(
-        &self,
-        state_vector: Vec<u8>,
-    ) -> Result<(Vec<u8>, Vec<u8>), Box<dyn Error>> {
+    pub async fn get_diff_update(&self, state_vector: Vec<u8>) -> Result<(Vec<u8>, Vec<u8>)> {
         self.check_session_setup()?;
         // Logic to get the diff update
         Ok((vec![], vec![]))
     }
 
-    pub async fn merge_updates(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn merge_updates(&self) -> Result<()> {
         self.check_session_setup()?;
         // Logic to merge updates
         Ok(())
     }
 
-    pub async fn get_state_update(&self) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub async fn get_state_update(&self) -> Result<Vec<u8>> {
         self.check_session_setup()?;
         // Logic to get the state update
         Ok(vec![])
     }
 
-    pub async fn push_update(
-        &self,
-        update: Vec<u8>,
-        updated_by: Option<String>,
-    ) -> Result<(), Box<dyn Error>> {
+    pub async fn push_update(&self, update: Vec<u8>, updated_by: Option<String>) -> Result<()> {
         self.check_session_setup()?;
         // Logic to push an update
         Ok(())
@@ -93,8 +90,9 @@ impl ProjectEditingSession {
         snapshot_repo: &impl ProjectSnapshotRepository,
         data: SnapshotData,
         skip_lock: bool,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<()> {
         self.check_session_setup()?;
+
         if skip_lock {
             self.create_snapshot_internal(snapshot_repo, data).await
         } else {
@@ -107,8 +105,9 @@ impl ProjectEditingSession {
         &self,
         snapshot_repo: &impl ProjectSnapshotRepository,
         data: SnapshotData,
-    ) -> Result<(), Box<dyn Error>> {
-        let merged_state = self.merge_updates().await?;
+    ) -> Result<()> {
+        self.merge_updates().await?;
+
         let snapshot = ProjectSnapshot {
             id: generate_id(14, "snap"),
             project_id: self.project_id.clone(),
@@ -128,19 +127,23 @@ impl ProjectEditingSession {
             created_at: None,
             updated_at: None,
         };
-        snapshot_repo.create_snapshot(snapshot).await?;
+
+        snapshot_repo
+            .create_snapshot(snapshot)
+            .await
+            .context("Failed to create snapshot")?;
         Ok(())
     }
 
-    pub async fn end_session(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn end_session(&self) -> Result<()> {
         self.check_session_setup()?;
         // Logic to end the session
         Ok(())
     }
 
-    fn check_session_setup(&self) -> Result<(), Box<dyn Error>> {
+    fn check_session_setup(&self) -> Result<()> {
         if !self.session_setup_complete {
-            Err("Session not setup".into())
+            Err(anyhow::anyhow!("Session not setup"))
         } else {
             Ok(())
         }
