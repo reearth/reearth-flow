@@ -64,7 +64,7 @@ const ActionsList: React.FC = () => {
         Object.values(action)
           .reduce(
             (result, value) =>
-              (result += result + (Array.isArray(value) ? value.join() : value).toLowerCase()),
+              (result += (Array.isArray(value) ? value.join() : value).toLowerCase()),
             "",
           )
           .includes(filter.toLowerCase()),
