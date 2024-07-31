@@ -258,7 +258,7 @@ const AccordionTrigger = forwardRef<
       )}
       {...props}>
       {children}
-      <CaretRight className="ml-auto size-4 shrink-0 text-accent/60 transition-transform duration-200" />
+      <CaretRight className="text-accent/60 ml-auto size-4 shrink-0 transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));

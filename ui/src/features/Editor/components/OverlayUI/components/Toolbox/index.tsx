@@ -86,7 +86,7 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
           {availableTools.map(tool => (
             <IconButton
               key={tool.id}
-              className={`dndnode-${tool.id}`}
+              className={`dndnode-${tool.id} rounded-[4px]`}
               tooltipPosition="right"
               tooltipText={tool.name}
               icon={tool.icon}
@@ -98,6 +98,7 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
           {availableActions.map(action => (
             <IconButton
               key={action.id}
+              className="rounded-[4px]"
               tooltipPosition="right"
               tooltipText={action.name}
               icon={action.icon}

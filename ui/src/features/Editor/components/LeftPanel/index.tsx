@@ -15,9 +15,9 @@ import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 import type { Node } from "@flow/types";
 
-import { TransformerList, Resources } from "./components";
+import { ActionsList, Resources } from "./components";
 
-type Tab = "navigator" | "transformer-list" | "resources";
+type Tab = "navigator" | "action-list" | "resources";
 
 type Props = {
   nodes: Node[];
@@ -27,7 +27,7 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [isPanelOpen, setPanelOpen] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<Tab>("navigator");
+  const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
 
   const [_content, setContent] = useState("Admin Page");
 
@@ -79,10 +79,10 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
       ),
     },
     {
-      id: "transformer-list",
-      title: t("Transformer list"),
+      id: "action-list",
+      title: t("Action list"),
       icon: <Lightning className="size-5" weight="thin" />,
-      component: <TransformerList />,
+      component: <ActionsList />,
     },
     {
       id: "resources",
@@ -95,11 +95,10 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
   const handleTabChange = (tab: Tab) => {
     if (tab === selectedTab) {
       setPanelOpen(!isPanelOpen);
+      setSelectedTab(undefined);
     } else {
       setSelectedTab(tab);
-      if (!isPanelOpen) {
-        setPanelOpen(true);
-      }
+      setPanelOpen(true);
     }
   };
 
