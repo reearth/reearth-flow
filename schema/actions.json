@@ -506,6 +506,37 @@
       ]
     },
     {
+      "name": "FeatureCreator",
+      "type": "source",
+      "description": "Creates features from expressions",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureCreator",
+        "type": "object",
+        "required": [
+          "creator"
+        ],
+        "properties": {
+          "creator": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "FeatureFilter",
       "type": "processor",
       "description": "Filters features based on conditions",

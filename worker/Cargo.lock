@@ -2798,6 +2798,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-types",
  "regex",
+ "rhai",
  "schemars",
  "serde",
  "serde_json",

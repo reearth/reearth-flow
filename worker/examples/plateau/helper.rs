@@ -44,7 +44,7 @@ pub(crate) static ALL_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::
 
 #[allow(dead_code)]
 pub(crate) fn execute(workflow: &str) {
-    env::set_var("RAYON_NUM_THREADS", "10");
+    unsafe { env::set_var("RAYON_NUM_THREADS", "10") };
     setup_logging_and_tracing();
     let job_id = uuid::Uuid::new_v4();
     let action_log_uri = {
