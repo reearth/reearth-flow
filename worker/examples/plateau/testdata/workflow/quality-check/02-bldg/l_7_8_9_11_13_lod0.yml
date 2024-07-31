@@ -93,7 +93,19 @@ graphs:
         action: HoleExtractor
 
       - id: 0361e205-4d43-442d-b004-2ea981dbca84
-        name: Echo
+        name: OrientationExtractor
+        type: action
+        action: OrientationExtractor
+        with:
+          outputAttribute: outerOrientation
+
+      - id: 2f03d753-a8f0-43bc-a85d-0c5554f93ddc
+        name: EchoOutershell
+        type: action
+        action: Echo
+
+      - id: 565d0851-fc27-46b5-961d-9c2499b2eafb
+        name: EchoHole
         type: action
         action: Echo
 
@@ -146,5 +158,15 @@ graphs:
       - id: 5c934958-d505-4c3e-9f5a-05c2a0595177
         from: 52a4bcab-854d-41e8-a9b3-e391c79631a9
         to: 0361e205-4d43-442d-b004-2ea981dbca84
+        fromPort: outershell
+        toPort: default
+      - id: af538fb0-7f59-448b-9a39-f4f381524900
+        from: 0361e205-4d43-442d-b004-2ea981dbca84
+        to: 2f03d753-a8f0-43bc-a85d-0c5554f93ddc
+        fromPort: default
+        toPort: default
+      - id: baec53de-12fa-4e37-8a49-def1afe8e547
+        from: 52a4bcab-854d-41e8-a9b3-e391c79631a9
+        to: 565d0851-fc27-46b5-961d-9c2499b2eafb
         fromPort: hole
         toPort: default

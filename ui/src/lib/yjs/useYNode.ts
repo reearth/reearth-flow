@@ -43,8 +43,6 @@ export default ({
 
 function nodesToBeRemoved(oldNodes: Node[], NewNodes: Node[]) {
   const isInArray = (node: Node, nodeArray: Node[]) => nodeArray.some(item => item.id === node.id);
-
-  const deletedNodes = oldNodes.filter(n => !isInArray(n, NewNodes));
-
-  return deletedNodes;
+  const removedNodes = oldNodes.filter(n => !isInArray(n, NewNodes));
+  return removedNodes;
 }
