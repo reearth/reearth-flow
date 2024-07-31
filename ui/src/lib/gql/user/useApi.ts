@@ -1,5 +1,7 @@
 import { GetMe, SearchUser, UpdateMe } from "@flow/types/user";
 
+import { UpdateMeInput } from "../__gen__/graphql";
+
 import { useQueries } from "./useQueries";
 
 export enum UserQueryKeys {
@@ -25,10 +27,10 @@ export const useUser = () => {
     };
   };
 
-  const updateMe = async ({ name, email }: { name: string; email: string }): Promise<UpdateMe> => {
+  const updateMe = async (input: UpdateMeInput): Promise<UpdateMe> => {
     const { mutateAsync, ...rest } = updateMeMutation;
     try {
-      const me = await mutateAsync({ name, email });
+      const me = await mutateAsync(input);
       return { me, ...rest };
     } catch (err) {
       return { me: undefined, ...rest };
