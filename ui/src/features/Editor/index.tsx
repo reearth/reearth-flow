@@ -4,14 +4,14 @@ import useHooks from "./hooks";
 export default function Editor() {
   const {
     currentWorkflowId,
-    workflows,
+    openWorkflows,
     nodes,
     edges,
     // lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,
+    handleWorkflowClose,
     handleWorkflowAdd,
-    handleWorkflowRemove,
     handleWorkflowChange,
     handleNodesUpdate,
     handleNodeHover,
@@ -39,9 +39,9 @@ export default function Editor() {
           </OverlayUI>
           <BottomPanel
             currentWorkflowId={currentWorkflowId}
-            workflows={workflows}
+            openWorkflows={openWorkflows}
+            onWorkflowClose={handleWorkflowClose}
             onWorkflowAdd={handleWorkflowAdd}
-            onWorkflowRemove={handleWorkflowRemove}
             onWorkflowChange={handleWorkflowChange}
           />
         </div>

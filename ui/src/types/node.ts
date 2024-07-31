@@ -19,7 +19,7 @@ export type NodeData = {
   status?: Status;
   params?: NodeParam<any>[];
   locked?: boolean | undefined;
-  onLock?: (nodeId: string) => void;
+  onDoubleClick?: (nodeId: string) => void;
   // transformer
   transformerId?: string;
   // batch & note nodes
@@ -32,7 +32,7 @@ export type NodeData = {
 
 export type NodePosition = { x: number; y: number };
 
-export type NodeType = "reader" | "writer" | "transformer" | "batch" | "note";
+export type NodeType = "reader" | "writer" | "transformer" | "batch" | "note" | "subworkflow";
 
 export type Node = ReactFlowNode<NodeData>;
 

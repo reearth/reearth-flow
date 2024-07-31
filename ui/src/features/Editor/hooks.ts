@@ -1,3 +1,4 @@
+import { useReactFlow } from "@xyflow/react";
 import { MouseEvent, useCallback, useState } from "react";
 
 import { useYjsStore } from "@flow/lib/yjs";
@@ -7,6 +8,7 @@ import { cancellableDebounce } from "@flow/utils";
 
 export default () => {
   const [currentWorkflowId, setCurrentWorkflowId] = useCurrentWorkflowId();
+  const { getNodes } = useReactFlow();
 
   const handleWorkflowIdChange = useCallback(
     (id?: string) => {
@@ -17,11 +19,11 @@ export default () => {
   );
 
   const {
-    workflows,
+    openWorkflows,
     nodes,
     edges,
     handleWorkflowAdd,
-    handleWorkflowRemove,
+    handleWorkflowClose,
     handleNodesUpdate,
     handleEdgesUpdate,
   } = useYjsStore({
@@ -37,9 +39,9 @@ export default () => {
 
   // consider making a node context and supplying vars and functions like this to the nodes that way
   const handleNodeLocking = useCallback(
-    (nodeId: string, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => {
-      onNodesChange(
-        nodes.map(n => {
+    (nodeId: string) => {
+      handleNodesUpdate(
+        getNodes().map(n => {
           if (n.id === nodeId) {
             const newNode = {
               ...n,
@@ -64,7 +66,7 @@ export default () => {
         }),
       );
     },
-    [],
+    [getNodes, handleNodesUpdate],
   );
 
   const [hoveredDetails, setHoveredDetails] = useState<Node | Edge | undefined>();
@@ -96,14 +98,14 @@ export default () => {
 
   return {
     currentWorkflowId,
-    workflows,
+    openWorkflows,
     nodes,
     edges,
     lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,
+    handleWorkflowClose,
     handleWorkflowAdd,
-    handleWorkflowRemove,
     handleWorkflowChange: handleWorkflowIdChange,
     handleNodesUpdate,
     handleNodeHover,

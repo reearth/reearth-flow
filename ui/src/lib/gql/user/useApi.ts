@@ -1,4 +1,4 @@
-import { GetMe, SearchUser } from "@flow/types/user";
+import { GetMe, SearchUser, UpdateMe } from "@flow/types/user";
 
 import { useQueries } from "./useQueries";
 
@@ -8,7 +8,7 @@ export enum UserQueryKeys {
 }
 
 export const useUser = () => {
-  const { useGetMeQuery, searchUserQuery } = useQueries();
+  const { useGetMeQuery, searchUserQuery, updateMeMutation } = useQueries();
 
   const useGetMe = (): GetMe => {
     const { data, ...rest } = useGetMeQuery();
@@ -25,8 +25,19 @@ export const useUser = () => {
     };
   };
 
+  const updateMe = async ({ name, email }: { name: string; email: string }): Promise<UpdateMe> => {
+    const { mutateAsync, ...rest } = updateMeMutation;
+    try {
+      const me = await mutateAsync({ name, email });
+      return { me, ...rest };
+    } catch (err) {
+      return { me: undefined, ...rest };
+    }
+  };
+
   return {
     useGetMe,
     searchUser,
+    updateMe,
   };
 };
