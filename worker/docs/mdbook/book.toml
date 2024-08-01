@@ -1,0 +1,11 @@
+[book]
+authors = ["Re:Earth Flow Contributors"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Re:Earth Flow"
+
+[output.html]
+curly-quotes = true
+git-repository-url = "https://github.com/reearth/reearth-flow"
+site-url = "https://reearth-flow.github.io/worker/"
