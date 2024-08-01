@@ -1,11 +1,10 @@
-FROM node:lts as build
+FROM node:20.16-bullseye-slim as build
 
-COPY package.json yarn.lock ./
+WORKDIR /app
 
-RUN yarn install
-
+RUN corepack enable && corepack prepare yarn@4.2.2 --activate
 COPY . .
-
+RUN yarn install
 RUN yarn build
 
 FROM nginx:stable
@@ -13,7 +12,6 @@ FROM nginx:stable
 RUN rm /etc/nginx/conf.d/default.conf
 
 COPY nginx.conf /etc/nginx/conf.d
-
-COPY --from=build ./dist /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 
 CMD ["nginx", "-g", "daemon off;"]
