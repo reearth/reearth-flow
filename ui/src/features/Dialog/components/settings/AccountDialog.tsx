@@ -6,28 +6,47 @@ import { useT } from "@flow/lib/i18n";
 
 import { ContentHeader, ContentSection } from "..";
 
+type Errors = "failed" | "passwordNotSame" | "passwordFailed" | "emailFailed";
+
 const AccountDialogContent: React.FC = () => {
   const t = useT();
   const { useGetMe, updateMe } = useUser();
   const { me, isLoading } = useGetMe();
-  const [userName, setUserName] = useState<string | undefined>(me?.name);
+  const [name, setName] = useState<string | undefined>(me?.name);
   const [email, setEmail] = useState<string | undefined>(me?.email);
-  const [showError, setShowError] = useState<boolean>(false);
+  const [password, setPassword] = useState<string | undefined>();
+  const [passwordConfirmation, setPasswordConfirmation] = useState<string | undefined>();
+  const [showError, setShowError] = useState<Errors | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
   const handleUpdateMe = async () => {
     setLoading(true);
-    setShowError(false);
-    if (!userName || !email) {
+    setShowError(undefined);
+    if (!name || !email) {
       setLoading(false);
       return;
     }
-    const { me } = await updateMe({ name: userName, email });
-    setLoading(false);
-    if (!me) {
-      setShowError(true);
+    if (password != passwordConfirmation) {
+      setShowError("passwordNotSame");
+      setLoading(false);
       return;
     }
+
+    // Update the password if it's changed
+    if (password) {
+      const input = { name, password, passwordConfirmation };
+      const { me: user } = await updateMe(input);
+      if (!user) {
+        setShowError("passwordFailed");
+      }
+    }
+
+    const input = { name, email };
+    const { me: user } = await updateMe(input);
+    if (!user) {
+      showError === "passwordFailed" ? setShowError("failed") : setShowError("emailFailed");
+    }
+    setLoading(false);
   };
 
   return (
@@ -44,8 +63,8 @@ const AccountDialogContent: React.FC = () => {
                   id="user-name"
                   placeholder={t("User Name")}
                   disabled={isLoading}
-                  value={userName}
-                  onChange={e => setUserName(e.target.value)}
+                  value={name}
+                  onChange={e => setName(e.target.value)}
                 />
               </div>
               <div>
@@ -59,16 +78,41 @@ const AccountDialogContent: React.FC = () => {
                 />
               </div>
               <div>
+                <Label htmlFor="password">{t("Password")}</Label>
+                <Input
+                  id="password"
+                  placeholder={t("Password")}
+                  disabled={isLoading}
+                  value={password}
+                  type="password"
+                  onChange={e => setPassword(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="confirm-password">{t("Confirm Password")}</Label>
+                <Input
+                  id="confirm-password"
+                  placeholder={t("Confirm Password")}
+                  disabled={isLoading}
+                  value={passwordConfirmation}
+                  type="password"
+                  onChange={e => setPasswordConfirmation(e.target.value)}
+                />
+              </div>
+              <div>
                 <Button
                   className="self-end"
-                  disabled={isLoading || loading || !userName || !email}
+                  disabled={isLoading || loading || !name || !email}
                   onClick={handleUpdateMe}>
                   {t("Save")}
                 </Button>
               </div>
-              <div
-                className={`self-end text-xs text-destructive ${showError ? "opacity-70" : "opacity-0"}`}>
-                {showError && t("Failed to update Account details")}
+              <div className={`text-xs text-destructive ${showError ? "opacity-70" : "opacity-0"}`}>
+                {showError === "failed" && t("Failed to update the user")}
+                {showError === "passwordNotSame" &&
+                  t("Password and Confirm password are not the same")}
+                {showError === "passwordFailed" && t("Failed to update the password")}
+                {showError === "emailFailed" && t("Failed to update email and name")}
               </div>
             </div>
           }
