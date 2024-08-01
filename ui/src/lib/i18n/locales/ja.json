@@ -46,7 +46,7 @@
   "Basic information": "基本情報",
   "User Name": "ユーザー名",
   "Email": "メール",
-  "Password": "",
+  "Password": "パスワード",
   "Confirm Password": "",
   "Failed to update the user": "",
   "Password and Confirm password are not the same": "",
