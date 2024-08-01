@@ -47,7 +47,7 @@
   "User Name": "ユーザー名",
   "Email": "メール",
   "Password": "パスワード",
-  "Confirm Password": "",
+  "Confirm Password": "パスワードの確認",
   "Failed to update the user": "",
   "Password and Confirm password are not the same": "パスワードと確認用パスワードが一致しません",
   "Failed to update the password": "",
