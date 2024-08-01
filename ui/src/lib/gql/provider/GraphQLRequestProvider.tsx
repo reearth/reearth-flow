@@ -12,7 +12,7 @@ export const useGraphQLContext = () => useContext(GraphQLContext);
 
 export const GraphQLRequestProvider = ({ children }: { children?: ReactNode }) => {
   const [graphQLSdk, setGraphQLSdk] = useState<Sdk | undefined>();
-  const endpoint = `${config().api}/graphql`;
+  const endpoint = `${config().api}/api/graphql`;
   const { getAccessToken } = useAuth();
 
   useEffect(() => {

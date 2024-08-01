@@ -7,27 +7,33 @@ import { Workflow } from "@flow/types";
 
 type Props = {
   currentWorkflowId?: string;
-  workflows: {
+  openWorkflows: {
     id: string;
     name: string;
   }[];
+  onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
   onWorkflowAdd: () => void;
-  onWorkflowRemove: (workflowId: string) => void;
 };
 
 const WorkflowTabs: React.FC<Props> = ({
   currentWorkflowId,
-  workflows,
+  openWorkflows,
+  onWorkflowClose,
   onWorkflowAdd,
-  onWorkflowRemove,
   onWorkflowChange,
 }) => {
   const t = useT();
 
-  const mainWorkflow = workflows?.[0];
+  const mainWorkflow = openWorkflows?.[0];
 
-  const subWorkflows: Workflow[] | undefined = workflows?.slice(1);
+  const subWorkflows: Workflow[] | undefined = openWorkflows?.slice(1);
+
+  const handleWorkflowClose =
+    (workflowId: string) => (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+      e.stopPropagation();
+      onWorkflowClose(workflowId);
+    };
 
   return (
     <div className="w-[75vw]">
@@ -49,11 +55,11 @@ const WorkflowTabs: React.FC<Props> = ({
                 className={`relative flex w-28 items-center justify-center rounded px-[6px] py-[2px] transition-colors ${currentWorkflowId === sw?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"} group cursor-pointer`}
                 onClick={() => onWorkflowChange(sw.id)}>
                 <X
-                  className="absolute right-[2px] hidden size-[15px] group-hover:block group-hover:bg-primary/50"
-                  onClick={() => onWorkflowRemove(sw.id)}
+                  className="group-hover:bg-primary/50 absolute right-[2px] hidden size-[15px] group-hover:block"
+                  onClick={handleWorkflowClose(sw.id)}
                 />
                 <p
-                  className={`truncate text-center text-xs font-extralight group-hover:text-primary/50 ${currentWorkflowId === sw?.id && "text-primary/50"}`}>
+                  className={`group-hover:text-primary/50 truncate text-center text-xs font-extralight ${currentWorkflowId === sw?.id && "text-primary/50"}`}>
                   {sw.name}
                 </p>
               </div>

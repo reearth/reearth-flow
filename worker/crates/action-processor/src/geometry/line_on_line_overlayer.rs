@@ -167,7 +167,6 @@ impl LineOnLineOverlayer {
             }
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
         }
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
     }
 
     fn handle_2d_lines(
@@ -242,7 +241,6 @@ impl LineOnLineOverlayer {
             }
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
         }
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
     }
 
     fn handle_3d_lines(

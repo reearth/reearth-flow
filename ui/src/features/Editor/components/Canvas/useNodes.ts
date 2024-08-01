@@ -22,28 +22,21 @@ type Props = {
   edges: Edge[];
   onNodesChange: (newNodes: Node[]) => void;
   onEdgesChange: (edges: Edge[]) => void;
-  onNodeLocking: (nodeId: string, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => void;
+  onNodeLocking: (nodeId: string) => void;
 };
 
 export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: Props) => {
   const { isNodeIntersecting } = useReactFlow();
   const { handleNodeDropInBatch } = useBatch();
 
-  const handleNodeLocking = useCallback(
-    (nodeId: string) => onNodeLocking(nodeId, nodes, onNodesChange),
-    [nodes, onNodeLocking, onNodesChange],
-  );
-
   const { handleNodeDragOver, handleNodeDrop } = useDnd({
     nodes,
     onNodesChange,
-    onNodeLocking: handleNodeLocking,
+    onNodeLocking,
   });
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
-    changes => {
-      onNodesChange(applyNodeChanges<Node>(changes, nodes));
-    },
+    changes => onNodesChange(applyNodeChanges<Node>(changes, nodes)),
     [nodes, onNodesChange],
   );
 
