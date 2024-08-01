@@ -49,7 +49,7 @@
   "Password": "パスワード",
   "Confirm Password": "",
   "Failed to update the user": "",
-  "Password and Confirm password are not the same": "",
+  "Password and Confirm password are not the same": "パスワードと確認用パスワードが一致しません",
   "Failed to update the password": "",
   "Failed to update email and name": "",
   "General settings": "一般設定",
