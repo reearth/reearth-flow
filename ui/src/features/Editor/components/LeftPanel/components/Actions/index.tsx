@@ -87,7 +87,7 @@ const ActionsList: React.FC = () => {
       actionsSegregatedData &&
       Object.keys(actionsSegregatedData).reduce((obj, rootKey) => {
         obj[rootKey] = Object.keys(actionsSegregatedData[rootKey]).reduce(
-          (obj: { [key: string]: Action[] | undefined }, key) => {
+          (obj: Record<string, Action[] | undefined>, key) => {
             obj[key] = getFilteredActions(filter, actionsSegregatedData[rootKey][key]);
             return obj;
           },

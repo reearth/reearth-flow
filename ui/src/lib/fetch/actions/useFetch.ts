@@ -16,9 +16,7 @@ const BASE_URL = config().api;
 
 export const useFetch = () => {
   const transformResponse = <T extends Action | Action[] | Segregated>(response: T): T => {
-    const CHANGE_NAMES: {
-      [key: string]: string;
-    } = {
+    const CHANGE_NAMES: Record<string, string> = {
       processor: "Transformer",
       sink: "Writer",
       source: "Reader",
@@ -35,7 +33,7 @@ export const useFetch = () => {
     const segregated: Segregated = response as Segregated;
     return Object.keys(segregated).reduce((obj, rootKey) => {
       obj[rootKey] = Object.keys(segregated[rootKey]).reduce(
-        (obj: { [key: string]: Action[] | undefined }, key) => {
+        (obj: Record<string, Action[] | undefined>, key) => {
           const actions = segregated[rootKey][key]?.map(a => transformAction(a));
           if (CHANGE_NAMES[key]) {
             obj[CHANGE_NAMES[key]] = actions;

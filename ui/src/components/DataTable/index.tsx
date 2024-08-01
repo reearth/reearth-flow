@@ -22,7 +22,7 @@ import { useT } from "@flow/lib/i18n";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../Table";
 
-interface DataTableProps<TData, TValue> {
+type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   selectColumns?: boolean;

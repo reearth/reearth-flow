@@ -32,7 +32,7 @@ import { LogStatus } from "@flow/types";
 
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
-interface LogProps<TData, TValue> {
+type LogProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   selectColumns?: boolean;

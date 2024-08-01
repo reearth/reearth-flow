@@ -84,7 +84,7 @@ function config(): Plugin {
 function loadJSON(path: string): any {
   try {
     return JSON.parse(readFileSync(path, "utf8")) || {};
-  } catch (err) {
+  } catch (_err) {
     return {};
   }
 }

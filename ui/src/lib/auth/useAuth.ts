@@ -36,7 +36,6 @@ export const useAuth = () => {
   let auth = useContext(AuthContext);
 
   if (!auth) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     auth = useAuth0Auth();
   }
 

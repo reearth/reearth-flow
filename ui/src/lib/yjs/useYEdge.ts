@@ -1,4 +1,4 @@
-import isEqual from "lodash/isEqual";
+import isEqual from "lodash-es/isEqual";
 import { useCallback } from "react";
 
 import type { Edge } from "@flow/types";

@@ -29,7 +29,7 @@ export const useProject = () => {
     try {
       const project = await mutateAsync(input);
       return { project, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { project: undefined, ...rest };
     }
   };
@@ -56,7 +56,7 @@ export const useProject = () => {
     try {
       const project = await mutateAsync(input);
       return { project, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { project: undefined, ...rest };
     }
   };
@@ -66,7 +66,7 @@ export const useProject = () => {
     try {
       const data = await mutateAsync({ projectId, workspaceId });
       return { projectId: data.projectId, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { projectId: undefined, ...rest };
     }
   };

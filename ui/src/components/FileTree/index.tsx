@@ -5,7 +5,7 @@ import useResizeObserver from "use-resize-observer";
 
 import { cn } from "@flow/lib/utils";
 
-interface TreeDataItem {
+type TreeDataItem = {
   id: string;
   name: string;
   icon?: Icon;
@@ -64,8 +64,8 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
         if (items instanceof Array) {
           // eslint-disable-next-line @typescript-eslint/prefer-for-of
           for (let i = 0; i < items.length; i++) {
-            ids.push(items[i]!.id);
-            if (walkTreeItems(items[i]!, targetId) && !expandAll) {
+            ids.push(items[i].id);
+            if (walkTreeItems(items[i], targetId) && !expandAll) {
               return true;
             }
             if (!expandAll) ids.pop();

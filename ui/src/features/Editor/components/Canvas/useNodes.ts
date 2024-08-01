@@ -75,11 +75,11 @@ export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: P
       );
       if (connectedEdges && connectedEdges.length > 0) return;
 
-      for (let i = 0; i < edges.length; i++) {
+      for (const edge of edges) {
         // Stop loop if an edge was created already after node drop
         if (edgeCreationComplete) break;
 
-        const e = edges[i];
+        const e = edge;
 
         // Make sure edge has source and target nodes
         const sourceNode = nodes.find(n => n.id === e.source);
