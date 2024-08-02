@@ -37,10 +37,10 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
       className,
       ...props
     },
-    ref,
+    ref
   ) => {
     const [selectedItemId, setSelectedItemId] = useState<string | undefined>(
-      initialSlelectedItemId,
+      initialSlelectedItemId
     );
 
     const handleSelectChange = useCallback(
@@ -50,7 +50,7 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
           onSelectChange(item);
         }
       },
-      [onSelectChange],
+      [onSelectChange]
     );
 
     const expandedItemIds = useMemo(() => {
@@ -62,7 +62,7 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
 
       function walkTreeItems(
         items: TreeDataItem[] | TreeDataItem,
-        targetId: string,
+        targetId: string
       ) {
         if (items instanceof Array) {
           // eslint-disable-next-line @typescript-eslint/prefer-for-of
@@ -103,7 +103,7 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
         </div>
       </div>
     );
-  },
+  }
 );
 
 Tree.displayName = "Tree";
@@ -128,7 +128,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       ItemIcon,
       ...props
     },
-    ref,
+    ref
   ) => {
     return (
       <div ref={ref} role="tree" className={className} {...props}>
@@ -148,7 +148,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                           selectedItemId === item.id &&
                             highlightClass +
                               " " +
-                              "before:border before:border-border/50 before:border-l-2 before:border-l-red-800/50 dark:before:border-0",
+                              "before:border before:border-border/50 before:border-l-2 before:border-l-red-800/50 dark:before:border-0"
                         )}
                         onClick={() => handleSelectChange(item)}
                       >
@@ -157,7 +157,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                             className={cn(
                               "h-4 w-4 shrink-0 mr-2",
                               selectedItemId === item.id &&
-                                "text-accent-foreground dark:before:border-0",
+                                "text-accent-foreground dark:before:border-0"
                             )}
                             weight="thin"
                             aria-hidden="true"
@@ -210,7 +210,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
         </ul>
       </div>
     );
-  },
+  }
 );
 
 TreeItem.displayName = "TreeItem";
@@ -231,7 +231,7 @@ const Leaf = forwardRef<
         hover:before:opacity-100 before:absolute before:left-0 before:right-1 before:w-full before:opacity-0 before:bg-secondary/50 before:rounded-md before:h-[1.75rem] before:-z-10",
         className,
         // TODO: Remove dark class
-        isSelected && highlightClass + " " + "dark:before:border-0",
+        isSelected && highlightClass + " " + "dark:before:border-0"
       )}
       {...props}
     >
@@ -239,7 +239,7 @@ const Leaf = forwardRef<
         <item.icon
           className={cn(
             "h-4 w-4 shrink-0 mr-2",
-            isSelected && "text-accent-foreground dark:before:border-0",
+            isSelected && "text-accent-foreground dark:before:border-0"
           )}
           weight="thin"
           aria-hidden="true"
@@ -268,7 +268,7 @@ const AccordionTrigger = forwardRef<
       ref={ref}
       className={cn(
         "flex flex-1 w-full items-center py-2 transition-all last:[&[data-state=open]>svg]:rotate-90",
-        className,
+        className
       )}
       {...props}
     >
@@ -287,7 +287,7 @@ const AccordionContent = forwardRef<
     ref={ref}
     className={cn(
       "overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
-      className,
+      className
     )}
     {...props}
   >
