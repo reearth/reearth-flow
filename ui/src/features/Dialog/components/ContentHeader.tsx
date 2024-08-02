@@ -9,7 +9,9 @@ const ContentHeader: React.FC<Props> = ({ title, description }) => (
   <DialogHeader className="mb-8">
     <DialogTitle>{title}</DialogTitle>
     {description && (
-      <DialogDescription className="text-wrap text-center">{description}</DialogDescription>
+      <DialogDescription className="text-wrap text-center">
+        {description}
+      </DialogDescription>
     )}
   </DialogHeader>
 );

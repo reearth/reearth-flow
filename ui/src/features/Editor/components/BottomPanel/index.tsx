@@ -39,7 +39,10 @@ const BottomPanel: React.FC<Props> = ({
   const [windowSize, setWindowSize] = useState<WindowSize>("min");
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
-  const handlePanelToggle = useCallback((open: boolean) => setIsPanelOpen(open), []);
+  const handlePanelToggle = useCallback(
+    (open: boolean) => setIsPanelOpen(open),
+    [],
+  );
 
   const panelContents: PanelContent[] = [
     {
@@ -81,10 +84,18 @@ const BottomPanel: React.FC<Props> = ({
     <div
       className="box-content flex flex-col justify-end border-t bg-secondary backdrop-blur-md duration-300 ease-in-out"
       style={{
-        height: isPanelOpen ? (windowSize === "max" ? "calc(100vh - 1px)" : "50vh") : "29px",
-      }}>
+        height: isPanelOpen
+          ? windowSize === "max"
+            ? "calc(100vh - 1px)"
+            : "50vh"
+          : "29px",
+      }}
+    >
       {isPanelOpen && (
-        <div id="top-edge" className="flex h-[29px] shrink-0 items-center gap-1">
+        <div
+          id="top-edge"
+          className="flex h-[29px] shrink-0 items-center gap-1"
+        >
           <div className="flex h-full flex-1 items-center justify-end gap-1 px-1">
             <BaseActionButtons
               panelContents={panelContents}
@@ -118,16 +129,21 @@ const BottomPanel: React.FC<Props> = ({
       )}
       <div
         id="content"
-        className={`flex h-[calc(100%-64px)] flex-1 bg-background ${isPanelOpen ? "flex" : "hidden"}`}>
-        {panelContents.map(p => (
-          <div className={`flex-1 ${selected?.id === p.id ? "flex" : "hidden"}`} key={p.id}>
+        className={`flex h-[calc(100%-64px)] flex-1 bg-background ${isPanelOpen ? "flex" : "hidden"}`}
+      >
+        {panelContents.map((p) => (
+          <div
+            className={`flex-1 ${selected?.id === p.id ? "flex" : "hidden"}`}
+            key={p.id}
+          >
             {p.component}
           </div>
         ))}
       </div>
       <div
         id="bottom-edge"
-        className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-secondary">
+        className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-secondary"
+      >
         <WorkflowTabs
           currentWorkflowId={currentWorkflowId}
           openWorkflows={openWorkflows}
@@ -159,13 +175,16 @@ const BaseActionButtons: React.FC<{
 }> = memo(({ panelContents, selected, onSelection }) => {
   return (
     <>
-      {panelContents?.map(content => (
+      {panelContents?.map((content) => (
         <div
           key={content.id}
           className={`flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-popover hover:text-popover-foreground ${
-            selected?.id === content.id ? "bg-popover text-popover-foreground" : ""
+            selected?.id === content.id
+              ? "bg-popover text-popover-foreground"
+              : ""
           }`}
-          onClick={() => onSelection?.(content)}>
+          onClick={() => onSelection?.(content)}
+        >
           {content.icon}
           <p className="text-sm font-thin">{content.title}</p>
         </div>

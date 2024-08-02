@@ -34,18 +34,22 @@ const IntegrationsSettings: React.FC = () => {
 
   const integrations: IntegrationMember[] =
     (currentWorkspace?.members?.filter(
-      m =>
+      (m) =>
         "integration" in m &&
         (currentFilter !== "all" ? m.integrationRole === currentFilter : true),
     ) as IntegrationMember[]) ?? [];
 
-  const [selectedIntegrations, setSelectedIntegrations] = useState<string[]>([]);
+  const [selectedIntegrations, setSelectedIntegrations] = useState<string[]>(
+    [],
+  );
 
   return (
     <div>
       <div className="mt-4 flex max-w-[800px] flex-col gap-6">
         <div className="flex justify-between">
-          <p className="text-lg font-extralight">{t("Integrations Settings")}</p>
+          <p className="text-lg font-extralight">
+            {t("Integrations Settings")}
+          </p>
           <Button>{t("Connect Integration")}</Button>
         </div>
         <div className="rounded border font-extralight">
@@ -57,7 +61,7 @@ const IntegrationsSettings: React.FC = () => {
                 onClick={() =>
                   setSelectedIntegrations(
                     selectedIntegrations.length !== integrations.length
-                      ? integrations.map(m => m.id)
+                      ? integrations.map((m) => m.id)
                       : [],
                   )
                 }
@@ -79,7 +83,10 @@ const IntegrationsSettings: React.FC = () => {
 
                   <DropdownMenuContent className="min-w-[70px]">
                     {roles.map((role, idx) => (
-                      <DropdownMenuItem key={idx} onClick={() => console.log(role)}>
+                      <DropdownMenuItem
+                        key={idx}
+                        onClick={() => console.log(role)}
+                      >
                         {role}
                       </DropdownMenuItem>
                     ))}
@@ -93,7 +100,7 @@ const IntegrationsSettings: React.FC = () => {
             <div>
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center gap-2">
-                  <p>{filters.find(f => f.id === currentFilter)?.title}</p>
+                  <p>{filters.find((f) => f.id === currentFilter)?.title}</p>
                   <CaretDown className="size-3" />
                 </DropdownMenuTrigger>
 
@@ -102,7 +109,8 @@ const IntegrationsSettings: React.FC = () => {
                     <DropdownMenuItem
                       key={idx}
                       className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
-                      onClick={() => setFilter(filter.id)}>
+                      onClick={() => setFilter(filter.id)}
+                    >
                       {filter.title}
                     </DropdownMenuItem>
                   ))}
@@ -111,20 +119,25 @@ const IntegrationsSettings: React.FC = () => {
             </div>
           </div>
           <div className="max-h-[50vh] overflow-auto">
-            {integrations.map(integration => (
-              <div key={integration.id} className="flex items-center gap-4 px-4 py-2">
+            {integrations.map((integration) => (
+              <div
+                key={integration.id}
+                className="flex items-center gap-4 px-4 py-2"
+              >
                 <Checkbox
                   checked={selectedIntegrations.includes(integration.id)}
                   onClick={() =>
-                    setSelectedIntegrations(prev =>
+                    setSelectedIntegrations((prev) =>
                       prev.includes(integration.id)
-                        ? [...prev.filter(pm => pm !== integration.id)]
+                        ? [...prev.filter((pm) => pm !== integration.id)]
                         : [...prev, integration.id],
                     )
                   }
                 />
                 <p>{integration.integration?.name}</p>
-                <p className="px-4 text-sm font-thin capitalize">{integration.integrationRole}</p>
+                <p className="px-4 text-sm font-thin capitalize">
+                  {integration.integrationRole}
+                </p>
               </div>
             ))}
           </div>

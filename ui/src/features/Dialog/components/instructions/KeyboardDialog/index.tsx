@@ -4,7 +4,8 @@ import { Shortcuts } from "./components";
 import useShortcuts from "./useShortcuts";
 
 const KeyboardDialogContent: React.FC = () => {
-  const { title, description, editorShortcuts, canvasShortcuts } = useShortcuts();
+  const { title, description, editorShortcuts, canvasShortcuts } =
+    useShortcuts();
 
   return (
     <>

@@ -4,5 +4,5 @@ export type YJsonValue =
   | YJsonPrimitive
   | YJsonValue[]
   | {
-    [key: string]: YJsonValue;
-  };
+      [key: string]: YJsonValue;
+    };

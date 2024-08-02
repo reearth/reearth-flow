@@ -30,7 +30,8 @@ const WorkflowTabs: React.FC<Props> = ({
   const subWorkflows: Workflow[] | undefined = openWorkflows?.slice(1);
 
   const handleWorkflowClose =
-    (workflowId: string) => (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+    (workflowId: string) =>
+    (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
       e.stopPropagation();
       onWorkflowClose(workflowId);
     };
@@ -40,26 +41,30 @@ const WorkflowTabs: React.FC<Props> = ({
       <div className="flex h-[29px] flex-1 items-center">
         <div
           className={`mx-1 flex w-28 cursor-pointer items-center justify-center rounded px-[6px] py-[2px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"}`}
-          onClick={() => onWorkflowChange(mainWorkflow?.id)}>
+          onClick={() => onWorkflowChange(mainWorkflow?.id)}
+        >
           <p
-            className={`truncate text-center text-xs font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-primary/50"}`}>
+            className={`truncate text-center text-xs font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-primary/50"}`}
+          >
             {t("Main Workflow")}
           </p>
         </div>
         <div className="flex h-[29px] items-center gap-1 overflow-auto">
           {subWorkflows &&
             subWorkflows.length > 0 &&
-            subWorkflows.map(sw => (
+            subWorkflows.map((sw) => (
               <div
                 key={sw.id}
                 className={`relative flex w-28 items-center justify-center rounded px-[6px] py-[2px] transition-colors ${currentWorkflowId === sw?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"} group cursor-pointer`}
-                onClick={() => onWorkflowChange(sw.id)}>
+                onClick={() => onWorkflowChange(sw.id)}
+              >
                 <X
                   className="group-hover:bg-primary/50 absolute right-[2px] hidden size-[15px] group-hover:block"
                   onClick={handleWorkflowClose(sw.id)}
                 />
                 <p
-                  className={`group-hover:text-primary/50 truncate text-center text-xs font-extralight ${currentWorkflowId === sw?.id && "text-primary/50"}`}>
+                  className={`group-hover:text-primary/50 truncate text-center text-xs font-extralight ${currentWorkflowId === sw?.id && "text-primary/50"}`}
+                >
                   {sw.name}
                 </p>
               </div>

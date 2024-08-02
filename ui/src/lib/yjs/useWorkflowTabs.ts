@@ -15,18 +15,18 @@ export default ({
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
   const [workflows, setWorkflows] = useState<{ id: string; name: string }[]>(
-    rawWorkflows.map(w2 => ({
+    rawWorkflows.map((w2) => ({
       id: fromYjsText(w2?.id as YText),
       name: fromYjsText(w2?.name as YText),
     })),
   );
 
   const [openWorkflowIds, setOpenWorkflowIds] = useState<string[]>(
-    workflows.filter(w => w.id === "main").map(w => w.id),
+    workflows.filter((w) => w.id === "main").map((w) => w.id),
   );
 
   const currentWorkflowIndex = useMemo(
-    () => workflows.findIndex(w => w.id === workflowId),
+    () => workflows.findIndex((w) => w.id === workflowId),
     [workflowId, workflows],
   );
 
@@ -34,13 +34,13 @@ export default ({
     id: string;
     name: string;
   }[] = useMemo(
-    () => workflows.filter(w => openWorkflowIds.includes(w.id)),
+    () => workflows.filter((w) => openWorkflowIds.includes(w.id)),
     [workflows, openWorkflowIds],
   );
 
   const handleWorkflowOpen = useCallback(
     (workflowId: string) => {
-      setOpenWorkflowIds(ids => {
+      setOpenWorkflowIds((ids) => {
         handleWorkflowIdChange(workflowId);
         if (ids.includes(workflowId)) return ids;
         return [...ids, workflowId];
@@ -51,7 +51,7 @@ export default ({
 
   const handleWorkflowClose = useCallback(
     (workflowId: string) => {
-      setOpenWorkflowIds(ids => ids.filter(id => id !== workflowId));
+      setOpenWorkflowIds((ids) => ids.filter((id) => id !== workflowId));
       if (workflowId !== "main") {
         handleWorkflowIdChange("main");
       }

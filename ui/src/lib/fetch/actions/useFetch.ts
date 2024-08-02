@@ -15,7 +15,9 @@ enum ActionFetchKeys {
 const BASE_URL = config().api;
 
 export const useFetch = () => {
-  const transformResponse = <T extends Action | Action[] | Segregated>(response: T): T => {
+  const transformResponse = <T extends Action | Action[] | Segregated>(
+    response: T,
+  ): T => {
     const CHANGE_NAMES: Record<string, string> = {
       processor: "Transformer",
       sink: "Writer",
@@ -23,7 +25,7 @@ export const useFetch = () => {
     };
 
     if (Array.isArray(response)) {
-      return response.map(a => transformAction(a)) as T;
+      return response.map((a) => transformAction(a)) as T;
     } else if (typeof response?.name === "string") {
       return transformAction(response as Action) as T;
     }
@@ -34,7 +36,9 @@ export const useFetch = () => {
     return Object.keys(segregated).reduce((obj, rootKey) => {
       obj[rootKey] = Object.keys(segregated[rootKey]).reduce(
         (obj: Record<string, Action[] | undefined>, key) => {
-          const actions = segregated[rootKey][key]?.map(a => transformAction(a));
+          const actions = segregated[rootKey][key]?.map((a) =>
+            transformAction(a),
+          );
           if (CHANGE_NAMES[key]) {
             obj[CHANGE_NAMES[key]] = actions;
           } else {
@@ -50,7 +54,9 @@ export const useFetch = () => {
     function transformAction(action: Action) {
       return {
         ...action,
-        type: CHANGE_NAMES[action.type] ? CHANGE_NAMES[action.type] : action.type,
+        type: CHANGE_NAMES[action.type]
+          ? CHANGE_NAMES[action.type]
+          : action.type,
       };
     }
   };
@@ -92,7 +98,10 @@ export const useFetch = () => {
     useQuery({
       queryKey: [ActionFetchKeys.actions, ActionFetchKeys.segregated],
       queryFn: async ({ signal }: { signal: AbortSignal }) =>
-        fetcher<Segregated>(`${BASE_URL}/actions/${ActionFetchKeys.segregated}`, signal),
+        fetcher<Segregated>(
+          `${BASE_URL}/actions/${ActionFetchKeys.segregated}`,
+          signal,
+        ),
       staleTime: Infinity,
     });
 

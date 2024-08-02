@@ -38,7 +38,7 @@ export const useQueries = () => {
         return createNewProjectObject(data.createProject.project);
       }
     },
-    onSuccess: project =>
+    onSuccess: (project) =>
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
         queryKey: [ProjectQueryKeys.GetWorkspaceProjects, project?.workspaceId],
@@ -48,9 +48,13 @@ export const useQueries = () => {
   const useGetProjectsQuery = (workspaceId?: string) =>
     useQuery({
       queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
-      queryFn: () => graphQLContext?.GetProjects({ workspaceId: workspaceId ?? "", first: 20 }),
+      queryFn: () =>
+        graphQLContext?.GetProjects({
+          workspaceId: workspaceId ?? "",
+          first: 20,
+        }),
       enabled: !!workspaceId,
-      select: data => {
+      select: (data) => {
         if (!data) return {};
         const {
           projects: { nodes, ...rest },
@@ -58,7 +62,7 @@ export const useQueries = () => {
 
         const projects: Project[] = nodes
           .filter(isDefined)
-          .map(project => createNewProjectObject(project));
+          .map((project) => createNewProjectObject(project));
         return { projects, meta: rest };
       },
     });
@@ -66,10 +70,13 @@ export const useQueries = () => {
   const useGetProjectByIdQuery = (projectId?: string) =>
     useQuery({
       queryKey: [ProjectQueryKeys.GetProject, projectId],
-      queryFn: () => graphQLContext?.GetProjectById({ projectId: projectId ?? "" }),
+      queryFn: () =>
+        graphQLContext?.GetProjectById({ projectId: projectId ?? "" }),
       enabled: !!projectId,
-      select: data =>
-        data?.node?.__typename === "Project" ? createNewProjectObject(data.node) : undefined,
+      select: (data) =>
+        data?.node?.__typename === "Project"
+          ? createNewProjectObject(data.node)
+          : undefined,
     });
 
   const updateProjectMutation = useMutation({
@@ -80,7 +87,7 @@ export const useQueries = () => {
         return createNewProjectObject(data.updateProject.project);
       }
     },
-    onSuccess: project =>
+    onSuccess: (project) =>
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
         queryKey: [ProjectQueryKeys.GetWorkspaceProjects, project?.workspaceId],
@@ -92,8 +99,13 @@ export const useQueries = () => {
       projectId,
       workspaceId,
     }: DeleteProjectInput & { workspaceId: string }) => {
-      const data = await graphQLContext?.DeleteProject({ input: { projectId } });
-      return { projectId: data?.deleteProject?.projectId, workspaceId: workspaceId };
+      const data = await graphQLContext?.DeleteProject({
+        input: { projectId },
+      });
+      return {
+        projectId: data?.deleteProject?.projectId,
+        workspaceId: workspaceId,
+      };
     },
     onSuccess: ({ workspaceId }) =>
       queryClient.invalidateQueries({

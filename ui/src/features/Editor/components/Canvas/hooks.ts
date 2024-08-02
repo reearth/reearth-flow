@@ -31,7 +31,13 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
   // animated: true,
 };
 
-export default ({ nodes, edges, onNodeLocking, onNodesUpdate, onEdgesUpdate }: Props) => {
+export default ({
+  nodes,
+  edges,
+  onNodeLocking,
+  onNodesUpdate,
+  onEdgesUpdate,
+}: Props) => {
   const {
     handleNodesChange,
     handleNodesDelete,

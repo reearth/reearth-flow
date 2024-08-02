@@ -6,7 +6,7 @@ export default function NodeInspector() {
   return (
     <EdgeLabelRenderer>
       <div className="react-flow__devtools-nodeinspector">
-        {nodes.map(node => {
+        {nodes.map((node) => {
           // const x = node.positionAbsolute?.x || 0; // TODO: fix this
           const x = 0;
           // const y = node.positionAbsolute?.y || 0; // TODO: fix this
@@ -44,7 +44,16 @@ type NodeInfoProps = {
   data: any;
 };
 
-function NodeInfo({ id, type, selected, x, y, width, height, data }: NodeInfoProps) {
+function NodeInfo({
+  id,
+  type,
+  selected,
+  x,
+  y,
+  width,
+  height,
+  data,
+}: NodeInfoProps) {
   if (!width || !height) {
     return null;
   }
@@ -56,7 +65,8 @@ function NodeInfo({ id, type, selected, x, y, width, height, data }: NodeInfoPro
         position: "absolute",
         transform: `translate(${x}px, ${y + height}px)`,
         width: width * 2,
-      }}>
+      }}
+    >
       <div>id: {id}</div>
       <div>type: {type}</div>
       <div>selected: {selected ? "true" : "false"}</div>

@@ -24,7 +24,9 @@ export const useProject = () => {
     updateProjectMutation,
   } = useQueries();
 
-  const createProject = async (input: CreateProjectInput): Promise<CreateProject> => {
+  const createProject = async (
+    input: CreateProjectInput,
+  ): Promise<CreateProject> => {
     const { mutateAsync, ...rest } = createProjectMutation;
     try {
       const project = await mutateAsync(input);
@@ -34,7 +36,9 @@ export const useProject = () => {
     }
   };
 
-  const useGetWorkspaceProjects = (workspaceId?: string): GetWorkspaceProjects => {
+  const useGetWorkspaceProjects = (
+    workspaceId?: string,
+  ): GetWorkspaceProjects => {
     const { data, ...rest } = useGetProjectsQuery(workspaceId);
     return {
       projects: data?.projects,
@@ -51,7 +55,9 @@ export const useProject = () => {
     };
   };
 
-  const updateProject = async (input: UpdateProjectInput): Promise<UpdateProject> => {
+  const updateProject = async (
+    input: UpdateProjectInput,
+  ): Promise<UpdateProject> => {
     const { mutateAsync, ...rest } = updateProjectMutation;
     try {
       const project = await mutateAsync(input);
@@ -61,7 +67,10 @@ export const useProject = () => {
     }
   };
 
-  const deleteProject = async (projectId: string, workspaceId: string): Promise<DeleteProject> => {
+  const deleteProject = async (
+    projectId: string,
+    workspaceId: string,
+  ): Promise<DeleteProject> => {
     const { mutateAsync, ...rest } = deleteProjectMutation;
     try {
       const data = await mutateAsync({ projectId, workspaceId });

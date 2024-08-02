@@ -25,7 +25,13 @@ type Props = {
   onNodeLocking: (nodeId: string) => void;
 };
 
-export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: Props) => {
+export default ({
+  nodes,
+  edges,
+  onNodesChange,
+  onEdgesChange,
+  onNodeLocking,
+}: Props) => {
   const { isNodeIntersecting } = useReactFlow();
   const { handleNodeDropInBatch } = useBatch();
 
@@ -36,7 +42,7 @@ export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: P
   });
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
-    changes => onNodesChange(applyNodeChanges<Node>(changes, nodes)),
+    (changes) => onNodesChange(applyNodeChanges<Node>(changes, nodes)),
     [nodes, onNodesChange],
   );
 
@@ -50,10 +56,16 @@ export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: P
           const outgoers = getOutgoers(node, nodes, edges);
           const connectedEdges = getConnectedEdges([node], edges);
 
-          const remainingEdges = acc.filter(edge => !connectedEdges.includes(edge));
+          const remainingEdges = acc.filter(
+            (edge) => !connectedEdges.includes(edge),
+          );
 
           const createdEdges = incomers.flatMap(({ id: source }) =>
-            outgoers.map(({ id: target }) => ({ id: `${source}->${target}`, source, target })),
+            outgoers.map(({ id: target }) => ({
+              id: `${source}->${target}`,
+              source,
+              target,
+            })),
           );
 
           return [...remainingEdges, ...createdEdges];
@@ -71,7 +83,7 @@ export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: P
 
       // Make sure dropped node is empty
       const connectedEdges = edges.filter(
-        e => e.source === droppedNode.id || e.target === droppedNode.id,
+        (e) => e.source === droppedNode.id || e.target === droppedNode.id,
       );
       if (connectedEdges && connectedEdges.length > 0) return;
 
@@ -82,8 +94,8 @@ export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: P
         const e = edge;
 
         // Make sure edge has source and target nodes
-        const sourceNode = nodes.find(n => n.id === e.source);
-        const targetNode = nodes.find(n => n.id === e.target);
+        const sourceNode = nodes.find((n) => n.id === e.source);
+        const targetNode = nodes.find((n) => n.id === e.target);
         if (!sourceNode || !targetNode) return;
 
         let sourceNodeXYPosition: XYPosition = sourceNode.position;
@@ -91,7 +103,7 @@ export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: P
 
         // If source or target node is inside a group, calculate its position relative to the group
         if (sourceNode.parentId) {
-          const parentNode = nodes.find(n => n.id === sourceNode.parentId);
+          const parentNode = nodes.find((n) => n.id === sourceNode.parentId);
           if (parentNode) {
             sourceNodeXYPosition = {
               x: parentNode.position.x + sourceNode.position.x,
@@ -100,7 +112,7 @@ export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: P
           }
         }
         if (targetNode.parentId) {
-          const parentNode = nodes.find(n => n.id === targetNode.parentId);
+          const parentNode = nodes.find((n) => n.id === targetNode.parentId);
           if (parentNode) {
             targetNodeXYPosition = {
               x: parentNode.position.x + targetNode.position.x,
@@ -130,20 +142,24 @@ export default ({ nodes, edges, onNodesChange, onEdgesChange, onNodeLocking }: P
           )
         ) {
           // remove previous edge
-          let newEdges = edges.filter(ed => ed.id !== e.id);
+          let newEdges = edges.filter((ed) => ed.id !== e.id);
           // create new connection between original source node and dragged node
           const newConnectionA: Connection = {
             source: e.source,
             sourceHandle: e.sourceHandle ?? null,
             target: droppedNode.id,
-            targetHandle: droppedNode.handles?.find(h => h.type === "target")?.type ?? null,
+            targetHandle:
+              droppedNode.handles?.find((h) => h.type === "target")?.type ??
+              null,
           };
           newEdges = addEdge(newConnectionA, newEdges);
 
           // create new connection between dragged node and original target node
           const newConnectionB: Connection = {
             source: droppedNode.id,
-            sourceHandle: droppedNode.handles?.find(h => h.type === "source")?.type ?? null,
+            sourceHandle:
+              droppedNode.handles?.find((h) => h.type === "source")?.type ??
+              null,
             target: e.target,
             targetHandle: e.targetHandle ?? null,
           };

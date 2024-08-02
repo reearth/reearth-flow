@@ -1,4 +1,10 @@
-import { BottomPanel, Canvas, LeftPanel, OverlayUI, RightPanel } from "./components";
+import {
+  BottomPanel,
+  Canvas,
+  LeftPanel,
+  OverlayUI,
+  RightPanel,
+} from "./components";
 import useHooks from "./hooks";
 
 export default function Editor() {

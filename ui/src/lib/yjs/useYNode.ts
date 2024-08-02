@@ -23,8 +23,8 @@ export default ({
 
       if (newNodes.length < n.length) {
         const idsToBeRemoved = nodesToBeRemoved(n, newNodes)
-          .filter(n => n.type === "subworkflow")
-          .map(n => n.id);
+          .filter((n) => n.type === "subworkflow")
+          .map((n) => n.id);
 
         if (idsToBeRemoved.length > 0) {
           handleWorkflowsRemove(idsToBeRemoved);
@@ -42,7 +42,8 @@ export default ({
 };
 
 function nodesToBeRemoved(oldNodes: Node[], NewNodes: Node[]) {
-  const isInArray = (node: Node, nodeArray: Node[]) => nodeArray.some(item => item.id === node.id);
-  const removedNodes = oldNodes.filter(n => !isInArray(n, NewNodes));
+  const isInArray = (node: Node, nodeArray: Node[]) =>
+    nodeArray.some((item) => item.id === node.id);
+  const removedNodes = oldNodes.filter((n) => !isInArray(n, NewNodes));
   return removedNodes;
 }
