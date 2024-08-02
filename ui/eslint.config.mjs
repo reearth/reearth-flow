@@ -6,6 +6,8 @@ import reactHooks from "eslint-plugin-react-hooks";
 import storybook from "eslint-plugin-storybook";
 import tailwind from "eslint-plugin-tailwindcss";
 
+/** @type { import("eslint").Linter.Config[] } */
+
 export default [
   ...config,
   ...tailwind.configs["flat/recommended"],
@@ -154,6 +156,7 @@ export default [
       "!.storybook/",
       ".storybook/public/*",
       "src/lib/gql/__gen__",
+      "src/routeTree.gen.ts",
     ],
   },
 ];
