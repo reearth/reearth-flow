@@ -65,3 +65,9 @@ script = ['''
 rm -rf ../schema/workflow.json
 cargo run -- schema-workflow > ../schema/workflow.json
 ''']
+
+[tasks.serve-mdbook]
+script = ['''
+#!/usr/bin/env bash -eux
+mdbook serve docs/mdbook
+''']
