@@ -39,7 +39,7 @@ impl ActionSchema {
     }
 }
 
-pub fn create_action_schema(kind: &NodeKind, builtin: bool) -> ActionSchema {
+pub(crate) fn create_action_schema(kind: &NodeKind, builtin: bool) -> ActionSchema {
     let (name, description, parameter, input_ports, output_ports, categories) = match kind {
         NodeKind::Source(factory) => (
             factory.name().to_string(),

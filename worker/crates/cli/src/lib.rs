@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod doc_action;
 pub mod dot;
 pub(crate) mod factory;
 pub mod logger;
