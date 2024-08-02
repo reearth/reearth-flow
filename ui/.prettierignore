@@ -1,0 +1,10 @@
+dist/
+build/
+
+node_modules/
+.env
+.env.*
+
+yarn.lock
+.yarn/*
+src/lib/gql/__gen__
