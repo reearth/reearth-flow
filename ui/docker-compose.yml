@@ -5,7 +5,44 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "3000:80"  # Changed to 3000 to avoid conflict with Nginx
     volumes:
       - ./dist:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    environment:
+      - FLOW_API=${FLOW_API:-https://api.example.com}
+      - FLOW_AUTH0_AUDIENCE=${FLOW_AUTH0_AUDIENCE:-https://api.example.com}
+      - FLOW_AUTH0_CLIENT_ID=${FLOW_AUTH0_CLIENT_ID:-your_default_client_id}
+      - FLOW_AUTH0_DOMAIN=${FLOW_AUTH0_DOMAIN:-https://auth.example.com}
+      - FLOW_BRAND_NAME=${FLOW_BRAND_NAME:-Your Brand}
+      - FLOW_DEV_MODE=${FLOW_DEV_MODE:-false}
+      - FLOW_DOCUMENTATION_URL=${FLOW_DOCUMENTATION_URL:-docs.example.com}
+      - FLOW_GITHUB_REPO_URL=${FLOW_GITHUB_REPO_URL:-github.com/your-repo}
+      - FLOW_TOS_URL=${FLOW_TOS_URL:-tos.example.com}
+      - FLOW_VERSION=${FLOW_VERSION:-1.0.0}
+
+  nginx-proxy:
+    image: nginx:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/nginx.conf.template
+    environment:
+      - FLOW_API=${FLOW_API:-https://api.example.com}
+      - FLOW_AUTH0_AUDIENCE=${FLOW_AUTH0_AUDIENCE:-https://api.example.com}
+      - FLOW_AUTH0_CLIENT_ID=${FLOW_AUTH0_CLIENT_ID:-your_default_client_id}
+      - FLOW_AUTH0_DOMAIN=${FLOW_AUTH0_DOMAIN:-https://auth.example.com}
+      - FLOW_BRAND_NAME=${FLOW_BRAND_NAME:-Your Brand}
+      - FLOW_DEV_MODE=${FLOW_DEV_MODE:-false}
+      - FLOW_DOCUMENTATION_URL=${FLOW_DOCUMENTATION_URL:-docs.example.com}
+      - FLOW_GITHUB_REPO_URL=${FLOW_GITHUB_REPO_URL:-github.com/your-repo}
+      - FLOW_TOS_URL=${FLOW_TOS_URL:-tos.example.com}
+      - FLOW_VERSION=${FLOW_VERSION:-1.0.0}
+      - UPSTREAM_UI=reearth-flow-ui
+    command: >
+      /bin/bash -c "envsubst '$$FLOW_API $$FLOW_AUTH0_AUDIENCE $$FLOW_AUTH0_CLIENT_ID $$FLOW_AUTH0_DOMAIN 
+      $$FLOW_BRAND_NAME $$FLOW_DEV_MODE $$FLOW_DOCUMENTATION_URL $$FLOW_GITHUB_REPO_URL $$FLOW_TOS_URL 
+      $$FLOW_VERSION $$UPSTREAM_UI' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf 
+      && nginx -g 'daemon off;'"
+    depends_on:
+      - reearth-flow-ui
