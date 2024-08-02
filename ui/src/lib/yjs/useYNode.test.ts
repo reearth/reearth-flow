@@ -5,7 +5,12 @@ import * as Y from "yjs";
 import type { Node } from "@flow/types";
 
 import useYNode from "./useYNode";
-import { YEdgesArray, YNodesArray, YWorkflow, yWorkflowBuilder } from "./workflowBuilder";
+import {
+  YEdgesArray,
+  YNodesArray,
+  YWorkflow,
+  yWorkflowBuilder,
+} from "./workflowBuilder";
 
 afterEach(() => {
   cleanup();
@@ -19,14 +24,19 @@ describe("useYNode", () => {
     yWorkflows.push([yWorkflow]);
 
     const { result } = renderHook(() =>
-      useYNode({ currentYWorkflow: yWorkflow, handleWorkflowsRemove: () => { } }),
+      useYNode({
+        currentYWorkflow: yWorkflow,
+        handleWorkflowsRemove: () => {},
+      }),
     );
 
     const initialNodes: Node[] = [
       { id: "a", position: { x: 0, y: 0 }, data: { name: "Node A" } },
       { id: "b", position: { x: 0, y: 0 }, data: { name: "Node B" } },
     ];
-    const newNodes: Node[] = [{ id: "c", position: { x: 0, y: 0 }, data: { name: "Node C" } }];
+    const newNodes: Node[] = [
+      { id: "c", position: { x: 0, y: 0 }, data: { name: "Node C" } },
+    ];
 
     const yNodes = yWorkflow.get("nodes") as YNodesArray;
     yNodes.insert(0, initialNodes);
@@ -45,7 +55,10 @@ describe("useYNode", () => {
     yWorkflows.push([yWorkflow]);
 
     const { result } = renderHook(() =>
-      useYNode({ currentYWorkflow: yWorkflow, handleWorkflowsRemove: () => { } }),
+      useYNode({
+        currentYWorkflow: yWorkflow,
+        handleWorkflowsRemove: () => {},
+      }),
     );
 
     const initialNodes: Node[] = [
@@ -68,10 +81,15 @@ describe("useYNode", () => {
     const yWorkflow = new Y.Map<Y.Text | YNodesArray | YEdgesArray>();
     yWorkflows.push([yWorkflow]);
     const { result } = renderHook(() =>
-      useYNode({ currentYWorkflow: yWorkflow, handleWorkflowsRemove: () => { } }),
+      useYNode({
+        currentYWorkflow: yWorkflow,
+        handleWorkflowsRemove: () => {},
+      }),
     );
 
-    const newNodes: Node[] = [{ id: "c", position: { x: 0, y: 0 }, data: { name: "Node C" } }];
+    const newNodes: Node[] = [
+      { id: "c", position: { x: 0, y: 0 }, data: { name: "Node C" } },
+    ];
 
     act(() => {
       result.current.handleNodesUpdate(newNodes);

@@ -60,13 +60,14 @@ const Map: React.FC = () => {
   return (
     <div className="relative w-6/12">
       <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border bg-background transition-all">
-        {sceneModes.map(b => (
+        {sceneModes.map((b) => (
           <Button
             className={`cursor-pointer rounded-none transition-all ${sceneMode === b ? "bg-accent text-accent-foreground" : ""}`}
             variant="ghost"
             size="icon"
             key={b}
-            onClick={() => sceneMode !== b && setSceneMode(b)}>
+            onClick={() => sceneMode !== b && setSceneMode(b)}
+          >
             {b}
           </Button>
         ))}

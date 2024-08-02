@@ -26,7 +26,9 @@ const ActionsList: React.FC = () => {
 
   const [actions, setActions] = useState<Action[] | undefined>();
 
-  const [actionsSegregated, setActionsSegregated] = useState<Segregated | undefined>();
+  const [actionsSegregated, setActionsSegregated] = useState<
+    Segregated | undefined
+  >();
 
   const { actions: actionsData } = useGetActions();
   const { actions: actionsSegregatedData } = useGetActionSegregated();
@@ -60,11 +62,13 @@ const ActionsList: React.FC = () => {
 
   const getFilteredActions = useCallback(
     (filter: string, actions?: Action[]): Action[] | undefined =>
-      actions?.filter(action =>
+      actions?.filter((action) =>
         Object.values(action)
           .reduce(
             (result, value) =>
-              (result += (Array.isArray(value) ? value.join() : value).toLowerCase()),
+              (result += (
+                Array.isArray(value) ? value.join() : value
+              ).toLowerCase()),
             "",
           )
           .includes(filter.toLowerCase()),
@@ -80,7 +84,8 @@ const ActionsList: React.FC = () => {
       return;
     }
 
-    const filteredActions = actionsData && getFilteredActions(filter, actionsData);
+    const filteredActions =
+      actionsData && getFilteredActions(filter, actionsData);
     setActions(filteredActions);
 
     const filteredActionsSegregated =
@@ -88,7 +93,10 @@ const ActionsList: React.FC = () => {
       Object.keys(actionsSegregatedData).reduce((obj, rootKey) => {
         obj[rootKey] = Object.keys(actionsSegregatedData[rootKey]).reduce(
           (obj: Record<string, Action[] | undefined>, key) => {
-            obj[key] = getFilteredActions(filter, actionsSegregatedData[rootKey][key]);
+            obj[key] = getFilteredActions(
+              filter,
+              actionsSegregatedData[rootKey][key],
+            );
             return obj;
           },
           {},
@@ -104,7 +112,11 @@ const ActionsList: React.FC = () => {
       <div className="absolute w-full bg-secondary p-2">
         <TabsList className="flex justify-between px-0">
           {tabs.map(({ title, value }) => (
-            <TabsTrigger key={value} value={value} className="w-[31%] uppercase">
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="w-[31%] uppercase"
+            >
               {title}
             </TabsTrigger>
           ))}
@@ -114,7 +126,7 @@ const ActionsList: React.FC = () => {
             className="mx-auto mt-2 w-full px-2"
             placeholder={t("Search")}
             // value={search}
-            onChange={e => handleSearch(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
       </div>
@@ -122,15 +134,17 @@ const ActionsList: React.FC = () => {
         {tabs.map(({ value, actions }) => (
           <TabsContent className="dark" key={value} value={value}>
             {Array.isArray(actions) ? (
-              actions.map(action => <ActionComponent key={action.name} {...action} />)
+              actions.map((action) => (
+                <ActionComponent key={action.name} {...action} />
+              ))
             ) : (
               <Accordion type="single" collapsible>
                 {actions ? (
-                  Object.keys(actions).map(key => (
+                  Object.keys(actions).map((key) => (
                     <AccordionItem key={key} value={key}>
                       <AccordionTrigger>{key}</AccordionTrigger>
                       <AccordionContent>
-                        {actions[key]?.map(action => (
+                        {actions[key]?.map((action) => (
                           <ActionComponent key={action.name} {...action} />
                         ))}
                       </AccordionContent>

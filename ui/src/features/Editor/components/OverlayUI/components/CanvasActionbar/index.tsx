@@ -47,7 +47,9 @@ const CanvasActionBar = () => {
             />
             <IconButton
               className="size-[30px]"
-              tooltipText={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
+              tooltipText={
+                isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")
+              }
               tooltipOffset={tooltipOffset}
               icon={isFullscreen ? <CornersIn /> : <CornersOut />}
               onClick={handleFullscreenToggle}

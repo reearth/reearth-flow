@@ -39,10 +39,13 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   const t = useT();
   const [currentProject, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
-  const { useGetWorkspaceProjects, deleteProject, updateProject } = useProject();
+  const { useGetWorkspaceProjects, deleteProject, updateProject } =
+    useProject();
   const [, setDialogType] = useDialogType();
   const { projects } = useGetWorkspaceProjects(workspace.id);
-  const [editProject, setEditProject] = useState<undefined | Project>(undefined);
+  const [editProject, setEditProject] = useState<undefined | Project>(
+    undefined,
+  );
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
 
@@ -92,26 +95,32 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
           <Button
             className="flex gap-2"
             variant="outline"
-            onClick={() => setDialogType("add-project")}>
+            onClick={() => setDialogType("add-project")}
+          >
             <Plus weight="thin" />
             <p className="text-xs font-light">{t("New Project")}</p>
           </Button>
         </div>
         <div className="flex flex-1 flex-col justify-between overflow-auto">
           <div className="grid grid-cols-1 gap-4 overflow-auto sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {projects?.map(p => (
+            {projects?.map((p) => (
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger>
                   <Card
                     className={`cursor-pointer border-transparent bg-secondary ${currentProject && currentProject.id === p.id ? "border-border" : "hover:border-border"}`}
                     key={p.id}
-                    onClick={() => handleProjectSelect(p)}>
+                    onClick={() => handleProjectSelect(p)}
+                  >
                     <CardContent className="rounded p-0">
                       <img className="rounded-t-lg" src={projectImage} />
                     </CardContent>
                     <CardHeader className="p-3">
-                      <CardTitle className="truncate font-extralight">{p.name}</CardTitle>
-                      <CardDescription className="min-h-5">{p.description ?? ""}</CardDescription>
+                      <CardTitle className="truncate font-extralight">
+                        {p.name}
+                      </CardTitle>
+                      <CardDescription className="min-h-5">
+                        {p.description ?? ""}
+                      </CardDescription>
                     </CardHeader>
                     <CardFooter className="flex px-3 pb-2 pt-0">
                       <p className="text-xs font-thin">
@@ -144,7 +153,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
                   <Input
                     value={editProject?.name}
                     placeholder={t("Project Name")}
-                    onChange={e => handleUpdateValue("name", e.target.value)}
+                    onChange={(e) => handleUpdateValue("name", e.target.value)}
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -152,24 +161,31 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
                   <Input
                     placeholder={t("Project Description")}
                     value={editProject?.description}
-                    onChange={e => handleUpdateValue("description", e.target.value)}
+                    onChange={(e) =>
+                      handleUpdateValue("description", e.target.value)
+                    }
                   />
                 </div>
               </div>
               <div
-                className={`mt-2 text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}>
+                className={`mt-2 text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
+              >
                 {t("Failed to update project")}
               </div>
             </DialogDescription>
 
             <div className="flex justify-end gap-4 px-6 pb-6">
-              <Button disabled={buttonDisabled || !editProject?.name} onClick={handleUpdateProject}>
+              <Button
+                disabled={buttonDisabled || !editProject?.name}
+                onClick={handleUpdateProject}
+              >
                 {t("Save")}
               </Button>
               <Button
                 disabled={buttonDisabled}
                 variant={"outline"}
-                onClick={() => setEditProject(undefined)}>
+                onClick={() => setEditProject(undefined)}
+              >
                 {t("Cancel")}
               </Button>
             </div>

@@ -1,4 +1,9 @@
-import { NodeChange, OnNodesChange, useStore, useStoreApi } from "@xyflow/react";
+import {
+  NodeChange,
+  OnNodesChange,
+  useStore,
+  useStoreApi,
+} from "@xyflow/react";
 import { useEffect, useRef, useState } from "react";
 
 type ChangeLoggerProps = {
@@ -35,7 +40,7 @@ function ChangeInfo({ change }: ChangeInfoProps) {
 export default function ChangeLogger({ limit = 20 }: ChangeLoggerProps) {
   const [changes, setChanges] = useState<NodeChange[]>([]);
   const onNodesChangeIntercepted = useRef(false);
-  const onNodesChange = useStore(s => s.onNodesChange);
+  const onNodesChange = useStore((s) => s.onNodesChange);
   const store = useStoreApi();
 
   useEffect(() => {
@@ -46,10 +51,10 @@ export default function ChangeLogger({ limit = 20 }: ChangeLoggerProps) {
     onNodesChangeIntercepted.current = true;
     const userOnNodesChange = onNodesChange;
 
-    const onNodesChangeLogger: OnNodesChange = changes => {
+    const onNodesChangeLogger: OnNodesChange = (changes) => {
       userOnNodesChange(changes);
 
-      setChanges(oldChanges => [...changes, ...oldChanges].slice(0, limit));
+      setChanges((oldChanges) => [...changes, ...oldChanges].slice(0, limit));
     };
 
     store.setState({ onNodesChange: onNodesChangeLogger });
@@ -61,7 +66,9 @@ export default function ChangeLogger({ limit = 20 }: ChangeLoggerProps) {
       {changes.length === 0 ? (
         <>no changes triggered</>
       ) : (
-        changes.map((change, index) => <ChangeInfo key={index} change={change} />)
+        changes.map((change, index) => (
+          <ChangeInfo key={index} change={change} />
+        ))
       )}
     </div>
   );

@@ -1,11 +1,44 @@
+import { fixupPluginRules } from "@eslint/compat";
 import * as graphql from "@graphql-eslint/eslint-plugin";
 import config from "eslint-config-reearth";
+import react from "eslint-plugin-react";
+import reactHooks from "eslint-plugin-react-hooks";
 import storybook from "eslint-plugin-storybook";
 import tailwind from "eslint-plugin-tailwindcss";
 
 export default [
   ...config,
   ...tailwind.configs["flat/recommended"],
+  {
+    files: ["**/*.{js,jsx,ts,tsx}"],
+    plugins: {
+      react,
+      "react-hooks": fixupPluginRules(reactHooks),
+    },
+    settings: {
+      react: {
+        version: "detect",
+      },
+    },
+    rules: {
+      "react/prop-types": "off",
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "error",
+      "react/jsx-no-useless-fragment": [
+        "warn",
+        {
+          allowExpressions: true,
+        },
+      ],
+      "react/self-closing-comp": [
+        "warn",
+        {
+          component: true,
+          html: true,
+        },
+      ],
+    },
+  },
   {
     rules: {
       "tailwindcss/no-custom-classname": [

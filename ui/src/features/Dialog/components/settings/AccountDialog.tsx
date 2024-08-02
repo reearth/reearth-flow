@@ -15,7 +15,9 @@ const AccountDialogContent: React.FC = () => {
   const [name, setName] = useState<string | undefined>(me?.name);
   const [email, setEmail] = useState<string | undefined>(me?.email);
   const [password, setPassword] = useState<string | undefined>();
-  const [passwordConfirmation, setPasswordConfirmation] = useState<string | undefined>();
+  const [passwordConfirmation, setPasswordConfirmation] = useState<
+    string | undefined
+  >();
   const [showError, setShowError] = useState<Errors | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +46,9 @@ const AccountDialogContent: React.FC = () => {
     const input = { name, email };
     const { me: user } = await updateMe(input);
     if (!user) {
-      showError === "passwordFailed" ? setShowError("failed") : setShowError("emailFailed");
+      showError === "passwordFailed"
+        ? setShowError("failed")
+        : setShowError("emailFailed");
     }
     setLoading(false);
   };
@@ -64,7 +68,7 @@ const AccountDialogContent: React.FC = () => {
                   placeholder={t("User Name")}
                   disabled={isLoading}
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div>
@@ -74,7 +78,7 @@ const AccountDialogContent: React.FC = () => {
                   placeholder={t("User Name")}
                   disabled={isLoading}
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div>
@@ -85,34 +89,41 @@ const AccountDialogContent: React.FC = () => {
                   disabled={isLoading}
                   value={password}
                   type="password"
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
               <div>
-                <Label htmlFor="confirm-password">{t("Confirm Password")}</Label>
+                <Label htmlFor="confirm-password">
+                  {t("Confirm Password")}
+                </Label>
                 <Input
                   id="confirm-password"
                   placeholder={t("Confirm Password")}
                   disabled={isLoading}
                   value={passwordConfirmation}
                   type="password"
-                  onChange={e => setPasswordConfirmation(e.target.value)}
+                  onChange={(e) => setPasswordConfirmation(e.target.value)}
                 />
               </div>
               <div>
                 <Button
                   className="self-end"
                   disabled={isLoading || loading || !name || !email}
-                  onClick={handleUpdateMe}>
+                  onClick={handleUpdateMe}
+                >
                   {t("Save")}
                 </Button>
               </div>
-              <div className={`text-xs text-destructive ${showError ? "opacity-70" : "opacity-0"}`}>
+              <div
+                className={`text-xs text-destructive ${showError ? "opacity-70" : "opacity-0"}`}
+              >
                 {showError === "failed" && t("Failed to update the user")}
                 {showError === "passwordNotSame" &&
                   t("Password and Confirm password are not the same")}
-                {showError === "passwordFailed" && t("Failed to update the password")}
-                {showError === "emailFailed" && t("Failed to update email and name")}
+                {showError === "passwordFailed" &&
+                  t("Failed to update the password")}
+                {showError === "emailFailed" &&
+                  t("Failed to update email and name")}
               </div>
             </div>
           }

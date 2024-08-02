@@ -15,7 +15,8 @@ const FlowLogo: React.FC<{
       viewBox="0 0 24 24"
       fill="none"
       style={style}
-      xmlns="http://www.w3.org/2000/svg">
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <g>
         <rect width="24" height="24" fill="none" />
         <mask
@@ -25,7 +26,8 @@ const FlowLogo: React.FC<{
           y="-1"
           width="18"
           height="25"
-          fill="black">
+          fill="black"
+        >
           <rect fill="white" x="4" y="-1" width="18" height="25" />
           <path d="M16.8591 11.288H7.35513L17.1471 1.56H6.33113V23H5.37113V0.599998H19.4831L9.69113 10.328H16.8591V11.288Z" />
         </mask>

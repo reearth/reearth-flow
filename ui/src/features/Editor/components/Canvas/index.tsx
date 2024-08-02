@@ -10,7 +10,12 @@ import { MouseEvent, memo } from "react";
 
 import type { Edge, Node } from "@flow/types";
 
-import { CustomConnectionLine, edgeTypes, connectionLineStyle, nodeTypes } from "./components";
+import {
+  CustomConnectionLine,
+  edgeTypes,
+  connectionLineStyle,
+  nodeTypes,
+} from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
@@ -110,7 +115,8 @@ const Canvas: React.FC<Props> = ({
       onEdgeMouseEnter={onEdgeHover}
       onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
-      proOptions={proOptions}>
+      proOptions={proOptions}
+    >
       <Background
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}

@@ -8,7 +8,12 @@ export type YNodesArray = Y.Array<Node>;
 
 export type YEdgesArray = Y.Array<Edge>;
 
-export const yWorkflowBuilder = (id: string, name: string, nodes?: Node[], edges?: Edge[]) => {
+export const yWorkflowBuilder = (
+  id: string,
+  name: string,
+  nodes?: Node[],
+  edges?: Edge[],
+) => {
   const yWorkflow = new Y.Map<Y.Text | YNodesArray | YEdgesArray>();
 
   const yId = new Y.Text(id);

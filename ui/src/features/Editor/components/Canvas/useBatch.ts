@@ -24,7 +24,7 @@ export default () => {
             y: posY - hoveredNode.position.y,
           };
         }
-        const newNodes: Node[] = nodes.filter(n => n.id !== updatedNode.id);
+        const newNodes: Node[] = nodes.filter((n) => n.id !== updatedNode.id);
         newNodes.push(updatedNode);
         onNodesChange(newNodes);
       }
@@ -51,7 +51,7 @@ export default () => {
           };
         }
         onNodesChange(
-          nodes.map(n => {
+          nodes.map((n) => {
             if (n.id === draggedNode.id) {
               n = draggedNode;
             }
@@ -64,8 +64,12 @@ export default () => {
   );
 
   const handleNodeDropInBatch = useCallback(
-    (droppedNode: Node, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => {
-      nodes.forEach(nd => {
+    (
+      droppedNode: Node,
+      nodes: Node[],
+      onNodesChange: (nodes: Node[]) => void,
+    ) => {
+      nodes.forEach((nd) => {
         if (nd.type === "batch") {
           //safety check to make sure there's a height and width
           if (nd.measured?.height && nd.measured?.width) {

@@ -4,7 +4,7 @@ import GeneralNode, { GeneralNodeProps } from "./GeneralNode";
 
 type Props = GeneralNodeProps;
 
-const SubworkflowNode: React.FC<Props> = props => {
+const SubworkflowNode: React.FC<Props> = (props) => {
   return <GeneralNode className="bg-[#a21caf]/60" {...props} />;
 };
 

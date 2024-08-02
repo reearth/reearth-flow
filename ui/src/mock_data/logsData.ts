@@ -126,7 +126,7 @@ const rawText = `Timestamp,Status,Transformer,Message
 
 const rows = rawText.split("\n").slice(1); // Split the text by lines and remove the header row
 
-const logData = rows.map(row => {
+const logData = rows.map((row) => {
   const [timestamp, status, transformer, message] = row.split(",");
   return { timestamp, status, transformer, message };
 });

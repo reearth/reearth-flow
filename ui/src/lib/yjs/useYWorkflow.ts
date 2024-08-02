@@ -65,7 +65,10 @@ export default ({
       },
     };
 
-    const newYWorkflow = yWorkflowBuilder(workflowId, workflowName, [newEntranceNode, newExitNode]);
+    const newYWorkflow = yWorkflowBuilder(workflowId, workflowName, [
+      newEntranceNode,
+      newExitNode,
+    ]);
 
     // Update main workflow
     const newSubworkflowNode: Node = {
@@ -82,19 +85,21 @@ export default ({
     };
     const mainWorkflow = yWorkflows.get(0);
 
-    const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray | undefined;
+    const mainWorkflowNodes = mainWorkflow?.get("nodes") as
+      | YNodesArray
+      | undefined;
     mainWorkflowNodes?.push([newSubworkflowNode]);
 
     yWorkflows.push([newYWorkflow]);
-    setWorkflows(w => [...w, { id: workflowId, name: workflowName }]);
-    setOpenWorkflowIds(ids => [...ids, workflowId]);
+    setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
+    setOpenWorkflowIds((ids) => [...ids, workflowId]);
   }, [yWorkflows, setOpenWorkflowIds, setWorkflows, handleWorkflowOpen]);
 
   const handleWorkflowsRemove = useCallback(
     (workflowIds: string[]) => {
-      workflowIds.forEach(wid => {
+      workflowIds.forEach((wid) => {
         if (wid === "main") return;
-        const index = workflows.findIndex(w => w.id === wid);
+        const index = workflows.findIndex((w) => w.id === wid);
         if (index === -1) return;
         if (index === currentWorkflowIndex) {
           handleWorkflowIdChange("main");
@@ -102,8 +107,10 @@ export default ({
         yWorkflows.delete(index);
       });
 
-      setWorkflows(w => w.filter(w => !workflowIds.includes(w.id)));
-      setOpenWorkflowIds(ids => ids.filter(id => !workflowIds.includes(id)));
+      setWorkflows((w) => w.filter((w) => !workflowIds.includes(w.id)));
+      setOpenWorkflowIds((ids) =>
+        ids.filter((id) => !workflowIds.includes(id)),
+      );
     },
     [
       workflows,

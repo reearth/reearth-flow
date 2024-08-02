@@ -18,7 +18,10 @@ const TopNavigation: React.FC = () => {
         <div className="flex items-center gap-2">
           <div
             className="z-10 cursor-pointer rounded bg-red-800/50 p-2"
-            onClick={() => navigate({ to: `/workspace/${currentWorkspace?.id}` })}>
+            onClick={() =>
+              navigate({ to: `/workspace/${currentWorkspace?.id}` })
+            }
+          >
             <FlowLogo className="size-5" />
           </div>
           <h1 className="select-none font-extralight">
@@ -26,7 +29,10 @@ const TopNavigation: React.FC = () => {
             <span className="text-xs font-thin">v{version ?? "X.X.X"}</span>
           </h1>
         </div>
-        <div id="dashboard-middle" className="absolute inset-x-0 flex justify-center">
+        <div
+          id="dashboard-middle"
+          className="absolute inset-x-0 flex justify-center"
+        >
           <div className="flex max-w-[40vw] justify-center gap-4">
             <WorkspaceNavigation />
           </div>

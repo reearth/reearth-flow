@@ -3,7 +3,12 @@ import * as Y from "yjs";
 
 import { Edge, Node } from "@flow/types";
 
-import { yWorkflowBuilder, YNodesArray, YEdgesArray, YWorkflow } from "./workflowBuilder";
+import {
+  yWorkflowBuilder,
+  YNodesArray,
+  YEdgesArray,
+  YWorkflow,
+} from "./workflowBuilder";
 
 afterEach(() => {
   cleanup();
@@ -29,8 +34,12 @@ describe("yWorkflowBuilder", () => {
     const id = "workflow-1";
     const name = "My Workflow";
 
-    const nodes: Node[] = [{ id: "node-1", position: { x: 0, y: 0 }, data: { name: "Node 1" } }];
-    const edges: Edge[] = [{ id: "edge-1", source: "node-1", target: "node-2" }];
+    const nodes: Node[] = [
+      { id: "node-1", position: { x: 0, y: 0 }, data: { name: "Node 1" } },
+    ];
+    const edges: Edge[] = [
+      { id: "edge-1", source: "node-1", target: "node-2" },
+    ];
     const yWorkflow = yWorkflowBuilder(id, name, nodes, edges);
     yWorkflows.push([yWorkflow]);
 

@@ -49,14 +49,16 @@ export const AddProject: React.FC = () => {
             <Input
               placeholder={t("Project name")}
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
             />
             <Input
               placeholder={t("Project description (optional)")}
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
             />
-            <div className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}>
+            <div
+              className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
+            >
               {t("Failed to create project")}
             </div>
           </div>
@@ -67,7 +69,8 @@ export const AddProject: React.FC = () => {
           className="self-end"
           disabled={!name || buttonDisabled}
           size="sm"
-          onClick={handleClick}>
+          onClick={handleClick}
+        >
           {t("Create")}
         </Button>
       </DialogFooter>

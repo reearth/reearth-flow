@@ -5,7 +5,12 @@ import * as Y from "yjs";
 import type { Edge } from "@flow/types";
 
 import useYEdge from "./useYEdge";
-import { YEdgesArray, YNodesArray, YWorkflow, yWorkflowBuilder } from "./workflowBuilder";
+import {
+  YEdgesArray,
+  YNodesArray,
+  YWorkflow,
+  yWorkflowBuilder,
+} from "./workflowBuilder";
 
 afterEach(() => {
   cleanup();
