@@ -7,13 +7,9 @@ export type Action = {
   categories: string[];
 };
 
-export type ActionsSegregated = {
-  [bySegregated: string]: Action[] | undefined;
-};
+export type ActionsSegregated = Record<string, Action[] | undefined>;
 
-export type Segregated = {
-  [key: string]: ActionsSegregated;
-};
+export type Segregated = Record<string, ActionsSegregated>;
 
 export type GetActions = {
   actions?: Action[];

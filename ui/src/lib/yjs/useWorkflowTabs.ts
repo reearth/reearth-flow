@@ -11,9 +11,7 @@ export default ({
   handleWorkflowIdChange,
 }: {
   workflowId?: string;
-  rawWorkflows: {
-    [key: string]: YText | Node[] | Edge[];
-  }[];
+  rawWorkflows: Record<string, YText | Node[] | Edge[]>[];
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
   const [workflows, setWorkflows] = useState<{ id: string; name: string }[]>(

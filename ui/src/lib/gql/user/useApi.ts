@@ -32,7 +32,7 @@ export const useUser = () => {
     try {
       const me = await mutateAsync(input);
       return { me, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { me: undefined, ...rest };
     }
   };

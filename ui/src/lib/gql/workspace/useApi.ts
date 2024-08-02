@@ -24,7 +24,7 @@ export const useWorkspace = () => {
     try {
       const data = await mutateAsync(name);
       return { workspace: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspace: undefined, ...rest };
     }
   };
@@ -50,7 +50,7 @@ export const useWorkspace = () => {
     try {
       const data = await mutateAsync({ workspaceId, name });
       return { workspace: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspace: undefined, ...rest };
     }
   };
@@ -60,7 +60,7 @@ export const useWorkspace = () => {
     try {
       const data = await mutateAsync(workspaceId);
       return { workspaceId: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspaceId: undefined, ...rest };
     }
   };
@@ -75,7 +75,7 @@ export const useWorkspace = () => {
     try {
       const data = await mutateAsync({ workspaceId, userId, role });
       return { workspace: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspace: undefined, ...rest };
     }
   };
@@ -88,7 +88,7 @@ export const useWorkspace = () => {
     try {
       const data = await mutateAsync({ workspaceId, userId });
       return { workspace: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspace: undefined, ...rest };
     }
   };
@@ -102,7 +102,7 @@ export const useWorkspace = () => {
     try {
       const data = await mutateAsync({ workspaceId, userId, role });
       return { workspace: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspace: undefined, ...rest };
     }
   };

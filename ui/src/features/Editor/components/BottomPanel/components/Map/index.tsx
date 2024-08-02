@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import { Button } from "@flow/components";
 import fires from "@flow/mock_data/fires.json";
 
-type Props = {};
-
 const sceneModes: SceneMode[] = ["2d", "3d"];
 
-const Map: React.FC<Props> = () => {
+const Map: React.FC = () => {
   const [isReady, setIsReady] = useState(false);
   const [sceneMode, setSceneMode] = useState<SceneMode>("2d");
 

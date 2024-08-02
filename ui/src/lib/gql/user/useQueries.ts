@@ -37,7 +37,7 @@ export const useQueries = () => {
         name: data.searchUser.name,
         email: data.searchUser.email,
       };
-    } catch (err) {
+    } catch (_err) {
       return;
     }
   };

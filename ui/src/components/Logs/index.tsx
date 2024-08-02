@@ -32,12 +32,12 @@ import { LogStatus } from "@flow/types";
 
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
-interface LogProps<TData, TValue> {
+type LogProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   selectColumns?: boolean;
   showFiltering?: boolean;
-}
+};
 
 const Logs = <TData, TValue>({
   columns,
@@ -96,7 +96,7 @@ const Logs = <TData, TValue>({
   };
 
   const getStatusValue = useMemo(() => {
-    const value = columnFilters.find(id => id.id === "status");
+    const value = columnFilters.find((id) => id.id === "status");
     return value?.value;
   }, [columnFilters]);
 
@@ -108,25 +108,33 @@ const Logs = <TData, TValue>({
           <Button
             variant={getStatusValue === "ERROR" ? "default" : "outline"}
             size="icon"
-            onClick={() => handleStatusChange("ERROR")}>
+            onClick={() => handleStatusChange("ERROR")}
+          >
             <CrossCircledIcon />
           </Button>
           <Button
             variant={getStatusValue === "WARNING" ? "default" : "outline"}
             size="icon"
-            onClick={() => handleStatusChange("WARNING")}>
+            onClick={() => handleStatusChange("WARNING")}
+          >
             <ExclamationTriangleIcon />
           </Button>
           <Button
             variant={getStatusValue === "INFO" ? "default" : "outline"}
             size="icon"
-            onClick={() => handleStatusChange("INFO")}>
+            onClick={() => handleStatusChange("INFO")}
+          >
             <InfoCircledIcon />
           </Button>
           <Button
-            variant={table.getColumn("timestamp")?.getIsVisible() ? "default" : "outline"}
+            variant={
+              table.getColumn("timestamp")?.getIsVisible()
+                ? "default"
+                : "outline"
+            }
             size="icon"
-            onClick={handleTimeStampColumnVisibility}>
+            onClick={handleTimeStampColumnVisibility}
+          >
             <ClockIcon />
           </Button>
           <Button variant="ghost" size="icon">
@@ -142,7 +150,7 @@ const Logs = <TData, TValue>({
           <Input
             placeholder={t("Search") + "..."}
             value={globalFilter ?? ""}
-            onChange={e => setGlobalFilter(String(e.target.value))}
+            onChange={(e) => setGlobalFilter(String(e.target.value))}
             className="max-w-80"
           />
         )}
@@ -156,14 +164,17 @@ const Logs = <TData, TValue>({
             <DropdownMenuContent align="end">
               {table
                 .getAllColumns()
-                .filter(column => column.getCanHide())
-                .map(column => {
+                .filter((column) => column.getCanHide())
+                .map((column) => {
                   return (
                     <DropdownMenuCheckboxItem
                       key={column.id}
                       className="capitalize"
                       checked={column.getIsVisible()}
-                      onCheckedChange={value => column.toggleVisibility(!!value)}>
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
                       {column.id}
                     </DropdownMenuCheckboxItem>
                   );
@@ -176,9 +187,12 @@ const Logs = <TData, TValue>({
       <Table>
         <TableBody>
           {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map(row => (
-              <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                {row.getVisibleCells().map(cell => (
+            table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() && "selected"}
+              >
+                {row.getVisibleCells().map((cell) => (
                   <TableCell className="cursor-pointer" key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>

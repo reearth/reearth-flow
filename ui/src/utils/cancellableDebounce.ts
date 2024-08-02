@@ -1,4 +1,4 @@
-interface DebouncedFunction<T extends (...args: any[]) => void> {
+type DebouncedFunction<T extends (...args: any[]) => void> = {
   (...args: Parameters<T>): void;
   cancel: () => void;
 }

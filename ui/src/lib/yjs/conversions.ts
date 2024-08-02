@@ -1,6 +1,6 @@
 import * as Y from "yjs";
 
-export const toYjsMap = (obj: { [key: string]: any }): Y.Map<any> => {
+export const toYjsMap = (obj: Record<string, any>): Y.Map<any> => {
   const yMap = new Y.Map();
   for (const [key, value] of Object.entries(obj)) {
     yMap.set(key, value);
