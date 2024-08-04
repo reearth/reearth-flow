@@ -53,9 +53,9 @@ const ParamEditor: React.FC<Props> = ({
   const t = useT();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
-  console.log("reactFlowInstance", nodeId);
 
-  const handleFitView = () => fitView({ nodes: [{ id: nodeId }], duration: 400 });
+  const handleFitView = () =>
+    fitView({ nodes: [{ id: nodeId }], duration: 400 });
 
   return (
     <div>
@@ -76,7 +76,9 @@ const ParamEditor: React.FC<Props> = ({
           <IconButton
             className={actionButtonClasses}
             icon={isFullscreen ? <CornersIn /> : <CornersOut />}
-            tooltipText={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
+            tooltipText={
+              isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")
+            }
             onClick={handleFullscreenToggle}
           />
           <IconButton
@@ -113,7 +115,9 @@ const ParamEditor: React.FC<Props> = ({
             <CardHeader>
               <CardTitle>{t("Parameter Editor")}</CardTitle>
               <CardDescription>
-                {t("Make changes to your account here. Click save when youre done.")}
+                {t(
+                  "Make changes to your account here. Click save when youre done.",
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -123,11 +127,19 @@ const ParamEditor: React.FC<Props> = ({
               </div>
               <div className="space-y-1">
                 <Label htmlFor="username">Longitude</Label>
-                <Input id="username" type="number" placeholder="Enter longitude" />
+                <Input
+                  id="username"
+                  type="number"
+                  placeholder="Enter longitude"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="username">Latitude</Label>
-                <Input id="username" type="number" placeholder="Enter latitude" />
+                <Input
+                  id="username"
+                  type="number"
+                  placeholder="Enter latitude"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="name">Source</Label>

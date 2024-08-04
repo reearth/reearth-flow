@@ -21,8 +21,11 @@ const roles: Role[] = Object.values(Role);
 const MembersSettings: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
-  const { addMemberToWorkspace, removeMemberFromWorkspace, updateMemberOfWorkspace } =
-    useWorkspace();
+  const {
+    addMemberToWorkspace,
+    removeMemberFromWorkspace,
+    updateMemberOfWorkspace,
+  } = useWorkspace();
   const { searchUser, useGetMe } = useUser();
   const [email, setEmail] = useState<string>("");
   const [currentFilter, setFilter] = useState<Filter>("all");
@@ -39,14 +42,15 @@ const MembersSettings: React.FC = () => {
   ];
 
   const members = currentWorkspace?.members?.filter(
-    m => "userId" in m && (currentFilter === "all" || m.role === currentFilter),
+    (m) =>
+      "userId" in m && (currentFilter === "all" || m.role === currentFilter),
   ) as UserMember[];
 
   const handleAddMember = async (email: string) => {
     setError(undefined);
     if (!currentWorkspace?.id) return;
 
-    const alreadyExists = members?.find(m => m.user?.email === email);
+    const alreadyExists = members?.find((m) => m.user?.email === email);
 
     if (alreadyExists) {
       setError("User already exists");
@@ -58,7 +62,11 @@ const MembersSettings: React.FC = () => {
       setError(t("Could not find the user"));
       return;
     }
-    const { workspace } = await addMemberToWorkspace(currentWorkspace.id, user.id, Role.Reader);
+    const { workspace } = await addMemberToWorkspace(
+      currentWorkspace.id,
+      user.id,
+      Role.Reader,
+    );
 
     if (!workspace) {
       setError(t("Failed to add member"));
@@ -70,7 +78,11 @@ const MembersSettings: React.FC = () => {
   const handleChangeRole = async (userId: string, role: Role) => {
     setError(undefined);
     if (!currentWorkspace?.id) return;
-    const { workspace } = await updateMemberOfWorkspace(currentWorkspace.id, userId, role);
+    const { workspace } = await updateMemberOfWorkspace(
+      currentWorkspace.id,
+      userId,
+      role,
+    );
     if (!workspace) {
       setError(t("Failed to change role of the member"));
       return;
@@ -80,7 +92,10 @@ const MembersSettings: React.FC = () => {
   const handleRemoveMembers = async (userId: string) => {
     setError(undefined);
     if (!currentWorkspace?.id) return;
-    const { workspace } = await removeMemberFromWorkspace(currentWorkspace.id, userId);
+    const { workspace } = await removeMemberFromWorkspace(
+      currentWorkspace.id,
+      userId,
+    );
     if (!workspace) {
       setError(t("Failed to remove member"));
       return;
@@ -100,11 +115,12 @@ const MembersSettings: React.FC = () => {
             placeholder={t("Enter email")}
             value={email}
             disabled={currentWorkspace?.personal}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <Button
             onClick={() => handleAddMember(email)}
-            disabled={!email || currentWorkspace?.personal}>
+            disabled={!email || currentWorkspace?.personal}
+          >
             {t("Add Member")}
           </Button>
         </div>
@@ -117,7 +133,7 @@ const MembersSettings: React.FC = () => {
             <div>
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center gap-2">
-                  <p>{filters.find(f => f.id === currentFilter)?.title}</p>
+                  <p>{filters.find((f) => f.id === currentFilter)?.title}</p>
                   <CaretDown className="size-3" />
                 </DropdownMenuTrigger>
 
@@ -126,7 +142,8 @@ const MembersSettings: React.FC = () => {
                     <DropdownMenuItem
                       key={idx}
                       className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
-                      onClick={() => setFilter(filter.id)}>
+                      onClick={() => setFilter(filter.id)}
+                    >
                       {filter.title}
                     </DropdownMenuItem>
                   ))}
@@ -135,21 +152,27 @@ const MembersSettings: React.FC = () => {
             </div>
           </div>
           <div className="max-h-[50vh] overflow-auto">
-            {members?.map(m => (
+            {members?.map((m) => (
               <div key={m.userId} className="flex gap-4 px-4 py-2">
                 <p className="flex-1">{m.user?.name}</p>
-                <p className="flex-1 px-4 text-sm font-thin capitalize">{m.role}</p>
+                <p className="flex-1 px-4 text-sm font-thin capitalize">
+                  {m.role}
+                </p>
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={m.userId === me?.id}
-                    className={`flex flex-1 items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}>
+                    className={`flex flex-1 items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}
+                  >
                     <p className="text-sm">{t("Change role")}</p>
                     <CaretDown className="size-2" />
                   </DropdownMenuTrigger>
 
                   <DropdownMenuContent className="min-w-[70px]">
                     {roles.map((role, idx) => (
-                      <DropdownMenuItem key={idx} onClick={() => handleChangeRole(m.userId, role)}>
+                      <DropdownMenuItem
+                        key={idx}
+                        onClick={() => handleChangeRole(m.userId, role)}
+                      >
                         {role}
                       </DropdownMenuItem>
                     ))}
@@ -160,7 +183,8 @@ const MembersSettings: React.FC = () => {
                   size="sm"
                   variant="outline"
                   disabled={m.userId === me?.id}
-                  onClick={() => handleRemoveMembers(m.userId)}>
+                  onClick={() => handleRemoveMembers(m.userId)}
+                >
                   {t("Remove")}
                 </Button>
               </div>

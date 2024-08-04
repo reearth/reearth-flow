@@ -12,7 +12,11 @@ const config: CodegenConfig = {
       preset: "client",
     },
     [`${pluginsDirectory}/graphql-request.ts`]: {
-      plugins: ["typescript", "typescript-operations", "typescript-graphql-request"],
+      plugins: [
+        "typescript",
+        "typescript-operations",
+        "typescript-graphql-request",
+      ],
     },
   },
 };

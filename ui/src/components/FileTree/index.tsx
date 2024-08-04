@@ -5,12 +5,12 @@ import useResizeObserver from "use-resize-observer";
 
 import { cn } from "@flow/lib/utils";
 
-interface TreeDataItem {
+type TreeDataItem = {
   id: string;
   name: string;
   icon?: Icon;
   children?: TreeDataItem[];
-}
+};
 
 type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   data: TreeDataItem[] | TreeDataItem;
@@ -60,12 +60,15 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
 
       const ids: string[] = [];
 
-      function walkTreeItems(items: TreeDataItem[] | TreeDataItem, targetId: string) {
+      function walkTreeItems(
+        items: TreeDataItem[] | TreeDataItem,
+        targetId: string,
+      ) {
         if (items instanceof Array) {
           // eslint-disable-next-line @typescript-eslint/prefer-for-of
           for (let i = 0; i < items.length; i++) {
-            ids.push(items[i]!.id);
-            if (walkTreeItems(items[i]!, targetId) && !expandAll) {
+            ids.push(items[i].id);
+            if (walkTreeItems(items[i], targetId) && !expandAll) {
               return true;
             }
             if (!expandAll) ids.pop();
@@ -131,10 +134,13 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       <div ref={ref} role="tree" className={className} {...props}>
         <ul>
           {data instanceof Array ? (
-            data.map(item => (
+            data.map((item) => (
               <li key={item.id}>
                 {item.children ? (
-                  <AccordionPrimitive.Root type="multiple" defaultValue={expandedItemIds}>
+                  <AccordionPrimitive.Root
+                    type="multiple"
+                    defaultValue={expandedItemIds}
+                  >
                     <AccordionPrimitive.Item value={item.id}>
                       <AccordionTrigger
                         className={cn(
@@ -144,7 +150,8 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                               " " +
                               "before:border before:border-border/50 before:border-l-2 before:border-l-red-800/50 dark:before:border-0",
                         )}
-                        onClick={() => handleSelectChange(item)}>
+                        onClick={() => handleSelectChange(item)}
+                      >
                         {item.icon && (
                           <item.icon
                             className={cn(
@@ -163,7 +170,9 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                             aria-hidden="true"
                           />
                         )}
-                        <span className="truncate text-xs font-extralight">{item.name}</span>
+                        <span className="truncate text-xs font-extralight">
+                          {item.name}
+                        </span>
                       </AccordionTrigger>
                       <AccordionContent className="ml-4 border-l pl-6">
                         <TreeItem
@@ -224,7 +233,8 @@ const Leaf = forwardRef<
         // TODO: Remove dark class
         isSelected && highlightClass + " " + "dark:before:border-0",
       )}
-      {...props}>
+      {...props}
+    >
       {item.icon && (
         <item.icon
           className={cn(
@@ -236,7 +246,11 @@ const Leaf = forwardRef<
         />
       )}
       {!item.icon && Icon && (
-        <Icon className="mr-2 size-4 shrink-0" weight="thin" aria-hidden="true" />
+        <Icon
+          className="mr-2 size-4 shrink-0"
+          weight="thin"
+          aria-hidden="true"
+        />
       )}
       <span className="grow truncate text-xs font-extralight">{item.name}</span>
     </div>
@@ -256,9 +270,10 @@ const AccordionTrigger = forwardRef<
         "flex flex-1 w-full items-center py-2 transition-all last:[&[data-state=open]>svg]:rotate-90",
         className,
       )}
-      {...props}>
+      {...props}
+    >
       {children}
-      <CaretRight className="ml-auto size-4 shrink-0 text-accent/60 transition-transform duration-200" />
+      <CaretRight className="text-accent/60 ml-auto size-4 shrink-0 transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));
@@ -274,7 +289,8 @@ const AccordionContent = forwardRef<
       "overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
       className,
     )}
-    {...props}>
+    {...props}
+  >
     <div className="pb-1 pt-0">{children}</div>
   </AccordionPrimitive.Content>
 ));

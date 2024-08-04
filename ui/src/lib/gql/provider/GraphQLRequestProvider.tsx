@@ -1,5 +1,11 @@
 import { GraphQLClient } from "graphql-request";
-import { createContext, useState, ReactNode, useEffect, useContext } from "react";
+import {
+  createContext,
+  useState,
+  ReactNode,
+  useEffect,
+  useContext,
+} from "react";
 
 import { config } from "@flow/config";
 import { useAuth } from "@flow/lib/auth";
@@ -10,9 +16,13 @@ const GraphQLContext = createContext<Sdk | undefined>(undefined);
 
 export const useGraphQLContext = () => useContext(GraphQLContext);
 
-export const GraphQLRequestProvider = ({ children }: { children?: ReactNode }) => {
+export const GraphQLRequestProvider = ({
+  children,
+}: {
+  children?: ReactNode;
+}) => {
   const [graphQLSdk, setGraphQLSdk] = useState<Sdk | undefined>();
-  const endpoint = `${config().api}/graphql`;
+  const endpoint = `${config().api}/api/graphql`;
   const { getAccessToken } = useAuth();
 
   useEffect(() => {
@@ -31,7 +41,9 @@ export const GraphQLRequestProvider = ({ children }: { children?: ReactNode }) =
   }, [graphQLSdk, setGraphQLSdk, getAccessToken, endpoint]);
 
   return graphQLSdk ? (
-    <GraphQLContext.Provider value={graphQLSdk}>{children}</GraphQLContext.Provider>
+    <GraphQLContext.Provider value={graphQLSdk}>
+      {children}
+    </GraphQLContext.Provider>
   ) : (
     children
   );

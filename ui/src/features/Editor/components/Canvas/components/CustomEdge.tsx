@@ -1,4 +1,10 @@
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, EdgeTypes, getBezierPath } from "@xyflow/react";
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  EdgeProps,
+  EdgeTypes,
+  getBezierPath,
+} from "@xyflow/react";
 import { memo } from "react";
 
 import { Edge } from "@flow/types";
@@ -35,7 +41,8 @@ const CustomEdge: React.FC<CustomEdgeProps> = ({
             pointerEvents: "all",
           }}
           className="nodrag nopan size-[12px] rounded bg-accent-foreground"
-          onClick={() => console.log("I AM JUST A NUMBER")}>
+          onClick={() => console.log("I AM JUST A NUMBER")}
+        >
           <p className="text-center align-middle text-[8px] text-black">4</p>
         </div>
       </EdgeLabelRenderer>

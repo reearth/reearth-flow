@@ -48,9 +48,11 @@ const AddWorkspace: React.FC = () => {
             <Input
               placeholder={t("Workspace name")}
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
             />
-            <div className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}>
+            <div
+              className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
+            >
               {t("Failed to create workspace")}
             </div>
           </div>
@@ -61,7 +63,8 @@ const AddWorkspace: React.FC = () => {
           className="self-end"
           disabled={!name || buttonDisabled}
           size="sm"
-          onClick={handleClick}>
+          onClick={handleClick}
+        >
           {t("Create")}
         </Button>
       </DialogFooter>

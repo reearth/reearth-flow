@@ -20,7 +20,9 @@ const WorkspaceNavigation: React.FC = () => {
 
   const handleWorkspaceChange = (workspace: Workspace) => {
     const route = window.location.pathname;
-    navigate({ to: route.replace(currentWorkspace?.id as string, workspace.id) });
+    navigate({
+      to: route.replace(currentWorkspace?.id as string, workspace.id),
+    });
   };
 
   return (
@@ -34,13 +36,15 @@ const WorkspaceNavigation: React.FC = () => {
       <DropdownMenuContent
         className="min-w-[150px] max-w-[300px] border"
         sideOffset={5}
-        align="center">
+        align="center"
+      >
         <DropdownMenuGroup className="max-h-[300px] overflow-auto">
-          {workspaces?.map(workspace => (
+          {workspaces?.map((workspace) => (
             <DropdownMenuItem
               key={workspace.id}
               className={`my-1 rounded-md  ${currentWorkspace?.id === workspace.id ? "bg-accent" : ""}`}
-              onClick={() => handleWorkspaceChange(workspace)}>
+              onClick={() => handleWorkspaceChange(workspace)}
+            >
               <p className="w-full truncate text-center">{workspace.name}</p>
             </DropdownMenuItem>
           ))}

@@ -180,7 +180,6 @@ impl GeometryCoercer {
             }
             _ => unimplemented!(),
         }
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
     }
 
     fn handle_3d_geometry(
@@ -230,7 +229,6 @@ impl GeometryCoercer {
             }
             _ => unimplemented!(),
         }
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
     }
 
     fn handle_city_gml_geometry(
@@ -264,6 +262,7 @@ impl GeometryCoercer {
             let mut geometry = geometry.clone();
             geometry.value = geo;
             let mut feature = feature.clone();
+            feature.id = uuid::Uuid::new_v4();
             feature.geometry = Some(geometry);
             fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         });

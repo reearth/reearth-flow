@@ -33,14 +33,19 @@ const ManualRun: React.FC = () => {
           <div className="flex flex-col gap-2">
             <Label htmlFor="manual-run-project">{t("Project")}</Label>
             <Select
-              onValueChange={pid =>
-                selectProject(currentWorkspace?.projects?.find(p => p.id === pid))
-              }>
+              onValueChange={(pid) =>
+                selectProject(
+                  currentWorkspace?.projects?.find((p) => p.id === pid),
+                )
+              }
+            >
               <SelectTrigger>
-                <SelectValue placeholder={t("Select from published projects")} />
+                <SelectValue
+                  placeholder={t("Select from published projects")}
+                />
               </SelectTrigger>
               <SelectContent>
-                {projects?.map(p => (
+                {projects?.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
                   </SelectItem>

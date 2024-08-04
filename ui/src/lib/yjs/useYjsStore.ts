@@ -1,17 +1,14 @@
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import { useY } from "react-yjs";
 import * as Y from "yjs";
 
 import type { Edge, Node } from "@flow/types";
 
-import { fromYjsText } from "./conversions";
-import { yWorkflowBuilder } from "./workflowBuilder";
-
-type YWorkflow = Y.Map<Y.Text | YNodesArray | YEdgesArray> | undefined;
-
-type YNodesArray = Y.Array<Node>;
-
-type YEdgesArray = Y.Array<Edge>;
+import useWorkflowTabs from "./useWorkflowTabs";
+import useYEdge from "./useYEdge";
+import useYNode from "./useYNode";
+import useYWorkflow from "./useYWorkflow";
+import { yWorkflowBuilder, type YWorkflow } from "./workflowBuilder";
 
 export default ({
   workflowId,
@@ -21,9 +18,10 @@ export default ({
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
   const [{ yWorkflows }] = useState(() => {
+    // TODO: setup middleware/websocket provider
     const yDoc = new Y.Doc();
     const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-    const { yWorkflow } = yWorkflowBuilder("main", "Main Workflow");
+    const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
     yWorkflows.push([yWorkflow]);
 
     return { yWorkflows };
@@ -31,65 +29,47 @@ export default ({
 
   const rawWorkflows = useY(yWorkflows);
 
-  const [workflows, setWorkflows] = useState<{ id: string; name: string }[]>(
-    rawWorkflows.map(w2 => ({
-      id: fromYjsText(w2?.id as Y.Text),
-      name: fromYjsText(w2?.name as Y.Text),
-    })),
-  );
+  const {
+    workflows,
+    openWorkflows,
+    currentWorkflowIndex,
+    setWorkflows,
+    setOpenWorkflowIds,
+    handleWorkflowOpen,
+    handleWorkflowClose,
+  } = useWorkflowTabs({ workflowId, rawWorkflows, handleWorkflowIdChange });
 
-  const currentWorkflowIndex = useMemo(
-    () => workflows.findIndex(w => w.id === workflowId),
-    [workflowId, workflows],
-  );
+  const { currentYWorkflow, handleWorkflowAdd, handleWorkflowsRemove } =
+    useYWorkflow({
+      yWorkflows,
+      workflows,
+      currentWorkflowIndex,
+      setWorkflows,
+      setOpenWorkflowIds,
+      handleWorkflowIdChange,
+      handleWorkflowOpen,
+    });
 
-  const yWorkflow = yWorkflows.get(currentWorkflowIndex);
+  const nodes = useY(
+    currentYWorkflow?.get("nodes") ?? new Y.Array<Node>(),
+  ) as Node[];
+  const edges = useY(
+    currentYWorkflow?.get("edges") ?? new Y.Array<Edge>(),
+  ) as Edge[];
 
-  const nodes = useY(yWorkflow?.get("nodes") ?? new Y.Array<Node>()) as Node[];
-  const edges = useY(yWorkflow?.get("edges") ?? new Y.Array<Edge>()) as Edge[];
+  const { handleNodesUpdate } = useYNode({
+    currentYWorkflow,
+    handleWorkflowsRemove,
+  });
 
-  const handleWorkflowAdd = useCallback(() => {
-    const workflowId = yWorkflows.length.toString() + "-workflow";
-    const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
-
-    const yWorkflow = yWorkflowBuilder(workflowId, workflowName).yWorkflow;
-    yWorkflows.push([yWorkflow]);
-
-    setWorkflows(w => [...w, { id: workflowId, name: workflowName }]);
-    handleWorkflowIdChange(workflowId);
-  }, [yWorkflows, handleWorkflowIdChange]);
-
-  const handleWorkflowRemove = useCallback(
-    (workflowId: string) => {
-      const index = workflows.findIndex(w => w.id === workflowId);
-      setWorkflows(w => w.filter(w => w.id !== workflowId));
-
-      if (index === currentWorkflowIndex) {
-        handleWorkflowIdChange("main");
-      }
-      yWorkflows.delete(index);
-    },
-    [workflows, yWorkflows, currentWorkflowIndex, handleWorkflowIdChange],
-  );
-
-  const handleNodesUpdate = (newNodes: Node[]) => {
-    const yNodes = yWorkflow?.get("nodes") as YNodesArray | undefined;
-    yNodes?.delete(0, nodes.length);
-    yNodes?.insert(0, newNodes);
-  };
-
-  const handleEdgesUpdate = (newEdges: Edge[]) => {
-    const yEdges = yWorkflow?.get("edges") as YEdgesArray | undefined;
-    yEdges?.delete(0, edges.length);
-    yEdges?.insert(0, newEdges);
-  };
+  const { handleEdgesUpdate } = useYEdge(currentYWorkflow);
 
   return {
     nodes,
     edges,
-    workflows,
+    openWorkflows,
+    handleWorkflowClose,
     handleWorkflowAdd,
-    handleWorkflowRemove,
     handleNodesUpdate,
     handleEdgesUpdate,
   };

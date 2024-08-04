@@ -35,7 +35,10 @@ const GeneralSettings: React.FC = () => {
     setLoading(true);
     setShowError(undefined);
     if (!currentWorkspace?.id || !workspaceName) return;
-    const { workspace } = await updateWorkspace(currentWorkspace?.id, workspaceName);
+    const { workspace } = await updateWorkspace(
+      currentWorkspace?.id,
+      workspaceName,
+    );
     setLoading(false);
     if (!workspace) {
       setShowError("update");
@@ -59,23 +62,27 @@ const GeneralSettings: React.FC = () => {
             placeholder={t("Workspace Name")}
             disabled={currentWorkspace?.personal || loading}
             value={workspaceName}
-            onChange={e => setWorkspaceName(e.target.value)}
+            onChange={(e) => setWorkspaceName(e.target.value)}
           />
         </div>
         <Button
           className="self-end"
           disabled={loading || !workspaceName || currentWorkspace?.personal}
-          onClick={handleUpdateWorkspace}>
+          onClick={handleUpdateWorkspace}
+        >
           {t("Save")}
         </Button>
         <Button
           variant={"destructive"}
           disabled={currentWorkspace?.personal || loading}
           className="self-end"
-          onClick={() => handleDeleteWorkspace()}>
+          onClick={() => handleDeleteWorkspace()}
+        >
           {t("Delete Workspace")}
         </Button>
-        <div className={`self-end text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}>
+        <div
+          className={`self-end text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
+        >
           {showError === "delete" && t("Failed to delete Workspace")}
           {showError === "update" && t("Failed to update Workspace")}
         </div>

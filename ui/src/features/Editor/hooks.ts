@@ -1,3 +1,4 @@
+import { useReactFlow } from "@xyflow/react";
 import { MouseEvent, useCallback, useState } from "react";
 
 import { useYjsStore } from "@flow/lib/yjs";
@@ -7,6 +8,7 @@ import { cancellableDebounce } from "@flow/utils";
 
 export default () => {
   const [currentWorkflowId, setCurrentWorkflowId] = useCurrentWorkflowId();
+  const { getNodes } = useReactFlow();
 
   const handleWorkflowIdChange = useCallback(
     (id?: string) => {
@@ -17,11 +19,11 @@ export default () => {
   );
 
   const {
-    workflows,
+    openWorkflows,
     nodes,
     edges,
     handleWorkflowAdd,
-    handleWorkflowRemove,
+    handleWorkflowClose,
     handleNodesUpdate,
     handleEdgesUpdate,
   } = useYjsStore({
@@ -33,13 +35,15 @@ export default () => {
   const [lockedNodeIds, setLockedNodeIds] = useState<string[]>([]);
 
   // Can have only one node locked at a time (locally)
-  const [locallyLockedNode, setLocallyLockedNode] = useState<Node | undefined>(undefined);
+  const [locallyLockedNode, setLocallyLockedNode] = useState<Node | undefined>(
+    undefined,
+  );
 
   // consider making a node context and supplying vars and functions like this to the nodes that way
   const handleNodeLocking = useCallback(
-    (nodeId: string, nodes: Node[], onNodesChange: (nodes: Node[]) => void) => {
-      onNodesChange(
-        nodes.map(n => {
+    (nodeId: string) => {
+      handleNodesUpdate(
+        getNodes().map((n) => {
           if (n.id === nodeId) {
             const newNode = {
               ...n,
@@ -49,14 +53,16 @@ export default () => {
               },
             };
 
-            setLockedNodeIds(ids => {
+            setLockedNodeIds((ids) => {
               if (ids.includes(newNode.id)) {
-                return ids.filter(id => id !== nodeId);
+                return ids.filter((id) => id !== nodeId);
               }
               return [...ids, newNode.id];
             });
 
-            setLocallyLockedNode(lln => (lln?.id === newNode.id ? undefined : newNode));
+            setLocallyLockedNode((lln) =>
+              lln?.id === newNode.id ? undefined : newNode,
+            );
 
             return newNode;
           }
@@ -64,12 +70,17 @@ export default () => {
         }),
       );
     },
-    [],
+    [getNodes, handleNodesUpdate],
   );
 
-  const [hoveredDetails, setHoveredDetails] = useState<Node | Edge | undefined>();
+  const [hoveredDetails, setHoveredDetails] = useState<
+    Node | Edge | undefined
+  >();
 
-  const hoverActionDebounce = cancellableDebounce((callback: () => void) => callback(), 100);
+  const hoverActionDebounce = cancellableDebounce(
+    (callback: () => void) => callback(),
+    100,
+  );
 
   const handleNodeHover = useCallback(
     (e: MouseEvent, node?: Node) => {
@@ -96,14 +107,14 @@ export default () => {
 
   return {
     currentWorkflowId,
-    workflows,
+    openWorkflows,
     nodes,
     edges,
     lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,
+    handleWorkflowClose,
     handleWorkflowAdd,
-    handleWorkflowRemove,
     handleWorkflowChange: handleWorkflowIdChange,
     handleNodesUpdate,
     handleNodeHover,

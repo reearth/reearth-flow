@@ -1,4 +1,9 @@
-import { DownloadSimple, FloppyDiskBack, Play, Stop } from "@phosphor-icons/react";
+import {
+  DownloadSimple,
+  FloppyDiskBack,
+  Play,
+  Stop,
+} from "@phosphor-icons/react";
 import { memo } from "react";
 
 import { IconButton } from "@flow/components";

@@ -74,7 +74,10 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
     },
   ];
 
-  const onDragStart = (event: DragEvent<HTMLButtonElement>, nodeType: NodeType) => {
+  const onDragStart = (
+    event: DragEvent<HTMLButtonElement>,
+    nodeType: NodeType,
+  ) => {
     event.dataTransfer.setData("application/reactflow", nodeType);
     event.dataTransfer.effectAllowed = "move";
   };
@@ -83,26 +86,31 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
     <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
       <div className="self-start rounded-md bg-secondary">
         <div className="flex flex-col flex-wrap rounded-md border transition-all">
-          {availableTools.map(tool => (
+          {availableTools.map((tool) => (
             <IconButton
               key={tool.id}
-              className={`dndnode-${tool.id}`}
+              className={`dndnode-${tool.id} rounded-[4px]`}
               tooltipPosition="right"
               tooltipText={tool.name}
               icon={tool.icon}
-              onDragStart={event => onDragStart(event, tool.id)}
+              onDragStart={(event) => onDragStart(event, tool.id)}
               draggable
             />
           ))}
           {availableActions && <div className="my-2 w-full border-t" />}
-          {availableActions.map(action => (
+          {availableActions.map((action) => (
             <IconButton
               key={action.id}
+              className="rounded-[4px]"
               tooltipPosition="right"
               tooltipText={action.name}
               icon={action.icon}
               onClick={() =>
-                action.id === "redo" ? onRedo?.() : action.id === "undo" ? onUndo?.() : undefined
+                action.id === "redo"
+                  ? onRedo?.()
+                  : action.id === "undo"
+                    ? onUndo?.()
+                    : undefined
               }
             />
           ))}
