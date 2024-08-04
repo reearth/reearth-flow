@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM rust:1.80-slim-bookworm AS builder
 
 ARG NAME=reearth-flow
