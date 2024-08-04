@@ -8,12 +8,8 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@flow/*": [
-        "src/*"
-      ]
+      "@flow/*": ["src/*"]
     }
   },
-  "include": [
-    "vite.config.ts"
-  ]
+  "include": ["vite.config.ts"]
 }

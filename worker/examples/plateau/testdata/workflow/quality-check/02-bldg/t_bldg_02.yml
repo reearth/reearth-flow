@@ -24,23 +24,21 @@ graphs:
         subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
       - id: 278ab965-ce22-473d-98c6-c7b381c38679
-        name: rhaiCaller01
+        name: buildingInstallationGeometryTypeExtractor01
         type: action
-        action: RhaiCaller
-        with:
-          isTarget: |
-            true
-          process: |
-            [
-              env.get("__value") + #{
-                "name": "Building",
-              },
-              env.get("__value") + #{
-                "name": "Watter",
-              },
-            ]
+        action: PLATEAU.BuildingInstallationGeometryTypeExtractor
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: FeatureFilter01
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").geomTag in ["gml:MultiSurface", "gml:Solid"]
+              outputPort: default
+
+      - id: 575aaebf-6aee-4007-a608-20d96b19475d
         name: echo01
         type: action
         action: Echo
@@ -55,5 +53,11 @@ graphs:
       - id: f23b1f56-c5d8-4311-9239-6dd205b538ab
         from: 278ab965-ce22-473d-98c6-c7b381c38679
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: default
+        toPort: default
+
+      - id: 17ebcc4b-7ec5-4fb7-89d3-1fb202ed168b
+        from: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        to: 575aaebf-6aee-4007-a608-20d96b19475d
         fromPort: default
         toPort: default

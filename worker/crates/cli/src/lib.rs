@@ -1,9 +1,12 @@
 pub mod cli;
+pub mod doc_action;
 pub mod dot;
+pub(crate) mod factory;
 pub mod logger;
 pub mod run;
 pub mod schema_action;
 pub mod schema_workflow;
+pub mod utils;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

@@ -76,7 +76,10 @@ export const SortTable: Story = {
           return (
             <Button
               variant="ghost"
-              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            >
               Email
               <SortAscending className="ml-2 size-4" />
             </Button>
@@ -103,14 +106,16 @@ export const SelectRows: Story = {
               table.getIsAllPageRowsSelected() ||
               (table.getIsSomePageRowsSelected() && "indeterminate")
             }
-            onCheckedChange={value => table.toggleAllPageRowsSelected(!!value)}
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
             aria-label="Select all"
           />
         ),
         cell: ({ row }) => (
           <Checkbox
             checked={row.getIsSelected()}
-            onCheckedChange={value => row.toggleSelected(!!value)}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
             aria-label="Select row"
           />
         ),
@@ -125,11 +130,13 @@ export const SelectRows: Story = {
 export const ShowFiltering: Story = {
   args: {
     ...commonArgs,
-    data: [...Array(100).keys()].map(_ => ({
+    data: [...Array(100).keys()].map((_) => ({
       amount: Math.floor(Math.random() * 300),
       email: Math.random().toString(36).slice(2, 7) + "@mail.com",
       id: Math.random().toString(36).slice(2, 7),
-      status: ["success", "failure", "pending", "canceled"][Math.floor(Math.random() * 4)],
+      status: ["success", "failure", "pending", "canceled"][
+        Math.floor(Math.random() * 4)
+      ],
     })),
     showFiltering: true,
   },
@@ -138,11 +145,13 @@ export const ShowFiltering: Story = {
 export const AllOptions: Story = {
   args: {
     ...commonArgs,
-    data: [...Array(100).keys()].map(_ => ({
+    data: [...Array(100).keys()].map((_) => ({
       amount: Math.floor(Math.random() * 300),
       email: Math.random().toString(36).slice(2, 7) + "@mail.com",
       id: Math.random().toString(36).slice(2, 7),
-      status: ["success", "failure", "pending", "canceled"][Math.floor(Math.random() * 4)],
+      status: ["success", "failure", "pending", "canceled"][
+        Math.floor(Math.random() * 4)
+      ],
     })),
     showFiltering: true,
     selectColumns: true,

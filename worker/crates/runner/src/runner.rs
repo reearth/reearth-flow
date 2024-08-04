@@ -1,7 +1,7 @@
-use std::{sync::Arc, time::Instant};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 
 use reearth_flow_action_log::factory::LoggerFactory;
-use reearth_flow_runtime::shutdown;
+use reearth_flow_runtime::{node::NodeKind, shutdown};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Workflow;
@@ -15,6 +15,7 @@ impl Runner {
     pub fn run(
         job_id: String,
         workflow: Workflow,
+        factories: HashMap<String, NodeKind>,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
@@ -42,6 +43,7 @@ impl Runner {
                 .run_all(
                     job_id,
                     workflow,
+                    factories,
                     shutdown_receiver,
                     logger_factory,
                     storage_resolver,

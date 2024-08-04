@@ -115,7 +115,7 @@ impl Processor for LineOnLineOverlayer {
             return Ok(());
         };
         match &geometry.value {
-            GeometryValue::Null => {
+            GeometryValue::None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
             GeometryValue::FlowGeometry2D(geos) => {
@@ -167,7 +167,6 @@ impl LineOnLineOverlayer {
             }
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
         }
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
     }
 
     fn handle_2d_lines(
@@ -242,7 +241,6 @@ impl LineOnLineOverlayer {
             }
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
         }
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
     }
 
     fn handle_3d_lines(

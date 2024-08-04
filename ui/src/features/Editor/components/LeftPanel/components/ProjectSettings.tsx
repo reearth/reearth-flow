@@ -15,7 +15,11 @@ type Props = {
   dropdownOffset?: number;
 };
 
-const ProjectSettings: React.FC<Props> = ({ className, dropdownPosition, dropdownOffset }) => {
+const ProjectSettings: React.FC<Props> = ({
+  className,
+  dropdownPosition,
+  dropdownOffset,
+}) => {
   const t = useT();
   const [, setDialogType] = useDialogType();
 
@@ -25,16 +29,23 @@ const ProjectSettings: React.FC<Props> = ({ className, dropdownPosition, dropdow
         <Gear className="size-6" weight="thin" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-[200px] text-zinc-300"
+        className="w-[200px]"
         side={dropdownPosition ?? "bottom"}
         align="end"
-        sideOffset={dropdownOffset ?? 4}>
+        sideOffset={dropdownOffset ?? 4}
+      >
         {/* <DropdownMenuLabel>My Account</DropdownMenuLabel> */}
-        <DropdownMenuItem className="gap-2" onClick={() => setDialogType("project-settings")}>
+        <DropdownMenuItem
+          className="gap-2"
+          onClick={() => setDialogType("project-settings")}
+        >
           <Graph />
           <p>{t("Project settings")}</p>
         </DropdownMenuItem>
-        <DropdownMenuItem className="gap-2" onClick={() => setDialogType("keyboard-instructions")}>
+        <DropdownMenuItem
+          className="gap-2"
+          onClick={() => setDialogType("keyboard-instructions")}
+        >
           <Keyboard />
           <p>{t("Keyboard shortcuts")}</p>
         </DropdownMenuItem>

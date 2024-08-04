@@ -7,7 +7,7 @@ import {
   Note,
   RectangleDashed,
 } from "@phosphor-icons/react";
-import { type DragEvent } from "react";
+import { memo, type DragEvent } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -74,35 +74,43 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
     },
   ];
 
-  const onDragStart = (event: DragEvent<HTMLButtonElement>, nodeType: NodeType) => {
+  const onDragStart = (
+    event: DragEvent<HTMLButtonElement>,
+    nodeType: NodeType,
+  ) => {
     event.dataTransfer.setData("application/reactflow", nodeType);
     event.dataTransfer.effectAllowed = "move";
   };
 
   return (
     <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
-      <div className="self-start bg-zinc-800">
-        <div className="flex flex-col flex-wrap rounded-md border border-zinc-700 bg-zinc-900/50 text-zinc-400 transition-all">
-          {availableTools.map(tool => (
+      <div className="self-start rounded-md bg-secondary">
+        <div className="flex flex-col flex-wrap rounded-md border transition-all">
+          {availableTools.map((tool) => (
             <IconButton
               key={tool.id}
-              className={`dndnode-${tool.id}`}
+              className={`dndnode-${tool.id} rounded-[4px]`}
               tooltipPosition="right"
               tooltipText={tool.name}
               icon={tool.icon}
-              onDragStart={event => onDragStart(event, tool.id)}
+              onDragStart={(event) => onDragStart(event, tool.id)}
               draggable
             />
           ))}
-          {availableActions && <div className="my-2 w-full border-t border-zinc-700" />}
-          {availableActions.map(action => (
+          {availableActions && <div className="my-2 w-full border-t" />}
+          {availableActions.map((action) => (
             <IconButton
               key={action.id}
+              className="rounded-[4px]"
               tooltipPosition="right"
               tooltipText={action.name}
               icon={action.icon}
               onClick={() =>
-                action.id === "redo" ? onRedo?.() : action.id === "undo" ? onUndo?.() : undefined
+                action.id === "redo"
+                  ? onRedo?.()
+                  : action.id === "undo"
+                    ? onUndo?.()
+                    : undefined
               }
             />
           ))}
@@ -112,4 +120,4 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
   );
 };
 
-export { Toolbox };
+export default memo(Toolbox);

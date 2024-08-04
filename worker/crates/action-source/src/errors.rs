@@ -10,6 +10,10 @@ pub enum SourceError {
     FilePathExtractorFactory(String),
     #[error("File Path Extractor error: {0}")]
     FilePathExtractor(String),
+    #[error("FeatureCreator Factory error: {0}")]
+    FeatureCreatorFactory(String),
+    #[error("FeatureCreator error: {0}")]
+    FeatureCreator(String),
 }
 
 pub type Result<T, E = SourceError> = std::result::Result<T, E>;

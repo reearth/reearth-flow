@@ -14,6 +14,9 @@ publish = false
 
 [dev-dependencies]
 reearth-flow-action-log.workspace = true
+reearth-flow-action-processor.workspace = true
+reearth-flow-action-sink.workspace = true
+reearth-flow-action-source.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
 reearth-flow-runner.workspace = true
@@ -24,6 +27,7 @@ reearth-flow-types.workspace = true
 
 bytes.workspace = true
 directories.workspace = true
+once_cell.workspace = true
 pretty_assertions.workspace = true
 rust-embed = "8.3.0"
 time.workspace = true

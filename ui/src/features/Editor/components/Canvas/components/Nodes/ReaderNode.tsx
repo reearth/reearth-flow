@@ -1,6 +1,8 @@
+import { memo } from "react";
+
 import GeneralNode, { type GeneralNodeProps } from "./GeneralNode";
 
-const ReaderNode: React.FC<GeneralNodeProps> = props => {
+const ReaderNode: React.FC<GeneralNodeProps> = (props) => {
   // const onChange = useCallback(
   //   (evt: any) => {
   //     console.log("EVT", evt.target.value);
@@ -11,4 +13,4 @@ const ReaderNode: React.FC<GeneralNodeProps> = props => {
   return <GeneralNode className="bg-[#164E63]/60" {...props} />;
 };
 
-export default ReaderNode;
+export default memo(ReaderNode);

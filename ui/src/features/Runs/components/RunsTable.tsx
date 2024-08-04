@@ -111,7 +111,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
     if (rowSelection) {
       const selected = table
         ?.getRowModel()
-        .rows.filter(r => r.getIsSelected().valueOf())[0]?.original;
+        .rows.filter((r) => r.getIsSelected().valueOf())[0]?.original;
       if (selected !== selectedRun) {
         onRunSelect?.(selected);
       }
@@ -124,7 +124,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
         <Input
           placeholder={t("Search") + "..."}
           value={globalFilter ?? ""}
-          onChange={e => setGlobalFilter(String(e.target.value))}
+          onChange={(e) => setGlobalFilter(String(e.target.value))}
           className="max-w-sm"
         />
         <DropdownMenu>
@@ -136,14 +136,17 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
           <DropdownMenuContent align="end">
             {table
               .getAllColumns()
-              .filter(column => column.getCanHide())
-              .map(column => {
+              .filter((column) => column.getCanHide())
+              .map((column) => {
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
                     className="capitalize"
                     checked={column.getIsVisible()}
-                    onCheckedChange={value => column.toggleVisibility(!!value)}>
+                    onCheckedChange={(value) =>
+                      column.toggleVisibility(!!value)
+                    }
+                  >
                     {column.id}
                   </DropdownMenuCheckboxItem>
                 );
@@ -151,17 +154,20 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="rounded-md border border-zinc-700">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map(headerGroup => (
+            {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                {headerGroup.headers.map(header => {
+                {headerGroup.headers.map((header) => {
                   return (
                     <TableHead key={header.id}>
                       {header.isPlaceholder
                         ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
                     </TableHead>
                   );
                 })}
@@ -170,23 +176,30 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map(row => (
+              table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
                   className="cursor-pointer"
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => row.toggleSelected()}
-                  onSelect={s => console.log("S", s)}>
-                  {row.getVisibleCells().map(cell => (
+                  onSelect={(s) => console.log("S", s)}
+                >
+                  {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
                   {t("No Results")}
                 </TableCell>
               </TableRow>

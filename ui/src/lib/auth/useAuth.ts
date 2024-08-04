@@ -44,7 +44,13 @@ export const useAuth = () => {
 };
 
 export function useAuthenticationRequired(): [boolean, string | undefined] {
-  const { isAuthenticated, isLoading, error: authError, login, logout } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading,
+    error: authError,
+    login,
+    logout,
+  } = useAuth();
 
   useEffect(() => {
     if (isLoading || isAuthenticated) {

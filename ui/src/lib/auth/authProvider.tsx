@@ -12,7 +12,9 @@ const Auth0Wrapper = ({ children }: { children: ReactNode }) => {
   return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
 };
 
-export const AuthProvider: React.FC<{ children?: ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children?: ReactNode }> = ({
+  children,
+}) => {
   const [authInfo] = useState(() => {
     logInToTenant(); // note that it includes side effect
     return getAuthInfo();
@@ -33,7 +35,8 @@ export const AuthProvider: React.FC<{ children?: ReactNode }> = ({ children }) =
       }}
       useRefreshTokens
       useRefreshTokensFallback
-      cacheLocation="localstorage">
+      cacheLocation="localstorage"
+    >
       <Auth0Wrapper>{children}</Auth0Wrapper>
     </Auth0Provider>
   ) : null;

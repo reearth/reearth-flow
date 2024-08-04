@@ -2,6 +2,7 @@ import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { lazy } from "react";
 
 import { TooltipProvider } from "@flow/components";
+import { ThemeProvider } from "@flow/components/ThemeProvider";
 import { config } from "@flow/config";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import Dialog from "@flow/features/Dialog";
@@ -16,9 +17,11 @@ export const Route = createRootRoute({
 });
 
 const TanStackQueryDevtools = lazy(() =>
-  import("@tanstack/react-query-devtools/build/modern/production.js").then(d => ({
-    default: d.ReactQueryDevtools,
-  })),
+  import("@tanstack/react-query-devtools/build/modern/production.js").then(
+    (d) => ({
+      default: d.ReactQueryDevtools,
+    }),
+  ),
 );
 
 // const TanStackRouterDevtools = lazy(() =>
@@ -32,22 +35,24 @@ function RootRoute() {
 
   return (
     <AuthProvider>
-      <GraphQLProvider>
-        <I18nProvider>
-          <TooltipProvider>
-            <AuthenticationWrapper>
-              <Dialog />
-              <Outlet />
-              {devMode && (
-                <>
-                  <TanStackQueryDevtools initialIsOpen={false} />
-                  {/* <TanStackRouterDevtools /> */}
-                </>
-              )}
-            </AuthenticationWrapper>
-          </TooltipProvider>
-        </I18nProvider>
-      </GraphQLProvider>
+      <ThemeProvider>
+        <GraphQLProvider>
+          <I18nProvider>
+            <TooltipProvider>
+              <AuthenticationWrapper>
+                <Dialog />
+                <Outlet />
+                {devMode && (
+                  <>
+                    <TanStackQueryDevtools initialIsOpen={false} />
+                    {/* <TanStackRouterDevtools /> */}
+                  </>
+                )}
+              </AuthenticationWrapper>
+            </TooltipProvider>
+          </I18nProvider>
+        </GraphQLProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

@@ -111,9 +111,8 @@ impl Sink for FileWriter {
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let scope = ctx.expr_engine.new_scope();
-        let path = ctx
-            .expr_engine
-            .eval_scope::<String>(self.params.output.as_ref(), &scope)
+        let path = scope
+            .eval::<String>(self.params.output.as_ref())
             .unwrap_or_else(|_| self.params.output.as_ref().to_string());
         let output = Uri::from_str(path.as_str())?;
         let result = match self.params.format {

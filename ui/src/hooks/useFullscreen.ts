@@ -1,6 +1,10 @@
 import { useCallback, useState } from "react";
 
-import { checkIsFullscreen, closeFullscreen, openFullscreen } from "@flow/utils";
+import {
+  checkIsFullscreen,
+  closeFullscreen,
+  openFullscreen,
+} from "@flow/utils";
 
 export default () => {
   const [isFullscreen, setIsFullscreen] = useState(false);

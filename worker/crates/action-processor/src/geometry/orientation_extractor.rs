@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use reearth_flow_geometry::algorithm::winding_order::Winding;
+use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_geometry::{algorithm::winding_order::WindingOrder, types::geometry::Geometry2D};
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -116,7 +117,7 @@ impl Processor for OrientationExtractor {
             return Ok(());
         };
         match &geometry.value {
-            GeometryValue::Null => {
+            GeometryValue::None => {
                 let mut feature = feature.clone();
                 feature.attributes.insert(
                     self.output_attribute.clone(),
@@ -163,7 +164,42 @@ impl Processor for OrientationExtractor {
                 }
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
             }
-            GeometryValue::FlowGeometry3D(_) => unimplemented!(),
+            GeometryValue::FlowGeometry3D(geometry) => match geometry {
+                Geometry3D::Polygon(polygon) => {
+                    let mut feature = feature.clone();
+                    let ring_winding_orders = polygon
+                        .rings()
+                        .iter()
+                        .map(|ring| ring.winding_order())
+                        .collect::<Vec<_>>();
+                    let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
+                    feature.attributes.insert(
+                        self.output_attribute.clone(),
+                        AttributeValue::String(result.to_string()),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
+                Geometry3D::MultiPolygon(polygons) => {
+                    let mut feature = feature.clone();
+                    let ring_winding_orders = polygons
+                        .iter()
+                        .flat_map(|polygon| {
+                            polygon
+                                .rings()
+                                .iter()
+                                .map(|ring| ring.winding_order())
+                                .collect::<Vec<_>>()
+                        })
+                        .collect::<Vec<_>>();
+                    let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
+                    feature.attributes.insert(
+                        self.output_attribute.clone(),
+                        AttributeValue::String(result.to_string()),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
+                _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone())),
+            },
             GeometryValue::CityGmlGeometry(_) => unimplemented!(),
         }
         Ok(())

@@ -5,6 +5,8 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
     attribute_flattener::AttributeFlattenerFactory,
+    building_installation_geometry_type_extractor::BuildingInstallationGeometryTypeExtractorFactory,
+    building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory,
     dictionaries_initiator::DictionariesInitiatorFactory,
     domain_of_definition_validator::DomainOfDefinitionValidatorFactory,
     max_lod_extractor::MaxLodExtractorFactory, udx_folder_extractor::UdxFolderExtractorFactory,
@@ -21,6 +23,8 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<UnmatchedXlinkDetectorFactory>::default(),
         Box::<MaxLodExtractorFactory>::default(),
         Box::<AttributeFlattenerFactory>::default(),
+        Box::<BuildingInstallationGeometryTypeExtractorFactory>::default(),
+        Box::<BuildingUsageAttributeValidatorFactory>::default(),
     ];
     factories
         .into_iter()

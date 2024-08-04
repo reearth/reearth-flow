@@ -42,7 +42,7 @@ type Props = {
   nodeParameters?: any; // TODO: define type
 };
 
-const actionButtonClasses = "border border-zinc-500 h-[25px]";
+const actionButtonClasses = "border h-[25px]";
 
 const ParamEditor: React.FC<Props> = ({
   nodeId,
@@ -53,9 +53,9 @@ const ParamEditor: React.FC<Props> = ({
   const t = useT();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
-  console.log("reactFlowInstance", nodeId);
 
-  const handleFitView = () => fitView({ nodes: [{ id: nodeId }], duration: 400 });
+  const handleFitView = () =>
+    fitView({ nodes: [{ id: nodeId }], duration: 400 });
 
   return (
     <div>
@@ -76,7 +76,9 @@ const ParamEditor: React.FC<Props> = ({
           <IconButton
             className={actionButtonClasses}
             icon={isFullscreen ? <CornersIn /> : <CornersOut />}
-            tooltipText={isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")}
+            tooltipText={
+              isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")
+            }
             onClick={handleFullscreenToggle}
           />
           <IconButton
@@ -109,11 +111,13 @@ const ParamEditor: React.FC<Props> = ({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="params">
-          <Card className="border-zinc-700 bg-transparent font-extralight text-zinc-300">
+          <Card className="bg-transparent font-extralight">
             <CardHeader>
               <CardTitle>{t("Parameter Editor")}</CardTitle>
               <CardDescription>
-                {t("Make changes to your account here. Click save when youre done.")}
+                {t(
+                  "Make changes to your account here. Click save when youre done.",
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -123,11 +127,19 @@ const ParamEditor: React.FC<Props> = ({
               </div>
               <div className="space-y-1">
                 <Label htmlFor="username">Longitude</Label>
-                <Input id="username" type="number" placeholder="Enter longitude" />
+                <Input
+                  id="username"
+                  type="number"
+                  placeholder="Enter longitude"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="username">Latitude</Label>
-                <Input id="username" type="number" placeholder="Enter latitude" />
+                <Input
+                  id="username"
+                  type="number"
+                  placeholder="Enter latitude"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="name">Source</Label>
@@ -144,12 +156,12 @@ const ParamEditor: React.FC<Props> = ({
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="bg-zinc-700">Save changes</Button>
+              <Button>Save changes</Button>
             </CardFooter>
           </Card>
         </TabsContent>
         <TabsContent value="data">
-          <Card className="border-zinc-700 bg-transparent text-zinc-300">
+          <Card className="bg-transparent">
             <CardHeader>
               <CardTitle>Node data</CardTitle>
             </CardHeader>

@@ -15,6 +15,7 @@ with:
 graphs:
   - !include ../graphs/attribute_reader.yml
   - !include ../graphs/folder_and_file_path_reader.yml
+  - !include ../graphs/lod_splitter_with_dm.yml
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
     nodes:
@@ -32,57 +33,10 @@ graphs:
           dataset: |
             env.get("__value").cityGmlPath
 
-      - id: 278ab965-ce22-473d-98c6-c7b381c38679
-        name: geometryFilter_01
-        type: action
-        action: GeometryFilter
-        with:
-          filterType: none
-
-      - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
-        name: geometrySplitter_01
-        type: action
-        action: GeometrySplitter
-
-      - id: d2b4977d-e218-4628-96f2-d26407aeea14
-        name: attributeManager_01
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: lod
-              method: create
-              value: |
-                env.get("__value").geometryName[3]
-
-      - id: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
-        name: reprojector_01
-        type: action
-        action: Reprojector
-        with:
-          epsgCode: 6677
-
-      - id: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
-        name: featureFilter_02
-        type: action
-        action: FeatureFilter
-        with:
-          conditions:
-            - expr: |
-                env.get("__value").lod == "0"
-              outputPort: lod0
-            - expr: |
-                env.get("__value").lod == "1"
-              outputPort: lod1
-            - expr: |
-                env.get("__value").lod == "2"
-              outputPort: lod2
-            - expr: |
-                env.get("__value").lod == "3"
-              outputPort: lod3
-            - expr: |
-                env.get("__value").lod == "4"
-              outputPort: lod4
+      - id: 1916fd78-c5f5-46b0-9b67-cfa324b26a5e
+        name: LodSplitterWithDm
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
     edges:
       - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd
@@ -90,28 +44,8 @@ graphs:
         to: 3c0bc9cd-284d-4553-83ae-f90365c5930c
         fromPort: filePath
         toPort: default
-      - id: e1c7680d-5830-4e48-8cd8-8d9d762c76ff
+      - id: b879656f-1611-4a6a-8efb-7b1c7aaef4ae
         from: 3c0bc9cd-284d-4553-83ae-f90365c5930c
-        to: 278ab965-ce22-473d-98c6-c7b381c38679
-        fromPort: default
-        toPort: default
-      - id: 1386a662-cf02-4475-a5d2-3668a50a56b7
-        from: 278ab965-ce22-473d-98c6-c7b381c38679
-        to: 8fe1a102-e3f3-40dd-b235-66e9c148830f
-        fromPort: unfiltered
-        toPort: default
-      - id: 5857909b-7fc0-4d3e-adfa-65a5669a6646
-        from: 8fe1a102-e3f3-40dd-b235-66e9c148830f
-        to: d2b4977d-e218-4628-96f2-d26407aeea14
-        fromPort: default
-        toPort: default
-      - id: fc116a08-6e00-46e9-bb7d-69b8e56f9adb
-        from: d2b4977d-e218-4628-96f2-d26407aeea14
-        to: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
-        fromPort: default
-        toPort: default
-      - id: 237968a8-4e1b-434d-b215-aa98c404c8d7
-        from: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
-        to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+        to: 1916fd78-c5f5-46b0-9b67-cfa324b26a5e
         fromPort: default
         toPort: default

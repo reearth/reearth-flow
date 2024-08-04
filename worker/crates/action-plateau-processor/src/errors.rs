@@ -29,6 +29,12 @@ pub(super) enum PlateauProcessorError {
     MaxLodExtractor(String),
     #[error("Attribute Flattener error: {0}")]
     AttributeFlattener(String),
+    #[error("BuildingInstallationGeometryTypeExtractor error: {0}")]
+    BuildingInstallationGeometryTypeExtractor(String),
+    #[error("BuildingUsageAttributeValidatorFactory error: {0}")]
+    BuildingUsageAttributeValidatorFactory(String),
+    #[error("BuildingUsageAttributeValidator error: {0}")]
+    BuildingUsageAttributeValidator(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

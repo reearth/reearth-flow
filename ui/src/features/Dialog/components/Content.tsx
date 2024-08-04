@@ -1,4 +1,7 @@
-import { DialogContent as DialogContentPrimitive, IconButton } from "@flow/components";
+import {
+  DialogContent as DialogContentPrimitive,
+  IconButton,
+} from "@flow/components";
 import { DialogType } from "@flow/stores";
 
 import useInstructions from "./instructions/useInstructions";
@@ -49,15 +52,16 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
       position={position}
       hideCloseButton={tab === "canvas-search"}
       overlayBgClass={tab === "canvas-search" ? "bg-black/30" : undefined}
-      onPointerDownOutside={e => disableClickAway && e.preventDefault()}
-      onEscapeKeyDown={e => disableClickAway && e.preventDefault()}>
+      onPointerDownOutside={(e) => disableClickAway && e.preventDefault()}
+      onEscapeKeyDown={(e) => disableClickAway && e.preventDefault()}
+    >
       <div className="flex">
         {content.length > 1 && (
-          <div className={`flex flex-col gap-4 border-r border-zinc-800 px-5 py-6`}>
-            {content.map(c => (
+          <div className={`flex flex-col gap-4 border-r px-5 py-6`}>
+            {content.map((c) => (
               <IconButton
                 key={c.id}
-                className={`${tab === c.id ? "bg-zinc-800" : undefined}`}
+                className={`${tab === c.id ? "bg-popover" : undefined}`}
                 tooltipText={c.title}
                 tooltipPosition="left"
                 tooltipOffset={20}
@@ -67,7 +71,9 @@ const DialogContent: React.FC<Props> = ({ tab, position, onTabChange }) => {
             ))}
           </div>
         )}
-        <div className="w-full">{content.find(c => c.id === tab)?.component}</div>
+        <div className="w-full">
+          {content.find((c) => c.id === tab)?.component}
+        </div>
       </div>
     </DialogContentPrimitive>
   ) : null;

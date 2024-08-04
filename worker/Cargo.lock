@@ -1504,6 +1504,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "indoc"
+version = "2.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b248f5224d1d606005e02c97f5aa4e88eeb230488bcc03bc9ca4d7991399f2b5"
+
+[[package]]
 name = "inout"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1550,15 +1556,6 @@ name = "is_terminal_polyfill"
 version = "1.70.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8478577c03552c21db0e2724ffb8986a5ce7af88107e6be5d2ee6e158c12800"
-
-[[package]]
-name = "itertools"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
-dependencies = [
- "either",
-]
 
 [[package]]
 name = "itertools"
@@ -1752,7 +1749,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter#eebdc95e9ee450687b2867216cc9b15a7b244c8e"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc1#eebdc95e9ee450687b2867216cc9b15a7b244c8e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2008,14 +2005,14 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter#eebdc95e9ee450687b2867216cc9b15a7b244c8e"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc1#eebdc95e9ee450687b2867216cc9b15a7b244c8e"
 dependencies = [
  "ahash",
  "chrono",
  "indexmap 2.2.6",
  "log",
  "macros",
- "nusamai-geometry 0.1.0 (git+https://github.com/reearth/plateau-gis-converter)",
+ "nusamai-geometry 0.1.0 (git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc1)",
  "nusamai-projection",
  "quick-xml 0.36.0",
  "serde",
@@ -2027,18 +2024,18 @@ dependencies = [
 [[package]]
 name = "nusamai-geometry"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?branch=exports-nusamai-gltf#a816461ecf6f60a060ea47ad6a4e1d5bfedf2f66"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc1#eebdc95e9ee450687b2867216cc9b15a7b244c8e"
 dependencies = [
  "num-traits",
+ "serde",
 ]
 
 [[package]]
 name = "nusamai-geometry"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter#eebdc95e9ee450687b2867216cc9b15a7b244c8e"
+source = "git+https://github.com/reearth/plateau-gis-converter?branch=exports-nusamai-gltf#a816461ecf6f60a060ea47ad6a4e1d5bfedf2f66"
 dependencies = [
  "num-traits",
- "serde",
 ]
 
 [[package]]
@@ -2071,14 +2068,14 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter#eebdc95e9ee450687b2867216cc9b15a7b244c8e"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc1#eebdc95e9ee450687b2867216cc9b15a7b244c8e"
 dependencies = [
  "chrono",
  "hashbrown 0.14.5",
  "indexmap 2.2.6",
  "log",
  "nusamai-citygml",
- "nusamai-geometry 0.1.0 (git+https://github.com/reearth/plateau-gis-converter)",
+ "nusamai-geometry 0.1.0 (git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc1)",
  "quick-xml 0.36.0",
  "serde",
  "serde_json",
@@ -2089,7 +2086,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter#eebdc95e9ee450687b2867216cc9b15a7b244c8e"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc1#eebdc95e9ee450687b2867216cc9b15a7b244c8e"
 dependencies = [
  "japan-geoid",
  "thiserror",
@@ -2129,16 +2126,16 @@ dependencies = [
 
 [[package]]
 name = "object_store"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbebfd32c213ba1907fa7a9c9138015a8de2b43e30c5aa45b18f7deb46786ad6"
+checksum = "e6da452820c715ce78221e8202ccc599b4a52f3e1eb3eedb487b680c81a8e3f3"
 dependencies = [
  "async-trait",
  "bytes",
  "chrono",
  "futures",
  "humantime",
- "itertools 0.12.1",
+ "itertools",
  "parking_lot",
  "percent-encoding",
  "snafu",
@@ -2186,9 +2183,9 @@ dependencies = [
 
 [[package]]
 name = "openssl"
-version = "0.10.64"
+version = "0.10.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95a0481286a310808298130d22dd1fef0fa571e05a8f44ec801801e84b216b1f"
+checksum = "9529f4786b70a3e8c61e11179af17ab6188ad8d0ded78c5529441ed39d4bd9c1"
 dependencies = [
  "bitflags 2.6.0",
  "cfg-if",
@@ -2218,9 +2215,9 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.102"
+version = "0.9.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c597637d56fbc83893a35eb0dd04b2b8e7a50c91e64e9493e398b5df4fb45fa2"
+checksum = "7f9e8deee91df40a943c71b917e5874b951d32a802526c85721ce3b776c929d6"
 dependencies = [
  "cc",
  "libc",
@@ -2602,7 +2599,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18bec9b0adc4eba778b33684b7ba3e7137789434769ee3ce3930463ef904cfca"
 dependencies = [
  "anyhow",
- "itertools 0.13.0",
+ "itertools",
  "proc-macro2",
  "quote",
  "syn 2.0.71",
@@ -2787,6 +2784,49 @@ dependencies = [
 ]
 
 [[package]]
+name = "reearth-flow-action-plateau-processor"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "approx",
+ "async-trait",
+ "bytes",
+ "chrono",
+ "csv",
+ "itertools",
+ "num-traits",
+ "nusamai-citygml",
+ "nusamai-plateau",
+ "nusamai-projection",
+ "once_cell",
+ "opentelemetry 0.24.0",
+ "parking_lot",
+ "petgraph",
+ "pretty_assertions",
+ "quick-xml 0.36.0",
+ "reearth-flow-action-log",
+ "reearth-flow-common",
+ "reearth-flow-eval-expr",
+ "reearth-flow-geometry",
+ "reearth-flow-runtime",
+ "reearth-flow-state",
+ "reearth-flow-storage",
+ "reearth-flow-types",
+ "regex",
+ "rhai",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "typetag",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "reearth-flow-action-processor"
 version = "0.1.0"
 dependencies = [
@@ -2796,7 +2836,7 @@ dependencies = [
  "bytes",
  "chrono",
  "csv",
- "itertools 0.13.0",
+ "itertools",
  "num-traits",
  "nusamai-citygml",
  "nusamai-plateau",
@@ -2892,6 +2932,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-types",
  "regex",
+ "rhai",
  "schemars",
  "serde",
  "serde_json",
@@ -2912,9 +2953,15 @@ dependencies = [
  "clap",
  "colored",
  "directories",
+ "indoc",
+ "once_cell",
  "opentelemetry 0.24.0",
  "opentelemetry_sdk 0.24.0",
  "reearth-flow-action-log",
+ "reearth-flow-action-plateau-processor",
+ "reearth-flow-action-processor",
+ "reearth-flow-action-sink",
+ "reearth-flow-action-source",
  "reearth-flow-common",
  "reearth-flow-runner",
  "reearth-flow-runtime",
@@ -2987,8 +3034,13 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "directories",
+ "once_cell",
  "pretty_assertions",
  "reearth-flow-action-log",
+ "reearth-flow-action-plateau-processor",
+ "reearth-flow-action-processor",
+ "reearth-flow-action-sink",
+ "reearth-flow-action-source",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-runner",
@@ -3016,7 +3068,7 @@ dependencies = [
  "nalgebra-glm",
  "num-traits",
  "nusamai-citygml",
- "nusamai-geometry 0.1.0 (git+https://github.com/reearth/plateau-gis-converter)",
+ "nusamai-geometry 0.1.0 (git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc1)",
  "nusamai-projection",
  "parking_lot",
  "reearth-flow-common",
@@ -3055,9 +3107,6 @@ dependencies = [
  "petgraph",
  "pretty_assertions",
  "reearth-flow-action-log",
- "reearth-flow-action-processor",
- "reearth-flow-action-sink",
- "reearth-flow-action-source",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-runtime",
@@ -3170,8 +3219,12 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "directories",
+ "once_cell",
  "pretty_assertions",
  "reearth-flow-action-log",
+ "reearth-flow-action-processor",
+ "reearth-flow-action-sink",
+ "reearth-flow-action-source",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-runner",
@@ -3201,9 +3254,9 @@ dependencies = [
  "hashbrown 0.14.5",
  "image",
  "indexmap 2.2.6",
- "itertools 0.13.0",
+ "itertools",
  "nusamai-citygml",
- "nusamai-geometry 0.1.0 (git+https://github.com/reearth/plateau-gis-converter)",
+ "nusamai-geometry 0.1.0 (git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc1)",
  "nusamai-gltf",
  "nusamai-plateau",
  "nusamai-projection",

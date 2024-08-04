@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use futures::stream::FuturesUnordered;
@@ -6,6 +7,7 @@ use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::executor_operation::{ExecutorOptions, NodeContext};
 use reearth_flow_runtime::kvs::create_kv_store;
+use reearth_flow_runtime::node::NodeKind;
 use reearth_flow_runtime::shutdown::ShutdownReceiver;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -26,10 +28,12 @@ impl Orchestrator {
         Self { runtime }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn run_apps(
         &self,
         _job_id: String,
         workflow: Workflow,
+        factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
@@ -53,7 +57,7 @@ impl Orchestrator {
             kv_store: Arc::new(create_kv_store()),
         };
         let dag_executor = executor
-            .create_dag_executor(ctx.clone(), workflow, options)
+            .create_dag_executor(ctx.clone(), workflow, factories, options)
             .await?;
         let runtime_clone = self.runtime.clone();
         let shutdown_clone = shutdown.clone();
@@ -76,10 +80,12 @@ impl Orchestrator {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn run_all(
         &self,
         job_id: String,
         workflow: Workflow,
+        factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
@@ -89,6 +95,7 @@ impl Orchestrator {
         self.run_apps(
             job_id,
             workflow,
+            factories,
             pipeline_shutdown,
             logger_factory,
             storage_resolver,

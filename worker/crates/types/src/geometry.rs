@@ -22,8 +22,9 @@ use crate::error::Error;
 static EPSILON: f64 = 1e-10;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub enum GeometryValue {
-    Null,
+    None,
     CityGmlGeometry(CityGmlGeometry),
     FlowGeometry2D(FlowGeometry2D),
     FlowGeometry3D(FlowGeometry3D),
@@ -227,7 +228,7 @@ impl Default for Geometry {
     fn default() -> Self {
         Self {
             epsg: None,
-            value: GeometryValue::Null,
+            value: GeometryValue::None,
         }
     }
 }
@@ -355,7 +356,7 @@ impl Appearance {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct CityGmlGeometry {
     pub features: Vec<GeometryFeature>,
     pub materials: Vec<Material>,

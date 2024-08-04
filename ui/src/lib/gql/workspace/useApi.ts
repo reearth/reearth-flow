@@ -1,4 +1,10 @@
-import { GetWorkspaces, DeleteWorkspace, GetWorkspace, Role, WorkspaceMutation } from "@flow/types";
+import {
+  GetWorkspaces,
+  DeleteWorkspace,
+  GetWorkspace,
+  Role,
+  WorkspaceMutation,
+} from "@flow/types";
 
 import { useQueries } from "./useQueries";
 
@@ -24,7 +30,7 @@ export const useWorkspace = () => {
     try {
       const data = await mutateAsync(name);
       return { workspace: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspace: undefined, ...rest };
     }
   };
@@ -45,22 +51,27 @@ export const useWorkspace = () => {
     };
   };
 
-  const updateWorkspace = async (workspaceId: string, name: string): Promise<WorkspaceMutation> => {
+  const updateWorkspace = async (
+    workspaceId: string,
+    name: string,
+  ): Promise<WorkspaceMutation> => {
     const { mutateAsync, ...rest } = updateWorkspaceMutation;
     try {
       const data = await mutateAsync({ workspaceId, name });
       return { workspace: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspace: undefined, ...rest };
     }
   };
 
-  const deleteWorkspace = async (workspaceId: string): Promise<DeleteWorkspace> => {
+  const deleteWorkspace = async (
+    workspaceId: string,
+  ): Promise<DeleteWorkspace> => {
     const { mutateAsync, ...rest } = deleteWorkspaceMutation;
     try {
       const data = await mutateAsync(workspaceId);
       return { workspaceId: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspaceId: undefined, ...rest };
     }
   };
@@ -75,7 +86,7 @@ export const useWorkspace = () => {
     try {
       const data = await mutateAsync({ workspaceId, userId, role });
       return { workspace: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspace: undefined, ...rest };
     }
   };
@@ -88,7 +99,7 @@ export const useWorkspace = () => {
     try {
       const data = await mutateAsync({ workspaceId, userId });
       return { workspace: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspace: undefined, ...rest };
     }
   };
@@ -102,7 +113,7 @@ export const useWorkspace = () => {
     try {
       const data = await mutateAsync({ workspaceId, userId, role });
       return { workspace: data, ...rest };
-    } catch (err) {
+    } catch (_err) {
       return { workspace: undefined, ...rest };
     }
   };

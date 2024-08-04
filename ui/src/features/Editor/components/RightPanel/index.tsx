@@ -1,5 +1,5 @@
 import { X } from "@phosphor-icons/react";
-import { MouseEvent, useCallback } from "react";
+import { memo, MouseEvent, useCallback } from "react";
 
 import { IconButton } from "@flow/components";
 import { Node } from "@flow/types";
@@ -28,15 +28,16 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
     <>
       <div
         id="right-panel-overlay"
-        className="fixed right-0 size-full border-l border-zinc-700 bg-black/25"
+        className="fixed right-0 size-full border-l bg-black/25"
         style={{
           transform: `translateX(${selected ? "0" : "100%"})`,
           transitionDuration: "0ms",
           transitionProperty: "transform",
-        }}>
+        }}
+      >
         <div className="fixed right-[350px] z-[1] flex justify-end p-4">
           <IconButton
-            className="relative before:absolute before:inset-y-0 before:right-0 before:-z-10 before:bg-green-500 before:content-['']"
+            className="relative before:absolute before:inset-y-0 before:right-0 before:z-[-1] before:bg-green-500 before:content-['']"
             icon={<X className="size-[30px]" weight="thin" />}
             onClick={handleClick}
           />
@@ -44,16 +45,21 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
       </div>
       <div
         id="right-panel"
-        className="fixed right-0 flex h-full w-[350px] border-l border-zinc-700 bg-zinc-800 transition-all"
+        className="fixed right-0 flex h-full w-[350px] border-l bg-background transition-all"
         style={{
           transform: `translateX(${selected ? "0" : "100%"})`,
           transitionDuration: selected ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-        }}>
-        <div className="size-full bg-zinc-900/50 py-4 pl-4 pr-2">
+        }}
+      >
+        <div className="size-full py-4 pl-4 pr-2">
           {selected && (
-            <ParamEditor nodeId={selected.id} nodeMeta={selected.data} nodeType="transformer" />
+            <ParamEditor
+              nodeId={selected.id}
+              nodeMeta={selected.data}
+              nodeType="transformer"
+            />
           )}
         </div>
       </div>
@@ -61,4 +67,4 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
   );
 };
 
-export { RightPanel };
+export default memo(RightPanel);

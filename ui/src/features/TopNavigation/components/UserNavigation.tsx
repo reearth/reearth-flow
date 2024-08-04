@@ -47,11 +47,13 @@ const UserNavigation: React.FC<Props> = ({
         <div className={`mr-2 flex gap-2 ${className}`}>
           <Avatar className="size-8">
             <AvatarImage src={user?.picture} />
-            <AvatarFallback>{me?.name ? me.name.charAt(0).toUpperCase() : "F"}</AvatarFallback>
+            <AvatarFallback>
+              {me?.name ? me.name.charAt(0).toUpperCase() : "F"}
+            </AvatarFallback>
           </Avatar>
           {!iconOnly ? (
             <div className="flex items-center gap-2 self-center">
-              <p className="max-w-28 truncate text-sm font-extralight text-zinc-300 transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
+              <p className="max-w-28 truncate text-sm font-extralight transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
                 {me?.name ? me.name : "User"}
               </p>
               <CaretDown className="w-[12px]" weight="thin" />
@@ -60,16 +62,23 @@ const UserNavigation: React.FC<Props> = ({
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-[200px] text-zinc-300"
+        className="w-[200px]"
         side={dropdownPosition ?? "bottom"}
         align="end"
-        sideOffset={dropdownOffset ?? 4}>
+        sideOffset={dropdownOffset ?? 4}
+      >
         {/* <DropdownMenuLabel>My Account</DropdownMenuLabel> */}
-        <DropdownMenuItem className="gap-2" onClick={() => setDialogType("account-settings")}>
+        <DropdownMenuItem
+          className="gap-2"
+          onClick={() => setDialogType("account-settings")}
+        >
           <User weight="thin" />
           <p>{t("Account settings")}</p>
         </DropdownMenuItem>
-        <DropdownMenuItem className="gap-2" onClick={() => setDialogType("keyboard-instructions")}>
+        <DropdownMenuItem
+          className="gap-2"
+          onClick={() => setDialogType("keyboard-instructions")}
+        >
           <Keyboard weight="thin" />
           <p>{t("Keyboard shortcuts")}</p>
         </DropdownMenuItem>

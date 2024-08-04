@@ -2,28 +2,75 @@ import { useState } from "react";
 import { useY } from "react-yjs";
 import * as Y from "yjs";
 
-import { Edge, Node } from "@flow/types";
+import type { Edge, Node } from "@flow/types";
 
-export default () => {
-  const [{ yNodes, yEdges }] = useState(() => {
+import useWorkflowTabs from "./useWorkflowTabs";
+import useYEdge from "./useYEdge";
+import useYNode from "./useYNode";
+import useYWorkflow from "./useYWorkflow";
+import { yWorkflowBuilder, type YWorkflow } from "./workflowBuilder";
+
+export default ({
+  workflowId,
+  handleWorkflowIdChange,
+}: {
+  workflowId?: string;
+  handleWorkflowIdChange: (id?: string) => void;
+}) => {
+  const [{ yWorkflows }] = useState(() => {
+    // TODO: setup middleware/websocket provider
     const yDoc = new Y.Doc();
-    const yNodes = yDoc.getArray<Node>("nodes");
-    const yEdges = yDoc.getArray<Edge>("edges");
-    return { yNodes, yEdges };
+    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
+    yWorkflows.push([yWorkflow]);
+
+    return { yWorkflows };
   });
 
-  const nodes = useY(yNodes);
-  const edges = useY(yEdges);
+  const rawWorkflows = useY(yWorkflows);
 
-  const handleNodesUpdate = (newNodes: Node[]) => {
-    yNodes.delete(0, yNodes.length);
-    yNodes.insert(0, newNodes);
+  const {
+    workflows,
+    openWorkflows,
+    currentWorkflowIndex,
+    setWorkflows,
+    setOpenWorkflowIds,
+    handleWorkflowOpen,
+    handleWorkflowClose,
+  } = useWorkflowTabs({ workflowId, rawWorkflows, handleWorkflowIdChange });
+
+  const { currentYWorkflow, handleWorkflowAdd, handleWorkflowsRemove } =
+    useYWorkflow({
+      yWorkflows,
+      workflows,
+      currentWorkflowIndex,
+      setWorkflows,
+      setOpenWorkflowIds,
+      handleWorkflowIdChange,
+      handleWorkflowOpen,
+    });
+
+  const nodes = useY(
+    currentYWorkflow?.get("nodes") ?? new Y.Array<Node>(),
+  ) as Node[];
+  const edges = useY(
+    currentYWorkflow?.get("edges") ?? new Y.Array<Edge>(),
+  ) as Edge[];
+
+  const { handleNodesUpdate } = useYNode({
+    currentYWorkflow,
+    handleWorkflowsRemove,
+  });
+
+  const { handleEdgesUpdate } = useYEdge(currentYWorkflow);
+
+  return {
+    nodes,
+    edges,
+    openWorkflows,
+    handleWorkflowClose,
+    handleWorkflowAdd,
+    handleNodesUpdate,
+    handleEdgesUpdate,
   };
-
-  const handleEdgesUpdate = (newEdges: Edge[]) => {
-    yEdges.delete(0, yEdges.length);
-    yEdges.insert(0, newEdges);
-  };
-
-  return { nodes, edges, handleNodesUpdate, handleEdgesUpdate };
 };

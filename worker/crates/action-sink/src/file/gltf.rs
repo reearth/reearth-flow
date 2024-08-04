@@ -39,7 +39,7 @@ pub(super) fn write_gltf(
         let geometry = feature.geometry.as_ref().unwrap();
         let geometry_value = geometry.value.clone();
         match geometry_value {
-            geomotry_types::GeometryValue::Null => {
+            geomotry_types::GeometryValue::None => {
                 println!("Null geometry");
                 return Err(SinkError::FileWriter("Unsupported input".to_string()));
             }
@@ -81,13 +81,11 @@ fn handle_city_gml_geometry(
     let materials = city_gml.materials;
     let features = city_gml.features;
 
-    let mut feature_id = 0;
-
     for (index, feature) in features.iter().enumerate() {
         for poly in feature.polygons.iter() {
             let mat = materials.get(index).unwrap().clone();
             let primitive = primitives.entry(mat).or_default();
-            primitive.feature_ids.insert(feature_id);
+            primitive.feature_ids.insert(index as u32);
 
             if let Some((nx, ny, nz)) =
                 calculate_normal(poly.exterior().into_iter().map(|c| [c.x, c.y, c.z]))
@@ -105,13 +103,12 @@ fn handle_city_gml_geometry(
                         (nz as f32).to_bits(),
                         (x as f32).to_bits(), // TODO
                         (y as f32).to_bits(), // TODO
-                        (feature_id as f32).to_bits(),
+                        (index as f32).to_bits(),
                     ];
                     let (_, _) = vertices.insert_full(vbits);
                 });
             }
         }
-        feature_id += 1;
     }
 
     // vertices
@@ -289,7 +286,7 @@ fn handle_city_gml_geometry(
     // images
     let gltf_images = image_set
         .into_iter()
-        .map(|img| Ok(img.to_gltf(&mut gltf_buffer_views, &mut bin_content)?))
+        .map(|img| img.to_gltf(&mut gltf_buffer_views, &mut bin_content))
         .collect::<Result<Vec<Image>, std::io::Error>>()
         .unwrap(); // TODO unwrap
 

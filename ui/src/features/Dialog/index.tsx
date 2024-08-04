@@ -7,9 +7,9 @@ import { Workspace } from "@flow/types";
 
 import { DialogContent } from "./components";
 
-export const DialogContext = createContext<{ workspaces: Workspace[] | undefined } | undefined>(
-  undefined,
-);
+export const DialogContext = createContext<
+  { workspaces: Workspace[] | undefined } | undefined
+>(undefined);
 
 const Dialog: React.FC = () => {
   const [dialogType, setDialogType] = useDialogType();
@@ -24,7 +24,10 @@ const Dialog: React.FC = () => {
   return (
     dialogType && (
       <DialogContext.Provider value={{ workspaces }}>
-        <DialogWrapper open={!!dialogType} onOpenChange={o => !o && setDialogType(undefined)}>
+        <DialogWrapper
+          open={!!dialogType}
+          onOpenChange={(o) => !o && setDialogType(undefined)}
+        >
           <DialogContent
             tab={dialogType}
             position={dialogType === "canvas-search" ? "top" : undefined}

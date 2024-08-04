@@ -1,5 +1,5 @@
 import { NodeProps, NodeResizer } from "@xyflow/react";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import { Node } from "@flow/types";
 
@@ -61,7 +61,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
           }}
           minWidth={minSize.width}
           minHeight={minSize.height}
-          onResize={r => {
+          onResize={(r) => {
             // setWidth(props.xPos + r.x);
             // setHeight(props.yPos + r.y);
             console.log("ADS: ", r);
@@ -73,7 +73,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
         <textarea
           className="nowheel size-full resize-none bg-transparent"
           defaultValue={data.content}
-          onMouseDown={e => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
           // onMouseUp={e => e.}
         />
       </div>
@@ -81,4 +81,4 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
   );
 };
 
-export default NoteNode;
+export default memo(NoteNode);

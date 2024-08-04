@@ -71,6 +71,10 @@ pub(super) enum GeometryProcessorError {
     ClipperFactory(String),
     #[error("Clipper error: {0}")]
     Clipper(String),
+    #[error("GeometryValueFilter Factory error: {0}")]
+    GeometryValueFilterFactory(String),
+    #[error("GeometryValueFilter error: {0}")]
+    GeometryValueFilter(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

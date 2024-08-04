@@ -87,7 +87,7 @@ impl Processor for Refiner {
         fw.send(ctx.new_with_feature_and_port(feature.clone(), REMAIN_PORT.clone()));
 
         match geometry_value {
-            GeometryValue::Null => {}
+            GeometryValue::None => {}
             GeometryValue::CityGmlGeometry(city_gml) => {
                 let _geometries = Self::refine_city_gml(&city_gml);
             }

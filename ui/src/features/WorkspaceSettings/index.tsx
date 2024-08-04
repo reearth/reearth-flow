@@ -5,7 +5,11 @@ import { useState } from "react";
 import { TopNavigation } from "@flow/features/TopNavigation";
 import { useT } from "@flow/lib/i18n";
 
-import { GeneralSettings, IntegrationsSettings, MembersSettings } from "./components";
+import {
+  GeneralSettings,
+  IntegrationsSettings,
+  MembersSettings,
+} from "./components";
 
 type Tab = "general" | "integrations" | "members";
 
@@ -16,7 +20,12 @@ const WorkspaceSettings: React.FC = () => {
   const t = useT();
   const navigate = useNavigate();
 
-  const content: { id: Tab; name: string; icon: React.ReactNode; component: React.ReactNode }[] = [
+  const content: {
+    id: Tab;
+    name: string;
+    icon: React.ReactNode;
+    component: React.ReactNode;
+  }[] = [
     {
       id: "general",
       name: t("General"),
@@ -36,7 +45,7 @@ const WorkspaceSettings: React.FC = () => {
       component: <IntegrationsSettings />,
     },
   ];
-  const checkTab = content.find(c => c.id === tab)?.id;
+  const checkTab = content.find((c) => c.id === tab)?.id;
 
   const [selectedTab, selectTab] = useState<Tab>(checkTab ?? DEFAULT_TAB);
 
@@ -46,21 +55,24 @@ const WorkspaceSettings: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-zinc-800 text-zinc-300">
+    <div className="flex h-screen flex-col">
       <TopNavigation />
       <div className="flex flex-1">
-        <div className="flex w-[250px] flex-col gap-3 border-r border-zinc-700 bg-zinc-900/50 px-2 py-4">
+        <div className="flex w-[250px] flex-col gap-3 border-r bg-secondary px-2 py-4">
           {content.map(({ id, name, icon }) => (
             <div
               key={id}
-              className={`flex cursor-pointer items-center gap-2 rounded border-l-2 border-transparent px-2 py-1 hover:bg-zinc-700/50 ${selectedTab === id ? "border-red-800/50 bg-zinc-700/50" : undefined}`}
-              onClick={() => handleTabChange(id)}>
+              className={`flex cursor-pointer items-center gap-2 rounded border-l-2 border-transparent px-2 py-1 hover:bg-accent ${selectedTab === id ? "bg-accent" : undefined}`}
+              onClick={() => handleTabChange(id)}
+            >
               {icon}
               <p className="font-extralight">{name}</p>
             </div>
           ))}
         </div>
-        <div className="flex-1 p-8">{content.find(c => c.id === selectedTab)?.component}</div>
+        <div className="flex-1 p-8">
+          {content.find((c) => c.id === selectedTab)?.component}
+        </div>
       </div>
     </div>
   );

@@ -1,11 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
+
+import { UpdateMeInput } from "../__gen__/graphql";
 
 import { UserQueryKeys } from "./useApi";
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
+  const queryClient = useQueryClient();
 
   const useGetMeQuery = () =>
     useQuery({
@@ -34,13 +37,32 @@ export const useQueries = () => {
         name: data.searchUser.name,
         email: data.searchUser.email,
       };
-    } catch (err) {
+    } catch (_err) {
       return;
     }
   };
 
+  const updateMeMutation = useMutation({
+    mutationFn: async (input: UpdateMeInput) => {
+      const data = await graphQLContext?.UpdateMe({ input });
+      if (data?.updateMe?.me) {
+        const { id, name, email } = data.updateMe.me;
+        return {
+          id,
+          name,
+          email,
+        };
+      }
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: [UserQueryKeys.GetMe],
+      }),
+  });
+
   return {
     useGetMeQuery,
     searchUserQuery,
+    updateMeMutation,
   };
 };

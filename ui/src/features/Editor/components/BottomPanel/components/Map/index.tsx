@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import { Button } from "@flow/components";
 import fires from "@flow/mock_data/fires.json";
 
-type Props = {};
-
 const sceneModes: SceneMode[] = ["2d", "3d"];
 
-const Map: React.FC<Props> = () => {
+const Map: React.FC = () => {
   const [isReady, setIsReady] = useState(false);
   const [sceneMode, setSceneMode] = useState<SceneMode>("2d");
 
@@ -61,14 +59,15 @@ const Map: React.FC<Props> = () => {
 
   return (
     <div className="relative w-6/12">
-      <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border border-zinc-700 bg-zinc-900/50 text-zinc-400 transition-all">
-        {sceneModes.map(b => (
+      <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border bg-background transition-all">
+        {sceneModes.map((b) => (
           <Button
-            className={`cursor-pointer text-zinc-400 transition-all hover:bg-zinc-700 hover:text-zinc-100 ${sceneMode === b ? "bg-zinc-800 text-zinc-300" : ""}`}
+            className={`cursor-pointer rounded-none transition-all ${sceneMode === b ? "bg-accent text-accent-foreground" : ""}`}
             variant="ghost"
             size="icon"
             key={b}
-            onClick={() => setSceneMode(b)}>
+            onClick={() => sceneMode !== b && setSceneMode(b)}
+          >
             {b}
           </Button>
         ))}

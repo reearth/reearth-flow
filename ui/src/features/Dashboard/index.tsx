@@ -8,7 +8,7 @@ const Dashboard: React.FC = () => {
   const [currentWorkspace] = useCurrentWorkspace();
 
   return currentWorkspace ? (
-    <div className="[&>*]:dark flex h-screen flex-col bg-zinc-800 text-zinc-300">
+    <div className="flex h-screen flex-col">
       <TopNavigation />
       <div className="flex flex-1">
         <LeftSection />

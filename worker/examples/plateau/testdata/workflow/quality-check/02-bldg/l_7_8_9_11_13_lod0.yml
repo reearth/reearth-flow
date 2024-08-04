@@ -1,0 +1,172 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
+id: baccc9b8-b4bd-4a62-a389-93f40e21af7d
+name: "QualityCheck-02-bldg-l_7_8_9_11_13_lod0"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../../../config/schema.txt
+  targetPackages:
+    - bldg
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+graphs:
+  - !include ../../../graphs/attribute_reader.yml
+  - !include ../../../graphs/folder_and_file_path_reader.yml
+  - !include ../../../graphs/lod_splitter_with_dm.yml
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        name: AttributeReader01
+        type: subGraph
+        subGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
+
+      - id: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        name: featureReader_01
+        type: action
+        action: FeatureReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value").cityGmlPath
+
+      - id: 1916fd78-c5f5-46b0-9b67-cfa324b26a5e
+        name: LodSplitterWithDm
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      - id: 8a1e6f15-67c6-45ae-a1dc-8e4ae3217574
+        name: GeometryExtractor
+        type: action
+        action: GeometryExtractor
+        with:
+          outputAttribute: dumpGeometry
+
+      - id: 7a33c335-9b5c-479c-a94f-b4f53a008963
+        name: GeometryValidator
+        type: action
+        action: GeometryValidator
+        with:
+          validationTypes:
+            - duplicatePoints
+            - corruptGeometry
+
+      - id: 60dbacf6-5a4a-4f0a-af4e-cd99db2851cc
+        name: PlanarityFilter
+        type: action
+        action: PlanarityFilter
+
+      - id: 9e0fc7c1-3be6-4efa-b962-57dd7e31c295
+        name: FeatureCounter
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 0
+          outputAttribute: surfaceId
+
+      - id: 86bf55cc-fc2f-44b6-9b1b-873b43748318
+        name: HoleCounter
+        type: action
+        action: HoleCounter
+        with:
+          outputAttribute: holeCount
+
+      - id: 14d937cb-59e3-4a31-aa2c-642f4309af66
+        name: FeatureFilter01
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                true
+              outputPort: default
+            - expr: |
+                env.get("__value").holeCount > 0
+              outputPort: hole
+
+      - id: 52a4bcab-854d-41e8-a9b3-e391c79631a9
+        name: HoleExtractor
+        type: action
+        action: HoleExtractor
+
+      - id: 0361e205-4d43-442d-b004-2ea981dbca84
+        name: OrientationExtractor
+        type: action
+        action: OrientationExtractor
+        with:
+          outputAttribute: outerOrientation
+
+      - id: 2f03d753-a8f0-43bc-a85d-0c5554f93ddc
+        name: EchoOutershell
+        type: action
+        action: Echo
+
+      - id: 565d0851-fc27-46b5-961d-9c2499b2eafb
+        name: EchoHole
+        type: action
+        action: Echo
+
+    edges:
+      - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd
+        from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        to: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        fromPort: filePath
+        toPort: default
+      - id: b879656f-1611-4a6a-8efb-7b1c7aaef4ae
+        from: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        to: 1916fd78-c5f5-46b0-9b67-cfa324b26a5e
+        fromPort: default
+        toPort: default
+      - id: 10f01a9c-0b0a-4add-bf72-94fe5e673c67
+        from: 1916fd78-c5f5-46b0-9b67-cfa324b26a5e
+        to: 8a1e6f15-67c6-45ae-a1dc-8e4ae3217574
+        fromPort: lod0
+        toPort: default
+      - id: f4e61527-710b-4e23-bb51-20820d650aed
+        from: 8a1e6f15-67c6-45ae-a1dc-8e4ae3217574
+        to: 7a33c335-9b5c-479c-a94f-b4f53a008963
+        fromPort: default
+        toPort: default
+      - id: 76faa5ea-8e4f-4831-aec6-0cf06ce931c2
+        from: 7a33c335-9b5c-479c-a94f-b4f53a008963
+        to: 60dbacf6-5a4a-4f0a-af4e-cd99db2851cc
+        fromPort: success
+        toPort: default
+      - id: 2e9c7240-37e3-4d00-9eb1-95d9314d2e72
+        from: 60dbacf6-5a4a-4f0a-af4e-cd99db2851cc
+        to: 9e0fc7c1-3be6-4efa-b962-57dd7e31c295
+        fromPort: planarity
+        toPort: default
+      - id: f6af6e71-fe3f-4fb1-966c-a2ec6d1e44c7
+        from: 9e0fc7c1-3be6-4efa-b962-57dd7e31c295
+        to: 86bf55cc-fc2f-44b6-9b1b-873b43748318
+        fromPort: default
+        toPort: default
+      - id: c457d666-c429-4827-95e2-fcd375139fe2
+        from: 86bf55cc-fc2f-44b6-9b1b-873b43748318
+        to: 14d937cb-59e3-4a31-aa2c-642f4309af66
+        fromPort: default
+        toPort: default
+      - id: 90eb4f19-c3d3-4ad1-adde-abb73e6d2983
+        from: 14d937cb-59e3-4a31-aa2c-642f4309af66
+        to: 52a4bcab-854d-41e8-a9b3-e391c79631a9
+        fromPort: hole
+        toPort: default
+      - id: 5c934958-d505-4c3e-9f5a-05c2a0595177
+        from: 52a4bcab-854d-41e8-a9b3-e391c79631a9
+        to: 0361e205-4d43-442d-b004-2ea981dbca84
+        fromPort: outershell
+        toPort: default
+      - id: af538fb0-7f59-448b-9a39-f4f381524900
+        from: 0361e205-4d43-442d-b004-2ea981dbca84
+        to: 2f03d753-a8f0-43bc-a85d-0c5554f93ddc
+        fromPort: default
+        toPort: default
+      - id: baec53de-12fa-4e37-8a49-def1afe8e547
+        from: 52a4bcab-854d-41e8-a9b3-e391c79631a9
+        to: 565d0851-fc27-46b5-961d-9c2499b2eafb
+        fromPort: hole
+        toPort: default
