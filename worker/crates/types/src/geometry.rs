@@ -291,23 +291,24 @@ impl Material {
     pub fn to_gltf(
         &self,
         texture_set: &mut IndexSet<Texture, ahash::RandomState>,
+        texture: Option<&Texture>,
     ) -> nusamai_gltf_json::Material {
-        // let tex = if let Some(texture) = &self.base_texture {
-        //     let (tex_idx, _) = texture_set.insert_full(texture.clone());
-        //     Some(nusamai_gltf_json::TextureInfo {
-        //         index: tex_idx as u32,
-        //         tex_coord: 0,
-        //         ..Default::default()
-        //     })
-        // } else {
-        //     None
-        // };
+        let tex = if let Some(texture) = texture {
+            let (tex_idx, _) = texture_set.insert_full(texture.clone());
+            Some(nusamai_gltf_json::TextureInfo {
+                index: tex_idx as u32,
+                tex_coord: 0,
+                ..Default::default()
+            })
+        } else {
+            None
+        };
         nusamai_gltf_json::Material {
             pbr_metallic_roughness: Some(nusamai_gltf_json::MaterialPbrMetallicRoughness {
                 base_color_factor: to_f64x4(self.diffuse_color.into()),
                 metallic_factor: 0.2,
                 roughness_factor: 0.5,
-                base_color_texture: None, // tex, TODO
+                base_color_texture: tex,
                 ..Default::default()
             }),
             ..Default::default()

@@ -1,9 +1,8 @@
 extern crate nusamai_gltf;
-// use super::material;
 use super::metadata::MetadataEncoder;
+use crate::errors::SinkError;
 use ahash::{HashSet, RandomState};
 use byteorder::{ByteOrder, LittleEndian};
-use earcut::{utils3d::project3d_to_2d, Earcut};
 use indexmap::IndexSet;
 use nusamai_gltf::nusamai_gltf_json;
 use nusamai_gltf::nusamai_gltf_json::extensions;
@@ -14,11 +13,9 @@ use nusamai_gltf::nusamai_gltf_json::models::{
 };
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
+use reearth_flow_types::geometry as geomotry_types;
 use reearth_flow_types::geometry::{Image as geometryImage, Material, Texture};
-use reearth_flow_types::{geometry, Attribute};
-use reearth_flow_types::{AttributeValue, Feature};
-use reearth_flow_types::{Geometry, GeometryValue};
-use rust_xlsxwriter::{Format, FormatAlign, FormatUnderline, Formula, Url, Workbook, Worksheet};
+use reearth_flow_types::Feature;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
@@ -37,21 +34,85 @@ pub(super) fn write_gltf(
     output: &Uri,
     features: &[Feature],
     storage_resolver: Arc<StorageResolver>,
-) -> Result<(), crate::errors::SinkError> {
-    println!("=== gltf start ===");
-    println!("output: {:?}", output);
-    println!("features: {:?}", features);
-    println!("=== gltf end ===");
+) -> Result<(), SinkError> {
+    for feature in features {
+        let geometry = feature.geometry.as_ref().unwrap();
+        let geometry_value = geometry.value.clone();
+        match geometry_value {
+            geomotry_types::GeometryValue::Null => {
+                println!("Null geometry");
+                return Err(SinkError::FileWriter("Unsupported input".to_string()));
+            }
+            geomotry_types::GeometryValue::CityGmlGeometry(city_gml) => {
+                println!("CityGmlGeometry: {:?}", city_gml);
+                match handle_city_gml_geometry(output, storage_resolver.clone(), city_gml) {
+                    Ok(_) => println!("Success"),
+                    Err(e) => println!("Error: {:?}", e),
+                }
+            }
+            geomotry_types::GeometryValue::FlowGeometry2D(flow_geom_2d) => {
+                println!("FlowGeometry2D: {:?}", flow_geom_2d);
+                return Err(SinkError::FileWriter("Unsupported input".to_string()));
+            }
+            geomotry_types::GeometryValue::FlowGeometry3D(flow_geom_3d) => {
+                println!("FlowGeometry3D: {:?}", flow_geom_3d);
+                return Err(SinkError::FileWriter("Unsupported input".to_string()));
+            }
+        }
+    }
+    Ok(())
+}
 
-    // The buffer for the BIN part
+fn handle_city_gml_geometry(
+    output: &Uri,
+    storage_resolver: Arc<StorageResolver>,
+    city_gml: geomotry_types::CityGmlGeometry,
+) -> Result<(), crate::errors::SinkError> {
     let mut bin_content: Vec<u8> = Vec::new();
     let mut gltf_buffer_views = vec![];
     let mut gltf_accessors = vec![];
 
     let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default();
-    // TODO dongri add vertices
     let mut primitives: Primitives = Default::default();
-    // TODO dongri add primitives
+
+    let schema = nusamai_citygml::schema::Schema::default();
+    let metadata_encoder = MetadataEncoder::new(&schema);
+
+    let materials = city_gml.materials;
+    let features = city_gml.features;
+
+    let mut feature_id = 0;
+
+    for (index, feature) in features.iter().enumerate() {
+        for poly in feature.polygons.iter() {
+            let mat = materials.get(index).unwrap().clone();
+            let primitive = primitives.entry(mat).or_default();
+            primitive.feature_ids.insert(feature_id);
+
+            if let Some((nx, ny, nz)) =
+                calculate_normal(poly.exterior().into_iter().map(|c| [c.x, c.y, c.z]))
+            {
+                poly.exterior().into_iter().for_each(|c| {
+                    let x = c.x;
+                    let y = c.y;
+                    let z = c.z;
+                    let vbits = [
+                        (x as f32).to_bits(),
+                        (y as f32).to_bits(),
+                        (z as f32).to_bits(),
+                        (nx as f32).to_bits(),
+                        (ny as f32).to_bits(),
+                        (nz as f32).to_bits(),
+                        (x as f32).to_bits(), // TODO
+                        (y as f32).to_bits(), // TODO
+                        (feature_id as f32).to_bits(),
+                    ];
+                    let (_, _) = vertices.insert_full(vbits);
+                });
+            }
+        }
+        feature_id += 1;
+    }
 
     // vertices
     {
@@ -77,7 +138,7 @@ pub(super) fn write_gltf(
             ];
 
             LittleEndian::write_u32_into(&[x, y, z, nx, ny, nz, u, v, feature_id], &mut buf);
-            bin_content.write_all(&buf);
+            let _ = bin_content.write_all(&buf);
             vertices_count += 1;
         }
 
@@ -141,9 +202,6 @@ pub(super) fn write_gltf(
 
     let mut gltf_primitives = vec![];
 
-    let mut schema = nusamai_citygml::schema::Schema::default();
-    let mut metadata_encoder = MetadataEncoder::new(&schema);
-
     let structural_metadata =
         metadata_encoder.into_metadata(&mut bin_content, &mut gltf_buffer_views);
 
@@ -152,10 +210,10 @@ pub(super) fn write_gltf(
         let indices_offset = bin_content.len();
 
         let mut byte_offset = 0;
-        for (mat_idx, (mat, primitive)) in primitives.iter().enumerate() {
+        for (mat_idx, (_, primitive)) in primitives.iter().enumerate() {
             let mut indices_count = 0;
             for idx in &primitive.indices {
-                bin_content.write_all(&idx.to_le_bytes());
+                let _ = bin_content.write_all(&idx.to_le_bytes());
                 indices_count += 1;
             }
 
@@ -170,10 +228,6 @@ pub(super) fn write_gltf(
             });
 
             let mut attributes = vec![("POSITION".to_string(), 0), ("NORMAL".to_string(), 1)];
-            // TODO: For no-texture data, it's better to exclude u, v from the vertex buffer
-            // if mat.base_texture.is_some() {
-            //     attributes.push(("TEXCOORD_0".to_string(), 2));
-            // }
             attributes.push(("_FEATURE_ID_0".to_string(), 3));
 
             gltf_primitives.push(MeshPrimitive {
@@ -218,22 +272,25 @@ pub(super) fn write_gltf(
 
     // materials
     let gltf_materials = primitives
-        .keys()
-        .map(|material| material.to_gltf(&mut texture_set))
+        .iter()
+        .enumerate()
+        .map(|(idx, (material, _))| {
+            let texture = city_gml.textures.get(idx);
+            material.to_gltf(&mut texture_set, texture)
+        })
         .collect();
 
+    // textures
     let gltf_textures: Vec<_> = texture_set
         .into_iter()
         .map(|t| t.to_gltf(&mut image_set))
         .collect();
 
+    // images
     let gltf_images = image_set
         .into_iter()
-        .map(|img| {
-            // feedback.ensure_not_canceled()?;
-            Ok(img.to_gltf(&mut gltf_buffer_views, &mut bin_content)?)
-        })
-        .collect::<Result<Vec<Image>, PipelineError>>()
+        .map(|img| Ok(img.to_gltf(&mut gltf_buffer_views, &mut bin_content)?))
+        .collect::<Result<Vec<Image>, std::io::Error>>()
         .unwrap(); // TODO unwrap
 
     let mut gltf_meshes = vec![];
@@ -304,80 +361,6 @@ pub(super) fn write_gltf(
     Ok(())
 }
 
-// fn veritices(feature: reearth_flow_types::CityGmlGeometry) { // Feature) {
-
-//     // TMP
-//     let mut primitives: Primitives = Default::default();
-
-//     let mut earcutter: Earcut<f64> = Earcut::new();
-//     let mut buf3d: Vec<[f64; 3]> = Vec::new();
-//     let mut buf2d: Vec<[f64; 2]> = Vec::new(); // 2d-projected [x, y]
-//     let mut index_buf: Vec<u32> = Vec::new();
-
-//     let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default(); // [x, y, z, nx, ny, nz, u, v, feature_id]
-
-//     // for (poly, orig_mat_id) in feature
-//     //     .polygons
-//     //     .iter()
-//     //     .zip_eq(feature.polygon_material_ids.iter())
-//     // {
-//     feature.features.iter().for_each(|feature| {
-//         for poly in feature.polygons
-//             .iter()
-//             // .zip_eq(feature.polygon_material_ids.iter())
-//         {
-
-//             let num_outer = match poly.hole_indices().first() {
-//                 Some(&v) => v as usize,
-//                 None => poly.raw_coords().len(),
-//             };
-
-//             let mat = feature.materials[*orig_mat_id as usize].clone();
-//             let primitive = primitives.entry(mat).or_default();
-//             primitive.feature_ids.insert(feature_id as u32);
-
-//             if let Some((nx, ny, nz)) =
-//                 calculate_normal(poly.exterior().iter().map(|v| [v[0], v[1], v[2]]))
-//             {
-//                 buf3d.clear();
-//                 buf3d.extend(poly.raw_coords().iter().map(|c| [c[0], c[1], c[2]]));
-
-//                 if project3d_to_2d(&buf3d, num_outer, &mut buf2d) {
-//                     // earcut
-//                     earcutter.earcut(
-//                         buf2d.iter().copied(),
-//                         poly.hole_indices(),
-//                         &mut index_buf,
-//                     );
-
-//                     // collect triangles
-//                     primitive.indices.extend(index_buf.iter().map(|&idx| {
-//                         let [x, y, z, u, v] = poly.raw_coords()[idx as usize];
-//                         let vbits = [
-//                             (x as f32).to_bits(),
-//                             (y as f32).to_bits(),
-//                             (z as f32).to_bits(),
-//                             (nx as f32).to_bits(),
-//                             (ny as f32).to_bits(),
-//                             (nz as f32).to_bits(),
-//                             (u as f32).to_bits(),
-//                             (v as f32).to_bits(),
-//                             // (feature_id as f32).to_bits(), // UNSIGNED_INT can't be used for vertex attribute
-//                         ];
-//                         let (index, _) = vertices.insert_full(vbits);
-//                         index as u32
-//                     }));
-//                 }
-//             }
-//         }
-//     });
-//     // }
-// }
-
-// fn primitives(feature: Feature) {
-
-// }
-
 #[inline]
 fn cross((ax, ay, az): (f64, f64, f64), (bx, by, bz): (f64, f64, f64)) -> (f64, f64, f64) {
     (ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx)
@@ -420,21 +403,4 @@ pub fn calculate_normal(
         d if d < 1e-30 => None,
         d => Some((sum.0 / d, sum.1 / d, sum.2 / d)),
     }
-}
-
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum PipelineError {
-    #[error("I/O error: {0}")]
-    IoError(#[from] std::io::Error),
-
-    #[error("CityGML parsing error: {0}")]
-    ParseError(#[from] nusamai_citygml::ParseError),
-
-    #[error("Conversion canceled")]
-    Canceled,
-
-    #[error("{0}")]
-    Other(String),
 }
