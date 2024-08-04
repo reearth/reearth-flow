@@ -1,0 +1,23 @@
+coverage:
+  status:
+    project: off
+    patch: off
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+ignore:
+  - api/**/*_gen.go
+  - api/**/*_test.go
+  - api/**/doc.go
+  - api/**/testdata
+  - api/internal/adapter/gql/generated.go
+  - api/tools
+  - api/main.go
+  - api/tools.go
+  - ui/**/*.test.ts
+  - ui/**/*.test.tsx
+  - ui/**/*.stories.ts
+  - ui/**/*.stories.tsx
+  - ui/.storybook
+  - ui/src/lib/gql/__gen__/**/*.ts
