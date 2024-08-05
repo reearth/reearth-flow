@@ -4,6 +4,14 @@ import { useState } from "react";
 
 import projectImage from "@flow/assets/project-screenshot.png"; // TODO: replace with actual project image
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Card,
   CardContent,
@@ -15,16 +23,14 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-  Input,
-  Label,
-} from "@flow/components";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@flow/components/";
+  Input,
+  Label,
+} from "@flow/components";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject, useDialogType } from "@flow/stores";
@@ -43,11 +49,15 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
     useProject();
   const [, setDialogType] = useDialogType();
   const { projects } = useGetWorkspaceProjects(workspace.id);
-  const [editProject, setEditProject] = useState<undefined | Project>(
-    undefined,
-  );
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
+
+  const [projectToBeDeleted, setProjectToBeDeleted] = useState<
+    string | undefined
+  >(undefined);
+  const [editProject, setEditProject] = useState<undefined | Project>(
+    undefined
+  );
 
   const handleProjectSelect = (p: Project) => {
     setCurrentProject(p);
@@ -55,7 +65,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   };
 
   const handleDeleteProject = async (id: string) => {
-    // TODO: this trigger a pop up for confirming
+    setProjectToBeDeleted(undefined);
     await deleteProject(id, workspace.id);
   };
 
@@ -133,7 +143,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
                   <ContextMenuItem onClick={() => setEditProject({ ...p })}>
                     {t("Edit Details")}
                   </ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleDeleteProject(p.id)}>
+                  <ContextMenuItem onClick={() => setProjectToBeDeleted(p.id)}>
                     {t("Delete Project")}
                   </ContextMenuItem>
                 </ContextMenuContent>
@@ -176,22 +186,49 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
 
             <div className="flex justify-end gap-4 px-6 pb-6">
               <Button
-                disabled={buttonDisabled || !editProject?.name}
-                onClick={handleUpdateProject}
-              >
-                {t("Save")}
-              </Button>
-              <Button
                 disabled={buttonDisabled}
                 variant={"outline"}
                 onClick={() => setEditProject(undefined)}
               >
                 {t("Cancel")}
               </Button>
+              <Button
+                disabled={buttonDisabled || !editProject?.name}
+                onClick={handleUpdateProject}
+              >
+                {t("Save")}
+              </Button>
             </div>
           </DialogHeader>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={!!projectToBeDeleted}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Are you absolutely sure?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                `This action cannot be undone. 
+              This will permanently delete your project and 
+              remove your data from our servers.`
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setProjectToBeDeleted(undefined)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!projectToBeDeleted}
+              onClick={() =>
+                projectToBeDeleted && handleDeleteProject(projectToBeDeleted)
+              }
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div>
         <p className="py-1 text-center font-extralight">
           {t("Total Projects")}: {projects?.length ?? 0}
