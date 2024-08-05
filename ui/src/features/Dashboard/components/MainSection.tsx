@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@flow/components/";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject, useDialogType } from "@flow/stores";
@@ -37,14 +38,16 @@ type Props = {
 
 const MainSection: React.FC<Props> = ({ workspace }) => {
   const t = useT();
+  const { toast } = useToast();
   const [currentProject, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
   const { useGetWorkspaceProjects, deleteProject, updateProject } =
     useProject();
   const [, setDialogType] = useDialogType();
   const { projects } = useGetWorkspaceProjects(workspace.id);
+
   const [editProject, setEditProject] = useState<undefined | Project>(
-    undefined,
+    undefined
   );
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
