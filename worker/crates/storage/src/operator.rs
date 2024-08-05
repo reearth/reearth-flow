@@ -44,20 +44,18 @@ pub(crate) fn build_operator<B: Builder>(builder: B) -> Result<Operator> {
 
 /// init_fs_operator will init a opendal fs operator.
 fn init_fs_operator(uri: &Uri) -> impl Builder {
-    let mut builder = services::Fs::default();
+    let builder = services::Fs::default();
     let root = match uri.root() {
         "" => "/",
         _ => uri.root(),
     };
-    builder.root(root);
-    builder
+    builder.root(root)
 }
 
 /// init_gcs_operator will init a opendal gcs operator.
 fn init_gcs_operator(uri: &Uri) -> impl Builder {
-    let mut builder = services::Gcs::default();
-    builder.bucket(uri.root());
-    builder
+    let builder = services::Gcs::default();
+    builder.bucket(uri.root())
 }
 
 /// init_memory_operator will init a opendal memory operator.
@@ -66,17 +64,17 @@ fn init_memory_operator() -> impl Builder {
 }
 
 fn init_https_operator(uri: &Uri) -> impl Builder {
-    let mut builder = services::Http::default();
+    let builder = services::Http::default();
     debug!("init_https_operator: {}", uri.root());
-    builder.endpoint(&format!("https://{}", uri.root()));
-    builder.root("/");
     builder
+        .endpoint(&format!("https://{}", uri.root()))
+        .root("/")
 }
 
 fn init_http_operator(uri: &Uri) -> impl Builder {
-    let mut builder = services::Http::default();
+    let builder = services::Http::default();
     debug!("init_http_operator: {}", uri.root());
-    builder.endpoint(&format!("http://{}", uri.root()));
-    builder.root("/");
     builder
+        .endpoint(&format!("http://{}", uri.root()))
+        .root("/")
 }
