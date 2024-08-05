@@ -6,6 +6,8 @@ import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
+import { WorkspaceDeletionDialog } from "./components";
+
 type Errors = "delete" | "update";
 
 const GeneralSettings: React.FC = () => {
@@ -37,7 +39,7 @@ const GeneralSettings: React.FC = () => {
     if (!currentWorkspace?.id || !workspaceName) return;
     const { workspace } = await updateWorkspace(
       currentWorkspace?.id,
-      workspaceName,
+      workspaceName
     );
     setLoading(false);
     if (!workspace) {
@@ -72,14 +74,10 @@ const GeneralSettings: React.FC = () => {
         >
           {t("Save")}
         </Button>
-        <Button
-          variant={"destructive"}
+        <WorkspaceDeletionDialog
           disabled={currentWorkspace?.personal || loading}
-          className="self-end"
-          onClick={() => handleDeleteWorkspace()}
-        >
-          {t("Delete Workspace")}
-        </Button>
+          onWorkspaceDelete={handleDeleteWorkspace}
+        />
         <div
           className={`self-end text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
         >

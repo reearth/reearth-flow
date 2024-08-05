@@ -22,3 +22,4 @@ export * from "./Tabs";
 export * from "./Toast";
 export * from "./Tooltip";
 export * from "./Accordian";
+export * from "./AlertDialog";
