@@ -1026,10 +1026,10 @@ Coerces the geometry of a feature to a specific geometry
   "title": "GeometryCoercer",
   "type": "object",
   "required": [
-    "coercer_type"
+    "coercerType"
   ],
   "properties": {
-    "coercer_type": {
+    "coercerType": {
       "$ref": "#/definitions/CoercerType"
     }
   },

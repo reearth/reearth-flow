@@ -99,6 +99,13 @@ graphs:
         with:
           outputAttribute: outerOrientation
 
+      - id: d4a9c6a6-dd7b-4804-ab03-71b2348a398c
+        name: GeometryCoercer
+        type: action
+        action: GeometryCoercer
+        with:
+          coercerType: lineString
+
       - id: 2f03d753-a8f0-43bc-a85d-0c5554f93ddc
         name: EchoOutershell
         type: action
@@ -162,6 +169,11 @@ graphs:
         toPort: default
       - id: af538fb0-7f59-448b-9a39-f4f381524900
         from: 0361e205-4d43-442d-b004-2ea981dbca84
+        to: d4a9c6a6-dd7b-4804-ab03-71b2348a398c
+        fromPort: default
+        toPort: default
+      - id: be2f6bab-50cf-42dd-95fa-44e32f5ddc1a
+        from: d4a9c6a6-dd7b-4804-ab03-71b2348a398c
         to: 2f03d753-a8f0-43bc-a85d-0c5554f93ddc
         fromPort: default
         toPort: default
