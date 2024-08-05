@@ -30,7 +30,8 @@ import {
   DialogTitle,
   Input,
   Label,
-} from "@flow/components";
+} from "@flow/components/";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject, useDialogType } from "@flow/stores";
@@ -43,6 +44,7 @@ type Props = {
 
 const MainSection: React.FC<Props> = ({ workspace }) => {
   const t = useT();
+  const { toast } = useToast();
   const [currentProject, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
   const { useGetWorkspaceProjects, deleteProject, updateProject } =
@@ -67,6 +69,12 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   const handleDeleteProject = async (id: string) => {
     setProjectToBeDeleted(undefined);
     await deleteProject(id, workspace.id);
+    toast({
+      title: t("Successful Deletion"),
+      description: t(
+        "Project has been successfully deleted from your workspace."
+      ),
+    });
   };
 
   const handleUpdateValue = (key: "name" | "description", value: string) => {

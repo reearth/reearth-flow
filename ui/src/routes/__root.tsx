@@ -7,6 +7,7 @@ import { config } from "@flow/config";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import Dialog from "@flow/features/Dialog";
 import NotFoundPage from "@flow/features/NotFound";
+import { NotificationSystem } from "@flow/features/NotificationSystem";
 import { AuthProvider } from "@flow/lib/auth";
 import { GraphQLProvider } from "@flow/lib/gql";
 import { I18nProvider } from "@flow/lib/i18n";
@@ -20,8 +21,8 @@ const TanStackQueryDevtools = lazy(() =>
   import("@tanstack/react-query-devtools/build/modern/production.js").then(
     (d) => ({
       default: d.ReactQueryDevtools,
-    }),
-  ),
+    })
+  )
 );
 
 // const TanStackRouterDevtools = lazy(() =>
@@ -41,6 +42,7 @@ function RootRoute() {
             <TooltipProvider>
               <AuthenticationWrapper>
                 <Dialog />
+                <NotificationSystem />
                 <Outlet />
                 {devMode && (
                   <>

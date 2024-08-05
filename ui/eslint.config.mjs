@@ -46,7 +46,7 @@ export default [
       "tailwindcss/no-custom-classname": [
         "warn",
         {
-          whitelist: ["nopan", "nodrag", "nowheel", "dndnode-"],
+          whitelist: ["nopan", "nodrag", "nowheel", "destructive", "dndnode-"],
         },
       ],
     },
