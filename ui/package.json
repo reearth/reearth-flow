@@ -24,9 +24,9 @@
     "clean": "del coverage dist node_modules/.cache"
   },
   "engines": {
-    "node": ">=20.13.0"
+    "node": ">=20.16.0"
   },
-  "packageManager": "yarn@4.3.1",
+  "packageManager": "yarn@4.4.0",
   "graphql": {
     "schema": "../api/gql/*.graphql"
   },
@@ -49,7 +49,7 @@
     "@radix-ui/react-slot": "1.1.0",
     "@radix-ui/react-tabs": "1.1.0",
     "@radix-ui/react-tooltip": "1.1.2",
-    "@reearth/core": "0.0.7-beta.0",
+    "@reearth/core": "0.0.7-beta.1",
     "@tanstack/react-query": "5.51.21",
     "@tanstack/react-router": "1.46.4",
     "@tanstack/react-table": "8.20.1",
@@ -78,7 +78,7 @@
     "@graphql-codegen/typescript": "4.0.9",
     "@graphql-codegen/typescript-graphql-request": "6.2.0",
     "@graphql-codegen/typescript-operations": "4.2.3",
-    "@graphql-eslint/eslint-plugin": "4.0.0-alpha.2",
+    "@graphql-eslint/eslint-plugin": "4.0.0-alpha-20230810160036-304c2c0",
     "@parcel/watcher": "2.4.1",
     "@storybook/addon-essentials": "8.2.7",
     "@storybook/addon-interactions": "8.2.7",
