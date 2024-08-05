@@ -33,10 +33,10 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
       className,
       ...props
     },
-    ref
+    ref,
   ) => {
     const [selectedItemId, setSelectedItemId] = useState<string | undefined>(
-      initialSlelectedItemId
+      initialSlelectedItemId,
     );
 
     const handleSelectChange = useCallback(
@@ -46,7 +46,7 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
           onSelectChange(item);
         }
       },
-      [onSelectChange]
+      [onSelectChange],
     );
 
     const expandedItemIds = useMemo(() => {
@@ -58,7 +58,7 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
 
       function walkTreeItems(
         items: TreeDataItem[] | TreeDataItem,
-        targetId: string
+        targetId: string,
       ) {
         if (items instanceof Array) {
           // eslint-disable-next-line @typescript-eslint/prefer-for-of
@@ -99,7 +99,7 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
         </div>
       </div>
     );
-  }
+  },
 );
 
 Tree.displayName = "Tree";
@@ -124,7 +124,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       ItemIcon,
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <div ref={ref} role="tree" className={className} {...props}>
@@ -142,7 +142,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                         className={cn(
                           "px-2 hover:before:opacity-100 before:absolute before:left-0 before:w-full before:opacity-0 before:bg-primary before:rounded-md before:h-[1.75rem] before:-z-10",
                           selectedItemId === item.id &&
-                            "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-red-800/50"
+                            "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-red-800/50",
                         )}
                         onClick={() => handleSelectChange(item)}
                       >
@@ -200,7 +200,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
         </ul>
       </div>
     );
-  }
+  },
 );
 
 TreeItem.displayName = "TreeItem";
@@ -221,7 +221,7 @@ const Leaf = forwardRef<
         hover:before:opacity-100 before:absolute before:left-0 before:right-1 before:w-full before:opacity-0 before:bg-primary before:rounded-md before:h-[1.75rem] before:-z-10",
         className,
         isSelected &&
-          "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-red-800/50"
+          "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-red-800/50",
       )}
       {...props}
     >
@@ -255,7 +255,7 @@ const AccordionTrigger = forwardRef<
       ref={ref}
       className={cn(
         "flex flex-1 w-full items-center py-2 transition-all last:[&[data-state=open]>svg]:rotate-90",
-        className
+        className,
       )}
       {...props}
     >
@@ -274,7 +274,7 @@ const AccordionContent = forwardRef<
     ref={ref}
     className={cn(
       "overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
-      className
+      className,
     )}
     {...props}
   >
