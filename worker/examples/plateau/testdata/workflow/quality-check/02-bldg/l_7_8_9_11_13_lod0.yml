@@ -100,7 +100,14 @@ graphs:
           outputAttribute: outerOrientation
 
       - id: d4a9c6a6-dd7b-4804-ab03-71b2348a398c
-        name: GeometryCoercer
+        name: GeometryCoercer_Outershell
+        type: action
+        action: GeometryCoercer
+        with:
+          coercerType: lineString
+
+      - id: ba7c5dd4-5333-4477-b1e8-f85905ac2d60
+        name: GeometryCoercer_Hole
         type: action
         action: GeometryCoercer
         with:
@@ -167,6 +174,11 @@ graphs:
         to: 0361e205-4d43-442d-b004-2ea981dbca84
         fromPort: outershell
         toPort: default
+      - id: cebc93c1-c510-4995-a529-90cad8f5c37c
+        from: 52a4bcab-854d-41e8-a9b3-e391c79631a9
+        to: ba7c5dd4-5333-4477-b1e8-f85905ac2d60
+        fromPort: hole
+        toPort: default
       - id: af538fb0-7f59-448b-9a39-f4f381524900
         from: 0361e205-4d43-442d-b004-2ea981dbca84
         to: d4a9c6a6-dd7b-4804-ab03-71b2348a398c
@@ -178,7 +190,7 @@ graphs:
         fromPort: default
         toPort: default
       - id: baec53de-12fa-4e37-8a49-def1afe8e547
-        from: 52a4bcab-854d-41e8-a9b3-e391c79631a9
+        from: ba7c5dd4-5333-4477-b1e8-f85905ac2d60
         to: 565d0851-fc27-46b5-961d-9c2499b2eafb
-        fromPort: hole
+        fromPort: default
         toPort: default
