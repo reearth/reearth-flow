@@ -75,12 +75,13 @@ impl ProcessorFactory for GeometryCoercerFactory {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 enum CoercerType {
-    #[serde(rename = "lineString")]
     LineString,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct GeometryCoercer {
     coercer_type: CoercerType,
 }
@@ -241,30 +242,39 @@ impl GeometryCoercer {
     ) {
         geos.features.iter().for_each(|geo_feature| {
             let mut geometries = Vec::<Geometry3D>::new();
-            for polygon in geo_feature.polygons.iter() {
-                let line_strings = polygon.rings().to_vec();
-                geometries.push(Geometry3D::MultiLineString(MultiLineString3D::new(
-                    line_strings,
-                )));
+            match &self.coercer_type {
+                CoercerType::LineString => {
+                    for polygon in geo_feature.polygons.iter() {
+                        let line_strings = polygon.rings().to_vec();
+                        geometries.push(Geometry3D::MultiLineString(MultiLineString3D::new(
+                            line_strings,
+                        )));
+                    }
+                    if geometries.is_empty() {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()),
+                        );
+                        return;
+                    }
+                    let geo = if geometries.len() == 1 {
+                        let Some(Geometry3D::MultiLineString(line_string)) = geometries.first()
+                        else {
+                            return;
+                        };
+                        GeometryValue::FlowGeometry3D(Geometry3D::MultiLineString(
+                            line_string.clone(),
+                        ))
+                    } else {
+                        GeometryValue::FlowGeometry3D(Geometry3D::GeometryCollection(geometries))
+                    };
+                    let mut geometry = geometry.clone();
+                    geometry.value = geo;
+                    let mut feature = feature.clone();
+                    feature.id = uuid::Uuid::new_v4();
+                    feature.geometry = Some(geometry);
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
             }
-            if geometries.is_empty() {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-                return;
-            }
-            let geo = if geometries.len() == 1 {
-                let Some(Geometry3D::MultiLineString(line_string)) = geometries.first() else {
-                    return;
-                };
-                GeometryValue::FlowGeometry3D(Geometry3D::MultiLineString(line_string.clone()))
-            } else {
-                GeometryValue::FlowGeometry3D(Geometry3D::GeometryCollection(geometries))
-            };
-            let mut geometry = geometry.clone();
-            geometry.value = geo;
-            let mut feature = feature.clone();
-            feature.id = uuid::Uuid::new_v4();
-            feature.geometry = Some(geometry);
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         });
     }
 }
