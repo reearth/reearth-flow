@@ -21,9 +21,8 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   itemIcon?: Icon;
 };
 
-// TODO: Fix these classes later. Remove the specific red and opacity in border and background.
 const highlightClass =
-  "text-secondary-foreground before:opacity-100  before:rounded-md before:bg-secondary/50 before:border before:border-border/50 before:border-l-2 before:border-l-red-800/50 dark:before:border-0";
+  "text-zinc-foreground before:opacity-100  before:rounded-md before:bg-zinc-700/50 before:border before:border-zinc-700/50 before:border-l-2 before:border-l-red-800/50 dark:before:border-0";
 
 const Tree = forwardRef<HTMLDivElement, TreeProps>(
   (
@@ -144,20 +143,20 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                     <AccordionPrimitive.Item value={item.id}>
                       <AccordionTrigger
                         className={cn(
-                          "px-2 hover:before:opacity-100 before:absolute before:left-0 before:w-full before:opacity-0 before:bg-secondary/50 before:rounded-md before:h-[1.75rem] before:-z-10",
+                          "px-2 hover:before:opacity-100 before:absolute before:left-0 before:w-full before:opacity-0 before:bg-zinc-700/50 before:rounded-md before:h-[1.75rem] before:-z-10",
                           selectedItemId === item.id &&
                             highlightClass +
                               " " +
-                              "before:border before:border-border/50 before:border-l-2 before:border-l-red-800/50 dark:before:border-0"
+                              "before:border before:border-zinc-700/50 before:border-l-2 before:border-l-red-800/50 dark:before:border-0"
                         )}
                         onClick={() => handleSelectChange(item)}
                       >
                         {item.icon && (
                           <item.icon
                             className={cn(
-                              "h-4 w-4 shrink-0 mr-2",
+                              "h-4 w-4 shrink-0 mr-2 text-zinc-300",
                               selectedItemId === item.id &&
-                                "text-accent-foreground dark:before:border-0"
+                                "text-zinc-foreground dark:before:border-0"
                             )}
                             weight="thin"
                             aria-hidden="true"
@@ -165,7 +164,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                         )}
                         {!item.icon && FolderIcon && (
                           <FolderIcon
-                            className="mr-2 size-4 shrink-0"
+                            className="mr-2 size-4 shrink-0 text-zinc-300"
                             weight="thin"
                             aria-hidden="true"
                           />
@@ -174,7 +173,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                           {item.name}
                         </span>
                       </AccordionTrigger>
-                      <AccordionContent className="ml-4 border-l pl-6">
+                      <AccordionContent className="ml-4 border-l border-zinc-700 pl-6">
                         <TreeItem
                           className="-ml-4"
                           data={item.children ? item.children : item}
@@ -228,18 +227,18 @@ const Leaf = forwardRef<
       ref={ref}
       className={cn(
         "flex items-center py-2 px-2 cursor-pointer \
-        hover:before:opacity-100 before:absolute before:left-0 before:right-1 before:w-full before:opacity-0 before:bg-secondary/50 before:rounded-md before:h-[1.75rem] before:-z-10",
+        hover:before:opacity-100 before:absolute before:left-0 before:right-1 before:w-full before:opacity-0 before:bg-zinc-700/50 before:rounded-md before:h-[1.75rem] before:-z-10",
         className,
-        // TODO: Remove dark class
-        isSelected && highlightClass + " " + "dark:before:border-0"
+        isSelected &&
+          highlightClass + " " + "text-zinc-300 dark:before:border-0"
       )}
       {...props}
     >
       {item.icon && (
         <item.icon
           className={cn(
-            "h-4 w-4 shrink-0 mr-2",
-            isSelected && "text-accent-foreground dark:before:border-0"
+            "h-4 w-4 shrink-0 mr-2 text-zinc-300",
+            isSelected && "text-zinc-foreground dark:before:border-0"
           )}
           weight="thin"
           aria-hidden="true"
@@ -247,7 +246,7 @@ const Leaf = forwardRef<
       )}
       {!item.icon && Icon && (
         <Icon
-          className="mr-2 size-4 shrink-0"
+          className="mr-2 size-4 shrink-0 text-zinc-300"
           weight="thin"
           aria-hidden="true"
         />
@@ -273,7 +272,7 @@ const AccordionTrigger = forwardRef<
       {...props}
     >
       {children}
-      <CaretRight className="text-accent/60 ml-auto size-4 shrink-0 transition-transform duration-200" />
+      <CaretRight className="ml-auto size-4 shrink-0 text-zinc-300/60 transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));
