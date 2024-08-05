@@ -21,3 +21,4 @@ export * from "./Table";
 export * from "./Tabs";
 export * from "./Tooltip";
 export * from "./Accordian";
+export * from "./AlertDialog";
