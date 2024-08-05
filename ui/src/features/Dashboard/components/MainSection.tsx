@@ -69,6 +69,12 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   const handleDeleteProject = async (id: string) => {
     setProjectToBeDeleted(undefined);
     await deleteProject(id, workspace.id);
+    toast({
+      title: t("Successful Deletion"),
+      description: t(
+        "Project has been successfully deleted from your workspace."
+      ),
+    });
   };
 
   const handleUpdateValue = (key: "name" | "description", value: string) => {
