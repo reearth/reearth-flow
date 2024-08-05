@@ -208,9 +208,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
             <AlertDialogTitle>{t("Are you absolutely sure?")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t(
-                `This action cannot be undone. 
-              This will permanently delete your project and 
-              remove your data from our servers.`
+                "This action cannot be undone. This will permanently delete your project and remove your data from our servers."
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
