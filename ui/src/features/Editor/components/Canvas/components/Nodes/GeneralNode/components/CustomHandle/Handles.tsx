@@ -28,7 +28,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
           position={Position.Right}
         />
       )}
-      <div className="absolute inset-x-0 mx-auto w-[95%] rounded-b-md">
+      <div className="absolute inset-x-0 mx-auto w-[95%] rounded-b-md bg-primary">
         <div className="relative">
           {inputs &&
             inputs.length > 1 &&

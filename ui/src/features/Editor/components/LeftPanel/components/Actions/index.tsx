@@ -153,7 +153,9 @@ const ActionsList: React.FC = () => {
                 {actions ? (
                   Object.keys(actions).map((key) => (
                     <AccordionItem key={key} value={key}>
-                      <AccordionTrigger>{key}</AccordionTrigger>
+                      <AccordionTrigger>
+                        <p className="capitalize">{key}</p>
+                      </AccordionTrigger>
                       <AccordionContent>
                         {actions[key]?.map((action) => (
                           <ActionComponent

@@ -5,6 +5,10 @@ export type Action = {
   description: string;
   type: string;
   categories: string[];
+  inputPorts: string[];
+  outputPorts: string[];
+  parameters: any;
+  builtin: boolean;
 };
 
 export type ActionsSegregated = Record<string, Action[] | undefined>;

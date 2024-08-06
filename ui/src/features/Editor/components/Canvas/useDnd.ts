@@ -1,7 +1,9 @@
 import { useReactFlow } from "@xyflow/react";
 import { DragEvent, useCallback } from "react";
 
-import { Node } from "@flow/types";
+import { config } from "@flow/config";
+import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
+import { Action, Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
 import { baseBatchNode } from "./components/Nodes/BatchNode";
@@ -17,6 +19,7 @@ type Props = {
 // This is not used for node dnd within the canvas. That is done internally by react-flow
 export default ({ nodes, onNodesChange, onNodeLocking }: Props) => {
   const { screenToFlowPosition } = useReactFlow();
+  const { api } = config();
 
   const handleNodeDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -24,41 +27,41 @@ export default ({ nodes, onNodesChange, onNodeLocking }: Props) => {
   }, []);
 
   const handleNodeDrop = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
+    async (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault();
 
-      const type = event.dataTransfer.getData("application/reactflow");
+      const actionName = event.dataTransfer.getData("application/reactflow");
 
       // check if the dropped element is valid
-      if (typeof type === "undefined" || !type) return;
+      if (typeof actionName === "undefined" || !actionName) return;
 
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
 
-      let newNode: Node;
+      const action = await fetcher<Action>(`${api}/actions/${actionName}`);
+      if (!action) return;
 
-      // TODO: Once we have access to transformers list, we can set the newNode based on the selected type
-      newNode = {
+      let newNode: Node = {
         id: randomID(),
-        type,
+        type: action.type,
         position,
         data: {
-          name: `New ${type} node`,
-          inputs: type === "reader" ? undefined : ["source"],
-          outputs: type === "writer" ? undefined : ["target"],
+          name: action.name,
+          inputs: [...action.inputPorts],
+          outputs: [...action.outputPorts],
           status: "idle",
           locked: false,
           onDoubleClick: onNodeLocking,
         },
       };
 
-      if (type === "batch") {
+      if (action.type === "batch") {
         newNode = { ...newNode, ...baseBatchNode };
       }
 
-      if (type === "note") {
+      if (action.type === "note") {
         newNode = {
           ...newNode,
           data: { ...newNode.data, ...baseNoteNode },
@@ -67,7 +70,7 @@ export default ({ nodes, onNodesChange, onNodeLocking }: Props) => {
 
       onNodesChange(nodes.concat(newNode));
     },
-    [nodes, onNodeLocking, screenToFlowPosition, onNodesChange],
+    [nodes, api, onNodeLocking, screenToFlowPosition, onNodesChange]
   );
 
   return { handleNodeDragOver, handleNodeDrop };
