@@ -9,6 +9,7 @@ use nusamai_geometry::{
 };
 
 use super::coordnum::CoordNum;
+use super::line::Line;
 use super::line_string::LineString;
 use super::no_value::NoValue;
 
@@ -25,6 +26,13 @@ impl<T: CoordNum, Z: CoordNum> MultiLineString<T, Z> {
 
     pub fn is_closed(&self) -> bool {
         self.iter().all(LineString::is_closed)
+    }
+
+    pub fn lines(&'_ self) -> impl ExactSizeIterator<Item = Line<T, Z>> + '_ {
+        self.iter()
+            .flat_map(|ls| ls.lines())
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 

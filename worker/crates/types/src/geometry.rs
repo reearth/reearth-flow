@@ -29,6 +29,29 @@ pub enum GeometryValue {
     FlowGeometry3D(FlowGeometry3D),
 }
 
+impl GeometryValue {
+    pub fn as_flow_geometry_2d(&self) -> Option<&FlowGeometry2D> {
+        match self {
+            Self::FlowGeometry2D(geometry) => Some(geometry),
+            _ => None,
+        }
+    }
+
+    pub fn as_flow_geometry_3d(&self) -> Option<&FlowGeometry3D> {
+        match self {
+            Self::FlowGeometry3D(geometry) => Some(geometry),
+            _ => None,
+        }
+    }
+
+    pub fn as_citygml_geometry(&self) -> Option<&CityGmlGeometry> {
+        match self {
+            Self::CityGmlGeometry(geometry) => Some(geometry),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Geometry {
     pub epsg: Option<EpsgCode>,
