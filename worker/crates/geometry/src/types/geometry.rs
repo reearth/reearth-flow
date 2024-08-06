@@ -55,6 +55,76 @@ impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
             Geometry::GeometryCollection(_) => "GeometryCollection",
         }
     }
+
+    pub fn as_point(&self) -> Option<Point<T, Z>> {
+        match self {
+            Geometry::Point(p) => Some(*p),
+            _ => None,
+        }
+    }
+
+    pub fn as_line(&self) -> Option<Line<T, Z>> {
+        match self {
+            Geometry::Line(l) => Some(*l),
+            _ => None,
+        }
+    }
+
+    pub fn as_line_string(&self) -> Option<LineString<T, Z>> {
+        match self {
+            Geometry::LineString(ls) => Some(ls.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_multi_line_string(&self) -> Option<MultiLineString<T, Z>> {
+        match self {
+            Geometry::MultiLineString(mls) => Some(mls.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_polygon(&self) -> Option<Polygon<T, Z>> {
+        match self {
+            Geometry::Polygon(p) => Some(p.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_multi_polygon(&self) -> Option<MultiPolygon<T, Z>> {
+        match self {
+            Geometry::MultiPolygon(mp) => Some(mp.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_rect(&self) -> Option<Rect<T, Z>> {
+        match self {
+            Geometry::Rect(rect) => Some(*rect),
+            _ => None,
+        }
+    }
+
+    pub fn as_triangle(&self) -> Option<Triangle<T, Z>> {
+        match self {
+            Geometry::Triangle(triangle) => Some(*triangle),
+            _ => None,
+        }
+    }
+
+    pub fn as_solid(&self) -> Option<Solid<T, Z>> {
+        match self {
+            Geometry::Solid(solid) => Some(solid.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_geometry_collection(&self) -> Option<Vec<Geometry<T, Z>>> {
+        match self {
+            Geometry::GeometryCollection(gc) => Some(gc.clone()),
+            _ => None,
+        }
+    }
 }
 
 impl From<Geometry3D<f64>> for Geometry2D<f64> {
