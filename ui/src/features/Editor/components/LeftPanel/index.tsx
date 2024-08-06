@@ -17,7 +17,7 @@ import type { Node } from "@flow/types";
 
 import { TransformersList, Resources } from "./components";
 
-type Tab = "navigator" | "action-list" | "resources";
+type Tab = "navigator" | "transformer-list" | "resources";
 
 type Props = {
   nodes: Node[];
@@ -84,8 +84,8 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
       ),
     },
     {
-      id: "action-list",
-      title: t("Action list"),
+      id: "transformer-list",
+      title: t("Transformer list"),
       icon: <Lightning className="size-5" weight="thin" />,
       component: <TransformersList />,
     },
@@ -110,7 +110,7 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
   return (
     <>
       <div
-        className="absolute left-12 z-10 flex h-full w-[300px] flex-1 flex-col gap-3 overflow-auto border-r bg-secondary transition-all"
+        className="absolute left-12 z-10 flex h-full w-[300px] flex-1 flex-col gap-3 overflow-auto border-r bg-background transition-all"
         style={{
           transform: `translateX(${isPanelOpen ? "8px" : "-100%"})`,
           transitionDuration: isPanelOpen ? "500ms" : "300ms",

@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { Transformer } from "@flow/types";
 
 const TransformerComponent: React.FC<Transformer> = ({
@@ -7,28 +9,30 @@ const TransformerComponent: React.FC<Transformer> = ({
   categories,
 }) => {
   return (
-    <div className="group my-2 cursor-pointer rounded p-2  hover:bg-accent hover:text-accent-foreground">
+    <div className="group cursor-pointer rounded px-2  hover:bg-primary hover:text-accent-foreground">
       <div className="flex w-full justify-between gap-1 py-2">
-        <div className="w-3/5 break-words text-sm">{name}</div>
-        <div className="h-5 rounded bg-popover px-[2px] text-xs capitalize text-popover-foreground">
-          {type}
+        <div className="w-3/5 self-center break-words text-sm">
+          <p className="self-center text-zinc-200">{name}</p>
+        </div>
+        <div
+          className={`self-center rounded border bg-popover p-1 align-middle`}
+        >
+          <p className="self-center text-xs text-zinc-200">{type}</p>
         </div>
       </div>
-      <div className="hidden group-hover:block">
+      <div className="group-hover:block">
         <div className="mb-2 text-xs leading-[0.85rem]">{description}</div>
-        <div className="flex gap-1 text-xs text-primary ">
+        <div className="flex flex-wrap gap-1 text-xs ">
           {categories.map((c) => (
-            <div
-              className="rounded bg-primary-foreground p-[2px] capitalize"
-              key={c}
-            >
-              {c}
+            <div className="rounded border bg-popover p-[2px]" key={c}>
+              <p className="text-zinc-400">{c}</p>
             </div>
           ))}
         </div>
       </div>
+      <div className="border-b pb-2" />
     </div>
   );
 };
 
-export { TransformerComponent };
+export default memo(TransformerComponent);

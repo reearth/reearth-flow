@@ -16,7 +16,7 @@ import { useTransformer } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import { Transformer, TransformersSegregated, Segregated } from "@flow/types";
 
-import { TransformerComponent } from "./Transformer";
+import TransformerComponent from "./Transformer";
 
 type Ordering = "default" | "categorically" | "byType";
 
@@ -111,30 +111,30 @@ const TransformersList: React.FC = () => {
 
   return (
     <Tabs defaultValue={tabs[0].order}>
-      <div className="absolute w-full bg-secondary p-2">
-        <TabsList className="flex justify-between px-0">
+      <div className="absolute w-full bg-background px-2">
+        <TabsList className="flex justify-between">
           {tabs.map(({ title, order }) => (
-            <TabsTrigger
-              key={order}
-              value={order}
-              className="w-[31%] uppercase"
-            >
+            <TabsTrigger key={order} value={order} className="w-full">
               {title}
             </TabsTrigger>
           ))}
         </TabsList>
         <div>
           <Input
-            className="mx-auto mt-2 w-full px-2"
+            className="mx-auto my-2 h-7 w-full"
             placeholder={t("Search")}
             // value={search}
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
       </div>
-      <div className="mt-20 p-2">
+      <div className="mt-[52px] p-2">
         {tabs.map(({ order, transformers }) => (
-          <TabsContent className="dark" key={order} value={order}>
+          <TabsContent
+            className="dark flex flex-col gap-1"
+            key={order}
+            value={order}
+          >
             {Array.isArray(transformers) ? (
               transformers.map((transformer) => (
                 <TransformerComponent key={transformer.name} {...transformer} />
