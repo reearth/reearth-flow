@@ -1,6 +1,6 @@
-import { memo } from "react";
+import { DragEvent, memo } from "react";
 
-import { Transformer } from "@flow/types";
+import { NodeType, Transformer } from "@flow/types";
 
 type Props = Transformer & {
   selected: boolean;
@@ -15,10 +15,20 @@ const TransformerComponent: React.FC<Props> = ({
   selected,
   onSelect,
 }) => {
+  const onDragStart = (
+    event: DragEvent<HTMLDivElement>,
+    nodeType: NodeType
+  ) => {
+    event.dataTransfer.setData("application/reactflow", nodeType);
+    event.dataTransfer.effectAllowed = "move";
+  };
+
   return (
     <div
       className={`group cursor-pointer rounded px-2 ${selected ? "bg-primary text-accent-foreground" : "hover:bg-primary hover:text-accent-foreground"}`}
-      onClick={onSelect}
+      onMouseDown={onSelect}
+      onDragStart={(e) => onDragStart(e, "transformer")}
+      draggable
     >
       <div className="flex w-full justify-between gap-1 py-2">
         <div className="w-3/5 self-center break-words text-sm">

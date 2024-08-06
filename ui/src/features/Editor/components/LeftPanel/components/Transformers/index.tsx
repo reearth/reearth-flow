@@ -48,7 +48,7 @@ const TransformersList: React.FC = () => {
     transformers: Transformer[] | TransformersSegregated | undefined;
   }[] = [
     {
-      title: t("All"),
+      title: t("Alphabetical"),
       order: "default",
       transformers,
     },
