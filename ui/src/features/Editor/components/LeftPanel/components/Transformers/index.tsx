@@ -24,6 +24,8 @@ const TransformersList: React.FC = () => {
   const t = useT();
   const { useGetTransformers, useGetTransformerSegregated } = useTransformer();
 
+  const [selected, setSelected] = useState<string | undefined>(undefined);
+
   const [transformers, setTransformers] = useState<Transformer[] | undefined>();
 
   const [transformersSegregated, setTransformersSegregated] = useState<
@@ -61,6 +63,10 @@ const TransformersList: React.FC = () => {
       transformers: transformersSegregated?.byType,
     },
   ];
+
+  const handleTransformerSelect = (name?: string) => {
+    setSelected((prevName) => (prevName === name ? undefined : name));
+  };
 
   const getFilteredTransformers = useCallback(
     (filter: string, transformer?: Transformer[]): Transformer[] | undefined =>
@@ -137,7 +143,12 @@ const TransformersList: React.FC = () => {
           >
             {Array.isArray(transformers) ? (
               transformers.map((transformer) => (
-                <TransformerComponent key={transformer.name} {...transformer} />
+                <TransformerComponent
+                  key={transformer.name}
+                  {...transformer}
+                  selected={selected === transformer.name}
+                  onSelect={() => handleTransformerSelect(transformer.name)}
+                />
               ))
             ) : (
               <Accordion type="single" collapsible>
@@ -150,6 +161,10 @@ const TransformersList: React.FC = () => {
                           <TransformerComponent
                             key={transformer.name}
                             {...transformer}
+                            selected={selected === transformer.name}
+                            onSelect={() =>
+                              handleTransformerSelect(transformer.name)
+                            }
                           />
                         ))}
                       </AccordionContent>
