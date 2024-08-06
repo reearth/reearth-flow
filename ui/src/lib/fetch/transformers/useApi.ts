@@ -1,45 +1,41 @@
-import {
-  GetTransformer,
-  GetTransformers,
-  GetTransformerSegregated,
-} from "@flow/types";
+import { GetAction, GetActions, GetActionsSegregated } from "@flow/types";
 
 import { useFetch } from "./useFetch";
 
-export const useTransformer = () => {
+export const useAction = () => {
   const {
-    useGetTransformersFetch,
-    useGetTransformersByIdFetch,
-    useGetTransformersSegregatedFetch,
+    useGetActionsFetch,
+    useGetActionsByIdFetch,
+    useGetActionsSegregatedFetch,
   } = useFetch();
 
-  const useGetTransformers = (): GetTransformers => {
-    const { data, ...rest } = useGetTransformersFetch();
+  const useGetActions = (): GetActions => {
+    const { data, ...rest } = useGetActionsFetch();
     return {
-      transformers: data,
+      actions: data,
       ...rest,
     };
   };
 
-  const useGetTransformerById = (id: string): GetTransformer => {
-    const { data, ...rest } = useGetTransformersByIdFetch(id);
+  const useGetActionById = (id: string): GetAction => {
+    const { data, ...rest } = useGetActionsByIdFetch(id);
     return {
-      transformer: data,
+      action: data,
       ...rest,
     };
   };
 
-  const useGetTransformerSegregated = (): GetTransformerSegregated => {
-    const { data, ...rest } = useGetTransformersSegregatedFetch();
+  const useGetActionsSegregated = (): GetActionsSegregated => {
+    const { data, ...rest } = useGetActionsSegregatedFetch();
     return {
-      transformers: data,
+      actions: data,
       ...rest,
     };
   };
 
   return {
-    useGetTransformers,
-    useGetTransformerById,
-    useGetTransformerSegregated,
+    useGetActions,
+    useGetActionById,
+    useGetActionsSegregated,
   };
 };

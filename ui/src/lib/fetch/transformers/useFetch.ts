@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { config } from "@flow/config";
-import { Transformer, Segregated } from "@flow/types";
+import type { Action, Segregated } from "@flow/types";
 
 export type FetchResponse = {
   json: <T = unknown>() => Promise<T>;
@@ -15,9 +15,7 @@ enum ActionFetchKeys {
 const BASE_URL = config().api;
 
 export const useFetch = () => {
-  const transformResponse = <
-    T extends Transformer | Transformer[] | Segregated,
-  >(
+  const actionResponse = <T extends Action | Action[] | Segregated>(
     response: T
   ): T => {
     const CHANGE_NAMES: Record<string, string> = {
@@ -27,9 +25,9 @@ export const useFetch = () => {
     };
 
     if (Array.isArray(response)) {
-      return response.map((tr) => processTransformer(tr)) as T;
+      return response.map((tr) => processAction(tr)) as T;
     } else if (typeof response?.name === "string") {
-      return processTransformer(response as Transformer) as T;
+      return processAction(response as Action) as T;
     }
 
     // This is because TS doesn't have a way to differentiate between either A or B when writing A | B
@@ -37,14 +35,14 @@ export const useFetch = () => {
     const segregated: Segregated = response as Segregated;
     return Object.keys(segregated).reduce((obj, rootKey) => {
       obj[rootKey] = Object.keys(segregated[rootKey]).reduce(
-        (obj: Record<string, Transformer[] | undefined>, key) => {
-          const transformers = segregated[rootKey][key]?.map((a) =>
-            processTransformer(a)
+        (obj: Record<string, Action[] | undefined>, key) => {
+          const actions = segregated[rootKey][key]?.map((a) =>
+            processAction(a)
           );
           if (CHANGE_NAMES[key]) {
-            obj[CHANGE_NAMES[key]] = transformers;
+            obj[CHANGE_NAMES[key]] = actions;
           } else {
-            obj[key] = transformers;
+            obj[key] = actions;
           }
           return obj;
         },
@@ -53,17 +51,17 @@ export const useFetch = () => {
       return obj;
     }, {} as Segregated) as T;
 
-    function processTransformer(transformer: Transformer) {
+    function processAction(action: Action) {
       return {
-        ...transformer,
-        type: CHANGE_NAMES[transformer.type]
-          ? CHANGE_NAMES[transformer.type]
-          : transformer.type,
+        ...action,
+        type: CHANGE_NAMES[action.type]
+          ? CHANGE_NAMES[action.type]
+          : action.type,
       };
     }
   };
 
-  const fetcher = async <T extends Transformer[] | Segregated | Transformer>(
+  const fetcher = async <T extends Action[] | Segregated | Action>(
     url: string,
     signal: AbortSignal
   ): Promise<T> => {
@@ -77,26 +75,26 @@ export const useFetch = () => {
       throw new Error(`status not 200. received ${status}`);
     }
     const data = await response.json();
-    return transformResponse(data);
+    return actionResponse(data);
   };
 
-  const useGetTransformersFetch = () =>
+  const useGetActionsFetch = () =>
     useQuery({
       queryKey: [ActionFetchKeys.actions],
       queryFn: async ({ signal }: { signal: AbortSignal }) =>
-        fetcher<Transformer[]>(`${BASE_URL}/actions`, signal),
+        fetcher<Action[]>(`${BASE_URL}/actions`, signal),
       staleTime: Infinity,
     });
 
-  const useGetTransformersByIdFetch = (actionId: string) =>
+  const useGetActionsByIdFetch = (actionId: string) =>
     useQuery({
       queryKey: [ActionFetchKeys.actions, actionId],
       queryFn: async ({ signal }: { signal: AbortSignal }) =>
-        fetcher<Transformer>(`${BASE_URL}/actions/${actionId}`, signal),
+        fetcher<Action>(`${BASE_URL}/actions/${actionId}`, signal),
       staleTime: Infinity,
     });
 
-  const useGetTransformersSegregatedFetch = () =>
+  const useGetActionsSegregatedFetch = () =>
     useQuery({
       queryKey: [ActionFetchKeys.actions, ActionFetchKeys.segregated],
       queryFn: async ({ signal }: { signal: AbortSignal }) =>
@@ -108,8 +106,8 @@ export const useFetch = () => {
     });
 
   return {
-    useGetTransformersFetch,
-    useGetTransformersByIdFetch,
-    useGetTransformersSegregatedFetch,
+    useGetActionsFetch,
+    useGetActionsByIdFetch,
+    useGetActionsSegregatedFetch,
   };
 };
