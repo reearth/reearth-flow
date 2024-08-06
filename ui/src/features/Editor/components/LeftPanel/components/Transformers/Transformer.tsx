@@ -1,6 +1,6 @@
-import { Action } from "@flow/types";
+import { Transformer } from "@flow/types";
 
-const ActionComponent: React.FC<Action> = ({
+const TransformerComponent: React.FC<Transformer> = ({
   name,
   type,
   description,
@@ -31,4 +31,4 @@ const ActionComponent: React.FC<Action> = ({
   );
 };
 
-export { ActionComponent };
+export { TransformerComponent };

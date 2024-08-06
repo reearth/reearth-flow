@@ -25,11 +25,11 @@ const TanStackQueryDevtools = lazy(() =>
   )
 );
 
-// const TanStackRouterDevtools = lazy(() =>
-//   import("@tanstack/router-devtools").then(d => ({
-//     default: d.TanStackRouterDevtools,
-//   })),
-// );
+const TanStackRouterDevtools = lazy(() =>
+  import("@tanstack/router-devtools").then((d) => ({
+    default: d.TanStackRouterDevtools,
+  }))
+);
 
 function RootRoute() {
   const { devMode } = config();
@@ -47,7 +47,7 @@ function RootRoute() {
                 {devMode && (
                   <>
                     <TanStackQueryDevtools initialIsOpen={false} />
-                    {/* <TanStackRouterDevtools /> */}
+                    <TanStackRouterDevtools />
                   </>
                 )}
               </AuthenticationWrapper>

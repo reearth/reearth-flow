@@ -15,7 +15,7 @@ import { useT } from "@flow/lib/i18n";
 import { useDialogType } from "@flow/stores";
 import type { Node } from "@flow/types";
 
-import { ActionsList, Resources } from "./components";
+import { TransformersList, Resources } from "./components";
 
 type Tab = "navigator" | "action-list" | "resources";
 
@@ -87,7 +87,7 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
       id: "action-list",
       title: t("Action list"),
       icon: <Lightning className="size-5" weight="thin" />,
-      component: <ActionsList />,
+      component: <TransformersList />,
     },
     {
       id: "resources",

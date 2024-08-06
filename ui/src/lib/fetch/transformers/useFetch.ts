@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { config } from "@flow/config";
-import { Action, Segregated } from "@flow/types";
+import { Transformer, Segregated } from "@flow/types";
 
 export type FetchResponse = {
   json: <T = unknown>() => Promise<T>;
@@ -15,8 +15,10 @@ enum ActionFetchKeys {
 const BASE_URL = config().api;
 
 export const useFetch = () => {
-  const transformResponse = <T extends Action | Action[] | Segregated>(
-    response: T,
+  const transformResponse = <
+    T extends Transformer | Transformer[] | Segregated,
+  >(
+    response: T
   ): T => {
     const CHANGE_NAMES: Record<string, string> = {
       processor: "Transformer",
@@ -25,9 +27,9 @@ export const useFetch = () => {
     };
 
     if (Array.isArray(response)) {
-      return response.map((a) => transformAction(a)) as T;
+      return response.map((tr) => processTransformer(tr)) as T;
     } else if (typeof response?.name === "string") {
-      return transformAction(response as Action) as T;
+      return processTransformer(response as Transformer) as T;
     }
 
     // This is because TS doesn't have a way to differentiate between either A or B when writing A | B
@@ -35,35 +37,35 @@ export const useFetch = () => {
     const segregated: Segregated = response as Segregated;
     return Object.keys(segregated).reduce((obj, rootKey) => {
       obj[rootKey] = Object.keys(segregated[rootKey]).reduce(
-        (obj: Record<string, Action[] | undefined>, key) => {
-          const actions = segregated[rootKey][key]?.map((a) =>
-            transformAction(a),
+        (obj: Record<string, Transformer[] | undefined>, key) => {
+          const transformers = segregated[rootKey][key]?.map((a) =>
+            processTransformer(a)
           );
           if (CHANGE_NAMES[key]) {
-            obj[CHANGE_NAMES[key]] = actions;
+            obj[CHANGE_NAMES[key]] = transformers;
           } else {
-            obj[key] = actions;
+            obj[key] = transformers;
           }
           return obj;
         },
-        {},
+        {}
       );
       return obj;
     }, {} as Segregated) as T;
 
-    function transformAction(action: Action) {
+    function processTransformer(transformer: Transformer) {
       return {
-        ...action,
-        type: CHANGE_NAMES[action.type]
-          ? CHANGE_NAMES[action.type]
-          : action.type,
+        ...transformer,
+        type: CHANGE_NAMES[transformer.type]
+          ? CHANGE_NAMES[transformer.type]
+          : transformer.type,
       };
     }
   };
 
-  const fetcher = async <T extends Action[] | Segregated | Action>(
+  const fetcher = async <T extends Transformer[] | Segregated | Transformer>(
     url: string,
-    signal: AbortSignal,
+    signal: AbortSignal
   ): Promise<T> => {
     const response = await fetch(url, { signal });
 
@@ -78,36 +80,36 @@ export const useFetch = () => {
     return transformResponse(data);
   };
 
-  const useGetActionsFetch = () =>
+  const useGetTransformersFetch = () =>
     useQuery({
       queryKey: [ActionFetchKeys.actions],
       queryFn: async ({ signal }: { signal: AbortSignal }) =>
-        fetcher<Action[]>(`${BASE_URL}/actions`, signal),
+        fetcher<Transformer[]>(`${BASE_URL}/actions`, signal),
       staleTime: Infinity,
     });
 
-  const useGetActionsByIdFetch = (actionId: string) =>
+  const useGetTransformersByIdFetch = (actionId: string) =>
     useQuery({
       queryKey: [ActionFetchKeys.actions, actionId],
       queryFn: async ({ signal }: { signal: AbortSignal }) =>
-        fetcher<Action>(`${BASE_URL}/actions/${actionId}`, signal),
+        fetcher<Transformer>(`${BASE_URL}/actions/${actionId}`, signal),
       staleTime: Infinity,
     });
 
-  const useGetActionsSegregatedFetch = () =>
+  const useGetTransformersSegregatedFetch = () =>
     useQuery({
       queryKey: [ActionFetchKeys.actions, ActionFetchKeys.segregated],
       queryFn: async ({ signal }: { signal: AbortSignal }) =>
         fetcher<Segregated>(
           `${BASE_URL}/actions/${ActionFetchKeys.segregated}`,
-          signal,
+          signal
         ),
       staleTime: Infinity,
     });
 
   return {
-    useGetActionsFetch,
-    useGetActionsByIdFetch,
-    useGetActionsSegregatedFetch,
+    useGetTransformersFetch,
+    useGetTransformersByIdFetch,
+    useGetTransformersSegregatedFetch,
   };
 };
