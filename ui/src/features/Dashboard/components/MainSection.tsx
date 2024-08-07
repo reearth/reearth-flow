@@ -58,7 +58,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
     string | undefined
   >(undefined);
   const [editProject, setEditProject] = useState<undefined | Project>(
-    undefined
+    undefined,
   );
 
   const handleProjectSelect = (p: Project) => {
@@ -72,7 +72,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
     toast({
       title: t("Successful Deletion"),
       description: t(
-        "Project has been successfully deleted from your workspace."
+        "Project has been successfully deleted from your workspace.",
       ),
     });
   };
@@ -216,7 +216,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
             <AlertDialogTitle>{t("Are you absolutely sure?")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t(
-                "This action cannot be undone. This will permanently delete your project and remove your data from our servers."
+                "This action cannot be undone. This will permanently delete your project and remove your data from our servers.",
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>

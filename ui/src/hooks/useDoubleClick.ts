@@ -3,7 +3,7 @@ import { useCallback, useRef } from "react";
 export default (
   onClick: ((param?: any) => void) | undefined,
   onDoubleClick: ((param?: any) => void) | undefined,
-  delay = 200
+  delay = 200,
 ): [(param?: any) => void, (param?: any) => void] => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -19,7 +19,7 @@ export default (
         }, delay);
       }
     },
-    [onClick, delay]
+    [onClick, delay],
   );
 
   const doubleClickHandler = useCallback(
@@ -30,7 +30,7 @@ export default (
       }
       onDoubleClick?.(param);
     },
-    [onDoubleClick]
+    [onDoubleClick],
   );
 
   return [singleClickHandler, doubleClickHandler];

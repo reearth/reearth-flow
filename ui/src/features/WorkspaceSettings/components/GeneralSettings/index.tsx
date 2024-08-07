@@ -39,7 +39,7 @@ const GeneralSettings: React.FC = () => {
     if (!currentWorkspace?.id || !workspaceName) return;
     const { workspace } = await updateWorkspace(
       currentWorkspace?.id,
-      workspaceName
+      workspaceName,
     );
     setLoading(false);
     if (!workspace) {
