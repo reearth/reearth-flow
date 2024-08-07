@@ -3,6 +3,7 @@ import {
   DeleteProject,
   GetProject,
   GetWorkspaceProjects,
+  GetWorkspaceProjectsInfinite,
   UpdateProject,
 } from "@flow/types";
 
@@ -10,22 +11,18 @@ import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 
-export enum ProjectQueryKeys {
-  GetWorkspaceProjects = "getWorkspaceProjects",
-  GetProject = "getProject",
-}
-
 export const useProject = () => {
   const {
     createProjectMutation,
     useGetProjectsQuery,
+    useGetProjectsInfiniteQuery,
     useGetProjectByIdQuery,
     deleteProjectMutation,
     updateProjectMutation,
   } = useQueries();
 
   const createProject = async (
-    input: CreateProjectInput,
+    input: CreateProjectInput
   ): Promise<CreateProject> => {
     const { mutateAsync, ...rest } = createProjectMutation;
     try {
@@ -37,12 +34,22 @@ export const useProject = () => {
   };
 
   const useGetWorkspaceProjects = (
-    workspaceId?: string,
+    workspaceId?: string
   ): GetWorkspaceProjects => {
     const { data, ...rest } = useGetProjectsQuery(workspaceId);
     return {
       projects: data?.projects,
       ...data?.meta,
+      ...rest,
+    };
+  };
+
+  const useGetWorkspaceProjectsInfinite = (
+    workspaceId?: string
+  ): GetWorkspaceProjectsInfinite => {
+    const { data, ...rest } = useGetProjectsInfiniteQuery(workspaceId);
+    return {
+      pages: data?.pages,
       ...rest,
     };
   };
@@ -56,7 +63,7 @@ export const useProject = () => {
   };
 
   const updateProject = async (
-    input: UpdateProjectInput,
+    input: UpdateProjectInput
   ): Promise<UpdateProject> => {
     const { mutateAsync, ...rest } = updateProjectMutation;
     try {
@@ -69,7 +76,7 @@ export const useProject = () => {
 
   const deleteProject = async (
     projectId: string,
-    workspaceId: string,
+    workspaceId: string
   ): Promise<DeleteProject> => {
     const { mutateAsync, ...rest } = deleteProjectMutation;
     try {
@@ -82,6 +89,7 @@ export const useProject = () => {
 
   return {
     useGetWorkspaceProjects,
+    useGetWorkspaceProjectsInfinite,
     useGetProject,
     createProject,
     updateProject,

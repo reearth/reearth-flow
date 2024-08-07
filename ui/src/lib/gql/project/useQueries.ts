@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
@@ -12,7 +17,11 @@ import {
   ProjectFragment,
 } from "../__gen__/graphql";
 
-import { ProjectQueryKeys } from "./useApi";
+enum ProjectQueryKeys {
+  GetWorkspaceProjects = "getWorkspaceProjects",
+  GetWorkspaceProjectsInfinite = "getWorkspaceProjectsInfinite",
+  GetProject = "getProject",
+}
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -21,13 +30,13 @@ export const useQueries = () => {
   const createNewProjectObject = useCallback(
     (project: ProjectFragment): Project => ({
       id: project.id,
+      name: project.name,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
-      name: project.name,
       description: project.description,
       workspaceId: project.workspaceId,
     }),
-    [],
+    []
   );
 
   const createProjectMutation = useMutation({
@@ -51,7 +60,7 @@ export const useQueries = () => {
       queryFn: () =>
         graphQLContext?.GetProjects({
           workspaceId: workspaceId ?? "",
-          first: 20,
+          first: 15,
         }),
       enabled: !!workspaceId,
       select: (data) => {
@@ -64,6 +73,36 @@ export const useQueries = () => {
           .filter(isDefined)
           .map((project) => createNewProjectObject(project));
         return { projects, meta: rest };
+      },
+    });
+
+  const useGetProjectsInfiniteQuery = (workspaceId?: string) =>
+    useInfiniteQuery({
+      queryKey: [ProjectQueryKeys.GetWorkspaceProjectsInfinite, workspaceId],
+      initialPageParam: null,
+      queryFn: async ({ pageParam }) => {
+        const data = await graphQLContext?.GetProjects({
+          workspaceId: workspaceId ?? "",
+          first: 5,
+          after: pageParam,
+        });
+        if (!data) return;
+        const {
+          projects: {
+            nodes,
+            pageInfo: { endCursor, hasNextPage },
+          },
+        } = data;
+        const projects: Project[] = nodes
+          .filter(isDefined)
+          .map((project) => createNewProjectObject(project));
+        return { projects, endCursor, hasNextPage };
+      },
+      enabled: !!workspaceId,
+      getNextPageParam: (lastPage) => {
+        if (!lastPage) return undefined;
+        const { endCursor, hasNextPage } = lastPage;
+        return hasNextPage ? endCursor : undefined;
       },
     });
 
@@ -116,6 +155,7 @@ export const useQueries = () => {
   return {
     createProjectMutation,
     useGetProjectsQuery,
+    useGetProjectsInfiniteQuery,
     useGetProjectByIdQuery,
     deleteProjectMutation,
     updateProjectMutation,
