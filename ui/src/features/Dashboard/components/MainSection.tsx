@@ -109,16 +109,14 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
 
   const projects: Project[] | undefined = useMemo(
     () =>
-      pages?.reduce(
-        (projects, page) => [
-          ...projects,
-          ...(page?.projects ? page.projects : []),
-        ],
-        [] as Project[]
-      ),
+      pages?.reduce((projects, page) => {
+        if (page?.projects) {
+          projects.push(...page.projects);
+        }
+        return projects;
+      }, [] as Project[]),
     [pages]
   );
-
   // Auto fills the page
   useEffect(() => {
     if (

@@ -26,16 +26,14 @@ const ManualRun: React.FC = () => {
 
   const projects: Project[] | undefined = useMemo(
     () =>
-      pages?.reduce(
-        (projects, page) => [
-          ...projects,
-          ...(page?.projects ? page.projects : []),
-        ],
-        [] as Project[]
-      ),
+      pages?.reduce((projects, page) => {
+        if (page?.projects) {
+          projects.push(...page.projects);
+        }
+        return projects;
+      }, [] as Project[]),
     [pages]
   );
-
   return (
     <div className="flex-1 p-8">
       <div className="flex items-center gap-2 text-lg font-extralight">
