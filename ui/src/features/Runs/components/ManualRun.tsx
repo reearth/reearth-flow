@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   Button,
@@ -17,11 +17,24 @@ import { Project } from "@flow/types";
 
 const ManualRun: React.FC = () => {
   const t = useT();
-  const { useGetWorkspaceProjects } = useProject();
+  const { useGetWorkspaceProjectsInfinite } = useProject();
 
   const [selectedProject, selectProject] = useState<Project>();
   const [currentWorkspace] = useCurrentWorkspace();
-  const { projects } = useGetWorkspaceProjects(currentWorkspace?.id);
+  const { pages, isFetching, fetchNextPage, hasNextPage } =
+    useGetWorkspaceProjectsInfinite(currentWorkspace?.id);
+
+  const projects: Project[] | undefined = useMemo(
+    () =>
+      pages?.reduce(
+        (projects, page) => [
+          ...projects,
+          ...(page?.projects ? page.projects : []),
+        ],
+        [] as Project[]
+      ),
+    [pages]
+  );
 
   return (
     <div className="flex-1 p-8">
@@ -35,9 +48,10 @@ const ManualRun: React.FC = () => {
             <Select
               onValueChange={(pid) =>
                 selectProject(
-                  currentWorkspace?.projects?.find((p) => p.id === pid),
+                  currentWorkspace?.projects?.find((p) => p.id === pid)
                 )
               }
+              open={true}
             >
               <SelectTrigger>
                 <SelectValue
@@ -50,6 +64,14 @@ const ManualRun: React.FC = () => {
                     {p.name}
                   </SelectItem>
                 ))}
+                {hasNextPage && (
+                  <p
+                    className="cursor-pointer text-center text-xs"
+                    onClick={() => !isFetching && fetchNextPage()}
+                  >
+                    {t("Load more")}
+                  </p>
+                )}
               </SelectContent>
             </Select>
           </div>
