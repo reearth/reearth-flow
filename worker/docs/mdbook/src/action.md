@@ -414,6 +414,39 @@ Echo features
 ### Category
 * Debug
 
+## ElevationExtractor
+### Type
+* processor
+### Description
+Extracts a feature’s first z coordinate value, storing it in an attribute.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElevationExtractorParam",
+  "type": "object",
+  "required": [
+    "outputAttribute"
+  ],
+  "properties": {
+    "outputAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## Extruder
 ### Type
 * processor
