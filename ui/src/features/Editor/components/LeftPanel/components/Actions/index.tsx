@@ -127,7 +127,6 @@ const ActionsList: React.FC = () => {
           <Input
             className="mx-auto my-2 h-7 w-full"
             placeholder={t("Search")}
-            // value={search}
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
