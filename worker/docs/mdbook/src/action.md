@@ -1340,6 +1340,15 @@ Intersection points are turned into point features that can contain the merged l
     "outputAttribute"
   ],
   "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
     "outputAttribute": {
       "$ref": "#/definitions/Attribute"
     }

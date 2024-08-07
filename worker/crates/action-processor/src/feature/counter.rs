@@ -140,8 +140,13 @@ impl Processor for FeatureCounter {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        if self.params.group_by.is_none() {
-            let count = self.counter.increment("_all");
+        if let Some(group_by) = &self.params.group_by {
+            let key = group_by
+                .iter()
+                .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
+                .collect::<Vec<_>>()
+                .join(",");
+            let count = self.counter.increment(&key);
             let mut new_row = feature.clone();
             new_row.insert(
                 self.params.output_attribute.clone(),
@@ -149,13 +154,7 @@ impl Processor for FeatureCounter {
             );
             fw.send(ctx.new_with_feature_and_port(new_row, DEFAULT_PORT.clone()));
         } else {
-            let group_by = self.params.group_by.as_ref().unwrap();
-            let key = group_by
-                .iter()
-                .map(|k| feature.attributes.get(k).unwrap().to_string())
-                .collect::<Vec<_>>()
-                .join(",");
-            let count = self.counter.increment(&key);
+            let count = self.counter.increment("_all");
             let mut new_row = feature.clone();
             new_row.insert(
                 self.params.output_attribute.clone(),

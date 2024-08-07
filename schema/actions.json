@@ -1350,6 +1350,15 @@
           "outputAttribute"
         ],
         "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
           "outputAttribute": {
             "$ref": "#/definitions/Attribute"
           }
