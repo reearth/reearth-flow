@@ -3,7 +3,6 @@ import {
   DeleteProject,
   GetProject,
   GetWorkspaceProjects,
-  GetWorkspaceProjectsInfinite,
   UpdateProject,
 } from "@flow/types";
 
@@ -14,7 +13,6 @@ import { useQueries } from "./useQueries";
 export const useProject = () => {
   const {
     createProjectMutation,
-    useGetProjectsQuery,
     useGetProjectsInfiniteQuery,
     useGetProjectByIdQuery,
     deleteProjectMutation,
@@ -33,20 +31,9 @@ export const useProject = () => {
     }
   };
 
-  const useGetWorkspaceProjects = (
-    workspaceId?: string
-  ): GetWorkspaceProjects => {
-    const { data, ...rest } = useGetProjectsQuery(workspaceId);
-    return {
-      projects: data?.projects,
-      ...data?.meta,
-      ...rest,
-    };
-  };
-
   const useGetWorkspaceProjectsInfinite = (
     workspaceId?: string
-  ): GetWorkspaceProjectsInfinite => {
+  ): GetWorkspaceProjects => {
     const { data, ...rest } = useGetProjectsInfiniteQuery(workspaceId);
     return {
       pages: data?.pages,
@@ -88,7 +75,6 @@ export const useProject = () => {
   };
 
   return {
-    useGetWorkspaceProjects,
     useGetWorkspaceProjectsInfinite,
     useGetProject,
     createProject,

@@ -19,7 +19,6 @@ import {
 
 enum ProjectQueryKeys {
   GetWorkspaceProjects = "getWorkspaceProjects",
-  GetWorkspaceProjectsInfinite = "getWorkspaceProjectsInfinite",
   GetProject = "getProject",
 }
 
@@ -54,31 +53,9 @@ export const useQueries = () => {
       }),
   });
 
-  const useGetProjectsQuery = (workspaceId?: string) =>
-    useQuery({
-      queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
-      queryFn: () =>
-        graphQLContext?.GetProjects({
-          workspaceId: workspaceId ?? "",
-          first: 15,
-        }),
-      enabled: !!workspaceId,
-      select: (data) => {
-        if (!data) return {};
-        const {
-          projects: { nodes, ...rest },
-        } = data;
-
-        const projects: Project[] = nodes
-          .filter(isDefined)
-          .map((project) => createNewProjectObject(project));
-        return { projects, meta: rest };
-      },
-    });
-
   const useGetProjectsInfiniteQuery = (workspaceId?: string) =>
     useInfiniteQuery({
-      queryKey: [ProjectQueryKeys.GetWorkspaceProjectsInfinite, workspaceId],
+      queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
       initialPageParam: null,
       queryFn: async ({ pageParam }) => {
         const data = await graphQLContext?.GetProjects({
@@ -154,7 +131,6 @@ export const useQueries = () => {
 
   return {
     createProjectMutation,
-    useGetProjectsQuery,
     useGetProjectsInfiniteQuery,
     useGetProjectByIdQuery,
     deleteProjectMutation,

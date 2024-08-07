@@ -13,11 +13,6 @@ export type Project = {
 };
 
 export type GetWorkspaceProjects = {
-  projects?: Project[];
-  isLoading: boolean;
-} & ApiResponse;
-
-export type GetWorkspaceProjectsInfinite = {
   pages?: ({ projects?: Project[] } | undefined)[];
   hasNextPage: boolean;
   fetchNextPage: () => void;
