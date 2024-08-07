@@ -1,6 +1,6 @@
 import { Plus } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import projectImage from "@flow/assets/project-screenshot.png"; // TODO: replace with actual project image
 import {
@@ -45,12 +45,14 @@ type Props = {
 const MainSection: React.FC<Props> = ({ workspace }) => {
   const t = useT();
   const { toast } = useToast();
+  const ref = useRef<HTMLDivElement>(null);
   const [currentProject, setCurrentProject] = useCurrentProject();
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
-  const { useGetWorkspaceProjects, deleteProject, updateProject } =
+  const { useGetWorkspaceProjectsInfinite, deleteProject, updateProject } =
     useProject();
   const [, setDialogType] = useDialogType();
-  const { projects } = useGetWorkspaceProjects(workspace.id);
+  const { pages, hasNextPage, isFetching, fetchNextPage } =
+    useGetWorkspaceProjectsInfinite(workspace.id);
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
 
@@ -105,6 +107,46 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
     return;
   };
 
+  const projects: Project[] | undefined = useMemo(
+    () =>
+      pages?.reduce(
+        (projects, page) => [
+          ...projects,
+          ...(page?.projects ? page.projects : []),
+        ],
+        [] as Project[]
+      ),
+    [pages]
+  );
+
+  // Auto fills the page
+  useEffect(() => {
+    if (
+      ref.current &&
+      ref.current?.scrollHeight <= document.documentElement.clientHeight &&
+      hasNextPage &&
+      !isFetching
+    ) {
+      fetchNextPage();
+    }
+  }, [isFetching, hasNextPage, ref, fetchNextPage]);
+
+  // Loads more projects as scroll reaches the bottom
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + document.documentElement.scrollTop + 5 >=
+          document.documentElement.scrollHeight &&
+        !isFetching &&
+        hasNextPage
+      ) {
+        fetchNextPage();
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isFetching, fetchNextPage, hasNextPage]);
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-8 p-8">
@@ -120,7 +162,10 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
           </Button>
         </div>
         <div className="flex flex-1 flex-col justify-between overflow-auto">
-          <div className="grid grid-cols-1 gap-4 overflow-auto sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div
+            className="grid grid-cols-1 gap-4 overflow-auto sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+            ref={ref}
+          >
             {projects?.map((p) => (
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger>
@@ -235,11 +280,6 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <div>
-        <p className="py-1 text-center font-extralight">
-          {t("Total Projects")}: {projects?.length ?? 0}
-        </p>
-      </div>
     </div>
   );
 };
