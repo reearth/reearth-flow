@@ -21,9 +21,15 @@ type Tab = "navigator" | "actions-list" | "resources";
 
 type Props = {
   nodes: Node[];
+  onNodesChange: (nodes: Node[]) => void;
+  onNodeLocking: (nodeId: string) => void;
 };
 
-const LeftPanel: React.FC<Props> = ({ nodes }) => {
+const LeftPanel: React.FC<Props> = ({
+  nodes,
+  onNodesChange,
+  onNodeLocking,
+}) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [isPanelOpen, setPanelOpen] = useState(false);
@@ -87,7 +93,13 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
       id: "actions-list",
       title: t("Actions list"),
       icon: <Lightning className="size-5" weight="thin" />,
-      component: <ActionsList />,
+      component: (
+        <ActionsList
+          nodes={nodes}
+          onNodesChange={onNodesChange}
+          onNodeLocking={onNodeLocking}
+        />
+      ),
     },
     {
       id: "resources",

@@ -2,20 +2,14 @@ import { XYPosition } from "@xyflow/react";
 import { debounce } from "lodash-es";
 import { useCallback, useEffect, useState } from "react";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  Input,
-} from "@flow/components";
+import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
 import { config } from "@flow/config";
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
-import type { Action, ActionNodeType, Node, Segregated } from "@flow/types";
+import type { Action, ActionNodeType, Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
 type Props = {

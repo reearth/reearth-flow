@@ -32,7 +32,11 @@ export default function Editor() {
   return (
     <div className="flex h-screen flex-col">
       <div className="relative flex flex-1">
-        <LeftPanel nodes={nodes} />
+        <LeftPanel
+          nodes={nodes}
+          onNodesChange={handleNodesUpdate}
+          onNodeLocking={handleNodeLocking}
+        />
         <div className="flex flex-1 flex-col">
           <OverlayUI
             hoveredDetails={hoveredDetails}

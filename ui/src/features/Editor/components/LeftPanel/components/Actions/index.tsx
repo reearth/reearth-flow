@@ -1,3 +1,4 @@
+import { useReactFlow } from "@xyflow/react";
 import { debounce } from "lodash-es";
 import { useCallback, useEffect, useState } from "react";
 
@@ -12,17 +13,34 @@ import {
   TabsList,
   TabsTrigger,
 } from "@flow/components";
+import ActionItem from "@flow/components/ActionItem";
+import { config } from "@flow/config";
+import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
+import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
-import type { Action, ActionsSegregated, Segregated } from "@flow/types";
+import type { Action, ActionsSegregated, Node, Segregated } from "@flow/types";
+import { randomID } from "@flow/utils";
 
 import ActionComponent from "./Action";
 
 type Ordering = "default" | "categorically" | "byType";
 
-const ActionsList: React.FC = () => {
+type Props = {
+  nodes: Node[];
+  onNodesChange: (nodes: Node[]) => void;
+  onNodeLocking: (nodeId: string) => void;
+};
+
+const ActionsList: React.FC<Props> = ({
+  nodes,
+  onNodesChange,
+  onNodeLocking,
+}) => {
   const t = useT();
   const { useGetActions, useGetActionsSegregated } = useAction();
+
+  const { screenToFlowPosition } = useReactFlow();
 
   const [selected, setSelected] = useState<string | undefined>(undefined);
 
@@ -61,6 +79,35 @@ const ActionsList: React.FC = () => {
       actions: actionsSegregated?.byType,
     },
   ];
+
+  const [handleSingleClick, handleDoubleClick] = useDoubleClick(
+    (name?: string) => {
+      setSelected((prevName) => (prevName === name ? undefined : name));
+    },
+    async (name?: string) => {
+      const { api } = config();
+      const action = await fetcher<Action>(`${api}/actions/${name}`);
+      if (!action) return;
+
+      const newNode: Node = {
+        id: randomID(),
+        type: action.type,
+        position: screenToFlowPosition({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+        }),
+        data: {
+          name: action.name,
+          inputs: [...action.inputPorts],
+          outputs: [...action.outputPorts],
+          status: "idle",
+          locked: false,
+          onDoubleClick: onNodeLocking,
+        },
+      };
+      onNodesChange(nodes.concat(newNode));
+    }
+  );
 
   const handleActionSelect = (name?: string) => {
     setSelected((prevName) => (prevName === name ? undefined : name));
@@ -140,10 +187,12 @@ const ActionsList: React.FC = () => {
           >
             {Array.isArray(actions) ? (
               actions.map((action) => (
-                <ActionComponent
+                <ActionItem
                   key={action.name}
                   action={action}
                   selected={selected === action.name}
+                  onSingleClick={handleSingleClick}
+                  onDoubleClick={handleDoubleClick}
                   onSelect={() => handleActionSelect(action.name)}
                 />
               ))
