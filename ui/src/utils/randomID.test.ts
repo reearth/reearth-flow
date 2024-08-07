@@ -1,7 +1,7 @@
 import { randomID } from "./randomID";
 
-test("random id with a default length of 10", () => {
-  expect(randomID().length).toBe(10);
+test("random id with a default length of 24", () => {
+  expect(randomID().length).toBe(24);
 });
 
 test("random id with a specified length of 4", () => {
