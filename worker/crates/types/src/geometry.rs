@@ -285,6 +285,7 @@ impl From<nusamai_plateau::appearance::Texture> for Texture {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Material {
     pub diffuse_color: Color,
     pub specular_color: Color,
@@ -320,6 +321,7 @@ impl From<nusamai_plateau::appearance::Material> for Material {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Appearance {
     pub material: Option<Material>,
 }
@@ -331,6 +333,7 @@ impl Appearance {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct CityGmlGeometry {
     pub features: Vec<GeometryFeature>,
     pub materials: Vec<Material>,

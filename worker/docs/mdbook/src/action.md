@@ -293,14 +293,19 @@ Buffers a geometry
   "title": "Bufferer",
   "type": "object",
   "required": [
-    "buffer_type",
-    "distance"
+    "bufferType",
+    "distance",
+    "interpolationAngle"
   ],
   "properties": {
-    "buffer_type": {
+    "bufferType": {
       "$ref": "#/definitions/BufferType"
     },
     "distance": {
+      "type": "number",
+      "format": "double"
+    },
+    "interpolationAngle": {
       "type": "number",
       "format": "double"
     }
