@@ -9,9 +9,17 @@ type Props = {
   action: Action;
   selected: boolean;
   onSelect: () => void;
+  onSingleClick?: (name?: string) => void;
+  onDoubleClick?: (name?: string) => void;
 };
 
-const ActionComponent: React.FC<Props> = ({ action, selected, onSelect }) => {
+const ActionComponent: React.FC<Props> = ({
+  action,
+  selected,
+  onSelect,
+  onSingleClick,
+  onDoubleClick,
+}) => {
   const { name, type } = action;
 
   const onDragStart = (
@@ -50,6 +58,8 @@ const ActionComponent: React.FC<Props> = ({ action, selected, onSelect }) => {
       action={action}
       selected={selected}
       onMouseDown={onSelect}
+      onSingleClick={onSingleClick}
+      onDoubleClick={onDoubleClick}
       onDragStart={(e) => onDragStart(e, name)}
       draggable
     />

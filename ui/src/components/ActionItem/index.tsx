@@ -1,18 +1,25 @@
+import { DragEvent } from "react";
+
 import { Action } from "@flow/types";
 
 type Props = {
   action: Action;
   selected: boolean | undefined;
+  draggable?: boolean;
+  onMouseDown?: () => void;
+  onDragStart?: (event: DragEvent<HTMLDivElement>, actionName: string) => void;
   onSingleClick?: (name?: string) => void;
   onDoubleClick?: (name?: string) => void;
-} & React.HTMLAttributes<HTMLDivElement>;
+};
 
 const ActionItem: React.FC<Props> = ({
   action,
   selected,
+  draggable,
+  onMouseDown,
+  onDragStart,
   onSingleClick,
   onDoubleClick,
-  ...divProps
 }) => {
   return (
     <div
@@ -20,7 +27,9 @@ const ActionItem: React.FC<Props> = ({
       className={`group cursor-pointer rounded px-2 ${selected ? "bg-primary text-accent-foreground" : "hover:bg-primary hover:text-accent-foreground"}`}
       onClick={() => onSingleClick?.(action.name)}
       onDoubleClick={() => onDoubleClick?.(action.name)}
-      {...divProps}
+      draggable={draggable}
+      onMouseDown={onMouseDown}
+      onDragStart={(e) => onDragStart?.(e, action.name)}
     >
       <div className="flex w-full justify-between gap-1 py-2">
         <div className="w-3/5 self-center break-words text-sm">

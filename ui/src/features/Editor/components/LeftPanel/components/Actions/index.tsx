@@ -187,7 +187,7 @@ const ActionsList: React.FC<Props> = ({
           >
             {Array.isArray(actions) ? (
               actions.map((action) => (
-                <ActionItem
+                <ActionComponent
                   key={action.name}
                   action={action}
                   selected={selected === action.name}
@@ -210,6 +210,8 @@ const ActionsList: React.FC<Props> = ({
                             key={action.name}
                             action={action}
                             selected={selected === action.name}
+                            onSingleClick={handleSingleClick}
+                            onDoubleClick={handleDoubleClick}
                             onSelect={() => handleActionSelect(action.name)}
                           />
                         ))}
