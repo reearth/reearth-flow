@@ -13,7 +13,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@flow/components";
-import ActionItem from "@flow/components/ActionItem";
 import { config } from "@flow/config";
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
