@@ -397,6 +397,14 @@ impl CityGmlGeometry {
             })
         })
     }
+
+    pub fn elevation(&self) -> f64 {
+        self.features
+            .first()
+            .and_then(|feature| feature.polygons.first())
+            .and_then(|poly| poly.exterior().0.first())
+            .map_or(0.0, |p| p.z)
+    }
 }
 
 impl From<CityGmlGeometry> for FlowGeometry2D {
