@@ -51,7 +51,6 @@ const ManualRun: React.FC = () => {
                   currentWorkspace?.projects?.find((p) => p.id === pid)
                 )
               }
-              open={true}
             >
               <SelectTrigger>
                 <SelectValue
