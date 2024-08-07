@@ -7,6 +7,8 @@ use crate::types::{
 
 use super::convex_hull::ConvexHull;
 
+const DEFAULT_INTERPOLATION_ANGLE: f64 = 0.1;
+
 pub trait Bufferable {
     fn to_polygon(&self, distance: f64, interpolation_angle: f64) -> Polygon2D<f64>;
 }
@@ -14,7 +16,7 @@ pub trait Bufferable {
 impl Bufferable for Coordinate2D<f64> {
     fn to_polygon(&self, distance: f64, interpolation_angle: f64) -> Polygon2D<f64> {
         let interpolation_angle = if interpolation_angle <= 0.0 {
-            0.1
+            DEFAULT_INTERPOLATION_ANGLE
         } else {
             interpolation_angle
         };
@@ -58,7 +60,7 @@ impl Bufferable for Polygon2D<f64> {
 
 #[cfg(test)]
 mod tests {
-    use crate::coord;
+    use crate::{algorithm::coords_iter::CoordsIter, coord};
 
     use super::*;
 
@@ -67,20 +69,28 @@ mod tests {
         let coord = coord! { x: 1.0, y: 1.0 };
         let polygon = coord.to_polygon(1.0, 22.5);
 
-        // Expected polygon with 4 segments (square around the point)
-        let expected_polygon = Polygon2D::new(
-            vec![(2.0, 1.0), (1.0, 2.0), (0.0, 1.0), (1.0, 0.0), (2.0, 1.0)].into(),
-            Vec::new(),
+        assert_eq!(
+            polygon
+                .exterior()
+                .coords_iter()
+                .collect::<Vec<Coordinate2D<f64>>>()
+                .len(),
+            6
         );
-        println!("{:?}", polygon);
-        println!("{:?}", expected_polygon);
     }
 
     #[test]
     fn test_linestring_to_polygon() {
         let line = LineString2D::new(vec![coord! { x: 0.0, y: 0.0}, coord! { x: 1.0, y: 1.0}]);
         let polygon = line.to_polygon(0.5, 22.5);
-        println!("{:?}", polygon);
+        assert_eq!(
+            polygon
+                .exterior()
+                .coords_iter()
+                .collect::<Vec<Coordinate2D<f64>>>()
+                .len(),
+            7
+        );
     }
     #[test]
     fn test_polygon_to_polygon() {
@@ -95,20 +105,14 @@ mod tests {
             .into(),
             Vec::new(),
         );
-        let buffered_polygon = polygon.to_polygon(0.005, 22.5);
-        // Expected polygon with 4 segments (square around the original polygon)
-        let expected_polygon = Polygon2D::new(
-            vec![
-                coord! { x: 0.5, y: -0.5 },
-                coord! { x: 1.5, y: -0.5 },
-                coord! { x: 1.5, y: 1.5 },
-                coord! { x: -0.5, y: 1.5 },
-                coord! { x: 0.5, y: -0.5 },
-            ]
-            .into(),
-            Vec::new(),
+        let polygon = polygon.to_polygon(0.005, 22.5);
+        assert_eq!(
+            polygon
+                .exterior()
+                .coords_iter()
+                .collect::<Vec<Coordinate2D<f64>>>()
+                .len(),
+            10
         );
-        println!("{:?}", buffered_polygon);
-        println!("{:?}", expected_polygon);
     }
 }
