@@ -14,15 +14,15 @@ enum ActionFetchKeys {
 
 const BASE_URL = config().api;
 
+const CHANGE_NAMES: Record<string, string> = {
+  processor: "transformer",
+  sink: "writer",
+  source: "reader",
+};
+
 const actionResponse = <T extends Action | Action[] | Segregated>(
   response: T
 ): T => {
-  const CHANGE_NAMES: Record<string, string> = {
-    processor: "transformer",
-    sink: "writer",
-    source: "reader",
-  };
-
   if (Array.isArray(response)) {
     return response.map((tr) => processAction(tr)) as T;
   } else if (typeof response?.name === "string") {
