@@ -237,5 +237,5 @@ graphs:
       - id: 9a374565-7d09-476c-975f-6d071a9658c5
         from: a5dfe7bf-e24a-48bb-b3d0-2312806cada3
         to: 2f03d753-a8f0-43bc-a85d-0c5554f93ddc
-        fromPort: line
+        fromPort: point
         toPort: default
