@@ -148,6 +148,27 @@ graphs:
         type: action
         action: Echo
 
+      - id: 28adf769-e6d6-4ee1-945a-828680190879
+        name: ElevationExtractor
+        type: action
+        action: ElevationExtractor
+        with:
+          outputAttribute: elevation
+
+      - id: 4e0f9087-321f-489d-bcbb-7b38e50d3c7c
+        name: Bufferer
+        type: action
+        action: Bufferer
+        with:
+          bufferType: area2d
+          distance: 0.005
+          interpolationAngle: 22.5
+
+      - id: d7f0130c-80bd-44ee-a1b3-e6988c916308
+        name: EchoIntersection
+        type: action
+        action: Echo
+
     edges:
       - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
@@ -238,4 +259,19 @@ graphs:
         from: a5dfe7bf-e24a-48bb-b3d0-2312806cada3
         to: 2f03d753-a8f0-43bc-a85d-0c5554f93ddc
         fromPort: point
+        toPort: default
+      - id: 6750a60d-509a-4081-9fbb-cf9474123b53
+        from: 52a4bcab-854d-41e8-a9b3-e391c79631a9
+        to: 28adf769-e6d6-4ee1-945a-828680190879
+        fromPort: hole
+        toPort: default
+      - id: de9a051c-4212-480d-98ca-f31f7c9ab1d9
+        from: 28adf769-e6d6-4ee1-945a-828680190879
+        to: 4e0f9087-321f-489d-bcbb-7b38e50d3c7c
+        fromPort: default
+        toPort: default
+      - id: 59f2c991-8606-49dc-9b18-df59328de4d2
+        from: 4e0f9087-321f-489d-bcbb-7b38e50d3c7c
+        to: d7f0130c-80bd-44ee-a1b3-e6988c916308
+        fromPort: default
         toPort: default

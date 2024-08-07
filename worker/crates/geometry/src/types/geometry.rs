@@ -22,6 +22,7 @@ use crate::utils::PointsCoplanar;
 static EPSILON: f64 = 1e-10;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
+#[serde(rename_all = "camelCase")]
 pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
     Point(Point<T, Z>),
     Line(Line<T, Z>),
