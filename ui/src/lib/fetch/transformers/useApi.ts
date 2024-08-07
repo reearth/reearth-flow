@@ -1,4 +1,4 @@
-import { GetAction, GetActions, GetActionSegregated } from "@flow/types";
+import { GetAction, GetActions, GetActionsSegregated } from "@flow/types";
 
 import { useFetch } from "./useFetch";
 
@@ -25,7 +25,7 @@ export const useAction = () => {
     };
   };
 
-  const useGetActionSegregated = (): GetActionSegregated => {
+  const useGetActionsSegregated = (): GetActionsSegregated => {
     const { data, ...rest } = useGetActionsSegregatedFetch();
     return {
       actions: data,
@@ -36,6 +36,6 @@ export const useAction = () => {
   return {
     useGetActions,
     useGetActionById,
-    useGetActionSegregated,
+    useGetActionsSegregated,
   };
 };

@@ -17,13 +17,19 @@ import type { Node } from "@flow/types";
 
 import { ActionsList, Resources } from "./components";
 
-type Tab = "navigator" | "action-list" | "resources";
+type Tab = "navigator" | "actions-list" | "resources";
 
 type Props = {
   nodes: Node[];
+  onNodesChange: (nodes: Node[]) => void;
+  onNodeLocking: (nodeId: string) => void;
 };
 
-const LeftPanel: React.FC<Props> = ({ nodes }) => {
+const LeftPanel: React.FC<Props> = ({
+  nodes,
+  onNodesChange,
+  onNodeLocking,
+}) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [isPanelOpen, setPanelOpen] = useState(false);
@@ -84,10 +90,16 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
       ),
     },
     {
-      id: "action-list",
-      title: t("Action list"),
+      id: "actions-list",
+      title: t("Actions list"),
       icon: <Lightning className="size-5" weight="thin" />,
-      component: <ActionsList />,
+      component: (
+        <ActionsList
+          nodes={nodes}
+          onNodesChange={onNodesChange}
+          onNodeLocking={onNodeLocking}
+        />
+      ),
     },
     {
       id: "resources",
@@ -110,7 +122,7 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
   return (
     <>
       <div
-        className="absolute left-12 z-10 flex h-full w-[300px] flex-1 flex-col gap-3 overflow-auto border-r bg-secondary transition-all"
+        className="absolute left-12 z-10 flex h-full w-[300px] flex-1 flex-col gap-3 overflow-auto border-r bg-background transition-all"
         style={{
           transform: `translateX(${isPanelOpen ? "8px" : "-100%"})`,
           transitionDuration: isPanelOpen ? "500ms" : "300ms",

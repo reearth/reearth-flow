@@ -32,13 +32,18 @@ export type NodeData = {
 
 export type NodePosition = { x: number; y: number };
 
-export type NodeType =
-  | "reader"
-  | "writer"
-  | "transformer"
-  | "batch"
-  | "note"
-  | "subworkflow";
+export const actionNodeTypes = ["reader", "writer", "transformer"] as const;
+
+export type ActionNodeType = (typeof actionNodeTypes)[number];
+
+export const nodeTypes = [
+  ...actionNodeTypes,
+  "batch",
+  "note",
+  "subworkflow",
+] as const;
+
+export type NodeType = (typeof nodeTypes)[number];
 
 export type Node = ReactFlowNode<NodeData>;
 

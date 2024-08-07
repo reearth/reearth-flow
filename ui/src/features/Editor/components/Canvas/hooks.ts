@@ -1,6 +1,6 @@
-import { DefaultEdgeOptions } from "@xyflow/react";
+import { DefaultEdgeOptions, XYPosition } from "@xyflow/react";
 
-import type { Edge, Node, Workflow } from "@flow/types";
+import type { ActionNodeType, Edge, Node, Workflow } from "@flow/types";
 
 import useEdges from "./useEdges";
 import useNodes from "./useNodes";
@@ -12,6 +12,7 @@ type Props = {
   onNodesUpdate: (newNodes: Node[]) => void;
   onEdgesUpdate: (newEdges: Edge[]) => void;
   onNodeLocking: (nodeId: string) => void;
+  onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
 export const defaultEdgeOptions: DefaultEdgeOptions = {
@@ -37,6 +38,7 @@ export default ({
   onNodeLocking,
   onNodesUpdate,
   onEdgesUpdate,
+  onNodePickerOpen,
 }: Props) => {
   const {
     handleNodesChange,
@@ -50,6 +52,7 @@ export default ({
     onNodesChange: onNodesUpdate,
     onEdgesChange: onEdgesUpdate,
     onNodeLocking,
+    onNodePickerOpen,
   });
 
   const { handleEdgesChange, handleConnect } = useEdges({
