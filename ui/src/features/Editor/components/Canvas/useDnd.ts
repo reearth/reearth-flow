@@ -1,9 +1,15 @@
-import { useReactFlow } from "@xyflow/react";
+import { useReactFlow, XYPosition } from "@xyflow/react";
 import { DragEvent, useCallback } from "react";
 
 import { config } from "@flow/config";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
-import { Action, Node } from "@flow/types";
+import {
+  nodeTypes,
+  type ActionNodeType,
+  type Action,
+  type Node,
+  type NodeType,
+} from "@flow/types";
 import { randomID } from "@flow/utils";
 
 import { baseBatchNode } from "./components/Nodes/BatchNode";
@@ -13,11 +19,17 @@ type Props = {
   nodes: Node[];
   onNodesChange: (nodes: Node[]) => void;
   onNodeLocking: (nodeId: string) => void;
+  onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
 // This is used for drag and drop functionality in to the canvas
 // This is not used for node dnd within the canvas. That is done internally by react-flow
-export default ({ nodes, onNodesChange, onNodeLocking }: Props) => {
+export default ({
+  nodes,
+  onNodesChange,
+  onNodeLocking,
+  onNodePickerOpen,
+}: Props) => {
   const { screenToFlowPosition } = useReactFlow();
   const { api } = config();
 
@@ -30,47 +42,75 @@ export default ({ nodes, onNodesChange, onNodeLocking }: Props) => {
     async (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault();
 
-      const actionName = event.dataTransfer.getData("application/reactflow");
-
-      // check if the dropped element is valid
-      if (typeof actionName === "undefined" || !actionName) return;
-
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
 
-      const action = await fetcher<Action>(`${api}/actions/${actionName}`);
-      if (!action) return;
+      const d = event.dataTransfer.getData("application/reactflow");
+
+      // check if the dropped element is valid
+      if (typeof d === "undefined" || !d) return;
 
       let newNode: Node = {
         id: randomID(),
-        type: action.type,
         position,
         data: {
-          name: action.name,
-          inputs: [...action.inputPorts],
-          outputs: [...action.outputPorts],
           status: "idle",
           locked: false,
           onDoubleClick: onNodeLocking,
         },
       };
 
-      if (action.type === "batch") {
-        newNode = { ...newNode, ...baseBatchNode };
-      }
+      if (nodeTypes.includes(d as NodeType)) {
+        console.log("actionName is a NodeType", d);
 
-      if (action.type === "note") {
         newNode = {
           ...newNode,
-          data: { ...newNode.data, ...baseNoteNode },
+          type: d,
+          data: {
+            ...newNode.data,
+            name: d,
+          },
+        };
+
+        if (d === "batch") {
+          newNode = { ...newNode, ...baseBatchNode };
+        } else if (d === "note") {
+          newNode = {
+            ...newNode,
+            data: { ...newNode.data, ...baseNoteNode },
+          };
+        } else {
+          onNodePickerOpen(position, d as ActionNodeType);
+          return;
+        }
+      } else {
+        const action = await fetcher<Action>(`${api}/actions/${d}`);
+        if (!action) return;
+
+        newNode = {
+          ...newNode,
+          type: action.type,
+          data: {
+            ...newNode.data,
+            name: action.name,
+            inputs: [...action.inputPorts],
+            outputs: [...action.outputPorts],
+          },
         };
       }
 
       onNodesChange(nodes.concat(newNode));
     },
-    [nodes, api, onNodeLocking, screenToFlowPosition, onNodesChange]
+    [
+      nodes,
+      api,
+      onNodeLocking,
+      screenToFlowPosition,
+      onNodesChange,
+      onNodePickerOpen,
+    ]
   );
 
   return { handleNodeDragOver, handleNodeDrop };

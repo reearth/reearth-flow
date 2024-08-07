@@ -143,7 +143,7 @@ const ActionsList: React.FC = () => {
               actions.map((action) => (
                 <ActionComponent
                   key={action.name}
-                  {...action}
+                  action={action}
                   selected={selected === action.name}
                   onSelect={() => handleActionSelect(action.name)}
                 />
@@ -160,7 +160,7 @@ const ActionsList: React.FC = () => {
                         {actions[key]?.map((action) => (
                           <ActionComponent
                             key={action.name}
-                            {...action}
+                            action={action}
                             selected={selected === action.name}
                             onSelect={() => handleActionSelect(action.name)}
                           />

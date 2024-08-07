@@ -2,21 +2,18 @@ import { Lightning } from "@phosphor-icons/react";
 import { type DragEvent, memo } from "react";
 import { createRoot } from "react-dom/client";
 
+import ActionItem from "@flow/components/ActionItem";
 import type { Action } from "@flow/types";
 
-type Props = Action & {
+type Props = {
+  action: Action;
   selected: boolean;
   onSelect: () => void;
 };
 
-const ActionComponent: React.FC<Props> = ({
-  name,
-  type,
-  description,
-  categories,
-  selected,
-  onSelect,
-}) => {
+const ActionComponent: React.FC<Props> = ({ action, selected, onSelect }) => {
+  const { name, type } = action;
+
   const onDragStart = (
     event: DragEvent<HTMLDivElement>,
     actionName: string
@@ -49,34 +46,13 @@ const ActionComponent: React.FC<Props> = ({
   };
 
   return (
-    <div
-      className={`group cursor-pointer rounded px-2 ${selected ? "bg-primary text-accent-foreground" : "hover:bg-primary hover:text-accent-foreground"}`}
+    <ActionItem
+      action={action}
+      selected={selected}
       onMouseDown={onSelect}
       onDragStart={(e) => onDragStart(e, name)}
       draggable
-    >
-      <div className="flex w-full justify-between gap-1 py-2">
-        <div className="w-3/5 self-center break-words text-sm">
-          <p className="self-center text-zinc-200">{name}</p>
-        </div>
-        <div
-          className={`self-center rounded border bg-popover p-1 align-middle`}
-        >
-          <p className="self-center text-xs capitalize text-zinc-200">{type}</p>
-        </div>
-      </div>
-      <div className="group-hover:block">
-        <div className="mb-2 text-xs leading-[0.85rem]">{description}</div>
-        <div className="flex flex-wrap gap-1 text-xs ">
-          {categories.map((c) => (
-            <div className="rounded border bg-popover p-[2px]" key={c}>
-              <p className="text-zinc-400">{c}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="border-b pb-2" />
-    </div>
+    />
   );
 };
 
