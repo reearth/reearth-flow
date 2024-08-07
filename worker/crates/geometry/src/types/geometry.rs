@@ -127,6 +127,42 @@ impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
     }
 }
 
+impl Geometry2D<f64> {
+    pub fn elevation(&self) -> f64 {
+        0.0
+    }
+}
+
+impl Geometry3D<f64> {
+    pub fn elevation(&self) -> f64 {
+        match self {
+            Self::Point(p) => p.z(),
+            Self::Line(l) => l.start.z,
+            Self::LineString(ls) => ls.0.first().map(|c| c.z).unwrap_or(0.0),
+            Self::Polygon(poly) => poly.exterior.0.first().map(|c| c.z).unwrap_or(0.0),
+            Self::MultiPoint(mpoint) => mpoint.0.first().map(|p| p.z()).unwrap_or(0.0),
+            Self::MultiLineString(mls) => mls
+                .0
+                .first()
+                .map(|ls| ls.0.first().map(|c| c.z).unwrap_or(0.0))
+                .unwrap_or(0.0),
+            Self::MultiPolygon(mpoly) => mpoly
+                .0
+                .first()
+                .map(|poly| poly.exterior.0.first().map(|c| c.z).unwrap_or(0.0))
+                .unwrap_or(0.0),
+            Self::Rect(rect) => rect.min.z,
+            Self::Triangle(triangle) => triangle.0.z,
+            Self::Solid(solid) => solid
+                .top
+                .first()
+                .map(|t| t.0.first().map(|c| c.z).unwrap_or(0.0))
+                .unwrap_or(0.0),
+            Self::GeometryCollection(gc) => gc.first().map(|g| g.elevation()).unwrap_or(0.0),
+        }
+    }
+}
+
 impl From<Geometry3D<f64>> for Geometry2D<f64> {
     fn from(geos: Geometry3D<f64>) -> Self {
         match geos {
