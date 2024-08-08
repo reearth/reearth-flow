@@ -57,7 +57,7 @@ nusamai-citygml = {git = "https://github.com/reearth/plateau-gis-converter", tag
 nusamai-geometry = {git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc2", features = ["serde"]}
 nusamai-plateau = {git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc2", features = ["serde"]}
 nusamai-projection = {git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc2"}
-nusamai-gltf = {git = "https://github.com/reearth/plateau-gis-converter", branch = "exports-nusamai-gltf"}
+nusamai-gltf = {git = "https://github.com/reearth/plateau-gis-converter", tag="v0.0.1-rc3"}
 
 Inflector = "0.11.4"
 approx = "0.5.1"

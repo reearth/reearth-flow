@@ -2008,7 +2008,7 @@ dependencies = [
 [[package]]
 name = "nusamai-geometry"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?branch=exports-nusamai-gltf#a816461ecf6f60a060ea47ad6a4e1d5bfedf2f66"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc3#c9e3f3d97998440b5f7b087226b1acedc876427a"
 dependencies = [
  "num-traits",
 ]
@@ -2016,13 +2016,13 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?branch=exports-nusamai-gltf#a816461ecf6f60a060ea47ad6a4e1d5bfedf2f66"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc3#c9e3f3d97998440b5f7b087226b1acedc876427a"
 dependencies = [
  "byteorder",
  "clap",
  "earcut",
  "indexmap 2.3.0",
- "nusamai-geometry 0.1.0 (git+https://github.com/reearth/plateau-gis-converter?branch=exports-nusamai-gltf)",
+ "nusamai-geometry 0.1.0 (git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc3)",
  "nusamai-gltf-json",
  "quick-xml",
  "serde_json",
@@ -2032,7 +2032,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?branch=exports-nusamai-gltf#a816461ecf6f60a060ea47ad6a4e1d5bfedf2f66"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc3#c9e3f3d97998440b5f7b087226b1acedc876427a"
 dependencies = [
  "cesiumtiles",
  "serde",

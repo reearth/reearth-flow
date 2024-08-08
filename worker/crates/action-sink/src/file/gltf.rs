@@ -353,8 +353,6 @@ fn handle_city_gml_geometry(
         ..Default::default()
     };
 
-    println!("gltf: {:?}", gltf);
-
     let gltf_json = serde_json::to_value(&gltf).unwrap();
 
     let buf = gltf_json.to_string().as_bytes().to_owned();
