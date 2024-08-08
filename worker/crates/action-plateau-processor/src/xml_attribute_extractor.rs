@@ -442,13 +442,13 @@ impl ProcessorFactory for XmlAttributeExtractorFactory {
         let params: XmlAttributeExtractorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::XmlAttributeExtractorFactory(format!(
-                    "Failed to serialize with: {}",
+                    "Failed to serialize `with` parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 PlateauProcessorError::XmlAttributeExtractorFactory(format!(
-                    "Failed to deserialize with: {}",
+                    "Failed to deserialize `with` parameter: {}",
                     e
                 ))
             })?
