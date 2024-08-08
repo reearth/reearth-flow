@@ -80,6 +80,19 @@ fn handle_city_gml_geometry(
 
     let materials = city_gml.materials;
     let features = city_gml.features;
+    let polygon_uv = city_gml.polygon_uv;
+
+    let mut u: f64 = 0.0;
+    let mut v: f64 = 0.0;
+
+    if let Some(polygon_uv) = polygon_uv {
+        polygon_uv.into_iter().for_each(|c| {
+            c.exterior().into_iter().for_each(|c| {
+                u = c.x;
+                v = c.y;
+            });
+        });
+    }
 
     for (index, feature) in features.iter().enumerate() {
         for poly in feature.polygons.iter() {
@@ -101,8 +114,8 @@ fn handle_city_gml_geometry(
                         (nx as f32).to_bits(),
                         (ny as f32).to_bits(),
                         (nz as f32).to_bits(),
-                        (x as f32).to_bits(), // TODO
-                        (y as f32).to_bits(), // TODO
+                        (u as f32).to_bits(),
+                        (v as f32).to_bits(),
                         (index as f32).to_bits(),
                     ];
                     let (_, _) = vertices.insert_full(vbits);
@@ -230,7 +243,7 @@ fn handle_city_gml_geometry(
             gltf_primitives.push(MeshPrimitive {
                 attributes: attributes.into_iter().collect(),
                 indices: Some(gltf_accessors.len() as u32 - 1),
-                material: Some(mat_idx as u32), // TODO
+                material: Some(mat_idx as u32),
                 mode: PrimitiveMode::Triangles,
                 extensions: extensions::mesh::MeshPrimitive {
                     ext_mesh_features: ext_mesh_features::ExtMeshFeatures {
@@ -288,7 +301,7 @@ fn handle_city_gml_geometry(
         .into_iter()
         .map(|img| img.to_gltf(&mut gltf_buffer_views, &mut bin_content))
         .collect::<Result<Vec<Image>, std::io::Error>>()
-        .unwrap(); // TODO unwrap
+        .map_err(crate::errors::SinkError::file_writer)?;
 
     let mut gltf_meshes = vec![];
     if !gltf_primitives.is_empty() {
