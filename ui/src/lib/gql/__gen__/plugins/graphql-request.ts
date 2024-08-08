@@ -537,10 +537,11 @@ export type CreateProjectMutation = { __typename?: 'Mutation', createProject?: {
 export type GetProjectsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
   first: Scalars['Int']['input'];
+  after?: InputMaybe<Scalars['Cursor']['input']>;
 }>;
 
 
-export type GetProjectsQuery = { __typename?: 'Query', projects: { __typename?: 'ProjectConnection', totalCount: number, nodes: Array<{ __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string } | null>, pageInfo: { __typename?: 'PageInfo', startCursor?: any | null, endCursor?: any | null, hasNextPage: boolean, hasPreviousPage: boolean } } };
+export type GetProjectsQuery = { __typename?: 'Query', projects: { __typename?: 'ProjectConnection', totalCount: number, nodes: Array<{ __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string } | null>, pageInfo: { __typename?: 'PageInfo', endCursor?: any | null, hasNextPage: boolean } } };
 
 export type GetProjectByIdQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
@@ -594,7 +595,7 @@ export type CreateWorkspaceMutation = { __typename?: 'Mutation', createWorkspace
 export type GetWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetWorkspacesQuery = { __typename?: 'Query', me?: { __typename?: 'Me', workspaces: Array<{ __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> }> } | null };
+export type GetWorkspacesQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, workspaces: Array<{ __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> }> } | null };
 
 export type GetWorkspaceByIdQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -674,17 +675,15 @@ export const CreateProjectDocument = gql`
 }
     ${ProjectFragmentDoc}`;
 export const GetProjectsDocument = gql`
-    query GetProjects($workspaceId: ID!, $first: Int!) {
-  projects(workspaceId: $workspaceId, first: $first) {
+    query GetProjects($workspaceId: ID!, $first: Int!, $after: Cursor) {
+  projects(workspaceId: $workspaceId, first: $first, after: $after) {
     totalCount
     nodes {
       ...Project
     }
     pageInfo {
-      startCursor
       endCursor
       hasNextPage
-      hasPreviousPage
     }
   }
 }
@@ -755,6 +754,7 @@ export const CreateWorkspaceDocument = gql`
 export const GetWorkspacesDocument = gql`
     query GetWorkspaces {
   me {
+    id
     workspaces {
       ...Workspace
     }

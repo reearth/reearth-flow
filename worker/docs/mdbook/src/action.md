@@ -6,7 +6,35 @@
 ### Description
 Overlays an area on another area
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AreaOnAreaOverlayerParam",
+  "type": "object",
+  "required": [
+    "outputAttribute"
+  ],
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "outputAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -293,14 +321,19 @@ Buffers a geometry
   "title": "Bufferer",
   "type": "object",
   "required": [
-    "buffer_type",
-    "distance"
+    "bufferType",
+    "distance",
+    "interpolationAngle"
   ],
   "properties": {
-    "buffer_type": {
+    "bufferType": {
       "$ref": "#/definitions/BufferType"
     },
     "distance": {
+      "type": "number",
+      "format": "double"
+    },
+    "interpolationAngle": {
       "type": "number",
       "format": "double"
     }
@@ -413,6 +446,39 @@ Echo features
 ### Output Ports
 ### Category
 * Debug
+
+## ElevationExtractor
+### Type
+* processor
+### Description
+Extracts a feature’s first z coordinate value, storing it in an attribute.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElevationExtractorParam",
+  "type": "object",
+  "required": [
+    "outputAttribute"
+  ],
+  "properties": {
+    "outputAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
 
 ## Extruder
 ### Type
@@ -1027,10 +1093,10 @@ Coerces the geometry of a feature to a specific geometry
   "title": "GeometryCoercer",
   "type": "object",
   "required": [
-    "coercer_type"
+    "coercerType"
   ],
   "properties": {
-    "coercer_type": {
+    "coercerType": {
       "$ref": "#/definitions/CoercerType"
     }
   },
@@ -1341,6 +1407,15 @@ Intersection points are turned into point features that can contain the merged l
     "outputAttribute"
   ],
   "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
     "outputAttribute": {
       "$ref": "#/definitions/Attribute"
     }

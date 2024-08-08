@@ -12,7 +12,7 @@ import {
 } from "@xyflow/react";
 import { MouseEvent, useCallback } from "react";
 
-import type { Edge, Node } from "@flow/types";
+import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import useBatch from "./useBatch";
 import useDnd from "./useDnd";
@@ -23,6 +23,7 @@ type Props = {
   onNodesChange: (newNodes: Node[]) => void;
   onEdgesChange: (edges: Edge[]) => void;
   onNodeLocking: (nodeId: string) => void;
+  onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
 export default ({
@@ -31,6 +32,7 @@ export default ({
   onNodesChange,
   onEdgesChange,
   onNodeLocking,
+  onNodePickerOpen,
 }: Props) => {
   const { isNodeIntersecting } = useReactFlow();
   const { handleNodeDropInBatch } = useBatch();
@@ -39,11 +41,12 @@ export default ({
     nodes,
     onNodesChange,
     onNodeLocking,
+    onNodePickerOpen,
   });
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
     (changes) => onNodesChange(applyNodeChanges<Node>(changes, nodes)),
-    [nodes, onNodesChange],
+    [nodes, onNodesChange]
   );
 
   const handleNodesDelete = useCallback(
@@ -57,7 +60,7 @@ export default ({
           const connectedEdges = getConnectedEdges([node], edges);
 
           const remainingEdges = acc.filter(
-            (edge) => !connectedEdges.includes(edge),
+            (edge) => !connectedEdges.includes(edge)
           );
 
           const createdEdges = incomers.flatMap(({ id: source }) =>
@@ -65,14 +68,14 @@ export default ({
               id: `${source}->${target}`,
               source,
               target,
-            })),
+            }))
           );
 
           return [...remainingEdges, ...createdEdges];
-        }, edges),
+        }, edges)
       );
     },
-    [edges, nodes, onEdgesChange],
+    [edges, nodes, onEdgesChange]
   );
 
   const handleNodeDropOnEdge = useCallback(
@@ -83,7 +86,7 @@ export default ({
 
       // Make sure dropped node is empty
       const connectedEdges = edges.filter(
-        (e) => e.source === droppedNode.id || e.target === droppedNode.id,
+        (e) => e.source === droppedNode.id || e.target === droppedNode.id
       );
       if (connectedEdges && connectedEdges.length > 0) return;
 
@@ -138,7 +141,7 @@ export default ({
           isNodeIntersecting(
             droppedNode,
             { x: labelX - 30, y: labelY - 30, width: 60, height: 60 },
-            true,
+            true
           )
         ) {
           // remove previous edge
@@ -172,7 +175,7 @@ export default ({
         }
       }
     },
-    [edges, isNodeIntersecting, nodes, onEdgesChange],
+    [edges, isNodeIntersecting, nodes, onEdgesChange]
   );
 
   const handleNodeDragStop = useCallback(
@@ -184,7 +187,7 @@ export default ({
         }
       }
     },
-    [handleNodeDropInBatch, handleNodeDropOnEdge, nodes, onNodesChange],
+    [handleNodeDropInBatch, handleNodeDropOnEdge, nodes, onNodesChange]
   );
 
   return {

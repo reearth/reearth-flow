@@ -22,6 +22,7 @@ use crate::utils::PointsCoplanar;
 static EPSILON: f64 = 1e-10;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
+#[serde(rename_all = "camelCase")]
 pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
     Point(Point<T, Z>),
     Line(Line<T, Z>),
@@ -53,6 +54,112 @@ impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
             Geometry::Triangle(_) => "Triangle",
             Geometry::Solid(_) => "Solid",
             Geometry::GeometryCollection(_) => "GeometryCollection",
+        }
+    }
+
+    pub fn as_point(&self) -> Option<Point<T, Z>> {
+        match self {
+            Geometry::Point(p) => Some(*p),
+            _ => None,
+        }
+    }
+
+    pub fn as_line(&self) -> Option<Line<T, Z>> {
+        match self {
+            Geometry::Line(l) => Some(*l),
+            _ => None,
+        }
+    }
+
+    pub fn as_line_string(&self) -> Option<LineString<T, Z>> {
+        match self {
+            Geometry::LineString(ls) => Some(ls.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_multi_line_string(&self) -> Option<MultiLineString<T, Z>> {
+        match self {
+            Geometry::MultiLineString(mls) => Some(mls.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_polygon(&self) -> Option<Polygon<T, Z>> {
+        match self {
+            Geometry::Polygon(p) => Some(p.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_multi_polygon(&self) -> Option<MultiPolygon<T, Z>> {
+        match self {
+            Geometry::MultiPolygon(mp) => Some(mp.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_rect(&self) -> Option<Rect<T, Z>> {
+        match self {
+            Geometry::Rect(rect) => Some(*rect),
+            _ => None,
+        }
+    }
+
+    pub fn as_triangle(&self) -> Option<Triangle<T, Z>> {
+        match self {
+            Geometry::Triangle(triangle) => Some(*triangle),
+            _ => None,
+        }
+    }
+
+    pub fn as_solid(&self) -> Option<Solid<T, Z>> {
+        match self {
+            Geometry::Solid(solid) => Some(solid.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_geometry_collection(&self) -> Option<Vec<Geometry<T, Z>>> {
+        match self {
+            Geometry::GeometryCollection(gc) => Some(gc.clone()),
+            _ => None,
+        }
+    }
+}
+
+impl Geometry2D<f64> {
+    pub fn elevation(&self) -> f64 {
+        0.0
+    }
+}
+
+impl Geometry3D<f64> {
+    pub fn elevation(&self) -> f64 {
+        match self {
+            Self::Point(p) => p.z(),
+            Self::Line(l) => l.start.z,
+            Self::LineString(ls) => ls.0.first().map(|c| c.z).unwrap_or(0.0),
+            Self::Polygon(poly) => poly.exterior.0.first().map(|c| c.z).unwrap_or(0.0),
+            Self::MultiPoint(mpoint) => mpoint.0.first().map(|p| p.z()).unwrap_or(0.0),
+            Self::MultiLineString(mls) => mls
+                .0
+                .first()
+                .map(|ls| ls.0.first().map(|c| c.z).unwrap_or(0.0))
+                .unwrap_or(0.0),
+            Self::MultiPolygon(mpoly) => mpoly
+                .0
+                .first()
+                .map(|poly| poly.exterior.0.first().map(|c| c.z).unwrap_or(0.0))
+                .unwrap_or(0.0),
+            Self::Rect(rect) => rect.min.z,
+            Self::Triangle(triangle) => triangle.0.z,
+            Self::Solid(solid) => solid
+                .top
+                .first()
+                .map(|t| t.0.first().map(|c| c.z).unwrap_or(0.0))
+                .unwrap_or(0.0),
+            Self::GeometryCollection(gc) => gc.first().map(|g| g.elevation()).unwrap_or(0.0),
         }
     }
 }

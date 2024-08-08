@@ -1,9 +1,9 @@
-import { useReactFlow } from "@xyflow/react";
+import { useReactFlow, XYPosition } from "@xyflow/react";
 import { MouseEvent, useCallback, useState } from "react";
 
 import { useYjsStore } from "@flow/lib/yjs";
 import { useCurrentWorkflowId } from "@flow/stores";
-import type { Edge, Node } from "@flow/types";
+import type { ActionNodeType, Edge, Node } from "@flow/types";
 import { cancellableDebounce } from "@flow/utils";
 
 export default () => {
@@ -15,7 +15,7 @@ export default () => {
       if (!id) return setCurrentWorkflowId(undefined);
       setCurrentWorkflowId(id);
     },
-    [setCurrentWorkflowId],
+    [setCurrentWorkflowId]
   );
 
   const {
@@ -36,7 +36,7 @@ export default () => {
 
   // Can have only one node locked at a time (locally)
   const [locallyLockedNode, setLocallyLockedNode] = useState<Node | undefined>(
-    undefined,
+    undefined
   );
 
   // consider making a node context and supplying vars and functions like this to the nodes that way
@@ -61,25 +61,43 @@ export default () => {
             });
 
             setLocallyLockedNode((lln) =>
-              lln?.id === newNode.id ? undefined : newNode,
+              lln?.id === newNode.id ? undefined : newNode
             );
 
             return newNode;
           }
           return n;
-        }),
+        })
       );
     },
-    [getNodes, handleNodesUpdate],
+    [getNodes, handleNodesUpdate]
   );
 
   const [hoveredDetails, setHoveredDetails] = useState<
     Node | Edge | undefined
   >();
 
+  const [nodePickerOpen, setNodePickerOpen] = useState<
+    { position: XYPosition; nodeType: ActionNodeType } | undefined
+  >(undefined);
+
+  const handleNodePickerOpen = useCallback(
+    (position?: XYPosition, nodeType?: ActionNodeType) => {
+      setNodePickerOpen(
+        !position || !nodeType ? undefined : { position, nodeType }
+      );
+    },
+    []
+  );
+
+  const handleNodePickerClose = useCallback(
+    () => setNodePickerOpen(undefined),
+    []
+  );
+
   const hoverActionDebounce = cancellableDebounce(
     (callback: () => void) => callback(),
-    100,
+    100
   );
 
   const handleNodeHover = useCallback(
@@ -91,7 +109,7 @@ export default () => {
         setHoveredDetails(node);
       }
     },
-    [hoveredDetails, hoverActionDebounce],
+    [hoveredDetails, hoverActionDebounce]
   );
 
   const handleEdgeHover = useCallback(
@@ -102,7 +120,7 @@ export default () => {
         setHoveredDetails(edge);
       }
     },
-    [hoveredDetails],
+    [hoveredDetails]
   );
 
   return {
@@ -113,12 +131,15 @@ export default () => {
     lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,
+    nodePickerOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
     handleWorkflowChange: handleWorkflowIdChange,
     handleNodesUpdate,
     handleNodeHover,
     handleNodeLocking,
+    handleNodePickerOpen,
+    handleNodePickerClose,
     handleEdgesUpdate,
     handleEdgeHover,
   };

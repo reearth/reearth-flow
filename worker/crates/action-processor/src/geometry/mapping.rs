@@ -8,9 +8,9 @@ use super::{
     bufferer::BuffererFactory, center_point_replacer::CenterPointReplacerFactory,
     clipper::ClipperFactory, closed_curve_filter::ClosedCurveFilterFactory,
     coercer::GeometryCoercerFactory, coordinate_system_setter::CoordinateSystemSetterFactory,
-    extractor::GeometryExtractorFactory, extruder::ExtruderFactory, filter::GeometryFilterFactory,
-    hole_counter::HoleCounterFactory, hole_extractor::HoleExtractorFactory,
-    line_on_line_overlayer::LineOnLineOverlayerFactory,
+    elevation_extractor::ElevationExtractorFactory, extractor::GeometryExtractorFactory,
+    extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
+    hole_extractor::HoleExtractorFactory, line_on_line_overlayer::LineOnLineOverlayerFactory,
     orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
     refiner::RefinerFactory, replacer::GeometryReplacerFactory, reprojector::ReprojectorFactory,
     splitter::GeometrySplitterFactory,
@@ -49,6 +49,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<ClipperFactory>::default(),
         Box::<RefinerFactory>::default(),
         Box::<GeometryValueFilterFactory>::default(),
+        Box::<ElevationExtractorFactory>::default(),
     ];
     factories
         .into_iter()

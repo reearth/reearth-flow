@@ -4,6 +4,7 @@ use reearth_flow_geometry::algorithm::bufferable::Bufferable;
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_geometry::types::line_string::LineString2D;
+use reearth_flow_geometry::types::polygon::Polygon2D;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -83,9 +84,11 @@ enum BufferType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct Bufferer {
     buffer_type: BufferType,
     distance: f64,
+    interpolation_angle: f64,
 }
 
 impl Processor for Bufferer {
@@ -148,7 +151,16 @@ impl Bufferer {
                     let mut feature = feature.clone();
                     let mut geometry = geometry.clone();
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                        line_string.to_polygon(self.distance, 1),
+                        line_string.to_polygon(self.distance, self.interpolation_angle),
+                    ));
+                    feature.geometry = Some(geometry);
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
+                Geometry2D::Polygon(polygon) => {
+                    let mut feature = feature.clone();
+                    let mut geometry = geometry.clone();
+                    geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                        polygon.to_polygon(self.distance, self.interpolation_angle),
                     ));
                     feature.geometry = Some(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -175,7 +187,17 @@ impl Bufferer {
                     let mut geometry = geometry.clone();
                     let line_string: LineString2D<f64> = line_string.clone().into();
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                        line_string.to_polygon(self.distance, 1),
+                        line_string.to_polygon(self.distance, self.interpolation_angle),
+                    ));
+                    feature.geometry = Some(geometry);
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
+                Geometry3D::Polygon(polygon) => {
+                    let mut feature = feature.clone();
+                    let mut geometry = geometry.clone();
+                    let polygon: Polygon2D<f64> = polygon.clone().into();
+                    geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                        polygon.to_polygon(self.distance, self.interpolation_angle),
                     ));
                     feature.geometry = Some(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));

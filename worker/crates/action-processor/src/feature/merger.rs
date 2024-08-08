@@ -60,10 +60,16 @@ impl ProcessorFactory for FeatureMergerFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: FeatureMergerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                FeatureProcessorError::MergerFactory(format!("Failed to serialize with: {}", e))
+                FeatureProcessorError::MergerFactory(format!(
+                    "Failed to serialize `with` parameter: {}",
+                    e
+                ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                FeatureProcessorError::MergerFactory(format!("Failed to deserialize with: {}", e))
+                FeatureProcessorError::MergerFactory(format!(
+                    "Failed to deserialize `with` parameter: {}",
+                    e
+                ))
             })?
         } else {
             return Err(FeatureProcessorError::MergerFactory(
@@ -190,8 +196,11 @@ impl Processor for FeatureMerger {
                 continue;
             };
 
-            for supplier_feature in supplier_features {
+            for (idx, supplier_feature) in supplier_features.iter().enumerate() {
                 let mut merged_feature = request_feature.clone();
+                if idx > 0 {
+                    merged_feature.id = uuid::Uuid::new_v4();
+                }
                 merged_feature
                     .attributes
                     .extend(supplier_feature.attributes.clone());

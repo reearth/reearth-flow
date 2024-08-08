@@ -12,18 +12,18 @@ export const Route = createFileRoute("/")({
 function Index() {
   const navigate = useNavigate();
   const { useGetMe } = useUser();
-  const { me, isLoading } = useGetMe();
+  const { me, isLoading, isError } = useGetMe();
 
   useEffect(() => {
     if (!me || !me?.myWorkspaceId) return;
     navigate({ to: `/workspace/${me?.myWorkspaceId}`, replace: true });
   }, [me, navigate]);
 
-  return isLoading ? (
-    <Loading />
-  ) : !me || !me?.myWorkspaceId ? (
+  return !isLoading && (isError || !me || !me?.myWorkspaceId) ? (
     <ErrorPage errorMessage={"Could not fetch user"} />
-  ) : null;
+  ) : (
+    <Loading />
+  );
 }
 
 function ErrorPage({ errorMessage }: { errorMessage: string }) {

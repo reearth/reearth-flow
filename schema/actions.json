@@ -4,7 +4,33 @@
       "name": "AreaOnAreaOverlayer",
       "type": "processor",
       "description": "Overlays an area on another area",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AreaOnAreaOverlayerParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "default"
@@ -294,14 +320,19 @@
         "title": "Bufferer",
         "type": "object",
         "required": [
-          "buffer_type",
-          "distance"
+          "bufferType",
+          "distance",
+          "interpolationAngle"
         ],
         "properties": {
-          "buffer_type": {
+          "bufferType": {
             "$ref": "#/definitions/BufferType"
           },
           "distance": {
+            "type": "number",
+            "format": "double"
+          },
+          "interpolationAngle": {
             "type": "number",
             "format": "double"
           }
@@ -423,6 +454,39 @@
       "outputPorts": [],
       "categories": [
         "Debug"
+      ]
+    },
+    {
+      "name": "ElevationExtractor",
+      "type": "processor",
+      "description": "Extracts a feature’s first z coordinate value, storing it in an attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ElevationExtractorParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
       ]
     },
     {
@@ -1031,10 +1095,10 @@
         "title": "GeometryCoercer",
         "type": "object",
         "required": [
-          "coercer_type"
+          "coercerType"
         ],
         "properties": {
-          "coercer_type": {
+          "coercerType": {
             "$ref": "#/definitions/CoercerType"
           }
         },
@@ -1351,6 +1415,15 @@
           "outputAttribute"
         ],
         "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
           "outputAttribute": {
             "$ref": "#/definitions/Attribute"
           }

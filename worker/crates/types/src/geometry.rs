@@ -30,6 +30,29 @@ pub enum GeometryValue {
     FlowGeometry3D(FlowGeometry3D),
 }
 
+impl GeometryValue {
+    pub fn as_flow_geometry_2d(&self) -> Option<&FlowGeometry2D> {
+        match self {
+            Self::FlowGeometry2D(geometry) => Some(geometry),
+            _ => None,
+        }
+    }
+
+    pub fn as_flow_geometry_3d(&self) -> Option<&FlowGeometry3D> {
+        match self {
+            Self::FlowGeometry3D(geometry) => Some(geometry),
+            _ => None,
+        }
+    }
+
+    pub fn as_citygml_geometry(&self) -> Option<&CityGmlGeometry> {
+        match self {
+            Self::CityGmlGeometry(geometry) => Some(geometry),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Geometry {
     pub epsg: Option<EpsgCode>,
@@ -278,6 +301,7 @@ impl From<nusamai_plateau::appearance::Texture> for Texture {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Material {
     pub diffuse_color: Color,
     pub specular_color: Color,
@@ -346,6 +370,7 @@ impl From<nusamai_plateau::appearance::Material> for Material {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Appearance {
     pub material: Option<Material>,
 }
@@ -357,6 +382,7 @@ impl Appearance {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct CityGmlGeometry {
     pub features: Vec<GeometryFeature>,
     pub materials: Vec<Material>,
@@ -422,6 +448,14 @@ impl CityGmlGeometry {
                 result.is_some()
             })
         })
+    }
+
+    pub fn elevation(&self) -> f64 {
+        self.features
+            .first()
+            .and_then(|feature| feature.polygons.first())
+            .and_then(|poly| poly.exterior().0.first())
+            .map_or(0.0, |p| p.z)
     }
 }
 
