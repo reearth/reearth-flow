@@ -9,8 +9,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          "hover:bg-primary/90 bg-primary text-primary-foreground shadow",
+        default: "hover:bg-accent-foreground/40 bg-accent shadow",
         destructive:
           "hover:bg-destructive/90 bg-destructive text-destructive-foreground shadow-sm",
         outline:
@@ -31,7 +30,7 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  },
+  }
 );
 
 export type ButtonProps = {
@@ -54,7 +53,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       />
     );
-  },
+  }
 );
 Button.displayName = "Button";
 
