@@ -71,8 +71,8 @@ fn handle_city_gml_geometry(
     let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default();
     let mut primitives: Primitives = Default::default();
 
-    let schema = nusamai_citygml::schema::Schema::default();
-    let metadata_encoder = MetadataEncoder::new(&schema);
+    // let schema = nusamai_citygml::schema::Schema::default();
+    let metadata_encoder = MetadataEncoder::new();
 
     let materials = city_gml.materials;
     let features = city_gml.features;
