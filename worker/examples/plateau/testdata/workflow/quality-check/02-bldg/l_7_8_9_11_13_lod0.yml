@@ -164,6 +164,15 @@ graphs:
           distance: 0.005
           interpolationAngle: 22.5
 
+      - id: 819887d8-d24d-4a66-b39c-796bb39a0a78
+        name: AreaOnAreaOverlayer
+        type: action
+        action: AreaOnAreaOverlayer
+        with:
+          groupBy:
+            - surfaceId
+          outputAttribute: overlap
+
       - id: d7f0130c-80bd-44ee-a1b3-e6988c916308
         name: EchoIntersection
         type: action
@@ -272,6 +281,13 @@ graphs:
         toPort: default
       - id: 59f2c991-8606-49dc-9b18-df59328de4d2
         from: 4e0f9087-321f-489d-bcbb-7b38e50d3c7c
-        to: d7f0130c-80bd-44ee-a1b3-e6988c916308
+        to: 819887d8-d24d-4a66-b39c-796bb39a0a78
         fromPort: default
         toPort: default
+      - id: 5eb5c4a5-77a7-47fd-a752-51e8ae223d57
+        from: 819887d8-d24d-4a66-b39c-796bb39a0a78
+        to: d7f0130c-80bd-44ee-a1b3-e6988c916308
+        fromPort: area
+        toPort: default
+
+
