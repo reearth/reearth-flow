@@ -36,6 +36,12 @@ tokio.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
 uuid.workspace = true
+nusamai-gltf.workspace = true
+nusamai-citygml.workspace = true
+indexmap.workspace = true
+ahash.workspace = true
+byteorder.workspace = true
+earcut.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true

@@ -1071,7 +1071,8 @@
               "csv",
               "tsv",
               "json",
-              "excel"
+              "excel",
+              "gltf"
             ]
           }
         }

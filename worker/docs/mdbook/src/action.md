@@ -1068,7 +1068,8 @@ Writes features to a file
         "csv",
         "tsv",
         "json",
-        "excel"
+        "excel",
+        "gltf"
       ]
     }
   }
