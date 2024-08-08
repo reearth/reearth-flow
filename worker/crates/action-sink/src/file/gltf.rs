@@ -40,22 +40,18 @@ pub(super) fn write_gltf(
         let geometry_value = geometry.value.clone();
         match geometry_value {
             geomotry_types::GeometryValue::None => {
-                println!("Null geometry");
                 return Err(SinkError::FileWriter("Unsupported input".to_string()));
             }
             geomotry_types::GeometryValue::CityGmlGeometry(city_gml) => {
-                println!("CityGmlGeometry: {:?}", city_gml);
                 match handle_city_gml_geometry(output, storage_resolver.clone(), city_gml) {
                     Ok(_) => println!("Success"),
                     Err(e) => println!("Error: {:?}", e),
                 }
             }
-            geomotry_types::GeometryValue::FlowGeometry2D(flow_geom_2d) => {
-                println!("FlowGeometry2D: {:?}", flow_geom_2d);
+            geomotry_types::GeometryValue::FlowGeometry2D(_flow_geom_2d) => {
                 return Err(SinkError::FileWriter("Unsupported input".to_string()));
             }
-            geomotry_types::GeometryValue::FlowGeometry3D(flow_geom_3d) => {
-                println!("FlowGeometry3D: {:?}", flow_geom_3d);
+            geomotry_types::GeometryValue::FlowGeometry3D(_flow_geom_3d) => {
                 return Err(SinkError::FileWriter("Unsupported input".to_string()));
             }
         }
@@ -301,7 +297,12 @@ fn handle_city_gml_geometry(
         .into_iter()
         .map(|img| img.to_gltf(&mut gltf_buffer_views, &mut bin_content))
         .collect::<Result<Vec<Image>, std::io::Error>>()
-        .map_err(crate::errors::SinkError::file_writer)?;
+        .map_err(|e| {
+            crate::errors::SinkError::file_writer(format!(
+                "Failed to convert image to GLTF: {:?}",
+                e
+            ))
+        })?;
 
     let mut gltf_meshes = vec![];
     if !gltf_primitives.is_empty() {
