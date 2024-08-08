@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -18,6 +18,9 @@ import { Project } from "@flow/types";
 const ManualRun: React.FC = () => {
   const t = useT();
   const { useGetWorkspaceProjectsInfinite } = useProject();
+  const [selectDropDown, setSelectDropDown] = useState<
+    HTMLElement | undefined | null
+  >();
 
   const [selectedProject, selectProject] = useState<Project>();
   const [currentWorkspace] = useCurrentWorkspace();
@@ -34,6 +37,30 @@ const ManualRun: React.FC = () => {
       }, [] as Project[]),
     [pages]
   );
+
+  useEffect(() => {
+    if (
+      !selectDropDown ||
+      isFetching ||
+      !hasNextPage ||
+      selectDropDown.clientHeight === 0
+    )
+      return;
+
+    const { clientHeight, scrollHeight } = selectDropDown;
+
+    if (clientHeight === scrollHeight) {
+      fetchNextPage();
+      return;
+    }
+
+    const handleScrollEnd = () => !isFetching && hasNextPage && fetchNextPage();
+    selectDropDown.addEventListener("scrollend", handleScrollEnd);
+
+    return () =>
+      selectDropDown.removeEventListener("scrollend", handleScrollEnd);
+  }, [selectDropDown, isFetching, hasNextPage, fetchNextPage]);
+
   return (
     <div className="flex-1 p-8">
       <div className="flex items-center gap-2 text-lg font-extralight">
@@ -56,19 +83,13 @@ const ManualRun: React.FC = () => {
                 />
               </SelectTrigger>
               <SelectContent>
-                {projects?.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-                {hasNextPage && (
-                  <p
-                    className="cursor-pointer text-center text-xs"
-                    onClick={() => !isFetching && fetchNextPage()}
-                  >
-                    {t("Load more")}
-                  </p>
-                )}
+                <div ref={(el) => setSelectDropDown(el?.parentElement)}>
+                  {projects?.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </div>
               </SelectContent>
             </Select>
           </div>
