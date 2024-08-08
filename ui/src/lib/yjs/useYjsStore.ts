@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useY } from "react-yjs";
 import * as Y from "yjs";
 
 import type { Edge, Node } from "@flow/types";
 
+import { WebsocketProvider } from 'y-websocket'
 import useWorkflowTabs from "./useWorkflowTabs";
 import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
@@ -17,15 +18,29 @@ export default ({
   workflowId?: string;
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
-  const [{ yWorkflows }] = useState(() => {
-    // TODO: setup middleware/websocket provider
-    const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-    const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
-    yWorkflows.push([yWorkflow]);
+  const yDocRef = useRef<Y.Doc | null>(null)
+  const yWebSocketRef = useRef<WebsocketProvider | null>(null);
 
-    return { yWorkflows };
-  });
+  const [{ yWorkflows }, setYWorkflows] = useState<{ yWorkflows: Y.Array<YWorkflow> }>({ yWorkflows: new Y.Array() });
+
+
+  useEffect(() => {
+    yDocRef.current = new Y.Doc()
+    yWebSocketRef.current = new WebsocketProvider(
+      "ws://localhost:8000",
+      "test room",
+      yDocRef.current,
+    )
+    const yWorkflows = yDocRef.current.getArray<YWorkflow>("workflows");
+    const yWorkflow = yWorkflowBuilder("main", "Mayn Workflow");
+    yWorkflows.push([yWorkflow]);
+    setYWorkflows({ yWorkflows });
+
+    return () => {
+      yDocRef.current?.destroy();
+      yWebSocketRef.current?.destroy();
+    }
+  }, [])
 
   const rawWorkflows = useY(yWorkflows);
 
