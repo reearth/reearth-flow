@@ -120,8 +120,8 @@
     "tailwindcss-animate": "1.0.7",
     "ts-node": "10.9.2",
     "typescript": "5.5.4",
-    "vite": "5.3.5",
-    "vite-plugin-cesium": "1.2.22",
+    "vite": "5.4.0",
+    "vite-plugin-cesium": "1.2.23",
     "vitest": "2.0.5"
   }
 }
