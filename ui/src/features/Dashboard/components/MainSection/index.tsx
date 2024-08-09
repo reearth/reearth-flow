@@ -51,7 +51,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
         </div>
         <div className="flex flex-1 flex-col justify-between overflow-auto">
           <div
-            className="grid grid-cols-1 gap-4 overflow-auto sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+            className="grid grid-cols-1 gap-2 overflow-auto sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
             ref={ref}
           >
             {projects?.map((p) => (
