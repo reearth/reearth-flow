@@ -578,7 +578,7 @@ fn process_feature(
         AttributeValue::Number(Number::from(response.code_space_errors)),
     );
     result_feature.insert(
-        "inCorrectCodeSpace",
+        "isCorrectSrsName",
         AttributeValue::Bool(
             envelope.srs_name == VALID_SRS_NAME_6697
                 || envelope.srs_name == VALID_SRS_NAME_6668
@@ -723,7 +723,7 @@ fn process_member_node(
     let feature_type =
         if XML_NAMESPACES.contains_key(xml::get_readonly_node_prefix(member).as_str()) {
             let name = member.get_name();
-            if valid_feature_types.contains(&name) {
+            if !valid_feature_types.contains(&name) {
                 response.invalid_feature_types_num += 1;
                 if response.invalid_feature_types.contains_key(name.as_str()) {
                     *response
@@ -778,7 +778,7 @@ fn process_member_node(
         let gml_id = gml_id_child
             .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
             .unwrap_or_default();
-        let tag = xml::get_readonly_node_prefix(&gml_id_child);
+        let tag = xml::get_readonly_node_tag(&gml_id_child);
         gml_ids.insert(
             gml_id.clone(),
             vec![HashMap::from([
@@ -1105,7 +1105,7 @@ fn process_member_node(
             fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
             response.xlink_has_no_reference_num += 1;
         } else if let Some(gml_ids) = gml_ids.get(&xlink_href.chars().skip(1).collect::<String>()) {
-            for item in gml_ids.iter().filter(|item| {
+            for item in gml_ids.iter().filter(|&item| {
                 !VALID_GEOMETRY_TYPES
                     .contains(&item.get("tag").map(|t| t.as_str()).unwrap_or_default())
             }) {

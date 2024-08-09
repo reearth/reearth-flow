@@ -10,7 +10,7 @@ use super::{
     statistics_calculator::StatisticsCalculatorFactory,
 };
 
-pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
         Box::<AttributeKeeperFactory>::default(),
         Box::<AttributeManagerFactory>::default(),

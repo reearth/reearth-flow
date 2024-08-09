@@ -556,6 +556,7 @@ Counts features
 ### Input Ports
 * default
 ### Output Ports
+* default
 * rejected
 ### Category
 * Feature
@@ -919,6 +920,35 @@ Extracts files from a directory or an archive
 ### Input Ports
 ### Output Ports
 * default
+### Category
+* File
+
+## FilePropertyExtractor
+### Type
+* processor
+### Description
+Extracts properties from a file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FilePropertyExtractor",
+  "type": "object",
+  "required": [
+    "filePathAttribute"
+  ],
+  "properties": {
+    "filePathAttribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
 ### Category
 * File
 

@@ -5,9 +5,9 @@ use reearth_flow_runtime::node::NodeKind;
 use rust_embed::RustEmbed;
 
 use reearth_flow_action_log::factory::LoggerFactory;
-use reearth_flow_action_processor::mapping::ACTION_MAPPINGS as PROCESSOR_MAPPINGS;
-use reearth_flow_action_sink::mapping::ACTION_MAPPINGS as SINK_MAPPINGS;
-use reearth_flow_action_source::mapping::ACTION_MAPPINGS as SOURCE_MAPPINGS;
+use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR_MAPPINGS;
+use reearth_flow_action_sink::mapping::ACTION_FACTORY_MAPPINGS as SINK_MAPPINGS;
+use reearth_flow_action_source::mapping::ACTION_FACTORY_MAPPINGS as SOURCE_MAPPINGS;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_state::State;

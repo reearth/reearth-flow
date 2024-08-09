@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
-use reearth_flow_action_plateau_processor::mapping::ACTION_MAPPINGS as PLATEAU_MAPPINGS;
-use reearth_flow_action_processor::mapping::ACTION_MAPPINGS as PROCESSOR_MAPPINGS;
-use reearth_flow_action_sink::mapping::ACTION_MAPPINGS as SINK_MAPPINGS;
-use reearth_flow_action_source::mapping::ACTION_MAPPINGS as SOURCE_MAPPINGS;
+use reearth_flow_action_plateau_processor::mapping::ACTION_FACTORY_MAPPINGS as PLATEAU_MAPPINGS;
+use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR_MAPPINGS;
+use reearth_flow_action_sink::mapping::ACTION_FACTORY_MAPPINGS as SINK_MAPPINGS;
+use reearth_flow_action_source::mapping::ACTION_FACTORY_MAPPINGS as SOURCE_MAPPINGS;
 use reearth_flow_runtime::node::NodeKind;
 
 pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
