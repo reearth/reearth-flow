@@ -205,19 +205,19 @@ impl Processor for FilePropertyExtractor {
 }
 
 fn get_dir_size(path: &Path) -> super::errors::Result<u64> {
-    let mut total = 0;
-    for entry in
-        fs::read_dir(path).map_err(|e| FileProcessorError::PropertyExtractor(format!("{:?}", e)))?
-    {
-        let entry = entry.map_err(|e| FileProcessorError::PropertyExtractor(format!("{:?}", e)))?;
-        let path = entry.path();
-        if path.is_file() {
-            total += fs::metadata(&path)
-                .map_err(|e| FileProcessorError::PropertyExtractor(format!("{:?}", e)))?
-                .len();
-        } else if path.is_dir() {
-            total += get_dir_size(&path)?;
-        }
-    }
+    let total: u64 = fs::read_dir(path)
+        .map_err(|e| FileProcessorError::PropertyExtractor(format!("{:?}", e)))?
+        .filter_map(Result::ok)
+        .map(|entry| {
+            let path = entry.path();
+            if path.is_file() {
+                fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
+            } else if path.is_dir() {
+                get_dir_size(&path).unwrap_or(0)
+            } else {
+                0
+            }
+        })
+        .sum();
     Ok(total)
 }
