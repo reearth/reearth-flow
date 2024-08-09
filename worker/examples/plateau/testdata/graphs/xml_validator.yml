@@ -1,8 +1,8 @@
 id: 2c753ffc-cc90-4f4a-b5ee-f5d7853dbac6
-name: xml_validator
+name: PLATEAU3.XMLValidator
 nodes:
   - id: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
-    name: XMLValidator_01
+    name: XMLValidatorSuntaxAndNamespace
     type: action
     action: XMLValidator
     with:
@@ -11,7 +11,7 @@ nodes:
       validationType: syntaxAndNamespace
 
   - id: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
-    name: XMLValidator_02
+    name: XMLValidatorSyntaxAndSchema
     type: action
     action: XMLValidator
     with:
@@ -20,7 +20,7 @@ nodes:
       validationType: syntaxAndSchema
 
   - id: 14225ce7-1d9f-44bc-8b41-3aa06d4275cd
-    name: attributeManager_03
+    name: AttributeManagerCreateValid
     type: action
     action: AttributeManager
     with:
@@ -31,7 +31,7 @@ nodes:
             "VALID"
 
   - id: 9293ff92-7cde-422d-a157-011d54b23cf0
-    name: attributeManager_04
+    name: AttributeManagerCreateNotWellFormed
     type: action
     action: AttributeManager
     with:
@@ -42,7 +42,7 @@ nodes:
             "NOT_WELL_FORMED"
 
   - id: 6c235d0b-26fb-47dd-a3df-709fa961855c
-    name: attributeManager_05
+    name: AttributeManagerCreateInvalid
     type: action
     action: AttributeManager
     with:
@@ -53,21 +53,21 @@ nodes:
             "INVALID"
 
   - id: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
-    name: summaryRouter
+    name: SummaryRouter
     type: action
     action: Router
     with:
       routingPort: summary
 
   - id: abd4320c-aa7c-445a-af78-4c4f1f9a35c7
-    name: invalidRouter
+    name: InvalidRouter
     type: action
     action: Router
     with:
       routingPort: invalid
 
   - id: 3c0724c6-263e-43b9-8532-e46c7584323a
-    name: notWellFormedRouter
+    name: NotWellFormedRouter
     type: action
     action: Router
     with:
@@ -79,12 +79,12 @@ edges:
     to: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
     fromPort: success
     toPort: default
-  - id: 3e8f6cb7-882b-4b81-9f70-eec8374221d0
+  - id: 3e8f6cb7-882b-4b81-9f70-eec8374221d5
     from: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
     to: 9293ff92-7cde-422d-a157-011d54b23cf0
     fromPort: failed
     toPort: default
-  - id: 3e8f6cb7-882b-4b81-9f70-eec8374221d0
+  - id: 2903c5d8-28d9-49b2-bccc-f6a43e4822c3
     from: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
     to: 3c0724c6-263e-43b9-8532-e46c7584323a
     fromPort: failed
