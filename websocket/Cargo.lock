@@ -626,6 +626,7 @@ dependencies = [
 name = "flow-websocket-domain"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "chrono",
  "serde",
@@ -1091,6 +1092,7 @@ dependencies = [
 name = "infra"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "axum",
  "axum-extra",

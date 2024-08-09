@@ -30,3 +30,4 @@ tracing-subscriber.workspace = true
 tracing.workspace = true
 uuid.workspace = true
 yrs.workspace = true
+anyhow.workspace = true

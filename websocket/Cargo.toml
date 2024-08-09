@@ -1,7 +1,5 @@
 [workspace]
-members = [
-  "crates/*",
-]
+members = ["crates/*"]
 
 resolver = "2"
 
@@ -35,27 +33,28 @@ panic = "abort"
 strip = true
 
 [workspace.dependencies]
-flow-websocket-domain = {path = "crates/domain"}
+flow-websocket-domain = { path = "crates/domain" }
 
 async-trait = "0.1.80"
-axum = {version = "0.7", features = ["ws"]}
-axum-extra = {version = "0.9", features = ["typed-header"]}
+axum = { version = "0.7", features = ["ws"] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
 axum-macros = "0.4"
-chrono = {version = "0.4", features = ["serde"]}
+chrono = { version = "0.4", features = ["serde"] }
 google-cloud-storage = "0.18"
-redis = {version = "0.25.4", features = ["aio", "tokio-comp"]}
+redis = { version = "0.25.4", features = ["aio", "tokio-comp"] }
 rslock = "0.3.0"
-serde = {version = "1.0", features = ["derive"]}
-serde_json = {version = "1.0.117", features = ["arbitrary_precision"]}
-tokio = {version = "1.38.0", features = ["full", "time"]}
-tower = {version = "0.4", features = ["timeout"]}
-tower-http = {version = "0.5", features = ["fs", "trace"]}
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0.117", features = ["arbitrary_precision"] }
+tokio = { version = "1.38.0", features = ["full", "time"] }
+tower = { version = "0.4", features = ["timeout"] }
+tower-http = { version = "0.5", features = ["fs", "trace"] }
 tracing = "0.1"
-tracing-subscriber = {version = "0.3", features = ["env-filter"]}
-uuid = {version = "1.8.0", features = [
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1.8.0", features = [
   "v4",
   "fast-rng",
   "macro-diagnostics",
   "serde",
-]}
+] }
 yrs = "0.18"
+anyhow = "1.0.44"

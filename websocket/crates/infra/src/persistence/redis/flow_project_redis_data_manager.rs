@@ -1,6 +1,6 @@
-use std::error::Error;
 use std::sync::Arc;
 
+use anyhow::{Context, Result};
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
@@ -85,17 +85,16 @@ impl FlowProjectRedisDataManager {
         serde_json::from_str(&data_string).unwrap()
     }
 
-    async fn get_update_stream_items(
-        &self,
-    ) -> Result<Vec<(String, Vec<(String, String)>)>, Box<dyn Error>> {
+    async fn get_update_stream_items(&self) -> Result<Vec<(String, Vec<(String, String)>)>> {
         let stream_data = self
             .redis_client
             .xread(&self.state_updates_key(), "0-0")
-            .await?;
+            .await
+            .context("Failed to read update stream")?;
         Ok(stream_data)
     }
 
-    async fn get_flow_updates_from_stream(&self) -> Result<Vec<FlowUpdate>, Box<dyn Error>> {
+    async fn get_flow_updates_from_stream(&self) -> Result<Vec<FlowUpdate>> {
         let stream_items = self.get_update_stream_items().await?;
         let mut updates = Vec::new();
         for stream_item in stream_items {
@@ -103,7 +102,7 @@ impl FlowProjectRedisDataManager {
             let value = &stream_item.1[1].1;
             let format = &stream_item.1[3].1;
             let encoded_update: FlowEncodedUpdate = if format == "json" {
-                serde_json::from_str(value)?
+                serde_json::from_str(value).context("Failed to deserialize FlowEncodedUpdate")?
             } else {
                 FlowEncodedUpdate {
                     update: String::new(),
@@ -122,7 +121,7 @@ impl FlowProjectRedisDataManager {
 
     async fn get_merged_update_from_stream(
         &self,
-    ) -> Result<Option<(Vec<u8>, String, Vec<String>)>, Box<dyn Error>> {
+    ) -> Result<Option<(Vec<u8>, String, Vec<String>)>> {
         let updates = self.get_flow_updates_from_stream().await?;
         if updates.is_empty() {
             return Ok(None);
@@ -146,7 +145,7 @@ impl FlowProjectRedisDataManager {
         Ok(Some((merged_update, last_update_id, updates_by)))
     }
 
-    async fn get_state_update_in_redis(&self) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
+    async fn get_state_update_in_redis(&self) -> Result<Option<Vec<u8>>> {
         let state_update_string: Option<String> = self.redis_client.get(&self.state_key()).await?;
         if let Some(state_update_string) = state_update_string {
             Ok(Some(Self::decode_state_data(state_update_string)))
@@ -155,13 +154,14 @@ impl FlowProjectRedisDataManager {
         }
     }
 
-    pub async fn active_editing_session_id(&self) -> Result<Option<String>, Box<dyn Error>> {
+    pub async fn active_editing_session_id(&self) -> Result<Option<String>> {
         self.redis_client
             .get(&self.active_editing_session_id_key())
             .await
+            .context("Failed to get active editing session ID")
     }
 
-    pub async fn get_current_state_update(&self) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
+    pub async fn get_current_state_update(&self) -> Result<Option<Vec<u8>>> {
         let state_update = self.get_state_update_in_redis().await?;
         if state_update.is_none() {
             return Ok(None);
@@ -178,11 +178,12 @@ impl FlowProjectRedisDataManager {
         }
     }
 
-    pub async fn get_current_state_updated_by(&self) -> Result<Vec<String>, Box<dyn Error>> {
+    pub async fn get_current_state_updated_by(&self) -> Result<Vec<String>> {
         let state_updated_by: Option<String> =
             self.redis_client.get(&self.state_updated_by_key()).await?;
         if let Some(state_updated_by) = state_updated_by {
-            Ok(serde_json::from_str(&state_updated_by)?)
+            Ok(serde_json::from_str(&state_updated_by)
+                .context("Failed to deserialize state_updated_by")?)
         } else {
             Ok(vec![])
         }
@@ -193,7 +194,7 @@ impl FlowProjectRedisDataManager {
         state_update: Vec<u8>,
         state_updated_by: Vec<String>,
         skip_lock: bool,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<()> {
         let active_editing_session_id = self.active_editing_session_id().await?;
         if let Some(active_editing_session_id) = active_editing_session_id {
             if active_editing_session_id
@@ -205,7 +206,7 @@ impl FlowProjectRedisDataManager {
                     .clone()
                     .unwrap()
             {
-                return Err("Another Editing Session in progress".into());
+                return Err(anyhow::anyhow!("Another Editing Session is in progress"));
             }
         }
         self.set_state_data(state_update, state_updated_by, skip_lock)
@@ -221,7 +222,8 @@ impl FlowProjectRedisDataManager {
                     .clone()
                     .unwrap(),
             )
-            .await?;
+            .await
+            .context("Failed to set active editing session ID")?;
         Ok(())
     }
 
@@ -230,19 +232,22 @@ impl FlowProjectRedisDataManager {
         state_update: Vec<u8>,
         state_updated_by: Vec<String>,
         skip_lock: bool,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<()> {
         let encoded_state_update = Self::encode_state_data(state_update);
-        let updated_by_json = serde_json::to_string(&state_updated_by)?;
+        let updated_by_json = serde_json::to_string(&state_updated_by)
+            .context("Failed to serialize state_updated_by")?;
 
         if skip_lock {
             let connection = self.redis_client.connection();
             let mut connection_guard = connection.lock().await;
             connection_guard
                 .set(self.state_key(), &encoded_state_update)
-                .await?;
+                .await
+                .context("Failed to set state data")?;
             connection_guard
                 .set(self.state_updated_by_key(), &updated_by_json)
-                .await?;
+                .await
+                .context("Failed to set state updated by data")?;
         } else {
             self.global_lock
                 .lock_state(&self.project_id, 5000, |_lock_guard| {
@@ -251,31 +256,30 @@ impl FlowProjectRedisDataManager {
                         let mut connection_guard = connection.lock().await;
                         connection_guard
                             .set(self.state_key(), &encoded_state_update)
-                            .await?;
+                            .await
+                            .context("Failed to set state data within lock")?;
                         connection_guard
                             .set(self.state_updated_by_key(), &updated_by_json)
-                            .await?;
-                        Ok::<(), Box<dyn Error>>(())
+                            .await
+                            .context("Failed to set state updated by data within lock")?;
+                        Ok::<(), anyhow::Error>(())
                     })
                 })
                 .await
-                .map_err(|e| Box::new(GlobalLockError(e)) as Box<dyn Error>)?
+                .map_err(|e| GlobalLockError(e))?
                 .await?;
         }
         Ok(())
     }
 
-    pub async fn push_update(
-        &self,
-        update: Vec<u8>,
-        updated_by: String,
-    ) -> Result<(), Box<dyn Error>> {
+    pub async fn push_update(&self, update: Vec<u8>, updated_by: String) -> Result<()> {
         let update_data = FlowEncodedUpdate {
             update: Self::encode_state_data(update),
             updated_by: Some(updated_by),
         };
 
-        let value = serde_json::to_string(&update_data)?;
+        let value =
+            serde_json::to_string(&update_data).context("Failed to serialize update data")?;
         let fields = &[("value", value.as_str()), ("format", "json")];
 
         let connection = self.redis_client.connection();
@@ -283,17 +287,19 @@ impl FlowProjectRedisDataManager {
 
         connection_guard
             .xadd(&self.state_updates_key(), "*", fields)
-            .await?;
+            .await
+            .context("Failed to add update to stream")?;
 
         let timestamp = chrono::Utc::now().timestamp().to_string();
         connection_guard
             .set(self.last_updated_at_key(), &timestamp)
-            .await?;
+            .await
+            .context("Failed to set last updated at timestamp")?;
 
         Ok(())
     }
 
-    pub async fn clear_data(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn clear_data(&self) -> Result<()> {
         let connection = self.redis_client.connection();
         let mut connection_guard = connection.lock().await;
 
@@ -304,7 +310,10 @@ impl FlowProjectRedisDataManager {
             self.last_updated_at_key(),
         ];
 
-        connection_guard.del(&keys_to_delete).await?;
+        connection_guard
+            .del(&keys_to_delete)
+            .await
+            .context("Failed to delete keys")?;
 
         if let Some(active_session_id) = self.active_editing_session_id().await? {
             let editing_session = self.editing_session.lock().await;
@@ -312,7 +321,8 @@ impl FlowProjectRedisDataManager {
                 if active_session_id == *current_session_id {
                     connection_guard
                         .del(&[self.active_editing_session_id_key()])
-                        .await?;
+                        .await
+                        .context("Failed to delete active editing session ID key")?;
                 }
             }
         }
@@ -320,17 +330,22 @@ impl FlowProjectRedisDataManager {
         Ok(())
     }
 
-    pub async fn last_updated_at(&self) -> Result<i64, Box<dyn Error>> {
-        let last_updated_at: Option<String> =
-            self.redis_client.get(&self.last_updated_at_key()).await?;
+    pub async fn last_updated_at(&self) -> Result<i64> {
+        let last_updated_at: Option<String> = self
+            .redis_client
+            .get(&self.last_updated_at_key())
+            .await
+            .context("Failed to get last updated at timestamp")?;
         if let Some(last_updated_at) = last_updated_at {
-            Ok(last_updated_at.parse::<i64>()?)
+            Ok(last_updated_at
+                .parse::<i64>()
+                .context("Failed to parse last updated at timestamp")?)
         } else {
             Ok(0)
         }
     }
 
-    async fn execute_merge_updates(&self) -> Result<(Vec<u8>, Vec<String>), Box<dyn Error>> {
+    async fn execute_merge_updates(&self) -> Result<(Vec<u8>, Vec<String>)> {
         let merged_stream_update = self.get_merged_update_from_stream().await?;
         let state_update = self.get_state_update_in_redis().await?;
         let state_updated_by = self.get_current_state_updated_by().await?;
@@ -375,23 +390,23 @@ impl FlowProjectRedisDataManager {
         if let Some(last_update_id) = last_update_id {
             self.redis_client
                 .xtrim(&self.state_updates_key(), 1)
-                .await?;
+                .await
+                .context("Failed to trim stream")?;
             self.redis_client
                 .xdel(&self.state_updates_key(), &[last_update_id.as_str()])
-                .await?;
+                .await
+                .context("Failed to delete last update from stream")?;
         }
 
         self.redis_client
             .xtrim(&self.state_updates_key(), 0)
-            .await?;
+            .await
+            .context("Failed to trim stream to 0")?;
 
         Ok((optimized_merged_state, merged_state_updated_by))
     }
 
-    pub async fn merge_updates(
-        &self,
-        skip_lock: bool,
-    ) -> Result<(Vec<u8>, Vec<String>), Box<dyn Error>> {
+    pub async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>)> {
         if skip_lock {
             self.execute_merge_updates().await
         } else {
@@ -399,15 +414,13 @@ impl FlowProjectRedisDataManager {
         }
     }
 
-    async fn lock_and_execute_merge_updates(
-        &self,
-    ) -> Result<(Vec<u8>, Vec<String>), Box<dyn Error>> {
+    async fn lock_and_execute_merge_updates(&self) -> Result<(Vec<u8>, Vec<String>)> {
         self.global_lock
             .lock_updates(&self.project_id, 5000, |_| {
-                Box::pin(async move { Ok::<(), Box<dyn Error>>(()) })
+                Box::pin(async move { Ok::<(), anyhow::Error>(()) })
             })
             .await
-            .map_err(|e| Box::new(GlobalLockError(e)) as Box<dyn Error>)?
+            .map_err(GlobalLockError)?
             .await?;
 
         self.execute_merge_updates().await
