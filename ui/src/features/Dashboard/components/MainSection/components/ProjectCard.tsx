@@ -1,4 +1,4 @@
-import { DotsSixVertical } from "@phosphor-icons/react";
+import { DotsThreeVertical } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -43,7 +43,7 @@ const ProjectCard: React.FC<Props> = ({
       key={id}
       onClick={() => onProjectSelect(project)}
     >
-      <CardContent className="flex h-[120px] items-center justify-center rounded-t-lg bg-red-800/20 p-0 align-bottom">
+      <CardContent className="flex h-[120px] items-center justify-center rounded-t-lg bg-red-800/10 p-0 align-bottom">
         <FlowLogo
           className={`size-[40px] text-zinc-300 ${description ? "group:hover:opacity-90" : ""}`}
         />
@@ -75,7 +75,7 @@ const ProjectCard: React.FC<Props> = ({
               className="flex h-full w-[30px] items-center justify-center rounded-br-lg text-zinc-400 hover:bg-zinc-800"
               onClick={(e) => e.stopPropagation()}
             >
-              <DotsSixVertical className="size-[24px]" />
+              <DotsThreeVertical className="size-[24px]" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
