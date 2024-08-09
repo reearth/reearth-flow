@@ -43,7 +43,7 @@ const ProjectCard: React.FC<Props> = ({
       key={id}
       onClick={() => onProjectSelect(project)}
     >
-      <CardContent className="flex h-[120px] items-center justify-center rounded-t-lg bg-red-800/10 p-0 align-bottom">
+      <CardContent className="flex h-[120px] items-center justify-center rounded-t-lg bg-red-800/10 p-0">
         <FlowLogo
           className={`size-[40px] text-zinc-300 ${description ? "group:hover:opacity-90" : ""}`}
         />
