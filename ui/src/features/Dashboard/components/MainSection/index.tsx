@@ -37,7 +37,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-8 p-8">
+      <div className="flex flex-1 flex-col gap-6 p-6">
         <div className="flex items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg font-extralight">{t("Projects")}</p>
           <Button
