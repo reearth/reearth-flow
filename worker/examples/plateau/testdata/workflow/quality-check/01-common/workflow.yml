@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
+id: f01ce0bb-e982-4dfa-94de-7a766156b4b3
+name: "QualityCheck-01-common-workflow"
+entryGraphId: 7f86c5d5-b375-4190-ab93-001e9a099d1e
+with:
+  cityGmlPath:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../../../config/schema.txt
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+  outputPath:
+graphs:
+  - id: 7f86c5d5-b375-4190-ab93-001e9a099d1e
+    name: entry_point
+    nodes:
+      - id: 725d0323-6a27-4154-acb4-9e6bff200a84
+        name: FilePathExtractor01
+        type: action
+        action: FilePathExtractor
+        with:
+          sourceDataset: |
+            env.get("cityGmlPath")
+          extractArchive: true
+
+      - id: 8510992d-2546-4e89-a09b-f31ff435bbb7
+        name: FeatureFilterByGml
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").extension == "gml"
+              outputPort: default
+
+      - id: 5e786419-7657-4694-b947-5c851d9fb95c
+        name: FeatureCounterIndex
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          outputAttribute: fileIndex
+
+      - id: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
+        name: Echo
+        type: action
+        action: Echo
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 725d0323-6a27-4154-acb4-9e6bff200a84
+        to: 8510992d-2546-4e89-a09b-f31ff435bbb7
+        fromPort: default
+        toPort: default
+
+      - id: f23b1f56-c5d8-4311-9239-6dd205b538ab
+        from: 8510992d-2546-4e89-a09b-f31ff435bbb7
+        to: 5e786419-7657-4694-b947-5c851d9fb95c
+        fromPort: default
+        toPort: default
+
+      - id: 7436b0a3-a658-49f6-a576-5b45abb2bd25
+        from: 5e786419-7657-4694-b947-5c851d9fb95c
+        to: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
+        fromPort: default
+        toPort: default

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
 use async_zip::base::read::mem::ZipFileReader;
 use futures::AsyncReadExt;
@@ -96,56 +96,103 @@ pub async fn extract(
                 .ok_or(crate::errors::SourceError::FilePathExtractor(
                     "No entry".to_string(),
                 ))?;
-        let filename = entry
-            .filename()
-            .as_str()
-            .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?;
-        let outpath = root_output_path
-            .join(filename)
-            .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?;
+        let filename = entry.filename().as_str().map_err(|e| {
+            crate::errors::SourceError::FilePathExtractor(format!(
+                "Filename error with: error = {:?}",
+                e
+            ))
+        })?;
+        let outpath = root_output_path.join(filename).map_err(|e| {
+            crate::errors::SourceError::FilePathExtractor(format!(
+                "Output path join error with: error = {:?}",
+                e
+            ))
+        })?;
+        let filepath = Path::new(filename);
+        if filepath.extension().is_none() {
+            continue;
+        }
+        if filepath
+            .file_name()
+            .take_if(|s| s.to_string_lossy().starts_with("."))
+            .is_some()
+        {
+            continue;
+        }
         let entry_is_dir = filename.ends_with('/');
         if entry_is_dir {
             if storage
                 .exists(outpath.path().as_path())
                 .await
-                .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?
+                .map_err(|e| {
+                    crate::errors::SourceError::FilePathExtractor(format!(
+                        "Storage exists error with: error = {:?}",
+                        e
+                    ))
+                })?
             {
                 continue;
             }
             storage
                 .create_dir(outpath.path().as_path())
                 .await
-                .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?;
+                .map_err(|e| {
+                    crate::errors::SourceError::FilePathExtractor(format!(
+                        "Create dir error with: error = {:?}",
+                        e
+                    ))
+                })?;
             continue;
         }
         if let Some(p) = outpath.parent() {
-            if !storage
-                .exists(p.path().as_path())
-                .await
-                .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?
-            {
+            if !storage.exists(p.path().as_path()).await.map_err(|e| {
+                crate::errors::SourceError::FilePathExtractor(format!(
+                    "Storage exists error with: error = {:?}",
+                    e
+                ))
+            })? {
                 storage.create_dir(p.path().as_path()).await.map_err(|e| {
-                    crate::errors::SourceError::FilePathExtractor(format!("{:?}", e))
+                    crate::errors::SourceError::FilePathExtractor(format!(
+                        "Create dir error with: error = {:?}",
+                        e
+                    ))
                 })?;
             }
         }
-        let mut entry_reader = reader
-            .reader_without_entry(i)
-            .await
-            .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?;
+        let mut entry_reader = reader.reader_without_entry(i).await.map_err(|e| {
+            crate::errors::SourceError::FilePathExtractor(format!(
+                "Reader without entry error with: error = {:?}",
+                e
+            ))
+        })?;
         let mut buf = Vec::<u8>::new();
-        entry_reader
-            .read_to_end(&mut buf)
-            .await
-            .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?;
+        entry_reader.read_to_end(&mut buf).await.map_err(|e| {
+            crate::errors::SourceError::FilePathExtractor(format!(
+                "Read to end error with: error = {:?}",
+                e
+            ))
+        })?;
         storage
             .put(outpath.path().as_path(), bytes::Bytes::from(buf))
             .await
-            .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?;
-        let file_path = FilePath::try_from(outpath.clone())
-            .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?;
-        let attribute_value = AttributeValue::try_from(file_path)
-            .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?;
+            .map_err(|e| {
+                crate::errors::SourceError::FilePathExtractor(format!(
+                    "Storage put error with: error = {:?}",
+                    e
+                ))
+            })?;
+        let file_path = FilePath::try_from(outpath.clone()).map_err(|e| {
+            crate::errors::SourceError::FilePathExtractor(format!(
+                "Filepath convert error with: error = {:?}",
+                e
+            ))
+        })?;
+        let attribute_value = AttributeValue::try_from(file_path).map_err(|e| {
+            crate::errors::SourceError::FilePathExtractor(format!(
+                "Attribute Value convert error with: error = {:?}",
+                e
+            ))
+        })?;
         let feature = Feature::from(attribute_value);
         sender
             .send((
