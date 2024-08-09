@@ -36,8 +36,8 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   } = useHooks({ workspace });
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex h-full flex-1 flex-col">
+      <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-6">
         <div className="flex items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg font-extralight">{t("Projects")}</p>
           <Button
@@ -49,22 +49,20 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
             <p className="text-xs font-light">{t("New Project")}</p>
           </Button>
         </div>
-        <div className="flex flex-1 flex-col justify-between overflow-auto">
-          <div
-            className="grid grid-cols-1 gap-2 overflow-auto sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-            ref={ref}
-          >
-            {projects?.map((p) => (
-              <ProjectCard
-                key={p.id}
-                project={p}
-                currentProject={currentProject}
-                setEditProject={setEditProject}
-                setProjectToBeDeleted={setProjectToBeDeleted}
-                onProjectSelect={handleProjectSelect}
-              />
-            ))}
-          </div>
+        <div
+          className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+          ref={ref}
+        >
+          {projects?.map((p) => (
+            <ProjectCard
+              key={p.id}
+              project={p}
+              currentProject={currentProject}
+              setEditProject={setEditProject}
+              setProjectToBeDeleted={setProjectToBeDeleted}
+              onProjectSelect={handleProjectSelect}
+            />
+          ))}
         </div>
       </div>
       <ProjectEditDialog
