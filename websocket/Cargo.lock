@@ -633,6 +633,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "flow-websocket-infra"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "axum-extra",
+ "axum-macros",
+ "chrono",
+ "flow-websocket-domain",
+ "google-cloud-storage",
+ "redis 0.25.4",
+ "rslock",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "yrs",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1085,30 +1109,6 @@ checksum = "634d9b1461af396cad843f47fdba5597a4f9e6ddd4bfb6ff5d85028c25cb12f6"
 dependencies = [
  "unicode-bidi",
  "unicode-normalization",
-]
-
-[[package]]
-name = "infra"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "axum-extra",
- "axum-macros",
- "chrono",
- "flow-websocket-domain",
- "google-cloud-storage",
- "redis 0.25.4",
- "rslock",
- "serde",
- "serde_json",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "yrs",
 ]
 
 [[package]]
@@ -1947,6 +1947,31 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "server"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "axum-extra",
+ "axum-macros",
+ "chrono",
+ "flow-websocket-domain",
+ "flow-websocket-infra",
+ "google-cloud-storage",
+ "redis 0.25.4",
+ "rslock",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "yrs",
 ]
 
 [[package]]
