@@ -2,6 +2,7 @@ use std::{collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
 use async_zip::base::read::mem::ZipFileReader;
 use futures::AsyncReadExt;
+use reearth_flow_action_log::action_log;
 use reearth_flow_common::{dir, uri::Uri};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
@@ -74,6 +75,7 @@ impl SourceFactory for FilePathExtractorFactory {
 }
 
 pub async fn extract(
+    ctx: &NodeContext,
     bytes: bytes::Bytes,
     root_output_path: Uri,
     storage: Arc<Storage>,
@@ -87,6 +89,8 @@ pub async fn extract(
             "No entries".to_string(),
         ));
     }
+    let span = ctx.info_span();
+    let mut features = Vec::<Feature>::new();
     for i in 0..reader.file().entries().len() {
         let entry =
             reader
@@ -109,9 +113,6 @@ pub async fn extract(
             ))
         })?;
         let filepath = Path::new(filename);
-        if filepath.extension().is_none() {
-            continue;
-        }
         if filepath
             .file_name()
             .take_if(|s| s.to_string_lossy().starts_with("."))
@@ -142,6 +143,8 @@ pub async fn extract(
                         e
                     ))
                 })?;
+            continue;
+        } else if filepath.extension().is_none() {
             continue;
         }
         if let Some(p) = outpath.parent() {
@@ -187,6 +190,9 @@ pub async fn extract(
                 e
             ))
         })?;
+        action_log!(
+            parent: span, ctx.logger.action_logger("echo"), "file path extract with path = {:?}", file_path,
+        );
         let attribute_value = AttributeValue::try_from(file_path).map_err(|e| {
             crate::errors::SourceError::FilePathExtractor(format!(
                 "Attribute Value convert error with: error = {:?}",
@@ -194,6 +200,9 @@ pub async fn extract(
             ))
         })?;
         let feature = Feature::from(attribute_value);
+        features.push(feature);
+    }
+    for feature in features {
         sender
             .send((
                 DEFAULT_PORT.clone(),
@@ -250,7 +259,7 @@ impl Source for FilePathExtractor {
                 .create_dir(root_output_path.path().as_path())
                 .await
                 .map_err(|e| crate::errors::SourceError::FilePathExtractor(format!("{:?}", e)))?;
-            extract(bytes, root_output_path, root_output_storage, sender).await?;
+            extract(&ctx, bytes, root_output_path, root_output_storage, sender).await?;
         } else if source_dataset.is_dir() {
             let storage = ctx
                 .storage_resolver
