@@ -38,7 +38,7 @@ impl FlowProjectRedisDataManager {
         redis_client: Arc<RedisClient>,
     ) -> Self {
         let redis_url = redis_client.redis_url();
-        let global_lock = FlowProjectLock::new(&redis_url);
+        let global_lock = FlowProjectLock::new(redis_url);
         Self {
             redis_client,
             project_id,

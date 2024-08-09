@@ -20,7 +20,7 @@ impl Room {
     pub fn join(&mut self, user_id: String) -> Result<()> {
         self.users
             .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
+            .map_err(|_| WsError::WsError)?
             .insert(user_id);
         Ok(())
     }
@@ -28,7 +28,7 @@ impl Room {
     pub fn leave(&mut self, user_id: String) -> Result<()> {
         self.users
             .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
+            .map_err(|_| WsError::WsError)?
             .remove(&user_id);
         Ok(())
     }

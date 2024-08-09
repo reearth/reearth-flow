@@ -21,7 +21,7 @@ impl AppState {
         let room = Room::new();
         self.rooms
             .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
+            .map_err(|_| WsError::WsError)?
             .insert(id.clone(), room);
         Ok(id)
     }
@@ -29,7 +29,7 @@ impl AppState {
     pub fn delete_room(&mut self, id: String) -> Result<()> {
         self.rooms
             .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
+            .map_err(|_| WsError::WsError)?
             .remove(&id);
         Ok(())
     }

@@ -44,12 +44,9 @@ async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: Arc<AppSt
 
     if let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
-            if handle_message(msg, addr, state).await.is_err() {
-                return;
-            }
+            if handle_message(msg, addr, state).await.is_err() {}
         } else {
-            println!("client {addr} disconnected");
-            return;
+            println!("client {addr} disconnected")
         }
     }
 }
@@ -107,9 +104,10 @@ impl AppState {
         unimplemented!()
     }
     async fn join(&self, room_id: &str) -> Result<()> {
-        self.rooms
+        let _ = self
+            .rooms
             .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
+            .map_err(|_| WsError::WsError)?
             .get_mut(room_id)
             .ok_or(WsError::WsError)?
             .join("brabrabra".to_string());
