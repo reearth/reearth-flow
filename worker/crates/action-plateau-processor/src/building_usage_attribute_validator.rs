@@ -99,7 +99,6 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
             );
         };
         let mut city_name_to_code = HashMap::new();
-        println!("{:?}", param.codelists_path);
         if let Some(codelists_path) = param.codelists_path {
             let dir = Uri::from_str(&codelists_path).map_err(|e| {
                 PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(

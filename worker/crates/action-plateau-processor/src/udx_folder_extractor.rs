@@ -162,7 +162,8 @@ impl Processor for UdxFolderExtractor {
         } else {
             REJECTED_PORT.clone()
         };
-        let attributes: HashMap<Attribute, AttributeValue> = res.into();
+        let mut attributes: HashMap<Attribute, AttributeValue> = res.into();
+        attributes.extend(feature.attributes.clone());
         let feature = Feature {
             attributes,
             ..feature.clone()

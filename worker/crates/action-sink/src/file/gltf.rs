@@ -44,8 +44,13 @@ pub(super) fn write_gltf(
             }
             geomotry_types::GeometryValue::CityGmlGeometry(city_gml) => {
                 match handle_city_gml_geometry(output, storage_resolver.clone(), city_gml) {
-                    Ok(_) => println!("Success"),
-                    Err(e) => println!("Error: {:?}", e),
+                    Ok(_) => {}
+                    Err(e) => {
+                        return Err(SinkError::FileWriter(format!(
+                            "CityGmlGeometry handle Error: {:?}",
+                            e
+                        )))
+                    }
                 }
             }
             geomotry_types::GeometryValue::FlowGeometry2D(_flow_geom_2d) => {

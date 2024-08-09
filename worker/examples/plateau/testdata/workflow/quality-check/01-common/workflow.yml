@@ -12,6 +12,7 @@ with:
   outputPath:
 graphs:
   - !include ../../../graphs/xml_validator.yml
+  - !include ../../../graphs/domain_of_definition_validator.yml
   - id: 7f86c5d5-b375-4190-ab93-001e9a099d1e
     name: entry_point
     nodes:
@@ -40,7 +41,19 @@ graphs:
         action: FeatureCounter
         with:
           countStart: 1
-          outputAttribute: fileIndex
+          outputAttribute: index
+
+      - id: 1acc6aea-dcfb-4b5e-b2d6-38cc3b6848ac
+        name: FilePropertyExtractor
+        type: action
+        action: FilePropertyExtractor
+        with:
+          filePathAttribute: path
+
+      - id: d23bd6b2-4984-4969-92e9-3a7e4427050c
+        name: EchoProperty
+        type: action
+        action: Echo
 
       - id: b16c4701-3b21-48f3-8b09-cf2fc6a51f1e
         name: PLATEAU.UDXFolderExtractor
@@ -54,6 +67,54 @@ graphs:
         name: PLATEAU3.XMLValidator
         type: subGraph
         subGraphId: 2c753ffc-cc90-4f4a-b5ee-f5d7853dbac6
+
+      - id: 993965e1-2bef-45e5-8afa-33efa633064e
+        name: AttributeManager01
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: L01Errors
+              method: create
+              value: |
+                if env.get("__value").status == "NOT_WELL_FORMED" {
+                  env.get("__value").xmlError.len
+                } else {
+                  0
+                }
+            - attribute: L02Errors
+              method: create
+              value: |
+                if env.get("__value").status == "INVALID" {
+                  env.get("__value").xmlError.len
+                } else {
+                  0
+                }
+
+      - id: d77027e9-535e-4a03-8ddd-dc5973e9b25a
+        name: FeatureFilterByXmlChecker
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").status == "VALID"
+              outputPort: default
+
+      - id: 2b51486a-7258-42a6-ac9d-41a4f9a48624
+        name: PLATEAU.DomainOfDefinitionValidator
+        type: subGraph
+        subGraphId: b7396083-17d0-47dd-be86-83caf6c5ac63
+
+      - id: 67a54b1b-4e3c-4bd2-99a3-81a379187c09
+        name: FeatureMerger01
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttribute: |
+            env.get("__value").index.to_string()
+          supplierAttribute: |
+            env.get("__value").index.to_string()
 
       - id: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
         name: Echo
@@ -83,6 +144,41 @@ graphs:
         toPort: default
       - id: 9f855529-bc8b-46e3-a679-0b2c13d06092
         from: f2d222e7-fc54-4bf8-b066-515fe1cfe328
-        to: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
+        to: d77027e9-535e-4a03-8ddd-dc5973e9b25a
         fromPort: summary
+        toPort: default
+      - id: 833a0183-1795-491e-95d7-033d7512b070
+        from: d77027e9-535e-4a03-8ddd-dc5973e9b25a
+        to: 2b51486a-7258-42a6-ac9d-41a4f9a48624
+        fromPort: default
+        toPort: default
+      - id: 9f855529-bc8b-46e3-a679-0b2c13d06092
+        from: f2d222e7-fc54-4bf8-b066-515fe1cfe328
+        to: 993965e1-2bef-45e5-8afa-33efa633064e
+        fromPort: summary
+        toPort: default
+      - id: 55f394c4-4f62-4feb-a86e-219c4c1fa52e
+        from: 2b51486a-7258-42a6-ac9d-41a4f9a48624
+        to: 67a54b1b-4e3c-4bd2-99a3-81a379187c09
+        fromPort: summary
+        toPort: requestor
+      - id: 79d3353a-244e-4bb7-b44b-c1d3957d8e04
+        from: 993965e1-2bef-45e5-8afa-33efa633064e
+        to: 67a54b1b-4e3c-4bd2-99a3-81a379187c09
+        fromPort: default
+        toPort: supplier
+      - id: 7e83522e-5dd2-46cc-881e-e08a99935050
+        from: 67a54b1b-4e3c-4bd2-99a3-81a379187c09
+        to: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
+        fromPort: merged
+        toPort: default
+      - id: c1834039-8ea9-4b13-8921-84642e1ceda3
+        from: 5e786419-7657-4694-b947-5c851d9fb95c
+        to: 1acc6aea-dcfb-4b5e-b2d6-38cc3b6848ac
+        fromPort: default
+        toPort: default
+      - id: 037c34a3-f09c-4079-b6ef-84a73c4366ef
+        from: 1acc6aea-dcfb-4b5e-b2d6-38cc3b6848ac
+        to: d23bd6b2-4984-4969-92e9-3a7e4427050c
+        fromPort: default
         toPort: default
