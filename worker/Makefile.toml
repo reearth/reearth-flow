@@ -73,3 +73,9 @@ script = ['''
 #!/usr/bin/env bash -eux
 mdbook serve docs/mdbook
 ''']
+
+[tasks.format-taplo]
+script = ['''
+#!/usr/bin/env bash -eux
+find . -name "Cargo.toml" | xargs taplo fmt
+''']
