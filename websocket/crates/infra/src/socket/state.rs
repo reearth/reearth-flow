@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use super::errors::{Result, WsError};
 use super::room::Room;
 
-#[derive(Clone)]
+#[derive()]
 pub struct AppState {
     pub rooms: Arc<Mutex<HashMap<String, Room>>>,
 }
@@ -16,17 +16,16 @@ impl AppState {
         }
     }
 
-    pub fn make_room(&mut self) -> Result<String> {
-        let id = uuid::Uuid::new_v4().to_string();
+    pub fn make_room(&self, room_id: String) -> Result<()> {
         let room = Room::new();
         self.rooms
             .try_lock()
             .or_else(|_| Err(WsError::WsError))?
-            .insert(id.clone(), room);
-        Ok(id)
+            .insert(room_id, room);
+        Ok(())
     }
 
-    pub fn delete_room(&mut self, id: String) -> Result<()> {
+    pub fn delete_room(&self, id: String) -> Result<()> {
         self.rooms
             .try_lock()
             .or_else(|_| Err(WsError::WsError))?

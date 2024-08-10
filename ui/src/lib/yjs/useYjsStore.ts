@@ -30,9 +30,10 @@ export default ({
       "ws://localhost:8000",
       "test room",
       yDocRef.current,
+      { params: { token: "nyaan" } },
     )
     const yWorkflows = yDocRef.current.getArray<YWorkflow>("workflows");
-    const yWorkflow = yWorkflowBuilder("main", "Mayn Workflow");
+    const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
     yWorkflows.push([yWorkflow]);
     setYWorkflows({ yWorkflows });
 
