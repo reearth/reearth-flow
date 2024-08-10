@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "crates/*",
-    "examples",
-    "tests",
+  "crates/*",
+  "examples",
+  "tests",
 ]
 resolver = "2"
 
@@ -128,14 +128,14 @@ toml = "0.8.19"
 tracing = "0.1.40"
 tracing-opentelemetry = { version = "0.25.0", default-features = false, features = ["metrics", "tracing-log"] }
 tracing-subscriber = { version = "0.3.18", features = [
-    "env-filter",
-    "std",
-    "time",
+  "env-filter",
+  "std",
+  "time",
 ] }
 url = "2.5.2"
 uuid = { version = "1.10.0", features = [
-    "fast-rng",
-    "macro-diagnostics",
-    "serde",
-    "v4",
+  "fast-rng",
+  "macro-diagnostics",
+  "serde",
+  "v4",
 ] }
