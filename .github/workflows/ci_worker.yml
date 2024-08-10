@@ -41,7 +41,7 @@ jobs:
       - name: install taplo-cli
         run: cargo install taplo-cli
       - name: taplo
-        run: find . -name "Cargo.toml" -print0 | xargs -0 taplo fmt --check
+        run: taplo fmt --check
       - name: install cargo-make
         run: cargo install cargo-make
       - name: generate schema

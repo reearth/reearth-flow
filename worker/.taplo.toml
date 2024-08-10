@@ -1,4 +1,5 @@
 # https://taplo.tamasfe.dev/configuration/formatter-options.html
+include = ["Cargo.toml", "crates/*/Cargo.toml"]
 
 [formatting]
 trailing_newline = true
@@ -7,6 +8,4 @@ align_comments = false
 allowed_blank_lines = 1
 array_auto_collapse = false
 array_auto_expand = false
-include = ["*.toml"]
-indent_string = "    " # 4 spaces
 reorder_arrays = true
