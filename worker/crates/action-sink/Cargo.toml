@@ -33,6 +33,7 @@ nusamai-projection.workspace = true
 once_cell.workspace = true
 opentelemetry.workspace = true
 petgraph.workspace = true
+rayon.workspace = true
 regex.workspace = true
 rhai.workspace = true
 rust_xlsxwriter.workspace = true
@@ -44,7 +45,6 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
-rayon.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
