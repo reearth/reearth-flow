@@ -1,3 +1,4 @@
+mod cesium3dtiles;
 mod excel;
 mod gltf;
 mod metadata;

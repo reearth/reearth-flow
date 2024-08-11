@@ -17,6 +17,7 @@ use serde_json::Value;
 
 use crate::errors::SinkError;
 
+use super::cesium3dtiles::write_cesium3dtiles;
 use super::excel::write_excel;
 use super::gltf::write_gltf;
 
@@ -101,6 +102,8 @@ enum Format {
     Excel,
     #[serde(rename = "gltf")]
     Gltf,
+    #[serde(rename = "cesium3dtiles")]
+    Cesium3dtiles,
 }
 
 impl Sink for FileWriter {
@@ -122,6 +125,7 @@ impl Sink for FileWriter {
             Format::Tsv => write_csv(&output, &self.buffer, Delimiter::Tab, storage_resolver),
             Format::Excel => write_excel(&output, &self.buffer, storage_resolver),
             Format::Gltf => write_gltf(&output, &self.buffer, storage_resolver),
+            Format::Cesium3dtiles => write_cesium3dtiles(&output, &self.buffer, storage_resolver),
         };
         match result {
             Ok(_) => Ok(()),

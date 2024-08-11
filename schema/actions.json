@@ -1102,7 +1102,8 @@
               "tsv",
               "json",
               "excel",
-              "gltf"
+              "gltf",
+              "cesium3dtiles"
             ]
           }
         }

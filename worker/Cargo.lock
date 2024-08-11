@@ -1829,6 +1829,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "multimap"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "defc4c55412d89136f966bbb339008b474350e5e6e78d2714439c386b3137a03"
+
+[[package]]
 name = "nalgebra"
 version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2038,6 +2044,17 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
+]
+
+[[package]]
+name = "nusamai-mvt"
+version = "0.1.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc2#ae9164cf8ee64c88dba074b2c91039934fbf1e8c"
+dependencies = [
+ "ahash",
+ "indexmap 2.3.0",
+ "prost",
+ "prost-build",
 ]
 
 [[package]]
@@ -2515,6 +2532,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prettyplease"
+version = "0.2.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f12335488a2f3b0a83b14edad48dca9879ce89b2edd10e80237e4e852dd645e"
+dependencies = [
+ "proc-macro2",
+ "syn 2.0.71",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2534,6 +2561,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "prost-build"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bb182580f71dd070f88d01ce3de9f4da5021db7115d2e1c3605a754153b77c1"
+dependencies = [
+ "bytes",
+ "heck 0.4.1",
+ "itertools",
+ "log",
+ "multimap",
+ "once_cell",
+ "petgraph",
+ "prettyplease",
+ "prost",
+ "prost-types",
+ "regex",
+ "syn 2.0.71",
+ "tempfile",
+]
+
+[[package]]
 name = "prost-derive"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2544,6 +2592,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.71",
+]
+
+[[package]]
+name = "prost-types"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cee5168b05f49d4b0ca581206eb14a7b22fafd963efe729ac48eb03266e25cc2"
+dependencies = [
+ "prost",
 ]
 
 [[package]]
@@ -2812,10 +2869,13 @@ dependencies = [
  "indexmap 2.3.0",
  "nusamai-citygml",
  "nusamai-gltf",
+ "nusamai-mvt",
+ "nusamai-projection",
  "once_cell",
  "opentelemetry",
  "petgraph",
  "pretty_assertions",
+ "rayon",
  "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-eval-expr",

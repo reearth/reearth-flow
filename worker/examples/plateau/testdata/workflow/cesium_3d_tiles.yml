@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
+id: a7fc8f35-b84f-496b-a2cb-65be3bfec285
+name: "cesium_3d_tiles"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../config/schema.txt
+  targetPackages:
+    - bldg
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+graphs:
+  - !include ../graphs/attribute_reader.yml
+  - !include ../graphs/folder_and_file_path_reader.yml
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        name: AttributeReader01
+        type: subGraph
+        subGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
+
+      - id: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        name: featureReader_01
+        type: action
+        action: FeatureReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value").cityGmlPath
+
+      - id: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
+        name: fileWriter
+        type: action
+        action: FileWriter
+        with:
+          format: cesium3dtiles
+          output: |
+            env.get("outputPath")
+
+    edges:
+      - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd
+        from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        to: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        fromPort: filePath
+        toPort: default
+      - id: e1c7680d-5830-4e48-8cd8-8d9d762c76ff
+        from: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        to: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
+        fromPort: default
+        toPort: default

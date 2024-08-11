@@ -1099,7 +1099,8 @@ Writes features to a file
         "tsv",
         "json",
         "excel",
-        "gltf"
+        "gltf",
+        "cesium3dtiles"
       ]
     }
   }
