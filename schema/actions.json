@@ -189,42 +189,6 @@
       ]
     },
     {
-      "name": "AttributeKeeper",
-      "type": "processor",
-      "description": "Keeps only specified attributes",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeKeeper",
-        "type": "object",
-        "required": [
-          "keepAttributes"
-        ],
-        "properties": {
-          "keepAttributes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "Attribute"
-      ]
-    },
-    {
       "name": "AttributeManager",
       "type": "processor",
       "description": "Manages attributes",
@@ -278,6 +242,57 @@
                     "type": "null"
                   }
                 ]
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "AttributeMapper",
+      "type": "processor",
+      "description": "Maps attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeMapperParam",
+        "type": "object",
+        "required": [
+          "mappers"
+        ],
+        "properties": {
+          "mappers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Mapper"
+            }
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "Mapper": {
+            "type": "object",
+            "required": [
+              "attribute",
+              "expr"
+            ],
+            "properties": {
+              "attribute": {
+                "type": "string"
+              },
+              "expr": {
+                "$ref": "#/definitions/Expr"
               }
             }
           }
