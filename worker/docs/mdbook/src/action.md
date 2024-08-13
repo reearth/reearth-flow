@@ -188,42 +188,6 @@ Extracts file path information from attributes
 ### Category
 * Attribute
 
-## AttributeKeeper
-### Type
-* processor
-### Description
-Keeps only specified attributes
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeKeeper",
-  "type": "object",
-  "required": [
-    "keepAttributes"
-  ],
-  "properties": {
-    "keepAttributes": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-### Category
-* Attribute
-
 ## AttributeManager
 ### Type
 * processor
@@ -281,6 +245,57 @@ Manages attributes
               "type": "null"
             }
           ]
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
+
+## AttributeMapper
+### Type
+* processor
+### Description
+Maps attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttributeMapperParam",
+  "type": "object",
+  "required": [
+    "mappers"
+  ],
+  "properties": {
+    "mappers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Mapper"
+      }
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "Mapper": {
+      "type": "object",
+      "required": [
+        "attribute",
+        "expr"
+      ],
+      "properties": {
+        "attribute": {
+          "type": "string"
+        },
+        "expr": {
+          "$ref": "#/definitions/Expr"
         }
       }
     }

@@ -50,11 +50,6 @@ graphs:
         with:
           filePathAttribute: path
 
-      - id: d23bd6b2-4984-4969-92e9-3a7e4427050c
-        name: EchoProperty
-        type: action
-        action: Echo
-
       - id: b16c4701-3b21-48f3-8b09-cf2fc6a51f1e
         name: PLATEAU.UDXFolderExtractor
         type: action
@@ -116,10 +111,106 @@ graphs:
           supplierAttribute: |
             env.get("__value").index.to_string()
 
-      - id: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
-        name: Echo
+      - id: 1c6330bf-218d-40c5-b0c9-fb20ab70e9da
+        name: FeatureMerger02
         type: action
-        action: Echo
+        action: FeatureMerger
+        with:
+          requestorAttribute: |
+            env.get("__value").index.to_string()
+          supplierAttribute: |
+            env.get("__value").index.to_string()
+
+      - id: e7c8f92b-11cd-474b-971f-fb23cc5a741a
+        name: AttributeMapper
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").index
+            - attribute: Folder
+              expr: |
+                env.get("__value").udxDirs
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: "サイズ[KB]"
+              expr: |
+                round(env.get("__value").fileSize / 1024)
+            - attribute: "1GB以下"
+              expr: |
+                if env.get("__value").fileSize / 1024 / 1024 / 1024 <= 1 {
+                  "OK"
+                } else {
+                  "Over"
+                }
+            - attribute: "XML検証結果"
+              expr: |
+                env.get("__value").status
+            - attribute: "L01エラー"
+              expr: |
+                env.get("__value").L01Errors ?? 0
+            - attribute: "L02エラー"
+              expr: |
+                env.get("__value").L02Errors ?? 0
+            - attribute: "L03エラー"
+              expr: |
+                env.get("__value").invalidFeatureTypesNum ?? 0
+            - attribute: "L03エラー詳細"
+              expr: |
+                env.get("__value").invalidFeatureTypesDetail
+            - attribute: "L04エラー"
+              expr: |
+                env.get("__value").inCorrectCodeValue ?? 0
+            - attribute: "不正なcodeSpace数"
+              expr: |
+                env.get("__value").inCorrectCodeSpace ?? 0
+            - attribute: "L05CRS識別子"
+              expr: |
+                if env.get("__value").isCorrectSrsName {
+                  "Ok"
+                } else {
+                  "Wrong"
+                }
+            - attribute: "不正なCRS識別子"
+              expr: |
+                if env.get("__value").isCorrectSrsName {
+                  ""
+                } else {
+                  env.get("__value").srsName
+                }
+            - attribute: "L06エラー"
+              expr: |
+                env.get("__value").inCorrectExtents ?? 0
+            - attribute: "T03エラー"
+              expr: |
+                env.get("__value").xlinkInvalidObjectType ?? 0
+            - attribute: "xlink参照先なし"
+              expr: |
+                env.get("__value").xlinkHasNoReference ?? 0
+            - attribute: "gml:id重複"
+              expr: |
+                env.get("__value").gmlIdNotUnique ?? 0
+            - attribute: "gml:id書式不正"
+              expr: |
+                env.get("__value").gmlIdNotWellformed ?? 0
+            - attribute: "L-frn-01エラー"
+              expr: |
+                env.get("__value").invalidLodXGeometry ?? 0
+            - attribute: "補足"
+              expr: |
+                env.get("__value").miscellaneous ?? ""
+
+      - id: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
+        name: FileWriter
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            env.get("outputPath") + "検査結果.tsv"
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
@@ -169,9 +260,9 @@ graphs:
         toPort: supplier
       - id: 7e83522e-5dd2-46cc-881e-e08a99935050
         from: 67a54b1b-4e3c-4bd2-99a3-81a379187c09
-        to: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
+        to: 1c6330bf-218d-40c5-b0c9-fb20ab70e9da
         fromPort: merged
-        toPort: default
+        toPort: supplier
       - id: c1834039-8ea9-4b13-8921-84642e1ceda3
         from: 5e786419-7657-4694-b947-5c851d9fb95c
         to: 1acc6aea-dcfb-4b5e-b2d6-38cc3b6848ac
@@ -179,6 +270,16 @@ graphs:
         toPort: default
       - id: 037c34a3-f09c-4079-b6ef-84a73c4366ef
         from: 1acc6aea-dcfb-4b5e-b2d6-38cc3b6848ac
-        to: d23bd6b2-4984-4969-92e9-3a7e4427050c
+        to: 1c6330bf-218d-40c5-b0c9-fb20ab70e9da
+        fromPort: default
+        toPort: requestor
+      - id: 5279e383-1527-4c79-8384-5a0560afd54f
+        from: 1c6330bf-218d-40c5-b0c9-fb20ab70e9da
+        to: e7c8f92b-11cd-474b-971f-fb23cc5a741a
+        fromPort: merged
+        toPort: default
+      - id: ccd43557-e876-4d10-8a22-3dd2b061b574
+        from: e7c8f92b-11cd-474b-971f-fb23cc5a741a
+        to: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
         fromPort: default
         toPort: default
