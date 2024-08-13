@@ -96,7 +96,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
 
 #[derive(Debug, Clone)]
 pub struct StatisticsCalculator {
-    aggregate_name: Attribute,
+    aggregate_name: Option<Attribute>,
     aggregate_attribute: Option<Attribute>,
     calculations: Vec<CompiledCalculation>,
     aggregate_buffer: HashMap<Attribute, HashMap<String, i64>>,
@@ -111,7 +111,7 @@ struct CompiledCalculation {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct StatisticsCalculatorParam {
-    aggregate_name: Attribute,
+    aggregate_name: Option<Attribute>,
     aggregate_attribute: Option<Attribute>,
     calculations: Vec<Calculation>,
 }
@@ -190,7 +190,9 @@ impl Processor for StatisticsCalculator {
         }
         for (attr, value) in features {
             let mut feature = Feature::new();
-            feature.insert(self.aggregate_name.clone(), AttributeValue::String(attr));
+            if let Some(aggregate_name) = self.aggregate_name.as_ref() {
+                feature.insert(aggregate_name, AttributeValue::String(attr));
+            }
             for (new_attribute, count) in value {
                 feature.insert(
                     new_attribute.clone(),
