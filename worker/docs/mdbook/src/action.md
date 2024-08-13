@@ -1090,32 +1090,111 @@ Writes features to a file
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "FileWriterParam",
-  "type": "object",
-  "required": [
-    "format",
-    "output"
-  ],
-  "properties": {
-    "format": {
-      "$ref": "#/definitions/Format"
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "csv"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
     },
-    "output": {
-      "$ref": "#/definitions/Expr"
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "tsv"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "converter": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "json"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "excel"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "gltf"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
     }
-  },
+  ],
   "definitions": {
     "Expr": {
       "type": "string"
-    },
-    "Format": {
-      "type": "string",
-      "enum": [
-        "csv",
-        "tsv",
-        "json",
-        "excel",
-        "gltf"
-      ]
     }
   }
 }
@@ -1784,7 +1863,6 @@ Calculates statistics of features
   "title": "StatisticsCalculatorParam",
   "type": "object",
   "required": [
-    "aggregateName",
     "calculations"
   ],
   "properties": {
@@ -1799,7 +1877,14 @@ Calculates statistics of features
       ]
     },
     "aggregateName": {
-      "$ref": "#/definitions/Attribute"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "calculations": {
       "type": "array",

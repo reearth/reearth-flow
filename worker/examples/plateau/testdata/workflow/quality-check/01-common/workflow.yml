@@ -204,13 +204,82 @@ graphs:
                 env.get("__value").miscellaneous ?? ""
 
       - id: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
-        name: FileWriter
+        name: FileWriterTsv
         type: action
         action: FileWriter
         with:
           format: tsv
           output: |
-            env.get("outputPath") + "検査結果.tsv"
+            env.get("outputPath") + "01_共通.tsv"
+
+      - id: 3b6f77dc-fc94-4610-bec8-3b1cd2789f3d
+        name: StatisticsCalculator
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: "L01エラー"
+              expr: |
+                env.get("__value")["L01エラー"] ?? 0
+
+            - newAttribute: "L02エラー"
+              expr: |
+                env.get("__value")["L02エラー"] ?? 0
+
+            - newAttribute: "L04エラー"
+              expr: |
+                env.get("__value")["L04エラー"] ?? 0
+
+            - newAttribute: "不正なcodeSpace数"
+              expr: |
+                env.get("__value")["不正なcodeSpace数"] ?? 0
+
+            - newAttribute: "L06エラー"
+              expr: |
+                env.get("__value")["L06エラー"] ?? 0
+
+            - newAttribute: "T03エラー"
+              expr: |
+                env.get("__value")["T03エラー"] ?? 0
+
+            - newAttribute: "xlink参照先なし"
+              expr: |
+                env.get("__value")["xlink参照先なし"] ?? 0
+
+            - newAttribute: "gml:id重複"
+              expr: |
+                env.get("__value")["gml:id重複"] ?? 0
+
+            - newAttribute: "gml:id書式不正"
+              expr: |
+                env.get("__value")["gml:id書式不正"] ?? 0
+
+            - newAttribute: "L-frn-01エラー"
+              expr: |
+                env.get("__value")["L-frn-01エラー"] ?? 0
+
+      - id: b1d1c5d0-12a1-46d6-ac35-803f3eb22d63
+        name: FileWriterJson
+        type: action
+        action: FileWriter
+        with:
+          format: json
+          converter: |
+            if env.get("__features").is_empty() {
+              []
+            } else {
+              let result = [];
+              let feature = env.get("__features")[0];
+              for key in feature.keys() {
+                result.push(#{
+                  name: key,
+                  count: feature[key],
+                });
+              }
+              result
+            }
+          output: |
+            env.get("outputPath") + "summary_common.json"
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
@@ -281,5 +350,15 @@ graphs:
       - id: ccd43557-e876-4d10-8a22-3dd2b061b574
         from: e7c8f92b-11cd-474b-971f-fb23cc5a741a
         to: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
+        fromPort: default
+        toPort: default
+      - id: c10aebe0-0f84-44f4-862e-97bd08290729
+        from: e7c8f92b-11cd-474b-971f-fb23cc5a741a
+        to: 3b6f77dc-fc94-4610-bec8-3b1cd2789f3d
+        fromPort: default
+        toPort: default
+      - id: 2716f9db-ebde-4777-b9ee-8550578840af
+        from: 3b6f77dc-fc94-4610-bec8-3b1cd2789f3d
+        to: b1d1c5d0-12a1-46d6-ac35-803f3eb22d63
         fromPort: default
         toPort: default
