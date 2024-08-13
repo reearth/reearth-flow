@@ -38,3 +38,5 @@ tokio-util.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 url.workspace = true
+nusamai-projection.workspace = true
+nusamai-mvt.workspace = true

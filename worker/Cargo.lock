@@ -2982,6 +2982,8 @@ dependencies = [
  "home",
  "jsonpath_lib",
  "libxml",
+ "nusamai-mvt",
+ "nusamai-projection",
  "parking_lot",
  "petgraph",
  "rayon",
