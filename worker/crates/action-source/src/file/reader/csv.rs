@@ -10,14 +10,14 @@ use tokio::sync::mpsc::Sender;
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CsvPropertySchema {
+pub struct CsvReaderParam {
     pub(super) offset: Option<usize>,
 }
 
 pub(crate) async fn read_csv(
     delimiter: Delimiter,
     input_path: Uri,
-    props: &CsvPropertySchema,
+    props: &CsvReaderParam,
     storage_resolver: Arc<StorageResolver>,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
