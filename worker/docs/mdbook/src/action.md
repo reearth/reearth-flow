@@ -1681,6 +1681,20 @@ Extracts maxLod
 ### Category
 * PLATEAU
 
+## PLATEAU.TranXLinkChecker
+### Type
+* processor
+### Description
+Check Xlink for Tran
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
 ## PLATEAU.UDXFolderExtractor
 ### Type
 * processor
