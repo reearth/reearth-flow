@@ -138,7 +138,7 @@ impl Processor for RhaiCaller {
                 for new_value in array_values {
                     if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
                         let mut feature = feature.clone();
-                        feature.id = uuid::Uuid::new_v4();
+                        feature.refresh_id();
                         feature.attributes = new_value
                             .iter()
                             .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))

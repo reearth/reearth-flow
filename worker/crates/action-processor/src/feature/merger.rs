@@ -199,7 +199,7 @@ impl Processor for FeatureMerger {
             for (idx, supplier_feature) in supplier_features.iter().enumerate() {
                 let mut merged_feature = request_feature.clone();
                 if idx > 0 {
-                    merged_feature.id = uuid::Uuid::new_v4();
+                    merged_feature.refresh_id();
                 }
                 merged_feature
                     .attributes

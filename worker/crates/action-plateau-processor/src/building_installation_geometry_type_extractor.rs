@@ -162,7 +162,7 @@ impl Processor for BuildingInstallationGeometryTypeExtractor {
                 }
                 for tag in &tags {
                     let mut feature = feature.clone();
-                    feature.id = uuid::Uuid::new_v4();
+                    feature.refresh_id();
                     let attributes = HashMap::from([
                         (
                             Attribute::new("bldgGmlId"),
