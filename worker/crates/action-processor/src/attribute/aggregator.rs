@@ -72,27 +72,40 @@ impl ProcessorFactory for AttributeAggregatorFactory {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let mut aggregate_attributes = Vec::<CompliledAggregateAttribute>::new();
         for aggregte_attribute in &params.aggregate_attributes {
-            let expr = &aggregte_attribute.attribute_value;
-            let template_ast = expr_engine
-                .compile(expr.as_ref())
-                .map_err(|e| AttributeProcessorError::AggregatorFactory(format!("{:?}", e)))?;
-            aggregate_attributes.push(CompliledAggregateAttribute {
-                attribute_value: template_ast,
-                new_attribute: aggregte_attribute.new_attribute.clone(),
-            });
+            if let Some(expr) = &aggregte_attribute.attribute_value {
+                let template_ast = expr_engine
+                    .compile(expr.as_ref())
+                    .map_err(|e| AttributeProcessorError::AggregatorFactory(format!("{:?}", e)))?;
+                aggregate_attributes.push(CompliledAggregateAttribute {
+                    attribute_value: Some(template_ast),
+                    new_attribute: aggregte_attribute.new_attribute.clone(),
+                    attribute: None,
+                });
+            } else {
+                aggregate_attributes.push(CompliledAggregateAttribute {
+                    attribute_value: None,
+                    new_attribute: aggregte_attribute.new_attribute.clone(),
+                    attribute: aggregte_attribute.attribute.clone(),
+                });
+            }
         }
-        let calculation = expr_engine
-            .compile(params.calculation.as_ref())
-            .map_err(|e| {
+
+        let calculation = if let Some(expr) = params.calculation {
+            let ast = expr_engine.compile(expr.as_ref()).map_err(|e| {
                 AttributeProcessorError::AggregatorFactory(format!(
                     "Failed to compile calculation: {}",
                     e
                 ))
             })?;
+            Some(ast)
+        } else {
+            None
+        };
 
         let process = AttributeAggregator {
             aggregate_attributes,
             calculation,
+            calculation_value: params.calculation_value,
             calculation_attribute: params.calculation_attribute,
             method: params.method,
             buffer: HashMap::new(),
@@ -104,7 +117,8 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 #[derive(Debug, Clone)]
 pub struct AttributeAggregator {
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
-    calculation: rhai::AST,
+    calculation: Option<rhai::AST>,
+    calculation_value: Option<i64>,
     calculation_attribute: Attribute,
     method: Method,
     buffer: HashMap<String, i64>, // string is tab
@@ -114,7 +128,8 @@ pub struct AttributeAggregator {
 #[serde(rename_all = "camelCase")]
 pub struct AttributeAggregatorParam {
     aggregate_attributes: Vec<AggregateAttribute>,
-    calculation: Expr,
+    calculation: Option<Expr>,
+    calculation_value: Option<i64>,
     calculation_attribute: Attribute,
     method: Method,
 }
@@ -123,13 +138,15 @@ pub struct AttributeAggregatorParam {
 #[serde(rename_all = "camelCase")]
 struct AggregateAttribute {
     new_attribute: Attribute,
-    attribute_value: Expr,
+    attribute: Option<String>,
+    attribute_value: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
 struct CompliledAggregateAttribute {
     new_attribute: Attribute,
-    attribute_value: rhai::AST,
+    attribute: Option<String>,
+    attribute_value: Option<rhai::AST>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -160,19 +177,40 @@ impl Processor for AttributeAggregator {
 
         let mut aggregates = Vec::new();
         for aggregate_attribute in &self.aggregate_attributes {
-            let result = scope
-                .eval_ast::<String>(&aggregate_attribute.attribute_value)
-                .map_err(|e| {
+            if let Some(attribute) = &aggregate_attribute.attribute {
+                let result = feature.get(attribute).ok_or_else(|| {
+                    AttributeProcessorError::Aggregator(format!(
+                        "Attribute not found: {}",
+                        attribute
+                    ))
+                })?;
+                aggregates.push(result.to_string());
+                continue;
+            }
+            if let Some(ast) = &aggregate_attribute.attribute_value {
+                let result = scope.eval_ast::<String>(ast).map_err(|e| {
                     AttributeProcessorError::Aggregator(format!(
                         "Failed to evaluate aggregation: {}",
                         e
                     ))
                 })?;
-            aggregates.push(result);
+                aggregates.push(result);
+            }
         }
-        let calc = scope.eval_ast::<i64>(&self.calculation).map_err(|e| {
-            AttributeProcessorError::Aggregator(format!("Failed to evaluate calculation: {}", e))
-        })?;
+        let calc = if let Some(value) = self.calculation_value {
+            value
+        } else if let Some(calculation) = &self.calculation {
+            scope.eval_ast::<i64>(calculation).map_err(|e| {
+                AttributeProcessorError::Aggregator(format!(
+                    "Failed to evaluate calculation: {}",
+                    e
+                ))
+            })?
+        } else {
+            return Err(
+                AttributeProcessorError::Aggregator("Calculation not found".to_string()).into(),
+            );
+        };
         let key = generate_aggregate_key(&aggregates);
         match &self.method {
             Method::Max => {
