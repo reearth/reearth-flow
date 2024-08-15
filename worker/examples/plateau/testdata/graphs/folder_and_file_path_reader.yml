@@ -1,5 +1,5 @@
 id: c6863b71-953b-4d15-af56-396fc93fc617
-name: folder_and_file_path_reader
+name: FolderAndfilePathReader
 nodes:
   - id: b1a91180-ab88-4c1a-aab5-48c242a218ca
     name: FilePathExtractor01

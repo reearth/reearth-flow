@@ -18,6 +18,7 @@ with:
   extractDmGeometryAsXmlFragment: false
   outputPath:
 graphs:
+  - !include ../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../graphs/folder_and_file_path_reader.yml
   - id: 43581967-2a15-450a-ba13-e450376c3d0e
     name: entry_point
@@ -55,6 +56,48 @@ graphs:
         type: action
         action: PLATEAU.TranXLinkChecker
 
+      - id: 30a42dee-474c-4283-b34b-3c54e16bd2b6
+        name: AttributeAggregator
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+            - newAttribute: package
+              attributeValue: |
+                env.get("__value")["package"]
+
+            - newAttribute: fileIndex
+              attributeValue: |
+                env.get("__value").fileIndex.to_string()
+
+            - newAttribute: lod
+              attributeValue: |
+                env.get("__value").lod
+
+            - newAttribute: featureType
+              attributeValue: |
+                env.get("__value").featureType
+
+          calculation: |
+            env.get("__value").unreferencedSurfaceNum
+          calculationAttribute: |
+            unreferencedSurfaceNumSum
+          method: count
+
+      - id: 5028de22-eb9e-4ec4-80f2-62b585445042
+        name: FeatureReader
+        type: action
+        action: FeatureReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value").cityGmlPath
+
+      - id: 2b984969-b0eb-49ba-adb3-72d90def032e
+        name: LodSplitterWithDm
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
       - id: 5ffe00f3-4554-4fc9-91c7-f7d272691cc4
         name: Echo01
         type: action
@@ -71,8 +114,23 @@ graphs:
         to: 2596b371-cb37-4856-8f6f-a4096f76f391
         fromPort: default
         toPort: default
-      - id: 44c2c09a-bd0a-4e54-8886-132ab993ebad
+      - id: 078aa49c-ddd5-44fc-9110-10edeb894cb6
         from: 2596b371-cb37-4856-8f6f-a4096f76f391
-        to: 5ffe00f3-4554-4fc9-91c7-f7d272691cc4
+        to: 30a42dee-474c-4283-b34b-3c54e16bd2b6
         fromPort: default
+        toPort: default
+      - id: 44c2c09a-bd0a-4e54-8886-132ab993ebad
+        from: d2b4977d-e218-4628-96f2-d26407aeea14
+        to: 5028de22-eb9e-4ec4-80f2-62b585445042
+        fromPort: default
+        toPort: default
+      - id: 684bb513-75e2-4019-b677-c08f68fb3ef5
+        from: 5028de22-eb9e-4ec4-80f2-62b585445042
+        to: 2b984969-b0eb-49ba-adb3-72d90def032e
+        fromPort: default
+        toPort: default
+      - id: 67f266f7-91e6-446f-bb45-a28862f19742
+        from: 2b984969-b0eb-49ba-adb3-72d90def032e
+        to: 5ffe00f3-4554-4fc9-91c7-f7d272691cc4
+        fromPort: lod2
         toPort: default
