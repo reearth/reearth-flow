@@ -664,7 +664,7 @@
         "default"
       ],
       "outputPorts": [
-        "rejected"
+        "unfiltered"
       ],
       "categories": [
         "Feature"

@@ -37,15 +37,15 @@ graphs:
             - attribute: destDataset
               method: create
               value: |
-                if env.get("__value").package == "tran" {
+                if env.get("__value")["package"] == "tran" {
                   "03-1_道路"
-                } else if env.get("__value").package == "rwy"{
+                } else if env.get("__value")["package"] == "rwy"{
                   "03-2_鉄道"
-                } else if env.get("__value").package == "trk" {
+                } else if env.get("__value")["package"] == "trk" {
                   "03-3_徒歩道"
-                } else if env.get("__value").package == "squr" {
+                } else if env.get("__value")["package"] == "squr" {
                   "03-4_広場"
-                } else if env.get("__value").package == "wwy" {
+                } else if env.get("__value")["package"] == "wwy" {
                   "03-4_航路"
                 } else {
                   "Invalid Package"
@@ -98,8 +98,80 @@ graphs:
         type: subGraph
         subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
+      - id: c074f373-44e9-40b8-af83-76f36e141a9c
+        name: FeatureTypeExtractor
+        type: action
+        action: RhaiCaller
+        with:
+          isTarget: |
+            true
+          process: |
+            let result = [];
+            for attribute in json::find_value_by_json_path(env.get("__value").cityGmlAttributes, "$..[?(@.id && @.type)]") {
+              result.push(#{
+                "gmlId": attribute.id,
+                "featureType": attribute.type,
+                "fileIndex": env.get("__value").fileIndex,
+                "lod": env.get("__value").lod,
+                "gmlFileName": file::extract_filename(env.get("__value").cityGmlPath),
+                "package": env.get("__value")["package"],
+                "destDataset": env.get("__value").destDataset,
+              });
+            }
+            result
+
+      - id: 6be730d2-72bc-43ba-b775-778395703f08
+        name: AttributeDuplicateFilter
+        type: action
+        action: AttributeDuplicateFilter
+        with:
+          filterBy:
+            - "gmlId"
+            - "featureType"
+            - "fileIndex"
+            - "lod"
+            - "gmlFileName"
+            - "package"
+            - "destDataset"
+
+      - id: 614a32df-139f-49a8-af47-2f35315cb29a
+        name: AttributeAggregatorFeatureType
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+            - newAttribute: lod
+              attributeValue: |
+                env.get("__value").lod.to_string()
+
+            - newAttribute: package
+              attributeValue: |
+                env.get("__value")["package"]
+
+            - newAttribute: fileIndex
+              attributeValue: |
+                env.get("__value").fileIndex.to_string()
+
+            - newAttribute: gmlFileName
+              attributeValue: |
+                env.get("__value").gmlFileName
+
+            - newAttribute: destDataset
+              attributeValue: |
+                env.get("__value").destDataset
+
+            - newAttribute: featureType
+              attributeValue: |
+                env.get("__value").featureType
+
+          calculation: |
+            1
+          calculationAttribute: |
+            totalCount
+          method: count
+
       - id: 5ffe00f3-4554-4fc9-91c7-f7d272691cc4
-        name: Echo01
+        name: EchoFeatureTypeExtractor
         type: action
         action: Echo
 
@@ -129,8 +201,38 @@ graphs:
         to: 2b984969-b0eb-49ba-adb3-72d90def032e
         fromPort: default
         toPort: default
-      - id: 67f266f7-91e6-446f-bb45-a28862f19742
+      - id: f11fa6f6-44e5-433f-aa3a-b83a09c26a73
         from: 2b984969-b0eb-49ba-adb3-72d90def032e
-        to: 5ffe00f3-4554-4fc9-91c7-f7d272691cc4
+        to: c074f373-44e9-40b8-af83-76f36e141a9c
+        fromPort: lod0
+        toPort: default
+      - id: 4d74ea01-586c-4496-8db3-f5118d88aa37
+        from: 2b984969-b0eb-49ba-adb3-72d90def032e
+        to: c074f373-44e9-40b8-af83-76f36e141a9c
+        fromPort: lod1
+        toPort: default
+      - id: 4dfa0e69-ff62-42a9-98c4-2ae6fa02dec1
+        from: 2b984969-b0eb-49ba-adb3-72d90def032e
+        to: c074f373-44e9-40b8-af83-76f36e141a9c
         fromPort: lod2
+        toPort: default
+      - id: 900bad33-05a2-4d37-9c84-af2dccbf566e
+        from: 2b984969-b0eb-49ba-adb3-72d90def032e
+        to: c074f373-44e9-40b8-af83-76f36e141a9c
+        fromPort: lod3
+        toPort: default
+      - id: 8c1c1027-fd5b-4048-bd1c-dff24f220087
+        from: c074f373-44e9-40b8-af83-76f36e141a9c
+        to: 6be730d2-72bc-43ba-b775-778395703f08
+        fromPort: default
+        toPort: default
+      - id: 0802def9-302e-41cb-9c19-c32e4f84e195
+        from: 6be730d2-72bc-43ba-b775-778395703f08
+        to: 614a32df-139f-49a8-af47-2f35315cb29a
+        fromPort: default
+        toPort: default
+      - id: 2b001db1-e099-4466-bc4a-024f08de99ba
+        from: 614a32df-139f-49a8-af47-2f35315cb29a
+        to: 5ffe00f3-4554-4fc9-91c7-f7d272691cc4
+        fromPort: default
         toPort: default

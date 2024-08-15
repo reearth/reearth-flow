@@ -658,7 +658,7 @@ Filters features based on conditions
 ### Input Ports
 * default
 ### Output Ports
-* rejected
+* unfiltered
 ### Category
 * Feature
 

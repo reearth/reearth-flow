@@ -73,7 +73,7 @@ impl ProcessorFactory for AttributeManagerFactory {
         };
 
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let operations = convert_single_operation(&params.operations, Arc::clone(&expr_engine));
+        let operations = convert_single_operation(&params.operations, Arc::clone(&expr_engine))?;
 
         let process = AttributeManager { operations };
         Ok(Box::new(process))
@@ -208,30 +208,45 @@ fn process_feature(feature: &Feature, operations: &[Operate], expr_engine: Arc<E
     result
 }
 
-fn convert_single_operation(operations: &[Operation], expr_engine: Arc<Engine>) -> Vec<Operate> {
-    operations
-        .iter()
-        .map(|operation| {
-            let method = &operation.method;
-            let attribute = &operation.attribute;
-            let value = operation.value.clone().unwrap_or(Expr::new(""));
-            match method {
-                Method::Convert => Operate::Convert {
-                    expr: expr_engine.compile(value.as_ref()).ok(),
-                    attribute: attribute.clone(),
-                },
-                Method::Create => Operate::Create {
-                    expr: expr_engine.compile(value.as_ref()).ok(),
-                    attribute: attribute.clone(),
-                },
-                Method::Rename => Operate::Rename {
-                    new_key: value.to_string(),
-                    attribute: attribute.clone(),
-                },
-                Method::Remove => Operate::Remove {
-                    attribute: attribute.clone(),
-                },
-            }
-        })
-        .collect::<Vec<_>>()
+fn convert_single_operation(
+    operations: &[Operation],
+    expr_engine: Arc<Engine>,
+) -> super::errors::Result<Vec<Operate>> {
+    let mut result = Vec::new();
+    for operation in operations.iter() {
+        let method = &operation.method;
+        let attribute = &operation.attribute;
+        let expr = if let Some(expr) = operation
+            .value
+            .clone()
+            .take_if(|_| matches!(method, Method::Convert | Method::Create))
+        {
+            Some(
+                expr_engine
+                    .compile(expr.as_ref())
+                    .map_err(|e| AttributeProcessorError::ManagerFactory(format!("{:?}", e)))?,
+            )
+        } else {
+            None
+        };
+        let value = match method {
+            Method::Convert => Operate::Convert {
+                expr,
+                attribute: attribute.clone(),
+            },
+            Method::Create => Operate::Create {
+                expr,
+                attribute: attribute.clone(),
+            },
+            Method::Rename => Operate::Rename {
+                new_key: operation.value.clone().unwrap_or(Expr::new("")).to_string(),
+                attribute: attribute.clone(),
+            },
+            Method::Remove => Operate::Remove {
+                attribute: attribute.clone(),
+            },
+        };
+        result.push(value);
+    }
+    Ok(result)
 }
