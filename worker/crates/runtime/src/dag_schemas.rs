@@ -176,7 +176,9 @@ impl DagSchemas {
             } else {
                 global_params.clone()
             };
-            let subgraph = other_graph_schemas.get(sub_graph_id).unwrap();
+            let subgraph = other_graph_schemas
+                .get(sub_graph_id)
+                .unwrap_or_else(|| panic!("Subgraph not found. with id = {}", sub_graph_id));
             entry_graph.add_subgraph_after_node(node.handle.id, &params, subgraph);
             let Some(target_node) = entry_graph.node_index_by_node_id(node.handle.id) else {
                 continue;

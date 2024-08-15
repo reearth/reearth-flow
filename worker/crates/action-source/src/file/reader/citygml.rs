@@ -87,9 +87,11 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                         geometry_store: RwLock::new(geometry_store).into(),
                         appearance_store: Default::default(), // TODO: from local appearances
                         bounded,
+                        geometry_refs: st.geometry_refs().clone(),
                     };
                     entities.push(entity);
                 }
+                st.refresh_geomrefs();
                 Ok(())
             }
             b"app:appearanceMember" => {

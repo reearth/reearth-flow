@@ -1,5 +1,5 @@
 id: 7e98d856-1438-4148-bdcb-91747ef2e405
-name: lod_splitter_with_dm
+name: PLATEAU3.LodSplitterWithDM
 nodes:
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: geometryFilter_01
