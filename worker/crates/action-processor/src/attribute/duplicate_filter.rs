@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -80,7 +80,7 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
 #[derive(Debug, Clone)]
 pub struct AttributeDuplicateFilter {
     params: AttributeDuplicateFilterParam,
-    buffer: HashMap<AttributeValue, Feature>,
+    buffer: HashMap<String, Feature>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -93,7 +93,7 @@ impl Processor for AttributeDuplicateFilter {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
-        1
+        10
     }
 
     fn process(
@@ -108,9 +108,11 @@ impl Processor for AttributeDuplicateFilter {
             .iter()
             .flat_map(|attribute| feature.get(attribute))
             .collect::<Vec<_>>();
-        let key_values = key_values.iter().map(|&v| v.clone()).collect::<Vec<_>>();
-        self.buffer
-            .insert(AttributeValue::Array(key_values), feature.clone());
+        let key_values = key_values
+            .iter()
+            .map(|&v| v.clone().to_string())
+            .collect::<Vec<_>>();
+        self.buffer.insert(key_values.join(","), feature.clone());
         Ok(())
     }
 

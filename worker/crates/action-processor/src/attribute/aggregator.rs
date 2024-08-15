@@ -146,7 +146,7 @@ impl Processor for AttributeAggregator {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
-        1
+        20
     }
 
     fn process(

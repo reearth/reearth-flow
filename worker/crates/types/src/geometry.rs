@@ -92,9 +92,6 @@ impl TryFrom<Entity> for Geometry {
                 | GeometryType::MultiSurface
                 | GeometryType::CompositeSurface
                 | GeometryType::Triangle => {
-                    if geometry.len == 0 {
-                        return None;
-                    }
                     let mut polygons = Vec::<Polygon3D<f64>>::new();
                     for idx_poly in geoms
                         .multipolygon
@@ -421,7 +418,7 @@ impl CityGmlGeometry {
             .iter()
             .map(|feature| CityGmlGeometry {
                 features: vec![feature.clone()],
-                ..Default::default()
+                ..self.clone()
             })
             .collect()
     }
