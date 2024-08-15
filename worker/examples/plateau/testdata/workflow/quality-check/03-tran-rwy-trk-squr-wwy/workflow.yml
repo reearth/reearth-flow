@@ -63,20 +63,17 @@ graphs:
         with:
           aggregateAttributes:
             - newAttribute: package
-              attributeValue: |
-                env.get("__value")["package"]
+              attribute: package
 
             - newAttribute: fileIndex
               attributeValue: |
                 env.get("__value").fileIndex.to_string()
 
             - newAttribute: lod
-              attributeValue: |
-                env.get("__value").lod
+              attribute: lod
 
             - newAttribute: featureType
-              attributeValue: |
-                env.get("__value").featureType
+              attribute: featureType
 
           calculation: |
             env.get("__value").unreferencedSurfaceNum
@@ -111,8 +108,8 @@ graphs:
               result.push(#{
                 "gmlId": attribute.id,
                 "featureType": attribute.type,
-                "fileIndex": env.get("__value").fileIndex,
-                "lod": env.get("__value").lod,
+                "fileIndex": env.get("__value").fileIndex.to_string(),
+                "lod": env.get("__value").lod.to_string(),
                 "gmlFileName": file::extract_filename(env.get("__value").cityGmlPath),
                 "package": env.get("__value")["package"],
                 "destDataset": env.get("__value").destDataset,
@@ -141,31 +138,24 @@ graphs:
         with:
           aggregateAttributes:
             - newAttribute: lod
-              attributeValue: |
-                env.get("__value").lod.to_string()
+              attribute: lod
 
             - newAttribute: package
-              attributeValue: |
-                env.get("__value")["package"]
+              attribute: package
 
             - newAttribute: fileIndex
-              attributeValue: |
-                env.get("__value").fileIndex.to_string()
+              attribute: fileIndex
 
             - newAttribute: gmlFileName
-              attributeValue: |
-                env.get("__value").gmlFileName
+              attribute: gmlFileName
 
             - newAttribute: destDataset
-              attributeValue: |
-                env.get("__value").destDataset
+              attribute: destDataset
 
             - newAttribute: featureType
-              attributeValue: |
-                env.get("__value").featureType
+              attribute: featureType
 
-          calculation: |
-            1
+          calculationValue: 1
           calculationAttribute: |
             totalCount
           method: count
