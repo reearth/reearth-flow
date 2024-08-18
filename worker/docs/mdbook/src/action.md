@@ -411,6 +411,49 @@ Replaces the geometry of the feature with a point that is either in the center o
 ### Category
 * Geometry
 
+## Cesium3DTilesWriter
+### Type
+* sink
+### Description
+Writes features to a file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cesium3dtilesWriterParam",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "cesium3dtiles"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
 ## Clipper
 ### Type
 * processor
@@ -1209,24 +1252,6 @@ Writes features to a file
           "type": "string",
           "enum": [
             "gltf"
-          ]
-        },
-        "output": {
-          "$ref": "#/definitions/Expr"
-        }
-      }
-    },
-    {
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "cesium3dtiles"
           ]
         },
         "output": {

@@ -416,6 +416,48 @@
       ]
     },
     {
+      "name": "Cesium3DTilesWriter",
+      "type": "sink",
+      "description": "Writes features to a file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Cesium3dtilesWriterParam",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "cesium3dtiles"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          }
+        ],
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "Clipper",
       "type": "processor",
       "description": "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately",
@@ -1212,24 +1254,6 @@
                 "type": "string",
                 "enum": [
                   "gltf"
-                ]
-              },
-              "output": {
-                "$ref": "#/definitions/Expr"
-              }
-            }
-          },
-          {
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "cesium3dtiles"
                 ]
               },
               "output": {
