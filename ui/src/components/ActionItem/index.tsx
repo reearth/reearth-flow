@@ -3,6 +3,7 @@ import { DragEvent } from "react";
 import { Action } from "@flow/types";
 
 type Props = {
+  className?: string;
   action: Action;
   selected: boolean | undefined;
   draggable?: boolean;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 const ActionItem: React.FC<Props> = ({
+  className,
   action,
   selected,
   draggable,
@@ -24,14 +26,14 @@ const ActionItem: React.FC<Props> = ({
   return (
     <div
       key={action.name}
-      className={`group cursor-pointer rounded px-2 ${selected ? "bg-primary text-accent-foreground" : "hover:bg-primary hover:text-accent-foreground"}`}
+      className={`group cursor-pointer rounded p-2 ${selected ? "bg-primary text-accent-foreground" : "hover:bg-primary hover:text-accent-foreground"} ${className}`}
       onClick={() => onSingleClick?.(action.name)}
       onDoubleClick={() => onDoubleClick?.(action.name)}
       draggable={draggable}
       onMouseDown={onMouseDown}
       onDragStart={(e) => onDragStart?.(e, action.name)}
     >
-      <div className="flex w-full justify-between gap-1 py-2">
+      <div className="flex w-full justify-between gap-1 pb-2">
         <div className="w-3/5 self-center break-words text-sm">
           <p className="self-center text-zinc-200">{action.name}</p>
         </div>
@@ -47,7 +49,7 @@ const ActionItem: React.FC<Props> = ({
         <div className="mb-2 text-xs leading-[0.85rem]">
           {action.description}
         </div>
-        <div className="flex flex-wrap gap-1 text-xs ">
+        <div className="flex flex-wrap gap-1 text-xs">
           {action.categories.map((c) => (
             <div className="rounded border bg-popover p-[2px]" key={c}>
               <p className="text-zinc-400">{c}</p>
@@ -55,7 +57,6 @@ const ActionItem: React.FC<Props> = ({
           ))}
         </div>
       </div>
-      <div className="border-b pb-2" />
     </div>
   );
 };
