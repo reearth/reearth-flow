@@ -82,3 +82,29 @@ pub fn size_for_z(z: u8) -> (u32, u32) {
         _ => (1 << z, 1 << (z - 1)),
     }
 }
+
+pub fn geometric_error(z: u8, y: u32) -> f64 {
+    let (_, y_size) = size_for_z(z);
+    if y >= y_size {
+        panic!("y out of range");
+    }
+    if z < 2 {
+        return 1e+100;
+    }
+    use std::f64::consts::PI;
+    const Q: f64 = 525957.5361033019;
+    let zz = (1 << z) as f64;
+    let error1 = Q / (1 << (z - 2)) as f64;
+    let lat = (1.0 - (y as f64 + 0.5) * 4.0 / zz) * PI / 2.0;
+    let error2 = lat.cos() * x_step(z, y) as f64 * error1;
+    f64::max(error1, error2)
+}
+
+pub fn calc_parent_zxy(z: u8, x: u32, y: u32) -> (u8, u32, u32) {
+    match z {
+        0 => panic!("z=0 has no parent"),
+        1 => (z - 1, 0, 0),
+        2 => (z - 1, x / 2, y),
+        _ => (z - 1, x / 2, y / 2),
+    }
+}

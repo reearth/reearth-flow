@@ -55,7 +55,10 @@ pub fn make_gltf(city_gml: geomotry_types::CityGmlGeometry) -> Result<Gltf, Sink
 
     for (index, feature) in features.iter().enumerate() {
         for poly in feature.polygons.iter() {
-            let mat = materials.get(index).unwrap().clone();
+            // let mat = materials.get(index).unwrap().clone();
+            let Some(mat) = materials.get(index).cloned() else {
+                continue;
+            };
             let primitive = primitives.entry(mat).or_default();
             primitive.feature_ids.insert(index as u32);
 

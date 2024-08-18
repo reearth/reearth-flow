@@ -33,9 +33,9 @@ graphs:
             env.get("__value").cityGmlPath
 
       - id: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
-        name: fileWriter
+        name: cesium3DTilesWriter
         type: action
-        action: FileWriter
+        action: Cesium3DTilesWriter
         with:
           format: cesium3dtiles
           output: |

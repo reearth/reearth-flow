@@ -60,6 +60,8 @@ nusamai-mvt = { git = "https://github.com/reearth/plateau-gis-converter", tag = 
 nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc2", features = ["serde"] }
 nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc2" }
 
+cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs.git" }
+
 Inflector = "0.11.4"
 ahash = "0.8.11"
 approx = "0.5.1"
@@ -110,7 +112,7 @@ rstar = "0.12.0"
 rstest = "0.22.0"
 rust_xlsxwriter = "0.73.0"
 schemars = { version = "0.8.21", features = ["uuid1"] }
-serde = { version = "1.0.204", features = ["derive"] }
+serde = { version = "1.0.208", features = ["derive"] }
 serde_derive = "1.0.204"
 serde_json = { version = "1.0.122", features = ["arbitrary_precision"] }
 serde_with = "3.9.0"

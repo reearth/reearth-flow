@@ -20,7 +20,6 @@ use serde_json::Value;
 
 use crate::errors::SinkError;
 
-use super::cesium3dtiles::write_cesium3dtiles;
 use super::excel::write_excel;
 use super::gltf::write_gltf;
 
@@ -117,10 +116,6 @@ pub enum FileWriterParam {
         #[serde(flatten)]
         common_property: FileWriterCommonParam,
     },
-    Cesium3dtiles {
-        #[serde(flatten)]
-        common_property: FileWriterCommonParam,
-    },
 }
 
 impl FileWriterParam {
@@ -133,7 +128,6 @@ impl FileWriterParam {
             } => common_property,
             FileWriterParam::Excel { common_property } => common_property,
             FileWriterParam::Gltf { common_property } => common_property,
-            FileWriterParam::Cesium3dtiles { common_property } => common_property,
         }
     }
 }
@@ -169,9 +163,6 @@ impl Sink for FileWriter {
             }
             FileWriterParam::Excel { .. } => write_excel(&output, &self.buffer, storage_resolver),
             FileWriterParam::Gltf { .. } => write_gltf(&output, &self.buffer, storage_resolver),
-            FileWriterParam::Cesium3dtiles { .. } => {
-                write_cesium3dtiles(&output, &self.buffer, storage_resolver)
-            }
         };
         match result {
             Ok(_) => Ok(()),
