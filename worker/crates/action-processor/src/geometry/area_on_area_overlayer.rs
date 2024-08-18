@@ -278,7 +278,7 @@ impl AreaOnAreaOverlayer {
                 return;
             };
             let mut feature = feature.clone();
-            feature.id = uuid::Uuid::new_v4();
+            feature.refresh_id();
             feature.attributes.insert(
                 Attribute::new("overlap"),
                 AttributeValue::Number(Number::from(overlap)),
@@ -294,7 +294,7 @@ impl AreaOnAreaOverlayer {
                 return;
             };
             let mut feature = feature.clone();
-            feature.id = uuid::Uuid::new_v4();
+            feature.refresh_id();
             feature.attributes.insert(
                 Attribute::new("overlap"),
                 AttributeValue::Number(Number::from(overlap)),

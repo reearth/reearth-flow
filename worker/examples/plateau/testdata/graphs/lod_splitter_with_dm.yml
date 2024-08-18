@@ -1,5 +1,5 @@
 id: 7e98d856-1438-4148-bdcb-91747ef2e405
-name: lod_splitter_with_dm
+name: PLATEAU3.LodSplitterWithDM
 nodes:
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: geometryFilter_01
@@ -12,17 +12,6 @@ nodes:
     name: geometrySplitter_01
     type: action
     action: GeometrySplitter
-
-  - id: d2b4977d-e218-4628-96f2-d26407aeea14
-    name: attributeManager_01
-    type: action
-    action: AttributeManager
-    with:
-      operations:
-        - attribute: lod
-          method: create
-          value: |
-            env.get("__value").geometryName[3]
 
   - id: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
     name: reprojector_01
@@ -96,11 +85,6 @@ edges:
     toPort: default
   - id: 5857909b-7fc0-4d3e-adfa-65a5669a6646
     from: 8fe1a102-e3f3-40dd-b235-66e9c148830f
-    to: d2b4977d-e218-4628-96f2-d26407aeea14
-    fromPort: default
-    toPort: default
-  - id: fc116a08-6e00-46e9-bb7d-69b8e56f9adb
-    from: d2b4977d-e218-4628-96f2-d26407aeea14
     to: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
     fromPort: default
     toPort: default

@@ -285,7 +285,7 @@ impl LineOnLineOverlayer {
             };
             let mut geometry = geometry.clone();
             let mut feature = feature.clone();
-            feature.id = uuid::Uuid::new_v4();
+            feature.refresh_id();
             geometry.value =
                 GeometryValue::FlowGeometry2D(Geometry2D::MultiPoint(MultiPoint2D::new(points)));
             feature.geometry = Some(geometry);
@@ -369,7 +369,7 @@ impl LineOnLineOverlayer {
             };
             let mut geometry = geometry.clone();
             let mut feature = feature.clone();
-            feature.id = uuid::Uuid::new_v4();
+            feature.refresh_id();
             geometry.value =
                 GeometryValue::FlowGeometry3D(Geometry3D::MultiPoint(MultiPoint3D::new(points)));
             feature.geometry = Some(geometry);

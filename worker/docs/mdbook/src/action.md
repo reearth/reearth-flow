@@ -57,7 +57,6 @@ Aggregates features by attributes
   "type": "object",
   "required": [
     "aggregateAttributes",
-    "calculation",
     "calculationAttribute",
     "method"
   ],
@@ -69,10 +68,24 @@ Aggregates features by attributes
       }
     },
     "calculation": {
-      "$ref": "#/definitions/Expr"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "calculationAttribute": {
       "$ref": "#/definitions/Attribute"
+    },
+    "calculationValue": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "int64"
     },
     "method": {
       "$ref": "#/definitions/Method"
@@ -82,12 +95,24 @@ Aggregates features by attributes
     "AggregateAttribute": {
       "type": "object",
       "required": [
-        "attributeValue",
         "newAttribute"
       ],
       "properties": {
+        "attribute": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "attributeValue": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "newAttribute": {
           "$ref": "#/definitions/Attribute"
@@ -658,7 +683,7 @@ Filters features based on conditions
 ### Input Ports
 * default
 ### Output Ports
-* rejected
+* unfiltered
 ### Category
 * Feature
 
@@ -1690,6 +1715,20 @@ Validates domain of definition of CityGML features
 * processor
 ### Description
 Extracts maxLod
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
+## PLATEAU.TranXLinkChecker
+### Type
+* processor
+### Description
+Check Xlink for Tran
 ### Parameters
 * No parameters
 ### Input Ports

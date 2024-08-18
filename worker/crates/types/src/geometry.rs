@@ -76,9 +76,14 @@ impl TryFrom<Entity> for Geometry {
         let Value::Object(obj) = &entity.root else {
             return Err(Error::unsupported_feature("no object found"));
         };
-        let ObjectStereotype::Feature { id: _, geometries } = &obj.stereotype else {
+        let ObjectStereotype::Feature {
+            id: _,
+            geometries: _,
+        } = &obj.stereotype
+        else {
             return Err(Error::unsupported_feature("no feature found"));
         };
+        let geometries = entity.geometry_refs.clone();
         let mut geometry_features = Vec::<GeometryFeature>::new();
         let operation = |geometry: &GeometryRef| -> Option<GeometryFeature> {
             match geometry.ty {
@@ -411,12 +416,9 @@ impl CityGmlGeometry {
     pub fn split_feature(&self) -> Vec<CityGmlGeometry> {
         self.features
             .iter()
-            .map(|feature| {
-                CityGmlGeometry::new(
-                    vec![feature.clone()],
-                    self.materials.clone(),
-                    self.textures.clone(),
-                )
+            .map(|feature| CityGmlGeometry {
+                features: vec![feature.clone()],
+                ..self.clone()
             })
             .collect()
     }
