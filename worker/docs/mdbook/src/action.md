@@ -57,7 +57,6 @@ Aggregates features by attributes
   "type": "object",
   "required": [
     "aggregateAttributes",
-    "calculation",
     "calculationAttribute",
     "method"
   ],
@@ -69,10 +68,24 @@ Aggregates features by attributes
       }
     },
     "calculation": {
-      "$ref": "#/definitions/Expr"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "calculationAttribute": {
       "$ref": "#/definitions/Attribute"
+    },
+    "calculationValue": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "int64"
     },
     "method": {
       "$ref": "#/definitions/Method"
@@ -82,12 +95,24 @@ Aggregates features by attributes
     "AggregateAttribute": {
       "type": "object",
       "required": [
-        "attributeValue",
         "newAttribute"
       ],
       "properties": {
+        "attribute": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "attributeValue": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "newAttribute": {
           "$ref": "#/definitions/Attribute"
@@ -188,42 +213,6 @@ Extracts file path information from attributes
 ### Category
 * Attribute
 
-## AttributeKeeper
-### Type
-* processor
-### Description
-Keeps only specified attributes
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeKeeper",
-  "type": "object",
-  "required": [
-    "keepAttributes"
-  ],
-  "properties": {
-    "keepAttributes": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-### Category
-* Attribute
-
 ## AttributeManager
 ### Type
 * processor
@@ -281,6 +270,57 @@ Manages attributes
               "type": "null"
             }
           ]
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
+
+## AttributeMapper
+### Type
+* processor
+### Description
+Maps attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttributeMapperParam",
+  "type": "object",
+  "required": [
+    "mappers"
+  ],
+  "properties": {
+    "mappers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Mapper"
+      }
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "Mapper": {
+      "type": "object",
+      "required": [
+        "attribute",
+        "expr"
+      ],
+      "properties": {
+        "attribute": {
+          "type": "string"
+        },
+        "expr": {
+          "$ref": "#/definitions/Expr"
         }
       }
     }
@@ -556,6 +596,7 @@ Counts features
 ### Input Ports
 * default
 ### Output Ports
+* default
 * rejected
 ### Category
 * Feature
@@ -642,7 +683,7 @@ Filters features based on conditions
 ### Input Ports
 * default
 ### Output Ports
-* rejected
+* unfiltered
 ### Category
 * Feature
 
@@ -922,6 +963,35 @@ Extracts files from a directory or an archive
 ### Category
 * File
 
+## FilePropertyExtractor
+### Type
+* processor
+### Description
+Extracts properties from a file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FilePropertyExtractor",
+  "type": "object",
+  "required": [
+    "filePathAttribute"
+  ],
+  "properties": {
+    "filePathAttribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* File
+
 ## FileReader
 ### Type
 * source
@@ -1045,32 +1115,111 @@ Writes features to a file
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "FileWriterParam",
-  "type": "object",
-  "required": [
-    "format",
-    "output"
-  ],
-  "properties": {
-    "format": {
-      "$ref": "#/definitions/Format"
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "csv"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
     },
-    "output": {
-      "$ref": "#/definitions/Expr"
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "tsv"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "converter": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "json"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "excel"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "gltf"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
     }
-  },
+  ],
   "definitions": {
     "Expr": {
       "type": "string"
-    },
-    "Format": {
-      "type": "string",
-      "enum": [
-        "csv",
-        "tsv",
-        "json",
-        "excel",
-        "gltf"
-      ]
     }
   }
 }
@@ -1557,6 +1706,20 @@ Extracts maxLod
 ### Category
 * PLATEAU
 
+## PLATEAU.TranXLinkChecker
+### Type
+* processor
+### Description
+Check Xlink for Tran
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
 ## PLATEAU.UDXFolderExtractor
 ### Type
 * processor
@@ -1739,7 +1902,6 @@ Calculates statistics of features
   "title": "StatisticsCalculatorParam",
   "type": "object",
   "required": [
-    "aggregateName",
     "calculations"
   ],
   "properties": {
@@ -1754,7 +1916,14 @@ Calculates statistics of features
       ]
     },
     "aggregateName": {
-      "$ref": "#/definitions/Attribute"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "calculations": {
       "type": "array",

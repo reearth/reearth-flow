@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
+use crate::tran_xlink_checker::TranXLinkCheckerFactory;
+
 use super::{
     attribute_flattener::AttributeFlattenerFactory,
     building_installation_geometry_type_extractor::BuildingInstallationGeometryTypeExtractorFactory,
@@ -14,7 +16,7 @@ use super::{
     xml_attribute_extractor::XmlAttributeExtractorFactory,
 };
 
-pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
         Box::<UdxFolderExtractorFactory>::default(),
         Box::<DomainOfDefinitionValidatorFactory>::default(),
@@ -25,6 +27,7 @@ pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
         Box::<AttributeFlattenerFactory>::default(),
         Box::<BuildingInstallationGeometryTypeExtractorFactory>::default(),
         Box::<BuildingUsageAttributeValidatorFactory>::default(),
+        Box::<TranXLinkCheckerFactory>::default(),
     ];
     factories
         .into_iter()

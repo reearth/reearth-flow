@@ -72,13 +72,13 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
             .into());
         };
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let mut calculations = Vec::<CompliledCalculation>::new();
+        let mut calculations = Vec::<CompiledCalculation>::new();
         for calculation in &params.calculations {
             let expr = &calculation.expr;
             let template_ast = expr_engine.compile(expr.as_ref()).map_err(|e| {
                 AttributeProcessorError::StatisticsCalculatorFactory(format!("{:?}", e))
             })?;
-            calculations.push(CompliledCalculation {
+            calculations.push(CompiledCalculation {
                 expr: template_ast,
                 new_attribute: calculation.new_attribute.clone(),
             });
@@ -96,14 +96,14 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
 
 #[derive(Debug, Clone)]
 pub struct StatisticsCalculator {
-    aggregate_name: Attribute,
+    aggregate_name: Option<Attribute>,
     aggregate_attribute: Option<Attribute>,
-    calculations: Vec<CompliledCalculation>,
+    calculations: Vec<CompiledCalculation>,
     aggregate_buffer: HashMap<Attribute, HashMap<String, i64>>,
 }
 
 #[derive(Debug, Clone)]
-struct CompliledCalculation {
+struct CompiledCalculation {
     new_attribute: Attribute,
     expr: rhai::AST,
 }
@@ -111,7 +111,7 @@ struct CompliledCalculation {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct StatisticsCalculatorParam {
-    aggregate_name: Attribute,
+    aggregate_name: Option<Attribute>,
     aggregate_attribute: Option<Attribute>,
     calculations: Vec<Calculation>,
 }
@@ -190,7 +190,9 @@ impl Processor for StatisticsCalculator {
         }
         for (attr, value) in features {
             let mut feature = Feature::new();
-            feature.insert(self.aggregate_name.clone(), AttributeValue::String(attr));
+            if let Some(aggregate_name) = self.aggregate_name.as_ref() {
+                feature.insert(aggregate_name, AttributeValue::String(attr));
+            }
             for (new_attribute, count) in value {
                 feature.insert(
                     new_attribute.clone(),

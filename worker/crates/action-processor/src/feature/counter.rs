@@ -81,7 +81,7 @@ impl ProcessorFactory for FeatureCounterFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![REJECTED_PORT.clone()]
+        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(

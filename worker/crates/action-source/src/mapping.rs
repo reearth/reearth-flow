@@ -8,7 +8,7 @@ use crate::{
     file::{path_extractor::FilePathExtractorFactory, reader::FileReaderFactory},
 };
 
-pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     HashMap::from([
         (
             "FileReader".to_string(),

@@ -32,8 +32,8 @@ pretty_assertions.workspace = true
 rust-embed = "8.3.0"
 time.workspace = true
 tokio.workspace = true
-tracing-subscriber.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
 uuid.workspace = true
 
 [[test]]

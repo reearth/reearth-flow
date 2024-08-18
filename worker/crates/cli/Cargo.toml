@@ -29,7 +29,7 @@ reearth-flow-telemetry.workspace = true
 reearth-flow-types.workspace = true
 
 bytes.workspace = true
-clap = {version = "4.5.8", features = ["env", "string"]}
+clap = { version = "4.5.8", features = ["env", "string"] }
 colored = "2.1.0"
 directories.workspace = true
 indoc.workspace = true
@@ -41,7 +41,7 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 time.workspace = true
+tracing.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
-tracing.workspace = true
 uuid.workspace = true
