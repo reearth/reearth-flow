@@ -23,6 +23,7 @@ ahash.workspace = true
 async-trait.workspace = true
 byteorder.workspace = true
 bytes.workspace = true
+cesiumtiles.workspace = true
 csv.workspace = true
 earcut.workspace = true
 indexmap.workspace = true
@@ -45,7 +46,6 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
-cesiumtiles.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
