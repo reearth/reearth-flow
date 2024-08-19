@@ -103,33 +103,15 @@ graphs:
           isTarget: |
             true
           process: |
-            let result = [];
-            for attribute in json::find_value_by_json_path(env.get("__value").cityGmlAttributes, "$..[?(@.id && @.type)]") {
-              result.push(#{
-                "gmlId": attribute.id,
-                "featureType": attribute.type,
-                "fileIndex": env.get("__value").fileIndex.to_string(),
-                "lod": env.get("__value").lod.to_string(),
-                "gmlFileName": file::extract_filename(env.get("__value").cityGmlPath),
-                "package": env.get("__value")["package"],
-                "destDataset": env.get("__value").destDataset,
-              });
+            #{
+              "gmlId": env.get("__value").featureId,
+              "featureType": env.get("__value").featureType,
+              "fileIndex": env.get("__value").fileIndex.to_string(),
+              "lod": env.get("__value").lod.to_string(),
+              "gmlFileName": file::extract_filename(env.get("__value").cityGmlPath),
+              "package": env.get("__value")["package"],
+              "destDataset": env.get("__value").destDataset,
             }
-            result
-
-      - id: 6be730d2-72bc-43ba-b775-778395703f08
-        name: AttributeDuplicateFilter
-        type: action
-        action: AttributeDuplicateFilter
-        with:
-          filterBy:
-            - "gmlId"
-            - "featureType"
-            - "fileIndex"
-            - "lod"
-            - "gmlFileName"
-            - "package"
-            - "destDataset"
 
       - id: 614a32df-139f-49a8-af47-2f35315cb29a
         name: AttributeAggregatorFeatureType
@@ -213,11 +195,6 @@ graphs:
         toPort: default
       - id: 8c1c1027-fd5b-4048-bd1c-dff24f220087
         from: c074f373-44e9-40b8-af83-76f36e141a9c
-        to: 6be730d2-72bc-43ba-b775-778395703f08
-        fromPort: default
-        toPort: default
-      - id: 0802def9-302e-41cb-9c19-c32e4f84e195
-        from: 6be730d2-72bc-43ba-b775-778395703f08
         to: 614a32df-139f-49a8-af47-2f35315cb29a
         fromPort: default
         toPort: default
