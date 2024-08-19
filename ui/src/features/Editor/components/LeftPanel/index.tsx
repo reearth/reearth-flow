@@ -7,7 +7,7 @@ import {
   TreeView,
 } from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
 import { UserNavigation } from "@flow/features/TopNavigation/components";
@@ -41,6 +41,12 @@ const LeftPanel: React.FC<Props> = ({
   const [_content, setContent] = useState("Admin Page");
 
   const [, setDialogType] = useDialogType();
+
+  useEffect(() => {
+    if (!isOpen && selectedTab) {
+      setSelectedTab(undefined);
+    }
+  }, [isOpen, selectedTab]);
 
   const treeContent: TreeDataItem[] = [
     ...(nodes
