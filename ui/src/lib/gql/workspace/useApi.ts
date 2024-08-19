@@ -1,3 +1,5 @@
+import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { useT } from "@flow/lib/i18n";
 import {
   GetWorkspaces,
   DeleteWorkspace,
@@ -14,6 +16,9 @@ export enum WorkspaceQueryKeys {
 }
 
 export const useWorkspace = () => {
+  const { toast } = useToast();
+  const t = useT();
+
   const {
     createWorkspaceMutation,
     useGetWorkspacesQuery,
@@ -29,6 +34,10 @@ export const useWorkspace = () => {
     const { mutateAsync, ...rest } = createWorkspaceMutation;
     try {
       const data = await mutateAsync(name);
+      toast({
+        title: t("Workspace Created"),
+        description: t("Workspace has been successfully created."),
+      });
       return { workspace: data, ...rest };
     } catch (_err) {
       return { workspace: undefined, ...rest };
@@ -53,7 +62,7 @@ export const useWorkspace = () => {
 
   const updateWorkspace = async (
     workspaceId: string,
-    name: string,
+    name: string
   ): Promise<WorkspaceMutation> => {
     const { mutateAsync, ...rest } = updateWorkspaceMutation;
     try {
@@ -65,11 +74,16 @@ export const useWorkspace = () => {
   };
 
   const deleteWorkspace = async (
-    workspaceId: string,
+    workspaceId: string
   ): Promise<DeleteWorkspace> => {
     const { mutateAsync, ...rest } = deleteWorkspaceMutation;
     try {
       const data = await mutateAsync(workspaceId);
+      toast({
+        title: t("Workspace Deleted"),
+        description: t("Workspace has been successfully deleted."),
+        variant: "destructive",
+      });
       return { workspaceId: data, ...rest };
     } catch (_err) {
       return { workspaceId: undefined, ...rest };
@@ -80,11 +94,15 @@ export const useWorkspace = () => {
   const addMemberToWorkspace = async (
     workspaceId: string,
     userId: string,
-    role: Role,
+    role: Role
   ): Promise<WorkspaceMutation> => {
     const { mutateAsync, ...rest } = addMemberToWorkspaceMutation;
     try {
       const data = await mutateAsync({ workspaceId, userId, role });
+      toast({
+        title: t("Member Added"),
+        description: t("Member has been successfully added to the workspace."),
+      });
       return { workspace: data, ...rest };
     } catch (_err) {
       return { workspace: undefined, ...rest };
@@ -93,11 +111,18 @@ export const useWorkspace = () => {
 
   const removeMemberFromWorkspace = async (
     workspaceId: string,
-    userId: string,
+    userId: string
   ): Promise<WorkspaceMutation> => {
     const { mutateAsync, ...rest } = removeMemberFromWorkspaceMutation;
     try {
       const data = await mutateAsync({ workspaceId, userId });
+      toast({
+        title: t("Member Removed"),
+        description: t(
+          "Member has been successfully removed from the workspace."
+        ),
+        variant: "destructive",
+      });
       return { workspace: data, ...rest };
     } catch (_err) {
       return { workspace: undefined, ...rest };
@@ -107,7 +132,7 @@ export const useWorkspace = () => {
   const updateMemberOfWorkspace = async (
     workspaceId: string,
     userId: string,
-    role: Role,
+    role: Role
   ): Promise<WorkspaceMutation> => {
     const { mutateAsync, ...rest } = updateMemberOfWorkspaceMutation;
     try {
