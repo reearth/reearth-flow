@@ -1,7 +1,8 @@
 import { Plus, X } from "@phosphor-icons/react";
+import { TooltipTrigger } from "@radix-ui/react-tooltip";
 import { memo } from "react";
 
-import { IconButton } from "@flow/components";
+import { IconButton, Tooltip, TooltipContent } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { Workflow } from "@flow/types";
 
@@ -40,7 +41,7 @@ const WorkflowTabs: React.FC<Props> = ({
     <div className="w-[75vw]">
       <div className="flex h-[29px] flex-1 items-center">
         <div
-          className={`mx-1 flex w-28 cursor-pointer items-center justify-center rounded px-[6px] py-[2px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"}`}
+          className={`mx-1 flex w-[135px] cursor-pointer items-center justify-center rounded px-[6px] py-[2px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"}`}
           onClick={() => onWorkflowChange(mainWorkflow?.id)}
         >
           <p
@@ -53,21 +54,28 @@ const WorkflowTabs: React.FC<Props> = ({
           {subWorkflows &&
             subWorkflows.length > 0 &&
             subWorkflows.map((sw) => (
-              <div
-                key={sw.id}
-                className={`relative flex w-28 items-center justify-center rounded px-[6px] py-[2px] transition-colors ${currentWorkflowId === sw?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"} group cursor-pointer`}
-                onClick={() => onWorkflowChange(sw.id)}
-              >
-                <X
-                  className="group-hover:bg-primary/50 absolute right-[2px] hidden size-[15px] group-hover:block"
-                  onClick={handleWorkflowClose(sw.id)}
-                />
-                <p
-                  className={`group-hover:text-primary/50 truncate text-center text-xs font-extralight ${currentWorkflowId === sw?.id && "text-primary/50"}`}
-                >
-                  {sw.name}
-                </p>
-              </div>
+              <Tooltip key={sw.id} delayDuration={1500}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={`relative flex w-[135px] items-center justify-center rounded py-[2px] ${currentWorkflowId === sw?.id ? "bg-[#a21caf]/70 text-accent-foreground" : "bg-[#a21caf]/30 hover:bg-[#a21caf]/80"} group cursor-pointer`}
+                    onClick={() => onWorkflowChange(sw.id)}
+                  >
+                    <p
+                      className={`group-hover:text-primary/50 truncate px-[15px] text-center text-xs font-extralight ${currentWorkflowId === sw?.id && "text-primary/50"}`}
+                    >
+                      {sw.name}
+                    </p>
+                    <X
+                      className="hover:bg-primary/50 absolute right-[4px] hidden size-[12px] group-hover:block"
+                      weight="bold"
+                      onClick={handleWorkflowClose(sw.id)}
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>{sw.name}</p>
+                </TooltipContent>
+              </Tooltip>
             ))}
         </div>
         <div className="flex items-center">

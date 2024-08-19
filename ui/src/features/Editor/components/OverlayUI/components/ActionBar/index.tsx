@@ -1,7 +1,7 @@
 import {
   DownloadSimple,
-  FloppyDiskBack,
   Play,
+  RocketLaunch,
   Stop,
 } from "@phosphor-icons/react";
 import { memo } from "react";
@@ -17,7 +17,7 @@ const ActionBar = () => {
   return (
     <div className="absolute right-1 top-1">
       <div className="m-1 rounded-md border bg-secondary">
-        <div className="flex rounded-md p-1">
+        <div className="flex rounded-md">
           <div className="flex align-middle">
             {/* <IconButton
             tooltipText={t("Publish workflow")}
@@ -25,24 +25,28 @@ const ActionBar = () => {
             icon={<DoubleArrowRightIcon />}
           /> */}
             <IconButton
+              className="rounded-[4px]"
               tooltipText={t("Run workflow")}
               tooltipOffset={tooltipOffset}
-              icon={<Play />}
+              icon={<Play weight="thin" />}
             />
             <IconButton
+              className="rounded-[4px]"
               tooltipText={t("Stop workflow")}
               tooltipOffset={tooltipOffset}
-              icon={<Stop />}
+              icon={<Stop weight="thin" />}
             />
             <IconButton
-              tooltipText={t("Publish workflow")}
+              className="rounded-[4px]"
+              tooltipText={t("Deploy workflow")}
               tooltipOffset={tooltipOffset}
-              icon={<FloppyDiskBack />}
+              icon={<RocketLaunch weight="thin" />}
             />
             <IconButton
+              className="rounded-[4px]"
               tooltipText={t("Download workflow")}
               tooltipOffset={tooltipOffset}
-              icon={<DownloadSimple />}
+              icon={<DownloadSimple weight="thin" />}
             />
           </div>
         </div>

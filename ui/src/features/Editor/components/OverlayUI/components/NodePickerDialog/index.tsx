@@ -110,7 +110,7 @@ const NodePickerDialog: React.FC<Props> = ({
           onChange={(e) => handleSearch(e.target.value)}
         />
         <div className="max-h-[50vh] overflow-scroll">
-          {actions?.map((action) => (
+          {actions?.map((action, idx) => (
             <Fragment key={action.name}>
               <ActionItem
                 className="m-1"
@@ -119,7 +119,7 @@ const NodePickerDialog: React.FC<Props> = ({
                 onSingleClick={handleSingleClick}
                 onDoubleClick={handleDoubleClick}
               />
-              <div className="mx-1 border-b" />
+              {idx !== actions.length - 1 && <div className="mx-1 border-b" />}
             </Fragment>
           ))}
         </div>

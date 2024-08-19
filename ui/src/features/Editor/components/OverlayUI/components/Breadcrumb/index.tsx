@@ -31,7 +31,7 @@ const Breadcrumb: React.FC = () => {
           <CaretRight />
         </p>
         <p
-          className={`max-w-[100px] truncate font-extralight  transition-all delay-0 duration-500 ${isHovered?.includes("project") ? "max-w-[50vw] select-text delay-500" : undefined}`}
+          className={`max-w-[100px] truncate font-extralight transition-all delay-0 duration-500 ${isHovered?.includes("project") ? "max-w-[50vw] select-text delay-500" : undefined}`}
           onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "project"])}
         >
           {currentProject?.name}

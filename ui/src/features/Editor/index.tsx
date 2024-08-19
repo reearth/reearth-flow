@@ -17,6 +17,8 @@ export default function Editor() {
     locallyLockedNode,
     hoveredDetails,
     nodePickerOpen,
+    openPanel,
+    handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
     handleWorkflowChange,
@@ -34,6 +36,8 @@ export default function Editor() {
       <div className="relative flex flex-1">
         <LeftPanel
           nodes={nodes}
+          isOpen={openPanel === "left" && !locallyLockedNode}
+          onOpen={handlePanelOpen}
           onNodesChange={handleNodesUpdate}
           onNodeLocking={handleNodeLocking}
         />
@@ -61,6 +65,8 @@ export default function Editor() {
           <BottomPanel
             currentWorkflowId={currentWorkflowId}
             openWorkflows={openWorkflows}
+            isOpen={openPanel === "bottom" && !locallyLockedNode}
+            onOpen={handlePanelOpen}
             onWorkflowClose={handleWorkflowClose}
             onWorkflowAdd={handleWorkflowAdd}
             onWorkflowChange={handleWorkflowChange}

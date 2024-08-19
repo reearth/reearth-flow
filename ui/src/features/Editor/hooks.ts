@@ -1,5 +1,5 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
-import { MouseEvent, useCallback, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useState } from "react";
 
 import { useYjsStore } from "@flow/lib/yjs";
 import { useCurrentWorkflowId } from "@flow/stores";
@@ -9,6 +9,21 @@ import { cancellableDebounce } from "@flow/utils";
 export default () => {
   const [currentWorkflowId, setCurrentWorkflowId] = useCurrentWorkflowId();
   const { getNodes } = useReactFlow();
+
+  const [openPanel, setOpenPanel] = useState<
+    "left" | "right" | "bottom" | undefined
+  >(undefined);
+
+  const handlePanelOpen = useCallback(
+    (panel?: "left" | "right" | "bottom") => {
+      if (!panel || openPanel === panel) {
+        setOpenPanel(undefined);
+      } else {
+        setOpenPanel(panel);
+      }
+    },
+    [openPanel]
+  );
 
   const handleWorkflowIdChange = useCallback(
     (id?: string) => {
@@ -132,6 +147,8 @@ export default () => {
     locallyLockedNode,
     hoveredDetails,
     nodePickerOpen,
+    openPanel,
+    handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
     handleWorkflowChange: handleWorkflowIdChange,
