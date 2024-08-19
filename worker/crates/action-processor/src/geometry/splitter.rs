@@ -96,6 +96,22 @@ impl Processor for GeometrySplitter {
                             .map(|lod| AttributeValue::String(lod.to_string()))
                             .unwrap_or(AttributeValue::Null),
                     );
+                    feature.insert(
+                        Attribute::new("featureId"),
+                        feature_geometry
+                            .feature_id
+                            .as_ref()
+                            .map(|feature_id| AttributeValue::String(feature_id.to_string()))
+                            .unwrap_or(AttributeValue::Null),
+                    );
+                    feature.insert(
+                        Attribute::new("featureType"),
+                        feature_geometry
+                            .feature_type
+                            .as_ref()
+                            .map(|feature_type| AttributeValue::String(feature_type.to_string()))
+                            .unwrap_or(AttributeValue::Null),
+                    );
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                     return Ok(());
                 }
@@ -116,7 +132,22 @@ impl Processor for GeometrySplitter {
                             .map(|lod| AttributeValue::String(lod.to_string()))
                             .unwrap_or(AttributeValue::Null),
                     );
-
+                    attributes.insert(
+                        Attribute::new("featureId"),
+                        feature
+                            .feature_id
+                            .as_ref()
+                            .map(|feature_id| AttributeValue::String(feature_id.to_string()))
+                            .unwrap_or(AttributeValue::Null),
+                    );
+                    attributes.insert(
+                        Attribute::new("featureType"),
+                        feature
+                            .feature_type
+                            .as_ref()
+                            .map(|feature_type| AttributeValue::String(feature_type.to_string()))
+                            .unwrap_or(AttributeValue::Null),
+                    );
                     geometry.value = GeometryValue::CityGmlGeometry(split_feature);
                     fw.send(ctx.new_with_feature_and_port(
                         Feature::new_with_attributes_and_geometry(attributes, geometry),

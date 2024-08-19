@@ -92,6 +92,9 @@ impl TryFrom<Entity> for Geometry {
                 | GeometryType::MultiSurface
                 | GeometryType::CompositeSurface
                 | GeometryType::Triangle => {
+                    if geometry.len == 0 {
+                        return None;
+                    }
                     let mut polygons = Vec::<Polygon3D<f64>>::new();
                     for idx_poly in geoms
                         .multipolygon
@@ -482,6 +485,8 @@ pub struct GeometryFeature {
     pub pos: u32,
     pub len: u32,
     pub polygons: Vec<Polygon3D<f64>>,
+    pub feature_id: Option<String>,
+    pub feature_type: Option<String>,
 }
 
 impl GeometryFeature {
@@ -580,6 +585,8 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GeometryFeature {
             pos: geometry.pos,
             len: geometry.len,
             polygons: Vec::new(),
+            feature_id: geometry.feature_id,
+            feature_type: geometry.feature_type,
         }
     }
 }
