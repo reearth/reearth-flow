@@ -45,7 +45,7 @@ const WorkflowTabs: React.FC<Props> = ({
           onClick={() => onWorkflowChange(mainWorkflow?.id)}
         >
           <p
-            className={`truncate text-center text-xs font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-primary/50"}`}
+            className={`select-none truncate text-center text-xs font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-primary/50"}`}
           >
             {t("Main Workflow")}
           </p>
@@ -57,11 +57,11 @@ const WorkflowTabs: React.FC<Props> = ({
               <Tooltip key={sw.id} delayDuration={1500}>
                 <TooltipTrigger asChild>
                   <div
-                    className={`relative flex w-[135px] items-center justify-center rounded py-[2px] ${currentWorkflowId === sw?.id ? "bg-[#a21caf]/70 text-accent-foreground" : "bg-[#a21caf]/30 hover:bg-[#a21caf]/80"} group cursor-pointer`}
+                    className={`relative flex w-[135px] items-center justify-center rounded py-[2px] ${currentWorkflowId === sw?.id ? "bg-[#a21caf]/70 text-accent-foreground" : "hover:bg-[#a21caf]/30"} group cursor-pointer`}
                     onClick={() => onWorkflowChange(sw.id)}
                   >
                     <p
-                      className={`group-hover:text-primary/50 truncate px-[15px] text-center text-xs font-extralight ${currentWorkflowId === sw?.id && "text-primary/50"}`}
+                      className={`group-hover:text-primary/50 select-none truncate px-[15px] text-center text-xs font-extralight ${currentWorkflowId === sw?.id && "text-primary/50"}`}
                     >
                       {sw.name}
                     </p>
