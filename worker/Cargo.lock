@@ -459,7 +459,7 @@ dependencies = [
 [[package]]
 name = "cesiumtiles"
 version = "0.0.0"
-source = "git+https://github.com/MIERUNE/cesiumtiles-rs.git#5ec9c251a5f56fd35767fb9f00ba3ff7a4f1741e"
+source = "git+https://github.com/reearth/cesiumtiles-rs.git#ff090532c77f5e995612dacf4ee318725d49e109"
 dependencies = [
  "serde",
  "serde_json",
@@ -1740,7 +1740,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc4#e9cb194c74099906382bb11e47069f48d0e9d66c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc5#f5f4b11cef6ebb888e2b893d84f4d3d6b053d293"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1987,7 +1987,7 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc4#e9cb194c74099906382bb11e47069f48d0e9d66c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc5#f5f4b11cef6ebb888e2b893d84f4d3d6b053d293"
 dependencies = [
  "ahash",
  "chrono",
@@ -1996,7 +1996,9 @@ dependencies = [
  "macros",
  "nusamai-geometry",
  "nusamai-projection",
+ "once_cell",
  "quick-xml",
+ "regex",
  "serde",
  "serde_json",
  "thiserror",
@@ -2006,7 +2008,7 @@ dependencies = [
 [[package]]
 name = "nusamai-geometry"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc4#e9cb194c74099906382bb11e47069f48d0e9d66c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc5#f5f4b11cef6ebb888e2b893d84f4d3d6b053d293"
 dependencies = [
  "num-traits",
  "serde",
@@ -2015,7 +2017,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc4#e9cb194c74099906382bb11e47069f48d0e9d66c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc5#f5f4b11cef6ebb888e2b893d84f4d3d6b053d293"
 dependencies = [
  "byteorder",
  "clap",
@@ -2031,7 +2033,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc4#e9cb194c74099906382bb11e47069f48d0e9d66c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc5#f5f4b11cef6ebb888e2b893d84f4d3d6b053d293"
 dependencies = [
  "cesiumtiles",
  "serde",
@@ -2042,7 +2044,7 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc4#e9cb194c74099906382bb11e47069f48d0e9d66c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc5#f5f4b11cef6ebb888e2b893d84f4d3d6b053d293"
 dependencies = [
  "chrono",
  "hashbrown 0.14.5",
@@ -2060,7 +2062,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc4#e9cb194c74099906382bb11e47069f48d0e9d66c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc5#f5f4b11cef6ebb888e2b893d84f4d3d6b053d293"
 dependencies = [
  "japan-geoid",
  "thiserror",
@@ -3687,18 +3689,18 @@ checksum = "61697e0a1c7e512e84a621326239844a24d8207b4669b41bc18b32ea5cbf988b"
 
 [[package]]
 name = "serde"
-version = "1.0.207"
+version = "1.0.208"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5665e14a49a4ea1b91029ba7d3bca9f299e1f7cfa194388ccc20f14743e784f2"
+checksum = "cff085d2cb684faa248efb494c39b68e522822ac0de72ccf08109abde717cfb2"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.207"
+version = "1.0.208"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6aea2634c86b0e8ef2cfdc0c340baede54ec27b1e46febd7f80dffb2aa44a00e"
+checksum = "24008e81ff7613ed8e5ba0cfaf24e2c2f1e5b8a0495711e44fcd4882fca62bcf"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3718,9 +3720,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.124"
+version = "1.0.125"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66ad62847a56b3dba58cc891acd13884b9c61138d330c0d7b6181713d4fce38d"
+checksum = "83c8e735a073ccf5be70aa8066aa984eaf2fa000db6c8d0100ae605b366d31ed"
 dependencies = [
  "indexmap 2.4.0",
  "itoa",

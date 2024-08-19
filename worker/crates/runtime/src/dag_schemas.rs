@@ -134,6 +134,9 @@ impl DagSchemas {
                 else {
                     continue;
                 };
+                if *sub_graph_id == graph.id {
+                    panic!("Self reference subgraph is not allowed.");
+                }
                 let subgraph = other_graphs
                     .get(sub_graph_id)
                     .unwrap_or_else(|| panic!("Subgraph not found. with id = {}", sub_graph_id));
