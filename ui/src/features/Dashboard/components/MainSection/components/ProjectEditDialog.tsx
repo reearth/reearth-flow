@@ -4,7 +4,6 @@ import {
   DialogContent,
   DialogContentSection,
   DialogContentWrapper,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   Input,
