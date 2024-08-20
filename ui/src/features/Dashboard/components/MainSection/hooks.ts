@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useProject } from "@flow/lib/gql";
-import { useCurrentProject, useDialogType } from "@flow/stores";
+import { useCurrentProject } from "@flow/stores";
 import { Project, Workspace } from "@flow/types";
 
 export default ({ workspace }: { workspace: Workspace }) => {
@@ -13,10 +13,10 @@ export default ({ workspace }: { workspace: Workspace }) => {
   const navigate = useNavigate({ from: "/workspace/$workspaceId" });
   const { useGetWorkspaceProjectsInfinite, deleteProject, updateProject } =
     useProject();
-  const [, setDialogType] = useDialogType();
   const { pages, hasNextPage, isFetching, fetchNextPage } =
     useGetWorkspaceProjectsInfinite(workspace.id);
 
+  const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [projectToBeDeleted, setProjectToBeDeleted] = useState<
@@ -111,7 +111,8 @@ export default ({ workspace }: { workspace: Workspace }) => {
     editProject,
     showError,
     buttonDisabled,
-    setDialogType,
+    openProjectAddDialog,
+    setOpenProjectAddDialog,
     setEditProject,
     setProjectToBeDeleted,
     handleProjectSelect,

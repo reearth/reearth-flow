@@ -5,6 +5,7 @@ import { useT } from "@flow/lib/i18n";
 import type { Workspace } from "@flow/types";
 
 import {
+  ProjectAddDialog,
   ProjectCard,
   ProjectDeletionDialog,
   ProjectEditDialog,
@@ -26,7 +27,8 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
     editProject,
     showError,
     buttonDisabled,
-    setDialogType,
+    openProjectAddDialog,
+    setOpenProjectAddDialog,
     setEditProject,
     setProjectToBeDeleted,
     handleProjectSelect,
@@ -43,7 +45,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
           <Button
             className="flex gap-2"
             variant="outline"
-            onClick={() => setDialogType("add-project")}
+            onClick={() => setOpenProjectAddDialog(true)}
           >
             <Plus weight="thin" />
             <p className="text-xs font-light">{t("New Project")}</p>
@@ -65,6 +67,10 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
           ))}
         </div>
       </div>
+      <ProjectAddDialog
+        isOpen={openProjectAddDialog}
+        onOpenChange={(o) => setOpenProjectAddDialog(o)}
+      />
       <ProjectEditDialog
         editProject={editProject}
         showError={showError}

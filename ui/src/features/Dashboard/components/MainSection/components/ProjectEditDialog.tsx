@@ -40,45 +40,45 @@ const ProjectEditDialog: React.FC<Props> = ({
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>{t("Edit Project")}</DialogTitle>
-          <DialogContentWrapper>
-            <DialogContentSection>
-              <Label>{t("Project Name")}</Label>
-              <Input
-                value={editProject?.name}
-                placeholder={t("Your project name goes here...")}
-                onChange={(e) => onUpdateValue("name", e.target.value)}
-              />
-            </DialogContentSection>
-            <DialogContentSection>
-              <Label>{t("Project Description")}</Label>
-              <Textarea
-                placeholder={t("Your project description goes here...")}
-                value={editProject?.description}
-                onChange={(e) => onUpdateValue("description", e.target.value)}
-              />
-            </DialogContentSection>
-            <div
-              className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
-            >
-              {t("Failed to update project")}
-            </div>
-          </DialogContentWrapper>
-          <DialogFooter>
-            {/* <Button
+        </DialogHeader>
+        <DialogContentWrapper>
+          <DialogContentSection>
+            <Label>{t("Project Name")}</Label>
+            <Input
+              value={editProject?.name}
+              placeholder={t("Your project name goes here...")}
+              onChange={(e) => onUpdateValue("name", e.target.value)}
+            />
+          </DialogContentSection>
+          <DialogContentSection>
+            <Label>{t("Project Description")}</Label>
+            <Textarea
+              placeholder={t("Your project description goes here...")}
+              value={editProject?.description}
+              onChange={(e) => onUpdateValue("description", e.target.value)}
+            />
+          </DialogContentSection>
+          <div
+            className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
+          >
+            {t("Failed to update project")}
+          </div>
+        </DialogContentWrapper>
+        <DialogFooter>
+          {/* <Button
               disabled={buttonDisabled}
               variant={"outline"}
               onClick={() => setEditProject(undefined)}
               >
               {t("Cancel")}
               </Button> */}
-            <Button
-              disabled={buttonDisabled || !editProject?.name}
-              onClick={onUpdateProject}
-            >
-              {t("Save")}
-            </Button>
-          </DialogFooter>
-        </DialogHeader>
+          <Button
+            disabled={buttonDisabled || !editProject?.name}
+            onClick={onUpdateProject}
+          >
+            {t("Save")}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
