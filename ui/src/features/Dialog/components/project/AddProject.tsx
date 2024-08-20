@@ -1,12 +1,18 @@
 import { useState } from "react";
 
-import { Button, DialogFooter, Input } from "@flow/components";
+import {
+  Button,
+  DialogContentSection,
+  DialogContentWrapper,
+  DialogFooter,
+  DialogTitle,
+  Input,
+  Label,
+  Textarea,
+} from "@flow/components";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace, useDialogType } from "@flow/stores";
-
-import { ContentHeader } from "../ContentHeader";
-import { ContentSection } from "../ContentSection";
 
 export const AddProject: React.FC = () => {
   const t = useT();
@@ -40,30 +46,33 @@ export const AddProject: React.FC = () => {
   };
 
   return (
-    <>
-      <ContentHeader title={t("Add Project")} />
-      <ContentSection
-        title=""
-        content={
-          <div className="mt-2 flex flex-col gap-6">
-            <Input
-              placeholder={t("Project name")}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <Input
-              placeholder={t("Project description (optional)")}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-            <div
-              className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
-            >
-              {t("Failed to create project")}
-            </div>
+    <DialogContentWrapper>
+      <DialogTitle>{t("New project")}</DialogTitle>
+      <DialogContentWrapper>
+        <DialogContentSection>
+          <Label>{t("Project name")}</Label>
+          <Input
+            placeholder={t("Project name...")}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </DialogContentSection>
+        <DialogContentSection>
+          <Label>{t("Project description (optional)")}</Label>
+          <Textarea
+            placeholder={t("Project description...")}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </DialogContentSection>
+        <div className="mt-2 flex flex-col gap-6">
+          <div
+            className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
+          >
+            {t("Failed to create project")}
           </div>
-        }
-      />
+        </div>
+      </DialogContentWrapper>
       <DialogFooter>
         <Button
           className="self-end"
@@ -74,6 +83,6 @@ export const AddProject: React.FC = () => {
           {t("Create")}
         </Button>
       </DialogFooter>
-    </>
+    </DialogContentWrapper>
   );
 };
