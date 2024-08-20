@@ -24,11 +24,6 @@ const ActionBar = () => {
         <div className="m-1 rounded-md border bg-secondary">
           <div className="flex rounded-md">
             <div className="flex align-middle">
-              {/* <IconButton
-            tooltipText={t("Publish workflow")}
-            tooltipOffset={tooltipOffset}
-            icon={<DoubleArrowRightIcon />}
-            /> */}
               <IconButton
                 className="rounded-[4px]"
                 tooltipText={t("Run project workflow")}
