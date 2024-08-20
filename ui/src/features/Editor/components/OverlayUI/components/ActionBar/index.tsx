@@ -40,26 +40,26 @@ const ActionBar = () => {
             /> */}
               <IconButton
                 className="rounded-[4px]"
-                tooltipText={t("Run workflow")}
+                tooltipText={t("Run project workflow")}
                 tooltipOffset={tooltipOffset}
                 icon={<Play weight="thin" />}
               />
               <IconButton
                 className="rounded-[4px]"
-                tooltipText={t("Stop workflow")}
+                tooltipText={t("Stop project workflow")}
                 tooltipOffset={tooltipOffset}
                 icon={<Stop weight="thin" />}
               />
               <IconButton
                 className="rounded-[4px]"
-                tooltipText={t("Deploy workflow")}
+                tooltipText={t("Deploy project workflow")}
                 tooltipOffset={tooltipOffset}
                 icon={<RocketLaunch weight="thin" />}
                 onClick={() => setShowDialog("deploy")}
               />
               <IconButton
                 className="rounded-[4px]"
-                tooltipText={t("Download workflow")}
+                tooltipText={t("Download project workflow")}
                 tooltipOffset={tooltipOffset}
                 icon={<DownloadSimple weight="thin" />}
               />
@@ -70,7 +70,7 @@ const ActionBar = () => {
       {showDialog === "deploy" && (
         <Dialog open={true} onOpenChange={() => setShowDialog(undefined)}>
           <DialogContent size="sm">
-            <DialogTitle>{t("Deploy project")}</DialogTitle>
+            <DialogTitle>{t("Deploy project workflow")}</DialogTitle>
             <DialogContentWrapper>
               <DialogContentSection>
                 <Label>{t("Project to deploy: ")}</Label>
