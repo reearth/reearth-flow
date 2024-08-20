@@ -1,11 +1,10 @@
-import { Gear, Graph, User, UsersThree } from "@phosphor-icons/react";
+import { Gear, Graph, UsersThree } from "@phosphor-icons/react";
 
 import { useT } from "@flow/lib/i18n";
 
 import { DialogContentType } from "../Content";
 
 import {
-  AccountDialogContent,
   GeneralDialogContent,
   WorkflowDialogContent,
   WorkspacesDialogContent,
@@ -14,12 +13,6 @@ import {
 export default (): DialogContentType[] => {
   const t = useT();
   return [
-    {
-      id: "account-settings",
-      title: t("Account settings"),
-      icon: <User />,
-      component: <AccountDialogContent />,
-    },
     {
       id: "workspaces-settings",
       title: t("Workspaces settings"),

@@ -76,10 +76,12 @@ const WorkspaceNavigation: React.FC = () => {
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
-      <WorkspaceAddDialog
-        isOpen={openWorkspaceAddDialog}
-        onOpenChange={(o) => setOpenWorkspaceAddDialog(o)}
-      />
+      {openWorkspaceAddDialog && (
+        <WorkspaceAddDialog
+          isOpen={openWorkspaceAddDialog}
+          onOpenChange={(o) => setOpenWorkspaceAddDialog(o)}
+        />
+      )}
     </>
   );
 };
