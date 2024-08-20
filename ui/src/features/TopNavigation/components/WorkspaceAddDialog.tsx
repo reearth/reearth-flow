@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 
 import {
@@ -11,9 +12,8 @@ import {
   DialogTitle,
   Input,
   Label,
-  Textarea,
 } from "@flow/components";
-import { useProject } from "@flow/lib/gql";
+import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
@@ -22,26 +22,23 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
-const ProjectAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
+const WorkspaceAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   const t = useT();
+  const navigate = useNavigate();
+  const { createWorkspace } = useWorkspace();
+  const [currentWorkspace] = useCurrentWorkspace();
+
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [showError, setShowError] = useState(false);
-  const { createProject } = useProject();
-  const [currentWorkspace] = useCurrentWorkspace();
 
   const handleClick = useCallback(async () => {
     if (!name || !currentWorkspace) return;
     setShowError(false);
     setButtonDisabled(true);
-    const { project } = await createProject({
-      name,
-      description,
-      workspaceId: currentWorkspace.id,
-    });
+    const { workspace } = await createWorkspace(name);
 
-    if (!project) {
+    if (!workspace) {
       setShowError(true);
       setButtonDisabled(false);
       return;
@@ -50,36 +47,30 @@ const ProjectAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
     setButtonDisabled(false);
     setShowError(false);
     onOpenChange(false);
-  }, [name, description, currentWorkspace, createProject, onOpenChange]);
+
+    navigate({ to: `/workspace/${workspace.id}` });
+  }, [name, currentWorkspace, navigate, createWorkspace, onOpenChange]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => onOpenChange(o)}>
-      <DialogContent size="md">
+      <DialogContent size="sm">
         <DialogHeader>
-          <DialogTitle>{t("New project")}</DialogTitle>
+          <DialogTitle>{t("New workspace")}</DialogTitle>
         </DialogHeader>
         <DialogContentWrapper>
           <DialogContentSection>
-            <Label>{t("Project name")}</Label>
+            <Label>{t("Workspace name")}</Label>
             <Input
-              placeholder={t("Project name...")}
+              placeholder={t("Workspace name...")}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </DialogContentSection>
-          <DialogContentSection>
-            <Label>{t("Project description (optional)")}</Label>
-            <Textarea
-              placeholder={t("Project description...")}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </DialogContentSection>
-          <div className="mt-2 flex flex-col gap-6">
+          <div className="flex flex-col gap-6">
             <div
               className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
             >
-              {t("Failed to create project")}
+              {t("Failed to create workspace")}
             </div>
           </div>
         </DialogContentWrapper>
@@ -98,4 +89,4 @@ const ProjectAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   );
 };
 
-export { ProjectAddDialog };
+export { WorkspaceAddDialog };
