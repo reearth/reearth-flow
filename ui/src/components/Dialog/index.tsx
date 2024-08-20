@@ -2,7 +2,7 @@
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
-import { forwardRef } from "react";
+import { forwardRef, ForwardRefExoticComponent, RefAttributes } from "react";
 
 import { cn } from "@flow/lib/utils";
 
@@ -151,11 +151,59 @@ const DialogDescription = forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm", className)}
+    className={cn("text-sm px-6", className)}
     {...props}
   />
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
+
+const DialogContentWrapper = forwardRef<
+  React.ElementRef<
+    ForwardRefExoticComponent<
+      {
+        className?: string;
+        children?: React.ReactNode;
+      } & RefAttributes<HTMLDivElement>
+    >
+  >,
+  React.ComponentPropsWithoutRef<
+    ForwardRefExoticComponent<
+      {
+        className?: string;
+        children?: React.ReactNode;
+      } & RefAttributes<HTMLDivElement>
+    >
+  >
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("pt-4 px-6 flex flex-col gap-4", className)}
+    {...props}
+  />
+));
+DialogContentWrapper.displayName = "DialogContentWrapper";
+
+const DialogContentSection = forwardRef<
+  React.ElementRef<
+    ForwardRefExoticComponent<
+      {
+        className?: string;
+        children?: React.ReactNode;
+      } & RefAttributes<HTMLDivElement>
+    >
+  >,
+  React.ComponentPropsWithoutRef<
+    ForwardRefExoticComponent<
+      {
+        className?: string;
+        children?: React.ReactNode;
+      } & RefAttributes<HTMLDivElement>
+    >
+  >
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("flex flex-col gap-2", className)} {...props} />
+));
+DialogContentSection.displayName = "DialogContentSection";
 
 export {
   Dialog,
@@ -168,4 +216,6 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  DialogContentWrapper,
+  DialogContentSection,
 };
