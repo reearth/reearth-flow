@@ -89,7 +89,7 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
               <Label htmlFor="user-email">{t("Email")}</Label>
               <Input
                 id="user-email"
-                placeholder={t("User Name")}
+                placeholder={t("Email")}
                 disabled={isLoading}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
