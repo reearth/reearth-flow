@@ -2771,6 +2771,7 @@ dependencies = [
  "petgraph",
  "pretty_assertions",
  "quick-xml",
+ "rayon",
  "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-eval-expr",

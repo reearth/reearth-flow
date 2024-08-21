@@ -52,16 +52,7 @@ where
 pub enum WindingOrder {
     Clockwise,
     CounterClockwise,
-}
-
-impl WindingOrder {
-    #[allow(dead_code)]
-    pub(crate) fn inverse(&self) -> Self {
-        match self {
-            WindingOrder::Clockwise => WindingOrder::CounterClockwise,
-            WindingOrder::CounterClockwise => WindingOrder::Clockwise,
-        }
-    }
+    None,
 }
 
 pub trait Winding {
@@ -109,6 +100,7 @@ pub trait Winding {
         match winding_order {
             WindingOrder::Clockwise => self.make_cw_winding(),
             WindingOrder::CounterClockwise => self.make_ccw_winding(),
+            WindingOrder::None => {}
         }
     }
 }
