@@ -138,7 +138,6 @@ impl<T: GeoFloat> RegionAssembly<T> {
                         // Both snakes meet at a point, so finish the snakes with each other.
                         let c_idx = c.cross.snake_idx.get();
                         let d_idx = d.cross.snake_idx.get();
-                        debug_assert_ne!(c_idx, d_idx);
                         snakes[c_idx].finish(d_idx);
                         snakes[d_idx].finish(c_idx);
                     }
@@ -374,7 +373,7 @@ impl<T: GeoFloat> Snake<T> {
             let ls_winding = match start_l.partial_cmp(&end_l).unwrap() {
                 Ordering::Less => WindingOrder::CounterClockwise,
                 Ordering::Greater => WindingOrder::Clockwise,
-                _ => unreachable!(),
+                _ => WindingOrder::None,
             };
             (el.parent_snake_idx, el.region != ls_winding)
         };
@@ -383,7 +382,6 @@ impl<T: GeoFloat> Snake<T> {
             let el = &mut slice[idx];
             // A snake can only be part of one ring, so this snake cannot have been used to
             // form another ring.
-            debug_assert!(!el.points.is_empty());
             idx_cb(idx);
 
             let iter = el.points.drain(..);

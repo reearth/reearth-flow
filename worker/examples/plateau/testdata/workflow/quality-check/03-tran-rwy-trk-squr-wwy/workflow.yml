@@ -147,6 +147,44 @@ graphs:
         type: action
         action: Echo
 
+      - id: 24825ad1-d005-4a45-b9bf-cbb605b86626
+        name: FeatureFilterByRwy
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["package"] != "rwy"
+              outputPort: default
+
+      - id: 92f040b7-c8d8-4fb2-a8ff-9b1d7d2a0e09
+        name: GeometryExtractor
+        type: action
+        action: GeometryExtractor
+        with:
+          outputAttribute: dumpGeometry
+
+      - id: 79b7bc2a-735a-4f5f-9e6a-ce5d51dbda0e
+        name: TwoDimentionForcer
+        type: action
+        action: TwoDimentionForcer
+
+      - id: f45d09c3-2ea5-48c6-a215-aadfacb75260
+        name: GeometryDissolver
+        type: action
+        action: GeometryDissolver
+        with:
+          groupBy:
+            - gmlId
+            - lod
+            - fileIndex
+            - package
+
+      - id: 69f22583-c0c8-4343-b83b-79842ad0d9ce
+        name: Noop
+        type: action
+        action: Noop
+
     edges:
       - id: 3f6eadb8-9092-425b-a41c-100c24ec6e5c
         from: 555d0352-ca9a-4e49-a94b-b96f238f2cfc
@@ -202,4 +240,39 @@ graphs:
         from: 614a32df-139f-49a8-af47-2f35315cb29a
         to: 5ffe00f3-4554-4fc9-91c7-f7d272691cc4
         fromPort: default
+        toPort: default
+      - id: 6dee2e9a-2b40-4fdc-bde9-6f7726abb555
+        from: 2b984969-b0eb-49ba-adb3-72d90def032e
+        to: 24825ad1-d005-4a45-b9bf-cbb605b86626
+        fromPort: lod1
+        toPort: default
+      - id: 428977cc-580d-4ec4-834e-f157a3c32e15
+        from: 2b984969-b0eb-49ba-adb3-72d90def032e
+        to: 24825ad1-d005-4a45-b9bf-cbb605b86626
+        fromPort: lod2
+        toPort: default
+      - id: ef799b5b-0806-4a1e-9dff-64443c391e49
+        from: 2b984969-b0eb-49ba-adb3-72d90def032e
+        to: 24825ad1-d005-4a45-b9bf-cbb605b86626
+        fromPort: lod3
+        toPort: default
+      - id: 805a947b-ecf5-400b-8ce3-b2424722e9f9
+        from: 24825ad1-d005-4a45-b9bf-cbb605b86626
+        to: 92f040b7-c8d8-4fb2-a8ff-9b1d7d2a0e09
+        fromPort: default
+        toPort: default
+      - id: 81a987e3-ce96-44b9-96d9-e8226980f75b
+        from: 92f040b7-c8d8-4fb2-a8ff-9b1d7d2a0e09
+        to: 79b7bc2a-735a-4f5f-9e6a-ce5d51dbda0e
+        fromPort: default
+        toPort: default
+      - id: 6084b793-83ff-43a3-9bcd-7c5981888e53
+        from: 79b7bc2a-735a-4f5f-9e6a-ce5d51dbda0e
+        to: f45d09c3-2ea5-48c6-a215-aadfacb75260
+        fromPort: default
+        toPort: default
+      - id: 0cd140d1-5012-49b2-b816-c7c23a3e7da8
+        from: f45d09c3-2ea5-48c6-a215-aadfacb75260
+        to: 69f22583-c0c8-4343-b83b-79842ad0d9ce
+        fromPort: area
         toPort: default
