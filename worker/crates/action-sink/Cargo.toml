@@ -18,6 +18,7 @@ reearth-flow-runtime.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
+reearth-flow-geometry.workspace = true
 
 ahash.workspace = true
 async-trait.workspace = true

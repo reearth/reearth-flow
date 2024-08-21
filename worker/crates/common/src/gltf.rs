@@ -108,3 +108,11 @@ pub fn calc_parent_zxy(z: u8, x: u32, y: u32) -> (u8, u32, u32) {
         _ => (z - 1, x / 2, y / 2),
     }
 }
+
+pub fn zxy_from_lng_lat(z: u8, lng: f64, lat: f64) -> (u8, u32, u32) {
+    let (x_size, y_size) = size_for_z(z);
+    let y = ((90.0 - lat) / 180.0 * y_size as f64).floor() as u32;
+    let xs = x_step(z, y) as i32;
+    let x = ((180.0 + lng) / 360.0 * x_size as f64).floor() as i32;
+    (z, (x - x.rem_euclid(xs)) as u32, y)
+}
