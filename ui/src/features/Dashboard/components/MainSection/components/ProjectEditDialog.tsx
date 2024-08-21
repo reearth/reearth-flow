@@ -4,10 +4,12 @@ import {
   DialogContent,
   DialogContentSection,
   DialogContentWrapper,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
   Label,
+  Textarea,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
@@ -35,49 +37,48 @@ const ProjectEditDialog: React.FC<Props> = ({
       open={!!editProject}
       onOpenChange={(o) => !o && setEditProject(undefined)}
     >
-      <DialogContent>
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>{t("Edit Project")}</DialogTitle>
-          <DialogContentWrapper>
-            <DialogContentSection>
-              <Label>{t("Project Name")}</Label>
-              <Input
-                value={editProject?.name}
-                placeholder={t("Project Name")}
-                onChange={(e) => onUpdateValue("name", e.target.value)}
-              />
-            </DialogContentSection>
-            <DialogContentSection>
-              <Label>{t("Project Description")}</Label>
-              <Input
-                placeholder={t("Project Description")}
-                value={editProject?.description}
-                onChange={(e) => onUpdateValue("description", e.target.value)}
-              />
-            </DialogContentSection>
-            <div
-              className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
-            >
-              {t("Failed to update project")}
-            </div>
-          </DialogContentWrapper>
-
-          <div className="flex justify-end gap-4 px-6 pb-6">
-            {/* <Button
+        </DialogHeader>
+        <DialogContentWrapper>
+          <DialogContentSection>
+            <Label>{t("Project Name")}</Label>
+            <Input
+              value={editProject?.name}
+              placeholder={t("Your project name goes here...")}
+              onChange={(e) => onUpdateValue("name", e.target.value)}
+            />
+          </DialogContentSection>
+          <DialogContentSection>
+            <Label>{t("Project Description")}</Label>
+            <Textarea
+              placeholder={t("Your project description goes here...")}
+              value={editProject?.description}
+              onChange={(e) => onUpdateValue("description", e.target.value)}
+            />
+          </DialogContentSection>
+          <div
+            className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
+          >
+            {t("Failed to update project")}
+          </div>
+        </DialogContentWrapper>
+        <DialogFooter>
+          {/* <Button
               disabled={buttonDisabled}
               variant={"outline"}
               onClick={() => setEditProject(undefined)}
-            >
+              >
               {t("Cancel")}
-            </Button> */}
-            <Button
-              disabled={buttonDisabled || !editProject?.name}
-              onClick={onUpdateProject}
-            >
-              {t("Save")}
-            </Button>
-          </div>
-        </DialogHeader>
+              </Button> */}
+          <Button
+            disabled={buttonDisabled || !editProject?.name}
+            onClick={onUpdateProject}
+          >
+            {t("Save")}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

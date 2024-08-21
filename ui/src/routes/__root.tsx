@@ -5,7 +5,6 @@ import { TooltipProvider } from "@flow/components";
 import { ThemeProvider } from "@flow/components/ThemeProvider";
 import { config } from "@flow/config";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
-import Dialog from "@flow/features/Dialog";
 import NotFoundPage from "@flow/features/NotFound";
 import { NotificationSystem } from "@flow/features/NotificationSystem";
 import { AuthProvider } from "@flow/lib/auth";
@@ -41,7 +40,6 @@ function RootRoute() {
           <I18nProvider>
             <TooltipProvider>
               <AuthenticationWrapper>
-                <Dialog />
                 <NotificationSystem />
                 <Outlet />
                 {devMode && (

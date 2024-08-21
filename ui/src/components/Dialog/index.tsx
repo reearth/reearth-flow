@@ -87,7 +87,7 @@ const DialogContent = forwardRef<
         }
         {...props}
       >
-        <div className="rounded-lg bg-secondary">
+        <div className="overflow-hidden rounded-lg bg-secondary">
           {children}
           {!hideCloseButton && (
             <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
@@ -122,7 +122,7 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse px-6 py-4 sm:flex-row sm:justify-end sm:space-x-2",
+      "flex flex-col-reverse px-6 pb-6 sm:flex-row sm:justify-end sm:space-x-2",
       className
     )}
     {...props}
@@ -151,7 +151,7 @@ const DialogDescription = forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm px-6", className)}
+    className={cn("text-sm", className)}
     {...props}
   />
 ));
@@ -177,7 +177,7 @@ const DialogContentWrapper = forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("pt-4 px-6 flex flex-col gap-4", className)}
+    className={cn("py-4 px-6 flex flex-col gap-4 overflow-hidden", className)}
     {...props}
   />
 ));
@@ -201,7 +201,11 @@ const DialogContentSection = forwardRef<
     >
   >
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("flex flex-col gap-2", className)} {...props} />
+  <div
+    ref={ref}
+    className={cn("flex flex-col gap-2 overflow-hidden", className)}
+    {...props}
+  />
 ));
 DialogContentSection.displayName = "DialogContentSection";
 

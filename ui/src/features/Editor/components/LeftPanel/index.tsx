@@ -12,7 +12,6 @@ import { memo, useEffect, useState } from "react";
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
 import { UserNavigation } from "@flow/features/TopNavigation/components";
 import { useT } from "@flow/lib/i18n";
-import { useDialogType } from "@flow/stores";
 import type { Node } from "@flow/types";
 
 import { ActionsList, Resources } from "./components";
@@ -39,8 +38,6 @@ const LeftPanel: React.FC<Props> = ({
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
 
   const [_content, setContent] = useState("Admin Page");
-
-  const [, setDialogType] = useDialogType();
 
   useEffect(() => {
     if (!isOpen && selectedTab) {
@@ -172,7 +169,11 @@ const LeftPanel: React.FC<Props> = ({
             <MagnifyingGlass
               className="hover: text-popover-foreground/50 size-6 cursor-pointer hover:text-popover-foreground"
               weight="thin"
-              onClick={() => setDialogType("canvas-search")}
+              onClick={() =>
+                alert(
+                  "Need to implement a global search and assign a shortcut as well"
+                )
+              }
             />
             <UserNavigation
               className="flex w-full justify-center"

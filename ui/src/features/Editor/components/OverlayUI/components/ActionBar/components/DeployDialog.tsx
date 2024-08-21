@@ -1,5 +1,4 @@
 import { CaretRight } from "@phosphor-icons/react";
-import { DialogDescription } from "@radix-ui/react-dialog";
 import { Dispatch, SetStateAction } from "react";
 
 import {
@@ -10,8 +9,10 @@ import {
   DialogContentWrapper,
   DialogTitle,
   Label,
+  DialogFooter,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { useCurrentProject } from "@flow/stores";
 
 type Props = {
   setShowDialog: Dispatch<SetStateAction<"deploy" | undefined>>;
@@ -20,14 +21,18 @@ type Props = {
 const DeployDialog: React.FC<Props> = ({ setShowDialog }) => {
   const t = useT();
 
+  const [currentProject] = useCurrentProject();
+
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(undefined)}>
       <DialogContent size="sm">
         <DialogTitle>{t("Deploy project workflow")}</DialogTitle>
         <DialogContentWrapper>
-          <DialogContentSection>
+          <DialogContentSection className="flex flex-col">
             <Label>{t("Project to deploy: ")}</Label>
-            <p className="font-thin">My Project</p>
+            <p className="truncate font-thin">
+              {currentProject?.name ?? t("N/A")}
+            </p>
           </DialogContentSection>
           <DialogContentSection>
             <Label>{t("Deploy version: ")}</Label>
@@ -37,18 +42,20 @@ const DeployDialog: React.FC<Props> = ({ setShowDialog }) => {
               <p className="font-semibold">2.0</p>
             </div>
           </DialogContentSection>
-          <DialogDescription>
-            {t("Are you sure you want to proceed?")}
-          </DialogDescription>
+          <DialogContentSection>
+            <p className="font-light">
+              {t("Are you sure you want to proceed?")}
+            </p>
+          </DialogContentSection>
         </DialogContentWrapper>
-        <div className="flex justify-end gap-4 px-6 pb-6">
+        <DialogFooter>
           <Button
           // disabled={buttonDisabled || !editProject?.name}
           // onClick={onUpdateProject}
           >
             {t("Deploy")}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
