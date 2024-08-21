@@ -1272,6 +1272,43 @@
       ]
     },
     {
+      "name": "GeometryDissolver",
+      "type": "processor",
+      "description": "Dissolve geometries",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryDissolverParam",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "GeometryExtractor",
       "type": "processor",
       "description": "Extracts geometry from a feature and adds it as an attribute.",
@@ -1594,6 +1631,20 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "Noop",
+      "type": "sink",
+      "description": "noop sink",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "Debug"
       ]
     },
     {

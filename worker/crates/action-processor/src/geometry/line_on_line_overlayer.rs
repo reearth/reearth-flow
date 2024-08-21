@@ -127,7 +127,7 @@ impl Processor for LineOnLineOverlayer {
                         .iter()
                         .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
                         .collect::<Vec<_>>()
-                        .join(",")
+                        .join("\t")
                 } else {
                     "_all".to_string()
                 };
