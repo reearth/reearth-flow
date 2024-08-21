@@ -120,18 +120,16 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
               />
             </DialogContentSection>
           </DialogContentSection>
-          <div
-            className={`text-xs text-destructive ${showError ? "opacity-70" : "opacity-0"}`}
-          >
-            {showError === "failed" && t("Failed to update the user")}
-            {showError === "passwordNotSame" &&
-              t("Password and Confirm password are not the same")}
-            {showError === "passwordFailed" &&
-              t("Failed to update the password")}
-            {showError === "emailFailed" &&
-              t("Failed to update email and name")}
-          </div>
         </DialogContentWrapper>
+        <div
+          className={`text-xs text-destructive ${showError ? "opacity-70" : "opacity-0"}`}
+        >
+          {showError === "failed" && t("Failed to update the user")}
+          {showError === "passwordNotSame" &&
+            t("Password and Confirm password are not the same")}
+          {showError === "passwordFailed" && t("Failed to update the password")}
+          {showError === "emailFailed" && t("Failed to update email and name")}
+        </div>
         <DialogFooter>
           <Button
             className="self-end"

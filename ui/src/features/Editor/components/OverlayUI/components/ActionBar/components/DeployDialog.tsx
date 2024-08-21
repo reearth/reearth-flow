@@ -8,7 +8,6 @@ import {
   DialogContentSection,
   DialogContentWrapper,
   DialogTitle,
-  DialogDescription,
   Label,
   DialogFooter,
 } from "@flow/components";

@@ -177,7 +177,7 @@ const DialogContentWrapper = forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("pt-4 px-6 flex flex-col gap-4 overflow-hidden", className)}
+    className={cn("py-4 px-6 flex flex-col gap-4 overflow-hidden", className)}
     {...props}
   />
 ));

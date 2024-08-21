@@ -8,9 +8,9 @@ type Props = {
 };
 
 const Shortcuts: React.FC<Props> = ({ shortcuts }) => (
-  <ul className="flex flex-col gap-2">
+  <ul className="flex flex-col gap-2 px-2">
     {shortcuts.map((shortcut) => (
-      <li key={shortcut.key} className="text-nowrap">
+      <li key={shortcut.key} className="text-nowrap font-extralight">
         <strong>{shortcut.key}</strong> - {shortcut.description}
       </li>
     ))}

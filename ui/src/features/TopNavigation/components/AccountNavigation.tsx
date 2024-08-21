@@ -12,11 +12,11 @@ import {
   DropdownMenuTrigger,
 } from "@flow/components";
 import { config } from "@flow/config";
+import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
 import { useOpenLink } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { useDialogType } from "@flow/stores";
 
 import { AccountUpdateDialog } from "./AccountUpdateDialog";
 
@@ -34,12 +34,12 @@ const UserNavigation: React.FC<Props> = ({
   dropdownOffset,
 }) => {
   const t = useT();
-  const [, setDialogType] = useDialogType();
   const { logout: handleLogout, user } = useAuth();
   const { useGetMe } = useUser();
   const { me } = useGetMe();
 
   const [openAccountUpdateDialog, setOpenAccountUpdateDialog] = useState(false);
+  const [openShortcutDialog, setOpenShortcutDialog] = useState(false);
 
   const { tosUrl, documentationUrl } = config();
 
@@ -83,7 +83,7 @@ const UserNavigation: React.FC<Props> = ({
           </DropdownMenuItem>
           <DropdownMenuItem
             className="gap-2"
-            onClick={() => setDialogType("keyboard-instructions")}
+            onClick={() => setOpenShortcutDialog(true)}
           >
             <Keyboard weight="thin" />
             <p>{t("Keyboard shortcuts")}</p>
@@ -110,6 +110,12 @@ const UserNavigation: React.FC<Props> = ({
         <AccountUpdateDialog
           isOpen={openAccountUpdateDialog}
           onOpenChange={setOpenAccountUpdateDialog}
+        />
+      )}
+      {openShortcutDialog && (
+        <KeyboardShortcutDialog
+          isOpen={openShortcutDialog}
+          onOpenChange={setOpenShortcutDialog}
         />
       )}
     </>

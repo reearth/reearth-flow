@@ -1,29 +1,34 @@
 import { useT } from "@flow/lib/i18n";
+import { Shortcuts } from "@flow/types/shortcuts";
 
 export default () => {
   const t = useT();
 
   const title = t("Keyboard shortcuts");
 
-  const description = t(
-    "This is a list of keyboard shortcuts that you can use to navigate the application.",
-  );
-
-  const editorShortcuts = {
+  const editorShortcuts: Shortcuts<"editor"> = {
     title: t("Editor shortcuts"),
     shortcuts: [
       {
-        key: "⌘N",
+        key: "⌘K",
         description: t("Create a new document"),
       },
       {
-        key: "⌘S",
+        key: "⌘P",
+        description: t("Save the current document"),
+      },
+      {
+        key: "⌘X",
+        description: t("Create a new document"),
+      },
+      {
+        key: "⌘⇧Y",
         description: t("Save the current document"),
       },
     ],
   };
 
-  const canvasShortcuts = {
+  const canvasShortcuts: Shortcuts<"canvas"> = {
     title: t("Canvas shortcuts"),
     shortcuts: [
       {
@@ -47,7 +52,6 @@ export default () => {
 
   return {
     title,
-    description,
     editorShortcuts,
     canvasShortcuts,
   };
