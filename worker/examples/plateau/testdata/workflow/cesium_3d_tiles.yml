@@ -12,6 +12,7 @@ with:
     - bldg
   addNsprefixToFeatureTypes: true
   extractDmGeometryAsXmlFragment: false
+  outputPath: 
 graphs:
   - !include ../graphs/attribute_reader.yml
   - !include ../graphs/folder_and_file_path_reader.yml

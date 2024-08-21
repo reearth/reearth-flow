@@ -160,7 +160,6 @@ impl Sink for Cesium3dtilesWriter {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        // Generate tileset.json
         let mut tree = TileTree::default();
         for content in self.contents.lock().unwrap().drain(..) {
             tree.add_content(content);
@@ -205,6 +204,36 @@ fn handle_city_gml_geometry(
     storage_resolver: Arc<StorageResolver>,
     city_gml: geomotry_types::CityGmlGeometry,
 ) -> Result<Arc<Mutex<std::vec::Vec<TileContent>>>, crate::errors::SinkError> {
+    let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
+
+    let features = city_gml.features.clone();
+    for feature in features {
+        match handle_feature(output, storage_resolver.clone(), &city_gml, feature) {
+            Ok(contens) => {
+                contents
+                    .lock()
+                    .unwrap()
+                    .extend(contens.lock().unwrap().iter().cloned());
+            }
+            Err(e) => {
+                return Err(crate::errors::SinkError::file_writer(format!(
+                    "Feature handle Error: {:?}",
+                    e
+                )))
+            }
+        }
+    }
+    Ok(contents)
+}
+
+fn handle_feature(
+    output: &Uri,
+    storage_resolver: Arc<StorageResolver>,
+    city_gml: &geomotry_types::CityGmlGeometry,
+    feature: geomotry_types::GeometryFeature,
+) -> Result<Arc<Mutex<std::vec::Vec<TileContent>>>, crate::errors::SinkError> {
+    let typename = feature.ty.name();
+    let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
     let tile_id_conv = TileIdMethod::Hilbert;
 
@@ -230,8 +259,6 @@ fn handle_city_gml_geometry(
             approx_dh,
         )
     };
-
-    let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
 
     for zoom in min_zoom..=max_zoom {
         if zoom < max_zoom {
@@ -270,7 +297,6 @@ fn handle_city_gml_geometry(
             };
 
             let content_path = {
-                let typename = "typename"; // TODO
                 let normalized_typename = typename.replace(':', "_");
                 format!("{tile_zoom}/{tile_x}/{tile_y}_{normalized_typename}.glb")
             };
@@ -350,59 +376,5 @@ fn handle_city_gml_geometry(
             .put_sync(path, bytes::Bytes::from(buf))
             .map_err(crate::errors::SinkError::file_writer)?;
     }
-
-    //====================
-    // やらなくてもいいかも？ (tile_id, typename, feats) で feats を sort するだけ。しかし使わなくてもよい？
-    // let receiver_sliced = mpsc::sync_channel(2000); // TODO
-    // let mut typename_to_seq: IndexSet<String, ahash::RandomState> = Default::default();
-
-    // let config = kv_extsort::SortConfig::default()
-    //     .max_chunk_bytes(256 * 1024 * 1024) // TODO: Configurable
-    //     .set_cancel_flag(feedback.get_cancellation_flag());
-
-    // let sorted_iter = kv_extsort::sort(
-    //     receiver_sliced
-    //         .into_iter()
-    //         .map(|(tile_id, typename, body)| {
-    //             let (idx, _) = typename_to_seq.insert_full(typename);
-    //             let type_seq = idx as u64;
-    //             std::result::Result::<_, Infallible>::Ok((SortKey { tile_id, type_seq }, body))
-    //         }),
-    //     config,
-    // );
-
-    // for ((_, key), grouped) in &sorted_iter.chunk_by(|feat| match feat {
-    //     Ok((key, _)) => (false, *key),
-    //     Err(_) => (true, SortKey::zeroed()),
-    // }) {
-    //     let grouped = grouped
-    //         .into_iter()
-    //         .map_ok(|(_, serialized_feats)| serialized_feats)
-    //         .collect::<kv_extsort::Result<Vec<_>, _>>();
-    //     match grouped {
-    //         Ok(serialized_feats) => {
-    //             feedback.ensure_not_canceled()?;
-    //             let tile_id = key.tile_id;
-    //             let typename = typename_to_seq[key.type_seq as usize].clone();
-    //             if sender_sorted
-    //                 .send((tile_id, typename, serialized_feats))
-    //                 .is_err()
-    //             {
-    //                 return Err(PipelineError::Canceled);
-    //             }
-    //         }
-    //         Err(kv_extsort::Error::Canceled) => {
-    //             return Err(PipelineError::Canceled);
-    //         }
-    //         Err(err) => {
-    //             return Err(PipelineError::Other(format!(
-    //                 "Failed to sort features: {:?}",
-    //                 err
-    //             )));
-    //         }
-    //     }
-    // }
-    //====================
-
     Ok(contents)
 }
