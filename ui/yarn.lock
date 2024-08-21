@@ -4938,9 +4938,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@reearth/core@npm:0.0.7-beta.0":
-  version: 0.0.7-beta.0
-  resolution: "@reearth/core@npm:0.0.7-beta.0"
+"@reearth/core@npm:0.0.7-beta.2":
+  version: 0.0.7-beta.2
+  resolution: "@reearth/core@npm:0.0.7-beta.2"
   dependencies:
     "@reearth/cesium-mvt-imagery-provider": "npm:1.5.4"
     "@rot1024/use-transition": "npm:1.0.0"
@@ -4979,10 +4979,10 @@ __metadata:
     uuid: "npm:9.0.1"
     xstate: "npm:4.38.2"
   peerDependencies:
-    cesium: 1.x
+    cesium: 1.116.x
     react: ^18.2.0
     react-dom: ^18.2.0
-  checksum: 10c0/720a606cb4988c7882a2fbc6eb3c69f3cd106738d5c7194c6665e2464b8dda4cf289dc33005048fe908f2f1db9a5488a1c218c00c87813f6a44ab42bc551212f
+  checksum: 10c0/7f4bf17e8afb3b0aa2ee143b379709e65b80939e809595543a6c9a611c30089f19eebb570ab17e0cc3f71a1b937a9c96b3eafd95a53ea700c4fa6f65083711b7
   languageName: node
   linkType: hard
 
@@ -5017,7 +5017,7 @@ __metadata:
     "@radix-ui/react-tabs": "npm:1.1.0"
     "@radix-ui/react-toast": "npm:1.2.1"
     "@radix-ui/react-tooltip": "npm:1.1.2"
-    "@reearth/core": "npm:0.0.7-beta.0"
+    "@reearth/core": "npm:0.0.7-beta.2"
     "@storybook/addon-essentials": "npm:8.2.7"
     "@storybook/addon-interactions": "npm:8.2.7"
     "@storybook/addon-links": "npm:8.2.7"
