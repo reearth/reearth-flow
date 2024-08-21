@@ -2,19 +2,6 @@ import { atom, useAtom } from "jotai";
 
 import { Workspace, Project } from "@flow/types";
 
-export type DialogType =
-  | "canvas-search"
-  | "account-settings"
-  | "workspaces-settings"
-  | "project-settings"
-  | "general-settings"
-  | "keyboard-instructions"
-  | "add-workspace"
-  | "add-project";
-
-const dialogType = atom<DialogType | undefined>(undefined);
-export const useDialogType = () => useAtom(dialogType);
-
 const currentWorkflowId = atom<string | undefined>("main");
 export const useCurrentWorkflowId = () => useAtom(currentWorkflowId);
 

@@ -1309,6 +1309,43 @@ Coerces the geometry of a feature to a specific geometry
 ### Category
 * Geometry
 
+## GeometryDissolver
+### Type
+* processor
+### Description
+Dissolve geometries
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeometryDissolverParam",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* area
+* rejected
+### Category
+* Geometry
+
 ## GeometryExtractor
 ### Type
 * processor
@@ -1627,6 +1664,19 @@ Intersection points are turned into point features that can contain the merged l
 * rejected
 ### Category
 * Geometry
+
+## Noop
+### Type
+* sink
+### Description
+noop sink
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+### Category
+* Debug
 
 ## OrientationExtractor
 ### Type

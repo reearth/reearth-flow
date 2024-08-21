@@ -14,11 +14,11 @@ version.workspace = true
 reearth-flow-action-log.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
+reearth-flow-geometry.workspace = true
 reearth-flow-runtime.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
-reearth-flow-geometry.workspace = true
 
 ahash.workspace = true
 async-trait.workspace = true

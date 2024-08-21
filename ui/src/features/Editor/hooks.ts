@@ -10,6 +10,21 @@ export default () => {
   const [currentWorkflowId, setCurrentWorkflowId] = useCurrentWorkflowId();
   const { getNodes } = useReactFlow();
 
+  const [openPanel, setOpenPanel] = useState<
+    "left" | "right" | "bottom" | undefined
+  >(undefined);
+
+  const handlePanelOpen = useCallback(
+    (panel?: "left" | "right" | "bottom") => {
+      if (!panel || openPanel === panel) {
+        setOpenPanel(undefined);
+      } else {
+        setOpenPanel(panel);
+      }
+    },
+    [openPanel]
+  );
+
   const handleWorkflowIdChange = useCallback(
     (id?: string) => {
       if (!id) return setCurrentWorkflowId(undefined);
@@ -132,6 +147,8 @@ export default () => {
     locallyLockedNode,
     hoveredDetails,
     nodePickerOpen,
+    openPanel,
+    handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
     handleWorkflowChange: handleWorkflowIdChange,

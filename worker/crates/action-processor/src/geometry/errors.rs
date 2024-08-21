@@ -79,6 +79,10 @@ pub(super) enum GeometryProcessorError {
     ElevationExtractorFactory(String),
     #[error("ElevationExtractor error: {0}")]
     ElevationExtractor(String),
+    #[error("Dissolver Factory error: {0}")]
+    DissolverFactory(String),
+    #[error("Dissolver error: {0}")]
+    Dissolver(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

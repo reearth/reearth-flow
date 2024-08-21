@@ -1,6 +1,6 @@
 import { XYPosition } from "@xyflow/react";
 import { debounce } from "lodash-es";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
@@ -110,14 +110,17 @@ const NodePickerDialog: React.FC<Props> = ({
           onChange={(e) => handleSearch(e.target.value)}
         />
         <div className="max-h-[50vh] overflow-scroll">
-          {actions?.map((action) => (
-            <ActionItem
-              key={action.name}
-              action={action}
-              selected={selected === action.name}
-              onSingleClick={handleSingleClick}
-              onDoubleClick={handleDoubleClick}
-            />
+          {actions?.map((action, idx) => (
+            <Fragment key={action.name}>
+              <ActionItem
+                className="m-1"
+                action={action}
+                selected={selected === action.name}
+                onSingleClick={handleSingleClick}
+                onDoubleClick={handleDoubleClick}
+              />
+              {idx !== actions.length - 1 && <div className="mx-1 border-b" />}
+            </Fragment>
           ))}
         </div>
       </DialogContent>

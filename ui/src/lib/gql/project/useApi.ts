@@ -1,3 +1,5 @@
+import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { useT } from "@flow/lib/i18n";
 import {
   CreateProject,
   DeleteProject,
@@ -11,6 +13,9 @@ import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
 import { useQueries } from "./useQueries";
 
 export const useProject = () => {
+  const { toast } = useToast();
+  const t = useT();
+
   const {
     createProjectMutation,
     useGetProjectsInfiniteQuery,
@@ -25,6 +30,10 @@ export const useProject = () => {
     const { mutateAsync, ...rest } = createProjectMutation;
     try {
       const project = await mutateAsync(input);
+      toast({
+        title: t("Project Created"),
+        description: t("Project has been successfully created."),
+      });
       return { project, ...rest };
     } catch (_err) {
       return { project: undefined, ...rest };
@@ -68,6 +77,13 @@ export const useProject = () => {
     const { mutateAsync, ...rest } = deleteProjectMutation;
     try {
       const data = await mutateAsync({ projectId, workspaceId });
+      toast({
+        title: t("Successful Deletion"),
+        description: t(
+          "Project has been successfully deleted from your workspace."
+        ),
+        variant: "destructive",
+      });
       return { projectId: data.projectId, ...rest };
     } catch (_err) {
       return { projectId: undefined, ...rest };
