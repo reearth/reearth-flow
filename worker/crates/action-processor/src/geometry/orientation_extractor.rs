@@ -231,6 +231,7 @@ fn detect_orientation_by_ring_winding_orders(
             match winding_order {
                 WindingOrder::Clockwise => CLOCKWISE_ORIENTATION,
                 WindingOrder::CounterClockwise => COUNTER_CLOCKWISE_ORIENTATION,
+                WindingOrder::None => NO_ORIENTATION,
             }
         } else {
             INVALID_ORIENTATION

@@ -3,9 +3,9 @@ import { Workflow } from "./workflow";
 
 export type Project = {
   id: string;
+  name: string;
   createdAt: Date;
   updatedAt: Date;
-  name: string;
   description: string;
   workspaceId: string;
   workflows?: Workflow[];
@@ -13,8 +13,11 @@ export type Project = {
 };
 
 export type GetWorkspaceProjects = {
-  projects?: Project[];
+  pages?: ({ projects?: Project[] } | undefined)[];
+  hasNextPage: boolean;
+  fetchNextPage: () => void;
   isLoading: boolean;
+  isFetching: boolean;
 } & ApiResponse;
 
 export type GetProject = {

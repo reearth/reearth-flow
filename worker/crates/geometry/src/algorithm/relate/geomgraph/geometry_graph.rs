@@ -179,6 +179,7 @@ where
         let (left, right) = match linear_ring.winding_order() {
             Some(WindingOrder::Clockwise) => (cw_left, cw_right),
             Some(WindingOrder::CounterClockwise) => (cw_right, cw_left),
+            Some(WindingOrder::None) => (cw_left, cw_right),
             None => (cw_left, cw_right),
         };
 

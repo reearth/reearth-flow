@@ -6,6 +6,7 @@ use std::{
 use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader};
 use nusamai_plateau::{appearance::AppearanceStore, models, Entity};
 use quick_xml::NsReader;
+use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder, executor_operation::ExecutorContext, node::DEFAULT_PORT,
@@ -63,7 +64,8 @@ fn parse_tree_reader<R: BufRead>(
     let mut global_appearances = AppearanceStore::default();
 
     st.parse_children(|st| {
-        match st.current_path() {
+        let path: &[u8] = &st.current_path();
+        match path {
             b"gml:boundedBy" => {
                 // skip
                 Ok(())
@@ -91,9 +93,11 @@ fn parse_tree_reader<R: BufRead>(
                         geometry_store: RwLock::new(geometry_store).into(),
                         appearance_store: Default::default(),
                         bounded,
+                        geometry_refs: st.geometry_refs().clone(),
                     };
                     entities.push(entity);
                 }
+                st.refresh_geomrefs();
                 Ok(())
             }
             b"app:appearanceMember" => {
@@ -139,6 +143,11 @@ fn parse_tree_reader<R: BufRead>(
         feature
             .attributes
             .insert(Attribute::new("gmlId"), AttributeValue::String(gml_id));
+
+        feature.attributes.insert(
+            Attribute::new("gmlRootId"),
+            AttributeValue::String(format!("root_{}", to_hash(base_url.as_str()))),
+        );
         feature.geometry = Some(geometry);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
     }

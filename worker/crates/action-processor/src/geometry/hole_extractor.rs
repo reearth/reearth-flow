@@ -144,7 +144,7 @@ fn handle_polygon2d(
     let exterior_polygon = Polygon2D::new(exterior.clone(), vec![]);
     if let Some(ref geometry) = &feature.geometry {
         let mut exterior_feature = feature.clone();
-        exterior_feature.id = uuid::Uuid::new_v4();
+        exterior_feature.refresh_id();
         let mut exterior_geometry = geometry.clone();
         exterior_geometry.value =
             GeometryValue::FlowGeometry2D(Geometry2D::Polygon(exterior_polygon));
@@ -155,7 +155,7 @@ fn handle_polygon2d(
         let interior_polygon = Polygon2D::new(interior.clone(), vec![]);
         if let Some(ref geometry) = &feature.geometry {
             let mut interior_feature = feature.clone();
-            interior_feature.id = uuid::Uuid::new_v4();
+            interior_feature.refresh_id();
             let mut interior_geometry = geometry.clone();
             interior_geometry.value =
                 GeometryValue::FlowGeometry2D(Geometry2D::Polygon(interior_polygon));
@@ -175,7 +175,7 @@ fn handle_polygon3d(
     let exterior_polygon = Polygon3D::new(exterior.clone(), vec![]);
     if let Some(ref geometry) = &feature.geometry {
         let mut exterior_feature = feature.clone();
-        exterior_feature.id = uuid::Uuid::new_v4();
+        exterior_feature.refresh_id();
         let mut exterior_geometry = geometry.clone();
         exterior_geometry.value =
             GeometryValue::FlowGeometry3D(Geometry3D::Polygon(exterior_polygon));
@@ -186,7 +186,7 @@ fn handle_polygon3d(
         let interior_polygon = Polygon3D::new(interior.clone(), vec![]);
         if let Some(ref geometry) = &feature.geometry {
             let mut interior_feature = feature.clone();
-            interior_feature.id = uuid::Uuid::new_v4();
+            interior_feature.refresh_id();
             let mut interior_geometry = geometry.clone();
             interior_geometry.value =
                 GeometryValue::FlowGeometry3D(Geometry3D::Polygon(interior_polygon));

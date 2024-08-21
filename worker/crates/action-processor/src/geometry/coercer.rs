@@ -305,7 +305,7 @@ impl GeometryCoercer {
                     let mut geometry = geometry.clone();
                     geometry.value = GeometryValue::FlowGeometry3D(geo);
                     let mut feature = feature.clone();
-                    feature.id = uuid::Uuid::new_v4();
+                    feature.refresh_id();
                     feature.geometry = Some(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }

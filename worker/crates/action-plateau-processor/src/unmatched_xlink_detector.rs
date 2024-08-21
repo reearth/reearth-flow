@@ -263,7 +263,7 @@ impl Processor for UnmatchedXlinkDetector {
             }
             for port in ports {
                 let mut feature = feature.clone();
-                feature.id = uuid::Uuid::new_v4();
+                feature.refresh_id();
                 let attributes: HashMap<Attribute, AttributeValue> = response.clone().into();
                 feature.attributes.extend(attributes);
                 fw.send(ctx.new_with_feature_and_port(feature, port.clone()));

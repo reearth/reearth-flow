@@ -3,12 +3,15 @@ use std::{str::FromStr, sync::Arc};
 
 use bytes::Bytes;
 use reearth_flow_common::csv::Delimiter;
+use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_eval_expr::utils::dynamic_to_value;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{AttributeValue, Expr, Feature};
+use rhai::Dynamic;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +21,7 @@ use serde_json::Value;
 use crate::errors::SinkError;
 
 use super::excel::write_excel;
+use super::gltf::write_gltf;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileWriterSinkFactory;
@@ -75,13 +79,6 @@ impl SinkFactory for FileWriterSinkFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct FileWriterParam {
-    format: Format,
-    pub(super) output: Expr,
-}
-
 #[derive(Debug, Clone)]
 pub struct FileWriter {
     pub(super) params: FileWriterParam,
@@ -89,15 +86,50 @@ pub struct FileWriter {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-enum Format {
-    #[serde(rename = "csv")]
-    Csv,
-    #[serde(rename = "tsv")]
-    Tsv,
-    #[serde(rename = "json")]
-    Json,
-    #[serde(rename = "excel")]
-    Excel,
+#[serde(rename_all = "camelCase")]
+pub struct FileWriterCommonParam {
+    pub(super) output: Expr,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase", tag = "format")]
+pub enum FileWriterParam {
+    Csv {
+        #[serde(flatten)]
+        common_property: FileWriterCommonParam,
+    },
+    Tsv {
+        #[serde(flatten)]
+        common_property: FileWriterCommonParam,
+    },
+    Json {
+        #[serde(flatten)]
+        common_property: FileWriterCommonParam,
+        #[serde(flatten)]
+        json_property: JsonWriterParam,
+    },
+    Excel {
+        #[serde(flatten)]
+        common_property: FileWriterCommonParam,
+    },
+    Gltf {
+        #[serde(flatten)]
+        common_property: FileWriterCommonParam,
+    },
+}
+
+impl FileWriterParam {
+    pub fn to_common_param(&self) -> &FileWriterCommonParam {
+        match self {
+            FileWriterParam::Csv { common_property } => common_property,
+            FileWriterParam::Tsv { common_property } => common_property,
+            FileWriterParam::Json {
+                common_property, ..
+            } => common_property,
+            FileWriterParam::Excel { common_property } => common_property,
+            FileWriterParam::Gltf { common_property } => common_property,
+        }
+    }
 }
 
 impl Sink for FileWriter {
@@ -108,30 +140,75 @@ impl Sink for FileWriter {
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let scope = ctx.expr_engine.new_scope();
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let common_param = self.params.to_common_param();
+        let scope = expr_engine.new_scope();
         let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+            .eval::<String>(common_param.output.as_ref())
+            .unwrap_or_else(|_| common_param.output.as_ref().to_string());
         let output = Uri::from_str(path.as_str())?;
-        let result = match self.params.format {
-            Format::Json => write_json(&output, &self.buffer, storage_resolver),
-            Format::Csv => write_csv(&output, &self.buffer, Delimiter::Comma, storage_resolver),
-            Format::Tsv => write_csv(&output, &self.buffer, Delimiter::Tab, storage_resolver),
-            Format::Excel => write_excel(&output, &self.buffer, storage_resolver),
+        let result = match &self.params {
+            FileWriterParam::Json { json_property, .. } => write_json(
+                &output,
+                json_property,
+                &self.buffer,
+                expr_engine,
+                storage_resolver,
+            ),
+            FileWriterParam::Csv { .. } => {
+                write_csv(&output, &self.buffer, Delimiter::Comma, storage_resolver)
+            }
+            FileWriterParam::Tsv { .. } => {
+                write_csv(&output, &self.buffer, Delimiter::Tab, storage_resolver)
+            }
+            FileWriterParam::Excel { .. } => write_excel(&output, &self.buffer, storage_resolver),
+            FileWriterParam::Gltf { .. } => write_gltf(&output, &self.buffer, storage_resolver),
         };
         match result {
             Ok(_) => Ok(()),
-            Err(e) => Err(Box::new(e)),
+            Err(e) => Err(e.into()),
         }
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonWriterParam {
+    pub(super) converter: Option<Expr>,
+}
+
 fn write_json(
     output: &Uri,
+    params: &JsonWriterParam,
     features: &[Feature],
+    expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
-    let json_value: serde_json::Value = features.into();
+    let json_value: serde_json::Value = if let Some(converter) = &params.converter {
+        let scope = expr_engine.new_scope();
+        let value: serde_json::Value = serde_json::Value::Array(
+            features
+                .iter()
+                .map(|feature| {
+                    serde_json::Value::Object(
+                        feature
+                            .attributes
+                            .clone()
+                            .into_iter()
+                            .map(|(k, v)| (k.into_inner().to_string(), v.into()))
+                            .collect::<serde_json::Map<_, _>>(),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        );
+        scope.set("__features", value);
+        let convert = scope.eval::<Dynamic>(converter.as_ref()).map_err(|e| {
+            crate::errors::SinkError::FileWriter(format!("Failed to evaluate converter: {:?}", e))
+        })?;
+        dynamic_to_value(&convert)
+    } else {
+        features.into()
+    };
     let storage = storage_resolver
         .resolve(output)
         .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;

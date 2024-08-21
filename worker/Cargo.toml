@@ -36,45 +36,49 @@ panic = "abort"
 strip = true
 
 [workspace.dependencies]
-reearth-flow-action-log = {path = "crates/action-log"}
-reearth-flow-action-plateau-processor = {path = "crates/action-plateau-processor"}
-reearth-flow-action-processor = {path = "crates/action-processor"}
-reearth-flow-action-sink = {path = "crates/action-sink"}
-reearth-flow-action-source = {path = "crates/action-source"}
-reearth-flow-cli = {path = "crates/cli"}
-reearth-flow-common = {path = "crates/common"}
-reearth-flow-eval-expr = {path = "crates/eval-expr"}
-reearth-flow-geometry = {path = "crates/geometry"}
-reearth-flow-macros = {path = "crates/macros"}
-reearth-flow-runner = {path = "crates/runner"}
-reearth-flow-runtime = {path = "crates/runtime"}
-reearth-flow-state = {path = "crates/state"}
-reearth-flow-storage = {path = "crates/storage"}
-reearth-flow-telemetry = {path = "crates/telemetry"}
-reearth-flow-types = {path = "crates/types"}
+reearth-flow-action-log = { path = "crates/action-log" }
+reearth-flow-action-plateau-processor = { path = "crates/action-plateau-processor" }
+reearth-flow-action-processor = { path = "crates/action-processor" }
+reearth-flow-action-sink = { path = "crates/action-sink" }
+reearth-flow-action-source = { path = "crates/action-source" }
+reearth-flow-cli = { path = "crates/cli" }
+reearth-flow-common = { path = "crates/common" }
+reearth-flow-eval-expr = { path = "crates/eval-expr" }
+reearth-flow-geometry = { path = "crates/geometry" }
+reearth-flow-macros = { path = "crates/macros" }
+reearth-flow-runner = { path = "crates/runner" }
+reearth-flow-runtime = { path = "crates/runtime" }
+reearth-flow-state = { path = "crates/state" }
+reearth-flow-storage = { path = "crates/storage" }
+reearth-flow-telemetry = { path = "crates/telemetry" }
+reearth-flow-types = { path = "crates/types" }
 
-nusamai-citygml = {git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc2", features = ["serde", "serde_json"]}
-nusamai-geometry = {git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc2", features = ["serde"]}
-nusamai-plateau = {git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc2", features = ["serde"]}
-nusamai-projection = {git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc2"}
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc6", features = ["serde", "serde_json"] }
+nusamai-geometry = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc6", features = ["serde"] }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc6" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc6", features = ["serde"] }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc6" }
 
 Inflector = "0.11.4"
+ahash = "0.8.11"
 approx = "0.5.1"
 async-trait = "0.1.81"
-async_zip = {version = "0.0.17", features = ["full"]}
-bytes = {version = "1.7.1", features = ["serde"]}
-chrono = {version = "0.4.38", features = ["serde"]}
+async_zip = { version = "0.0.17", features = ["full"] }
+byteorder = "1.5.0"
+bytes = { version = "1.7.1", features = ["serde"] }
+chrono = { version = "0.4.38", features = ["serde"] }
 color-eyre = "0.6.3"
 colorsys = "0.6.7"
 crossbeam = "0.8.4"
 csv = "1.3.0"
-derive_more = "0.99.18"
 directories = "5.0.1"
+earcut = "0.4.1"
 float_next_after = "1.0.0"
 futures = "0.3.30"
 futures-util = "0.3.30"
 hashbrown = "0.14.5"
-indexmap = "2.3.0"
+image = { version = "0.25.2", default-features = false, features = ["jpeg", "png", "rayon", "tiff", "webp"] }
+indexmap = "2.4.0"
 indoc = "2.0.5"
 itertools = "0.13.0"
 jsonpath_lib = "0.3.0"
@@ -82,15 +86,15 @@ libxml = "0.3.3"
 nalgebra = "0.33.0"
 nalgebra-glm = "0.19.0"
 num-traits = "0.2.19"
-nutype = {version = "0.4.3", features = ["serde", "schemars08"]}
-object_store = "0.10.2"
+nutype = { version = "0.4.3", features = ["schemars08", "serde"] }
+object_store = "0.11.0"
 once_cell = "1.19.0"
-opendal = {version = "0.48.0", features = ["layers-metrics", "services-fs", "services-gcs", "services-http"]}
-opentelemetry = {version = "0.24.0", default-features = false, features = ["trace", "metrics"]}
-opentelemetry-otlp = {version = "0.17.0", default-features = false, features = ["grpc-tonic", "trace", "metrics"]}
+opendal = { version = "0.49.0", features = ["layers-metrics", "services-fs", "services-gcs", "services-http"] }
+opentelemetry = { version = "0.24.0", default-features = false, features = ["metrics", "trace"] }
+opentelemetry-otlp = { version = "0.17.0", default-features = false, features = ["grpc-tonic", "metrics", "trace"] }
 opentelemetry-semantic-conventions = "0.16.0"
-opentelemetry-stdout = {version = "0.5.0", default-features = false, features = ["trace", "metrics"]}
-opentelemetry_sdk = {version = "0.24.1", default-features = false, features = ["trace", "rt-tokio", "metrics"]}
+opentelemetry-stdout = { version = "0.5.0", default-features = false, features = ["metrics", "trace"] }
+opentelemetry_sdk = { version = "0.24.1", default-features = false, features = ["metrics", "rt-tokio", "trace"] }
 parking_lot = "0.12.3"
 petgraph = "0.6.5"
 pretty_assertions = "1.4.0"
@@ -98,39 +102,39 @@ quick-xml = "0.36.1"
 rand = "0.8.5"
 rayon = "1.10.0"
 regex = "1.10.6"
-rhai = {version = "1.19.0", features = ["internals", "sync", "serde", "metadata"]}
+rhai = { version = "1.19.0", features = ["internals", "metadata", "serde", "sync"] }
 robust = "1.1.0"
 rstar = "0.12.0"
 rstest = "0.22.0"
 rust_xlsxwriter = "0.73.0"
-schemars = {version = "0.8.21", features = ["uuid1"]}
-serde = {version = "1.0.204", features = ["derive"]}
-serde_derive = "1.0.204"
-serde_json = {version = "1.0.122", features = ["arbitrary_precision"]}
+schemars = { version = "0.8.21", features = ["uuid1"] }
+serde = { version = "1.0.208", features = ["derive"] }
+serde_derive = "1.0.208"
+serde_json = { version = "1.0.125", features = ["arbitrary_precision"] }
 serde_with = "3.9.0"
 serde_yaml = "0.9.34"
 sha2 = "0.10.8"
-slog = {version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"]}
+slog = { version = "2.7.0", features = ["max_level_trace", "release_max_level_trace"] }
 strum = "0.26.3"
 strum_macros = "0.26.4"
-tempfile = "3.11.0"
+tempfile = "3.12.0"
 thiserror = "1.0.63"
-time = {version = "0.3.36", features = ["formatting"]}
-tokio = {version = "1.39.2", features = ["full", "time"]}
-tokio-stream = {version = "0.1.15", features = ["sync"]}
-tokio-util = {version = "0.7.11", features = ["full"]}
+time = { version = "0.3.36", features = ["formatting"] }
+tokio = { version = "1.39.3", features = ["full", "time"] }
+tokio-stream = { version = "0.1.15", features = ["sync"] }
+tokio-util = { version = "0.7.11", features = ["full"] }
 toml = "0.8.19"
 tracing = "0.1.40"
-tracing-opentelemetry = {version = "0.25.0", default-features = false, features = ["tracing-log", "metrics"]}
-tracing-subscriber = {version = "0.3.18", features = [
+tracing-opentelemetry = { version = "0.25.0", default-features = false, features = ["metrics", "tracing-log"] }
+tracing-subscriber = { version = "0.3.18", features = [
   "env-filter",
   "std",
   "time",
-]}
+] }
 url = "2.5.2"
-uuid = {version = "1.10.0", features = [
-  "v4",
+uuid = { version = "1.10.0", features = [
   "fast-rng",
   "macro-diagnostics",
   "serde",
-]}
+  "v4",
+] }

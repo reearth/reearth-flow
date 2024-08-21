@@ -1,3 +1,5 @@
+import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { useT } from "@flow/lib/i18n";
 import {
   CreateProject,
   DeleteProject,
@@ -10,39 +12,40 @@ import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 
-export enum ProjectQueryKeys {
-  GetWorkspaceProjects = "getWorkspaceProjects",
-  GetProject = "getProject",
-}
-
 export const useProject = () => {
+  const { toast } = useToast();
+  const t = useT();
+
   const {
     createProjectMutation,
-    useGetProjectsQuery,
+    useGetProjectsInfiniteQuery,
     useGetProjectByIdQuery,
     deleteProjectMutation,
     updateProjectMutation,
   } = useQueries();
 
   const createProject = async (
-    input: CreateProjectInput,
+    input: CreateProjectInput
   ): Promise<CreateProject> => {
     const { mutateAsync, ...rest } = createProjectMutation;
     try {
       const project = await mutateAsync(input);
+      toast({
+        title: t("Project Created"),
+        description: t("Project has been successfully created."),
+      });
       return { project, ...rest };
     } catch (_err) {
       return { project: undefined, ...rest };
     }
   };
 
-  const useGetWorkspaceProjects = (
-    workspaceId?: string,
+  const useGetWorkspaceProjectsInfinite = (
+    workspaceId?: string
   ): GetWorkspaceProjects => {
-    const { data, ...rest } = useGetProjectsQuery(workspaceId);
+    const { data, ...rest } = useGetProjectsInfiniteQuery(workspaceId);
     return {
-      projects: data?.projects,
-      ...data?.meta,
+      pages: data?.pages,
       ...rest,
     };
   };
@@ -56,7 +59,7 @@ export const useProject = () => {
   };
 
   const updateProject = async (
-    input: UpdateProjectInput,
+    input: UpdateProjectInput
   ): Promise<UpdateProject> => {
     const { mutateAsync, ...rest } = updateProjectMutation;
     try {
@@ -69,11 +72,18 @@ export const useProject = () => {
 
   const deleteProject = async (
     projectId: string,
-    workspaceId: string,
+    workspaceId: string
   ): Promise<DeleteProject> => {
     const { mutateAsync, ...rest } = deleteProjectMutation;
     try {
       const data = await mutateAsync({ projectId, workspaceId });
+      toast({
+        title: t("Successful Deletion"),
+        description: t(
+          "Project has been successfully deleted from your workspace."
+        ),
+        variant: "destructive",
+      });
       return { projectId: data.projectId, ...rest };
     } catch (_err) {
       return { projectId: undefined, ...rest };
@@ -81,7 +91,7 @@ export const useProject = () => {
   };
 
   return {
-    useGetWorkspaceProjects,
+    useGetWorkspaceProjectsInfinite,
     useGetProject,
     createProject,
     updateProject,

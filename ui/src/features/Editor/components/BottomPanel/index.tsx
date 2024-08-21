@@ -14,6 +14,8 @@ type Props = {
     id: string;
     name: string;
   }[];
+  isOpen: boolean;
+  onOpen: (panel?: "left" | "right" | "bottom") => void;
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowAdd: () => void;
   onWorkflowChange: (workflowId?: string) => void;
@@ -31,17 +33,18 @@ type WindowSize = "min" | "max";
 const BottomPanel: React.FC<Props> = ({
   currentWorkflowId,
   openWorkflows,
+  isOpen,
+  onOpen,
   onWorkflowClose,
   onWorkflowAdd,
   onWorkflowChange,
 }) => {
   const t = useT();
   const [windowSize, setWindowSize] = useState<WindowSize>("min");
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   const handlePanelToggle = useCallback(
-    (open: boolean) => setIsPanelOpen(open),
-    [],
+    (open: boolean) => onOpen(open ? "bottom" : undefined),
+    [onOpen]
   );
 
   const panelContents: PanelContent[] = [
@@ -70,28 +73,28 @@ const BottomPanel: React.FC<Props> = ({
     (content: PanelContent) => {
       if (content.id !== selected?.id) {
         setSelected(content);
-        if (!isPanelOpen) {
+        if (!isOpen) {
           handlePanelToggle?.(true);
         }
       } else {
-        handlePanelToggle?.(!isPanelOpen);
+        handlePanelToggle?.(!isOpen);
       }
     },
-    [isPanelOpen, handlePanelToggle, selected],
+    [isOpen, handlePanelToggle, selected]
   );
 
   return (
     <div
       className="box-content flex flex-col justify-end border-t bg-secondary backdrop-blur-md duration-300 ease-in-out"
       style={{
-        height: isPanelOpen
+        height: isOpen
           ? windowSize === "max"
             ? "calc(100vh - 1px)"
             : "50vh"
           : "29px",
       }}
     >
-      {isPanelOpen && (
+      {isOpen && (
         <div
           id="top-edge"
           className="flex h-[29px] shrink-0 items-center gap-1"
@@ -102,7 +105,7 @@ const BottomPanel: React.FC<Props> = ({
               selected={selected}
               onSelection={handleSelection}
             />
-            {isPanelOpen && (
+            {isOpen && (
               <div className="flex h-[29px] items-center px-1">
                 {windowSize === "min" && (
                   <IconButton
@@ -129,7 +132,7 @@ const BottomPanel: React.FC<Props> = ({
       )}
       <div
         id="content"
-        className={`flex h-[calc(100%-64px)] flex-1 bg-background ${isPanelOpen ? "flex" : "hidden"}`}
+        className={`flex h-[calc(100%-64px)] flex-1 bg-background ${isOpen ? "flex" : "hidden"}`}
       >
         {panelContents.map((p) => (
           <div
@@ -153,7 +156,7 @@ const BottomPanel: React.FC<Props> = ({
         />
         <div className="h-full border-r" />
         <div className="mx-4 flex h-full flex-1 items-center justify-end gap-1">
-          {!isPanelOpen && (
+          {!isOpen && (
             <BaseActionButtons
               panelContents={panelContents}
               selected={selected}

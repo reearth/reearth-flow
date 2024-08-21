@@ -1,12 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
+use once_cell::sync::Lazy;
 use reearth_flow_action_log::action_error_log;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::Expr;
 use schemars::JsonSchema;
@@ -14,6 +15,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::FeatureProcessorError;
+
+pub static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
 
 #[derive(Debug, Clone, Default)]
 pub struct FeatureFilterFactory;
@@ -40,7 +43,7 @@ impl ProcessorFactory for FeatureFilterFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![REJECTED_PORT.clone()]
+        vec![UNFILTERED_PORT.clone()]
     }
 
     fn build(
@@ -151,7 +154,7 @@ impl Processor for FeatureFilter {
         if routing {
             return Ok(());
         }
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()));
         Ok(())
     }
 

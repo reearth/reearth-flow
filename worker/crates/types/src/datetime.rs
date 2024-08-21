@@ -14,6 +14,17 @@ impl Default for DateTime {
     }
 }
 
+impl TryFrom<i64> for DateTime {
+    type Error = ();
+    fn try_from(secs: i64) -> Result<Self, Self::Error> {
+        if let Some(timestamp) = ChronoDateTime::from_timestamp(secs, 0) {
+            Ok(Self(timestamp.with_timezone(&Utc)))
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl From<ChronoDateTime<Utc>> for DateTime {
     fn from(v: ChronoDateTime<Utc>) -> Self {
         Self(v)
