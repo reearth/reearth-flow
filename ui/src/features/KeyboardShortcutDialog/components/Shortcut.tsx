@@ -13,7 +13,7 @@ const Shortcuts: React.FC<Props> = ({ shortcuts }) => {
     <ul className="flex flex-col gap-2 pl-2">
       {shortcuts.map((shortcut) => (
         <li key={shortcut.keyBinding?.key} className="flex justify-between">
-          <p className="text-nowrap font-extralight">{shortcut.description}</p>
+          <p className="font-extralight">{shortcut.description}</p>
           <div className="flex gap-1">
             <Shortcut shortcut={shortcut} />
           </div>
