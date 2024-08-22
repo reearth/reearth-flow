@@ -94,20 +94,11 @@ pub struct Cesium3dtilesWriterCommonParam {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase", tag = "format")]
-pub enum Cesium3dtilesWriterParam {
-    Cesium3dtiles {
-        #[serde(flatten)]
-        common_property: Cesium3dtilesWriterCommonParam,
-    },
-}
-
-impl Cesium3dtilesWriterParam {
-    pub fn to_common_param(&self) -> &Cesium3dtilesWriterCommonParam {
-        match self {
-            Cesium3dtilesWriterParam::Cesium3dtiles { common_property } => common_property,
-        }
-    }
+#[serde(rename_all = "camelCase")]
+pub struct Cesium3dtilesWriterParam {
+    pub(super) output: Expr,
+    pub(super) min_zoom: Option<u8>,
+    pub(super) max_zoom: Option<u8>,
 }
 
 impl Sink for Cesium3dtilesWriter {
@@ -124,22 +115,27 @@ impl Sink for Cesium3dtilesWriter {
             geomotry_types::GeometryValue::CityGmlGeometry(city_gml) => {
                 let storage_resolver = Arc::clone(&ctx.storage_resolver);
                 let expr_engine = Arc::clone(&ctx.expr_engine);
-                let common_param = self.params.to_common_param();
+                let output = self.params.output.clone();
                 let scope = expr_engine.new_scope();
                 let path = scope
-                    .eval::<String>(common_param.output.as_ref())
-                    .unwrap_or_else(|_| common_param.output.as_ref().to_string());
+                    .eval::<String>(output.as_ref())
+                    .unwrap_or_else(|_| output.as_ref().to_string());
                 let output = Uri::from_str(path.as_str())?;
-                let contents =
-                    match handle_city_gml_geometry(&output, storage_resolver.clone(), city_gml) {
-                        Ok(contents) => contents,
-                        Err(e) => {
-                            return Err(Box::new(SinkError::FileWriter(format!(
-                                "CityGmlGeometry handle Error: {:?}",
-                                e
-                            ))))
-                        }
-                    };
+                let contents = match handle_city_gml_geometry(
+                    &output,
+                    storage_resolver.clone(),
+                    city_gml,
+                    self.params.min_zoom,
+                    self.params.max_zoom,
+                ) {
+                    Ok(contents) => contents,
+                    Err(e) => {
+                        return Err(Box::new(SinkError::FileWriter(format!(
+                            "CityGmlGeometry handle Error: {:?}",
+                            e
+                        ))))
+                    }
+                };
                 self.contents
                     .lock()
                     .unwrap()
@@ -170,7 +166,7 @@ impl Sink for Cesium3dtilesWriter {
                 version: "1.1".to_string(),
                 ..Default::default()
             },
-            root: tree.into_tileset_root(),
+            root: tree.into_tileset_root(None),
             geometric_error: 1e+100,
             ..Default::default()
         };
@@ -180,11 +176,11 @@ impl Sink for Cesium3dtilesWriter {
 
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let common_param = self.params.to_common_param();
+        let output = self.params.output.clone();
         let scope = expr_engine.new_scope();
         let path = scope
-            .eval::<String>(common_param.output.as_ref())
-            .unwrap_or_else(|_| common_param.output.as_ref().to_string());
+            .eval::<String>(output.as_ref())
+            .unwrap_or_else(|_| output.as_ref().to_string());
         let output = Uri::from_str(path.as_str())?;
 
         let storage = storage_resolver
@@ -203,12 +199,21 @@ fn handle_city_gml_geometry(
     output: &Uri,
     storage_resolver: Arc<StorageResolver>,
     city_gml: geomotry_types::CityGmlGeometry,
+    min_zoom: Option<u8>,
+    max_zoom: Option<u8>,
 ) -> Result<Arc<Mutex<std::vec::Vec<TileContent>>>, crate::errors::SinkError> {
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
 
     let features = city_gml.features.clone();
     for feature in features {
-        match handle_feature(output, storage_resolver.clone(), &city_gml, feature) {
+        match handle_feature(
+            output,
+            storage_resolver.clone(),
+            &city_gml,
+            feature,
+            min_zoom,
+            max_zoom,
+        ) {
             Ok(contens) => {
                 contents
                     .lock()
@@ -231,14 +236,16 @@ fn handle_feature(
     storage_resolver: Arc<StorageResolver>,
     city_gml: &geomotry_types::CityGmlGeometry,
     feature: geomotry_types::GeometryFeature,
+    min_zoom: Option<u8>,
+    max_zoom: Option<u8>,
 ) -> Result<Arc<Mutex<std::vec::Vec<TileContent>>>, crate::errors::SinkError> {
     let typename = feature.ty.name();
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
     let tile_id_conv = TileIdMethod::Hilbert;
 
-    let min_zoom = 12;
-    let max_zoom = 18;
+    let min_zoom = min_zoom.unwrap_or(12);
+    let max_zoom = max_zoom.unwrap_or(18);
 
     let (lng_center, lat_center, approx_dx, approx_dy, approx_dh) = {
         let min_lng = f64::MAX;
