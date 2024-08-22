@@ -265,7 +265,7 @@ impl BuilderDag {
                 node_index_map[&edge.source()],
                 node_index_map[&edge.target()],
                 EdgeType::new(
-                    edge.weight.id,
+                    edge.weight.id.clone(),
                     edge.weight.from,
                     edge.weight.to,
                     edge.weight.edge_kind.unwrap(),

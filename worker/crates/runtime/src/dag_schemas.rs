@@ -151,9 +151,13 @@ impl DagSchemas {
                 } else {
                     global_params.clone()
                 };
-                let subgraph = DagSchemas::from_graph(subgraph, &factories, &params);
-                graph_schema.add_subgraph_after_node(node.handle.id, &params, &subgraph);
-                let Some(target_node) = graph_schema.node_index_by_node_id(node.handle.id) else {
+                let mut subgraph = DagSchemas::from_graph(subgraph, &factories, &params);
+                for edge in subgraph.graph.edge_weights_mut() {
+                    edge.id = EdgeId::new(format!("{}.{}", entity.id, edge.id));
+                }
+                graph_schema.add_subgraph_after_node(node.handle.id.clone(), &params, &subgraph);
+                let Some(target_node) = graph_schema.node_index_by_node_id(node.handle.id.clone())
+                else {
                     continue;
                 };
                 graph_schema.graph.remove_node(*target_node);
@@ -182,10 +186,14 @@ impl DagSchemas {
                 global_params.clone()
             };
             let subgraph = other_graph_schemas
-                .get(sub_graph_id)
+                .get_mut(sub_graph_id)
                 .unwrap_or_else(|| panic!("Subgraph not found. with id = {}", sub_graph_id));
-            entry_graph.add_subgraph_after_node(node.handle.id, &params, subgraph);
-            let Some(target_node) = entry_graph.node_index_by_node_id(node.handle.id) else {
+            for edge in subgraph.graph.edge_weights_mut() {
+                edge.id = EdgeId::new(format!("{}.{}", entity.id, edge.id));
+            }
+            entry_graph.add_subgraph_after_node(node.handle.id.clone(), &params, subgraph);
+            let Some(target_node) = entry_graph.node_index_by_node_id(node.handle.id.clone())
+            else {
                 continue;
             };
             entry_graph.graph.remove_node(*target_node);
@@ -226,7 +234,7 @@ impl DagSchemas {
                 Node::SubGraph { .. } => None,
             };
             let index = dag.add_node(SchemaNodeType::new(
-                node.id(),
+                NodeId::new(node.id().to_string()),
                 node.name().to_string(),
                 node.clone(),
                 kind.clone(),
@@ -237,11 +245,15 @@ impl DagSchemas {
             };
         });
         for edge in graph.edges.iter() {
-            let from_node_index = dag.node_index_by_node_id(edge.from).unwrap();
+            let from_node_index = dag
+                .node_index_by_node_id(NodeId::new(edge.from.to_string()))
+                .unwrap();
             let from_node_kind = node_mappings.get(from_node_index);
-            let to_node_index = dag.node_index_by_node_id(edge.to).unwrap();
+            let to_node_index = dag
+                .node_index_by_node_id(NodeId::new(edge.to.to_string()))
+                .unwrap();
             dag.connect(
-                edge.id,
+                EdgeId::new(edge.id.to_string()),
                 &Endpoint::new(*from_node_index, Port::new(edge.from_port.clone())),
                 &Endpoint::new(*to_node_index, Port::new(edge.to_port.clone())),
                 match from_node_kind {
@@ -320,7 +332,7 @@ impl DagSchemas {
     }
 
     pub fn add_node(&mut self, node_type: SchemaNodeType) -> NodeIndex {
-        let node_id = node_type.handle.id;
+        let node_id = node_type.handle.id.clone();
         let node_index = self.graph.add_node(node_type);
         self.node_lookup_table.insert(node_id, node_index);
         node_index
@@ -361,7 +373,7 @@ impl DagSchemas {
         self.graph.add_edge(
             from_node_index,
             to_node_index,
-            SchemaEdgeType::new(id, from_port.clone(), to_port.clone(), edge_kind),
+            SchemaEdgeType::new(id.clone(), from_port.clone(), to_port.clone(), edge_kind),
         )
     }
 
@@ -463,7 +475,7 @@ impl DagSchemas {
                     });
                 }
                 let node_type = SchemaNodeType::new(
-                    node_type.handle.id,
+                    node_type.handle.id.clone(),
                     node_type.name.clone(),
                     node_type.node.clone(),
                     node_type.kind.clone(),
@@ -477,7 +489,7 @@ impl DagSchemas {
                                 *pre_node,
                                 new_node,
                                 SchemaEdgeType::new(
-                                    param.id,
+                                    param.id.clone(),
                                     param.from.clone(),
                                     param.to.clone(),
                                     Some(SchemaEdgeKind::FromProcessor),
@@ -534,7 +546,7 @@ impl DagSchemas {
                         new,
                         *next_node,
                         SchemaEdgeType::new(
-                            old_edge.id,
+                            old_edge.id.clone(),
                             old_edge.from.clone(),
                             old_edge.to.clone(),
                             Some(SchemaEdgeKind::FromProcessor),
