@@ -8,7 +8,7 @@ import {
 } from "@flow/components";
 
 import { Shortcuts } from "./components";
-import useShortcuts from "./useShortcuts";
+import useHooks from "./useHooks";
 
 type Props = {
   isOpen: boolean;
@@ -16,20 +16,22 @@ type Props = {
 };
 
 const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
-  const { title, editorShortcuts, canvasShortcuts } = useShortcuts();
+  const { title, editorShortcuts, canvasShortcuts } = useHooks();
+
+  console.log(canvasShortcuts);
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => onOpenChange(o)}>
-      <DialogContent size="lg">
+      <DialogContent size="2xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <DialogContentWrapper>
-          <DialogContentSection>
+        <DialogContentWrapper className="flex-row gap-10">
+          <DialogContentSection className="flex-1">
             <p className="text-lg">{editorShortcuts.title}</p>
             <Shortcuts shortcuts={editorShortcuts.shortcuts} />
           </DialogContentSection>
-          <DialogContentSection>
+          <DialogContentSection className="flex-1">
             <p className="text-lg">{canvasShortcuts.title}</p>
             <Shortcuts shortcuts={canvasShortcuts.shortcuts} />
           </DialogContentSection>

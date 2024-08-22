@@ -1,13 +1,58 @@
-type EditorKeys = "⌘K" | "⌘P" | "⌘X" | "⌘⇧Y";
+export type PossibleKeys =
+  | "+" // zoom in
+  | "=" // zoom in
+  | "-" // zoom out
+  | "0" // fit view
+  | "f" // fullscreen
+  | "/" // keyboard shortcuts dialog
+  | "r" // reader dialog
+  | "t" // transformer dialog
+  | "w" // writer dialog
+  | "l" // bottom panel logs
+  | "p" // bottom panel preview
+  | "c"; // left panel canvas navigator
 
-type CanvasKeys = "⌘N" | "⌘S" | "⌘Z" | "⌘⇧Z";
+type PossibleActions =
+  | "zoomIn"
+  | "zoomOut"
+  | "fitView"
+  | "fullscreen"
+  | "shortcutsDialog"
+  | "readerDialog"
+  | "transformerDialog"
+  | "writerDialog"
+  | "bottomPanelLogs"
+  | "bottomPanelPreview"
+  | "leftPanelCanvasNavigator";
 
-type Shortcut<T = "editor" | "canvas"> = {
-  key: T extends "editor" ? EditorKeys : T extends "canvas" ? CanvasKeys : null;
+export type KeyBinding = {
+  key: Partial<PossibleKeys>;
+  commandKey?: boolean;
+};
+
+export type Shortcut = {
+  keyBinding?: KeyBinding;
   description: string;
 };
 
-export type Shortcuts<T = "editor" | "canvas"> = {
+export type Shortcuts = {
   title: string;
-  shortcuts: Shortcut<T>[];
+  shortcuts: Shortcut[];
+};
+
+export const EditorKeyBindings: Partial<Record<PossibleActions, KeyBinding>> = {
+  fullscreen: { key: "f", commandKey: true },
+  shortcutsDialog: { key: "/", commandKey: true },
+  readerDialog: { key: "r" },
+  transformerDialog: { key: "t" },
+  writerDialog: { key: "w" },
+  bottomPanelLogs: { key: "l", commandKey: true },
+  bottomPanelPreview: { key: "p", commandKey: true },
+  leftPanelCanvasNavigator: { key: "c", commandKey: true },
+};
+
+export const CanvasKeyBindings: Partial<Record<PossibleActions, KeyBinding>> = {
+  zoomIn: { key: "+" },
+  zoomOut: { key: "-" },
+  fitView: { key: "0", commandKey: true },
 };

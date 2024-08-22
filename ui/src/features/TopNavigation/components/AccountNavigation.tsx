@@ -13,7 +13,7 @@ import {
 } from "@flow/components";
 import { config } from "@flow/config";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
-import { useOpenLink } from "@flow/hooks";
+import { useOpenLink, useShortcuts } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -45,6 +45,13 @@ const UserNavigation: React.FC<Props> = ({
 
   const handleTosPageOpen = useOpenLink(tosUrl ?? "");
   const handleDocumentationPageOpen = useOpenLink(documentationUrl ?? "");
+
+  useShortcuts([
+    {
+      keyBinding: { key: "/", commandKey: true },
+      callback: () => setOpenShortcutDialog((o) => !o),
+    },
+  ]);
 
   return (
     <>
