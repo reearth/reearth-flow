@@ -1,6 +1,7 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
 import { MouseEvent, useCallback, useState } from "react";
 
+import { useShortcuts } from "@flow/hooks";
 import { useYjsStore } from "@flow/lib/yjs";
 import { useCurrentWorkflowId } from "@flow/stores";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
@@ -137,6 +138,21 @@ export default () => {
     },
     [hoveredDetails]
   );
+
+  useShortcuts([
+    {
+      keyBinding: { key: "r", commandKey: false },
+      callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "reader"),
+    },
+    {
+      keyBinding: { key: "t", commandKey: false },
+      callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "transformer"),
+    },
+    {
+      keyBinding: { key: "w", commandKey: false },
+      callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "writer"),
+    },
+  ]);
 
   return {
     currentWorkflowId,

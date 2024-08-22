@@ -11,6 +11,7 @@ import { memo, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
 import { UserNavigation } from "@flow/features/TopNavigation/components";
+import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { Node } from "@flow/types";
 
@@ -124,6 +125,15 @@ const LeftPanel: React.FC<Props> = ({
       !isOpen && onOpen("left");
     }
   };
+
+  useShortcuts([
+    {
+      keyBinding: { key: "c", commandKey: false },
+      callback: () => {
+        handleTabChange("navigator");
+      },
+    },
+  ]);
 
   return (
     <>

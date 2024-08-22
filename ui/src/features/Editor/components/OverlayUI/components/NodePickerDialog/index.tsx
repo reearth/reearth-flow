@@ -107,6 +107,7 @@ const NodePickerDialog: React.FC<Props> = ({
         <Input
           className="mx-auto w-full rounded-none border-x-0 border-t-0 border-zinc-700 bg-zinc-800 focus-visible:ring-0"
           placeholder={t("Search")}
+          autoFocus
           onChange={(e) => handleSearch(e.target.value)}
         />
         <div className="max-h-[50vh] overflow-scroll">

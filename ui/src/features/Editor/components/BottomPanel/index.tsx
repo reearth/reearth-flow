@@ -2,6 +2,7 @@ import { CornersIn, CornersOut, Globe, Terminal } from "@phosphor-icons/react";
 import { memo, useCallback, useState } from "react";
 
 import { IconButton } from "@flow/components";
+import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 
 import { WorkflowTabs } from "..";
@@ -67,12 +68,12 @@ const BottomPanel: React.FC<Props> = ({
     },
   ];
 
-  const [selected, setSelected] = useState<PanelContent>(panelContents?.[0]);
+  const [selectedId, setSelectedId] = useState<string>(panelContents?.[0].id);
 
   const handleSelection = useCallback(
-    (content: PanelContent) => {
-      if (content.id !== selected?.id) {
-        setSelected(content);
+    (id: string) => {
+      if (id !== selectedId) {
+        setSelectedId(id);
         if (!isOpen) {
           handlePanelToggle?.(true);
         }
@@ -80,8 +81,23 @@ const BottomPanel: React.FC<Props> = ({
         handlePanelToggle?.(!isOpen);
       }
     },
-    [isOpen, handlePanelToggle, selected]
+    [isOpen, handlePanelToggle, selectedId, setSelectedId]
   );
+
+  useShortcuts([
+    {
+      keyBinding: { key: "l", commandKey: true },
+      callback: () => {
+        handleSelection("output-log");
+      },
+    },
+    {
+      keyBinding: { key: "p", commandKey: true },
+      callback: () => {
+        handleSelection("visual-preview");
+      },
+    },
+  ]);
 
   return (
     <div
@@ -102,7 +118,7 @@ const BottomPanel: React.FC<Props> = ({
           <div className="flex h-full flex-1 items-center justify-end gap-1 px-1">
             <BaseActionButtons
               panelContents={panelContents}
-              selected={selected}
+              selectedId={selectedId}
               onSelection={handleSelection}
             />
             {isOpen && (
@@ -136,7 +152,7 @@ const BottomPanel: React.FC<Props> = ({
       >
         {panelContents.map((p) => (
           <div
-            className={`flex-1 ${selected?.id === p.id ? "flex" : "hidden"}`}
+            className={`flex-1 ${selectedId === p.id ? "flex" : "hidden"}`}
             key={p.id}
           >
             {p.component}
@@ -159,7 +175,7 @@ const BottomPanel: React.FC<Props> = ({
           {!isOpen && (
             <BaseActionButtons
               panelContents={panelContents}
-              selected={selected}
+              selectedId={selectedId}
               onSelection={handleSelection}
             />
           )}
@@ -173,20 +189,20 @@ export default memo(BottomPanel);
 
 const BaseActionButtons: React.FC<{
   panelContents?: PanelContent[];
-  selected?: PanelContent;
-  onSelection?: (content: PanelContent) => void;
-}> = memo(({ panelContents, selected, onSelection }) => {
+  selectedId?: string;
+  onSelection?: (id: string) => void;
+}> = memo(({ panelContents, selectedId, onSelection }) => {
   return (
     <>
       {panelContents?.map((content) => (
         <div
           key={content.id}
           className={`flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-popover hover:text-popover-foreground ${
-            selected?.id === content.id
+            selectedId === content.id
               ? "bg-popover text-popover-foreground"
               : ""
           }`}
-          onClick={() => onSelection?.(content)}
+          onClick={() => onSelection?.(content.id)}
         >
           {content.icon}
           <p className="text-sm font-thin">{content.title}</p>
