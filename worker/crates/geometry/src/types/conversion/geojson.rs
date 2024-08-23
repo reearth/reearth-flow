@@ -8,8 +8,8 @@ pub(crate) fn create_point_type<T>(point: &crate::types::point::Point2D<T>) -> g
 where
     T: CoordFloat,
 {
-    let x: f64 = point.x().to_f64().unwrap();
-    let y: f64 = point.y().to_f64().unwrap();
+    let x: f64 = point.x().to_f64().expect("Failed to convert x to f64");
+    let y: f64 = point.y().to_f64().expect("Failed to convert y to f64");
 
     vec![x, y]
 }
@@ -105,8 +105,8 @@ where
     T: CoordFloat,
 {
     Coordinate2D::new_(
-        T::from(point_type[0]).unwrap(),
-        T::from(point_type[1]).unwrap(),
+        T::from(point_type[0]).expect("Failed to convert x to f64"),
+        T::from(point_type[1]).expect("Failed to convert y to f64"),
     )
 }
 
@@ -115,8 +115,8 @@ where
     T: CoordFloat,
 {
     Point2D::new(
-        T::from(point_type[0]).unwrap(),
-        T::from(point_type[1]).unwrap(),
+        T::from(point_type[0]).expect("Failed to convert x to T"),
+        T::from(point_type[1]).expect("Failed to convert y to T"),
     )
 }
 
