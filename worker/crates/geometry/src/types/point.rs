@@ -20,7 +20,7 @@ pub type Point3D<T> = Point<T, T>;
 
 impl From<Point3D<f64>> for Point2D<f64> {
     fn from(p: Point3D<f64>) -> Point2D<f64> {
-        Point2D::new(p.0.x, p.0.y)
+        point! { x: p.x(), y: p.y() }
     }
 }
 
@@ -32,13 +32,13 @@ impl<T: CoordNum, Z: CoordNum> From<Coordinate<T, Z>> for Point<T, Z> {
 
 impl<T: CoordNum> From<(T, T)> for Point2D<T> {
     fn from(coords: (T, T)) -> Self {
-        Point::new(coords.0, coords.1)
+        point!(x: coords.0, y: coords.1)
     }
 }
 
 impl<T: CoordNum> From<[T; 2]> for Point2D<T> {
     fn from(coords: [T; 2]) -> Self {
-        Point::new(coords[0], coords[1])
+        point!(x: coords[0], y:coords[1])
     }
 }
 
@@ -72,22 +72,23 @@ impl<T: CoordNum> From<Point3D<T>> for [T; 3] {
     }
 }
 
-impl<T: CoordNum> Point2D<T> {
-    pub fn new(x: T, y: T) -> Self {
-        point! { x: x, y: y }
+impl<T: CoordNum, Z: CoordNum> Point<T, Z> {
+    pub fn new(x: T, y: T, z: Z) -> Self {
+        point! { x: x, y: y, z: z }
     }
 }
 
-impl<T: CoordFloat> From<Point2D<T>> for geojson::Value {
-    fn from(point: Point2D<T>) -> Self {
+impl<T: CoordFloat, Z: CoordFloat> From<Point<T, Z>> for geojson::Value {
+    fn from(point: Point<T, Z>) -> Self {
         let coords = create_point_type(&point);
         geojson::Value::Point(coords)
     }
 }
 
-impl<T> TryFrom<geojson::Value> for Point2D<T>
+impl<T, Z> TryFrom<geojson::Value> for Point<T, Z>
 where
     T: CoordFloat,
+    Z: CoordFloat,
 {
     type Error = crate::error::Error;
 
@@ -160,14 +161,14 @@ impl<T: CoordFloat> Point2D<T> {
         let (x, y) = self.x_y();
         let x = x.to_degrees();
         let y = y.to_degrees();
-        Point::new(x, y)
+        point!(x: x, y: y)
     }
 
     pub fn to_radians(self) -> Self {
         let (x, y) = self.x_y();
         let x = x.to_radians();
         let y = y.to_radians();
-        Point::new(x, y)
+        point!(x: x, y: y)
     }
 }
 

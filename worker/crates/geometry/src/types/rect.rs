@@ -154,8 +154,8 @@ impl<T: CoordFloat + CoordNumT> Rect3D<T> {
     }
 }
 
-impl<T: CoordFloat> From<Rect2D<T>> for geojson::Value {
-    fn from(rect: Rect2D<T>) -> Self {
+impl<T: CoordFloat, Z: CoordFloat> From<Rect<T, Z>> for geojson::Value {
+    fn from(rect: Rect<T, Z>) -> Self {
         let coords = create_from_rect_type(&rect);
         geojson::Value::Polygon(coords)
     }

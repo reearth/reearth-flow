@@ -124,20 +124,21 @@ impl From<MultiPolygon3D<f64>> for MultiPolygon2D<f64> {
     }
 }
 
-impl<T: CoordFloat> From<MultiPolygon2D<T>> for geojson::Value {
-    fn from(multi_polygon: MultiPolygon2D<T>) -> Self {
+impl<T: CoordFloat, Z: CoordFloat> From<MultiPolygon<T, Z>> for geojson::Value {
+    fn from(multi_polygon: MultiPolygon<T, Z>) -> Self {
         let coords = create_multi_polygon_type(&multi_polygon);
         geojson::Value::MultiPolygon(coords)
     }
 }
 
-impl<T> TryFrom<geojson::Value> for MultiPolygon2D<T>
+impl<T, Z> TryFrom<geojson::Value> for MultiPolygon<T, Z>
 where
     T: CoordFloat,
+    Z: CoordFloat,
 {
     type Error = crate::error::Error;
 
-    fn try_from(value: geojson::Value) -> crate::error::Result<MultiPolygon2D<T>> {
+    fn try_from(value: geojson::Value) -> crate::error::Result<MultiPolygon<T, Z>> {
         match value {
             geojson::Value::MultiPolygon(multi_polygon_type) => {
                 Ok(create_geo_multi_polygon(&multi_polygon_type))

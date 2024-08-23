@@ -49,3 +49,4 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 url.workspace = true
 uuid.workspace = true
+geojson.workspace = true

@@ -47,6 +47,7 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
+geojson.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true

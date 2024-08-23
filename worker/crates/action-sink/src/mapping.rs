@@ -5,7 +5,8 @@ use reearth_flow_runtime::node::{NodeKind, SinkFactory};
 
 use crate::{
     echo::EchoSinkFactory, file::cesium3dtiles::Cesium3DTilesSinkFactory,
-    file::writer::FileWriterSinkFactory, noop::NoopSinkFactory,
+    file::geojson::GeoJsonWriterFactory, file::writer::FileWriterSinkFactory,
+    noop::NoopSinkFactory,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -14,6 +15,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<Cesium3DTilesSinkFactory>::default(),
         Box::<EchoSinkFactory>::default(),
         Box::<NoopSinkFactory>::default(),
+        Box::<GeoJsonWriterFactory>::default(),
     ];
     factories
         .into_iter()

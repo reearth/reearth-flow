@@ -354,8 +354,8 @@ impl<'a> From<NPolygon3<'a>> for Polygon<f64> {
     }
 }
 
-impl<T: CoordFloat> From<Polygon2D<T>> for geojson::Value {
-    fn from(polygon: Polygon2D<T>) -> Self {
+impl<T: CoordFloat, Z: CoordFloat> From<Polygon<T, Z>> for geojson::Value {
+    fn from(polygon: Polygon<T, Z>) -> Self {
         let coords = create_polygon_type(&polygon);
         geojson::Value::Polygon(coords)
     }

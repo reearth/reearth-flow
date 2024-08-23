@@ -259,16 +259,17 @@ impl<'a> From<NLineString3<'a>> for LineString<f64> {
     }
 }
 
-impl<T: CoordFloat> From<LineString2D<T>> for geojson::Value {
-    fn from(line_string: LineString2D<T>) -> Self {
+impl<T: CoordFloat, Z: CoordFloat> From<LineString<T, Z>> for geojson::Value {
+    fn from(line_string: LineString<T, Z>) -> Self {
         let coords = create_line_string_type(&line_string);
         geojson::Value::LineString(coords)
     }
 }
 
-impl<T> TryFrom<geojson::Value> for LineString2D<T>
+impl<T, Z> TryFrom<geojson::Value> for LineString<T, Z>
 where
     T: CoordFloat,
+    Z: CoordFloat,
 {
     type Error = crate::error::Error;
 
