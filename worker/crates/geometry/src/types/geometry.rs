@@ -4,11 +4,15 @@ use std::convert::TryFrom;
 use approx::{AbsDiffEq, RelativeEq};
 use serde::{Deserialize, Serialize};
 
-use super::coordnum::CoordNum;
+use super::conversion::geojson::{
+    create_geo_line_string, create_geo_multi_line_string, create_geo_multi_polygon,
+    create_geo_point, create_geo_polygon,
+};
+use super::coordnum::{CoordFloat, CoordNum};
 use super::line::Line;
 use super::line_string::LineString;
 use super::multi_line_string::MultiLineString;
-use super::multi_point::MultiPoint;
+use super::multi_point::{MultiPoint, MultiPoint2D};
 use super::multi_polygon::MultiPolygon;
 use super::no_value::NoValue;
 use super::point::Point;
@@ -124,6 +128,66 @@ impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
         match self {
             Geometry::GeometryCollection(gc) => Some(gc.clone()),
             _ => None,
+        }
+    }
+}
+
+impl<T: CoordFloat> From<Geometry2D<T>> for geojson::Value {
+    fn from(geom: Geometry2D<T>) -> Self {
+        match geom {
+            Geometry::Point(point) => point.into(),
+            Geometry::Line(line) => line.into(),
+            Geometry::LineString(line_string) => line_string.into(),
+            Geometry::Polygon(polygon) => polygon.into(),
+            Geometry::MultiPoint(multi_point) => multi_point.into(),
+            Geometry::MultiLineString(multi_line_string) => multi_line_string.into(),
+            Geometry::MultiPolygon(multi_point) => multi_point.into(),
+            Geometry::Rect(rect) => rect.into(),
+            Geometry::Triangle(triangle) => triangle.into(),
+            Geometry::GeometryCollection(gc) => {
+                let mut geometries = Vec::new();
+                for g in gc {
+                    geometries.push(g.into());
+                }
+                geojson::Value::GeometryCollection(geometries)
+            }
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl<T> TryFrom<geojson::Value> for Geometry2D<T>
+where
+    T: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::Point(ref point_type) => {
+                Ok(Geometry2D::Point(create_geo_point(point_type)))
+            }
+            geojson::Value::MultiPoint(ref multi_point_type) => {
+                Ok(Geometry2D::MultiPoint(MultiPoint2D::new(
+                    multi_point_type
+                        .iter()
+                        .map(|point_type| create_geo_point(point_type))
+                        .collect(),
+                )))
+            }
+            geojson::Value::LineString(ref line_string_type) => Ok(Geometry2D::LineString(
+                create_geo_line_string(line_string_type),
+            )),
+            geojson::Value::MultiLineString(ref multi_line_string_type) => Ok(
+                Geometry2D::MultiLineString(create_geo_multi_line_string(multi_line_string_type)),
+            ),
+            geojson::Value::Polygon(ref polygon_type) => {
+                Ok(Geometry2D::Polygon(create_geo_polygon(polygon_type)))
+            }
+            geojson::Value::MultiPolygon(ref multi_polygon_type) => Ok(Geometry2D::MultiPolygon(
+                create_geo_multi_polygon(multi_polygon_type),
+            )),
+            _ => Err(Error::mismatched_geometry("Geometry2D")),
         }
     }
 }

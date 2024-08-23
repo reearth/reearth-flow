@@ -79,6 +79,7 @@ earcut = "0.4.1"
 float_next_after = "1.0.0"
 futures = "0.3.30"
 futures-util = "0.3.30"
+geojson = "0.24.1"
 hashbrown = "0.14.5"
 image = { version = "0.25.2", default-features = false, features = ["jpeg", "png", "rayon", "tiff", "webp"] }
 indexmap = "2.4.0"

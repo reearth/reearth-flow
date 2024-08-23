@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::polygon;
 
 use super::{
+    conversion::geojson::create_from_rect_type,
     coordinate::{Coordinate, Coordinate2D, Coordinate3D},
     coordnum::{CoordFloat, CoordNum, CoordNumT},
     no_value::NoValue,
@@ -150,6 +151,13 @@ impl<T: CoordFloat + CoordNumT> Rect3D<T> {
             (self.max.y + self.min.y) / two,
             (self.max.z + self.min.z) / two,
         )
+    }
+}
+
+impl<T: CoordFloat> From<Rect2D<T>> for geojson::Value {
+    fn from(rect: Rect2D<T>) -> Self {
+        let coords = create_from_rect_type(&rect);
+        geojson::Value::Polygon(coords)
     }
 }
 

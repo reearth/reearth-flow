@@ -7,8 +7,11 @@ use nusamai_geometry::{LineString2 as NLineString2, LineString3 as NLineString3}
 
 use crate::utils::line_string_bounding_rect;
 
+use super::conversion::geojson::{
+    create_geo_line_string, create_line_string_type, mismatch_geom_err,
+};
 use super::coordinate::{self, Coordinate};
-use super::coordnum::CoordNum;
+use super::coordnum::{CoordFloat, CoordNum};
 use super::line::Line;
 use super::triangle::Triangle;
 use super::{no_value::NoValue, point::Point};
@@ -253,6 +256,29 @@ impl<'a> From<NLineString3<'a>> for LineString<f64> {
                 .map(|a| coordinate::Coordinate3D::new__(a[0], a[1], a[2]))
                 .collect::<Vec<_>>(),
         )
+    }
+}
+
+impl<T: CoordFloat> From<LineString2D<T>> for geojson::Value {
+    fn from(line_string: LineString2D<T>) -> Self {
+        let coords = create_line_string_type(&line_string);
+        geojson::Value::LineString(coords)
+    }
+}
+
+impl<T> TryFrom<geojson::Value> for LineString2D<T>
+where
+    T: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::LineString(multi_point_type) => {
+                Ok(create_geo_line_string(&multi_point_type))
+            }
+            other => Err(mismatch_geom_err("LineString", &other)),
+        }
     }
 }
 

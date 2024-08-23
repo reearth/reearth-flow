@@ -5,7 +5,10 @@ use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use nusamai_geometry::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3};
 use serde::{Deserialize, Serialize};
 
-use super::coordnum::CoordNum;
+use super::conversion::geojson::{
+    create_geo_multi_polygon, create_multi_polygon_type, mismatch_geom_err,
+};
+use super::coordnum::{CoordFloat, CoordNum};
 use super::line_string::LineString;
 use super::no_value::NoValue;
 use super::polygon::{Polygon, Polygon2D};
@@ -118,6 +121,29 @@ impl From<MultiPolygon3D<f64>> for MultiPolygon2D<f64> {
     #[inline]
     fn from(mpoly: MultiPolygon3D<f64>) -> Self {
         MultiPolygon2D::new(mpoly.0.into_iter().map(Polygon2D::from).collect())
+    }
+}
+
+impl<T: CoordFloat> From<MultiPolygon2D<T>> for geojson::Value {
+    fn from(multi_polygon: MultiPolygon2D<T>) -> Self {
+        let coords = create_multi_polygon_type(&multi_polygon);
+        geojson::Value::MultiPolygon(coords)
+    }
+}
+
+impl<T> TryFrom<geojson::Value> for MultiPolygon2D<T>
+where
+    T: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<MultiPolygon2D<T>> {
+        match value {
+            geojson::Value::MultiPolygon(multi_polygon_type) => {
+                Ok(create_geo_multi_polygon(&multi_polygon_type))
+            }
+            other => Err(mismatch_geom_err("MultiPolygon", &other)),
+        }
     }
 }
 
