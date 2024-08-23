@@ -5,6 +5,12 @@ pub enum Error {
 
     #[error("Error projection: {0}")]
     Projection(String),
+
+    #[error("Expected type: `{expected_type}`, but found `{found_type}`")]
+    InvalidGeoJsonConversion {
+        expected_type: &'static str,
+        found_type: &'static str,
+    },
 }
 
 impl Error {
@@ -27,3 +33,5 @@ impl PartialEq for Error {
         }
     }
 }
+
+pub(super) type Result<T, E = Error> = std::result::Result<T, E>;

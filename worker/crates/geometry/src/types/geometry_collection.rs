@@ -1,3 +1,6 @@
+use super::conversion::geojson::mismatch_geom_err;
+use super::coordnum::CoordFloat;
+use super::geometry::Geometry2D;
 use super::no_value::NoValue;
 use super::{coordnum::CoordNum, geometry::Geometry};
 
@@ -169,6 +172,39 @@ impl<'a, T: CoordNum, Z: CoordNum> GeometryCollection<T, Z> {
         self.into_iter()
     }
 }
+
+impl<T: CoordFloat> From<GeometryCollection2D<T>> for geojson::Value {
+    fn from(geom_collection: GeometryCollection2D<T>) -> Self {
+        let geometries = geom_collection
+            .0
+            .into_iter()
+            .map(|g| g.into())
+            .collect::<Vec<_>>();
+        geojson::Value::GeometryCollection(geometries)
+    }
+}
+
+impl<T> TryFrom<geojson::Value> for GeometryCollection2D<T>
+where
+    T: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::GeometryCollection(geometries) => {
+                let geojson_geometries: Vec<Geometry2D<T>> = geometries
+                    .iter()
+                    .map(|geometry| geometry.value.clone().try_into().unwrap())
+                    .collect();
+
+                Ok(GeometryCollection2D::new(geojson_geometries))
+            }
+            other => Err(mismatch_geom_err("GeometryCollection", &other)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use alloc::vec;

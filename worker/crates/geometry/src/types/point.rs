@@ -5,6 +5,7 @@ use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use serde::{Deserialize, Serialize};
 
+use super::conversion::geojson::{create_geo_point, create_point_type, mismatch_geom_err};
 use crate::{coord, point};
 
 use super::coordinate::Coordinate;
@@ -74,6 +75,27 @@ impl<T: CoordNum> From<Point3D<T>> for [T; 3] {
 impl<T: CoordNum> Point2D<T> {
     pub fn new(x: T, y: T) -> Self {
         point! { x: x, y: y }
+    }
+}
+
+impl<T: CoordFloat> From<Point2D<T>> for geojson::Value {
+    fn from(point: Point2D<T>) -> Self {
+        let coords = create_point_type(&point);
+        geojson::Value::Point(coords)
+    }
+}
+
+impl<T> TryFrom<geojson::Value> for Point2D<T>
+where
+    T: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::Point(point_type) => Ok(create_geo_point(&point_type)),
+            other => Err(mismatch_geom_err("Point", &other)),
+        }
     }
 }
 

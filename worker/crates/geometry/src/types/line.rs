@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::utils::{line_bounding_rect, point_line_euclidean_distance};
 
+use super::conversion::geojson::create_from_line_type;
 use super::coordinate::Coordinate;
-use super::coordnum::CoordNum;
+use super::coordnum::{CoordFloat, CoordNum};
 use super::{no_value::NoValue, point::Point};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash)]
@@ -109,6 +110,13 @@ impl<T: CoordNum> From<[(T, T); 2]> for Line<T, NoValue> {
 impl<T: CoordNum> From<[(T, T, T); 2]> for Line<T, T> {
     fn from(coord: [(T, T, T); 2]) -> Self {
         Line::new_(coord[0], coord[1])
+    }
+}
+
+impl<T: CoordFloat> From<Line2D<T>> for geojson::Value {
+    fn from(line: Line2D<T>) -> Self {
+        let coords = create_from_line_type(&line);
+        geojson::Value::LineString(coords)
     }
 }
 

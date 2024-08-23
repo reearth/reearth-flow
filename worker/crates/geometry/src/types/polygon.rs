@@ -7,7 +7,8 @@ use crate::algorithm::contains::Contains;
 use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
 use crate::algorithm::GeoFloat;
 
-use super::coordnum::CoordNum;
+use super::conversion::geojson::create_polygon_type;
+use super::coordnum::{CoordFloat, CoordNum};
 use super::face::Face;
 use super::line::Line;
 use super::line_string::LineString;
@@ -350,6 +351,13 @@ impl<'a> From<NPolygon3<'a>> for Polygon<f64> {
     fn from(poly: NPolygon3<'a>) -> Self {
         let interiors = poly.interiors().map(|interior| interior.into()).collect();
         Polygon3D::new(poly.exterior().into(), interiors)
+    }
+}
+
+impl<T: CoordFloat> From<Polygon2D<T>> for geojson::Value {
+    fn from(polygon: Polygon2D<T>) -> Self {
+        let coords = create_polygon_type(&polygon);
+        geojson::Value::Polygon(coords)
     }
 }
 
