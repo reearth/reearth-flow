@@ -50,11 +50,11 @@ jobs:
         run: |
           git add -N .
           git diff
-          line=`git diff | wc -l`
-          if [ $line -gt 0 ]; then
+          line=$(git diff | wc -l)
+          if [ "$line" -gt 0 ]; then
             echo "Please run 'cargo make doc-action' and commit the changes."
             git diff
-            exit -1
+            exit 1
           fi
       - name: run tests
         run: cargo test --workspace --all-targets --all-features
