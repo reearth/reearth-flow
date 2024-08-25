@@ -110,11 +110,11 @@ rhai = { version = "1.19.0", features = ["internals", "metadata", "serde", "sync
 robust = "1.1.0"
 rstar = "0.12.0"
 rstest = "0.22.0"
-rust_xlsxwriter = "0.73.0"
+rust_xlsxwriter = "0.74.0"
 schemars = { version = "0.8.21", features = ["uuid1"] }
-serde = { version = "1.0.208", features = ["derive"] }
-serde_derive = "1.0.208"
-serde_json = { version = "1.0.125", features = ["arbitrary_precision"] }
+serde = { version = "1.0.209", features = ["derive"] }
+serde_derive = "1.0.209"
+serde_json = { version = "1.0.127", features = ["arbitrary_precision"] }
 serde_with = "3.9.0"
 serde_yaml = "0.9.34"
 sha2 = "0.10.8"
