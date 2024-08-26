@@ -3,8 +3,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::polygon;
 
+use super::conversion::geojson::create_from_triangle_type;
 use super::coordinate::Coordinate;
-use super::coordnum::CoordNum;
+use super::coordnum::{CoordFloat, CoordNum};
 use super::line::Line;
 use super::no_value::NoValue;
 use super::polygon::Polygon;
@@ -52,6 +53,13 @@ impl<IC: Into<Coordinate<T, Z>> + Copy, T: CoordNum, Z: CoordNum> From<[IC; 3]> 
 impl From<Triangle3D<f64>> for Triangle2D<f64> {
     fn from(p: Triangle3D<f64>) -> Triangle2D<f64> {
         Triangle2D::new(p.0.into(), p.1.into(), p.2.into())
+    }
+}
+
+impl<T: CoordFloat, Z: CoordFloat> From<Triangle<T, Z>> for geojson::Value {
+    fn from(triangle: Triangle<T, Z>) -> Self {
+        let coords = create_from_triangle_type(&triangle);
+        geojson::Value::Polygon(coords)
     }
 }
 

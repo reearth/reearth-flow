@@ -8,7 +8,10 @@ use nusamai_geometry::{
     MultiLineString2 as NMultiLineString2, MultiLineString3 as NMultiLineString3,
 };
 
-use super::coordnum::CoordNum;
+use super::conversion::geojson::{
+    create_geo_multi_line_string, create_multi_line_string_type, mismatch_geom_err,
+};
+use super::coordnum::{CoordFloat, CoordNum};
 use super::line::Line;
 use super::line_string::LineString;
 use super::no_value::NoValue;
@@ -127,6 +130,30 @@ impl<'a> From<NMultiLineString3<'a>> for MultiLineString3D<f64> {
     #[inline]
     fn from(line_strings: NMultiLineString3<'a>) -> Self {
         MultiLineString3D::new(line_strings.iter().map(|a| a.into()).collect::<Vec<_>>())
+    }
+}
+
+impl<T: CoordFloat, Z: CoordFloat> From<MultiLineString<T, Z>> for geojson::Value {
+    fn from(multi_line_string: MultiLineString<T, Z>) -> Self {
+        let coords = create_multi_line_string_type(&multi_line_string);
+        geojson::Value::MultiLineString(coords)
+    }
+}
+
+impl<T, Z> TryFrom<geojson::Value> for MultiLineString<T, Z>
+where
+    T: CoordFloat,
+    Z: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::MultiLineString(multi_line_string_type) => {
+                Ok(create_geo_multi_line_string(&multi_line_string_type))
+            }
+            other => Err(mismatch_geom_err("MultiLineString", &other)),
+        }
     }
 }
 

@@ -416,6 +416,53 @@
       ]
     },
     {
+      "name": "Cesium3DTilesWriter",
+      "type": "sink",
+      "description": "Writes features to a file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Cesium3dtilesWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "maxZoom": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "minZoom": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "Clipper",
       "type": "processor",
       "description": "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately",
@@ -1220,6 +1267,37 @@
             }
           }
         ],
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "GeoJsonWriter",
+      "type": "sink",
+      "description": "Writes features to a geojson file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeoJsonWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
         "definitions": {
           "Expr": {
             "type": "string"

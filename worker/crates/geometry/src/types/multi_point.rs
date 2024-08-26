@@ -5,7 +5,8 @@ use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use nusamai_geometry::{MultiPoint2 as NMultiPoint2, MultiPoint3 as NMultiPoint3};
 use serde::{Deserialize, Serialize};
 
-use super::coordnum::CoordNum;
+use super::conversion::geojson::{create_geo_point, create_point_type, mismatch_geom_err};
+use super::coordnum::{CoordFloat, CoordNum};
 use super::no_value::NoValue;
 use super::point::Point;
 
@@ -107,6 +108,38 @@ impl From<MultiPoint3D<f64>> for Vec<NaPoint3<f64>> {
     #[inline]
     fn from(p: MultiPoint3D<f64>) -> Vec<NaPoint3<f64>> {
         p.0.into_iter().map(|c| c.into()).collect()
+    }
+}
+
+impl<T: CoordFloat, Z: CoordFloat> From<MultiPoint<T, Z>> for geojson::Value {
+    fn from(multi_point: MultiPoint<T, Z>) -> Self {
+        let coords = multi_point
+            .0
+            .iter()
+            .map(|point| create_point_type(point))
+            .collect();
+
+        geojson::Value::MultiPoint(coords)
+    }
+}
+
+impl<T, Z> TryFrom<geojson::Value> for MultiPoint<T, Z>
+where
+    T: CoordFloat,
+    Z: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::MultiPoint(multi_point_type) => Ok(MultiPoint::new(
+                multi_point_type
+                    .iter()
+                    .map(|point_type| create_geo_point(point_type))
+                    .collect(),
+            )),
+            other => Err(mismatch_geom_err("MultiPoint", &other)),
+        }
     }
 }
 

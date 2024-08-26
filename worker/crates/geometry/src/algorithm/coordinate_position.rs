@@ -435,12 +435,13 @@ where
 mod test {
     use crate::{
         algorithm::coordinate_position::{CoordPos, CoordinatePosition},
-        types::{coordinate::Coordinate2D, line::Line2D, point::Point2D, rect::Rect2D},
+        point,
+        types::{coordinate::Coordinate2D, line::Line2D, rect::Rect2D},
     };
 
     #[test]
     fn test_simple_line() {
-        let line = Line2D::new(Point2D::new(0.0, 0.0), Point2D::new(10.0, 10.0));
+        let line = Line2D::new(point!(x: 0.0, y: 0.0), point!(x: 10.0, y: 10.0));
 
         let start = Coordinate2D::new_(0.0, 0.0);
         assert_eq!(line.coordinate_position(&start), CoordPos::OnBoundary);

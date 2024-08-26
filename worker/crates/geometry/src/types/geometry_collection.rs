@@ -169,16 +169,17 @@ impl<'a, T: CoordNum, Z: CoordNum> GeometryCollection<T, Z> {
         self.into_iter()
     }
 }
+
 #[cfg(test)]
 mod tests {
     use alloc::vec;
 
     use super::GeometryCollection;
-    use crate::types::point::Point;
+    use crate::{point, types::point::Point};
 
     #[test]
     fn from_vec() {
-        let gc = GeometryCollection::from(vec![Point::new(1i32, 2)]);
+        let gc = GeometryCollection::from(vec![point!(x: 1i32, y: 2)]);
         let p = Point::try_from(gc[0].clone()).unwrap();
         assert_eq!(p.y(), 2);
     }
