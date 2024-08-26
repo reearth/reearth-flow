@@ -48,9 +48,14 @@ pub enum FileReader {
 impl Source for FileReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
+    fn name(&self) -> &str {
+        "FileReader"
+    }
+
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
         Ok(vec![])
     }
+
     async fn start(
         &mut self,
         ctx: NodeContext,

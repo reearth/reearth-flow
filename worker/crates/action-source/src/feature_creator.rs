@@ -79,6 +79,10 @@ pub struct FeatureCreator {
 impl Source for FeatureCreator {
     async fn initialize(&self, _ctx: NodeContext) {}
 
+    fn name(&self) -> &str {
+        "FeatureCreator"
+    }
+
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
         Ok(vec![])
     }

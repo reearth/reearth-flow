@@ -37,6 +37,8 @@ graphs:
         with:
           output: |
             env.get("outputPath")
+          groupBy:
+            - cityGmlPath
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

@@ -4,12 +4,13 @@ use std::sync::Arc;
 use std::vec;
 
 use bytes::Bytes;
+use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::Expr;
+use reearth_flow_types::{Attribute, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -71,7 +72,10 @@ impl SinkFactory for GeoJsonWriterFactory {
             .into());
         };
 
-        let sink = GeoJsonWriter { params };
+        let sink = GeoJsonWriter {
+            params,
+            buffer: Default::default(),
+        };
         Ok(Box::new(sink))
     }
 }
@@ -79,18 +83,39 @@ impl SinkFactory for GeoJsonWriterFactory {
 #[derive(Debug, Clone)]
 pub struct GeoJsonWriter {
     pub(super) params: GeoJsonWriterParam,
+    pub(super) buffer: HashMap<String, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeoJsonWriterParam {
     pub(super) output: Expr,
+    pub(super) group_by: Option<Vec<Attribute>>,
 }
 
 impl Sink for GeoJsonWriter {
     fn initialize(&self, _ctx: NodeContext) {}
+
+    fn name(&self) -> &str {
+        "GeoJsonWriter"
+    }
+
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
+
+        let key = if let Some(group_by) = &self.params.group_by {
+            group_by
+                .iter()
+                .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
+                .collect::<Vec<_>>()
+                .join("\t")
+        } else {
+            "_all".to_string()
+        };
+        self.buffer.entry(key).or_default().push(feature.clone());
+        Ok(())
+    }
+    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let output = self.params.output.clone();
@@ -99,26 +124,33 @@ impl Sink for GeoJsonWriter {
             .eval::<String>(output.as_ref())
             .unwrap_or_else(|_| output.as_ref().to_string());
         let output = Uri::from_str(path.as_str())?;
-        let file_path = output.join(format!("{}.geojson", feature.id))?;
 
-        let storage = storage_resolver
-            .resolve(&file_path)
-            .map_err(crate::errors::SinkError::file_writer)?;
-        let geojsons: Vec<geojson::Feature> = feature.clone().try_into()?;
-        let mut buffer = Vec::from(b"{\"type\":\"FeatureCollection\",\"features\":[");
-        for (index, geojson) in geojsons.iter().enumerate() {
-            if index > 0 {
-                buffer.push(b',');
+        for (key, features) in self.buffer.iter() {
+            let file_path = output.join(format!("{}.geojson", to_hash(key)))?;
+            let storage = storage_resolver
+                .resolve(&file_path)
+                .map_err(crate::errors::SinkError::file_writer)?;
+            let mut buffer = Vec::from(b"{\"type\":\"FeatureCollection\",\"features\":[");
+
+            let geojsons: Vec<geojson::Feature> = features
+                .iter()
+                .flat_map(|f| {
+                    let geojsons: Option<Vec<geojson::Feature>> = f.clone().try_into().ok();
+                    geojsons
+                })
+                .flatten()
+                .collect();
+            for (index, geojson) in geojsons.iter().enumerate() {
+                if index > 0 {
+                    buffer.push(b',');
+                }
+                let bytes = serde_json::to_vec(&geojson)
+                    .map_err(|e| crate::errors::SinkError::GeoJsonWriter(format!("{}", e)))?;
+                buffer.extend(bytes);
             }
-            let bytes = serde_json::to_vec(&geojson)
-                .map_err(|e| crate::errors::SinkError::GeoJsonWriter(format!("{}", e)))?;
-            buffer.extend(bytes);
+            buffer.extend(Vec::from(b"]}\n"));
+            storage.put_sync(file_path.path().as_path(), Bytes::from(buffer))?;
         }
-        buffer.extend(Vec::from(b"]}\n"));
-        storage.put_sync(file_path.path().as_path(), Bytes::from(buffer))?;
-        Ok(())
-    }
-    fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
         Ok(())
     }
 }

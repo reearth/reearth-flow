@@ -1293,11 +1293,23 @@ Writes features to a geojson file
     "output"
   ],
   "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
     "output": {
       "$ref": "#/definitions/Expr"
     }
   },
   "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
     "Expr": {
       "type": "string"
     }

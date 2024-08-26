@@ -110,6 +110,11 @@ pub struct Cesium3dtilesWriterParam {
 
 impl Sink for Cesium3dtilesWriter {
     fn initialize(&self, _ctx: NodeContext) {}
+
+    fn name(&self) -> &str {
+        "Cesium3DTilesWriter"
+    }
+
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let geometry = ctx.feature.geometry.as_ref().unwrap();
         let geometry_value = geometry.value.clone();
