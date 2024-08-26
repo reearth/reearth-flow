@@ -59,10 +59,10 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
 
     const input = { name, email };
     const { me: user } = await updateMe(input);
-    if (!user) {
-      showError === "passwordFailed"
-        ? setShowError("failed")
-        : setShowError("emailFailed");
+    if (!user && showError === "passwordFailed") {
+      setShowError("failed");
+    } else {
+      setShowError("emailFailed");
     }
     setLoading(false);
   };

@@ -6,8 +6,6 @@ type Props = {
 
 const os = window.navigator.userAgent.toLowerCase();
 
-console.log(os);
-
 const Shortcuts: React.FC<Props> = ({ shortcuts }) => {
   return (
     <ul className="flex flex-col gap-2 pl-2">

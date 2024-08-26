@@ -1,14 +1,14 @@
 import { useCallback, useRef } from "react";
 
-export default (
-  onClick: ((param?: any) => void) | undefined,
-  onDoubleClick: ((param?: any) => void) | undefined,
+export default <TClick, TDoubleClick>(
+  onClick: ((param?: TClick) => void) | undefined,
+  onDoubleClick: ((param?: TDoubleClick) => void) | undefined,
   delay = 200
-): [(param?: any) => void, (param?: any) => void] => {
+): [(param?: TClick) => void, (param?: TDoubleClick) => void] => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const singleClickHandler = useCallback(
-    (param?: any) => {
+    (param?: TClick) => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
@@ -23,7 +23,7 @@ export default (
   );
 
   const doubleClickHandler = useCallback(
-    (param?: any) => {
+    (param?: TDoubleClick) => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;

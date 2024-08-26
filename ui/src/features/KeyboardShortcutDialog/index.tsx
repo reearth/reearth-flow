@@ -18,8 +18,6 @@ type Props = {
 const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   const { title, editorShortcuts, canvasShortcuts } = useHooks();
 
-  console.log(canvasShortcuts);
-
   return (
     <Dialog open={isOpen} onOpenChange={(o) => onOpenChange(o)}>
       <DialogContent size="2xl">

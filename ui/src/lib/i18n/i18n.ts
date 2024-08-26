@@ -1,4 +1,4 @@
-import i18n from "i18next";
+import i18n, { ResourceLanguage } from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 
@@ -9,7 +9,7 @@ import fr from "./locales/fr.json";
 import ja from "./locales/ja.json";
 import zh from "./locales/zh.json";
 
-const resources: { [l in AvailableLanguage]: { translation: any } } = {
+const resources: { [l in AvailableLanguage]: ResourceLanguage } = {
   en: {
     translation: en,
   },

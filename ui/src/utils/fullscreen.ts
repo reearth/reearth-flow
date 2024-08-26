@@ -1,8 +1,10 @@
 declare global {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
   interface Document {
     webkitExitFullscreen?(): void;
     msExitFullscreen?(): void;
   }
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
   interface Element {
     webkitRequestFullscreen?(): void;
     msRequestFullscreen?(): void;
