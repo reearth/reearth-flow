@@ -1,5 +1,5 @@
 mod helper;
 
 fn main() {
-    helper::execute("example_citygml.yml");
+    helper::execute("quality-check/01-common/workflow.yml");
 }
