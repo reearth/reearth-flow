@@ -27,6 +27,7 @@ bytes.workspace = true
 cesiumtiles.workspace = true
 csv.workspace = true
 earcut.workspace = true
+geojson.workspace = true
 indexmap.workspace = true
 nusamai-citygml.workspace = true
 nusamai-gltf.workspace = true
@@ -47,7 +48,6 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
-geojson.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
