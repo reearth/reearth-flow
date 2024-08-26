@@ -1730,6 +1730,50 @@ Intersection points are turned into point features that can contain the merged l
 ### Category
 * Geometry
 
+## MVTWriter
+### Type
+* sink
+### Description
+Writes features to a file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MVTWriterParam",
+  "type": "object",
+  "required": [
+    "maxZoom",
+    "minZoom",
+    "output"
+  ],
+  "properties": {
+    "maxZoom": {
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "minZoom": {
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "output": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
 ## Noop
 ### Type
 * sink
