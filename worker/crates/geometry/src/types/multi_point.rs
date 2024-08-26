@@ -111,8 +111,8 @@ impl From<MultiPoint3D<f64>> for Vec<NaPoint3<f64>> {
     }
 }
 
-impl<T: CoordFloat> From<MultiPoint2D<T>> for geojson::Value {
-    fn from(multi_point: MultiPoint2D<T>) -> Self {
+impl<T: CoordFloat, Z: CoordFloat> From<MultiPoint<T, Z>> for geojson::Value {
+    fn from(multi_point: MultiPoint<T, Z>) -> Self {
         let coords = multi_point
             .0
             .iter()
@@ -123,15 +123,16 @@ impl<T: CoordFloat> From<MultiPoint2D<T>> for geojson::Value {
     }
 }
 
-impl<T> TryFrom<geojson::Value> for MultiPoint2D<T>
+impl<T, Z> TryFrom<geojson::Value> for MultiPoint<T, Z>
 where
     T: CoordFloat,
+    Z: CoordFloat,
 {
     type Error = crate::error::Error;
 
     fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
         match value {
-            geojson::Value::MultiPoint(multi_point_type) => Ok(MultiPoint2D::new(
+            geojson::Value::MultiPoint(multi_point_type) => Ok(MultiPoint::new(
                 multi_point_type
                     .iter()
                     .map(|point_type| create_geo_point(point_type))

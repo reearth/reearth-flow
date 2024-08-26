@@ -62,15 +62,22 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     ) -> Result<Box<dyn Sink>, BoxedError> {
         let params = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                SinkError::BuildFactory(format!("Failed to serialize `with` parameter: {}", e))
+                SinkError::Cesium3DTilesWriterFactory(format!(
+                    "Failed to serialize `with` parameter: {}",
+                    e
+                ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                SinkError::BuildFactory(format!("Failed to deserialize `with` parameter: {}", e))
+                SinkError::Cesium3DTilesWriterFactory(format!(
+                    "Failed to deserialize `with` parameter: {}",
+                    e
+                ))
             })?
         } else {
-            return Err(
-                SinkError::BuildFactory("Missing required parameter `with`".to_string()).into(),
-            );
+            return Err(SinkError::Cesium3DTilesWriterFactory(
+                "Missing required parameter `with`".to_string(),
+            )
+            .into());
         };
 
         let sink = Cesium3dtilesWriter {
@@ -108,7 +115,7 @@ impl Sink for Cesium3dtilesWriter {
         let geometry_value = geometry.value.clone();
         match geometry_value {
             geomotry_types::GeometryValue::None => {
-                return Err(Box::new(SinkError::FileWriter(
+                return Err(Box::new(SinkError::Cesium3DTilesWriter(
                     "Unsupported input".to_string(),
                 )));
             }
@@ -130,7 +137,7 @@ impl Sink for Cesium3dtilesWriter {
                 ) {
                     Ok(contents) => contents,
                     Err(e) => {
-                        return Err(Box::new(SinkError::FileWriter(format!(
+                        return Err(Box::new(SinkError::Cesium3DTilesWriter(format!(
                             "CityGmlGeometry handle Error: {:?}",
                             e
                         ))))
@@ -142,12 +149,12 @@ impl Sink for Cesium3dtilesWriter {
                     .extend(contents.lock().unwrap().iter().cloned());
             }
             geomotry_types::GeometryValue::FlowGeometry2D(_flow_geom_2d) => {
-                return Err(Box::new(SinkError::FileWriter(
+                return Err(Box::new(SinkError::Cesium3DTilesWriter(
                     "Unsupported input".to_string(),
                 )));
             }
             geomotry_types::GeometryValue::FlowGeometry3D(_flow_geom_3d) => {
-                return Err(Box::new(SinkError::FileWriter(
+                return Err(Box::new(SinkError::Cesium3DTilesWriter(
                     "Unsupported input".to_string(),
                 )));
             }

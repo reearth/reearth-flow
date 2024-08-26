@@ -235,46 +235,49 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::types::{
-        coordinate::Coordinate2D, line_string::LineString2D, multi_point::MultiPoint2D,
-        point::Point2D, polygon::Polygon2D,
+    use crate::{
+        point,
+        types::{
+            coordinate::Coordinate2D, line_string::LineString2D, multi_point::MultiPoint2D,
+            polygon::Polygon2D,
+        },
     };
 
     fn make_test_mp_integer() -> MultiPoint2D<i32> {
-        MultiPoint2D::new(vec![
-            Point2D::new(0, 0),
-            Point2D::new(1, 1),
-            Point2D::new(1, 1),
-            Point2D::new(1, 1),
-            Point2D::new(2, 2),
-            Point2D::new(0, 0),
+        MultiPoint(vec![
+            point!(x: 0, y: 0),
+            point!(x: 1, y: 1),
+            point!(x: 1, y: 1),
+            point!(x: 1, y: 1),
+            point!(x: 2, y: 2),
+            point!(x: 0, y: 0),
         ])
     }
 
     fn make_result_mp_integer() -> MultiPoint2D<i32> {
-        MultiPoint2D::new(vec![
-            Point2D::new(0, 0),
-            Point2D::new(1, 1),
-            Point2D::new(2, 2),
+        MultiPoint(vec![
+            point!(x: 0, y: 0),
+            point!(x: 1, y: 1),
+            point!(x: 2, y: 2),
         ])
     }
 
     fn make_test_mp1() -> MultiPoint2D<f64> {
-        MultiPoint2D::new(vec![
-            Point2D::new(0., 0.),
-            Point2D::new(1., 1.),
-            Point2D::new(1., 1.),
-            Point2D::new(1., 1.),
-            Point2D::new(2., 2.),
-            Point2D::new(0., 0.),
+        MultiPoint(vec![
+            point!(x: 0.,y:  0.),
+            point!(x: 1.,y:  1.),
+            point!(x: 1.,y:  1.),
+            point!(x: 1.,y:  1.),
+            point!(x: 2.,y:  2.),
+            point!(x: 0.,y:  0.),
         ])
     }
 
     fn make_result_mp1() -> MultiPoint2D<f64> {
-        MultiPoint2D::new(vec![
-            Point2D::new(0., 0.),
-            Point2D::new(1., 1.),
-            Point2D::new(2., 2.),
+        MultiPoint(vec![
+            point!(x: 0.,y:  0.),
+            point!(x: 1.,y:  1.),
+            point!(x: 2.,y:  2.),
         ])
     }
 

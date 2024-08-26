@@ -1278,6 +1278,38 @@ Writes features to a file
 ### Category
 * File
 
+## GeoJsonWriter
+### Type
+* sink
+### Description
+Writes features to a geojson file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeoJsonWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
 ## GeometryCoercer
 ### Type
 * processor

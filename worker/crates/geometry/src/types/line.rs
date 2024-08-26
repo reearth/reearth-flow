@@ -113,8 +113,8 @@ impl<T: CoordNum> From<[(T, T, T); 2]> for Line<T, T> {
     }
 }
 
-impl<T: CoordFloat> From<Line2D<T>> for geojson::Value {
-    fn from(line: Line2D<T>) -> Self {
+impl<T: CoordFloat, Z: CoordFloat> From<Line<T, Z>> for geojson::Value {
+    fn from(line: Line<T, Z>) -> Self {
         let coords = create_from_line_type(&line);
         geojson::Value::LineString(coords)
     }

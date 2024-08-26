@@ -815,7 +815,7 @@ impl<T: GeoFloat, Z: GeoFloat> WeightedCentroid<T, Z> {
 
 #[cfg(test)]
 mod test {
-    use crate::line_string;
+    use crate::{line_string, point};
 
     use super::*;
 
@@ -847,6 +847,6 @@ mod test {
             (x: 10., y: 1.),
             (x: 11., y: 1.)
         ];
-        assert_eq!(linestring.centroid(), Some(Point::new(6., 1.)));
+        assert_eq!(linestring.centroid(), Some(point!(x: 6., y: 1.)));
     }
 }

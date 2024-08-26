@@ -133,16 +133,17 @@ impl<'a> From<NMultiLineString3<'a>> for MultiLineString3D<f64> {
     }
 }
 
-impl<T: CoordFloat> From<MultiLineString2D<T>> for geojson::Value {
-    fn from(multi_line_string: MultiLineString2D<T>) -> Self {
+impl<T: CoordFloat, Z: CoordFloat> From<MultiLineString<T, Z>> for geojson::Value {
+    fn from(multi_line_string: MultiLineString<T, Z>) -> Self {
         let coords = create_multi_line_string_type(&multi_line_string);
         geojson::Value::MultiLineString(coords)
     }
 }
 
-impl<T> TryFrom<geojson::Value> for MultiLineString2D<T>
+impl<T, Z> TryFrom<geojson::Value> for MultiLineString<T, Z>
 where
     T: CoordFloat,
+    Z: CoordFloat,
 {
     type Error = crate::error::Error;
 

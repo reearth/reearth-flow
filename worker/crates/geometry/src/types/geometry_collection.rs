@@ -1,6 +1,3 @@
-use super::conversion::geojson::mismatch_geom_err;
-use super::coordnum::CoordFloat;
-use super::geometry::Geometry2D;
 use super::no_value::NoValue;
 use super::{coordnum::CoordNum, geometry::Geometry};
 
@@ -173,48 +170,16 @@ impl<'a, T: CoordNum, Z: CoordNum> GeometryCollection<T, Z> {
     }
 }
 
-impl<T: CoordFloat> From<GeometryCollection2D<T>> for geojson::Value {
-    fn from(geom_collection: GeometryCollection2D<T>) -> Self {
-        let geometries = geom_collection
-            .0
-            .into_iter()
-            .map(|g| g.into())
-            .collect::<Vec<_>>();
-        geojson::Value::GeometryCollection(geometries)
-    }
-}
-
-impl<T> TryFrom<geojson::Value> for GeometryCollection2D<T>
-where
-    T: CoordFloat,
-{
-    type Error = crate::error::Error;
-
-    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
-        match value {
-            geojson::Value::GeometryCollection(geometries) => {
-                let geojson_geometries: Vec<Geometry2D<T>> = geometries
-                    .iter()
-                    .map(|geometry| geometry.value.clone().try_into().unwrap())
-                    .collect();
-
-                Ok(GeometryCollection2D::new(geojson_geometries))
-            }
-            other => Err(mismatch_geom_err("GeometryCollection", &other)),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use alloc::vec;
 
     use super::GeometryCollection;
-    use crate::types::point::Point;
+    use crate::{point, types::point::Point};
 
     #[test]
     fn from_vec() {
-        let gc = GeometryCollection::from(vec![Point::new(1i32, 2)]);
+        let gc = GeometryCollection::from(vec![point!(x: 1i32, y: 2)]);
         let p = Point::try_from(gc[0].clone()).unwrap();
         assert_eq!(p.y(), 2);
     }

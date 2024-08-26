@@ -29,6 +29,7 @@ bytes.workspace = true
 chrono.workspace = true
 directories.workspace = true
 futures.workspace = true
+geojson.workspace = true
 hashbrown.workspace = true
 image.workspace = true
 indexmap.workspace = true

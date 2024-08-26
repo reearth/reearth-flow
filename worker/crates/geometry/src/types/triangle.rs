@@ -56,8 +56,8 @@ impl From<Triangle3D<f64>> for Triangle2D<f64> {
     }
 }
 
-impl<T: CoordFloat> From<Triangle2D<T>> for geojson::Value {
-    fn from(triangle: Triangle2D<T>) -> Self {
+impl<T: CoordFloat, Z: CoordFloat> From<Triangle<T, Z>> for geojson::Value {
+    fn from(triangle: Triangle<T, Z>) -> Self {
         let coords = create_from_triangle_type(&triangle);
         geojson::Value::Polygon(coords)
     }
