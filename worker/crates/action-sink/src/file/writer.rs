@@ -134,6 +134,11 @@ impl FileWriterParam {
 
 impl Sink for FileWriter {
     fn initialize(&self, _ctx: NodeContext) {}
+
+    fn name(&self) -> &str {
+        "FileWriter"
+    }
+
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         self.buffer.push(ctx.feature);
         Ok(())

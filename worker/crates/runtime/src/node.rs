@@ -237,6 +237,7 @@ impl Clone for Box<dyn SourceFactory> {
 #[async_trait::async_trait]
 pub trait Source: Send + Sync + Debug + SourceClone {
     async fn initialize(&self, ctx: NodeContext);
+    fn name(&self) -> &str;
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError>;
 
     async fn start(
@@ -358,6 +359,7 @@ impl Clone for Box<dyn SinkFactory> {
 
 pub trait Sink: Send + Debug + SinkClone {
     fn initialize(&self, ctx: NodeContext);
+    fn name(&self) -> &str;
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError>;
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError>;

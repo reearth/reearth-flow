@@ -50,6 +50,11 @@ pub struct Noop;
 
 impl Sink for Noop {
     fn initialize(&self, _ctx: NodeContext) {}
+
+    fn name(&self) -> &str {
+        "Noop"
+    }
+
     fn process(&mut self, _ctx: ExecutorContext) -> Result<(), BoxedError> {
         Ok(())
     }

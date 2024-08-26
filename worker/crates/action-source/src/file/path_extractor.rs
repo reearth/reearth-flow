@@ -225,6 +225,10 @@ pub struct FilePathExtractor {
 impl Source for FilePathExtractor {
     async fn initialize(&self, _ctx: NodeContext) {}
 
+    fn name(&self) -> &str {
+        "FilePathExtractor"
+    }
+
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
         Ok(vec![])
     }

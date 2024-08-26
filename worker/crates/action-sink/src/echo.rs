@@ -51,6 +51,11 @@ pub struct Echo;
 
 impl Sink for Echo {
     fn initialize(&self, _ctx: NodeContext) {}
+
+    fn name(&self) -> &str {
+        "Echo"
+    }
+
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let span = ctx.info_span();
         let feature: serde_json::Value = ctx.feature.clone().into();
