@@ -3,15 +3,21 @@ import { ReactNode } from "react";
 
 import { useAuthenticationRequired } from "@flow/lib/auth";
 
-const AuthenticationWrapper: React.FC<{ children?: ReactNode }> = ({
-  children,
-}) => {
+type Props = {
+  children?: ReactNode;
+};
+
+const AuthenticationWrapper: React.FC<Props> = ({ children }) => {
   const [isAuthenticated] = useAuthenticationRequired(); // TODO: show error
   return isAuthenticated && children ? <>{children}</> : null;
 };
 
-const withAuthorisation = (): ((props: any) => React.FC<any>) => {
-  return withAuthenticationRequired as unknown as (props: any) => React.FC<any>;
+const withAuthorisation = (): ((
+  component: React.FC<Props>
+) => React.FC<Props>) => {
+  return withAuthenticationRequired as unknown as (
+    component: React.FC<Props>
+  ) => React.FC<Props>;
 };
 
 export default withAuthorisation()(AuthenticationWrapper);

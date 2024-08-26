@@ -41,7 +41,7 @@ type NodeInfoProps = {
   y: number;
   width?: number;
   height?: number;
-  data: any;
+  data: unknown;
 };
 
 function NodeInfo({

@@ -1,11 +1,11 @@
-type DebouncedFunction<T extends (...args: any[]) => void> = {
+type DebouncedFunction<T extends (...args: unknown[]) => void> = {
   (...args: Parameters<T>): void;
   cancel: () => void;
 };
 
-export function cancellableDebounce<T extends (...args: any[]) => void>(
+export function cancellableDebounce<T extends (...args: unknown[]) => void>(
   func: T,
-  wait: number,
+  wait: number
 ): DebouncedFunction<T> {
   let timeout: ReturnType<typeof setTimeout>;
 

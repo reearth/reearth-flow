@@ -2,6 +2,7 @@ import { AuthInfo } from "./authInfo";
 
 declare global {
   let __APP_VERSION__: string;
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
   interface Window {
     FLOW_CONFIG?: Config;
     FLOW_E2E_ACCESS_TOKEN?: string;

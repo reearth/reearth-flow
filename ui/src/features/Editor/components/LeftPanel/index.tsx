@@ -122,7 +122,9 @@ const LeftPanel: React.FC<Props> = ({
       setSelectedTab(undefined);
     } else {
       setSelectedTab(tab);
-      !isOpen && onOpen("left");
+      if (!isOpen) {
+        onOpen("left");
+      }
     }
   };
 

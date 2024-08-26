@@ -7,7 +7,7 @@ export type Action = {
   categories: string[];
   inputPorts: string[];
   outputPorts: string[];
-  parameters: any;
+  parameters: unknown;
   builtin: boolean;
 };
 

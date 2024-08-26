@@ -39,7 +39,7 @@ type Props = {
   nodeId: string;
   nodeMeta: NodeData;
   nodeType: string;
-  nodeParameters?: any; // TODO: define type
+  nodeParameters?: unknown; // TODO: define type
 };
 
 const actionButtonClasses = "border h-[25px]";
@@ -116,7 +116,7 @@ const ParamEditor: React.FC<Props> = ({
               <CardTitle>{t("Parameter Editor")}</CardTitle>
               <CardDescription>
                 {t(
-                  "Make changes to your account here. Click save when youre done.",
+                  "Make changes to your account here. Click save when youre done."
                 )}
               </CardDescription>
             </CardHeader>
