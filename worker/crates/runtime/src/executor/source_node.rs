@@ -16,6 +16,7 @@ use tracing::info_span;
 use crate::{
     builder_dag::NodeKind,
     errors::ExecutionError,
+    event::Event,
     executor_operation::{ExecutorContext, ExecutorOperation, ExecutorOptions, NodeContext},
     forwarder::ChannelManager,
     kvs::KvStore,
@@ -43,8 +44,9 @@ pub struct SourceNode<F> {
     storage_resolver: Arc<StorageResolver>,
     logger_factory: Arc<LoggerFactory>,
     kv_store: Arc<Box<dyn KvStore>>,
-    #[allow(dead_code)]
     span: tracing::Span,
+    #[allow(dead_code)]
+    event_sender: tokio::sync::broadcast::Sender<Event>,
 }
 
 impl<F: Future + Unpin> Node for SourceNode<F> {
@@ -202,6 +204,7 @@ pub async fn create_source_node<F>(
             senders,
             dag.error_manager().clone(),
             runtime.clone(),
+            dag.event_hub().sender.clone(),
         );
         sources.push(RunningSource {
             channel_manager,
@@ -233,6 +236,7 @@ pub async fn create_source_node<F>(
         logger_factory: Arc::clone(&ctx.logger),
         kv_store: Arc::clone(&ctx.kv_store),
         span,
+        event_sender: dag.event_hub().sender.clone(),
     }
 }
 

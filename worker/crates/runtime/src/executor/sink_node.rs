@@ -302,6 +302,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             .sink
             .finish(ctx)
             .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)));
+        let _ = self.event_sender.send(Event::SinkFinished {
+            node: self.node_handle.clone(),
+        });
         let span = self.span.clone();
         let logger = self.logger.clone();
         action_log!(

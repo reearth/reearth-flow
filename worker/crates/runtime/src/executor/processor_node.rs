@@ -15,6 +15,7 @@ use tokio::runtime::Runtime;
 use tracing::{info_span, Span};
 
 use crate::error_manager::ErrorManager;
+use crate::event::Event;
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::kvs::KvStore;
 use crate::{
@@ -56,6 +57,8 @@ pub struct ProcessorNode<F> {
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<Box<dyn KvStore>>,
+    #[allow(dead_code)]
+    event_sender: tokio::sync::broadcast::Sender<Event>,
 }
 
 impl<F: Future + Unpin + Debug> ProcessorNode<F> {
@@ -85,6 +88,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             senders,
             dag.error_manager().clone(),
             runtime.clone(),
+            dag.event_hub().sender.clone(),
         );
         let span = info_span!(
             "action",
@@ -123,6 +127,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             expr_engine,
             storage_resolver,
             kv_store,
+            event_sender: dag.event_hub().sender.clone(),
         }
     }
 
