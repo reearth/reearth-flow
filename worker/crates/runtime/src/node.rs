@@ -36,7 +36,7 @@ pub(super) type GraphId = uuid::Uuid;
         Deserialize,
         Hash,
         Display,
-        JsonSchema
+        JsonSchema,
     )
 )]
 pub(super) struct EdgeId(String);
@@ -55,7 +55,7 @@ pub(super) struct EdgeId(String);
         Deserialize,
         Hash,
         Display,
-        JsonSchema
+        JsonSchema,
     )
 )]
 pub(super) struct NodeId(String);
