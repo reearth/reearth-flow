@@ -157,6 +157,14 @@ impl NodeContext {
             kv_store,
         }
     }
+
+    pub fn info_span(&self) -> tracing::Span {
+        info_span!("action")
+    }
+
+    pub fn error_span(&self) -> tracing::Span {
+        error_span!("action")
+    }
 }
 
 #[derive(Debug, Clone)]

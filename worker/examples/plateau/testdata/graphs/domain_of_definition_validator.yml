@@ -1,5 +1,5 @@
 id: b7396083-17d0-47dd-be86-83caf6c5ac63
-name: domain_of_definition_validator
+name: PLATEAU3.DomainOfDefinitionValidator
 nodes:
   - id: d72a788d-f9fa-4c4d-b7dd-dd131839accd
     name: FeatureTransformer01
@@ -8,7 +8,7 @@ nodes:
     with:
       transformers:
         - expr: |
-            env.get("__all") + #{
+            env.get("__value") + #{
               meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("__value").cityGmlPath))
             }
 

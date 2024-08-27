@@ -145,13 +145,13 @@ impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
         let params: UnmatchedXlinkDetectorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::UnmatchedXlinkDetectorFactory(format!(
-                    "Failed to serialize with: {}",
+                    "Failed to serialize `with` parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 PlateauProcessorError::UnmatchedXlinkDetectorFactory(format!(
-                    "Failed to deserialize with: {}",
+                    "Failed to deserialize `with` parameter: {}",
                     e
                 ))
             })?
@@ -263,7 +263,7 @@ impl Processor for UnmatchedXlinkDetector {
             }
             for port in ports {
                 let mut feature = feature.clone();
-                feature.id = uuid::Uuid::new_v4();
+                feature.refresh_id();
                 let attributes: HashMap<Attribute, AttributeValue> = response.clone().into();
                 feature.attributes.extend(attributes);
                 fw.send(ctx.new_with_feature_and_port(feature, port.clone()));

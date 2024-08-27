@@ -5,11 +5,12 @@ import type { Status } from "./shared";
 
 type ParamValueType = string | number | boolean | object | null;
 
-type NodeParam<T extends ParamValueType> = {
+// type NodeParam<T extends ParamValueType> = {
+type NodeParam = {
   id: string;
   name: string;
   // type: string; perhaps we don't need this
-  value: T;
+  value: ParamValueType;
 };
 
 export type NodeData = {
@@ -17,7 +18,7 @@ export type NodeData = {
   inputs?: string[];
   outputs?: string[];
   status?: Status;
-  params?: NodeParam<any>[];
+  params?: NodeParam[];
   locked?: boolean | undefined;
   onDoubleClick?: (nodeId: string) => void;
   // transformer

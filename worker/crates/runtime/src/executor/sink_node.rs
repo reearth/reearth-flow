@@ -3,13 +3,15 @@ use std::{
     fmt::Debug,
     mem::swap,
     sync::Arc,
-    time::{Duration, Instant},
+    time::{self, Duration, Instant},
 };
 
 use crossbeam::channel::{Receiver, Sender, TryRecvError};
 use futures::Future;
 use petgraph::graph::NodeIndex;
+use reearth_flow_action_log::{action_log, ActionLogger};
 use tokio::runtime::Runtime;
+use tracing::info_span;
 
 use crate::{
     builder_dag::NodeKind,
@@ -102,6 +104,8 @@ pub struct SinkNode<F> {
     /// The runtime to run the source in.
     #[allow(dead_code)]
     runtime: Arc<Runtime>,
+    logger: Arc<ActionLogger>,
+    span: tracing::Span,
 }
 
 impl<F: Future + Unpin + Debug> SinkNode<F> {
@@ -135,6 +139,17 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             next_schedule_from: Instant::now(),
             loop_interval: max_flush_interval / 5,
         };
+        let logger = ctx
+            .logger
+            .clone()
+            .action_logger(node_handle.id.to_string().as_str());
+        let span = info_span!(
+            "action",
+            "otel.name" = sink.name(),
+            "otel.kind" = "Sink Node",
+            "workflow.id" = dag.id.to_string().as_str(),
+            "node.id" = node_handle.id.to_string().as_str(),
+        );
         sink.initialize(ctx);
         std::thread::spawn(move || scheduler.run());
         Self {
@@ -150,6 +165,8 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             error_manager: dag.error_manager().clone(),
             shutdown,
             runtime,
+            logger: Arc::new(logger),
+            span,
         }
     }
 
@@ -241,6 +258,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             tmp_recv
         };
         let mut is_terminated = vec![false; receivers.len()];
+        let now = time::Instant::now();
+        let span = self.span.clone();
+        let logger = self.logger.clone();
         self.flush_scheduler_sender
             .send(self.max_flush_interval)
             .unwrap();
@@ -259,6 +279,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                     is_terminated[index] = true;
                     sel.remove(index);
                     if is_terminated.iter().all(|value| *value) {
+                        action_log!(
+                            parent: span, logger, "{:?} sink finish. elapsed = {:?}", self.sink.name() , now.elapsed(),
+                        );
                         self.on_terminate(ctx)?;
                         return Ok(());
                     }
@@ -274,8 +297,19 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
     }
 
     fn on_terminate(&mut self, ctx: NodeContext) -> Result<(), ExecutionError> {
-        self.sink
+        let now = time::Instant::now();
+        let result = self
+            .sink
             .finish(ctx)
-            .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)))
+            .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)));
+        let _ = self.event_sender.send(Event::SinkFinished {
+            node: self.node_handle.clone(),
+        });
+        let span = self.span.clone();
+        let logger = self.logger.clone();
+        action_log!(
+            parent: span, logger, "{:?} finish sink complete. elapsed = {:?}", self.sink.name(), now.elapsed(),
+        );
+        result
     }
 }

@@ -56,10 +56,16 @@ impl ProcessorFactory for XmlFragmenterFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: XmlFragmenterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                XmlProcessorError::FragmenterFactory(format!("Failed to serialize with: {}", e))
+                XmlProcessorError::FragmenterFactory(format!(
+                    "Failed to serialize `with` parameter: {}",
+                    e
+                ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                XmlProcessorError::FragmenterFactory(format!("Failed to deserialize with: {}", e))
+                XmlProcessorError::FragmenterFactory(format!(
+                    "Failed to deserialize `with` parameter: {}",
+                    e
+                ))
             })?
         } else {
             return Err(XmlProcessorError::FragmenterFactory(

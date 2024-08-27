@@ -1,4 +1,6 @@
 /// <reference types="vitest" />
+/// <reference types="vite/client" />
+
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
@@ -10,36 +12,46 @@ import cesium from "vite-plugin-cesium";
 
 import pkg from "./package.json";
 
-export default defineConfig({
-  server: {
-    port: 3000,
-  },
-  envPrefix: "FLOW_",
-  plugins: [react(), TanStackRouterVite(), cesium(), config()],
-  build: {
-    target: "esnext",
-    assetsDir: "static", // avoid conflicts with backend asset endpoints
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, "index.html"),
+export default defineConfig(() => {
+  const cesiumPackageJson = loadJSON(
+    resolve(__dirname, "node_modules", "cesium", "package.json")
+  );
+  return {
+    server: {
+      port: 3000,
+    },
+    envPrefix: "FLOW_",
+    plugins: [
+      react(),
+      TanStackRouterVite(),
+      cesium({ cesiumBaseUrl: `cesium-${cesiumPackageJson.version}/` }),
+      config(),
+    ],
+    build: {
+      target: "esnext",
+      assetsDir: "static", // avoid conflicts with backend asset endpoints
+      rollupOptions: {
+        input: {
+          main: resolve(__dirname, "index.html"),
+        },
+      },
+      minify: "esbuild",
+    },
+    resolve: {
+      alias: [{ find: "@flow", replacement: resolve(__dirname, "./src") }],
+    },
+    test: {
+      environment: "jsdom",
+      setupFiles: ["./src/testing/setup.ts"],
+      globals: true,
+      coverage: {
+        reporter: ["text"],
+        include: ["src/**/*.{ts, tsx}"],
+        exclude: ["/node_modules/", "/testing/", "src/**/*.test.ts"],
       },
     },
-    minify: "esbuild",
-  },
-  resolve: {
-    alias: [{ find: "@flow", replacement: resolve(__dirname, "./src") }],
-  },
-  test: {
-    environment: "jsdom",
-    setupFiles: ["./src/testing/setup.ts"],
-    globals: true,
-    coverage: {
-      reporter: ["text"],
-      include: ["src/**/*.{ts, tsx}"],
-      exclude: ["/node_modules/", "/testing/", "src/**/*.test.ts"],
-    },
-  },
-} as UserConfig);
+  } as UserConfig;
+});
 
 function config(): Plugin {
   return {
@@ -48,7 +60,7 @@ function config(): Plugin {
       const envs = loadEnv(
         server.config.mode,
         server.config.envDir ?? process.cwd(),
-        server.config.envPrefix,
+        server.config.envPrefix
       );
       const remoteConfig = envs.FLOW_CONFIG_URL
         ? await (await fetch(envs.FLOW_CONFIG_URL)).json()
@@ -64,7 +76,7 @@ function config(): Plugin {
           ...loadJSON("./flow-config.json"),
         },
         null,
-        2,
+        2
       );
 
       server.middlewares.use((req, res, next) => {
@@ -81,7 +93,7 @@ function config(): Plugin {
   };
 }
 
-function loadJSON(path: string): any {
+function loadJSON(path: string) {
   try {
     return JSON.parse(readFileSync(path, "utf8")) || {};
   } catch (_err) {

@@ -1,6 +1,7 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
 import { MouseEvent, useCallback, useState } from "react";
 
+import { useShortcuts } from "@flow/hooks";
 import { useYjsStore } from "@flow/lib/yjs";
 import { useCurrentWorkflowId } from "@flow/stores";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
@@ -9,6 +10,21 @@ import { cancellableDebounce } from "@flow/utils";
 export default () => {
   const [currentWorkflowId, setCurrentWorkflowId] = useCurrentWorkflowId();
   const { getNodes } = useReactFlow();
+
+  const [openPanel, setOpenPanel] = useState<
+    "left" | "right" | "bottom" | undefined
+  >(undefined);
+
+  const handlePanelOpen = useCallback(
+    (panel?: "left" | "right" | "bottom") => {
+      if (!panel || openPanel === panel) {
+        setOpenPanel(undefined);
+      } else {
+        setOpenPanel(panel);
+      }
+    },
+    [openPanel]
+  );
 
   const handleWorkflowIdChange = useCallback(
     (id?: string) => {
@@ -123,6 +139,21 @@ export default () => {
     [hoveredDetails],
   );
 
+  useShortcuts([
+    {
+      keyBinding: { key: "r", commandKey: false },
+      callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "reader"),
+    },
+    {
+      keyBinding: { key: "t", commandKey: false },
+      callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "transformer"),
+    },
+    {
+      keyBinding: { key: "w", commandKey: false },
+      callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "writer"),
+    },
+  ]);
+
   return {
     currentWorkflowId,
     openWorkflows,
@@ -132,6 +163,8 @@ export default () => {
     locallyLockedNode,
     hoveredDetails,
     nodePickerOpen,
+    openPanel,
+    handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
     handleWorkflowChange: handleWorkflowIdChange,

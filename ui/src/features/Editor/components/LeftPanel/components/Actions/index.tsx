@@ -1,6 +1,6 @@
 import { useReactFlow } from "@xyflow/react";
 import { debounce } from "lodash-es";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 import {
   Accordion,
@@ -186,14 +186,16 @@ const ActionsList: React.FC<Props> = ({
           >
             {Array.isArray(actions) ? (
               actions.map((action) => (
-                <ActionComponent
-                  key={action.name}
-                  action={action}
-                  selected={selected === action.name}
-                  onSingleClick={handleSingleClick}
-                  onDoubleClick={handleDoubleClick}
-                  onSelect={() => handleActionSelect(action.name)}
-                />
+                <Fragment key={action.name}>
+                  <ActionComponent
+                    action={action}
+                    selected={selected === action.name}
+                    onSingleClick={handleSingleClick}
+                    onDoubleClick={handleDoubleClick}
+                    onSelect={() => handleActionSelect(action.name)}
+                  />
+                  <div className="border-b" />
+                </Fragment>
               ))
             ) : (
               <Accordion type="single" collapsible>
@@ -203,16 +205,18 @@ const ActionsList: React.FC<Props> = ({
                       <AccordionTrigger>
                         <p className="capitalize">{key}</p>
                       </AccordionTrigger>
-                      <AccordionContent>
+                      <AccordionContent className="flex flex-col gap-1">
                         {actions[key]?.map((action) => (
-                          <ActionComponent
-                            key={action.name}
-                            action={action}
-                            selected={selected === action.name}
-                            onSingleClick={handleSingleClick}
-                            onDoubleClick={handleDoubleClick}
-                            onSelect={() => handleActionSelect(action.name)}
-                          />
+                          <Fragment key={action.name}>
+                            <ActionComponent
+                              action={action}
+                              selected={selected === action.name}
+                              onSingleClick={handleSingleClick}
+                              onDoubleClick={handleDoubleClick}
+                              onSelect={() => handleActionSelect(action.name)}
+                            />
+                            <div className="border-b" />
+                          </Fragment>
                         ))}
                       </AccordionContent>
                     </AccordionItem>

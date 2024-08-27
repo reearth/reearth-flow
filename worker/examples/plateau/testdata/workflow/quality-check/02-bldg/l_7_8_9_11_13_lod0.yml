@@ -87,6 +87,39 @@ graphs:
                 env.get("__value").holeCount > 0
               outputPort: hole
 
+      - id: 074b25c8-4cc3-4adc-a486-b3db1688ce27
+        name: GeometryValidatorSelfIntersection
+        type: action
+        action: GeometryValidator
+        with:
+          validationTypes:
+            - selfIntersection
+
+      - id: 032cf2c5-9e29-46fa-a7f6-22332a08d2ab
+        name: GeometryValidatorDuplicatePoints
+        type: action
+        action: GeometryValidator
+        with:
+          validationTypes:
+            - duplicatePoints
+
+      - id: d0bfc39b-17e2-48fc-a6ef-f37bb130229b
+        name: GeometryCoercer_RingNotClosed
+        type: action
+        action: GeometryCoercer
+        with:
+          coercerType: lineString
+
+      - id: 0e2c9f7b-bf42-4edd-8276-341e34604438
+        name: ClosedCurveFilter
+        type: action
+        action: ClosedCurveFilter
+
+      - id: 307fb8b0-0fba-4d1c-be4e-77e4670e7fff
+        name: EchoValidatorIntersection
+        type: action
+        action: Echo
+
       - id: 52a4bcab-854d-41e8-a9b3-e391c79631a9
         name: HoleExtractor
         type: action
@@ -164,8 +197,39 @@ graphs:
           distance: 0.005
           interpolationAngle: 22.5
 
+      - id: 819887d8-d24d-4a66-b39c-796bb39a0a78
+        name: AreaOnAreaOverlayer
+        type: action
+        action: AreaOnAreaOverlayer
+        with:
+          groupBy:
+            - surfaceId
+          outputAttribute: overlap
+
       - id: d7f0130c-80bd-44ee-a1b3-e6988c916308
         name: EchoIntersection
+        type: action
+        action: Echo
+
+      - id: dc478fb7-3b17-4801-8644-c271fca39e96
+        name: OrientationExtractorInterior
+        type: action
+        action: OrientationExtractor
+        with:
+          outputAttribute: innerOrientation
+
+      - id: 39a70244-fa63-4792-92bd-ebf10294563d
+        name: FeatureMergerInterior
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttribute: |
+            env.get("__value").surfaceId.to_string()
+          supplierAttribute: |
+            env.get("__value").surfaceId.to_string()
+
+      - id: b2b58fe2-374b-4acd-a38a-b9d0c718d3ef
+        name: EchoInterior
         type: action
         action: Echo
 
@@ -272,6 +336,56 @@ graphs:
         toPort: default
       - id: 59f2c991-8606-49dc-9b18-df59328de4d2
         from: 4e0f9087-321f-489d-bcbb-7b38e50d3c7c
-        to: d7f0130c-80bd-44ee-a1b3-e6988c916308
+        to: 819887d8-d24d-4a66-b39c-796bb39a0a78
         fromPort: default
+        toPort: default
+      - id: 5eb5c4a5-77a7-47fd-a752-51e8ae223d57
+        from: 819887d8-d24d-4a66-b39c-796bb39a0a78
+        to: d7f0130c-80bd-44ee-a1b3-e6988c916308
+        fromPort: area
+        toPort: default
+      - id: 2ffbb80b-3415-49b0-9da4-504c9f7c54f3
+        from: 28adf769-e6d6-4ee1-945a-828680190879
+        to: dc478fb7-3b17-4801-8644-c271fca39e96
+        fromPort: default
+        toPort: default
+      - id: ae5be505-46bc-4aae-a7d1-a8dbaad024e2
+        from: dc478fb7-3b17-4801-8644-c271fca39e96
+        to: 39a70244-fa63-4792-92bd-ebf10294563d
+        fromPort: default
+        toPort: requestor
+      - id: 6d0ce609-031e-467e-9087-08dfa646b974
+        from: 0361e205-4d43-442d-b004-2ea981dbca84
+        to: 39a70244-fa63-4792-92bd-ebf10294563d
+        fromPort: default
+        toPort: supplier
+      - id: 40414940-4d75-4711-a46b-ec989805eeb7
+        from: 39a70244-fa63-4792-92bd-ebf10294563d
+        to: b2b58fe2-374b-4acd-a38a-b9d0c718d3ef
+        fromPort: merged
+        toPort: default
+      - id: 16edfebf-70b4-424e-8917-760505380dae
+        from: 14d937cb-59e3-4a31-aa2c-642f4309af66
+        to: 074b25c8-4cc3-4adc-a486-b3db1688ce27
+        fromPort: default
+        toPort: default
+      - id: dae74e97-d730-402e-a70f-a25d8e2aaf45
+        from: 074b25c8-4cc3-4adc-a486-b3db1688ce27
+        to: 032cf2c5-9e29-46fa-a7f6-22332a08d2ab
+        fromPort: success
+        toPort: default
+      - id: 94701bb0-bcb3-4916-967d-0718bf6197e0
+        from: 032cf2c5-9e29-46fa-a7f6-22332a08d2ab
+        to: d0bfc39b-17e2-48fc-a6ef-f37bb130229b
+        fromPort: success
+        toPort: default
+      - id: e03fbe21-3a74-4fb7-bdcb-338f7d7753e8
+        from: d0bfc39b-17e2-48fc-a6ef-f37bb130229b
+        to: 0e2c9f7b-bf42-4edd-8276-341e34604438
+        fromPort: default
+        toPort: default
+      - id: e7777642-2041-4011-923f-d3c5a1c591ec
+        from: 0e2c9f7b-bf42-4edd-8276-341e34604438
+        to: 307fb8b0-0fba-4d1c-be4e-77e4670e7fff
+        fromPort: closed
         toPort: default

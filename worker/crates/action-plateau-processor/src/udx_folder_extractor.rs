@@ -86,13 +86,13 @@ impl ProcessorFactory for UdxFolderExtractorFactory {
         let params: UdxFolderExtractorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::UdxFolderExtractorFactory(format!(
-                    "Failed to serialize with: {}",
+                    "Failed to serialize `with` parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 PlateauProcessorError::UdxFolderExtractorFactory(format!(
-                    "Failed to deserialize with: {}",
+                    "Failed to deserialize `with` parameter: {}",
                     e
                 ))
             })?
@@ -162,7 +162,8 @@ impl Processor for UdxFolderExtractor {
         } else {
             REJECTED_PORT.clone()
         };
-        let attributes: HashMap<Attribute, AttributeValue> = res.into();
+        let mut attributes: HashMap<Attribute, AttributeValue> = res.into();
+        attributes.extend(feature.attributes.clone());
         let feature = Feature {
             attributes,
             ..feature.clone()

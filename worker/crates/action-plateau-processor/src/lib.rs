@@ -6,6 +6,7 @@ pub mod domain_of_definition_validator;
 pub mod errors;
 pub mod mapping;
 pub mod max_lod_extractor;
+pub mod tran_xlink_checker;
 pub mod types;
 pub mod udx_folder_extractor;
 pub mod unmatched_xlink_detector;

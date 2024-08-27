@@ -7,6 +7,7 @@ use tokio::runtime::Runtime;
 use crate::channels::ProcessorChannelForwarder;
 use crate::error_manager::ErrorManager;
 use crate::errors::ExecutionError;
+use crate::event::Event;
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::feature_store::FeatureWriter;
 use crate::node::{NodeHandle, Port};
@@ -43,8 +44,9 @@ pub struct ChannelManager {
     feature_writers: HashMap<Port, Box<dyn FeatureWriter>>,
     senders: Vec<SenderWithPortMapping>,
     error_manager: Arc<ErrorManager>,
-    #[allow(dead_code)]
     runtime: Arc<Runtime>,
+    #[allow(dead_code)]
+    event_sender: tokio::sync::broadcast::Sender<Event>,
 }
 
 impl ChannelManager {
@@ -102,6 +104,7 @@ impl ChannelManager {
         senders: Vec<SenderWithPortMapping>,
         error_manager: Arc<ErrorManager>,
         runtime: Arc<Runtime>,
+        event_sender: tokio::sync::broadcast::Sender<Event>,
     ) -> Self {
         Self {
             owner,
@@ -109,6 +112,7 @@ impl ChannelManager {
             senders,
             error_manager,
             runtime,
+            event_sender,
         }
     }
 }

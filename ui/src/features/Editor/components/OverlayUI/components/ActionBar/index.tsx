@@ -1,53 +1,62 @@
 import {
   DownloadSimple,
-  FloppyDiskBack,
   Play,
+  RocketLaunch,
   Stop,
 } from "@phosphor-icons/react";
-import { memo } from "react";
+import { memo, useState } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+
+import { DeployDialog } from "./components";
 
 const tooltipOffset = 6;
 
 const ActionBar = () => {
   const t = useT();
 
+  const [showDialog, setShowDialog] = useState<"deploy" | undefined>(undefined);
+
   return (
-    <div className="absolute right-1 top-1">
-      <div className="m-1 rounded-md border bg-secondary">
-        <div className="flex rounded-md p-1">
-          <div className="flex align-middle">
-            {/* <IconButton
-            tooltipText={t("Publish workflow")}
-            tooltipOffset={tooltipOffset}
-            icon={<DoubleArrowRightIcon />}
-          /> */}
-            <IconButton
-              tooltipText={t("Run workflow")}
-              tooltipOffset={tooltipOffset}
-              icon={<Play />}
-            />
-            <IconButton
-              tooltipText={t("Stop workflow")}
-              tooltipOffset={tooltipOffset}
-              icon={<Stop />}
-            />
-            <IconButton
-              tooltipText={t("Publish workflow")}
-              tooltipOffset={tooltipOffset}
-              icon={<FloppyDiskBack />}
-            />
-            <IconButton
-              tooltipText={t("Download workflow")}
-              tooltipOffset={tooltipOffset}
-              icon={<DownloadSimple />}
-            />
+    <>
+      <div className="absolute right-1 top-1">
+        <div className="m-1 rounded-md border bg-secondary">
+          <div className="flex rounded-md">
+            <div className="flex align-middle">
+              <IconButton
+                className="rounded-[4px]"
+                tooltipText={t("Run project workflow")}
+                tooltipOffset={tooltipOffset}
+                icon={<Play weight="thin" />}
+              />
+              <IconButton
+                className="rounded-[4px]"
+                tooltipText={t("Stop project workflow")}
+                tooltipOffset={tooltipOffset}
+                icon={<Stop weight="thin" />}
+              />
+              <IconButton
+                className="rounded-[4px]"
+                tooltipText={t("Deploy project workflow")}
+                tooltipOffset={tooltipOffset}
+                icon={<RocketLaunch weight="thin" />}
+                onClick={() => setShowDialog("deploy")}
+              />
+              <IconButton
+                className="rounded-[4px]"
+                tooltipText={t("Download project workflow")}
+                tooltipOffset={tooltipOffset}
+                icon={<DownloadSimple weight="thin" />}
+              />
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      {showDialog === "deploy" && (
+        <DeployDialog setShowDialog={setShowDialog} />
+      )}
+    </>
   );
 };
 

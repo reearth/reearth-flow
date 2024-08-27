@@ -80,13 +80,13 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
         let param: BuildingUsageAttributeValidatorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                    "Failed to serialize with: {}",
+                    "Failed to serialize `with` parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                    "Failed to deserialize with: {}",
+                    "Failed to deserialize `with` parameter: {}",
                     e
                 ))
             })?
@@ -99,7 +99,6 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
             );
         };
         let mut city_name_to_code = HashMap::new();
-        println!("{:?}", param.codelists_path);
         if let Some(codelists_path) = param.codelists_path {
             let dir = Uri::from_str(&codelists_path).map_err(|e| {
                 PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(

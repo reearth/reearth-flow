@@ -1,2 +1,2 @@
-export * from "./UserNavigation";
+export * from "./AccountNavigation";
 export * from "./WorkspaceNavigation";

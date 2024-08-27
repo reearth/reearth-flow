@@ -67,13 +67,13 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
         let params: LineOnLineOverlayerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::LineOnLineOverlayerFactory(format!(
-                    "Failed to serialize with: {}",
+                    "Failed to serialize `with` parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 GeometryProcessorError::LineOnLineOverlayerFactory(format!(
-                    "Failed to deserialize with: {}",
+                    "Failed to deserialize `with` parameter: {}",
                     e
                 ))
             })?
@@ -127,7 +127,7 @@ impl Processor for LineOnLineOverlayer {
                         .iter()
                         .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
                         .collect::<Vec<_>>()
-                        .join(",")
+                        .join("\t")
                 } else {
                     "_all".to_string()
                 };
@@ -285,7 +285,7 @@ impl LineOnLineOverlayer {
             };
             let mut geometry = geometry.clone();
             let mut feature = feature.clone();
-            feature.id = uuid::Uuid::new_v4();
+            feature.refresh_id();
             geometry.value =
                 GeometryValue::FlowGeometry2D(Geometry2D::MultiPoint(MultiPoint2D::new(points)));
             feature.geometry = Some(geometry);
@@ -369,7 +369,7 @@ impl LineOnLineOverlayer {
             };
             let mut geometry = geometry.clone();
             let mut feature = feature.clone();
-            feature.id = uuid::Uuid::new_v4();
+            feature.refresh_id();
             geometry.value =
                 GeometryValue::FlowGeometry3D(Geometry3D::MultiPoint(MultiPoint3D::new(points)));
             feature.geometry = Some(geometry);

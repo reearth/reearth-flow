@@ -2,7 +2,7 @@
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Cross2Icon } from "@radix-ui/react-icons";
-import { forwardRef } from "react";
+import { forwardRef, ForwardRefExoticComponent, RefAttributes } from "react";
 
 import { cn } from "@flow/lib/utils";
 
@@ -25,7 +25,7 @@ const DialogOverlay = forwardRef<
     className={cn(
       overlayBgClass,
       "fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className,
+      className
     )}
     {...props}
   />
@@ -53,7 +53,7 @@ const DialogContent = forwardRef<
       onCloseAutoFocus,
       ...props
     },
-    ref,
+    ref
   ) => (
     <DialogPortal>
       <DialogOverlay overlayBgClass={overlayBgClass} />
@@ -77,7 +77,7 @@ const DialogContent = forwardRef<
             : position === "center"
               ? "top-[40%] translate-y-[-50%]"
               : undefined,
-          className,
+          className
         )}
         onOpenAutoFocus={(e) =>
           onOpenAutoFocus ? onOpenAutoFocus(e) : e.preventDefault()
@@ -87,7 +87,7 @@ const DialogContent = forwardRef<
         }
         {...props}
       >
-        <div className="rounded-lg bg-secondary">
+        <div className="overflow-hidden rounded-lg bg-secondary">
           {children}
           {!hideCloseButton && (
             <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
@@ -98,7 +98,7 @@ const DialogContent = forwardRef<
         </div>
       </DialogPrimitive.Content>
     </DialogPortal>
-  ),
+  )
 );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
@@ -109,7 +109,7 @@ const DialogHeader = ({
   <div
     className={cn(
       "flex flex-col space-y-1.5 text-center sm:text-left",
-      className,
+      className
     )}
     {...props}
   />
@@ -122,8 +122,8 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse px-6 py-4 sm:flex-row sm:justify-end sm:space-x-2",
-      className,
+      "flex flex-col-reverse px-6 pb-6 sm:flex-row sm:justify-end sm:space-x-2",
+      className
     )}
     {...props}
   />
@@ -138,7 +138,7 @@ const DialogTitle = forwardRef<
     ref={ref}
     className={cn(
       "text-xl text-center font-thin border-b leading-none tracking-tight px-6 py-4 rounded-t-lg",
-      className,
+      className
     )}
     {...props}
   />
@@ -157,6 +157,58 @@ const DialogDescription = forwardRef<
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
+const DialogContentWrapper = forwardRef<
+  React.ElementRef<
+    ForwardRefExoticComponent<
+      {
+        className?: string;
+        children?: React.ReactNode;
+      } & RefAttributes<HTMLDivElement>
+    >
+  >,
+  React.ComponentPropsWithoutRef<
+    ForwardRefExoticComponent<
+      {
+        className?: string;
+        children?: React.ReactNode;
+      } & RefAttributes<HTMLDivElement>
+    >
+  >
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("py-4 px-6 flex flex-col gap-4 overflow-hidden", className)}
+    {...props}
+  />
+));
+DialogContentWrapper.displayName = "DialogContentWrapper";
+
+const DialogContentSection = forwardRef<
+  React.ElementRef<
+    ForwardRefExoticComponent<
+      {
+        className?: string;
+        children?: React.ReactNode;
+      } & RefAttributes<HTMLDivElement>
+    >
+  >,
+  React.ComponentPropsWithoutRef<
+    ForwardRefExoticComponent<
+      {
+        className?: string;
+        children?: React.ReactNode;
+      } & RefAttributes<HTMLDivElement>
+    >
+  >
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col gap-2 overflow-hidden", className)}
+    {...props}
+  />
+));
+DialogContentSection.displayName = "DialogContentSection";
+
 export {
   Dialog,
   DialogPortal,
@@ -168,4 +220,6 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  DialogContentWrapper,
+  DialogContentSection,
 };

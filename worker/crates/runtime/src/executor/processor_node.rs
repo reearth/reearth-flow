@@ -15,6 +15,7 @@ use tokio::runtime::Runtime;
 use tracing::{info_span, Span};
 
 use crate::error_manager::ErrorManager;
+use crate::event::Event;
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::kvs::KvStore;
 use crate::{
@@ -56,6 +57,8 @@ pub struct ProcessorNode<F> {
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<Box<dyn KvStore>>,
+    #[allow(dead_code)]
+    event_sender: tokio::sync::broadcast::Sender<Event>,
 }
 
 impl<F: Future + Unpin + Debug> ProcessorNode<F> {
@@ -85,6 +88,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             senders,
             dag.error_manager().clone(),
             runtime.clone(),
+            dag.event_hub().sender.clone(),
         );
         let span = info_span!(
             "action",
@@ -123,6 +127,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             expr_engine,
             storage_resolver,
             kv_store,
+            event_sender: dag.event_hub().sender.clone(),
         }
     }
 
@@ -146,6 +151,13 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let mut is_terminated = vec![false; receivers.len()];
         let mut sel = init_select(&receivers);
 
+        let span = self.span.clone();
+        let logger = self.logger.clone();
+        let now = time::Instant::now();
+        action_log!(
+            parent: span, logger, "{:?} process start...", self.processor.read().name(),
+        );
+
         loop {
             if is_terminated.iter().all(|value| *value) {
                 if self
@@ -153,6 +165,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     .load(std::sync::atomic::Ordering::SeqCst)
                     == 0
                 {
+                    action_log!(
+                        parent: span, logger, "{:?} process finish. elapsed = {:?}", self.processor.read().name() , now.elapsed(),
+                    );
                     self.on_terminate(NodeContext::new(
                         self.expr_engine.clone(),
                         self.storage_resolver.clone(),
@@ -204,10 +219,16 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let mut channel_manager_guard = channel_manager.write();
         let processor = Arc::clone(&self.processor);
         let channel_manager: &mut ChannelManager = &mut channel_manager_guard;
+        let now = time::Instant::now();
         processor
             .write()
             .finish(ctx.clone(), channel_manager)
             .map_err(|e| ExecutionError::CannotSendToChannel(format!("{:?}", e)))?;
+        let span = self.span.clone();
+        let logger = self.logger.clone();
+        action_log!(
+            parent: span, logger, "{:?} finish process complete. elapsed = {:?}", processor.read().name(), now.elapsed(),
+        );
         channel_manager.send_terminate(ctx)
     }
 }
@@ -220,7 +241,6 @@ fn process(
     processor: Arc<parking_lot::RwLock<Box<dyn Processor>>>,
 ) {
     let feature_id = ctx.feature.id;
-    let now = time::Instant::now();
     let mut channel_manager_guard = channel_manager.write();
     let mut processor_guard = processor.write();
     let channel_manager: &mut ChannelManager = &mut channel_manager_guard;
@@ -231,7 +251,4 @@ fn process(
             parent: span, logger, "Error operation, feature id = {:?}, error = {:?}", feature_id, e,
         )
     }
-    action_log!(
-        parent: span, logger, "Processing operation, feature id = {:?}, elapsed = {:?}", feature_id, now.elapsed(),
-    );
 }

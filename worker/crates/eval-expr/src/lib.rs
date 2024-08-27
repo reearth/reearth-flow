@@ -5,7 +5,7 @@ pub mod engine;
 mod error;
 mod module;
 pub mod scope;
-mod utils;
+pub mod utils;
 
 pub(crate) type ShareLock<T> = Arc<RwLock<T>>;
 pub type Value = serde_json::Value;

@@ -7,7 +7,7 @@ export type Action = {
   categories: string[];
   inputPorts: string[];
   outputPorts: string[];
-  parameters: any;
+  parameters: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   builtin: boolean;
 };
 

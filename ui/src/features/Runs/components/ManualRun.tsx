@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Button,
@@ -17,11 +17,49 @@ import { Project } from "@flow/types";
 
 const ManualRun: React.FC = () => {
   const t = useT();
-  const { useGetWorkspaceProjects } = useProject();
+  const { useGetWorkspaceProjectsInfinite } = useProject();
+  const [selectDropDown, setSelectDropDown] = useState<
+    HTMLElement | undefined | null
+  >();
 
   const [selectedProject, selectProject] = useState<Project>();
   const [currentWorkspace] = useCurrentWorkspace();
-  const { projects } = useGetWorkspaceProjects(currentWorkspace?.id);
+  const { pages, isFetching, fetchNextPage, hasNextPage } =
+    useGetWorkspaceProjectsInfinite(currentWorkspace?.id);
+
+  const projects: Project[] | undefined = useMemo(
+    () =>
+      pages?.reduce((projects, page) => {
+        if (page?.projects) {
+          projects.push(...page.projects);
+        }
+        return projects;
+      }, [] as Project[]),
+    [pages]
+  );
+
+  useEffect(() => {
+    if (
+      !selectDropDown ||
+      isFetching ||
+      !hasNextPage ||
+      selectDropDown.clientHeight === 0
+    )
+      return;
+
+    const { clientHeight, scrollHeight } = selectDropDown;
+
+    if (clientHeight === scrollHeight) {
+      fetchNextPage();
+      return;
+    }
+
+    const handleScrollEnd = () => !isFetching && hasNextPage && fetchNextPage();
+    selectDropDown.addEventListener("scrollend", handleScrollEnd);
+
+    return () =>
+      selectDropDown.removeEventListener("scrollend", handleScrollEnd);
+  }, [selectDropDown, isFetching, hasNextPage, fetchNextPage]);
 
   return (
     <div className="flex-1 p-8">
@@ -35,7 +73,7 @@ const ManualRun: React.FC = () => {
             <Select
               onValueChange={(pid) =>
                 selectProject(
-                  currentWorkspace?.projects?.find((p) => p.id === pid),
+                  currentWorkspace?.projects?.find((p) => p.id === pid)
                 )
               }
             >
@@ -45,11 +83,13 @@ const ManualRun: React.FC = () => {
                 />
               </SelectTrigger>
               <SelectContent>
-                {projects?.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
+                <div ref={(el) => setSelectDropDown(el?.parentElement)}>
+                  {projects?.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </div>
               </SelectContent>
             </Select>
           </div>

@@ -12,6 +12,8 @@ use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Graph;
 use tokio::runtime::Runtime;
+use tokio::sync::broadcast::Receiver;
+use tokio::sync::Notify;
 
 use super::node::Node;
 use super::processor_node::ProcessorNode;
@@ -19,6 +21,7 @@ use super::sink_node::SinkNode;
 use crate::builder_dag::{BuilderDag, NodeKind};
 use crate::dag_schemas::DagSchemas;
 use crate::errors::ExecutionError;
+use crate::event::Event;
 use crate::executor_operation::{ExecutorOptions, NodeContext};
 
 use super::execution_dag::ExecutionDag;
@@ -31,6 +34,7 @@ pub struct DagExecutor {
 
 pub struct DagExecutorJoinHandle {
     join_handles: Vec<JoinHandle<Result<(), ExecutionError>>>,
+    notify: Arc<Notify>,
 }
 
 impl DagExecutor {
@@ -86,6 +90,13 @@ impl DagExecutor {
             runtime.clone(),
         )
         .await;
+        let mut receiver = execution_dag.event_hub().sender.subscribe();
+        let notify = Arc::new(Notify::new());
+        let notify_publish = Arc::clone(&notify);
+        let notify_subscribe = Arc::clone(&notify);
+        runtime.spawn(async move {
+            subscribe_event(&mut receiver, notify_subscribe.clone()).await;
+        });
         let mut join_handles = vec![start_source(source_node)?];
         for node_index in node_indexes {
             let Some(node) = execution_dag.graph()[node_index].kind.as_ref() else {
@@ -129,12 +140,19 @@ impl DagExecutor {
             }
         }
 
-        Ok(DagExecutorJoinHandle { join_handles })
+        Ok(DagExecutorJoinHandle {
+            join_handles,
+            notify: notify_publish.clone(),
+        })
     }
 }
 
+async fn subscribe_event(receiver: &mut Receiver<Event>, notify: Arc<Notify>) {
+    crate::event::subscribe_event(receiver, notify).await;
+}
+
 impl DagExecutorJoinHandle {
-    pub fn join(mut self) -> Result<(), ExecutionError> {
+    pub fn join(&mut self) -> Result<(), ExecutionError> {
         loop {
             let Some(finished) = self
                 .join_handles
@@ -153,6 +171,10 @@ impl DagExecutorJoinHandle {
                 return Ok(());
             }
         }
+    }
+
+    pub fn notify(&self) {
+        self.notify.notify_waiters();
     }
 }
 
