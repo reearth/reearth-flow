@@ -50,7 +50,7 @@ const WorkspaceSettings: React.FC = () => {
   const [selectedTab, selectTab] = useState<Tab>(checkTab ?? DEFAULT_TAB);
 
   const handleTabChange = (t: Tab) => {
-    navigate({ to: `/workspace/${workspaceId}/settings/${t}` });
+    navigate({ to: `/workspaces/${workspaceId}/settings/${t}` });
     selectTab(t);
   };
 

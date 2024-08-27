@@ -51,9 +51,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
     {
       accessorKey: "id",
       header: t("ID"),
-      size: 20,
-      minSize: 10,
-      maxSize: 30,
+      size: 2330,
     },
     {
       accessorKey: "project.name",
@@ -113,6 +111,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
         ?.getRowModel()
         .rows.filter((r) => r.getIsSelected().valueOf())[0]?.original;
       if (selected !== selectedRun) {
+        console.log("ALSKDFJALKSJFDLAKSJDFLKAJSDFLKJASDFLKJFSDJKL");
         onRunSelect?.(selected);
       }
     }
@@ -154,7 +153,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="rounded-md border">
+      <div>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -166,7 +165,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext(),
+                            header.getContext()
                           )}
                     </TableHead>
                   );
@@ -179,7 +178,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="cursor-pointer"
+                  className={`cursor-pointer rounded-lg ${row.original.id === selectedRun?.id ? "bg-primary" : undefined}`}
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => row.toggleSelected()}
                   onSelect={(s) => console.log("S", s)}
@@ -188,7 +187,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext(),
+                        cell.getContext()
                       )}
                     </TableCell>
                   ))}

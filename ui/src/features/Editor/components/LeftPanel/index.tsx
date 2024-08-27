@@ -162,7 +162,7 @@ const LeftPanel: React.FC<Props> = ({
         <div className="flex h-full flex-col">
           <nav className="flex flex-col items-center gap-4 p-2">
             <Link
-              to={`/workspace/${workspaceId}`}
+              to={`/workspaces/${workspaceId}`}
               className="flex shrink-0 items-center justify-center gap-2 rounded bg-red-800/50 p-2 text-lg font-semibold hover:bg-red-800/80 md:size-8 md:text-base"
             >
               <FlowLogo className="size-5" />

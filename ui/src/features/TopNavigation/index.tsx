@@ -19,7 +19,7 @@ const TopNavigation: React.FC = () => {
           <div
             className="z-10 cursor-pointer rounded bg-red-800/50 p-2"
             onClick={() =>
-              navigate({ to: `/workspace/${currentWorkspace?.id}` })
+              navigate({ to: `/workspaces/${currentWorkspace?.id}` })
             }
           >
             <FlowLogo className="size-5" />

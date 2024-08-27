@@ -16,7 +16,7 @@ function Index() {
 
   useEffect(() => {
     if (!me || !me?.myWorkspaceId) return;
-    navigate({ to: `/workspace/${me?.myWorkspaceId}`, replace: true });
+    navigate({ to: `/workspaces/${me?.myWorkspaceId}`, replace: true });
   }, [me, navigate]);
 
   return !isLoading && (isError || !me || !me?.myWorkspaceId) ? (

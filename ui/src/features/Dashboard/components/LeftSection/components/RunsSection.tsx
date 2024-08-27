@@ -24,7 +24,7 @@ const RunsSection: React.FC = () => {
           className="flex h-[30px] gap-2"
           variant="outline"
           onClick={() =>
-            navigate({ to: `/workspace/${currentWorkspace?.id}/runs/manual` })
+            navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/manual` })
           }
         >
           <Play weight="thin" />
@@ -35,7 +35,7 @@ const RunsSection: React.FC = () => {
         <div
           className="hover:bg-accent/50 -mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer"
           onClick={() =>
-            navigate({ to: `/workspace/${currentWorkspace?.id}/runs/running` })
+            navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/running` })
           }
         >
           <p className="font-thin">{t("Running: ")}</p>
@@ -44,7 +44,7 @@ const RunsSection: React.FC = () => {
         <div
           className="hover:bg-accent/50 -mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer"
           onClick={() =>
-            navigate({ to: `/workspace/${currentWorkspace?.id}/runs/queued` })
+            navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/queued` })
           }
         >
           <p className="font-thin">{t("Queued: ")}</p>
@@ -56,7 +56,7 @@ const RunsSection: React.FC = () => {
             className="hover:bg-accent/50 -mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer"
             onClick={() =>
               navigate({
-                to: `/workspace/${currentWorkspace?.id}/runs/completed`,
+                to: `/workspaces/${currentWorkspace?.id}/runs/completed`,
               })
             }
           >
