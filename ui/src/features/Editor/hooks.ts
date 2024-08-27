@@ -23,7 +23,7 @@ export default () => {
         setOpenPanel(panel);
       }
     },
-    [openPanel]
+    [openPanel],
   );
 
   const handleWorkflowIdChange = useCallback(

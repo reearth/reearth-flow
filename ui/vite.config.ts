@@ -14,7 +14,7 @@ import pkg from "./package.json";
 
 export default defineConfig(() => {
   const cesiumPackageJson = loadJSON(
-    resolve(__dirname, "node_modules", "cesium", "package.json")
+    resolve(__dirname, "node_modules", "cesium", "package.json"),
   );
   return {
     server: {
@@ -60,7 +60,7 @@ function config(): Plugin {
       const envs = loadEnv(
         server.config.mode,
         server.config.envDir ?? process.cwd(),
-        server.config.envPrefix
+        server.config.envPrefix,
       );
       const remoteConfig = envs.FLOW_CONFIG_URL
         ? await (await fetch(envs.FLOW_CONFIG_URL)).json()
@@ -76,7 +76,7 @@ function config(): Plugin {
           ...loadJSON("./flow-config.json"),
         },
         null,
-        2
+        2,
       );
 
       server.middlewares.use((req, res, next) => {
