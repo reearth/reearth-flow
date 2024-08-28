@@ -45,7 +45,7 @@ const BottomPanel: React.FC<Props> = ({
 
   const handlePanelToggle = useCallback(
     (open: boolean) => onOpen(open ? "bottom" : undefined),
-    [onOpen]
+    [onOpen],
   );
 
   const panelContents: PanelContent[] = [
@@ -81,7 +81,7 @@ const BottomPanel: React.FC<Props> = ({
         handlePanelToggle?.(!isOpen);
       }
     },
-    [isOpen, handlePanelToggle, selectedId, setSelectedId]
+    [isOpen, handlePanelToggle, selectedId, setSelectedId],
   );
 
   useShortcuts([

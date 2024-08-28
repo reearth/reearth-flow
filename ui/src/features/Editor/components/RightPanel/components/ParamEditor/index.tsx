@@ -116,7 +116,7 @@ const ParamEditor: React.FC<Props> = ({
               <CardTitle>{t("Parameter Editor")}</CardTitle>
               <CardDescription>
                 {t(
-                  "Make changes to your account here. Click save when youre done."
+                  "Make changes to your account here. Click save when youre done.",
                 )}
               </CardDescription>
             </CardHeader>

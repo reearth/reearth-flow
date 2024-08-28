@@ -183,7 +183,7 @@ const LeftPanel: React.FC<Props> = ({
               weight="thin"
               onClick={() =>
                 alert(
-                  "Need to implement a global search and assign a shortcut as well"
+                  "Need to implement a global search and assign a shortcut as well",
                 )
               }
             />
