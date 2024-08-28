@@ -8,10 +8,10 @@ use super::{
     bufferer::BuffererFactory, center_point_replacer::CenterPointReplacerFactory,
     clipper::ClipperFactory, closed_curve_filter::ClosedCurveFilterFactory,
     coercer::GeometryCoercerFactory, coordinate_system_setter::CoordinateSystemSetterFactory,
-    dissolver::GeometryDissolverFactory, elevation_extractor::ElevationExtractorFactory,
-    extractor::GeometryExtractorFactory, extruder::ExtruderFactory, filter::GeometryFilterFactory,
-    hole_counter::HoleCounterFactory, hole_extractor::HoleExtractorFactory,
-    line_on_line_overlayer::LineOnLineOverlayerFactory,
+    dimension_filter::DimensionFilterFactory, dissolver::GeometryDissolverFactory,
+    elevation_extractor::ElevationExtractorFactory, extractor::GeometryExtractorFactory,
+    extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
+    hole_extractor::HoleExtractorFactory, line_on_line_overlayer::LineOnLineOverlayerFactory,
     orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
     refiner::RefinerFactory, replacer::GeometryReplacerFactory, reprojector::ReprojectorFactory,
     splitter::GeometrySplitterFactory,
@@ -52,6 +52,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<GeometryValueFilterFactory>::default(),
         Box::<ElevationExtractorFactory>::default(),
         Box::<GeometryDissolverFactory>::default(),
+        Box::<DimensionFilterFactory>::default(),
     ];
     factories
         .into_iter()

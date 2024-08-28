@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use super::coordnum::CoordNum;
 use super::no_value::NoValue;
 use super::point::Point;
+use super::traits::Elevation;
 use crate::algorithm::GeoFloat;
 use crate::coord;
 
@@ -40,6 +41,11 @@ impl<T: CoordNum, Z: CoordNum> Coordinate<T, Z> {
     #[inline]
     pub fn is_3d(&self) -> bool {
         !self.is_2d()
+    }
+
+    #[inline]
+    pub fn is_z_zero(&self) -> bool {
+        self.is_3d() && self.z.is_zero()
     }
 }
 
@@ -395,5 +401,16 @@ where
             1 => &mut self.y,
             _ => unreachable!(),
         }
+    }
+}
+
+impl<T, Z> Elevation for Coordinate<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.z.is_zero()
     }
 }
