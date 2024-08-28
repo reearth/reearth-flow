@@ -3,9 +3,9 @@ import { Status } from "@flow/types";
 export const getPropsFrom = (status?: Status) => {
   const style =
     status === "success"
-      ? "bg-green-500"
+      ? "bg-success"
       : status === "failure"
-        ? "bg-red-500"
+        ? "bg-destructive"
         : status === "active"
           ? "active-node-status"
           : "bg-primary";
