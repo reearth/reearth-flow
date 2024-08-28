@@ -3,9 +3,11 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssi
 
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{create_geo_point, create_point_type, mismatch_geom_err};
+use super::traits::Elevation;
 use crate::{coord, point};
 
 use super::coordinate::Coordinate;
@@ -392,5 +394,16 @@ where
             1 => &mut self.0.y,
             _ => unreachable!(),
         }
+    }
+}
+
+impl<T, Z> Elevation for Point<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.0.is_elevation_zero()
     }
 }

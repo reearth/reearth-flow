@@ -522,6 +522,22 @@ Sets the coordinate system of a feature
 ### Category
 * Geometry
 
+## DimensionFilter
+### Type
+* processor
+### Description
+Filters the dimension of features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* 2d
+* 3d
+* rejected
+### Category
+* Geometry
+
 ## Echo
 ### Type
 * sink

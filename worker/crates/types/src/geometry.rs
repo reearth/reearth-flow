@@ -1,3 +1,4 @@
+use reearth_flow_geometry::types::traits::Elevation;
 use std::fmt::Display;
 use std::{hash::Hash, path::Path};
 use url::Url;
@@ -260,6 +261,12 @@ impl CityGmlGeometry {
             .and_then(|feature| feature.polygons.first())
             .and_then(|poly| poly.exterior().0.first())
             .map_or(0.0, |p| p.z)
+    }
+
+    pub fn is_elevation_zero(&self) -> bool {
+        self.features
+            .iter()
+            .all(|feature| feature.polygons.iter().all(|poly| poly.is_elevation_zero()))
     }
 }
 

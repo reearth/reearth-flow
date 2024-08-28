@@ -530,6 +530,24 @@
       ]
     },
     {
+      "name": "DimensionFilter",
+      "type": "processor",
+      "description": "Filters the dimension of features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "2d",
+        "3d",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "Echo",
       "type": "sink",
       "description": "Echo features",

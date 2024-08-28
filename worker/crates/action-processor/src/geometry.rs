@@ -6,6 +6,7 @@ pub mod clipper;
 pub mod closed_curve_filter;
 pub mod coercer;
 pub mod coordinate_system_setter;
+pub mod dimension_filter;
 pub mod dissolver;
 pub mod elevation_extractor;
 pub mod errors;
