@@ -23,9 +23,9 @@ func init() {
 type Mailer mailer.Mailer
 type Config struct {
 	mailer.Config
-	Port             string            `default:"8081" envconfig:"PORT"`
+	Port             string            `default:"8080" envconfig:"PORT"`
 	ServerHost       string            `pp:",omitempty"`
-	Host             string            `default:"http://localhost:8081"`
+	Host             string            `default:"http://localhost:8080"`
 	Host_Web         string            `pp:",omitempty"`
 	Dev              bool              `pp:",omitempty"`
 	DB               string            `default:"mongodb://localhost"`
@@ -36,7 +36,7 @@ type Config struct {
 	Profiler         string            `pp:",omitempty"`
 	Tracer           string            `pp:",omitempty"`
 	TracerSample     float64           `pp:",omitempty"`
-	AssetBaseURL     string            `default:"http://localhost:8081/assets"`
+	AssetBaseURL     string            `default:"http://localhost:8080/assets"`
 	Origins          []string          `pp:",omitempty"`
 	Web_Disabled     bool              `pp:",omitempty"`
 	Web_App_Disabled bool              `pp:",omitempty"`

@@ -1,0 +1,6 @@
+{
+  "api": "http://api.flow.test.reearth.dev",
+  "auth0ClientId": "k6F1sgFikzVkkcW9Cpz7Ztvwq5cBRXlv",
+  "auth0Domain": "reearth-oss-test.eu.auth0.com",
+  "auth0Audience": "https://api.test.reearth.dev"
+}
