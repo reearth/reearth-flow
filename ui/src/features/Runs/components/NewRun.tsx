@@ -20,7 +20,7 @@ import "./styles.css";
 
 type RunType = "manual" | "trigger";
 
-const ManualRun: React.FC = () => {
+const NewRun: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
@@ -28,8 +28,8 @@ const ManualRun: React.FC = () => {
   const { pages, isFetching, fetchNextPage, hasNextPage } =
     useGetWorkspaceProjectsInfinite(currentWorkspace?.id);
 
-  const [runType, setRunType] = useState<RunType | undefined>("trigger"); // TEMP
-  const [trigger, setTrigger] = useState<string | undefined>("scheduled"); // TEMP
+  const [runType, setRunType] = useState<RunType | undefined>(undefined);
+  const [trigger, setTrigger] = useState<string | undefined>(undefined);
 
   const [selectDropDown, setSelectDropDown] = useState<
     HTMLElement | undefined | null
@@ -47,8 +47,8 @@ const ManualRun: React.FC = () => {
   const triggers = useMemo(
     () => [
       { label: t("Scheduled"), value: "scheduled" },
+      { label: t("API"), value: "api" },
       { label: t("Trigger1"), value: "trigger1" },
-      { label: t("Trigger2"), value: "trigger2" },
     ],
     [t]
   );
@@ -96,7 +96,7 @@ const ManualRun: React.FC = () => {
         </Button>
       </div>
       <div className="w-full border-b" />
-      <div className="ml-4 mt-6 flex max-w-[1200px] flex-col gap-6">
+      <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
         <div className="flex w-1/2 max-w-[900px] flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="run-type">{t("Run type")}</Label>
@@ -138,8 +138,17 @@ const ManualRun: React.FC = () => {
               </div>
               {trigger === "scheduled" && (
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="trigger-type">{t("Schedule")}</Label>
-                  <DateTimePicker />
+                  <Label htmlFor="schedule">{t("Schedule")}</Label>
+                  <div className="flex items-center justify-around gap-4">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="schedule-start">{t("Start")}</Label>
+                      <DateTimePicker />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="schedule-finish">{t("Finish")}</Label>
+                      <DateTimePicker />
+                    </div>
+                  </div>
                 </div>
               )}
             </>
@@ -187,4 +196,4 @@ const ManualRun: React.FC = () => {
   );
 };
 
-export { ManualRun };
+export { NewRun };

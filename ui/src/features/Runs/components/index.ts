@@ -1,4 +1,4 @@
 export * from "./RunsTable";
-export * from "./ManualRun";
+export * from "./NewRun";
 export * from "./StatusContent";
 export * from "./RunDetails";

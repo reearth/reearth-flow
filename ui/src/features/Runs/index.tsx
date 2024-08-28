@@ -9,7 +9,7 @@ import { runs as mockRuns } from "@flow/mock_data/runsData";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Run } from "@flow/types";
 
-import { ManualRun, StatusContent, RunDetails } from "./components";
+import { NewRun, StatusContent, RunDetails } from "./components";
 
 type Status = "running" | "queued" | "completed";
 
@@ -105,12 +105,12 @@ const Runs: React.FC = () => {
           </div>
           <div className="flex-1">
             <div
-              className={`my-1 rounded-md border-transparent px-2 py-[2px] hover:cursor-pointer hover:bg-accent ${tab === "all" ? "bg-accent text-secondary-foreground" : undefined}`}
+              className={`mb-1 rounded-md border-transparent px-2 py-[2px] hover:cursor-pointer hover:bg-accent ${tab === "all" ? "bg-accent text-secondary-foreground" : undefined}`}
               onClick={() => handleTabChange("all")}
             >
               <p className="font-thin">{t("All")}</p>
             </div>
-            <div className="-mx-2 border-b-2" />
+            <div className="-mx-2 border-b" />
             <div className="flex flex-col gap-1 p-2">
               {statuses.map(({ id, name }) => (
                 <div
@@ -127,7 +127,7 @@ const Runs: React.FC = () => {
         <div className="flex flex-1 flex-col">
           <div className="flex-1">
             {tab === "manual" ? (
-              <ManualRun />
+              <NewRun />
             ) : isList(tab) ? (
               <StatusContent
                 label={statusLabels[tab as Status]}

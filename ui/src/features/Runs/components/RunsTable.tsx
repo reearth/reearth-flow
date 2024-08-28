@@ -51,7 +51,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
     {
       accessorKey: "id",
       header: t("ID"),
-      size: 2330,
+      size: 20,
     },
     {
       accessorKey: "project.name",
@@ -111,7 +111,6 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
         ?.getRowModel()
         .rows.filter((r) => r.getIsSelected().valueOf())[0]?.original;
       if (selected !== selectedRun) {
-        console.log("ALSKDFJALKSJFDLAKSJDFLKAJSDFLKJASDFLKJFSDJKL");
         onRunSelect?.(selected);
       }
     }
@@ -157,10 +156,10 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+              <TableRow key={headerGroup.id} className="border-none">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead key={header.id} className="h-8 font-thin">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -178,7 +177,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={`cursor-pointer rounded-lg ${row.original.id === selectedRun?.id ? "bg-primary" : undefined}`}
+                  className="h-10 cursor-pointer transition-all hover:bg-primary"
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => row.toggleSelected()}
                   onSelect={(s) => console.log("S", s)}

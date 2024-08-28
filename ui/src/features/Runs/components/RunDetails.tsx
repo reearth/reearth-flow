@@ -19,17 +19,13 @@ const RunDetails: React.FC<Props> = ({ selectedRun }) => {
 
   return (
     selectedRun && (
-      <div className="flex-1 p-8">
-        <div className="flex max-w-[1200px] flex-col gap-4">
-          <Button
-            className="mx-4"
-            size="icon"
-            variant="ghost"
-            onClick={handleBack}
-          >
-            <CaretLeft />
-          </Button>
-          <div className="mx-4 rounded-md border font-thin">
+      <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-6">
+        <Button size="icon" variant="ghost" onClick={handleBack}>
+          <CaretLeft />
+        </Button>
+        <div className="w-full border-b" />
+        <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
+          <div className="rounded-md border font-thin">
             <div className="border-b px-4 py-2">
               <p className="text-xl">{t("Run details")}</p>
             </div>
