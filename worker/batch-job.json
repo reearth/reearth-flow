@@ -1,0 +1,21 @@
+{
+  "name": "reearth-flow-test-job",
+  "taskGroups": [
+    {
+      "taskSpec": {
+        "runnables": [
+          {
+            "container": {
+              "imageUri": "us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-worker:latest",
+              "commands": [
+                "/bin/bash",
+                "-c",
+                "curl -L -o /tmp/simple_workflow.yml https://raw.githubusercontent.com/reearth/reearth-flow/main/worker/examples/plateau/testdata/workflow/simple_workflow.yml && /bin/reearth-flow run --workflow /tmp/simple_workflow.yml"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
