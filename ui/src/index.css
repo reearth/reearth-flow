@@ -12,64 +12,73 @@
 @layer base {
   /* TODO: Fix light mode colors and enable light mode */
   :root {
-    --background: rgb(250, 250, 250);
-    --foreground: rgb(39, 39, 42);
+    --background: 250, 250, 250;
+    --foreground: 39, 39, 42;
 
-    --card: rgb(250, 250, 250);
-    --card-foreground: rgb(39, 39, 42);
+    --card: 250, 250, 250;
+    --card-foreground: 39, 39, 42;
 
-    --popover: rgb(250, 250, 250);
-    --popover-foreground: rgb(49, 49, 42);
+    --popover: 250, 250, 250;
+    --popover-foreground: 49, 49, 42;
 
-    --primary: rgb(126, 126, 129);
-    --primary-foreground: rgb(51, 51, 56);
+    --primary: 126, 126, 129;
+    --primary-foreground: 51, 51, 56;
 
-    --secondary: rgb(250, 250, 250);
-    --secondary-foreground: rgb(31, 31, 34);
+    --secondary: 250, 250, 250;
+    --secondary-foreground: 31, 31, 34;
 
-    --muted: rgb(161, 161, 170);
-    --muted-foreground: rgb(26, 26, 26);
+    --muted: 161, 161, 170;
+    --muted-foreground: 26, 26, 26;
 
-    --accent: rgb(212, 212, 216);
-    --accent-foreground: rgb(63, 63, 70);
+    --accent: 212, 212, 216;
+    --accent-foreground: 63, 63, 70;
 
-    --destructive: rgb(239, 68, 68);
-    --destructive-foreground: rgb(250, 250, 250);
+    --destructive: 239, 68, 68;
+    --destructive-foreground: 250, 250, 250;
 
-    --border: rgb(228, 228, 231);
-    --input: rgb(228, 228, 231);
-    --ring: rgb(24, 24, 27);
+    --border: 228, 228, 231;
+    --input: 228, 228, 231;
+    --ring: 24, 24, 27;
     --radius: 0.5rem;
+
+    /* Custom Flow colors */
+
+    /* Workflow colors */
+    --node-entrance: 162, 28, 175;
+    --node-exit: 126, 34, 206;
+    --node-reader: 22, 78, 99;
+    --node-transformer: 99, 22, 40;
+    --node-writer: 99, 81, 22;
   }
 
   .dark {
-    --background: rgb(39, 39, 42);
-    --foreground: rgb(250, 250, 250);
+    --background: 39, 39, 42;
+    --foreground: 250, 250, 250;
 
-    --card: rgb(39, 39, 42);
-    --card-foreground: rgb(250, 250, 250);
+    --card: 39, 39, 42;
+    --card-foreground: 250, 250, 250;
 
-    --popover: rgb(49, 49, 53);
-    --popover-foreground: rgb(250, 250, 250);
+    --popover: 49, 49, 53;
+    --popover-foreground: 250, 250, 250;
 
-    --primary: rgb(51, 51, 56);
-    --primary-foreground: rgb(126, 126, 129);
+    --primary: 51, 51, 56;
+    --primary-foreground: 126, 126, 129;
 
-    --secondary: rgb(31, 31, 34);
-    --secondary-foreground: rgb(250, 250, 250);
+    --secondary: 31, 31, 34;
+    --secondary-foreground: 250, 250, 250;
 
-    --muted: rgb(26, 26, 26);
-    --muted-foreground: rgb(161, 161, 170);
+    --muted: 26, 26, 26;
+    --muted-foreground: 161, 161, 170;
 
-    --accent: rgb(63, 63, 70);
-    --accent-foreground: rgb(212, 212, 216);
+    --accent: 63, 63, 70;
+    --accent-foreground: 212, 212, 216;
 
-    --destructive: rgb(239, 67, 67);
-    --destructive-foreground: rgb(250, 250, 250);
+    --destructive: 239, 67, 67;
+    --destructive-foreground: 250, 250, 250;
 
-    --border: rgb(63, 63, 70);
-    --input: rgb(26, 26, 26);
-    --ring: rgb(2, 8, 23);
+    --border: 63, 63, 70;
+    --input: 26, 26, 26;
+    --ring: 2, 8, 23;
   }
 }
 
