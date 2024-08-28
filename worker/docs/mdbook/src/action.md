@@ -1476,7 +1476,7 @@ Filter geometry by type
         "filterType": {
           "type": "string",
           "enum": [
-            "featureType"
+            "geometryType"
           ]
         }
       }
@@ -2107,16 +2107,16 @@ Calculates statistics of features
 ### Category
 * Attribute
 
-## ThreeDimentionBoxReplacer
+## ThreeDimensionBoxReplacer
 ### Type
 * processor
 ### Description
-Replaces a three dimention box with a polygon.
+Replaces a three Dimension box with a polygon.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ThreeDimentionBoxReplacer",
+  "title": "ThreeDimensionBoxReplacer",
   "type": "object",
   "required": [
     "maxX",
@@ -2160,16 +2160,16 @@ Replaces a three dimention box with a polygon.
 ### Category
 * Geometry
 
-## ThreeDimentionRotator
+## ThreeDimensionRotator
 ### Type
 * processor
 ### Description
-Replaces a three dimention box with a polygon.
+Replaces a three Dimension box with a polygon.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ThreeDimentionRotatorParam",
+  "title": "ThreeDimensionRotatorParam",
   "type": "object",
   "required": [
     "angleDegree",
@@ -2217,11 +2217,11 @@ Replaces a three dimention box with a polygon.
 ### Category
 * Geometry
 
-## TwoDimentionForcer
+## TwoDimensionForcer
 ### Type
 * processor
 ### Description
-Forces a geometry to be two dimentional.
+Forces a geometry to be two dimensional.
 ### Parameters
 * No parameters
 ### Input Ports
