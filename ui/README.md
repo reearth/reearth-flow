@@ -29,7 +29,7 @@ For an optimal development experience, make sure you use these vscode settings (
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
-  "editor.formatOnSave": false,
+  "editor.formatOnSave": true,
   "eslint.enable": true,
   "eslint.useFlatConfig": true,
   "prettier.enable": true,
