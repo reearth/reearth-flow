@@ -46,11 +46,9 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
         <NodeResizer
           lineStyle={{
             background: "none",
-            borderColor: "rgba(0, 0, 255, 0.8)",
             zIndex: 0,
-            // borderRadius: "4px",
-            // padding: 2,
           }}
+          lineClassName="border border-border rounded"
           handleStyle={{
             background: "none",
             width: 8,
@@ -69,9 +67,10 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
         />
       )}
       {/* <div className={`bg-orange-400/60 w-[${width}px] h-[${height}px]`} style={{ width, height }}> */}
-      <div className={`z-0 h-full rounded-sm bg-blue-300/50 p-2`}>
+      {/* TODO: bg-secondary/50 will work when #448 is merged */}
+      <div className={`bg-secondary/50 z-0 h-full rounded-sm p-2`}>
         <textarea
-          className="nowheel size-full resize-none bg-transparent"
+          className="nowheel size-full resize-none bg-transparent focus-visible:outline-none"
           defaultValue={data.content}
           onMouseDown={(e) => e.stopPropagation()}
           // onMouseUp={e => e.}
