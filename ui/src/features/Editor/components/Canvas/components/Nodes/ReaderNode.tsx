@@ -10,7 +10,7 @@ const ReaderNode: React.FC<GeneralNodeProps> = (props) => {
   //   },
   //   [data],
   // );
-  return <GeneralNode className="bg-[#164E63]/60" {...props} />;
+  return <GeneralNode className="bg-node-reader/60" {...props} />;
 };
 
 export default memo(ReaderNode);
