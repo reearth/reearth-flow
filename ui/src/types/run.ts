@@ -1,5 +1,7 @@
 import { Project } from "./project";
 
+export type Trigger = "api" | "cms" | "manual"; // do we need CMS? Or maybe "api" and "native" is enough? or..?
+
 export type Run = {
   id: string;
   project: Pick<Project, "id" | "name" | "workflows" | "createdAt">;
@@ -10,7 +12,7 @@ export type Run = {
   completedAt?: string;
   logs?: unknown; // or boolean? or logId?
   ranBy?: string;
-  trigger?: "api" | "cms" | "manual"; // do we need CMS? Or maybe "api" and "native" is enough? or..?
+  trigger?: Trigger;
 };
 
 // Do we need a RunResult type?
