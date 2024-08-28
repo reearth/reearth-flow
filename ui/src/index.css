@@ -42,6 +42,7 @@
     --radius: 0.5rem;
 
     /* Custom Flow colors */
+    --logo: 69, 10, 10;
 
     /* Workflow colors */
     --node-entrance: 162, 28, 175;

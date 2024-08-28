@@ -17,7 +17,7 @@ const TopNavigation: React.FC = () => {
       <div className="relative flex h-14 items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-2">
           <div
-            className="z-10 cursor-pointer rounded bg-red-800/50 p-2"
+            className="z-10 cursor-pointer rounded bg-logo p-2"
             onClick={() =>
               navigate({ to: `/workspace/${currentWorkspace?.id}` })
             }

@@ -48,6 +48,7 @@ const config = {
           DEFAULT: "rgba(var(--card))",
           foreground: "rgba(var(--card-foreground))",
         },
+        logo: "rgba(var(--logo))",
         node: {
           entrance: "rgba(var(--node-entrance))",
           exit: "rgba(var(--node-exit))",
