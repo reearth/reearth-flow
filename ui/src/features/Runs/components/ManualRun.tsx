@@ -10,13 +10,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@flow/components";
+import DateTimePicker from "@flow/components/DateTimePicker";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { Project } from "@flow/types";
 
 import "./styles.css";
-import DateTimePicker from "@flow/components/DateTimePicker";
 
 type RunType = "manual" | "trigger";
 
