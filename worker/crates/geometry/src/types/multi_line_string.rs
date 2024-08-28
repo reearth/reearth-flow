@@ -2,6 +2,7 @@ use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
 use nusamai_geometry::{
@@ -15,6 +16,7 @@ use super::coordnum::{CoordFloat, CoordNum};
 use super::line::Line;
 use super::line_string::LineString;
 use super::no_value::NoValue;
+use super::traits::Elevation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub struct MultiLineString<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<LineString<T, Z>>);
@@ -204,6 +206,17 @@ where
 
         let mut mp_zipper = self.into_iter().zip(other);
         mp_zipper.all(|(lhs, rhs)| lhs.abs_diff_eq(rhs, epsilon))
+    }
+}
+
+impl<T, Z> Elevation for MultiLineString<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.iter().all(LineString::is_elevation_zero)
     }
 }
 

@@ -2,6 +2,7 @@ use core::any::type_name;
 use std::convert::TryFrom;
 
 use approx::{AbsDiffEq, RelativeEq};
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{
@@ -19,6 +20,7 @@ use super::point::Point;
 use super::polygon::Polygon;
 use super::rect::Rect;
 use super::solid::Solid;
+use super::traits::Elevation;
 use super::triangle::Triangle;
 use crate::error::Error;
 use crate::utils::PointsCoplanar;
@@ -471,6 +473,29 @@ impl<T: AbsDiffEq<Epsilon = T> + CoordNum> AbsDiffEq for Geometry<T, T> {
             (Geometry::MultiPolygon(g1), Geometry::MultiPolygon(g2)) => g1.abs_diff_eq(g2, epsilon),
             (Geometry::Triangle(g1), Geometry::Triangle(g2)) => g1.abs_diff_eq(g2, epsilon),
             (_, _) => false,
+        }
+    }
+}
+
+impl<T, Z> Elevation for Geometry<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        match self {
+            Geometry::Point(p) => p.is_elevation_zero(),
+            Geometry::Line(l) => l.is_elevation_zero(),
+            Geometry::LineString(ls) => ls.is_elevation_zero(),
+            Geometry::Polygon(p) => p.is_elevation_zero(),
+            Geometry::MultiPoint(mp) => mp.is_elevation_zero(),
+            Geometry::MultiLineString(mls) => mls.is_elevation_zero(),
+            Geometry::MultiPolygon(mp) => mp.is_elevation_zero(),
+            Geometry::Rect(rect) => rect.is_elevation_zero(),
+            Geometry::Triangle(triangle) => triangle.is_elevation_zero(),
+            Geometry::Solid(solid) => solid.is_elevation_zero(),
+            Geometry::GeometryCollection(gc) => gc.iter().all(|g| g.is_elevation_zero()),
         }
     }
 }
