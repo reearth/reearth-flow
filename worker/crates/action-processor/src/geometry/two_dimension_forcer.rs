@@ -12,15 +12,15 @@ use reearth_flow_types::GeometryValue;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
-pub struct TwoDimentionForcerFactory;
+pub struct TwoDimensionForcerFactory;
 
-impl ProcessorFactory for TwoDimentionForcerFactory {
+impl ProcessorFactory for TwoDimensionForcerFactory {
     fn name(&self) -> &str {
-        "TwoDimentionForcer"
+        "TwoDimensionForcer"
     }
 
     fn description(&self) -> &str {
-        "Forces a geometry to be two dimentional."
+        "Forces a geometry to be two dimensional."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -46,14 +46,14 @@ impl ProcessorFactory for TwoDimentionForcerFactory {
         _action: String,
         _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        Ok(Box::new(TwoDimentionForcer))
+        Ok(Box::new(TwoDimensionForcer))
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct TwoDimentionForcer;
+pub struct TwoDimensionForcer;
 
-impl Processor for TwoDimentionForcer {
+impl Processor for TwoDimensionForcer {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
@@ -106,6 +106,6 @@ impl Processor for TwoDimentionForcer {
     }
 
     fn name(&self) -> &str {
-        "TwoDimentionForcer"
+        "TwoDimensionForcer"
     }
 }
