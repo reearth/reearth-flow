@@ -69,6 +69,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected }) => {
         />
       )}
       <div
+      // TODO: Remove the yellow color
         className={`relative z-0 h-full rounded-b-sm border-x border-b border-transparent bg-yellow-200/20 ${selected ? "border-yellow-200/50" : undefined}`}
       >
         <div
