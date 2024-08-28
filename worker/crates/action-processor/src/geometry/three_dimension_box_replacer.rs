@@ -18,19 +18,19 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct ThreeDimentionBoxReplacerFactory;
+pub struct ThreeDimensionBoxReplacerFactory;
 
-impl ProcessorFactory for ThreeDimentionBoxReplacerFactory {
+impl ProcessorFactory for ThreeDimensionBoxReplacerFactory {
     fn name(&self) -> &str {
-        "ThreeDimentionBoxReplacer"
+        "ThreeDimensionBoxReplacer"
     }
 
     fn description(&self) -> &str {
-        "Replaces a three dimention box with a polygon."
+        "Replaces a three Dimension box with a polygon."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(ThreeDimentionBoxReplacer))
+        Some(schemars::schema_for!(ThreeDimensionBoxReplacer))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -52,21 +52,21 @@ impl ProcessorFactory for ThreeDimentionBoxReplacerFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let processor: ThreeDimentionBoxReplacer = if let Some(with) = with {
+        let processor: ThreeDimensionBoxReplacer = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::ThreeDimentionBoxReplacerFactory(format!(
+                GeometryProcessorError::ThreeDimensionBoxReplacerFactory(format!(
                     "Failed to serialize `with` parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::ThreeDimentionBoxReplacerFactory(format!(
+                GeometryProcessorError::ThreeDimensionBoxReplacerFactory(format!(
                     "Failed to deserialize `with` parameter: {}",
                     e
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::ThreeDimentionBoxReplacerFactory(
+            return Err(GeometryProcessorError::ThreeDimensionBoxReplacerFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -77,7 +77,7 @@ impl ProcessorFactory for ThreeDimentionBoxReplacerFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ThreeDimentionBoxReplacer {
+pub struct ThreeDimensionBoxReplacer {
     min_x: Attribute,
     min_y: Attribute,
     min_z: Attribute,
@@ -86,7 +86,7 @@ pub struct ThreeDimentionBoxReplacer {
     max_z: Attribute,
 }
 
-impl Processor for ThreeDimentionBoxReplacer {
+impl Processor for ThreeDimensionBoxReplacer {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
@@ -126,7 +126,7 @@ impl Processor for ThreeDimentionBoxReplacer {
     }
 
     fn name(&self) -> &str {
-        "ThreeDimentionBoxReplacer"
+        "ThreeDimensionBoxReplacer"
     }
 }
 
@@ -134,11 +134,11 @@ fn parse_f64(value: Option<&AttributeValue>) -> super::errors::Result<f64> {
     if let Some(AttributeValue::Number(min_x)) = value {
         min_x
             .as_f64()
-            .ok_or(GeometryProcessorError::ThreeDimentionBoxReplacer(
+            .ok_or(GeometryProcessorError::ThreeDimensionBoxReplacer(
                 "failed to parse f64".to_string(),
             ))
     } else {
-        Err(GeometryProcessorError::ThreeDimentionBoxReplacer(
+        Err(GeometryProcessorError::ThreeDimensionBoxReplacer(
             "failed to parse f64".to_string(),
         ))
     }
