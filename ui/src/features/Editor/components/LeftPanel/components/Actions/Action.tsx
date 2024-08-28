@@ -24,7 +24,7 @@ const ActionComponent: React.FC<Props> = ({
 
   const onDragStart = (
     event: DragEvent<HTMLDivElement>,
-    actionName: string
+    actionName: string,
   ) => {
     event.dataTransfer.setData("application/reactflow", actionName);
     event.dataTransfer.effectAllowed = "move";
@@ -40,7 +40,7 @@ const ActionComponent: React.FC<Props> = ({
         >
           <Lightning className="self-center" />
         </div>
-      </div>
+      </div>,
     );
 
     document.body.appendChild(dragPreviewContainer);
