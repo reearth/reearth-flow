@@ -50,17 +50,6 @@ RUN \
     libxml2 \
     ca-certificates
 
-ARG UID=10001
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    flow
-USER flow
+COPY --chmod=0755 --from=builder /tmp/reearth-flow /bin
 
-COPY --from=builder /tmp/reearth-flow /bin
-
-ENTRYPOINT [ "/bin/reearth-flow" ]
+CMD [ "/bin/reearth-flow" ]
