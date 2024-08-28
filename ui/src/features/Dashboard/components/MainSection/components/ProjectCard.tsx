@@ -62,7 +62,7 @@ const ProjectCard: React.FC<Props> = ({
         <div
           className={`flex h-[120px] items-center justify-center rounded-t-lg bg-black/30 p-4 ${description ? "backdrop-blur-sm" : ""}`}
         >
-          <p className="line-clamp-4 overflow-hidden text-ellipsis whitespace-normal break-words text-center text-sm font-light text-zinc-300">
+          <p className="line-clamp-4 overflow-hidden text-ellipsis whitespace-normal break-words text-center text-sm font-light">
             {description}
           </p>
         </div>
@@ -72,7 +72,7 @@ const ProjectCard: React.FC<Props> = ({
             onOpenChange={(o) => setPersistOverlay(o)}
           >
             <DropdownMenuTrigger
-              className="flex h-full w-[30px] items-center justify-center rounded-br-lg text-zinc-400 hover:bg-zinc-800"
+              className="flex h-full w-[30px] items-center justify-center rounded-br-lg hover:bg-secondary"
               onClick={(e) => e.stopPropagation()}
             >
               <DotsThreeVertical className="size-[24px]" />
