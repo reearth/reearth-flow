@@ -14,12 +14,13 @@
   color: rgb(198, 198, 198);
 }
 
-.react-datepicker__current-month, .react-datepicker-time__header {
+.react-datepicker__current-month,
+.react-datepicker-time__header {
   color: rgb(198, 198, 198);
   font-weight: normal;
 }
 
-.react-datepicker__day-name{
+.react-datepicker__day-name {
   color: rgb(198, 198, 198);
   font-weight: lighter;
 }
@@ -73,7 +74,7 @@
   background-color: rgb(51, 51, 56);
 }
 
-.react-datepicker__day--keyboard-selected{
+.react-datepicker__day--keyboard-selected {
   background: none;
 }
 

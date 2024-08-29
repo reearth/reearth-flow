@@ -41,7 +41,7 @@ const NewRun: React.FC = () => {
       { label: t("Manual Run"), value: "manual" },
       { label: t("Trigger run"), value: "trigger" },
     ],
-    [t]
+    [t],
   );
 
   const triggers = useMemo(
@@ -50,7 +50,7 @@ const NewRun: React.FC = () => {
       { label: t("API"), value: "api" },
       { label: t("Trigger1"), value: "trigger1" },
     ],
-    [t]
+    [t],
   );
 
   const projects: Project[] | undefined = useMemo(
@@ -61,7 +61,7 @@ const NewRun: React.FC = () => {
         }
         return projects;
       }, [] as Project[]),
-    [pages]
+    [pages],
   );
 
   useEffect(() => {
@@ -101,8 +101,7 @@ const NewRun: React.FC = () => {
           <div className="flex flex-col gap-2">
             <Label htmlFor="run-type">{t("Run type")}</Label>
             <Select
-              onValueChange={(rt) => setRunType(rt as RunType | undefined)}
-            >
+              onValueChange={(rt) => setRunType(rt as RunType | undefined)}>
               <SelectTrigger>
                 <SelectValue placeholder={t("Select run type")} />
               </SelectTrigger>
@@ -158,10 +157,9 @@ const NewRun: React.FC = () => {
             <Select
               onValueChange={(pid) =>
                 selectProject(
-                  currentWorkspace?.projects?.find((p) => p.id === pid)
+                  currentWorkspace?.projects?.find((p) => p.id === pid),
                 )
-              }
-            >
+              }>
               <SelectTrigger>
                 <SelectValue
                   placeholder={t("Select from published projects")}

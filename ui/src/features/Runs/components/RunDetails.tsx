@@ -58,8 +58,7 @@ const RunDetails: React.FC<Props> = ({ selectedRun }) => {
               <p>
                 {t("Status: ")}
                 <span
-                  className={`font-normal ${selectedRun.status === "failed" ? "font-bold uppercase text-red-600" : undefined}`}
-                >
+                  className={`font-normal ${selectedRun.status === "failed" ? "font-bold uppercase text-red-600" : undefined}`}>
                   {selectedRun.status}
                 </span>
               </p>
