@@ -6,6 +6,11 @@ use flate2::{write::ZlibEncoder, Compression};
 use hashbrown::HashMap as BrownHashMap;
 use indexmap::IndexSet;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_geometry::algorithm::area3d::Area3D;
+use reearth_flow_geometry::algorithm::coords_iter::CoordsIter;
+use reearth_flow_geometry::types::coordinate::Coordinate;
+use reearth_flow_geometry::types::line_string::LineString;
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon;
 use reearth_flow_geometry::types::polygon::Polygon;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -13,7 +18,10 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::geometry as geomotry_types;
+use reearth_flow_types::Attribute;
+use reearth_flow_types::AttributeValue;
 use reearth_flow_types::Expr;
+use rhai::Variant;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -106,6 +114,7 @@ impl Sink for MVTWriter {
     fn initialize(&self, _ctx: NodeContext) {}
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let geometry = ctx.feature.geometry.as_ref().unwrap();
+        let attributes = ctx.feature.attributes.clone();
         let geometry_value = geometry.value.clone();
         match geometry_value {
             geomotry_types::GeometryValue::None => {
@@ -125,6 +134,7 @@ impl Sink for MVTWriter {
                 let contents = match handle_city_gml_geometry(
                     &output,
                     storage_resolver.clone(),
+                    attributes,
                     city_gml,
                     self.params.min_zoom,
                     self.params.max_zoom,
@@ -164,20 +174,27 @@ impl Sink for MVTWriter {
 fn handle_city_gml_geometry(
     output: &Uri,
     storage_resolver: Arc<StorageResolver>,
+    attributes: HashMap<Attribute, AttributeValue>,
     city_gml: geomotry_types::CityGmlGeometry,
     min_zoom: u8,
     max_zoom: u8,
 ) -> Result<Arc<Mutex<std::vec::Vec<TileContent>>>, crate::errors::SinkError> {
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
 
+    let max_detail = 12; // 4096
+    let buffer_pixels = 5;
+
     let features = city_gml.features.clone();
     for feature in features {
         match handle_feature(
             output,
             storage_resolver.clone(),
+            attributes.clone(),
             feature,
             min_zoom,
             max_zoom,
+            max_detail,
+            buffer_pixels,
         ) {
             Ok(_) => {}
             Err(e) => {
@@ -191,36 +208,58 @@ fn handle_city_gml_geometry(
     Ok(contents)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_feature(
     output: &Uri,
     storage_resolver: Arc<StorageResolver>,
+    attributes: HashMap<Attribute, AttributeValue>,
     feature: geomotry_types::GeometryFeature,
     min_zoom: u8,
     max_zoom: u8,
+    max_detail: u32,
+    buffer_pixels: u32,
 ) -> Result<(), crate::errors::SinkError> {
-    // let min_zoom = min_zoom.unwrap_or(12);
-    // let max_zoom = max_zoom.unwrap_or(18);
+    let mut tiled_mpolys = HashMap::new();
+
+    let extent = 1 << max_detail;
+    let buffer = extent * buffer_pixels / 256;
 
     let default_detail = 12;
     let min_detail = 9;
 
-    for zoom in min_zoom..=max_zoom {
-        let xi: i32 = 0; // TODO
-        let yi: i32 = 0; // TODO
+    for poly in feature.polygons {
+        if poly.exterior().signed_area3d() < 0.0 {
+            continue;
+        }
 
-        let (zoom, x, y) = (
-            zoom,
-            xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
-            yi,
-        );
+        let area = poly.exterior().signed_area3d();
 
-        let mpoly = feature.polygons.clone();
+        for zoom in min_zoom..=max_zoom {
+            if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
+                continue;
+            }
+            slice_polygon(zoom, extent, buffer, &poly, &mut tiled_mpolys);
+        }
+    }
+
+    for ((zoom, x, y), mpoly) in tiled_mpolys {
+        if mpoly.is_empty() {
+            continue;
+        }
+        //     f((z, x, y), mpoly)?;
+        // }
+
+        // let (zoom, x, y) = (
+        //     zoom,
+        //     xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
+        //     yi,
+        // );
+
+        // let mpoly = feature.polygons.clone();
 
         let feature = SlicedFeature {
             geometry: mpoly,
-            properties: nusamai_citygml::Value::String(
-                feature.id.clone().unwrap_or("".to_string()),
-            ), // TODO
+            properties: attributes.clone(),
         };
 
         let bincode_config = bincode::config::standard();
@@ -261,13 +300,15 @@ fn handle_feature(
             break;
         }
     }
+    //     }
+    // }
     Ok(())
 }
 
 fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> Result<Vec<u8>, SinkError> {
     let mut layers: BrownHashMap<String, LayerData> = BrownHashMap::new();
-    // let mut int_ring_buf = Vec::new();
-    // let mut int_ring_buf2 = Vec::new();
+    let mut int_ring_buf = Vec::new();
+    let mut int_ring_buf2 = Vec::new();
     let extent = 1 << default_detail;
     let bincode_config = bincode::config::standard();
 
@@ -277,105 +318,100 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> Result<Vec<u8
                 SinkError::FileWriter(format!("Failed to deserialize a sliced feature: {:?}", err))
             })?;
 
-        // let mpoly = feature.geometry;
-        // let mut int_mpoly = Polygon::from(value);
+        let mpoly = feature.geometry;
+        let mut int_mpoly: MultiPolygon = Default::default();
 
-        // for poly in &mpoly {
-        //     for (ri, ring) in poly.rings().into_iter().enumerate() {
-        //         int_ring_buf.clear();
-        //         int_ring_buf.extend(ring.into_iter().map(|c| {
-        //             let x = (c.x * extent as f64 + 0.5) as i16;
-        //             let y = (c.y * extent as f64 + 0.5) as i16;
-        //             [x, y]
-        //         }));
+        for poly in &mpoly {
+            for (ri, ring) in poly.rings().into_iter().enumerate() {
+                int_ring_buf.clear();
+                int_ring_buf.extend(ring.into_iter().map(|c| {
+                    let x = c.x * extent as f64 + 0.5;
+                    let y = c.y * extent as f64 + 0.5;
+                    [x, y]
+                }));
 
-        //         // some simplification
-        //         {
-        //             int_ring_buf2.clear();
-        //             int_ring_buf2.push(int_ring_buf[0]);
-        //             for c in int_ring_buf.windows(3) {
-        //                 let &[prev, curr, next] = c.try_into().unwrap();
+                // some simplification
+                {
+                    int_ring_buf2.clear();
+                    int_ring_buf2.push(int_ring_buf[0]);
+                    for c in int_ring_buf.windows(3) {
+                        let &[prev, curr, next] = c.try_into().unwrap();
 
-        //                 // Remove duplicate points
-        //                 if prev == curr {
-        //                     continue;
-        //                 }
+                        // Remove duplicate points
+                        if prev == curr {
+                            continue;
+                        }
 
-        //                 // Reject collinear points
-        //                 let [curr_x, curr_y] = curr;
-        //                 let [prev_x, prev_y] = prev;
-        //                 let [next_x, next_y] = next;
-        //                 if curr != next
-        //                     && ((next_y - prev_y) as i32 * (curr_x - prev_x) as i32).abs()
-        //                         == ((curr_y - prev_y) as i32 * (next_x - prev_x) as i32).abs()
-        //                 {
-        //                     continue;
-        //                 }
+                        // Reject collinear points
+                        let [curr_x, curr_y] = curr;
+                        let [prev_x, prev_y] = prev;
+                        let [next_x, next_y] = next;
+                        if curr != next
+                            && ((next_y - prev_y) as i32 * (curr_x - prev_x) as i32).abs()
+                                == ((curr_y - prev_y) as i32 * (next_x - prev_x) as i32).abs()
+                        {
+                            continue;
+                        }
 
-        //                 int_ring_buf2.push(curr);
-        //             }
-        //             int_ring_buf2.push(*int_ring_buf.last().unwrap());
-        //         }
+                        int_ring_buf2.push(curr);
+                    }
+                    int_ring_buf2.push(*int_ring_buf.last().unwrap());
+                }
 
-        //         match ri {
-        //             0 => int_mpoly.add_exterior(int_ring_buf2.drain(..)),
-        //             _ => int_mpoly.add_interior(int_ring_buf2.drain(..)),
-        //         }
-        //     }
-        // }
-
-        // let mut int_mpoly = mpoly.clone();
-
-        // // encode geometry
-        // let mut geom_enc = GeometryEncoder::new();
-        // for poly in &int_mpoly {
-        //     let exterior = poly.exterior();
-        //     // if exterior.signed_ring_area() > 0.0 {
-        //         geom_enc.add_ring(&exterior);
-        //         for interior in poly.interiors() {
-        //             if interior.is_cw() {
-        //                 geom_enc.add_ring(&interior);
-        //             }
-        //         }
-        //     // }
-        // }
-        // let geometry = geom_enc.into_vec();
-        // if geometry.is_empty() {
-        //     continue;
-        // }
-
-        let geom_enc = GeometryEncoder::new();
-        let geometry = geom_enc.into_vec(); // TODO
-
-        let mut id = None;
-        let mut tags: Vec<u32> = Vec::new();
-
-        let layer = if let nusamai_citygml::object::Value::Object(obj) = &feature.properties {
-            let layer = layers.entry_ref(obj.typename.as_ref()).or_default();
-
-            // Encode attributes as MVT tags
-            for (key, value) in &obj.attributes {
-                convert_properties(&mut tags, &mut layer.tags_enc, key, value);
+                let ls = LineString::new(
+                    int_ring_buf2
+                        .iter()
+                        .map(|c| Coordinate::new__(c[0], c[1], 0.0)) // TODO
+                        .collect(),
+                );
+                match ri {
+                    0 => int_mpoly.add_exterior(ls),
+                    _ => int_mpoly.add_interior(ls),
+                }
             }
+        }
 
-            // Make a MVT feature id (u64) by hashing the original feature id string.
-            id = obj.stereotype.id().map(|id| {
-                id.as_bytes()
-                    .iter()
-                    .fold(5381u64, |a, c| a.wrapping_mul(33) ^ *c as u64)
+        // encode geometry
+        let geom_enc = GeometryEncoder::new();
+        for poly in &int_mpoly {
+            let exterior = poly.exterior();
+            if exterior.signed_area3d() < 0.0 {
+                // geom_enc.add_ring(&exterior); // TODO
+                for interior in poly.interiors() {
+                    if interior.signed_area3d() > 0.0 {
+                        // geom_enc.add_ring(&interior); // TODO
+                    }
+                }
+            }
+        }
+        let geometry = geom_enc.into_vec();
+        if geometry.is_empty() {
+            continue;
+        }
+
+        let id = None;
+        let tags: Vec<u32> = Vec::new();
+
+        for (key, value) in &feature.properties {
+            let layer = layers.entry_ref(key.type_name()).or_default();
+            let mut tags_clone = tags.clone();
+            convert_properties(&mut tags_clone, &mut layer.tags_enc, key.type_name(), value);
+
+            // // Make a MVT feature id (u64) by hashing the original feature id string.
+            // id = obj.stereotype.id().map(|id| {
+            //     id.as_bytes()
+            //         .iter()
+            //         .fold(5381u64, |a, c| a.wrapping_mul(33) ^ *c as u64)
+            // }); // TODO
+
+            let geomery_cloned = geometry.clone();
+            layer.features.push(vector_tile::tile::Feature {
+                id,
+                tags: tags_clone,
+                r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
+                geometry: geomery_cloned,
             });
-
-            layer
-        } else {
-            layers.entry_ref("Unknown").or_default()
-        };
-
-        layer.features.push(vector_tile::tile::Feature {
-            id,
-            tags,
-            r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
-            geometry,
-        });
+        }
     }
 
     let layers = layers
@@ -417,7 +453,6 @@ pub struct GeometryEncoder {
 
 /// Utility for encoding MVT geometries.
 impl GeometryEncoder {
-    // TODO: with_capacity
     pub fn new() -> Self {
         Self {
             buf: Vec::new(),
@@ -623,8 +658,8 @@ struct LayerData {
 
 #[derive(Serialize, Deserialize)]
 struct SlicedFeature {
-    geometry: Vec<Polygon>,
-    properties: nusamai_citygml::object::Value,
+    geometry: MultiPolygon,
+    properties: HashMap<Attribute, AttributeValue>,
 }
 use super::vector_tile;
 use prost::Message;
@@ -633,44 +668,213 @@ pub fn convert_properties(
     tags: &mut Vec<u32>,
     tags_enc: &mut TagsEncoder,
     name: &str,
-    tree: &nusamai_citygml::object::Value,
+    tree: &AttributeValue,
 ) {
     match &tree {
-        nusamai_citygml::Value::String(v) => {
+        AttributeValue::Null => {
+            // ignore
+        }
+        AttributeValue::String(v) => {
             tags.extend(tags_enc.add(name, v.clone().into()));
         }
-        nusamai_citygml::Value::Code(v) => {
-            tags.extend(tags_enc.add(name, v.value().into()));
-        }
-        nusamai_citygml::Value::Integer(v) => {
+        AttributeValue::Bool(v) => {
             tags.extend(tags_enc.add(name, (*v).into()));
         }
-        nusamai_citygml::Value::NonNegativeInteger(v) => {
-            tags.extend(tags_enc.add(name, (*v).into()));
+        AttributeValue::Number(v) => {
+            if let Some(v) = v.as_u64() {
+                tags.extend(tags_enc.add(name, v.into()));
+            } else if let Some(v) = v.as_i64() {
+                tags.extend(tags_enc.add(name, v.into()));
+            } else if let Some(v) = v.as_f64() {
+                tags.extend(tags_enc.add(name, v.into()));
+            }
         }
-        nusamai_citygml::Value::Double(v) => {
-            tags.extend(tags_enc.add(name, (*v).into()));
+        AttributeValue::Array(_arr) => {
+            // ignore non-root attributes
         }
-        nusamai_citygml::Value::Measure(v) => {
-            tags.extend(tags_enc.add(name, v.value().into()));
+        AttributeValue::Bytes(_v) => {
+            // ignore non-root attributes
         }
-        nusamai_citygml::Value::Boolean(v) => {
-            tags.extend(tags_enc.add(name, (*v).into()));
+        AttributeValue::Map(obj) => {
+            for (key, value) in obj {
+                convert_properties(tags, tags_enc, key, value);
+            }
         }
-        nusamai_citygml::Value::Uri(v) => {
-            tags.extend(tags_enc.add(name, v.value().to_string().into()));
-        }
-        nusamai_citygml::Value::Date(v) => {
+        AttributeValue::DateTime(v) => {
             tags.extend(tags_enc.add(name, v.to_string().into()));
         }
-        nusamai_citygml::Value::Point(v) => {
-            tags.extend(tags_enc.add(name, format!("{:?}", v).into())); // FIXME
+    }
+}
+
+fn slice_polygon(
+    zoom: u8,
+    extent: u32,
+    buffer: u32,
+    poly: &reearth_flow_geometry::types::polygon::Polygon,
+    out: &mut HashMap<(u8, u32, u32), MultiPolygon>,
+) {
+    let z_scale = (1 << zoom) as f64;
+    let buf_width = buffer as f64 / extent as f64;
+    let mut new_ring_buffer: Vec<[f64; 2]> =
+        Vec::with_capacity(poly.exterior().into_iter().len() + 1);
+
+    // Slice along Y-axis
+    let y_range = {
+        let (min_y, max_y) = poly
+            .exterior()
+            .into_iter()
+            .fold((f64::MAX, f64::MIN), |(min_y, max_y), c| {
+                (min_y.min(c.y), max_y.max(c.y))
+            });
+        (min_y * z_scale).floor() as u32..(max_y * z_scale).ceil() as u32
+    };
+
+    let mut y_sliced_polys = Vec::with_capacity(y_range.len());
+
+    for yi in y_range.clone() {
+        let k1 = (yi as f64 - buf_width) / z_scale;
+        let k2 = ((yi + 1) as f64 + buf_width) / z_scale;
+
+        let y_sliced_poly: Polygon = Polygon::new(LineString::new(vec![]), vec![]);
+
+        for ring in poly.rings() {
+            if ring.coords_count() == 0 {
+                continue;
+            }
+
+            new_ring_buffer.clear();
+            ring.into_iter()
+                .fold(None, |a, b| {
+                    let Some(a) = a else { return Some(b) };
+
+                    if a.y < k1 {
+                        if b.y > k1 {
+                            let x = (b.x - a.x) * (k1 - a.y) / (b.y - a.y) + a.x;
+                            new_ring_buffer.push([x, k1])
+                        }
+                    } else if a.y > k2 {
+                        if b.y < k2 {
+                            let x = (b.x - a.x) * (k2 - a.y) / (b.y - a.y) + a.x;
+                            new_ring_buffer.push([x, k2])
+                        }
+                    } else {
+                        new_ring_buffer.push([a.x, a.y])
+                    }
+
+                    if b.y < k1 && a.y > k1 {
+                        let x = (b.x - a.x) * (k1 - a.y) / (b.y - a.y) + a.x;
+                        new_ring_buffer.push([x, k1])
+                    } else if b.y > k2 && a.y < k2 {
+                        let x = (b.x - a.x) * (k2 - a.y) / (b.y - a.y) + a.x;
+                        new_ring_buffer.push([x, k2])
+                    }
+
+                    Some(b)
+                })
+                .unwrap();
+
+            // y_sliced_poly.add_ring(new_ring_buffer.iter().copied()); // TODO
         }
-        nusamai_citygml::Value::Array(_arr) => {
-            // ignore non-root attributes
-        }
-        nusamai_citygml::Value::Object(_obj) => {
-            // ignore non-root attributes
+
+        y_sliced_polys.push(y_sliced_poly);
+    }
+
+    let mut norm_coords_buf = Vec::new();
+
+    // Slice along X-axis
+    for (yi, y_sliced_poly) in y_range.zip(y_sliced_polys.iter()) {
+        let x_range = {
+            let (min_x, max_x) = y_sliced_poly
+                .exterior()
+                .into_iter()
+                .fold((f64::MAX, f64::MIN), |(min_x, max_x), c| {
+                    (min_x.min(c.x), max_x.max(c.x))
+                });
+            (min_x * z_scale).floor() as i32..(max_x * z_scale).ceil() as i32
+        };
+
+        for xi in x_range {
+            let k1 = (xi as f64 - buf_width) / z_scale;
+            let k2 = ((xi + 1) as f64 + buf_width) / z_scale;
+
+            let key = (
+                zoom,
+                xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
+                yi,
+            );
+            let tile_mpoly = out.entry(key).or_default();
+
+            for (ri, ring) in y_sliced_poly.rings().into_iter().enumerate() {
+                if ring.coords_count() == 0 {
+                    continue;
+                }
+
+                new_ring_buffer.clear();
+                ring.into_iter()
+                    .fold(None, |a, b| {
+                        let Some(a) = a else { return Some(b) };
+
+                        if a.x < k1 {
+                            if b.x > k1 {
+                                let y = (b.y - a.y) * (k1 - a.x) / (b.x - a.x) + a.y;
+                                new_ring_buffer.push([k1, y])
+                            }
+                        } else if a.x > k2 {
+                            if b.x < k2 {
+                                let y = (b.y - a.y) * (k2 - a.x) / (b.x - a.x) + a.y;
+                                new_ring_buffer.push([k2, y])
+                            }
+                        } else {
+                            new_ring_buffer.push([a.x, a.y])
+                        }
+
+                        if b.x < k1 && a.x > k1 {
+                            let y = (b.y - a.y) * (k1 - a.x) / (b.x - a.x) + a.y;
+                            new_ring_buffer.push([k1, y])
+                        } else if b.x > k2 && a.x < k2 {
+                            let y = (b.y - a.y) * (k2 - a.x) / (b.x - a.x) + a.y;
+                            new_ring_buffer.push([k2, y])
+                        }
+
+                        Some(b)
+                    })
+                    .unwrap();
+
+                // get integer coordinates and simplify the ring
+                {
+                    norm_coords_buf.clear();
+                    norm_coords_buf.extend(new_ring_buffer.iter().map(|&[x, y]| {
+                        let tx = x * z_scale - xi as f64;
+                        let ty = y * z_scale - yi as f64;
+                        [tx, ty]
+                    }));
+
+                    // remove closing point if exists
+                    if norm_coords_buf.len() >= 2
+                        && norm_coords_buf[0] == *norm_coords_buf.last().unwrap()
+                    {
+                        norm_coords_buf.pop();
+                    }
+
+                    if norm_coords_buf.len() < 3 {
+                        continue;
+                    }
+                }
+
+                // let mut ring = LineString::from(norm_coords_buf);
+                let ls = LineString::new(
+                    norm_coords_buf
+                        .iter()
+                        .map(|c| Coordinate::new__(c[0], c[1], 0.0)) // TODO
+                        .collect(),
+                );
+                // ls.reverse_inplace(); // TODO
+
+                match ri {
+                    0 => tile_mpoly.add_exterior(ls),
+                    _ => tile_mpoly.add_interior(ls),
+                };
+            }
         }
     }
 }
