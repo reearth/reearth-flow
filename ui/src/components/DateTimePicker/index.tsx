@@ -1,15 +1,17 @@
+import { Calendar } from "@phosphor-icons/react";
 import { enUS, ja, es, fr, zhCN, Locale } from "date-fns/locale";
 import { useEffect, useState } from "react";
 import DatePicker, { registerLocale } from "react-datepicker";
 
-import "react-datepicker/dist/react-datepicker.css";
-import "./styles.css";
 import {
   AvailableLanguage,
   availableLanguages,
   useLang,
   useT,
 } from "@flow/lib/i18n";
+
+import "react-datepicker/dist/react-datepicker.css";
+import "./styles.css";
 
 type Props = {
   className?: string;
@@ -37,15 +39,18 @@ const DateTimePicker: React.FC<Props> = ({ className }) => {
 
   return (
     <DatePicker
-      className={`w-full rounded-md border bg-transparent px-3 py-2 text-sm font-extralight focus-visible:border-none ${className}`}
+      className={`w-full rounded-md border bg-transparent text-sm font-extralight focus-visible:border-none ${className}`}
       selected={startDate}
       dateFormat="yyyy-MM-dd HH:mm"
       timeFormat="HH:mm"
       timeIntervals={15}
-      showTwoColumnMonthYearPicker
       timeCaption={t("Time")}
+      popperPlacement="bottom-start"
+      shouldCloseOnSelect={false}
       showTimeSelect
-      popperPlacement="right"
+      showIcon
+      toggleCalendarOnIconClick
+      icon={<Calendar />}
       locale={currentLang}
       showPopperArrow={false}
       onChange={(date) => date && setStartDate(date)}
