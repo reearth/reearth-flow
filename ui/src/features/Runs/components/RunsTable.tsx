@@ -143,8 +143,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
                     checked={column.getIsVisible()}
                     onCheckedChange={(value) =>
                       column.toggleVisibility(!!value)
-                    }
-                  >
+                    }>
                     {column.id}
                   </DropdownMenuCheckboxItem>
                 );
@@ -180,8 +179,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
                   className="h-10 cursor-pointer transition-all hover:bg-primary"
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => row.toggleSelected()}
-                  onSelect={(s) => console.log("S", s)}
-                >
+                  onSelect={(s) => console.log("S", s)}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(
@@ -196,8 +194,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+                  className="h-24 text-center">
                   {t("No Results")}
                 </TableCell>
               </TableRow>

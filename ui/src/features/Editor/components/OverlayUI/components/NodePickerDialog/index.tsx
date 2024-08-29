@@ -67,7 +67,7 @@ const NodePickerDialog: React.FC<Props> = ({
       };
       onNodesChange(nodes.concat(newNode));
       onClose();
-    }
+    },
   );
 
   const getFilteredActions = useCallback(
@@ -79,11 +79,11 @@ const NodePickerDialog: React.FC<Props> = ({
               (result += (
                 Array.isArray(value) ? value.join() : value
               ).toLowerCase()),
-            ""
+            "",
           )
-          .includes(filter.toLowerCase())
+          .includes(filter.toLowerCase()),
       ),
-    []
+    [],
   );
 
   // Don't worry too much about this implementation. It's only placeholder till we get an actual one using API
@@ -95,7 +95,7 @@ const NodePickerDialog: React.FC<Props> = ({
 
     const filteredActions = getFilteredActions(
       filter,
-      rawActions?.byType[openedActionType.nodeType]
+      rawActions?.byType[openedActionType.nodeType],
     );
     setActions(filteredActions);
   }, 200);
@@ -105,7 +105,7 @@ const NodePickerDialog: React.FC<Props> = ({
       <DialogContent>
         <DialogTitle>{t("Choose action")}</DialogTitle>
         <Input
-          className="mx-auto w-full rounded-none border-x-0 border-t-0 border-zinc-700 bg-zinc-800 focus-visible:ring-0"
+          className="mx-auto w-full rounded-none border-x-0 border-t-0 border-zinc-700 bg-secondary focus-visible:ring-0"
           placeholder={t("Search")}
           autoFocus
           onChange={(e) => handleSearch(e.target.value)}

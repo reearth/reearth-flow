@@ -63,8 +63,7 @@ const WorkspaceSettings: React.FC = () => {
             <div
               key={id}
               className={`flex cursor-pointer items-center gap-2 rounded border-l-2 border-transparent px-2 py-1 hover:bg-accent ${selectedTab === id ? "bg-accent" : undefined}`}
-              onClick={() => handleTabChange(id)}
-            >
+              onClick={() => handleTabChange(id)}>
               {icon}
               <p className="font-extralight">{name}</p>
             </div>

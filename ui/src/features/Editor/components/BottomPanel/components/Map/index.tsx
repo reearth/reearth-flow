@@ -66,8 +66,7 @@ const Map: React.FC = () => {
             variant="ghost"
             size="icon"
             key={b}
-            onClick={() => sceneMode !== b && setSceneMode(b)}
-          >
+            onClick={() => sceneMode !== b && setSceneMode(b)}>
             {b}
           </Button>
         ))}

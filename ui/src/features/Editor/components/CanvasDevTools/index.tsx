@@ -21,22 +21,19 @@ export default function DevTools() {
         <DevToolButton
           setActive={setNodeInspectorActive}
           active={nodeInspectorActive}
-          title="Toggle Node Inspector"
-        >
+          title="Toggle Node Inspector">
           Node Inspector
         </DevToolButton>
         <DevToolButton
           setActive={setChangeLoggerActive}
           active={changeLoggerActive}
-          title="Toggle Change Logger"
-        >
+          title="Toggle Change Logger">
           Change Logger
         </DevToolButton>
         <DevToolButton
           setActive={setViewportLoggerActive}
           active={viewportLoggerActive}
-          title="Toggle Viewport Logger"
-        >
+          title="Toggle Viewport Logger">
           Viewport Logger
         </DevToolButton>
       </div>
@@ -64,8 +61,7 @@ function DevToolButton({
         setActive((a) => !a);
       }}
       className={active ? "active" : ""}
-      {...rest}
-    >
+      {...rest}>
       {children}
     </button>
   );

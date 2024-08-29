@@ -110,7 +110,7 @@ export default ({
       screenToFlowPosition,
       onNodesChange,
       onNodePickerOpen,
-    ]
+    ],
   );
 
   return { handleNodeDragOver, handleNodeDrop };

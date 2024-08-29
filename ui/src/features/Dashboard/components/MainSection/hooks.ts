@@ -23,7 +23,7 @@ export default ({ workspace }: { workspace: Workspace }) => {
     string | undefined
   >(undefined);
   const [editProject, setEditProject] = useState<undefined | Project>(
-    undefined
+    undefined,
   );
 
   const handleProjectSelect = (p: Project) => {
@@ -72,7 +72,7 @@ export default ({ workspace }: { workspace: Workspace }) => {
         }
         return projects;
       }, [] as Project[]),
-    [pages]
+    [pages],
   );
 
   // Auto fills the page

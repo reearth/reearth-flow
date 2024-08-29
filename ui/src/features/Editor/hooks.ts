@@ -23,7 +23,7 @@ export default () => {
         setOpenPanel(panel);
       }
     },
-    [openPanel]
+    [openPanel],
   );
 
   const handleWorkflowIdChange = useCallback(
@@ -31,7 +31,7 @@ export default () => {
       if (!id) return setCurrentWorkflowId(undefined);
       setCurrentWorkflowId(id);
     },
-    [setCurrentWorkflowId]
+    [setCurrentWorkflowId],
   );
 
   const {
@@ -52,7 +52,7 @@ export default () => {
 
   // Can have only one node locked at a time (locally)
   const [locallyLockedNode, setLocallyLockedNode] = useState<Node | undefined>(
-    undefined
+    undefined,
   );
 
   // consider making a node context and supplying vars and functions like this to the nodes that way
@@ -77,16 +77,16 @@ export default () => {
             });
 
             setLocallyLockedNode((lln) =>
-              lln?.id === newNode.id ? undefined : newNode
+              lln?.id === newNode.id ? undefined : newNode,
             );
 
             return newNode;
           }
           return n;
-        })
+        }),
       );
     },
-    [getNodes, handleNodesUpdate]
+    [getNodes, handleNodesUpdate],
   );
 
   const [hoveredDetails, setHoveredDetails] = useState<
@@ -100,20 +100,20 @@ export default () => {
   const handleNodePickerOpen = useCallback(
     (position?: XYPosition, nodeType?: ActionNodeType) => {
       setNodePickerOpen(
-        !position || !nodeType ? undefined : { position, nodeType }
+        !position || !nodeType ? undefined : { position, nodeType },
       );
     },
-    []
+    [],
   );
 
   const handleNodePickerClose = useCallback(
     () => setNodePickerOpen(undefined),
-    []
+    [],
   );
 
   const hoverActionDebounce = cancellableDebounce(
     (callback: () => void) => callback(),
-    100
+    100,
   );
 
   const handleNodeHover = useCallback(
@@ -125,7 +125,7 @@ export default () => {
         setHoveredDetails(node);
       }
     },
-    [hoveredDetails, hoverActionDebounce]
+    [hoveredDetails, hoverActionDebounce],
   );
 
   const handleEdgeHover = useCallback(
@@ -136,7 +136,7 @@ export default () => {
         setHoveredDetails(edge);
       }
     },
-    [hoveredDetails]
+    [hoveredDetails],
   );
 
   useShortcuts([

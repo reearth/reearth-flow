@@ -28,7 +28,7 @@ const Runs: React.FC = () => {
       navigate({
         to: `/workspaces/${currentWorkspace?.id}/runs/${run.id}`,
       }),
-    [currentWorkspace, navigate]
+    [currentWorkspace, navigate],
   );
 
   useEffect(() => {
@@ -43,7 +43,7 @@ const Runs: React.FC = () => {
       selectRun(undefined);
       navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/${tab}` });
     },
-    [currentWorkspace, navigate]
+    [currentWorkspace, navigate],
   );
 
   const runs = useMemo(
@@ -55,7 +55,7 @@ const Runs: React.FC = () => {
           return run.status === "completed" || run.status === "failed";
         return true;
       }),
-    [tab]
+    [tab],
   );
 
   const statusLabels = useMemo(
@@ -65,7 +65,7 @@ const Runs: React.FC = () => {
       queued: t("Queued runs"),
       all: t("All runs"),
     }),
-    [t]
+    [t],
   );
 
   const statuses: { id: Tab; name: string; component?: React.ReactNode }[] =
@@ -84,7 +84,7 @@ const Runs: React.FC = () => {
           name: t("Queued"),
         },
       ],
-      [t]
+      [t],
     );
 
   return (
@@ -97,8 +97,7 @@ const Runs: React.FC = () => {
             <Button
               className="gap-1"
               size="sm"
-              onClick={() => handleTabChange("manual")}
-            >
+              onClick={() => handleTabChange("manual")}>
               <Play />
               <p className="font-extralight">{t("New Run")}</p>
             </Button>
@@ -106,8 +105,7 @@ const Runs: React.FC = () => {
           <div className="flex-1">
             <div
               className={`mb-1 rounded-md border-transparent px-2 py-[2px] hover:cursor-pointer hover:bg-accent ${tab === "all" ? "bg-accent text-secondary-foreground" : undefined}`}
-              onClick={() => handleTabChange("all")}
-            >
+              onClick={() => handleTabChange("all")}>
               <p className="font-thin">{t("All")}</p>
             </div>
             <div className="-mx-2 border-b" />
@@ -116,8 +114,7 @@ const Runs: React.FC = () => {
                 <div
                   key={id}
                   className={`-mx-2 rounded-md border-l-2 border-transparent px-2 py-[2px] hover:cursor-pointer hover:bg-accent ${tab === id ? "bg-accent text-secondary-foreground" : undefined}`}
-                  onClick={() => handleTabChange(id)}
-                >
+                  onClick={() => handleTabChange(id)}>
                   <p className="text-sm font-thin">{name}</p>
                 </div>
               ))}
