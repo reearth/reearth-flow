@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Feature, Geometry, GeometryFeatureType, GeometryValue};
+use reearth_flow_types::{Feature, Geometry, GeometryType, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -109,7 +109,7 @@ impl GeometryFilterParam {
             .map(|name| Port::new(to_camel_case(name)))
             .collect::<Vec<Port>>();
         result.extend(
-            GeometryFeatureType::all_type_names()
+            GeometryType::all_type_names()
                 .iter()
                 .map(|name| Port::new(to_camel_case(name)))
                 .collect::<Vec<Port>>(),
@@ -241,15 +241,17 @@ fn filter_geometry_type(
             fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
         }
         GeometryValue::FlowGeometry3D(geometry) => {
+            let geometry_type: GeometryType = geometry.into();
             fw.send(ctx.new_with_feature_and_port(
                 feature.clone(),
-                Port::new(to_camel_case(geometry.name())),
+                Port::new(to_camel_case(geometry_type.name())),
             ))
         }
         GeometryValue::FlowGeometry2D(geometry) => {
+            let geometry_type: GeometryType = geometry.into();
             fw.send(ctx.new_with_feature_and_port(
                 feature.clone(),
-                Port::new(to_camel_case(geometry.name())),
+                Port::new(to_camel_case(geometry_type.name())),
             ))
         }
         GeometryValue::CityGmlGeometry(geometry) => {
