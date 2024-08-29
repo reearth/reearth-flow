@@ -42,7 +42,7 @@ const ProjectCard: React.FC<Props> = ({
       className={`group relative cursor-pointer border-transparent bg-secondary ${currentProject && currentProject.id === id ? "border-border" : "hover:border-border"}`}
       key={id}
       onClick={() => onProjectSelect(project)}>
-      <CardContent className="flex h-[120px] items-center justify-center rounded-t-lg bg-red-800/10 p-0">
+      <CardContent className="flex h-[120px] items-center justify-center rounded-t-lg bg-logo/50 p-0">
         <FlowLogo
           className={`size-[40px] text-zinc-300 ${description ? "group:hover:opacity-90" : ""}`}
         />
@@ -59,7 +59,7 @@ const ProjectCard: React.FC<Props> = ({
         className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-lg group-hover:flex group-hover:flex-col`}>
         <div
           className={`flex h-[120px] items-center justify-center rounded-t-lg bg-black/30 p-4 ${description ? "backdrop-blur-sm" : ""}`}>
-          <p className="line-clamp-4 overflow-hidden text-ellipsis whitespace-normal break-words text-center text-sm font-light text-zinc-300">
+          <p className="line-clamp-4 overflow-hidden text-ellipsis whitespace-normal break-words text-center text-sm font-light">
             {description}
           </p>
         </div>
@@ -68,7 +68,7 @@ const ProjectCard: React.FC<Props> = ({
             modal={false}
             onOpenChange={(o) => setPersistOverlay(o)}>
             <DropdownMenuTrigger
-              className="flex h-full w-[30px] items-center justify-center rounded-br-lg text-zinc-400 hover:bg-zinc-800"
+              className="flex h-full w-[30px] items-center justify-center rounded-br-lg hover:bg-secondary"
               onClick={(e) => e.stopPropagation()}>
               <DotsThreeVertical className="size-[24px]" />
             </DropdownMenuTrigger>

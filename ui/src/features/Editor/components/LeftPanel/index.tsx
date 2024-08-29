@@ -162,14 +162,14 @@ const LeftPanel: React.FC<Props> = ({
           <nav className="flex flex-col items-center gap-4 p-2">
             <Link
               to={`/workspace/${workspaceId}`}
-              className="flex shrink-0 items-center justify-center gap-2 rounded bg-red-800/50 p-2 text-lg font-semibold hover:bg-red-800/80 md:size-8 md:text-base">
+              className="flex shrink-0 items-center justify-center gap-2 rounded bg-logo/50 p-2 text-lg font-semibold hover:bg-logo/80 md:size-8 md:text-base">
               <FlowLogo className="size-5" />
               <span className="sr-only">{t("Dashboard")}</span>
             </Link>
             {tabs.map((tab) => (
               <IconButton
                 key={tab.id}
-                className={`text-popover-foreground/50 flex size-9 items-center justify-center rounded transition-colors hover:text-popover-foreground md:size-8 ${selectedTab === tab.id && "bg-popover text-popover-foreground"}`}
+                className={`flex size-9 items-center justify-center rounded text-popover-foreground/50 transition-colors hover:text-popover-foreground md:size-8 ${selectedTab === tab.id && "bg-popover text-popover-foreground"}`}
                 icon={tab.icon}
                 onClick={() => handleTabChange(tab.id)}
               />
@@ -177,7 +177,7 @@ const LeftPanel: React.FC<Props> = ({
           </nav>
           <nav className="mt-auto flex flex-col items-center gap-4 p-2">
             <MagnifyingGlass
-              className="hover: text-popover-foreground/50 size-6 cursor-pointer hover:text-popover-foreground"
+              className="size-6 cursor-pointer text-popover-foreground/50 hover:text-popover-foreground"
               weight="thin"
               onClick={() =>
                 alert(

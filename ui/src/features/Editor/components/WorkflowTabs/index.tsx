@@ -44,7 +44,7 @@ const WorkflowTabs: React.FC<Props> = ({
           className={`mx-1 flex w-[135px] cursor-pointer items-center justify-center rounded px-[6px] py-[2px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"}`}
           onClick={() => onWorkflowChange(mainWorkflow?.id)}>
           <p
-            className={`select-none truncate text-center text-xs font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-primary/50"}`}>
+            className={`select-none truncate text-center text-xs font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-accent-foreground"}`}>
             {t("Main Workflow")}
           </p>
         </div>
@@ -55,15 +55,15 @@ const WorkflowTabs: React.FC<Props> = ({
               <Tooltip key={sw.id} delayDuration={1500}>
                 <TooltipTrigger asChild>
                   <div
-                    className={`relative flex w-[135px] items-center justify-center rounded py-[2px] ${currentWorkflowId === sw?.id ? "bg-[#a21caf]/70 text-accent-foreground" : "hover:bg-[#a21caf]/30"} group cursor-pointer`}
+                    className={`relative flex w-[135px] items-center justify-center rounded py-[2px] ${currentWorkflowId === sw?.id ? "bg-node-entrance/70 text-accent-foreground" : "hover:bg-node-entrance/30"} group cursor-pointer`}
                     onClick={() => onWorkflowChange(sw.id)}
                     onDoubleClick={() => console.log("Double Click")}>
                     <p
-                      className={`group-hover:text-primary/50 select-none truncate px-[15px] text-center text-xs font-extralight ${currentWorkflowId === sw?.id && "text-primary/50"}`}>
+                      className={`select-none truncate px-[15px] text-center text-xs font-extralight group-hover:text-accent-foreground ${currentWorkflowId === sw?.id && "text-accent-foreground"}`}>
                       {sw.name}
                     </p>
                     <X
-                      className="hover:bg-primary/50 absolute right-[4px] hidden size-[12px] group-hover:block"
+                      className="absolute right-[4px] hidden size-[12px] hover:bg-accent group-hover:block"
                       weight="bold"
                       onClick={handleWorkflowClose(sw.id)}
                     />

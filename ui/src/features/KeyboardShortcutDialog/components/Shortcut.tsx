@@ -38,7 +38,7 @@ const Shortcut = ({ shortcut }: { shortcut: Shortcut }) => {
 };
 
 const KeyStroke = ({ keystroke }: { keystroke?: string }) => (
-  <div className="flex size-8 items-center justify-center rounded bg-zinc-700">
+  <div className="flex size-8 items-center justify-center rounded bg-accent">
     <p className="text-sm font-extralight">{keystroke}</p>
   </div>
 );
