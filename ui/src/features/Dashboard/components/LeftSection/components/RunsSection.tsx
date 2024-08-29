@@ -24,7 +24,7 @@ const RunsSection: React.FC = () => {
           className="flex h-[30px] gap-2"
           variant="outline"
           onClick={() =>
-            navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/manual` })
+            navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/new` })
           }>
           <Play weight="thin" />
           <p className="text-xs font-light">{t("New Run")}</p>

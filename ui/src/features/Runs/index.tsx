@@ -13,7 +13,7 @@ import { NewRun, StatusContent, RunDetails } from "./components";
 
 type Status = "running" | "queued" | "completed";
 
-type Tab = Status | "manual" | "all";
+type Tab = Status | "new" | "all";
 
 const Runs: React.FC = () => {
   const t = useT();
@@ -97,7 +97,7 @@ const Runs: React.FC = () => {
             <Button
               className="gap-1"
               size="sm"
-              onClick={() => handleTabChange("manual")}>
+              onClick={() => handleTabChange("new")}>
               <Play />
               <p className="font-extralight">{t("New Run")}</p>
             </Button>
@@ -123,7 +123,7 @@ const Runs: React.FC = () => {
         </div>
         <div className="flex flex-1 flex-col">
           <div className="flex-1">
-            {tab === "manual" ? (
+            {tab === "new" ? (
               <NewRun />
             ) : isList(tab) ? (
               <StatusContent
