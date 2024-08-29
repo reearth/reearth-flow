@@ -65,8 +65,7 @@ function NodeInfo({
         position: "absolute",
         transform: `translate(${x}px, ${y + height}px)`,
         width: width * 2,
-      }}
-    >
+      }}>
       <div>id: {id}</div>
       <div>type: {type}</div>
       <div>selected: {selected ? "true" : "false"}</div>

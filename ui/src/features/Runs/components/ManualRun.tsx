@@ -35,7 +35,7 @@ const ManualRun: React.FC = () => {
         }
         return projects;
       }, [] as Project[]),
-    [pages]
+    [pages],
   );
 
   useEffect(() => {
@@ -73,10 +73,9 @@ const ManualRun: React.FC = () => {
             <Select
               onValueChange={(pid) =>
                 selectProject(
-                  currentWorkspace?.projects?.find((p) => p.id === pid)
+                  currentWorkspace?.projects?.find((p) => p.id === pid),
                 )
-              }
-            >
+              }>
               <SelectTrigger>
                 <SelectValue
                   placeholder={t("Select from published projects")}

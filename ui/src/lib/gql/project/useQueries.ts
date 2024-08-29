@@ -35,7 +35,7 @@ export const useQueries = () => {
       description: project.description,
       workspaceId: project.workspaceId,
     }),
-    []
+    [],
   );
 
   const createProjectMutation = useMutation({

@@ -105,7 +105,7 @@ const ActionsList: React.FC<Props> = ({
         },
       };
       onNodesChange(nodes.concat(newNode));
-    }
+    },
   );
 
   const handleActionSelect = (name?: string) => {
@@ -121,11 +121,11 @@ const ActionsList: React.FC<Props> = ({
               (result += (
                 Array.isArray(value) ? value.join() : value
               ).toLowerCase()),
-            ""
+            "",
           )
-          .includes(filter.toLowerCase())
+          .includes(filter.toLowerCase()),
       ),
-    []
+    [],
   );
 
   // Don't worry too much about this implementation. It's only placeholder till we get an actual one using API
@@ -147,11 +147,11 @@ const ActionsList: React.FC<Props> = ({
           (obj: Record<string, Action[] | undefined>, key) => {
             obj[key] = getFilteredActions(
               filter,
-              actionsSegregatedData[rootKey][key]
+              actionsSegregatedData[rootKey][key],
             );
             return obj;
           },
-          {}
+          {},
         );
         return obj;
       }, {} as Segregated);
@@ -182,8 +182,7 @@ const ActionsList: React.FC<Props> = ({
           <TabsContent
             className="dark flex flex-col gap-1"
             key={order}
-            value={order}
-          >
+            value={order}>
             {Array.isArray(actions) ? (
               actions.map((action) => (
                 <Fragment key={action.name}>

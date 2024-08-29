@@ -77,16 +77,14 @@ const StatusContent: React.FC<Props> = ({
               <p>
                 {t("Status:")}{" "}
                 <span
-                  className={`font-normal ${selectedRun.status === "failed" ? "font-bold uppercase text-red-600" : undefined}`}
-                >
+                  className={`font-normal ${selectedRun.status === "failed" ? "font-bold uppercase text-red-600" : undefined}`}>
                   {selectedRun.status}
                 </span>
               </p>
               <Collapsible
                 className="overflow-auto"
                 open={showLogs}
-                onOpenChange={setShowLogs}
-              >
+                onOpenChange={setShowLogs}>
                 <CollapsibleTrigger className="flex w-full justify-between">
                   <>
                     <p>{t("Logs:")}</p>

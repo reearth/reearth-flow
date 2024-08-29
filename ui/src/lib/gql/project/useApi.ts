@@ -25,7 +25,7 @@ export const useProject = () => {
   } = useQueries();
 
   const createProject = async (
-    input: CreateProjectInput
+    input: CreateProjectInput,
   ): Promise<CreateProject> => {
     const { mutateAsync, ...rest } = createProjectMutation;
     try {
@@ -41,7 +41,7 @@ export const useProject = () => {
   };
 
   const useGetWorkspaceProjectsInfinite = (
-    workspaceId?: string
+    workspaceId?: string,
   ): GetWorkspaceProjects => {
     const { data, ...rest } = useGetProjectsInfiniteQuery(workspaceId);
     return {
@@ -59,7 +59,7 @@ export const useProject = () => {
   };
 
   const updateProject = async (
-    input: UpdateProjectInput
+    input: UpdateProjectInput,
   ): Promise<UpdateProject> => {
     const { mutateAsync, ...rest } = updateProjectMutation;
     try {
@@ -72,7 +72,7 @@ export const useProject = () => {
 
   const deleteProject = async (
     projectId: string,
-    workspaceId: string
+    workspaceId: string,
   ): Promise<DeleteProject> => {
     const { mutateAsync, ...rest } = deleteProjectMutation;
     try {
@@ -80,7 +80,7 @@ export const useProject = () => {
       toast({
         title: t("Successful Deletion"),
         description: t(
-          "Project has been successfully deleted from your workspace."
+          "Project has been successfully deleted from your workspace.",
         ),
         variant: "destructive",
       });

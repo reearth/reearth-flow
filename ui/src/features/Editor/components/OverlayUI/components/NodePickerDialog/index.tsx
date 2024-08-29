@@ -67,7 +67,7 @@ const NodePickerDialog: React.FC<Props> = ({
       };
       onNodesChange(nodes.concat(newNode));
       onClose();
-    }
+    },
   );
 
   const getFilteredActions = useCallback(
@@ -79,11 +79,11 @@ const NodePickerDialog: React.FC<Props> = ({
               (result += (
                 Array.isArray(value) ? value.join() : value
               ).toLowerCase()),
-            ""
+            "",
           )
-          .includes(filter.toLowerCase())
+          .includes(filter.toLowerCase()),
       ),
-    []
+    [],
   );
 
   // Don't worry too much about this implementation. It's only placeholder till we get an actual one using API
@@ -95,7 +95,7 @@ const NodePickerDialog: React.FC<Props> = ({
 
     const filteredActions = getFilteredActions(
       filter,
-      rawActions?.byType[openedActionType.nodeType]
+      rawActions?.byType[openedActionType.nodeType],
     );
     setActions(filteredActions);
   }, 200);

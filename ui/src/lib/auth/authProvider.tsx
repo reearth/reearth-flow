@@ -35,8 +35,7 @@ export const AuthProvider: React.FC<{ children?: ReactNode }> = ({
       }}
       useRefreshTokens
       useRefreshTokensFallback
-      cacheLocation="localstorage"
-    >
+      cacheLocation="localstorage">
       <Auth0Wrapper>{children}</Auth0Wrapper>
     </Auth0Provider>
   ) : null;
