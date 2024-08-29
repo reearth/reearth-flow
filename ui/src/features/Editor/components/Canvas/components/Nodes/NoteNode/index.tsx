@@ -67,8 +67,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
         />
       )}
       {/* <div className={`bg-orange-400/60 w-[${width}px] h-[${height}px]`} style={{ width, height }}> */}
-      {/* TODO: bg-secondary/50 will work when #448 is merged */}
-      <div className={`bg-secondary/50 z-0 h-full rounded-sm p-2`}>
+      <div className={`z-0 h-full rounded-sm bg-secondary/50 p-2`}>
         <textarea
           className="nowheel size-full resize-none bg-transparent focus-visible:outline-none"
           defaultValue={data.content}

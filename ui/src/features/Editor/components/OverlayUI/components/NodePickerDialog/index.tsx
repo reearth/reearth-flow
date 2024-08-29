@@ -105,7 +105,7 @@ const NodePickerDialog: React.FC<Props> = ({
       <DialogContent>
         <DialogTitle>{t("Choose action")}</DialogTitle>
         <Input
-          className="mx-auto w-full rounded-none border-x-0 border-t-0 border-zinc-700 bg-zinc-800 focus-visible:ring-0"
+          className="mx-auto w-full rounded-none border-x-0 border-t-0 border-zinc-700 bg-secondary focus-visible:ring-0"
           placeholder={t("Search")}
           autoFocus
           onChange={(e) => handleSearch(e.target.value)}
