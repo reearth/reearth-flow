@@ -14,3 +14,8 @@ out.json
 .idea
 .vscode
 docs/mdbook/book
+
+tools/cesium/3dtiles/**
+!tools/cesium/3dtiles/.gitkeep
+tools/mvt/dist/**
+!tools/mvt/dist/.gitkeep

@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use super::coordnum::CoordNum;
 use super::no_value::NoValue;
 use super::point::Point;
+use super::traits::Elevation;
+use crate::algorithm::GeoFloat;
 use crate::coord;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash, Default)]
@@ -39,6 +41,11 @@ impl<T: CoordNum, Z: CoordNum> Coordinate<T, Z> {
     #[inline]
     pub fn is_3d(&self) -> bool {
         !self.is_2d()
+    }
+
+    #[inline]
+    pub fn is_z_zero(&self) -> bool {
+        self.is_3d() && self.z.is_zero()
     }
 }
 
@@ -129,30 +136,30 @@ impl<T: CoordNum> From<Coordinate<T, T>> for [T; 3] {
     }
 }
 
-impl From<NaPoint2<f64>> for Coordinate2D<f64> {
+impl<T: GeoFloat + 'static> From<NaPoint2<T>> for Coordinate2D<T> {
     #[inline]
-    fn from(p: NaPoint2<f64>) -> Self {
+    fn from(p: NaPoint2<T>) -> Self {
         Self::new_(p.x, p.y)
     }
 }
 
-impl From<Coordinate2D<f64>> for NaPoint2<f64> {
+impl<T: GeoFloat + 'static> From<Coordinate2D<T>> for NaPoint2<T> {
     #[inline]
-    fn from(p: Coordinate2D<f64>) -> Self {
+    fn from(p: Coordinate2D<T>) -> Self {
         Self::new(p.x, p.y)
     }
 }
 
-impl From<NaPoint3<f64>> for Coordinate3D<f64> {
+impl<T: GeoFloat + 'static> From<NaPoint3<T>> for Coordinate3D<T> {
     #[inline]
-    fn from(p: NaPoint3<f64>) -> Self {
+    fn from(p: NaPoint3<T>) -> Self {
         Self::new__(p.x, p.y, p.z)
     }
 }
 
-impl From<Coordinate3D<f64>> for NaPoint3<f64> {
+impl<T: GeoFloat + 'static> From<Coordinate3D<T>> for NaPoint3<T> {
     #[inline]
-    fn from(p: Coordinate3D<f64>) -> Self {
+    fn from(p: Coordinate3D<T>) -> Self {
         Self::new(p.x, p.y, p.z)
     }
 }
@@ -394,5 +401,16 @@ where
             1 => &mut self.y,
             _ => unreachable!(),
         }
+    }
+}
+
+impl<T, Z> Elevation for Coordinate<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.z.is_zero()
     }
 }

@@ -6,13 +6,13 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 use super::{
     aggregator::AttributeAggregatorFactory, duplicate_filter::AttributeDuplicateFilterFactory,
     file_path_info_extractor::AttributeFilePathInfoExtractorFactory,
-    keeper::AttributeKeeperFactory, manager::AttributeManagerFactory,
+    manager::AttributeManagerFactory, mapper::AttributeMapperFactory,
     statistics_calculator::StatisticsCalculatorFactory,
 };
 
-pub static ACTION_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
-        Box::<AttributeKeeperFactory>::default(),
+        Box::<AttributeMapperFactory>::default(),
         Box::<AttributeManagerFactory>::default(),
         Box::<AttributeAggregatorFactory>::default(),
         Box::<AttributeDuplicateFilterFactory>::default(),

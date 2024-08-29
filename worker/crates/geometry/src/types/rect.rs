@@ -1,14 +1,17 @@
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;
 
 use super::{
+    conversion::geojson::create_from_rect_type,
     coordinate::{Coordinate, Coordinate2D, Coordinate3D},
     coordnum::{CoordFloat, CoordNum, CoordNumT},
     no_value::NoValue,
     polygon::Polygon,
+    traits::Elevation,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash)]
@@ -153,6 +156,13 @@ impl<T: CoordFloat + CoordNumT> Rect3D<T> {
     }
 }
 
+impl<T: CoordFloat, Z: CoordFloat> From<Rect<T, Z>> for geojson::Value {
+    fn from(rect: Rect<T, Z>) -> Self {
+        let coords = create_from_rect_type(&rect);
+        geojson::Value::Polygon(coords)
+    }
+}
+
 impl<T, Z> RelativeEq for Rect<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
@@ -206,6 +216,17 @@ where
         }
 
         true
+    }
+}
+
+impl<T, Z> Elevation for Rect<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.min.is_elevation_zero() && self.max.is_elevation_zero()
     }
 }
 

@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Feature, Geometry, GeometryFeatureType, GeometryValue};
+use reearth_flow_types::{Feature, Geometry, GeometryType, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -59,13 +59,13 @@ impl ProcessorFactory for GeometryFilterFactory {
         let params: GeometryFilterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::GeometryFilterFactory(format!(
-                    "Failed to serialize with: {}",
+                    "Failed to serialize `with` parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 GeometryProcessorError::GeometryFilterFactory(format!(
-                    "Failed to deserialize with: {}",
+                    "Failed to deserialize `with` parameter: {}",
                     e
                 ))
             })?
@@ -87,14 +87,11 @@ pub struct GeometryFilter {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(tag = "filterType")]
+#[serde(tag = "filterType", rename_all = "camelCase")]
 pub enum GeometryFilterParam {
-    #[serde(rename = "none")]
     None,
-    #[serde(rename = "multiple")]
     Multiple,
-    #[serde(rename = "featureType")]
-    FeatureType,
+    GeometryType,
 }
 
 impl GeometryFilterParam {
@@ -102,7 +99,7 @@ impl GeometryFilterParam {
         match self {
             GeometryFilterParam::None => Port::new("none"),
             GeometryFilterParam::Multiple => Port::new("contains"),
-            GeometryFilterParam::FeatureType => unreachable!(),
+            GeometryFilterParam::GeometryType => unreachable!(),
         }
     }
 
@@ -112,7 +109,7 @@ impl GeometryFilterParam {
             .map(|name| Port::new(to_camel_case(name)))
             .collect::<Vec<Port>>();
         result.extend(
-            GeometryFeatureType::all_type_names()
+            GeometryType::all_type_names()
                 .iter()
                 .map(|name| Port::new(to_camel_case(name)))
                 .collect::<Vec<Port>>(),
@@ -165,11 +162,11 @@ impl Processor for GeometryFilter {
                 }
                 Some(geometry) => filter_multiple_geometry(&ctx, fw, feature, geometry),
             },
-            GeometryFilterParam::FeatureType => match &feature.geometry {
+            GeometryFilterParam::GeometryType => match &feature.geometry {
                 None => {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
                 }
-                Some(geometry) => filter_feature_type(&ctx, fw, feature, geometry),
+                Some(geometry) => filter_geometry_type(&ctx, fw, feature, geometry),
             },
         }
         Ok(())
@@ -233,7 +230,7 @@ fn filter_multiple_geometry(
     }
 }
 
-fn filter_feature_type(
+fn filter_geometry_type(
     ctx: &ExecutorContext,
     fw: &mut dyn ProcessorChannelForwarder,
     feature: &Feature,
@@ -244,15 +241,17 @@ fn filter_feature_type(
             fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
         }
         GeometryValue::FlowGeometry3D(geometry) => {
+            let geometry_type: GeometryType = geometry.into();
             fw.send(ctx.new_with_feature_and_port(
                 feature.clone(),
-                Port::new(to_camel_case(geometry.name())),
+                Port::new(to_camel_case(geometry_type.name())),
             ))
         }
         GeometryValue::FlowGeometry2D(geometry) => {
+            let geometry_type: GeometryType = geometry.into();
             fw.send(ctx.new_with_feature_and_port(
                 feature.clone(),
-                Port::new(to_camel_case(geometry.name())),
+                Port::new(to_camel_case(geometry_type.name())),
             ))
         }
         GeometryValue::CityGmlGeometry(geometry) => {

@@ -78,9 +78,11 @@ const Logs = <TData, TValue>({
   });
 
   const handleStatusChange = (status: LogStatus) => {
-    getStatusValue === status
-      ? setColumnFilters([])
-      : setColumnFilters([{ id: "status", value: status }]);
+    if (getStatusValue === status) {
+      setColumnFilters([]);
+    } else {
+      setColumnFilters([{ id: "status", value: status }]);
+    }
   };
 
   const handleTimeStampColumnVisibility = () => {

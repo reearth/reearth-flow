@@ -12,7 +12,7 @@ import {
 } from "@xyflow/react";
 import { MouseEvent, useCallback } from "react";
 
-import type { Edge, Node } from "@flow/types";
+import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import useBatch from "./useBatch";
 import useDnd from "./useDnd";
@@ -23,6 +23,7 @@ type Props = {
   onNodesChange: (newNodes: Node[]) => void;
   onEdgesChange: (edges: Edge[]) => void;
   onNodeLocking: (nodeId: string) => void;
+  onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
 export default ({
@@ -31,6 +32,7 @@ export default ({
   onNodesChange,
   onEdgesChange,
   onNodeLocking,
+  onNodePickerOpen,
 }: Props) => {
   const { isNodeIntersecting } = useReactFlow();
   const { handleNodeDropInBatch } = useBatch();
@@ -39,6 +41,7 @@ export default ({
     nodes,
     onNodesChange,
     onNodeLocking,
+    onNodePickerOpen,
   });
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(

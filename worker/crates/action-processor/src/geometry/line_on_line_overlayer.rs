@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
+use itertools::Itertools;
 use once_cell::sync::Lazy;
-use reearth_flow_geometry::algorithm::line_intersection::{self, line_intersection};
+use reearth_flow_geometry::algorithm::line_intersection::{
+    self, line_intersection, line_intersection3d,
+};
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::geometry::Geometry3D;
-use reearth_flow_geometry::types::line::{Line2D, Line3D};
+use reearth_flow_geometry::types::multi_line_string::{MultiLineString2D, MultiLineString3D};
 use reearth_flow_geometry::types::multi_point::{MultiPoint2D, MultiPoint3D};
 use reearth_flow_geometry::types::point::{Point2D, Point3D};
 use reearth_flow_runtime::node::REJECTED_PORT;
@@ -15,7 +18,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
@@ -64,13 +67,13 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
         let params: LineOnLineOverlayerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::LineOnLineOverlayerFactory(format!(
-                    "Failed to serialize with: {}",
+                    "Failed to serialize `with` parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 GeometryProcessorError::LineOnLineOverlayerFactory(format!(
-                    "Failed to deserialize with: {}",
+                    "Failed to deserialize `with` parameter: {}",
                     e
                 ))
             })?
@@ -81,7 +84,8 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
             .into());
         };
         Ok(Box::new(LineOnLineOverlayer {
-            output_attribute: params.output_attribute,
+            params,
+            buffer: HashMap::new(),
         }))
     }
 }
@@ -89,12 +93,14 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct LineOnLineOverlayerParam {
+    group_by: Option<Vec<Attribute>>,
     output_attribute: Attribute,
 }
 
 #[derive(Debug, Clone)]
 pub struct LineOnLineOverlayer {
-    output_attribute: Attribute,
+    params: LineOnLineOverlayerParam,
+    buffer: HashMap<String, Vec<Feature>>,
 }
 
 impl Processor for LineOnLineOverlayer {
@@ -115,18 +121,29 @@ impl Processor for LineOnLineOverlayer {
             return Ok(());
         };
         match &geometry.value {
-            GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            GeometryValue::FlowGeometry2D(_) | GeometryValue::FlowGeometry3D(_) => {
+                let key = if let Some(group_by) = &self.params.group_by {
+                    group_by
+                        .iter()
+                        .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
+                        .collect::<Vec<_>>()
+                        .join("\t")
+                } else {
+                    "_all".to_string()
+                };
+                if let Some(values) = self.buffer.get(&key) {
+                    self.handle_geometry(feature, values, &ctx, fw);
+                    {
+                        if let Some(buffer) = self.buffer.get_mut(&key) {
+                            buffer.push(feature.clone());
+                        }
+                    }
+                } else {
+                    self.buffer.insert(key, vec![feature.clone()]);
+                    self.handle_geometry(feature, &[], &ctx, fw);
+                }
             }
-            GeometryValue::FlowGeometry2D(geos) => {
-                self.handle_2d_geometry(geos, feature, geometry, &ctx, fw);
-            }
-            GeometryValue::FlowGeometry3D(geos) => {
-                self.handle_3d_geometry(geos, feature, geometry, &ctx, fw);
-            }
-            GeometryValue::CityGmlGeometry(_) => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-            }
+            _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
         }
         Ok(())
     }
@@ -145,151 +162,222 @@ impl Processor for LineOnLineOverlayer {
 }
 
 impl LineOnLineOverlayer {
-    fn handle_2d_geometry(
+    fn handle_geometry(
         &self,
-        geos: &Geometry2D,
         feature: &Feature,
-        geometry: &Geometry,
+        others: &[Feature],
         ctx: &ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) {
-        match geos {
-            Geometry2D::MultiLineString(line_strings) => {
-                let mut lines = Vec::new();
-                for line_string in line_strings.iter() {
-                    lines.extend(line_string.lines());
-                }
-                self.handle_2d_lines(feature, geometry, lines, ctx, fw);
+        let Some(geometry) = feature.geometry.as_ref() else {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            return;
+        };
+        match &geometry.value {
+            GeometryValue::FlowGeometry2D(geos) => {
+                let others = others
+                    .iter()
+                    .filter_map(|f| {
+                        f.geometry
+                            .as_ref()
+                            .and_then(|g| g.value.as_flow_geometry_2d().cloned())
+                    })
+                    .collect::<Vec<_>>();
+                self.handle_2d_geometry(geos, &others, feature, ctx, fw);
             }
-            Geometry2D::LineString(line_string) => {
-                let lines = line_string.lines();
-                self.handle_2d_lines(feature, geometry, lines.into_iter().collect(), ctx, fw);
+            GeometryValue::FlowGeometry3D(geos) => {
+                let others = others
+                    .iter()
+                    .filter_map(|f| {
+                        f.geometry
+                            .as_ref()
+                            .and_then(|g| g.value.as_flow_geometry_3d().cloned())
+                    })
+                    .collect::<Vec<_>>();
+                self.handle_3d_geometry(geos, &others, feature, ctx, fw);
             }
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
         }
     }
 
-    fn handle_2d_lines(
+    fn handle_2d_geometry(
         &self,
+        geos: &Geometry2D,
+        others: &[Geometry2D],
         feature: &Feature,
-        geometry: &Geometry,
-        lines: Vec<Line2D<f64>>,
         ctx: &ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) {
-        let mut overlap = 0;
+        let mut target_line_strings = others
+            .iter()
+            .filter_map(|g| g.as_multi_line_string())
+            .collect_vec();
+        target_line_strings.extend(
+            others
+                .iter()
+                .filter_map(|g| {
+                    g.as_line_string()
+                        .map(|line| MultiLineString2D::new(vec![line]))
+                })
+                .collect_vec(),
+        );
+        match geos {
+            Geometry2D::MultiLineString(line_strings) => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), LINE_PORT.clone()));
+                if target_line_strings.is_empty() {
+                    return;
+                }
+                self.handle_2d_line_strings(line_strings, target_line_strings, feature, ctx, fw);
+            }
+            Geometry2D::LineString(line_string) => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), LINE_PORT.clone()));
+                if target_line_strings.is_empty() {
+                    return;
+                }
+                self.handle_2d_line_strings(
+                    &MultiLineString2D::new(vec![line_string.clone()]),
+                    target_line_strings,
+                    feature,
+                    ctx,
+                    fw,
+                );
+            }
+            _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
+        }
+    }
+
+    fn handle_2d_line_strings(
+        &self,
+        target: &MultiLineString2D<f64>,
+        others: Vec<MultiLineString2D<f64>>,
+        feature: &Feature,
+        ctx: &ExecutorContext,
+        fw: &mut dyn ProcessorChannelForwarder,
+    ) {
+        let mut overlap = 1;
         let mut points = Vec::<Point2D<f64>>::new();
-        for (i, current) in lines.iter().enumerate() {
-            for next in &lines[i + 1..] {
-                match line_intersection(*current, *next) {
-                    Some(line_intersection::LineIntersection::SinglePoint {
-                        intersection, ..
-                    }) => {
-                        overlap += 1;
-                        points.push(intersection.into());
+        for other in others.iter() {
+            for line_target in target.lines() {
+                for line_other in other.lines() {
+                    match line_intersection(line_target, line_other) {
+                        Some(line_intersection::LineIntersection::SinglePoint {
+                            intersection,
+                            ..
+                        }) => {
+                            overlap += 1;
+                            points.push(intersection.into());
+                        }
+                        Some(line_intersection::LineIntersection::Collinear { .. }) => {
+                            fw.send(ctx.new_with_feature_and_port(
+                                feature.clone(),
+                                COLLINEAR_PORT.clone(),
+                            ));
+                            return;
+                        }
+                        None => {}
                     }
-                    Some(line_intersection::LineIntersection::Collinear { .. }) => {
-                        fw.send(
-                            ctx.new_with_feature_and_port(feature.clone(), COLLINEAR_PORT.clone()),
-                        );
-                        return;
-                    }
-                    None => {}
                 }
             }
         }
-        if points.is_empty() {
+        if !points.is_empty() {
+            let Some(geometry) = &feature.geometry else {
+                return;
+            };
+            let mut geometry = geometry.clone();
             let mut feature = feature.clone();
+            feature.refresh_id();
+            geometry.value =
+                GeometryValue::FlowGeometry2D(Geometry2D::MultiPoint(MultiPoint2D::new(points)));
+            feature.geometry = Some(geometry);
             feature.attributes.insert(
-                self.output_attribute.clone(),
+                self.params.output_attribute.clone(),
                 AttributeValue::Number(Number::from(overlap)),
             );
-            fw.send(ctx.new_with_feature_and_port(feature, LINE_PORT.clone()));
-            return;
+            fw.send(ctx.new_with_feature_and_port(feature, POINT_PORT.clone()));
         }
-        let mut geometry = geometry.clone();
-        let mut feature = feature.clone();
-        geometry.value =
-            GeometryValue::FlowGeometry2D(Geometry2D::MultiPoint(MultiPoint2D::new(points)));
-        feature.geometry = Some(geometry);
-        feature.attributes.insert(
-            self.output_attribute.clone(),
-            AttributeValue::Number(Number::from(overlap)),
-        );
-        fw.send(ctx.new_with_feature_and_port(feature, POINT_PORT.clone()));
     }
 
     fn handle_3d_geometry(
         &self,
         geos: &Geometry3D,
+        others: &[Geometry3D],
         feature: &Feature,
-        geometry: &Geometry,
         ctx: &ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) {
+        let mut target_line_strings = others
+            .iter()
+            .filter_map(|g| g.as_multi_line_string())
+            .collect_vec();
+        target_line_strings.extend(
+            others
+                .iter()
+                .filter_map(|g| {
+                    g.as_line_string()
+                        .map(|line| MultiLineString3D::new(vec![line]))
+                })
+                .collect_vec(),
+        );
         match geos {
             Geometry3D::MultiLineString(line_strings) => {
-                let mut lines = Vec::new();
-                for line_string in line_strings.iter() {
-                    lines.extend(line_string.lines());
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), LINE_PORT.clone()));
+                if target_line_strings.is_empty() {
+                    return;
                 }
-                self.handle_3d_lines(feature, geometry, lines, ctx, fw);
+                self.handle_3d_line_strings(line_strings, target_line_strings, feature, ctx, fw);
             }
             Geometry3D::LineString(line_string) => {
-                let lines = line_string.lines();
-                self.handle_3d_lines(feature, geometry, lines.into_iter().collect(), ctx, fw);
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), LINE_PORT.clone()));
+                if target_line_strings.is_empty() {
+                    return;
+                }
+                self.handle_3d_line_strings(
+                    &MultiLineString3D::new(vec![line_string.clone()]),
+                    target_line_strings,
+                    feature,
+                    ctx,
+                    fw,
+                );
             }
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
         }
     }
 
-    fn handle_3d_lines(
+    fn handle_3d_line_strings(
         &self,
+        target: &MultiLineString3D<f64>,
+        others: Vec<MultiLineString3D<f64>>,
         feature: &Feature,
-        geometry: &Geometry,
-        lines: Vec<Line3D<f64>>,
         ctx: &ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) {
-        let mut overlap = 0;
+        let mut overlap = 1;
         let mut points = Vec::<Point3D<f64>>::new();
-        for (i, current) in lines.iter().enumerate() {
-            for next in &lines[i + 1..] {
-                match line_intersection(*current, *next) {
-                    Some(line_intersection::LineIntersection::SinglePoint {
-                        intersection, ..
-                    }) => {
+        for other in others.iter() {
+            for line_target in target.lines() {
+                for line_other in other.lines() {
+                    if let Some(point) = line_intersection3d(line_target, line_other) {
                         overlap += 1;
-                        points.push(intersection.into());
+                        points.push(point.into());
                     }
-                    Some(line_intersection::LineIntersection::Collinear { .. }) => {
-                        fw.send(
-                            ctx.new_with_feature_and_port(feature.clone(), COLLINEAR_PORT.clone()),
-                        );
-                        return;
-                    }
-                    None => {}
                 }
             }
         }
-        if points.is_empty() {
+        if !points.is_empty() {
+            let Some(geometry) = &feature.geometry else {
+                return;
+            };
+            let mut geometry = geometry.clone();
             let mut feature = feature.clone();
+            feature.refresh_id();
+            geometry.value =
+                GeometryValue::FlowGeometry3D(Geometry3D::MultiPoint(MultiPoint3D::new(points)));
+            feature.geometry = Some(geometry);
             feature.attributes.insert(
-                self.output_attribute.clone(),
+                self.params.output_attribute.clone(),
                 AttributeValue::Number(Number::from(overlap)),
             );
-            fw.send(ctx.new_with_feature_and_port(feature, LINE_PORT.clone()));
-            return;
+            fw.send(ctx.new_with_feature_and_port(feature, POINT_PORT.clone()));
         }
-        let mut geometry = geometry.clone();
-        let mut feature = feature.clone();
-        geometry.value =
-            GeometryValue::FlowGeometry3D(Geometry3D::MultiPoint(MultiPoint3D::new(points)));
-        feature.geometry = Some(geometry);
-        feature.attributes.insert(
-            self.output_attribute.clone(),
-            AttributeValue::Number(Number::from(overlap)),
-        );
-        fw.send(ctx.new_with_feature_and_port(feature, POINT_PORT.clone()));
     }
 }

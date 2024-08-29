@@ -38,19 +38,23 @@ jobs:
         run: cargo fmt --all -- --check
       - name: clippy
         run: cargo clippy --all -- -D warnings
-      - name: install cargo-make
-        run: cargo install cargo-make
-      - name: generate schema
+      - name: install required tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: taplo-cli,cargo-make
+      - name: taplo
+        run: taplo fmt --check
+      - name: run generate schema
         run: cargo make doc-action
-      - name: check schema generator
+      - name: check generated schema
         run: |
           git add -N .
           git diff
-          line=`git diff | wc -l`
-          if [ $line -gt 0 ]; then
-            echo "Please run 'cargo schema' and commit the changes."
+          line=$(git diff | wc -l)
+          if [ "$line" -gt 0 ]; then
+            echo "Please run 'cargo make doc-action' and commit the changes."
             git diff
-            exit -1
+            exit 1
           fi
       - name: run tests
         run: cargo test --workspace --all-targets --all-features

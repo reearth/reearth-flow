@@ -52,11 +52,14 @@ impl ProcessorFactory for RhaiCallerFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: RhaiCallerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                FeatureProcessorError::RhaiCallerFactory(format!("Failed to serialize with: {}", e))
+                FeatureProcessorError::RhaiCallerFactory(format!(
+                    "Failed to serialize `with` parameter: {}",
+                    e
+                ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 FeatureProcessorError::RhaiCallerFactory(format!(
-                    "Failed to deserialize with: {}",
+                    "Failed to deserialize `with` parameter: {}",
                     e
                 ))
             })?
@@ -135,7 +138,7 @@ impl Processor for RhaiCaller {
                 for new_value in array_values {
                     if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
                         let mut feature = feature.clone();
-                        feature.id = uuid::Uuid::new_v4();
+                        feature.refresh_id();
                         feature.attributes = new_value
                             .iter()
                             .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))

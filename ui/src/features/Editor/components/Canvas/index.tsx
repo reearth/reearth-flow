@@ -5,10 +5,11 @@ import {
   SelectionMode,
   ProOptions,
   SnapGrid,
+  XYPosition,
 } from "@xyflow/react";
 import { MouseEvent, memo } from "react";
 
-import type { Edge, Node } from "@flow/types";
+import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import {
   CustomConnectionLine,
@@ -33,6 +34,7 @@ type Props = {
   onNodesUpdate: (newNodes: Node[]) => void;
   onNodeLocking: (nodeId: string) => void;
   onNodeHover: (e: MouseEvent, node?: Node) => void;
+  onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
   onEdgesUpdate: (newEdges: Edge[]) => void;
   onEdgeHover: (e: MouseEvent, edge?: Edge) => void;
 };
@@ -46,6 +48,7 @@ const Canvas: React.FC<Props> = ({
   onNodeHover,
   onEdgeHover,
   onEdgesUpdate,
+  onNodePickerOpen,
 }) => {
   const {
     handleNodesChange,
@@ -61,6 +64,7 @@ const Canvas: React.FC<Props> = ({
     onNodesUpdate,
     onEdgesUpdate,
     onNodeLocking,
+    onNodePickerOpen,
   });
 
   return (
@@ -115,8 +119,7 @@ const Canvas: React.FC<Props> = ({
       onEdgeMouseEnter={onEdgeHover}
       onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
-      proOptions={proOptions}
-    >
+      proOptions={proOptions}>
       <Background
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}

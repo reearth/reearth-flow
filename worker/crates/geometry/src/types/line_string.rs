@@ -1,4 +1,5 @@
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
@@ -7,9 +8,13 @@ use nusamai_geometry::{LineString2 as NLineString2, LineString3 as NLineString3}
 
 use crate::utils::line_string_bounding_rect;
 
+use super::conversion::geojson::{
+    create_geo_line_string, create_line_string_type, mismatch_geom_err,
+};
 use super::coordinate::{self, Coordinate};
-use super::coordnum::CoordNum;
+use super::coordnum::{CoordFloat, CoordNum};
 use super::line::Line;
+use super::traits::Elevation;
 use super::triangle::Triangle;
 use super::{no_value::NoValue, point::Point};
 
@@ -256,6 +261,30 @@ impl<'a> From<NLineString3<'a>> for LineString<f64> {
     }
 }
 
+impl<T: CoordFloat, Z: CoordFloat> From<LineString<T, Z>> for geojson::Value {
+    fn from(line_string: LineString<T, Z>) -> Self {
+        let coords = create_line_string_type(&line_string);
+        geojson::Value::LineString(coords)
+    }
+}
+
+impl<T, Z> TryFrom<geojson::Value> for LineString<T, Z>
+where
+    T: CoordFloat,
+    Z: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::LineString(multi_point_type) => {
+                Ok(create_geo_line_string(&multi_point_type))
+            }
+            other => Err(mismatch_geom_err("LineString", &other)),
+        }
+    }
+}
+
 impl<T, Z> approx::RelativeEq for LineString<T, Z>
 where
     T: approx::AbsDiffEq<Epsilon = T> + CoordNum + approx::RelativeEq,
@@ -335,5 +364,16 @@ where
                 Point::new_(b.max().x, b.max().y, b.max().z),
             ),
         }
+    }
+}
+
+impl<T, Z> Elevation for LineString<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.0.iter().all(|c| c.is_elevation_zero())
     }
 }

@@ -1,12 +1,15 @@
 use std::fmt::Debug;
 
 use approx::{AbsDiffEq, RelativeEq};
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
 use crate::utils::{line_bounding_rect, point_line_euclidean_distance};
 
+use super::conversion::geojson::create_from_line_type;
 use super::coordinate::Coordinate;
-use super::coordnum::CoordNum;
+use super::coordnum::{CoordFloat, CoordNum};
+use super::traits::Elevation;
 use super::{no_value::NoValue, point::Point};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash)]
@@ -112,6 +115,13 @@ impl<T: CoordNum> From<[(T, T, T); 2]> for Line<T, T> {
     }
 }
 
+impl<T: CoordFloat, Z: CoordFloat> From<Line<T, Z>> for geojson::Value {
+    fn from(line: Line<T, Z>) -> Self {
+        let coords = create_from_line_type(&line);
+        geojson::Value::LineString(coords)
+    }
+}
+
 impl<T, Z> RelativeEq for Line<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
@@ -171,5 +181,16 @@ where
     fn distance_2(&self, point: &Point<T, Z>) -> T {
         let d = point_line_euclidean_distance(*point, *self);
         d.powi(2)
+    }
+}
+
+impl<T, Z> Elevation for Line<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.start.is_elevation_zero() && self.end.is_elevation_zero()
     }
 }

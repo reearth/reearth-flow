@@ -2,13 +2,18 @@ use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use nusamai_geometry::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3};
 use serde::{Deserialize, Serialize};
 
-use super::coordnum::CoordNum;
+use super::conversion::geojson::{
+    create_geo_multi_polygon, create_multi_polygon_type, mismatch_geom_err,
+};
+use super::coordnum::{CoordFloat, CoordNum};
 use super::line_string::LineString;
 use super::no_value::NoValue;
 use super::polygon::{Polygon, Polygon2D};
+use super::traits::Elevation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub struct MultiPolygon<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Polygon<T, Z>>);
@@ -121,6 +126,30 @@ impl From<MultiPolygon3D<f64>> for MultiPolygon2D<f64> {
     }
 }
 
+impl<T: CoordFloat, Z: CoordFloat> From<MultiPolygon<T, Z>> for geojson::Value {
+    fn from(multi_polygon: MultiPolygon<T, Z>) -> Self {
+        let coords = create_multi_polygon_type(&multi_polygon);
+        geojson::Value::MultiPolygon(coords)
+    }
+}
+
+impl<T, Z> TryFrom<geojson::Value> for MultiPolygon<T, Z>
+where
+    T: CoordFloat,
+    Z: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<MultiPolygon<T, Z>> {
+        match value {
+            geojson::Value::MultiPolygon(multi_polygon_type) => {
+                Ok(create_geo_multi_polygon(&multi_polygon_type))
+            }
+            other => Err(mismatch_geom_err("MultiPolygon", &other)),
+        }
+    }
+}
+
 #[allow(dead_code)]
 pub struct Iter<'a, T: CoordNum> {
     mpoly: &'a MultiPolygon<T>,
@@ -226,5 +255,16 @@ impl From<MultiPolygon3D<f64>> for Vec<NaPoint3<f64>> {
                 })
                 .collect::<Vec<Vec<NaPoint3<f64>>>>();
         result.into_iter().flatten().collect()
+    }
+}
+
+impl<T, Z> Elevation for MultiPolygon<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.0.iter().all(|p| p.is_elevation_zero())
     }
 }

@@ -39,7 +39,7 @@ type Props = {
   nodeId: string;
   nodeMeta: NodeData;
   nodeType: string;
-  nodeParameters?: any; // TODO: define type
+  nodeParameters?: unknown; // TODO: define type
 };
 
 const actionButtonClasses = "border h-[25px]";

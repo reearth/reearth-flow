@@ -4,7 +4,33 @@
       "name": "AreaOnAreaOverlayer",
       "type": "processor",
       "description": "Overlays an area on another area",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AreaOnAreaOverlayerParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "default"
@@ -28,7 +54,6 @@
         "type": "object",
         "required": [
           "aggregateAttributes",
-          "calculation",
           "calculationAttribute",
           "method"
         ],
@@ -40,10 +65,24 @@
             }
           },
           "calculation": {
-            "$ref": "#/definitions/Expr"
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "calculationAttribute": {
             "$ref": "#/definitions/Attribute"
+          },
+          "calculationValue": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
           },
           "method": {
             "$ref": "#/definitions/Method"
@@ -53,12 +92,24 @@
           "AggregateAttribute": {
             "type": "object",
             "required": [
-              "attributeValue",
               "newAttribute"
             ],
             "properties": {
+              "attribute": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "attributeValue": {
-                "$ref": "#/definitions/Expr"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "newAttribute": {
                 "$ref": "#/definitions/Attribute"
@@ -163,42 +214,6 @@
       ]
     },
     {
-      "name": "AttributeKeeper",
-      "type": "processor",
-      "description": "Keeps only specified attributes",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeKeeper",
-        "type": "object",
-        "required": [
-          "keepAttributes"
-        ],
-        "properties": {
-          "keepAttributes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "Attribute"
-      ]
-    },
-    {
       "name": "AttributeManager",
       "type": "processor",
       "description": "Manages attributes",
@@ -269,6 +284,57 @@
       ]
     },
     {
+      "name": "AttributeMapper",
+      "type": "processor",
+      "description": "Maps attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeMapperParam",
+        "type": "object",
+        "required": [
+          "mappers"
+        ],
+        "properties": {
+          "mappers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Mapper"
+            }
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "Mapper": {
+            "type": "object",
+            "required": [
+              "attribute",
+              "expr"
+            ],
+            "properties": {
+              "attribute": {
+                "type": "string"
+              },
+              "expr": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "BoundsExtractor",
       "type": "processor",
       "description": "Bounds Extractor",
@@ -294,14 +360,19 @@
         "title": "Bufferer",
         "type": "object",
         "required": [
-          "buffer_type",
-          "distance"
+          "bufferType",
+          "distance",
+          "interpolationAngle"
         ],
         "properties": {
-          "buffer_type": {
+          "bufferType": {
             "$ref": "#/definitions/BufferType"
           },
           "distance": {
+            "type": "number",
+            "format": "double"
+          },
+          "interpolationAngle": {
             "type": "number",
             "format": "double"
           }
@@ -342,6 +413,53 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "Cesium3DTilesWriter",
+      "type": "sink",
+      "description": "Writes features to a file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Cesium3dtilesWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "maxZoom": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "minZoom": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
       ]
     },
     {
@@ -412,6 +530,24 @@
       ]
     },
     {
+      "name": "DimensionFilter",
+      "type": "processor",
+      "description": "Filters the dimension of features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "2d",
+        "3d",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "Echo",
       "type": "sink",
       "description": "Echo features",
@@ -423,6 +559,39 @@
       "outputPorts": [],
       "categories": [
         "Debug"
+      ]
+    },
+    {
+      "name": "ElevationExtractor",
+      "type": "processor",
+      "description": "Extracts a feature’s first z coordinate value, storing it in an attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ElevationExtractorParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
       ]
     },
     {
@@ -499,6 +668,7 @@
         "default"
       ],
       "outputPorts": [
+        "default",
         "rejected"
       ],
       "categories": [
@@ -584,7 +754,7 @@
         "default"
       ],
       "outputPorts": [
-        "rejected"
+        "unfiltered"
       ],
       "categories": [
         "Feature"
@@ -866,6 +1036,35 @@
       ]
     },
     {
+      "name": "FilePropertyExtractor",
+      "type": "processor",
+      "description": "Extracts properties from a file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FilePropertyExtractor",
+        "type": "object",
+        "required": [
+          "filePathAttribute"
+        ],
+        "properties": {
+          "filePathAttribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "FileReader",
       "type": "source",
       "description": "Reads features from a file",
@@ -984,31 +1183,154 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FileWriterParam",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "converter": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "json"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "excel"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "gltf"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          }
+        ],
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "GeoJsonWriter",
+      "type": "sink",
+      "description": "Writes features to a geojson file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeoJsonWriterParam",
         "type": "object",
         "required": [
-          "format",
           "output"
         ],
         "properties": {
-          "format": {
-            "$ref": "#/definitions/Format"
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
           },
           "output": {
             "$ref": "#/definitions/Expr"
           }
         },
         "definitions": {
-          "Expr": {
+          "Attribute": {
             "type": "string"
           },
-          "Format": {
-            "type": "string",
-            "enum": [
-              "csv",
-              "tsv",
-              "json",
-              "excel"
-            ]
+          "Expr": {
+            "type": "string"
           }
         }
       },
@@ -1030,10 +1352,10 @@
         "title": "GeometryCoercer",
         "type": "object",
         "required": [
-          "coercer_type"
+          "coercerType"
         ],
         "properties": {
-          "coercer_type": {
+          "coercerType": {
             "$ref": "#/definitions/CoercerType"
           }
         },
@@ -1052,6 +1374,43 @@
       ],
       "outputPorts": [
         "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryDissolver",
+      "type": "processor",
+      "description": "Dissolve geometries",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryDissolverParam",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
+        "rejected"
       ],
       "categories": [
         "Geometry"
@@ -1135,7 +1494,7 @@
               "filterType": {
                 "type": "string",
                 "enum": [
-                  "featureType"
+                  "geometryType"
                 ]
               }
             }
@@ -1350,6 +1709,15 @@
           "outputAttribute"
         ],
         "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
           "outputAttribute": {
             "$ref": "#/definitions/Attribute"
           }
@@ -1371,6 +1739,20 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "Noop",
+      "type": "sink",
+      "description": "noop sink",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "Debug"
       ]
     },
     {
@@ -1494,6 +1876,22 @@
       "name": "PLATEAU.MaxLodExtractor",
       "type": "processor",
       "description": "Extracts maxLod",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU.TranXLinkChecker",
+      "type": "processor",
+      "description": "Check Xlink for Tran",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -1693,7 +2091,6 @@
         "title": "StatisticsCalculatorParam",
         "type": "object",
         "required": [
-          "aggregateName",
           "calculations"
         ],
         "properties": {
@@ -1708,7 +2105,14 @@
             ]
           },
           "aggregateName": {
-            "$ref": "#/definitions/Attribute"
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "calculations": {
             "type": "array",
@@ -1754,12 +2158,12 @@
       ]
     },
     {
-      "name": "ThreeDimentionBoxReplacer",
+      "name": "ThreeDimensionBoxReplacer",
       "type": "processor",
-      "description": "Replaces a three dimention box with a polygon.",
+      "description": "Replaces a three Dimension box with a polygon.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ThreeDimentionBoxReplacer",
+        "title": "ThreeDimensionBoxReplacer",
         "type": "object",
         "required": [
           "maxX",
@@ -1807,12 +2211,12 @@
       ]
     },
     {
-      "name": "ThreeDimentionRotator",
+      "name": "ThreeDimensionRotator",
       "type": "processor",
-      "description": "Replaces a three dimention box with a polygon.",
+      "description": "Replaces a three Dimension box with a polygon.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ThreeDimentionRotatorParam",
+        "title": "ThreeDimensionRotatorParam",
         "type": "object",
         "required": [
           "angleDegree",
@@ -1864,9 +2268,9 @@
       ]
     },
     {
-      "name": "TwoDimentionForcer",
+      "name": "TwoDimensionForcer",
       "type": "processor",
-      "description": "Forces a geometry to be two dimentional.",
+      "description": "Forces a geometry to be two dimensional.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [

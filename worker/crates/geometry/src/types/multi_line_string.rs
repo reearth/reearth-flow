@@ -2,15 +2,21 @@ use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
 use nusamai_geometry::{
     MultiLineString2 as NMultiLineString2, MultiLineString3 as NMultiLineString3,
 };
 
-use super::coordnum::CoordNum;
+use super::conversion::geojson::{
+    create_geo_multi_line_string, create_multi_line_string_type, mismatch_geom_err,
+};
+use super::coordnum::{CoordFloat, CoordNum};
+use super::line::Line;
 use super::line_string::LineString;
 use super::no_value::NoValue;
+use super::traits::Elevation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub struct MultiLineString<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<LineString<T, Z>>);
@@ -25,6 +31,13 @@ impl<T: CoordNum, Z: CoordNum> MultiLineString<T, Z> {
 
     pub fn is_closed(&self) -> bool {
         self.iter().all(LineString::is_closed)
+    }
+
+    pub fn lines(&'_ self) -> impl ExactSizeIterator<Item = Line<T, Z>> + '_ {
+        self.iter()
+            .flat_map(|ls| ls.lines())
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 
@@ -122,6 +135,30 @@ impl<'a> From<NMultiLineString3<'a>> for MultiLineString3D<f64> {
     }
 }
 
+impl<T: CoordFloat, Z: CoordFloat> From<MultiLineString<T, Z>> for geojson::Value {
+    fn from(multi_line_string: MultiLineString<T, Z>) -> Self {
+        let coords = create_multi_line_string_type(&multi_line_string);
+        geojson::Value::MultiLineString(coords)
+    }
+}
+
+impl<T, Z> TryFrom<geojson::Value> for MultiLineString<T, Z>
+where
+    T: CoordFloat,
+    Z: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::MultiLineString(multi_line_string_type) => {
+                Ok(create_geo_multi_line_string(&multi_line_string_type))
+            }
+            other => Err(mismatch_geom_err("MultiLineString", &other)),
+        }
+    }
+}
+
 impl<T, Z> RelativeEq for MultiLineString<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
@@ -169,6 +206,17 @@ where
 
         let mut mp_zipper = self.into_iter().zip(other);
         mp_zipper.all(|(lhs, rhs)| lhs.abs_diff_eq(rhs, epsilon))
+    }
+}
+
+impl<T, Z> Elevation for MultiLineString<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.iter().all(LineString::is_elevation_zero)
     }
 }
 

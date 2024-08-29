@@ -37,6 +37,7 @@ impl Clone for Box<dyn FeatureWriter> {
 
 #[async_trait::async_trait]
 pub trait FeatureWriter: Send + Sync + Debug + FeatureWriterClone {
+    fn edge_id(&self) -> EdgeId;
     fn write(&mut self, feature: &Feature) -> Result<(), FeatureWriterError>;
     async fn flush(&self) -> Result<(), FeatureWriterError>;
 }
@@ -64,6 +65,10 @@ impl PrimaryKeyLookupFeatureWriter {
 
 #[async_trait::async_trait]
 impl FeatureWriter for PrimaryKeyLookupFeatureWriter {
+    fn edge_id(&self) -> EdgeId {
+        self.edge_id.clone()
+    }
+
     fn write(&mut self, feature: &Feature) -> Result<(), FeatureWriterError> {
         self.index.insert(feature.id, feature.clone());
         Ok(())

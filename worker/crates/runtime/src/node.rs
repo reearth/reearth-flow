@@ -20,9 +20,45 @@ pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 pub static ROUTING_PARAM_KEY: &str = "routingPort";
 pub static REMAIN_PORT: Lazy<Port> = Lazy::new(|| Port::new("remain"));
 
-pub(super) type NodeId = uuid::Uuid;
 pub(super) type GraphId = uuid::Uuid;
-pub(super) type EdgeId = uuid::Uuid;
+
+#[nutype::nutype(
+    sanitize(trim),
+    derive(
+        Debug,
+        Clone,
+        Eq,
+        PartialEq,
+        PartialOrd,
+        Ord,
+        AsRef,
+        Serialize,
+        Deserialize,
+        Hash,
+        Display,
+        JsonSchema,
+    )
+)]
+pub(super) struct EdgeId(String);
+
+#[nutype::nutype(
+    sanitize(trim),
+    derive(
+        Debug,
+        Clone,
+        Eq,
+        PartialEq,
+        PartialOrd,
+        Ord,
+        AsRef,
+        Serialize,
+        Deserialize,
+        Hash,
+        Display,
+        JsonSchema,
+    )
+)]
+pub(super) struct NodeId(String);
 
 #[nutype::nutype(
     sanitize(trim),
@@ -79,18 +115,18 @@ pub enum NodeKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NodeHandle {
-    pub id: uuid::Uuid,
+    pub id: NodeId,
 }
 
 impl NodeHandle {
-    pub fn new(id: uuid::Uuid) -> Self {
+    pub fn new(id: NodeId) -> Self {
         Self { id }
     }
 }
 
 impl Display for NodeHandle {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.id.to_string())
+        f.write_str(self.id.to_string().as_str())
     }
 }
 
@@ -201,6 +237,7 @@ impl Clone for Box<dyn SourceFactory> {
 #[async_trait::async_trait]
 pub trait Source: Send + Sync + Debug + SourceClone {
     async fn initialize(&self, ctx: NodeContext);
+    fn name(&self) -> &str;
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError>;
 
     async fn start(
@@ -322,6 +359,7 @@ impl Clone for Box<dyn SinkFactory> {
 
 pub trait Sink: Send + Debug + SinkClone {
     fn initialize(&self, ctx: NodeContext);
+    fn name(&self) -> &str;
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError>;
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError>;

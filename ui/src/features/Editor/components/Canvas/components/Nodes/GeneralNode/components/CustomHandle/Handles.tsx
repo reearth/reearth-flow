@@ -28,15 +28,14 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
           position={Position.Right}
         />
       )}
-      <div className="absolute inset-x-0 mx-auto w-[95%] rounded-b-md">
+      <div className="absolute inset-x-0 mx-auto w-[95%] rounded-b-md bg-primary">
         <div className="relative">
           {inputs &&
             inputs.length > 1 &&
             inputs.map((input, index) => (
               <div
                 key={input + index}
-                className="relative border-b px-1.5 py-0.5"
-              >
+                className="relative border-b px-1.5 py-0.5">
                 <CustomHandle
                   type="target"
                   className={`left-1 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-sm" : undefined}`}
@@ -52,8 +51,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
             outputs.map((output, index) => (
               <div
                 key={output + index}
-                className="relative border-b px-1.5 py-0.5 last-of-type:border-none"
-              >
+                className="relative border-b px-1.5 py-0.5 last-of-type:border-none">
                 <CustomHandle
                   type="source"
                   className={`right-1 w-[8px] rounded-none transition-colors ${index === (outputs && outputs.length - 1) ? "rounded-br-sm" : undefined}`}

@@ -3,12 +3,7 @@ import type { Config } from "tailwindcss";
 const config = {
   darkMode: ["class"],
   important: true,
-  content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
-  ],
+  content: ["./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
     container: {
@@ -20,39 +15,48 @@ const config = {
     },
     extend: {
       colors: {
-        border: "var(--border)",
-        input: "var(--input)",
-        ring: "var(--ring)",
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        border: "rgba(var(--border))",
+        input: "rgba(var(--input))",
+        ring: "rgba(var(--ring))",
+        background: "rgba(var(--background))",
+        foreground: "rgba(var(--foreground))",
         primary: {
-          DEFAULT: "var(--primary)",
-          foreground: "var(--primary-foreground)",
+          DEFAULT: "rgba(var(--primary))",
+          foreground: "rgba(var(--primary-foreground))",
         },
         secondary: {
-          DEFAULT: "var(--secondary)",
-          foreground: "var(--secondary-foreground)",
+          DEFAULT: "rgba(var(--secondary))",
+          foreground: "rgba(var(--secondary-foreground))",
         },
         destructive: {
-          DEFAULT: "var(--destructive)",
-          foreground: "var(--destructive-foreground)",
+          DEFAULT: "rgba(var(--destructive))",
+          foreground: "rgba(var(--destructive-foreground))",
         },
         muted: {
-          DEFAULT: "var(--muted)",
-          foreground: "var(--muted-foreground)",
+          DEFAULT: "rgba(var(--muted))",
+          foreground: "rgba(var(--muted-foreground))",
         },
         accent: {
-          DEFAULT: "var(--accent)",
-          foreground: "var(--accent-foreground)",
+          DEFAULT: "rgba(var(--accent))",
+          foreground: "rgba(var(--accent-foreground))",
         },
         popover: {
-          DEFAULT: "var(--popover)",
-          foreground: "var(--popover-foreground)",
+          DEFAULT: "rgba(var(--popover))",
+          foreground: "rgba(var(--popover-foreground))",
         },
         card: {
-          DEFAULT: "var(--card)",
-          foreground: "var(--card-foreground)",
+          DEFAULT: "rgba(var(--card))",
+          foreground: "rgba(var(--card-foreground))",
         },
+        logo: "rgba(var(--logo))",
+        node: {
+          entrance: "rgba(var(--node-entrance))",
+          exit: "rgba(var(--node-exit))",
+          transformer: "rgba(var(--node-transformer))",
+          reader: "rgba(var(--node-reader))",
+          writer: "rgba(var(--node-writer))",
+        },
+        success: "rgba(var(--success))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -75,7 +79,7 @@ const config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate")], // eslint-disable-line
 } satisfies Config;
 
 export default config;

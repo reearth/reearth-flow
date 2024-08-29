@@ -77,7 +77,7 @@ impl ExecutionDag {
             let source_node_index = builder_dag_edge.source();
             let target_node_index = builder_dag_edge.target();
             let edge = &builder_dag_edge.weight;
-            let edge_id = edge.id;
+            let edge_id = edge.id.clone();
             let output_port = edge.to_port();
             let input_port = edge.from_port();
             let edge_kind = edge.edge_kind.clone();

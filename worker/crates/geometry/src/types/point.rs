@@ -3,8 +3,11 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssi
 
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
+use super::conversion::geojson::{create_geo_point, create_point_type, mismatch_geom_err};
+use super::traits::Elevation;
 use crate::{coord, point};
 
 use super::coordinate::Coordinate;
@@ -19,7 +22,7 @@ pub type Point3D<T> = Point<T, T>;
 
 impl From<Point3D<f64>> for Point2D<f64> {
     fn from(p: Point3D<f64>) -> Point2D<f64> {
-        Point2D::new(p.0.x, p.0.y)
+        point! { x: p.x(), y: p.y() }
     }
 }
 
@@ -31,13 +34,13 @@ impl<T: CoordNum, Z: CoordNum> From<Coordinate<T, Z>> for Point<T, Z> {
 
 impl<T: CoordNum> From<(T, T)> for Point2D<T> {
     fn from(coords: (T, T)) -> Self {
-        Point::new(coords.0, coords.1)
+        point!(x: coords.0, y: coords.1)
     }
 }
 
 impl<T: CoordNum> From<[T; 2]> for Point2D<T> {
     fn from(coords: [T; 2]) -> Self {
-        Point::new(coords[0], coords[1])
+        point!(x: coords[0], y:coords[1])
     }
 }
 
@@ -71,9 +74,31 @@ impl<T: CoordNum> From<Point3D<T>> for [T; 3] {
     }
 }
 
-impl<T: CoordNum> Point2D<T> {
-    pub fn new(x: T, y: T) -> Self {
-        point! { x: x, y: y }
+impl<T: CoordNum, Z: CoordNum> Point<T, Z> {
+    pub fn new(x: T, y: T, z: Z) -> Self {
+        point! { x: x, y: y, z: z }
+    }
+}
+
+impl<T: CoordFloat, Z: CoordFloat> From<Point<T, Z>> for geojson::Value {
+    fn from(point: Point<T, Z>) -> Self {
+        let coords = create_point_type(&point);
+        geojson::Value::Point(coords)
+    }
+}
+
+impl<T, Z> TryFrom<geojson::Value> for Point<T, Z>
+where
+    T: CoordFloat,
+    Z: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::Point(point_type) => Ok(create_geo_point(&point_type)),
+            other => Err(mismatch_geom_err("Point", &other)),
+        }
     }
 }
 
@@ -138,14 +163,14 @@ impl<T: CoordFloat> Point2D<T> {
         let (x, y) = self.x_y();
         let x = x.to_degrees();
         let y = y.to_degrees();
-        Point::new(x, y)
+        point!(x: x, y: y)
     }
 
     pub fn to_radians(self) -> Self {
         let (x, y) = self.x_y();
         let x = x.to_radians();
         let y = y.to_radians();
-        Point::new(x, y)
+        point!(x: x, y: y)
     }
 }
 
@@ -369,5 +394,16 @@ where
             1 => &mut self.0.y,
             _ => unreachable!(),
         }
+    }
+}
+
+impl<T, Z> Elevation for Point<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.0.is_elevation_zero()
     }
 }

@@ -33,8 +33,7 @@ const DropdownMenuSubTrigger = forwardRef<
       inset && "pl-8",
       className,
     )}
-    {...props}
-  >
+    {...props}>
     {children}
     <ChevronRightIcon className="ml-auto size-4" />
   </DropdownMenuPrimitive.SubTrigger>
@@ -70,7 +69,7 @@ const DropdownMenuContent = forwardRef<
         onCloseAutoFocus ? onCloseAutoFocus(e) : e.preventDefault()
       }
       className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground p-1 shadow-md",
+        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-card text-popover-foreground p-1 shadow-md",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         className,
       )}
@@ -109,8 +108,7 @@ const DropdownMenuCheckboxItem = forwardRef<
       className,
     )}
     checked={checked}
-    {...props}
-  >
+    {...props}>
     <span className="absolute left-2 flex size-3.5 items-center justify-center">
       <DropdownMenuPrimitive.ItemIndicator>
         <CheckIcon className="size-4" />
@@ -132,8 +130,7 @@ const DropdownMenuRadioItem = forwardRef<
       "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
-    {...props}
-  >
+    {...props}>
     <span className="absolute left-2 flex size-3.5 items-center justify-center">
       <DropdownMenuPrimitive.ItemIndicator>
         <DotFilledIcon className="size-4 fill-current" />

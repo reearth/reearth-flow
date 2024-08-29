@@ -8,7 +8,7 @@ type Props = GeneralNodeProps;
 
 const EntranceNode: React.FC<Props> = ({ data }) => {
   return (
-    <div className="rounded-l-sm rounded-r-3xl border border-[#a21caf] bg-[#a21caf]/40 px-4 py-6">
+    <div className="rounded-l-sm rounded-r-3xl border border-node-entrance bg-node-entrance/40 px-4 py-6">
       <div>
         <CustomHandle
           id={data.inputs?.[0]}

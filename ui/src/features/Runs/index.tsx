@@ -67,8 +67,7 @@ const Runs: React.FC = () => {
             <Button
               className="flex-1 gap-2"
               size="sm"
-              onClick={() => handleTabChange("manual")}
-            >
+              onClick={() => handleTabChange("manual")}>
               <Play />
               <p className="font-extralight">{t("Manual Run")}</p>
             </Button>
@@ -82,8 +81,7 @@ const Runs: React.FC = () => {
                 <div
                   key={id}
                   className={`-mx-2 -my-1 flex justify-between rounded-md border-l-2 border-transparent px-2 py-1 hover:cursor-pointer hover:bg-accent ${tab === id ? "bg-accent text-accent-foreground" : undefined}`}
-                  onClick={() => handleTabChange(id)}
-                >
+                  onClick={() => handleTabChange(id)}>
                   <p className="font-thin">{name}</p>
                 </div>
               ))}

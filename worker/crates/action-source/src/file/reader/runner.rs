@@ -15,36 +15,32 @@ use super::{citygml, csv, json};
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CommonPropertySchema {
+pub struct FileReaderCommonParam {
     pub(super) dataset: Expr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(tag = "format")]
+#[serde(rename_all = "camelCase", tag = "format")]
 pub enum FileReader {
-    #[serde(rename = "csv")]
     Csv {
         #[serde(flatten)]
-        common_property: CommonPropertySchema,
+        common_property: FileReaderCommonParam,
         #[serde(flatten)]
-        property: csv::CsvPropertySchema,
+        property: csv::CsvReaderParam,
     },
-    #[serde(rename = "tsv")]
     Tsv {
         #[serde(flatten)]
-        common_property: CommonPropertySchema,
+        common_property: FileReaderCommonParam,
         #[serde(flatten)]
-        property: csv::CsvPropertySchema,
+        property: csv::CsvReaderParam,
     },
-    #[serde(rename = "json")]
     Json {
         #[serde(flatten)]
-        common_property: CommonPropertySchema,
+        common_property: FileReaderCommonParam,
     },
-    #[serde(rename = "citygml")]
-    CityGML {
+    Citygml {
         #[serde(flatten)]
-        common_property: CommonPropertySchema,
+        common_property: FileReaderCommonParam,
     },
 }
 
@@ -52,9 +48,14 @@ pub enum FileReader {
 impl Source for FileReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
+    fn name(&self) -> &str {
+        "FileReader"
+    }
+
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
         Ok(vec![])
     }
+
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -106,7 +107,7 @@ impl Source for FileReader {
                     Err(e) => Err(Box::new(e)),
                 }
             }
-            Self::CityGML { common_property } => {
+            Self::Citygml { common_property } => {
                 let input_path = get_input_path(&ctx, common_property)?;
                 let result = citygml::read_citygml(input_path, ctx, sender).await;
                 match result {
@@ -120,7 +121,7 @@ impl Source for FileReader {
 
 fn get_input_path(
     ctx: &NodeContext,
-    common_property: &CommonPropertySchema,
+    common_property: &FileReaderCommonParam,
 ) -> Result<Uri, BoxedError> {
     let path = &common_property.dataset;
     let scope = ctx.expr_engine.new_scope();

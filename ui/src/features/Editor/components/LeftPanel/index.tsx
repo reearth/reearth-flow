@@ -7,31 +7,44 @@ import {
   TreeView,
 } from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
 import { UserNavigation } from "@flow/features/TopNavigation/components";
+import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import { useDialogType } from "@flow/stores";
 import type { Node } from "@flow/types";
 
 import { ActionsList, Resources } from "./components";
 
-type Tab = "navigator" | "action-list" | "resources";
+type Tab = "navigator" | "actions-list" | "resources";
 
 type Props = {
   nodes: Node[];
+  isOpen: boolean;
+  onOpen: (panel?: "left" | "right" | "bottom") => void;
+  onNodesChange: (nodes: Node[]) => void;
+  onNodeLocking: (nodeId: string) => void;
 };
 
-const LeftPanel: React.FC<Props> = ({ nodes }) => {
+const LeftPanel: React.FC<Props> = ({
+  nodes,
+  isOpen,
+  onOpen,
+  onNodesChange,
+  onNodeLocking,
+}) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
-  const [isPanelOpen, setPanelOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
 
   const [_content, setContent] = useState("Admin Page");
 
-  const [, setDialogType] = useDialogType();
+  useEffect(() => {
+    if (!isOpen && selectedTab) {
+      setSelectedTab(undefined);
+    }
+  }, [isOpen, selectedTab]);
 
   const treeContent: TreeDataItem[] = [
     ...(nodes
@@ -84,10 +97,16 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
       ),
     },
     {
-      id: "action-list",
-      title: t("Action list"),
+      id: "actions-list",
+      title: t("Actions list"),
       icon: <Lightning className="size-5" weight="thin" />,
-      component: <ActionsList />,
+      component: (
+        <ActionsList
+          nodes={nodes}
+          onNodesChange={onNodesChange}
+          onNodeLocking={onNodeLocking}
+        />
+      ),
     },
     {
       id: "resources",
@@ -99,25 +118,35 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
 
   const handleTabChange = (tab: Tab) => {
     if (tab === selectedTab) {
-      setPanelOpen(!isPanelOpen);
+      onOpen(isOpen ? undefined : "left");
       setSelectedTab(undefined);
     } else {
       setSelectedTab(tab);
-      setPanelOpen(true);
+      if (!isOpen) {
+        onOpen("left");
+      }
     }
   };
+
+  useShortcuts([
+    {
+      keyBinding: { key: "c", commandKey: false },
+      callback: () => {
+        handleTabChange("navigator");
+      },
+    },
+  ]);
 
   return (
     <>
       <div
-        className="absolute left-12 z-10 flex h-full w-[300px] flex-1 flex-col gap-3 overflow-auto border-r bg-secondary transition-all"
+        className="absolute left-12 top-0 z-10 flex h-[calc(100vh-30px)] w-[300px] flex-1 flex-col gap-3 overflow-auto border-r bg-background transition-all"
         style={{
-          transform: `translateX(${isPanelOpen ? "8px" : "-100%"})`,
-          transitionDuration: isPanelOpen ? "500ms" : "300ms",
+          transform: `translateX(${isOpen ? "8px" : "-100%"})`,
+          transitionDuration: isOpen ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-        }}
-      >
+        }}>
         <div className="flex flex-col gap-2 border-b px-4 py-2">
           <p className="text-lg font-thin">
             {tabs?.find((tc) => tc.id === selectedTab)?.title}
@@ -133,15 +162,14 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
           <nav className="flex flex-col items-center gap-4 p-2">
             <Link
               to={`/workspace/${workspaceId}`}
-              className="flex shrink-0 items-center justify-center gap-2 rounded bg-red-800/50 p-2 text-lg font-semibold hover:bg-red-800/80 md:size-8 md:text-base"
-            >
+              className="flex shrink-0 items-center justify-center gap-2 rounded bg-logo/50 p-2 text-lg font-semibold hover:bg-logo/80 md:size-8 md:text-base">
               <FlowLogo className="size-5" />
               <span className="sr-only">{t("Dashboard")}</span>
             </Link>
             {tabs.map((tab) => (
               <IconButton
                 key={tab.id}
-                className={`text-popover-foreground/50 flex size-9 items-center justify-center rounded transition-colors hover:text-popover-foreground md:size-8 ${selectedTab === tab.id && "bg-popover text-popover-foreground"}`}
+                className={`flex size-9 items-center justify-center rounded text-popover-foreground/50 transition-colors hover:text-popover-foreground md:size-8 ${selectedTab === tab.id && "bg-popover text-popover-foreground"}`}
                 icon={tab.icon}
                 onClick={() => handleTabChange(tab.id)}
               />
@@ -149,9 +177,13 @@ const LeftPanel: React.FC<Props> = ({ nodes }) => {
           </nav>
           <nav className="mt-auto flex flex-col items-center gap-4 p-2">
             <MagnifyingGlass
-              className="hover: text-popover-foreground/50 size-6 cursor-pointer hover:text-popover-foreground"
+              className="size-6 cursor-pointer text-popover-foreground/50 hover:text-popover-foreground"
               weight="thin"
-              onClick={() => setDialogType("canvas-search")}
+              onClick={() =>
+                alert(
+                  "Need to implement a global search and assign a shortcut as well",
+                )
+              }
             />
             <UserNavigation
               className="flex w-full justify-center"

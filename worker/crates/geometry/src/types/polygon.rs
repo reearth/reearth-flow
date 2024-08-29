@@ -1,5 +1,6 @@
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +8,8 @@ use crate::algorithm::contains::Contains;
 use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
 use crate::algorithm::GeoFloat;
 
-use super::coordnum::CoordNum;
+use super::conversion::geojson::create_polygon_type;
+use super::coordnum::{CoordFloat, CoordNum};
 use super::face::Face;
 use super::line::Line;
 use super::line_string::LineString;
@@ -15,7 +17,7 @@ use super::no_value::NoValue;
 use super::point::Point;
 use super::rect::Rect;
 use super::solid::Solid;
-use super::traits::Surface;
+use super::traits::{Elevation, Surface};
 use super::triangle::Triangle;
 use super::validation::Validation;
 
@@ -353,6 +355,13 @@ impl<'a> From<NPolygon3<'a>> for Polygon<f64> {
     }
 }
 
+impl<T: CoordFloat, Z: CoordFloat> From<Polygon<T, Z>> for geojson::Value {
+    fn from(polygon: Polygon<T, Z>) -> Self {
+        let coords = create_polygon_type(&polygon);
+        geojson::Value::Polygon(coords)
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum> Surface for Polygon<T, Z> {}
 
 impl<T, Z> RelativeEq for Polygon<T, Z>
@@ -441,5 +450,17 @@ where
 
     fn envelope(&self) -> Self::Envelope {
         self.exterior.envelope()
+    }
+}
+
+impl<T, Z> Elevation for Polygon<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.exterior.is_elevation_zero()
+            && self.interiors.iter().all(LineString::is_elevation_zero)
     }
 }

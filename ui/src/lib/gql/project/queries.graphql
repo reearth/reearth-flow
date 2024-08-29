@@ -15,17 +15,15 @@ mutation CreateProject($input: CreateProjectInput!) {
   }
 }
 
-query GetProjects($workspaceId: ID!, $first: Int!) {
-  projects(workspaceId: $workspaceId, first: $first) {
+query GetProjects($workspaceId: ID!, $first: Int!, $after: Cursor) {
+  projects(workspaceId: $workspaceId, first: $first, after: $after) {
     totalCount
     nodes {
       ...Project
     }
     pageInfo {
-      startCursor
       endCursor
       hasNextPage
-      hasPreviousPage
     }
   }
 }

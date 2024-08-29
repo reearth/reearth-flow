@@ -6,6 +6,7 @@ use std::{
 use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader};
 use nusamai_plateau::{appearance::AppearanceStore, models, Entity};
 use quick_xml::NsReader;
+use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder, executor_operation::ExecutorContext, node::DEFAULT_PORT,
@@ -63,11 +64,9 @@ fn parse_tree_reader<R: BufRead>(
     let mut global_appearances = AppearanceStore::default();
 
     st.parse_children(|st| {
-        match st.current_path() {
-            b"gml:boundedBy" => {
-                // skip
-                Ok(())
-            }
+        let path: &[u8] = &st.current_path();
+        match path {
+            b"gml:boundedBy" => Ok(()),
             b"gml:boundedBy/gml:Envelope" => {
                 let mut envelope = Envelope::default();
                 envelope.parse(st)?;
@@ -80,7 +79,7 @@ fn parse_tree_reader<R: BufRead>(
                 let id = cityobj.id();
                 let name = cityobj.name();
                 let description = cityobj.description();
-                let bounded = cityobj.bounded_by();
+                let bounded_by = cityobj.bounded_by();
                 if let Some(root) = cityobj.into_object() {
                     let entity = Entity {
                         id,
@@ -90,10 +89,12 @@ fn parse_tree_reader<R: BufRead>(
                         base_url: base_url.clone(),
                         geometry_store: RwLock::new(geometry_store).into(),
                         appearance_store: Default::default(),
-                        bounded,
+                        bounded_by,
+                        geometry_refs: st.geometry_refs().clone(),
                     };
                     entities.push(entity);
                 }
+                st.refresh_geomrefs();
                 Ok(())
             }
             b"app:appearanceMember" => {
@@ -139,6 +140,11 @@ fn parse_tree_reader<R: BufRead>(
         feature
             .attributes
             .insert(Attribute::new("gmlId"), AttributeValue::String(gml_id));
+
+        feature.attributes.insert(
+            Attribute::new("gmlRootId"),
+            AttributeValue::String(format!("root_{}", to_hash(base_url.as_str()))),
+        );
         feature.geometry = Some(geometry);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
     }

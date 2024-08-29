@@ -1,6 +1,11 @@
+use nalgebra::Point3;
+
 use crate::{
     algorithm::{bounding_rect::BoundingRect, intersects::Intersects},
-    types::{coordinate::Coordinate, line::Line},
+    types::{
+        coordinate::{Coordinate, Coordinate3D},
+        line::{Line, Line3D},
+    },
     utils::point_line_euclidean_distance,
 };
 
@@ -26,6 +31,40 @@ impl<T: GeoFloat, Z: GeoFloat> LineIntersection<T, Z> {
             Self::Collinear { .. } => false,
             Self::SinglePoint { is_proper, .. } => *is_proper,
         }
+    }
+}
+
+pub fn line_intersection3d(target: Line3D<f64>, other: Line3D<f64>) -> Option<Coordinate3D<f64>> {
+    let p1: Point3<f64> = target.start.into();
+    let p2: Point3<f64> = target.end.into();
+    let p3: Point3<f64> = other.start.into();
+    let p4: Point3<f64> = other.end.into();
+
+    let d1 = p2 - p1;
+    let d2 = p4 - p3;
+
+    let cross_d1_d2 = d1.cross(&d2);
+
+    // If cross product is zero, the lines are parallel or collinear
+    if cross_d1_d2.norm() == 0.0 {
+        return None;
+    }
+
+    // Check if both lines lie in the same plane
+    let v1 = p3 - p1;
+    let plane_normal = d1.cross(&v1);
+    if plane_normal.dot(&d2) != 0.0 {
+        return None;
+    }
+
+    let t = (p3 - p1).cross(&d2).dot(&cross_d1_d2) / cross_d1_d2.norm_squared();
+    let u = (p3 - p1).cross(&d1).dot(&cross_d1_d2) / cross_d1_d2.norm_squared();
+
+    if (0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u) {
+        let result = p1 + t * d1;
+        Some(result.into())
+    } else {
+        None
     }
 }
 

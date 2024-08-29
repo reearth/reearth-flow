@@ -1,10 +1,10 @@
-use std::{fmt::Debug, future::Future, pin::pin, sync::Arc};
+use std::{fmt::Debug, future::Future, pin::pin, sync::Arc, time};
 
 use petgraph::visit::IntoNodeIdentifiers;
 
 use async_stream::stream;
 use futures::{future::select_all, future::Either, Stream, StreamExt};
-use reearth_flow_action_log::factory::LoggerFactory;
+use reearth_flow_action_log::{action_log, factory::LoggerFactory};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::{
@@ -16,6 +16,7 @@ use tracing::info_span;
 use crate::{
     builder_dag::NodeKind,
     errors::ExecutionError,
+    event::Event,
     executor_operation::{ExecutorContext, ExecutorOperation, ExecutorOptions, NodeContext},
     forwarder::ChannelManager,
     kvs::KvStore,
@@ -41,10 +42,11 @@ pub struct SourceNode<F> {
 
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
-    logger: Arc<LoggerFactory>,
+    logger_factory: Arc<LoggerFactory>,
     kv_store: Arc<Box<dyn KvStore>>,
-    #[allow(dead_code)]
     span: tracing::Span,
+    #[allow(dead_code)]
+    event_sender: tokio::sync::broadcast::Sender<Event>,
 }
 
 impl<F: Future + Unpin> Node for SourceNode<F> {
@@ -54,11 +56,21 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
             let ctx = NodeContext::new(
                 Arc::clone(&self.expr_engine),
                 Arc::clone(&self.storage_resolver),
-                Arc::clone(&self.logger),
+                Arc::clone(&self.logger_factory),
                 Arc::clone(&self.kv_store),
             );
+            let span = self.span.clone();
+            let logger = self
+                .logger_factory
+                .clone()
+                .action_logger(source_runner.source.name().to_string().as_str());
             handles.push(Some(self.runtime.spawn(async move {
-                source_runner.source.start(ctx, source_runner.sender).await
+                let now = time::Instant::now();
+                let result = source_runner.source.start(ctx, source_runner.sender).await;
+                action_log!(
+                    parent: span, logger, "{:?} finish source complete. elapsed = {:?}", source_runner.source.name(), now.elapsed(),
+                );
+                result
             })));
         }
         let mut num_running_sources = handles.len();
@@ -75,7 +87,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                     let ctx = NodeContext::new(
                         Arc::clone(&self.expr_engine),
                         Arc::clone(&self.storage_resolver),
-                        Arc::clone(&self.logger),
+                        Arc::clone(&self.logger_factory),
                         Arc::clone(&self.kv_store),
                     );
                     send_to_all_nodes(&self.sources, ExecutorOperation::Terminate { ctx })?;
@@ -97,7 +109,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                     let ctx = NodeContext::new(
                                         Arc::clone(&self.expr_engine),
                                         Arc::clone(&self.storage_resolver),
-                                        Arc::clone(&self.logger),
+                                        Arc::clone(&self.logger_factory),
                                         Arc::clone(&self.kv_store),
                                     );
                                     send_to_all_nodes(
@@ -123,7 +135,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                 port,
                                 Arc::clone(&self.expr_engine),
                                 Arc::clone(&self.storage_resolver),
-                                Arc::clone(&self.logger),
+                                Arc::clone(&self.logger_factory),
                                 Arc::clone(&self.kv_store),
                             ))?;
                         }
@@ -192,6 +204,7 @@ pub async fn create_source_node<F>(
             senders,
             dag.error_manager().clone(),
             runtime.clone(),
+            dag.event_hub().sender.clone(),
         );
         sources.push(RunningSource {
             channel_manager,
@@ -208,7 +221,7 @@ pub async fn create_source_node<F>(
     let span = info_span!(
         "action",
         "otel.name" = "Source Node",
-        "otel.kind" = "source",
+        "otel.kind" = "Source Node",
         "workflow.id" = dag.id.to_string().as_str(),
     );
 
@@ -220,9 +233,10 @@ pub async fn create_source_node<F>(
         runtime,
         expr_engine: Arc::clone(&ctx.expr_engine),
         storage_resolver: Arc::clone(&ctx.storage_resolver),
-        logger: Arc::clone(&ctx.logger),
+        logger_factory: Arc::clone(&ctx.logger),
         kv_store: Arc::clone(&ctx.kv_store),
         span,
+        event_sender: dag.event_hub().sender.clone(),
     }
 }
 

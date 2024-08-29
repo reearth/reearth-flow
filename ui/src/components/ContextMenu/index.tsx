@@ -35,8 +35,7 @@ const ContextMenuSubTrigger = React.forwardRef<
       inset && "pl-8",
       className,
     )}
-    {...props}
-  >
+    {...props}>
     {children}
     <ChevronRightIcon className="ml-auto size-4" />
   </ContextMenuPrimitive.SubTrigger>
@@ -104,8 +103,7 @@ const ContextMenuCheckboxItem = React.forwardRef<
       className,
     )}
     checked={checked}
-    {...props}
-  >
+    {...props}>
     <span className="absolute left-2 flex size-3.5 items-center justify-center">
       <ContextMenuPrimitive.ItemIndicator>
         <CheckIcon className="size-4" />
@@ -127,8 +125,7 @@ const ContextMenuRadioItem = React.forwardRef<
       "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
-    {...props}
-  >
+    {...props}>
     <span className="absolute left-2 flex size-3.5 items-center justify-center">
       <ContextMenuPrimitive.ItemIndicator>
         <DotFilledIcon className="size-4 fill-current" />

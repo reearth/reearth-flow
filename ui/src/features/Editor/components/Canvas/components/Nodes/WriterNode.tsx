@@ -12,7 +12,7 @@ const WriterNode: React.FC<GeneralNodeProps> = (props) => {
   //   },
   //   [data],
   // );
-  return <GeneralNode className="bg-[#635116]/60" {...props} />;
+  return <GeneralNode className="bg-node-writer/60" {...props} />;
 };
 
 export default memo(WriterNode);

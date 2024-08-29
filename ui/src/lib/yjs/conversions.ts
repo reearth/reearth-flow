@@ -1,6 +1,6 @@
 import * as Y from "yjs";
 
-export const toYjsMap = (obj: Record<string, any>): Y.Map<any> => {
+export const toYjsMap = (obj: Record<string, unknown>): Y.Map<unknown> => {
   const yMap = new Y.Map();
   for (const [key, value] of Object.entries(obj)) {
     yMap.set(key, value);
@@ -8,7 +8,7 @@ export const toYjsMap = (obj: Record<string, any>): Y.Map<any> => {
   return yMap;
 };
 
-export const fromYjsMap = (yMap: Y.Map<any>) => {
+export const fromYjsMap = (yMap: Y.Map<unknown>) => {
   const map = new Map();
   yMap.forEach((value, key) => {
     map.set(key, value);
@@ -16,7 +16,7 @@ export const fromYjsMap = (yMap: Y.Map<any>) => {
   return map;
 };
 
-export const toYjsArray = (array: any[]) => {
+export const toYjsArray = (array: unknown[]) => {
   const yArray = new Y.Array();
   array.forEach((value, index) => {
     yArray.insert(index, [value]);
@@ -24,7 +24,7 @@ export const toYjsArray = (array: any[]) => {
   return yArray;
 };
 
-export const fromYjsArray = (yArray: Y.Array<any>) => {
+export const fromYjsArray = (yArray: Y.Array<unknown>) => {
   return yArray.toArray();
 };
 

@@ -1,3 +1,4 @@
+export * from "./ActionItem";
 export * from "./Avatar";
 export * from "./buttons";
 export * from "./Card";
@@ -19,5 +20,8 @@ export * from "./ScrollArea";
 export * from "./Select";
 export * from "./Table";
 export * from "./Tabs";
+export * from "./Toast";
 export * from "./Tooltip";
 export * from "./Accordian";
+export * from "./AlertDialog";
+export * from "./TextArea";

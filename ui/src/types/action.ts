@@ -5,6 +5,10 @@ export type Action = {
   description: string;
   type: string;
   categories: string[];
+  inputPorts: string[];
+  outputPorts: string[];
+  parameters: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  builtin: boolean;
 };
 
 export type ActionsSegregated = Record<string, Action[] | undefined>;
@@ -21,7 +25,7 @@ export type GetAction = {
   isLoading: boolean;
 } & ApiResponse;
 
-export type GetActionSegregated = {
+export type GetActionsSegregated = {
   actions?: Segregated;
   isLoading: boolean;
 } & ApiResponse;

@@ -10,7 +10,7 @@ const Dashboard: React.FC = () => {
   return currentWorkspace ? (
     <div className="flex h-screen flex-col">
       <TopNavigation />
-      <div className="flex flex-1">
+      <div className="flex h-[calc(100vh-57px)] flex-1">
         <LeftSection />
         <MainSection workspace={currentWorkspace} />
       </div>

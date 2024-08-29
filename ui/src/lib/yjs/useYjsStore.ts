@@ -28,7 +28,7 @@ export default ({
     yDocRef.current = new Y.Doc()
     yWebSocketRef.current = new WebsocketProvider(
       "ws://localhost:8000",
-      "test room",
+      workflowId ? workflowId : "",
       yDocRef.current,
       { params: { token: "nyaan" } },
     )

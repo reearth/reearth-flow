@@ -214,6 +214,10 @@ impl Feature {
         }
     }
 
+    pub fn refresh_id(&mut self) {
+        self.id = uuid::Uuid::new_v4();
+    }
+
     pub fn with_attributes(&self, attributes: HashMap<Attribute, AttributeValue>) -> Self {
         Self {
             id: self.id,

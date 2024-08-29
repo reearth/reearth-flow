@@ -2,12 +2,15 @@ use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use nusamai_geometry::{MultiPoint2 as NMultiPoint2, MultiPoint3 as NMultiPoint3};
 use serde::{Deserialize, Serialize};
 
-use super::coordnum::CoordNum;
+use super::conversion::geojson::{create_geo_point, create_point_type, mismatch_geom_err};
+use super::coordnum::{CoordFloat, CoordNum};
 use super::no_value::NoValue;
 use super::point::Point;
+use super::traits::Elevation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub struct MultiPoint<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Point<T, Z>>);
@@ -110,6 +113,38 @@ impl From<MultiPoint3D<f64>> for Vec<NaPoint3<f64>> {
     }
 }
 
+impl<T: CoordFloat, Z: CoordFloat> From<MultiPoint<T, Z>> for geojson::Value {
+    fn from(multi_point: MultiPoint<T, Z>) -> Self {
+        let coords = multi_point
+            .0
+            .iter()
+            .map(|point| create_point_type(point))
+            .collect();
+
+        geojson::Value::MultiPoint(coords)
+    }
+}
+
+impl<T, Z> TryFrom<geojson::Value> for MultiPoint<T, Z>
+where
+    T: CoordFloat,
+    Z: CoordFloat,
+{
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::MultiPoint(multi_point_type) => Ok(MultiPoint::new(
+                multi_point_type
+                    .iter()
+                    .map(|point_type| create_geo_point(point_type))
+                    .collect(),
+            )),
+            other => Err(mismatch_geom_err("MultiPoint", &other)),
+        }
+    }
+}
+
 impl<T, Z> RelativeEq for MultiPoint<T, Z>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,
@@ -158,6 +193,17 @@ where
 
         let mut mp_zipper = self.into_iter().zip(other);
         mp_zipper.all(|(lhs, rhs)| lhs.abs_diff_eq(rhs, epsilon))
+    }
+}
+
+impl<T, Z> Elevation for MultiPoint<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.0.iter().all(|p| p.is_elevation_zero())
     }
 }
 

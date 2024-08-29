@@ -1,4 +1,4 @@
-export const randomID = (length = 10): string => {
+export const randomID = (length = 24): string => {
   let result = "";
   const characters =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
