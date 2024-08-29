@@ -1,7 +1,6 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use super::errors::{Result, WsError};
-use super::room::Room;
 use super::state::AppState;
 use axum::extract::{Path, Query};
 use axum::http::{Method, StatusCode, Uri};
@@ -15,8 +14,10 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tower::BoxError;
 use tracing::{debug, trace};
+use yrs::sync::{Awareness, SyncMessage};
 use yrs::updates::decoder::Decode;
-use yrs::{ReadTxn, StateVector, Transact};
+use yrs::updates::encoder::Encode;
+use yrs::{ReadTxn, Transact, Update};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "tag", content = "content")]
@@ -69,13 +70,13 @@ async fn handle_socket(
     }
 
     debug!("{:?}", state.make_room(room_id.clone()));
-    state.join(&room_id).await;
+    let _ = state.join(&room_id).await;
 
     while let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
             match handle_message(msg, addr, &room_id, state.clone()).await {
                 Ok(Some(msg)) => {
-                    socket.send(Message::Binary(msg)).await;
+                    let _ = socket.send(Message::Binary(msg)).await;
                     continue;
                 }
                 Ok(_) => continue,
@@ -98,7 +99,7 @@ async fn handle_message(
         Message::Text(t) => {
             let msg: FlowMessage = serde_json::from_str(&t).unwrap();
 
-            match msg.event {
+            let _ = match msg.event {
                 Event::Join { room_id } => state.join(&room_id).await,
                 Event::Leave => state.leave("brabra").await,
                 Event::Emit { data } => state.emit(&data).await,
@@ -110,31 +111,27 @@ async fn handle_message(
             if d.len() < 3 {
                 return Ok(None);
             };
-            match (d[0], d[1]) {
-                (0, 0) => {
-                    let rest = d[2..].to_vec();
-                    trace!("SyncStep1");
-                    let rooms = state.rooms.try_lock().unwrap();
-                    let room = rooms.get(room_id).unwrap();
-                    let doc = room.get_doc();
-                    let txn = doc.transact();
-                    let diff = txn.encode_diff_v1(&StateVector::decode_v1(&d).unwrap());
 
-                    Ok(Some(diff))
+            let rooms = state.rooms.try_lock().unwrap();
+            let room = rooms.get(room_id).unwrap();
+            let doc = room.get_doc();
+            match yrs::sync::Message::decode_v1(&d) {
+                Ok(yrs::sync::Message::Sync(SyncMessage::SyncStep1(sv))) => {
+                    trace!("Sync");
+                    let txn = doc.transact();
+                    let update = txn.encode_state_as_update_v1(&sv);
+                    let sync2 = SyncMessage::SyncStep2(update).encode_v1();
+                    Ok(Some(sync2))
                 }
-                (0, 1) => {
-                    let rest = d[2..].to_vec();
-                    trace!("SyncStep2");
+                Ok(yrs::sync::Message::Sync(SyncMessage::Update(data))) => {
+                    trace!("Update");
+                    let mut txn = doc.transact_mut();
+                    txn.apply_update(Update::decode_v1(&data).unwrap());
                     Ok(None)
                 }
-                (0, 2) => {
-                    let rest = d[2..].to_vec();
-                    trace!("update");
-                    Ok(None)
-                }
-                (1, _) => {
-                    let rest = d[1..].to_vec();
-                    trace!("awareness");
+                Ok(yrs::sync::Message::Awareness(update)) => {
+                    let mut awareness = Awareness::new((*doc).clone());
+                    let _ = awareness.apply_update(update);
                     Ok(None)
                 }
                 _ => Ok(None),
@@ -163,7 +160,7 @@ pub async fn handle_error(
     state: Arc<AppState>,
 ) -> impl IntoResponse {
     if err.is::<tower::timeout::error::Elapsed>() {
-        state.timeout();
+        let _ = state.timeout();
         (StatusCode::REQUEST_TIMEOUT, "timeout".to_string())
     } else {
         (
@@ -178,7 +175,8 @@ impl AppState {
         unimplemented!()
     }
     async fn join(&self, room_id: &str) -> Result<()> {
-        self.rooms
+        let _ = self
+            .rooms
             .try_lock()
             .or_else(|_| Err(WsError::WsError))?
             .get_mut(room_id)
