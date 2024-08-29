@@ -119,8 +119,7 @@ const Canvas: React.FC<Props> = ({
       onEdgeMouseEnter={onEdgeHover}
       onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
-      proOptions={proOptions}
-    >
+      proOptions={proOptions}>
       <Background
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}

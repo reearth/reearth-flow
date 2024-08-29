@@ -85,8 +85,7 @@ const IntegrationsSettings: React.FC = () => {
                     {roles.map((role, idx) => (
                       <DropdownMenuItem
                         key={idx}
-                        onClick={() => console.log(role)}
-                      >
+                        onClick={() => console.log(role)}>
                         {role}
                       </DropdownMenuItem>
                     ))}
@@ -109,8 +108,7 @@ const IntegrationsSettings: React.FC = () => {
                     <DropdownMenuItem
                       key={idx}
                       className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
-                      onClick={() => setFilter(filter.id)}
-                    >
+                      onClick={() => setFilter(filter.id)}>
                       {filter.title}
                     </DropdownMenuItem>
                   ))}
@@ -122,8 +120,7 @@ const IntegrationsSettings: React.FC = () => {
             {integrations.map((integration) => (
               <div
                 key={integration.id}
-                className="flex items-center gap-4 px-4 py-2"
-              >
+                className="flex items-center gap-4 px-4 py-2">
                 <Checkbox
                   checked={selectedIntegrations.includes(integration.id)}
                   onClick={() =>

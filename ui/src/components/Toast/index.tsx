@@ -81,8 +81,7 @@ const ToastClose = React.forwardRef<
       className,
     )}
     toast-close=""
-    {...props}
-  >
+    {...props}>
     <Cross2Icon className="size-4" />
   </ToastPrimitives.Close>
 ));

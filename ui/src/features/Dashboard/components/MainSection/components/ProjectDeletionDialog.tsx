@@ -41,8 +41,7 @@ const ProjectDeletionDialog: React.FC<Props> = ({
             disabled={!projectToBeDeleted}
             onClick={() =>
               projectToBeDeleted && onDeleteProject(projectToBeDeleted)
-            }
-          >
+            }>
             Continue
           </AlertDialogAction>
         </AlertDialogFooter>

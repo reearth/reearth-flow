@@ -36,8 +36,7 @@ const ActionComponent: React.FC<Props> = ({
     root.render(
       <div className="flex size-12 rounded bg-secondary">
         <div
-          className={`flex w-full justify-center rounded align-middle  ${type === "reader" ? "bg-[#164E63]/60" : type === "writer" ? "bg-[#635116]/60" : "bg-[#631628]/60"}`}
-        >
+          className={`flex w-full justify-center rounded align-middle  ${type === "reader" ? "bg-[#164E63]/60" : type === "writer" ? "bg-[#635116]/60" : "bg-[#631628]/60"}`}>
           <Lightning className="self-center" />
         </div>
       </div>,
