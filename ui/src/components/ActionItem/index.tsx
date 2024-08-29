@@ -31,15 +31,13 @@ const ActionItem: React.FC<Props> = ({
       onDoubleClick={() => onDoubleClick?.(action.name)}
       draggable={draggable}
       onMouseDown={onMouseDown}
-      onDragStart={(e) => onDragStart?.(e, action.name)}
-    >
+      onDragStart={(e) => onDragStart?.(e, action.name)}>
       <div className="flex w-full justify-between gap-1 pb-2">
         <div className="w-3/5 self-center break-words text-sm">
           <p className="self-center text-zinc-200">{action.name}</p>
         </div>
         <div
-          className={`self-center rounded border bg-popover p-1 align-middle`}
-        >
+          className={`self-center rounded border bg-popover p-1 align-middle`}>
           <p className="self-center text-xs capitalize text-zinc-200">
             {action.type}
           </p>

@@ -39,7 +39,7 @@ const GeneralSettings: React.FC = () => {
     if (!currentWorkspace?.id || !workspaceName) return;
     const { workspace } = await updateWorkspace(
       currentWorkspace?.id,
-      workspaceName
+      workspaceName,
     );
     setLoading(false);
     if (!workspace) {
@@ -70,8 +70,7 @@ const GeneralSettings: React.FC = () => {
         <Button
           className="self-end"
           disabled={loading || !workspaceName || currentWorkspace?.personal}
-          onClick={handleUpdateWorkspace}
-        >
+          onClick={handleUpdateWorkspace}>
           {t("Save")}
         </Button>
         <WorkspaceDeletionDialog
@@ -79,8 +78,7 @@ const GeneralSettings: React.FC = () => {
           onWorkspaceDelete={handleDeleteWorkspace}
         />
         <div
-          className={`self-end text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
-        >
+          className={`self-end text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}>
           {showError === "delete" && t("Failed to delete Workspace")}
           {showError === "update" && t("Failed to update Workspace")}
         </div>

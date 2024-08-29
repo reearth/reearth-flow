@@ -13,10 +13,10 @@ const AuthenticationWrapper: React.FC<Props> = ({ children }) => {
 };
 
 const withAuthorisation = (): ((
-  component: React.FC<Props>
+  component: React.FC<Props>,
 ) => React.FC<Props>) => {
   return withAuthenticationRequired as unknown as (
-    component: React.FC<Props>
+    component: React.FC<Props>,
   ) => React.FC<Props>;
 };
 

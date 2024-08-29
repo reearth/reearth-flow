@@ -78,20 +78,17 @@ const UserNavigation: React.FC<Props> = ({
           className="w-[200px]"
           side={dropdownPosition ?? "bottom"}
           align="end"
-          sideOffset={dropdownOffset ?? 4}
-        >
+          sideOffset={dropdownOffset ?? 4}>
           {/* <DropdownMenuLabel>My Account</DropdownMenuLabel> */}
           <DropdownMenuItem
             className="gap-2"
-            onClick={() => setOpenAccountUpdateDialog(true)}
-          >
+            onClick={() => setOpenAccountUpdateDialog(true)}>
             <User weight="thin" />
             <p>{t("Account settings")}</p>
           </DropdownMenuItem>
           <DropdownMenuItem
             className="gap-2"
-            onClick={() => setOpenShortcutDialog(true)}
-          >
+            onClick={() => setOpenShortcutDialog(true)}>
             <Keyboard weight="thin" />
             <p>{t("Keyboard shortcuts")}</p>
           </DropdownMenuItem>

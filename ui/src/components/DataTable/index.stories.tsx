@@ -78,8 +78,7 @@ export const SortTable: Story = {
               variant="ghost"
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            >
+              }>
               Email
               <SortAscending className="ml-2 size-4" />
             </Button>
