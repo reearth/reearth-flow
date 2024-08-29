@@ -75,8 +75,7 @@ const ManualRun: React.FC = () => {
                 selectProject(
                   currentWorkspace?.projects?.find((p) => p.id === pid),
                 )
-              }
-            >
+              }>
               <SelectTrigger>
                 <SelectValue
                   placeholder={t("Select from published projects")}

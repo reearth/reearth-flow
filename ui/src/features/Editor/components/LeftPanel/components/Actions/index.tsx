@@ -182,8 +182,7 @@ const ActionsList: React.FC<Props> = ({
           <TabsContent
             className="dark flex flex-col gap-1"
             key={order}
-            value={order}
-          >
+            value={order}>
             {Array.isArray(actions) ? (
               actions.map((action) => (
                 <Fragment key={action.name}>

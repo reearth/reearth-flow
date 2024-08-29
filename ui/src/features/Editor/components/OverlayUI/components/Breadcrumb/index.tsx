@@ -19,12 +19,10 @@ const Breadcrumb: React.FC = () => {
     <div className="pointer-events-none absolute inset-x-0 top-0 flex shrink-0 justify-center [&>*]:pointer-events-auto">
       <div
         className="flex cursor-default select-none items-center gap-3 rounded-br-md px-2 py-1"
-        onMouseLeave={() => setIsHovered(undefined)}
-      >
+        onMouseLeave={() => setIsHovered(undefined)}>
         <p
           className={`max-w-[100px] truncate font-extralight transition-all delay-0 duration-500 ${isHovered?.includes("workspace") ? "max-w-[50vw] select-text delay-500" : undefined}`}
-          onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "workspace"])}
-        >
+          onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "workspace"])}>
           {currentWorkspace?.name}
         </p>
         <p className="font-extralight">
@@ -32,8 +30,7 @@ const Breadcrumb: React.FC = () => {
         </p>
         <p
           className={`max-w-[100px] truncate font-extralight transition-all delay-0 duration-500 ${isHovered?.includes("project") ? "max-w-[50vw] select-text delay-500" : undefined}`}
-          onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "project"])}
-        >
+          onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "project"])}>
           {currentProject?.name}
         </p>
       </div>

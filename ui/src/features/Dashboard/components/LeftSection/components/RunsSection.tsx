@@ -25,8 +25,7 @@ const RunsSection: React.FC = () => {
           variant="outline"
           onClick={() =>
             navigate({ to: `/workspace/${currentWorkspace?.id}/runs/manual` })
-          }
-        >
+          }>
           <Play weight="thin" />
           <p className="text-xs font-light">{t("New Run")}</p>
         </Button>
@@ -36,8 +35,7 @@ const RunsSection: React.FC = () => {
           className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent"
           onClick={() =>
             navigate({ to: `/workspace/${currentWorkspace?.id}/runs/running` })
-          }
-        >
+          }>
           <p className="font-thin">{t("Running: ")}</p>
           <p className="font-thin">{runningRuns.length}</p>
         </div>
@@ -45,8 +43,7 @@ const RunsSection: React.FC = () => {
           className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent"
           onClick={() =>
             navigate({ to: `/workspace/${currentWorkspace?.id}/runs/queued` })
-          }
-        >
+          }>
           <p className="font-thin">{t("Queued: ")}</p>
           <p className="font-thin">{queuedRuns.length}</p>
         </div>
@@ -58,8 +55,7 @@ const RunsSection: React.FC = () => {
               navigate({
                 to: `/workspace/${currentWorkspace?.id}/runs/completed`,
               })
-            }
-          >
+            }>
             <p className="font-thin">{t("Completed (today): ")}</p>
             <p className="font-thin">
               {completeRuns.length + failedRuns.length}

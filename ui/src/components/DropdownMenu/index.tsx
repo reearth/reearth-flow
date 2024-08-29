@@ -33,8 +33,7 @@ const DropdownMenuSubTrigger = forwardRef<
       inset && "pl-8",
       className,
     )}
-    {...props}
-  >
+    {...props}>
     {children}
     <ChevronRightIcon className="ml-auto size-4" />
   </DropdownMenuPrimitive.SubTrigger>
@@ -109,8 +108,7 @@ const DropdownMenuCheckboxItem = forwardRef<
       className,
     )}
     checked={checked}
-    {...props}
-  >
+    {...props}>
     <span className="absolute left-2 flex size-3.5 items-center justify-center">
       <DropdownMenuPrimitive.ItemIndicator>
         <CheckIcon className="size-4" />
@@ -132,8 +130,7 @@ const DropdownMenuRadioItem = forwardRef<
       "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
-    {...props}
-  >
+    {...props}>
     <span className="absolute left-2 flex size-3.5 items-center justify-center">
       <DropdownMenuPrimitive.ItemIndicator>
         <DotFilledIcon className="size-4 fill-current" />

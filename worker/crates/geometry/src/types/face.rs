@@ -1,8 +1,10 @@
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
 use super::coordinate::Coordinate;
 use super::coordnum::CoordNum;
 use super::no_value::NoValue;
+use super::traits::Elevation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash, Default)]
 pub struct Face<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Coordinate<T, Z>>);
@@ -19,5 +21,16 @@ impl<T: CoordNum, Z: CoordNum> Face<T, Z> {
 impl From<Face3D<f64>> for Face2D<f64> {
     fn from(p: Face3D<f64>) -> Face2D<f64> {
         Face2D::new(p.0.into_iter().map(|c| c.into()).collect())
+    }
+}
+
+impl<T, Z> Elevation for Face<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.0.iter().all(|c| c.is_elevation_zero())
     }
 }

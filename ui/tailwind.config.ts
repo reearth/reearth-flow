@@ -56,7 +56,7 @@ const config = {
           reader: "rgba(var(--node-reader))",
           writer: "rgba(var(--node-writer))",
         },
-        success: "rgba(var(--success))"
+        success: "rgba(var(--success))",
       },
       borderRadius: {
         lg: "var(--radius)",

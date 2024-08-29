@@ -69,12 +69,10 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected }) => {
         />
       )}
       <div
-      // TODO: Remove the yellow color
-        className={`relative z-0 h-full rounded-b-sm border-x border-b border-transparent bg-yellow-200/20 ${selected ? "border-yellow-200/50" : undefined}`}
-      >
+        // TODO: Remove the yellow color
+        className={`relative z-0 h-full rounded-b-sm border-x border-b border-transparent bg-yellow-200/20 ${selected ? "border-yellow-200/50" : undefined}`}>
         <div
-          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t border-transparent bg-yellow-200/50 px-2 py-1 ${selected ? "border-yellow-200/50" : undefined}`}
-        >
+          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t border-transparent bg-yellow-200/50 px-2 py-1 ${selected ? "border-yellow-200/50" : undefined}`}>
           <RectangleDashed />
           <p>{data.name}</p>
         </div>

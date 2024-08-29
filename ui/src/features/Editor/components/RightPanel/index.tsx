@@ -33,8 +33,7 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
           transform: `translateX(${selected ? "0" : "100%"})`,
           transitionDuration: "0ms",
           transitionProperty: "transform",
-        }}
-      >
+        }}>
         <div className="fixed right-[350px] z-[1] flex justify-end p-4">
           <IconButton
             className="relative before:absolute before:inset-y-0 before:right-0 before:z-[-1] before:bg-success before:content-['']"
@@ -51,8 +50,7 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
           transitionDuration: selected ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-        }}
-      >
+        }}>
         <div className="size-full py-4 pl-4 pr-2">
           {selected && (
             <ParamEditor

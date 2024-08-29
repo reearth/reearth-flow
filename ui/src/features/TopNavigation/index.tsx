@@ -20,8 +20,7 @@ const TopNavigation: React.FC = () => {
             className="z-10 cursor-pointer rounded bg-logo p-2"
             onClick={() =>
               navigate({ to: `/workspace/${currentWorkspace?.id}` })
-            }
-          >
+            }>
             <FlowLogo className="size-5" />
           </div>
           <h1 className="select-none font-extralight">
@@ -31,8 +30,7 @@ const TopNavigation: React.FC = () => {
         </div>
         <div
           id="dashboard-middle"
-          className="absolute inset-x-0 flex justify-center"
-        >
+          className="absolute inset-x-0 flex justify-center">
           <div className="flex max-w-[40vw] justify-center gap-4">
             <WorkspaceNavigation />
           </div>

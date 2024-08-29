@@ -85,8 +85,7 @@ const DialogContent = forwardRef<
         onCloseAutoFocus={(e) =>
           onCloseAutoFocus ? onCloseAutoFocus(e) : e.preventDefault()
         }
-        {...props}
-      >
+        {...props}>
         <div className="overflow-hidden rounded-lg bg-secondary">
           {children}
           {!hideCloseButton && (

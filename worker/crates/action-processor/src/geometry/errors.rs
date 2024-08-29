@@ -83,6 +83,10 @@ pub(super) enum GeometryProcessorError {
     DissolverFactory(String),
     #[error("Dissolver error: {0}")]
     Dissolver(String),
+    #[error("DimensionFilter Factory error: {0}")]
+    DimensionFilterFactory(String),
+    #[error("DimensionFilter error: {0}")]
+    DimensionFilter(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

@@ -35,8 +35,7 @@ const ProjectEditDialog: React.FC<Props> = ({
   return (
     <Dialog
       open={!!editProject}
-      onOpenChange={(o) => !o && setEditProject(undefined)}
-    >
+      onOpenChange={(o) => !o && setEditProject(undefined)}>
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>{t("Edit Project")}</DialogTitle>
@@ -59,8 +58,7 @@ const ProjectEditDialog: React.FC<Props> = ({
             />
           </DialogContentSection>
           <div
-            className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
-          >
+            className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}>
             {t("Failed to update project")}
           </div>
         </DialogContentWrapper>
@@ -74,8 +72,7 @@ const ProjectEditDialog: React.FC<Props> = ({
               </Button> */}
           <Button
             disabled={buttonDisabled || !editProject?.name}
-            onClick={onUpdateProject}
-          >
+            onClick={onUpdateProject}>
             {t("Save")}
           </Button>
         </DialogFooter>

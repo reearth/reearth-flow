@@ -45,16 +45,14 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
           <Button
             className="flex gap-2"
             variant="outline"
-            onClick={() => setOpenProjectAddDialog(true)}
-          >
+            onClick={() => setOpenProjectAddDialog(true)}>
             <Plus weight="thin" />
             <p className="text-xs font-light">{t("New Project")}</p>
           </Button>
         </div>
         <div
           className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-          ref={ref}
-        >
+          ref={ref}>
           {projects?.map((p) => (
             <ProjectCard
               key={p.id}

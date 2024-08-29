@@ -119,8 +119,7 @@ const MembersSettings: React.FC = () => {
           />
           <Button
             onClick={() => handleAddMember(email)}
-            disabled={!email || currentWorkspace?.personal}
-          >
+            disabled={!email || currentWorkspace?.personal}>
             {t("Add Member")}
           </Button>
         </div>
@@ -142,8 +141,7 @@ const MembersSettings: React.FC = () => {
                     <DropdownMenuItem
                       key={idx}
                       className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
-                      onClick={() => setFilter(filter.id)}
-                    >
+                      onClick={() => setFilter(filter.id)}>
                       {filter.title}
                     </DropdownMenuItem>
                   ))}
@@ -161,8 +159,7 @@ const MembersSettings: React.FC = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={m.userId === me?.id}
-                    className={`flex flex-1 items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}
-                  >
+                    className={`flex flex-1 items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}>
                     <p className="text-sm">{t("Change role")}</p>
                     <CaretDown className="size-2" />
                   </DropdownMenuTrigger>
@@ -171,8 +168,7 @@ const MembersSettings: React.FC = () => {
                     {roles.map((role, idx) => (
                       <DropdownMenuItem
                         key={idx}
-                        onClick={() => handleChangeRole(m.userId, role)}
-                      >
+                        onClick={() => handleChangeRole(m.userId, role)}>
                         {role}
                       </DropdownMenuItem>
                     ))}
@@ -183,8 +179,7 @@ const MembersSettings: React.FC = () => {
                   size="sm"
                   variant="outline"
                   disabled={m.userId === me?.id}
-                  onClick={() => handleRemoveMembers(m.userId)}
-                >
+                  onClick={() => handleRemoveMembers(m.userId)}>
                   {t("Remove")}
                 </Button>
               </div>

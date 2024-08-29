@@ -30,8 +30,7 @@ const WorkspaceDeletionDialog: React.FC<Props> = ({
         <Button
           variant={"destructive"}
           disabled={disabled}
-          className="self-end"
-        >
+          className="self-end">
           {t("Delete Workspace")}
         </Button>
       </AlertDialogTrigger>
