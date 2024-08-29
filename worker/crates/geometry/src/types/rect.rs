@@ -1,5 +1,6 @@
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;
@@ -10,6 +11,7 @@ use super::{
     coordnum::{CoordFloat, CoordNum, CoordNumT},
     no_value::NoValue,
     polygon::Polygon,
+    traits::Elevation,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash)]
@@ -214,6 +216,17 @@ where
         }
 
         true
+    }
+}
+
+impl<T, Z> Elevation for Rect<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.min.is_elevation_zero() && self.max.is_elevation_zero()
     }
 }
 

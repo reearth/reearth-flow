@@ -87,14 +87,11 @@ pub struct GeometryFilter {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(tag = "filterType")]
+#[serde(tag = "filterType", rename_all = "camelCase")]
 pub enum GeometryFilterParam {
-    #[serde(rename = "none")]
     None,
-    #[serde(rename = "multiple")]
     Multiple,
-    #[serde(rename = "featureType")]
-    FeatureType,
+    GeometryType,
 }
 
 impl GeometryFilterParam {
@@ -102,7 +99,7 @@ impl GeometryFilterParam {
         match self {
             GeometryFilterParam::None => Port::new("none"),
             GeometryFilterParam::Multiple => Port::new("contains"),
-            GeometryFilterParam::FeatureType => unreachable!(),
+            GeometryFilterParam::GeometryType => unreachable!(),
         }
     }
 
@@ -165,11 +162,11 @@ impl Processor for GeometryFilter {
                 }
                 Some(geometry) => filter_multiple_geometry(&ctx, fw, feature, geometry),
             },
-            GeometryFilterParam::FeatureType => match &feature.geometry {
+            GeometryFilterParam::GeometryType => match &feature.geometry {
                 None => {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
                 }
-                Some(geometry) => filter_feature_type(&ctx, fw, feature, geometry),
+                Some(geometry) => filter_geometry_type(&ctx, fw, feature, geometry),
             },
         }
         Ok(())
@@ -233,7 +230,7 @@ fn filter_multiple_geometry(
     }
 }
 
-fn filter_feature_type(
+fn filter_geometry_type(
     ctx: &ExecutorContext,
     fw: &mut dyn ProcessorChannelForwarder,
     feature: &Feature,

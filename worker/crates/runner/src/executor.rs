@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, thread, time::Duration};
 
 use reearth_flow_common::future::SharedFuture;
 use reearth_flow_runtime::{
@@ -48,17 +48,20 @@ pub fn run_dag_executor(
     shutdown: ShutdownReceiver,
     state: Arc<State>,
 ) -> Result<(), OrchestrationError> {
-    let join_handle = runtime.block_on(dag_executor.start(
-        SharedFuture::new(Box::pin(shutdown.create_shutdown_future())),
+    let shutdown_future = shutdown.create_shutdown_future();
+    let mut join_handle = runtime.block_on(dag_executor.start(
+        SharedFuture::new(Box::pin(shutdown_future)),
         runtime.clone(),
         ctx.expr_engine.clone(),
         ctx.storage_resolver.clone(),
         ctx.logger.clone(),
         ctx.kv_store.clone(),
         state,
-    ));
-    join_handle
-        .unwrap()
+    ))?;
+    let result = join_handle
         .join()
-        .map_err(OrchestrationError::ExecutionError)
+        .map_err(OrchestrationError::ExecutionError);
+    thread::sleep(Duration::from_millis(1000));
+    join_handle.notify();
+    result
 }

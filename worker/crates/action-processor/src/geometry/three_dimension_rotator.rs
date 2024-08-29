@@ -16,19 +16,19 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct ThreeDimentionRotatorFactory;
+pub struct ThreeDimensionRotatorFactory;
 
-impl ProcessorFactory for ThreeDimentionRotatorFactory {
+impl ProcessorFactory for ThreeDimensionRotatorFactory {
     fn name(&self) -> &str {
-        "ThreeDimentionRotator"
+        "ThreeDimensionRotator"
     }
 
     fn description(&self) -> &str {
-        "Replaces a three dimention box with a polygon."
+        "Replaces a three Dimension box with a polygon."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(ThreeDimentionRotatorParam))
+        Some(schemars::schema_for!(ThreeDimensionRotatorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -50,9 +50,9 @@ impl ProcessorFactory for ThreeDimentionRotatorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: ThreeDimentionRotatorParam = if let Some(with) = with {
+        let params: ThreeDimensionRotatorParam = if let Some(with) = with {
             let value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::ThreeDimentionRotatorFactory(format!(
+                GeometryProcessorError::ThreeDimensionRotatorFactory(format!(
                     "Failed to serialize `with` parameter: {}",
                     e
                 ))
@@ -64,7 +64,7 @@ impl ProcessorFactory for ThreeDimentionRotatorFactory {
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::ThreeDimentionRotatorFactory(
+            return Err(GeometryProcessorError::ThreeDimensionRotatorFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -73,33 +73,33 @@ impl ProcessorFactory for ThreeDimentionRotatorFactory {
         let angle_degree = expr_engine
             .compile(params.angle_degree.as_ref())
             .map_err(|e| {
-                GeometryProcessorError::ThreeDimentionRotatorFactory(format!("{:?}", e))
+                GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{:?}", e))
             })?;
         let origin_x = expr_engine.compile(params.origin_x.as_ref()).map_err(|e| {
-            GeometryProcessorError::ThreeDimentionRotatorFactory(format!("{:?}", e))
+            GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{:?}", e))
         })?;
         let origin_y = expr_engine.compile(params.origin_y.as_ref()).map_err(|e| {
-            GeometryProcessorError::ThreeDimentionRotatorFactory(format!("{:?}", e))
+            GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{:?}", e))
         })?;
         let origin_z = expr_engine.compile(params.origin_z.as_ref()).map_err(|e| {
-            GeometryProcessorError::ThreeDimentionRotatorFactory(format!("{:?}", e))
+            GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{:?}", e))
         })?;
         let direction_x = expr_engine
             .compile(params.direction_x.as_ref())
             .map_err(|e| {
-                GeometryProcessorError::ThreeDimentionRotatorFactory(format!("{:?}", e))
+                GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{:?}", e))
             })?;
         let direction_y = expr_engine
             .compile(params.direction_y.as_ref())
             .map_err(|e| {
-                GeometryProcessorError::ThreeDimentionRotatorFactory(format!("{:?}", e))
+                GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{:?}", e))
             })?;
         let direction_z = expr_engine
             .compile(params.direction_z.as_ref())
             .map_err(|e| {
-                GeometryProcessorError::ThreeDimentionRotatorFactory(format!("{:?}", e))
+                GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{:?}", e))
             })?;
-        Ok(Box::new(ThreeDimentionRotator {
+        Ok(Box::new(ThreeDimensionRotator {
             angle_degree,
             origin_x,
             origin_y,
@@ -113,7 +113,7 @@ impl ProcessorFactory for ThreeDimentionRotatorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ThreeDimentionRotatorParam {
+pub struct ThreeDimensionRotatorParam {
     angle_degree: Expr,
     origin_x: Expr,
     origin_y: Expr,
@@ -124,7 +124,7 @@ pub struct ThreeDimentionRotatorParam {
 }
 
 #[derive(Debug, Clone)]
-pub struct ThreeDimentionRotator {
+pub struct ThreeDimensionRotator {
     angle_degree: rhai::AST,
     origin_x: rhai::AST,
     origin_y: rhai::AST,
@@ -134,7 +134,7 @@ pub struct ThreeDimentionRotator {
     direction_z: rhai::AST,
 }
 
-impl Processor for ThreeDimentionRotator {
+impl Processor for ThreeDimensionRotator {
     fn initialize(&mut self, _ctx: NodeContext) {}
 
     fn num_threads(&self) -> usize {
@@ -187,6 +187,6 @@ impl Processor for ThreeDimentionRotator {
     }
 
     fn name(&self) -> &str {
-        "ThreeDimentionRotator"
+        "ThreeDimensionRotator"
     }
 }

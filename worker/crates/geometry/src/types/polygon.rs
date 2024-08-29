@@ -1,5 +1,6 @@
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +17,7 @@ use super::no_value::NoValue;
 use super::point::Point;
 use super::rect::Rect;
 use super::solid::Solid;
-use super::traits::Surface;
+use super::traits::{Elevation, Surface};
 use super::triangle::Triangle;
 use super::validation::Validation;
 
@@ -449,5 +450,17 @@ where
 
     fn envelope(&self) -> Self::Envelope {
         self.exterior.envelope()
+    }
+}
+
+impl<T, Z> Elevation for Polygon<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.exterior.is_elevation_zero()
+            && self.interiors.iter().all(LineString::is_elevation_zero)
     }
 }
