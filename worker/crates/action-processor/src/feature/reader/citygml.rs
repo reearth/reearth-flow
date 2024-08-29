@@ -66,10 +66,7 @@ fn parse_tree_reader<R: BufRead>(
     st.parse_children(|st| {
         let path: &[u8] = &st.current_path();
         match path {
-            b"gml:boundedBy" => {
-                // skip
-                Ok(())
-            }
+            b"gml:boundedBy" => Ok(()),
             b"gml:boundedBy/gml:Envelope" => {
                 let mut envelope = Envelope::default();
                 envelope.parse(st)?;
@@ -82,7 +79,7 @@ fn parse_tree_reader<R: BufRead>(
                 let id = cityobj.id();
                 let name = cityobj.name();
                 let description = cityobj.description();
-                let bounded = cityobj.bounded_by();
+                let bounded_by = cityobj.bounded_by();
                 if let Some(root) = cityobj.into_object() {
                     let entity = Entity {
                         id,
@@ -92,7 +89,7 @@ fn parse_tree_reader<R: BufRead>(
                         base_url: base_url.clone(),
                         geometry_store: RwLock::new(geometry_store).into(),
                         appearance_store: Default::default(),
-                        bounded,
+                        bounded_by,
                         geometry_refs: st.geometry_refs().clone(),
                     };
                     entities.push(entity);
