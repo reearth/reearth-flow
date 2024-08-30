@@ -34,3 +34,6 @@ flow-config.json
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+build/*
+!/build/.gitkeep
