@@ -17,17 +17,17 @@ import { Route as IndexImport } from './routes/index'
 
 // Create Virtual Routes
 
-const WorkspaceWorkspaceIdLazyImport = createFileRoute(
-  '/workspace/$workspaceId',
+const WorkspacesWorkspaceIdLazyImport = createFileRoute(
+  '/workspaces/$workspaceId',
 )()
-const WorkspaceWorkspaceIdSettingsTabLazyImport = createFileRoute(
-  '/workspace/$workspaceId/settings/$tab',
+const WorkspacesWorkspaceIdSettingsTabLazyImport = createFileRoute(
+  '/workspaces/$workspaceId/settings/$tab',
 )()
-const WorkspaceWorkspaceIdRunsTabLazyImport = createFileRoute(
-  '/workspace/$workspaceId/runs/$tab',
+const WorkspacesWorkspaceIdRunsTabLazyImport = createFileRoute(
+  '/workspaces/$workspaceId/runs/$tab',
 )()
-const WorkspaceWorkspaceIdProjectProjectIdLazyImport = createFileRoute(
-  '/workspace/$workspaceId/project/$projectId',
+const WorkspacesWorkspaceIdProjectsProjectIdLazyImport = createFileRoute(
+  '/workspaces/$workspaceId/projects/$projectId',
 )()
 
 // Create/Update Routes
@@ -37,39 +37,39 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const WorkspaceWorkspaceIdLazyRoute = WorkspaceWorkspaceIdLazyImport.update({
-  path: '/workspace/$workspaceId',
+const WorkspacesWorkspaceIdLazyRoute = WorkspacesWorkspaceIdLazyImport.update({
+  path: '/workspaces/$workspaceId',
   getParentRoute: () => rootRoute,
 } as any).lazy(() =>
-  import('./routes/workspace_.$workspaceId.lazy').then((d) => d.Route),
+  import('./routes/workspaces_.$workspaceId.lazy').then((d) => d.Route),
 )
 
-const WorkspaceWorkspaceIdSettingsTabLazyRoute =
-  WorkspaceWorkspaceIdSettingsTabLazyImport.update({
-    path: '/workspace/$workspaceId/settings/$tab',
+const WorkspacesWorkspaceIdSettingsTabLazyRoute =
+  WorkspacesWorkspaceIdSettingsTabLazyImport.update({
+    path: '/workspaces/$workspaceId/settings/$tab',
     getParentRoute: () => rootRoute,
   } as any).lazy(() =>
-    import('./routes/workspace_.$workspaceId_.settings.$tab.lazy').then(
+    import('./routes/workspaces_.$workspaceId_.settings.$tab.lazy').then(
       (d) => d.Route,
     ),
   )
 
-const WorkspaceWorkspaceIdRunsTabLazyRoute =
-  WorkspaceWorkspaceIdRunsTabLazyImport.update({
-    path: '/workspace/$workspaceId/runs/$tab',
+const WorkspacesWorkspaceIdRunsTabLazyRoute =
+  WorkspacesWorkspaceIdRunsTabLazyImport.update({
+    path: '/workspaces/$workspaceId/runs/$tab',
     getParentRoute: () => rootRoute,
   } as any).lazy(() =>
-    import('./routes/workspace_.$workspaceId_.runs.$tab.lazy').then(
+    import('./routes/workspaces_.$workspaceId_.runs.$tab.lazy').then(
       (d) => d.Route,
     ),
   )
 
-const WorkspaceWorkspaceIdProjectProjectIdLazyRoute =
-  WorkspaceWorkspaceIdProjectProjectIdLazyImport.update({
-    path: '/workspace/$workspaceId/project/$projectId',
+const WorkspacesWorkspaceIdProjectsProjectIdLazyRoute =
+  WorkspacesWorkspaceIdProjectsProjectIdLazyImport.update({
+    path: '/workspaces/$workspaceId/projects/$projectId',
     getParentRoute: () => rootRoute,
   } as any).lazy(() =>
-    import('./routes/workspace_.$workspaceId_.project.$projectId.lazy').then(
+    import('./routes/workspaces_.$workspaceId_.projects.$projectId.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -85,32 +85,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
-    '/workspace/$workspaceId': {
-      id: '/workspace/$workspaceId'
-      path: '/workspace/$workspaceId'
-      fullPath: '/workspace/$workspaceId'
-      preLoaderRoute: typeof WorkspaceWorkspaceIdLazyImport
+    '/workspaces/$workspaceId': {
+      id: '/workspaces/$workspaceId'
+      path: '/workspaces/$workspaceId'
+      fullPath: '/workspaces/$workspaceId'
+      preLoaderRoute: typeof WorkspacesWorkspaceIdLazyImport
       parentRoute: typeof rootRoute
     }
-    '/workspace/$workspaceId/project/$projectId': {
-      id: '/workspace/$workspaceId/project/$projectId'
-      path: '/workspace/$workspaceId/project/$projectId'
-      fullPath: '/workspace/$workspaceId/project/$projectId'
-      preLoaderRoute: typeof WorkspaceWorkspaceIdProjectProjectIdLazyImport
+    '/workspaces/$workspaceId/projects/$projectId': {
+      id: '/workspaces/$workspaceId/projects/$projectId'
+      path: '/workspaces/$workspaceId/projects/$projectId'
+      fullPath: '/workspaces/$workspaceId/projects/$projectId'
+      preLoaderRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdLazyImport
       parentRoute: typeof rootRoute
     }
-    '/workspace/$workspaceId/runs/$tab': {
-      id: '/workspace/$workspaceId/runs/$tab'
-      path: '/workspace/$workspaceId/runs/$tab'
-      fullPath: '/workspace/$workspaceId/runs/$tab'
-      preLoaderRoute: typeof WorkspaceWorkspaceIdRunsTabLazyImport
+    '/workspaces/$workspaceId/runs/$tab': {
+      id: '/workspaces/$workspaceId/runs/$tab'
+      path: '/workspaces/$workspaceId/runs/$tab'
+      fullPath: '/workspaces/$workspaceId/runs/$tab'
+      preLoaderRoute: typeof WorkspacesWorkspaceIdRunsTabLazyImport
       parentRoute: typeof rootRoute
     }
-    '/workspace/$workspaceId/settings/$tab': {
-      id: '/workspace/$workspaceId/settings/$tab'
-      path: '/workspace/$workspaceId/settings/$tab'
-      fullPath: '/workspace/$workspaceId/settings/$tab'
-      preLoaderRoute: typeof WorkspaceWorkspaceIdSettingsTabLazyImport
+    '/workspaces/$workspaceId/settings/$tab': {
+      id: '/workspaces/$workspaceId/settings/$tab'
+      path: '/workspaces/$workspaceId/settings/$tab'
+      fullPath: '/workspaces/$workspaceId/settings/$tab'
+      preLoaderRoute: typeof WorkspacesWorkspaceIdSettingsTabLazyImport
       parentRoute: typeof rootRoute
     }
   }
@@ -120,10 +120,10 @@ declare module '@tanstack/react-router' {
 
 export const routeTree = rootRoute.addChildren({
   IndexRoute,
-  WorkspaceWorkspaceIdLazyRoute,
-  WorkspaceWorkspaceIdProjectProjectIdLazyRoute,
-  WorkspaceWorkspaceIdRunsTabLazyRoute,
-  WorkspaceWorkspaceIdSettingsTabLazyRoute,
+  WorkspacesWorkspaceIdLazyRoute,
+  WorkspacesWorkspaceIdProjectsProjectIdLazyRoute,
+  WorkspacesWorkspaceIdRunsTabLazyRoute,
+  WorkspacesWorkspaceIdSettingsTabLazyRoute,
 })
 
 /* prettier-ignore-end */
@@ -135,26 +135,26 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/workspace/$workspaceId",
-        "/workspace/$workspaceId/project/$projectId",
-        "/workspace/$workspaceId/runs/$tab",
-        "/workspace/$workspaceId/settings/$tab"
+        "/workspaces/$workspaceId",
+        "/workspaces/$workspaceId/projects/$projectId",
+        "/workspaces/$workspaceId/runs/$tab",
+        "/workspaces/$workspaceId/settings/$tab"
       ]
     },
     "/": {
       "filePath": "index.tsx"
     },
-    "/workspace/$workspaceId": {
-      "filePath": "workspace_.$workspaceId.lazy.tsx"
+    "/workspaces/$workspaceId": {
+      "filePath": "workspaces_.$workspaceId.lazy.tsx"
     },
-    "/workspace/$workspaceId/project/$projectId": {
-      "filePath": "workspace_.$workspaceId_.project.$projectId.lazy.tsx"
+    "/workspaces/$workspaceId/projects/$projectId": {
+      "filePath": "workspaces_.$workspaceId_.projects.$projectId.lazy.tsx"
     },
-    "/workspace/$workspaceId/runs/$tab": {
-      "filePath": "workspace_.$workspaceId_.runs.$tab.lazy.tsx"
+    "/workspaces/$workspaceId/runs/$tab": {
+      "filePath": "workspaces_.$workspaceId_.runs.$tab.lazy.tsx"
     },
-    "/workspace/$workspaceId/settings/$tab": {
-      "filePath": "workspace_.$workspaceId_.settings.$tab.lazy.tsx"
+    "/workspaces/$workspaceId/settings/$tab": {
+      "filePath": "workspaces_.$workspaceId_.settings.$tab.lazy.tsx"
     }
   }
 }
