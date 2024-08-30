@@ -11,16 +11,22 @@ script = ['''
 cargo fmt --all
 ''']
 
-[tasks.lint]
+[tasks.check]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --all-features
+cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
+''']
+
+[tasks.clippy]
+script = ['''
+#!/usr/bin/env bash -eux
+cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
 ''']
 
 [tasks.test]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo test --workspace --all-targets --all-features
+cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
 ''']
 
 [tasks.doc]

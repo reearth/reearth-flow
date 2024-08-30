@@ -36,16 +36,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
-      - name: check
-        run: cargo check --all
-      - name: rustfmt
-        run: cargo fmt --all -- --check
-      - name: clippy
-        run: cargo clippy --all -- -D warnings
       - name: install required tools
         uses: taiki-e/install-action@v2
         with:
           tool: taplo-cli,cargo-make
+      - name: check
+        run: cargo make check
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+      - name: clippy
+        run: cargo make clippy
       - name: taplo
         run: taplo fmt --check
       - name: run generate schema
@@ -61,4 +61,4 @@ jobs:
             exit 1
           fi
       - name: run tests
-        run: cargo test --workspace --all-targets --all-features
+        run: cargo make test
