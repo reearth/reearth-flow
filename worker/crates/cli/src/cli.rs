@@ -47,14 +47,14 @@ impl CliCommand {
     pub fn parse_cli_args(mut matches: ArgMatches) -> crate::Result<Self> {
         let (subcommand, submatches) = matches
             .remove_subcommand()
-            .ok_or(crate::Error::parse("missing subcommand"))?;
+            .ok_or(crate::errors::Error::parse("missing subcommand"))?;
         match subcommand.as_str() {
             "run" => RunCliCommand::parse_cli_args(submatches).map(CliCommand::Run),
             "dot" => DotCliCommand::parse_cli_args(submatches).map(CliCommand::Dot),
             "schema-action" => Ok(CliCommand::SchemaAction(SchemaActionCliCommand)),
             "schema-workflow" => Ok(CliCommand::SchemaWorkflow(SchemaWorkflowCliCommand)),
             "doc-action" => Ok(CliCommand::DocAction(DocActionCliCommand)),
-            _ => Err(crate::Error::unknown_command(subcommand)),
+            _ => Err(crate::errors::Error::unknown_command(subcommand)),
         }
     }
 

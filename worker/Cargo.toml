@@ -3,7 +3,11 @@ members = [
   "crates/*",
   "examples",
   "tests",
+  "tools/plateau-gis-quality-checker/src-tauri",
 ]
+
+default-members = ["crates/*"]
+
 resolver = "2"
 
 [workspace.package]
