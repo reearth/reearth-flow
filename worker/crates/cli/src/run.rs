@@ -128,7 +128,9 @@ impl RunCliCommand {
         let mut workflow = Workflow::try_from_str(&json);
         workflow.merge_with(self.vars.clone());
         let job_id = match &self.job_id {
-            Some(job_id) => uuid::Uuid::from_str(job_id.as_str()).map_err(crate::errors::Error::init)?,
+            Some(job_id) => {
+                uuid::Uuid::from_str(job_id.as_str()).map_err(crate::errors::Error::init)?
+            }
             None => uuid::Uuid::new_v4(),
         };
         let action_log_uri = match &self.action_log_uri {
