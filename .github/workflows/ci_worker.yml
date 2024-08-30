@@ -61,4 +61,4 @@ jobs:
             exit 1
           fi
       - name: run tests
-        run: cargo test --workspace --all-targets --all-features
+        run: cargo make test
