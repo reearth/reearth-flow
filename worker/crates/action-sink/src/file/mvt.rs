@@ -10,7 +10,7 @@ use reearth_flow_geometry::algorithm::area3d::Area3D;
 use reearth_flow_geometry::algorithm::coords_iter::CoordsIter;
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_geometry::types::line_string::LineString;
-use reearth_flow_geometry::types::multi_polygon::MultiPolygon;
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 use reearth_flow_geometry::types::polygon::Polygon;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -227,7 +227,7 @@ fn handle_feature(
     let default_detail = 12;
     let min_detail = 9;
 
-    for poly in feature.polygons {
+    for poly in feature.clone().polygons {
         if poly.exterior().signed_area3d() < 0.0 {
             continue;
         }
@@ -246,18 +246,12 @@ fn handle_feature(
         if mpoly.is_empty() {
             continue;
         }
-        //     f((z, x, y), mpoly)?;
-        // }
-
-        // let (zoom, x, y) = (
-        //     zoom,
-        //     xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
-        //     yi,
-        // );
-
-        // let mpoly = feature.polygons.clone();
-
         let feature = SlicedFeature {
+            id: feature.clone().id.map(|id| {
+                id.as_bytes()
+                    .iter()
+                    .fold(5381u64, |a, c| a.wrapping_mul(33) ^ *c as u64)
+            }),
             geometry: mpoly,
             properties: attributes.clone(),
         };
@@ -305,6 +299,8 @@ fn handle_feature(
     Ok(())
 }
 
+use reearth_flow_geometry::algorithm::area2d::Area2D;
+
 fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> Result<Vec<u8>, SinkError> {
     let mut layers: BrownHashMap<String, LayerData> = BrownHashMap::new();
     let mut int_ring_buf = Vec::new();
@@ -319,14 +315,14 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> Result<Vec<u8
             })?;
 
         let mpoly = feature.geometry;
-        let mut int_mpoly: MultiPolygon = Default::default();
+        let mut int_mpoly: MultiPolygon2D<i16> = Default::default(); // 2D only
 
         for poly in &mpoly {
             for (ri, ring) in poly.rings().into_iter().enumerate() {
                 int_ring_buf.clear();
                 int_ring_buf.extend(ring.into_iter().map(|c| {
-                    let x = c.x * extent as f64 + 0.5;
-                    let y = c.y * extent as f64 + 0.5;
+                    let x = (c.x as f64 * extent as f64 + 0.5) as i16;
+                    let y = (c.y as f64 * extent as f64 + 0.5) as i16;
                     [x, y]
                 }));
 
@@ -361,7 +357,7 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> Result<Vec<u8
                 let ls = LineString::new(
                     int_ring_buf2
                         .iter()
-                        .map(|c| Coordinate::new__(c[0], c[1], 0.0)) // TODO
+                        .map(|c| Coordinate::new_(c[0], c[1]))
                         .collect(),
                 );
                 match ri {
@@ -372,14 +368,14 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> Result<Vec<u8
         }
 
         // encode geometry
-        let geom_enc = GeometryEncoder::new();
+        let mut geom_enc = GeometryEncoder::new();
         for poly in &int_mpoly {
             let exterior = poly.exterior();
-            if exterior.signed_area3d() < 0.0 {
-                // geom_enc.add_ring(&exterior); // TODO
+            if exterior.signed_area2d() < 0 {
+                geom_enc.add_ring(exterior.into_iter().map(|c| [c.x, c.y]));
                 for interior in poly.interiors() {
-                    if interior.signed_area3d() > 0.0 {
-                        // geom_enc.add_ring(&interior); // TODO
+                    if interior.signed_area2d() > 0 {
+                        geom_enc.add_ring(interior.into_iter().map(|c| [c.x, c.y]));
                     }
                 }
             }
@@ -389,7 +385,6 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> Result<Vec<u8
             continue;
         }
 
-        let id = None;
         let tags: Vec<u32> = Vec::new();
 
         for (key, value) in &feature.properties {
@@ -397,16 +392,9 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> Result<Vec<u8
             let mut tags_clone = tags.clone();
             convert_properties(&mut tags_clone, &mut layer.tags_enc, key.type_name(), value);
 
-            // // Make a MVT feature id (u64) by hashing the original feature id string.
-            // id = obj.stereotype.id().map(|id| {
-            //     id.as_bytes()
-            //         .iter()
-            //         .fold(5381u64, |a, c| a.wrapping_mul(33) ^ *c as u64)
-            // }); // TODO
-
             let geomery_cloned = geometry.clone();
             layer.features.push(vector_tile::tile::Feature {
-                id,
+                id: feature.id,
                 tags: tags_clone,
                 r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
                 geometry: geomery_cloned,
@@ -658,7 +646,8 @@ struct LayerData {
 
 #[derive(Serialize, Deserialize)]
 struct SlicedFeature {
-    geometry: MultiPolygon,
+    id: Option<u64>,
+    geometry: MultiPolygon2D<i16>,
     properties: HashMap<Attribute, AttributeValue>,
 }
 use super::vector_tile;
@@ -710,8 +699,8 @@ fn slice_polygon(
     zoom: u8,
     extent: u32,
     buffer: u32,
-    poly: &reearth_flow_geometry::types::polygon::Polygon,
-    out: &mut HashMap<(u8, u32, u32), MultiPolygon>,
+    poly: &Polygon,
+    out: &mut HashMap<(u8, u32, u32), MultiPolygon2D<i16>>,
 ) {
     let z_scale = (1 << zoom) as f64;
     let buf_width = buffer as f64 / extent as f64;
@@ -735,7 +724,7 @@ fn slice_polygon(
         let k1 = (yi as f64 - buf_width) / z_scale;
         let k2 = ((yi + 1) as f64 + buf_width) / z_scale;
 
-        let y_sliced_poly: Polygon = Polygon::new(LineString::new(vec![]), vec![]);
+        let mut y_sliced_poly: Polygon = Polygon::new(LineString::new(vec![]), vec![]);
 
         for ring in poly.rings() {
             if ring.coords_count() == 0 {
@@ -773,7 +762,16 @@ fn slice_polygon(
                 })
                 .unwrap();
 
-            // y_sliced_poly.add_ring(new_ring_buffer.iter().copied()); // TODO
+            let coordinates: Vec<Coordinate<f64, f64>> = new_ring_buffer
+                .clone()
+                .into_iter()
+                .map(|[x, y]| Coordinate { x, y, z: 0.0 })
+                .collect();
+
+            let linestring = LineString::from(coordinates);
+
+            y_sliced_poly.interiors_push(linestring);
+            // TODO
         }
 
         y_sliced_polys.push(y_sliced_poly);
@@ -844,8 +842,8 @@ fn slice_polygon(
                 {
                     norm_coords_buf.clear();
                     norm_coords_buf.extend(new_ring_buffer.iter().map(|&[x, y]| {
-                        let tx = x * z_scale - xi as f64;
-                        let ty = y * z_scale - yi as f64;
+                        let tx = (x * z_scale - xi as f64) as i16;
+                        let ty = (y * z_scale - yi as f64) as i16;
                         [tx, ty]
                     }));
 
@@ -862,13 +860,13 @@ fn slice_polygon(
                 }
 
                 // let mut ring = LineString::from(norm_coords_buf);
-                let ls = LineString::new(
+                let mut ls = LineString::new(
                     norm_coords_buf
                         .iter()
-                        .map(|c| Coordinate::new__(c[0], c[1], 0.0)) // TODO
+                        .map(|c| Coordinate::new_(c[0], c[1]))
                         .collect(),
                 );
-                // ls.reverse_inplace(); // TODO
+                ls.reverse_inplace();
 
                 match ri {
                     0 => tile_mpoly.add_exterior(ls),

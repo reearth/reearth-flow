@@ -199,6 +199,17 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
     pub fn is_closed(&self) -> bool {
         self.0.first() == self.0.last()
     }
+
+    /// Reverses the coordinates in the LineString.
+    pub fn reverse_inplace(&mut self) {
+        let len = self.0.len();
+        if len > 0 {
+            let data = self.0.as_mut_slice();
+            for i in 0..data.len() / 2 {
+                data.swap(i, len - (i + 1));
+            }
+        }
+    }
 }
 
 impl<T: CoordNum, Z: CoordNum, IC: Into<Coordinate<T, Z>>> From<Vec<IC>> for LineString<T, Z> {
