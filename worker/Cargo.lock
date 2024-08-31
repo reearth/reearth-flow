@@ -1834,7 +1834,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "http 1.1.0",
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "slab",
  "tokio",
  "tokio-util",
@@ -2222,9 +2222,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93ead53efc7ea8ed3cfb0c79fc8023fbb782a5432b52830b6518941cebe6505c"
+checksum = "68b900aa2f7301e21c36462b170ee99994de34dff39a4a6a528e80e7376d07e5"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.5",
@@ -2943,7 +2943,7 @@ source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc7#88
 dependencies = [
  "ahash",
  "chrono",
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "log",
  "macros",
  "nusamai-geometry",
@@ -2974,7 +2974,7 @@ dependencies = [
  "byteorder",
  "clap",
  "earcut",
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "nusamai-geometry",
  "nusamai-gltf-json",
  "quick-xml 0.36.1",
@@ -2999,7 +2999,7 @@ version = "0.1.0"
 source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc7#886de99c529535dc7c3f07f0aab6566e21ea4522"
 dependencies = [
  "ahash",
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "prost",
  "prost-build",
 ]
@@ -3011,7 +3011,7 @@ source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc7#88
 dependencies = [
  "chrono",
  "hashbrown 0.14.5",
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "log",
  "nusamai-citygml",
  "nusamai-geometry",
@@ -3142,9 +3142,9 @@ dependencies = [
 
 [[package]]
 name = "opendal"
-version = "0.49.1"
+version = "0.49.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba615070686c8781ce97376fdafca29d7c42f47b31d2230d7c8c1642ec823950"
+checksum = "9b04d09b9822c2f75a1d2fc513a2c1279c70e91e7407936fffdf6a6976ec530a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3430,7 +3430,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
  "fixedbitset",
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
 ]
 
 [[package]]
@@ -3660,7 +3660,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42cf17e9a1800f5f396bc67d193dc9411b59012a5876445ef450d449881e1016"
 dependencies = [
  "base64 0.22.1",
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "quick-xml 0.32.0",
  "serde",
  "time",
@@ -4170,7 +4170,7 @@ dependencies = [
  "csv",
  "earcut",
  "geojson",
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "nusamai-citygml",
  "nusamai-gltf",
  "nusamai-mvt",
@@ -4550,7 +4550,7 @@ dependencies = [
  "geojson",
  "hashbrown 0.14.5",
  "image 0.25.2",
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "itertools",
  "nusamai-citygml",
  "nusamai-geometry",
@@ -5141,7 +5141,7 @@ version = "1.0.127"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8043c06d9f82bd7271361ed64f415fe5e12a77fdb52e573e7f06a516dea329ad"
 dependencies = [
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "itoa 1.0.11",
  "memchr",
  "ryu",
@@ -5190,7 +5190,7 @@ dependencies = [
  "chrono",
  "hex",
  "indexmap 1.9.3",
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -5216,7 +5216,7 @@ version = "0.9.34+deprecated"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a8b1a1a2ebf674015cc02edccce75287f1a0130d394307b36743c2f5d504b47"
 dependencies = [
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "itoa 1.0.11",
  "ryu",
  "serde",
@@ -6126,9 +6126,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.39.3"
+version = "1.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9babc99b9923bfa4804bd74722ff02c0381021eafa4db9949217e3be8e84fff5"
+checksum = "e2b070231665d27ad9ec9b8df639893f46727666c6767db40317fbe920a5d998"
 dependencies = [
  "backtrace",
  "bytes",
@@ -6251,7 +6251,7 @@ version = "0.19.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
 dependencies = [
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "serde",
  "serde_spanned",
  "toml_datetime",
@@ -6264,7 +6264,7 @@ version = "0.22.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "583c44c02ad26b0c3f3066fe629275e50627026c51ac2e595cca4c230ce1ce1d"
 dependencies = [
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "serde",
  "serde_spanned",
  "toml_datetime",
@@ -7459,7 +7459,7 @@ dependencies = [
  "crossbeam-utils",
  "displaydoc",
  "flate2",
- "indexmap 2.4.0",
+ "indexmap 2.5.0",
  "memchr",
  "thiserror",
  "zopfli",
