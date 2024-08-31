@@ -9,9 +9,11 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::algorithm::area3d::Area3D;
 use reearth_flow_geometry::algorithm::coords_iter::CoordsIter;
 use reearth_flow_geometry::types::coordinate::Coordinate;
+use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::line_string::LineString;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 use reearth_flow_geometry::types::polygon::Polygon;
+use reearth_flow_geometry::types::polygon::Polygon2D;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -724,7 +726,8 @@ fn slice_polygon(
         let k1 = (yi as f64 - buf_width) / z_scale;
         let k2 = ((yi + 1) as f64 + buf_width) / z_scale;
 
-        let mut y_sliced_poly: Polygon = Polygon::new(LineString::new(vec![]), vec![]);
+        let mut y_sliced_poly: Polygon2D<f64> =
+            Polygon2D::<f64>::new(LineString::new(vec![]), vec![]);
 
         for ring in poly.rings() {
             if ring.coords_count() == 0 {
@@ -762,16 +765,16 @@ fn slice_polygon(
                 })
                 .unwrap();
 
-            let coordinates: Vec<Coordinate<f64, f64>> = new_ring_buffer
+            let coordinates: Vec<Coordinate2D<f64>> = new_ring_buffer
                 .clone()
                 .into_iter()
-                .map(|[x, y]| Coordinate { x, y, z: 0.0 })
+                .map(|[x, y]| Coordinate { x, y, z: 00 })
+                .map(|c| Coordinate2D::new_(c.x, c.y))
                 .collect();
 
             let linestring = LineString::from(coordinates);
 
             y_sliced_poly.interiors_push(linestring);
-            // TODO
         }
 
         y_sliced_polys.push(y_sliced_poly);
