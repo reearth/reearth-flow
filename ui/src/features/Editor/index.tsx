@@ -48,8 +48,7 @@ export default function Editor() {
             nodes={nodes}
             onNodesChange={handleNodesUpdate}
             onNodeLocking={handleNodeLocking}
-            onNodePickerClose={handleNodePickerClose}
-          >
+            onNodePickerClose={handleNodePickerClose}>
             <Canvas
               nodes={nodes}
               edges={edges}

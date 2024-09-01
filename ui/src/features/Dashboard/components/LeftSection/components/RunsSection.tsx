@@ -24,42 +24,38 @@ const RunsSection: React.FC = () => {
           className="flex h-[30px] gap-2"
           variant="outline"
           onClick={() =>
-            navigate({ to: `/workspace/${currentWorkspace?.id}/runs/manual` })
-          }
-        >
+            navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/new` })
+          }>
           <Play weight="thin" />
           <p className="text-xs font-light">{t("New Run")}</p>
         </Button>
       </div>
       <div className="flex flex-col gap-1 p-4">
         <div
-          className="hover:bg-accent/50 -mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer"
+          className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent"
           onClick={() =>
-            navigate({ to: `/workspace/${currentWorkspace?.id}/runs/running` })
-          }
-        >
+            navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/running` })
+          }>
           <p className="font-thin">{t("Running: ")}</p>
           <p className="font-thin">{runningRuns.length}</p>
         </div>
         <div
-          className="hover:bg-accent/50 -mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer"
+          className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent"
           onClick={() =>
-            navigate({ to: `/workspace/${currentWorkspace?.id}/runs/queued` })
-          }
-        >
+            navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/queued` })
+          }>
           <p className="font-thin">{t("Queued: ")}</p>
           <p className="font-thin">{queuedRuns.length}</p>
         </div>
         <div className="my-1 border-t" />
         <div className="flex flex-col">
           <div
-            className="hover:bg-accent/50 -mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer"
+            className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent"
             onClick={() =>
               navigate({
-                to: `/workspace/${currentWorkspace?.id}/runs/completed`,
+                to: `/workspaces/${currentWorkspace?.id}/runs/completed`,
               })
-            }
-          >
+            }>
             <p className="font-thin">{t("Completed (today): ")}</p>
             <p className="font-thin">
               {completeRuns.length + failedRuns.length}

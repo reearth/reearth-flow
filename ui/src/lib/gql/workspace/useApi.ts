@@ -62,7 +62,7 @@ export const useWorkspace = () => {
 
   const updateWorkspace = async (
     workspaceId: string,
-    name: string
+    name: string,
   ): Promise<WorkspaceMutation> => {
     const { mutateAsync, ...rest } = updateWorkspaceMutation;
     try {
@@ -74,7 +74,7 @@ export const useWorkspace = () => {
   };
 
   const deleteWorkspace = async (
-    workspaceId: string
+    workspaceId: string,
   ): Promise<DeleteWorkspace> => {
     const { mutateAsync, ...rest } = deleteWorkspaceMutation;
     try {
@@ -94,7 +94,7 @@ export const useWorkspace = () => {
   const addMemberToWorkspace = async (
     workspaceId: string,
     userId: string,
-    role: Role
+    role: Role,
   ): Promise<WorkspaceMutation> => {
     const { mutateAsync, ...rest } = addMemberToWorkspaceMutation;
     try {
@@ -111,7 +111,7 @@ export const useWorkspace = () => {
 
   const removeMemberFromWorkspace = async (
     workspaceId: string,
-    userId: string
+    userId: string,
   ): Promise<WorkspaceMutation> => {
     const { mutateAsync, ...rest } = removeMemberFromWorkspaceMutation;
     try {
@@ -119,7 +119,7 @@ export const useWorkspace = () => {
       toast({
         title: t("Member Removed"),
         description: t(
-          "Member has been successfully removed from the workspace."
+          "Member has been successfully removed from the workspace.",
         ),
         variant: "destructive",
       });
@@ -132,7 +132,7 @@ export const useWorkspace = () => {
   const updateMemberOfWorkspace = async (
     workspaceId: string,
     userId: string,
-    role: Role
+    role: Role,
   ): Promise<WorkspaceMutation> => {
     const { mutateAsync, ...rest } = updateMemberOfWorkspaceMutation;
     try {

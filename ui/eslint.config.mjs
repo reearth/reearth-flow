@@ -3,8 +3,6 @@ import config from "eslint-config-reearth";
 import storybook from "eslint-plugin-storybook";
 import tailwind from "eslint-plugin-tailwindcss";
 
-/** @type { import("eslint").Linter.Config[] } */
-
 const storyBookConfig = {
   files: ["*.stories.@(ts|tsx|js|jsx|mjs|cjs)"],
   plugins: {
@@ -67,6 +65,7 @@ const graphqlConfig = {
   },
 };
 
+/** @type { import("eslint").Linter.Config[] } */
 export default [
   ...config("flow"),
   ...customTailwindConfig,

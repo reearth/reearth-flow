@@ -69,6 +69,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
         />
       )}
       {/* <div className={`bg-orange-400/60 w-[${width}px] h-[${height}px]`} style={{ width, height }}> */}
+      {/* TODO: Remove blue color */}
       <div className={`z-0 h-full rounded-sm bg-blue-300/50 p-2`}>
         <textarea
           className="nowheel size-full resize-none bg-transparent"

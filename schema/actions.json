@@ -530,6 +530,24 @@
       ]
     },
     {
+      "name": "DimensionFilter",
+      "type": "processor",
+      "description": "Filters the dimension of features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "2d",
+        "3d",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "Echo",
       "type": "sink",
       "description": "Echo features",
@@ -1476,7 +1494,7 @@
               "filterType": {
                 "type": "string",
                 "enum": [
-                  "featureType"
+                  "geometryType"
                 ]
               }
             }
@@ -2140,12 +2158,12 @@
       ]
     },
     {
-      "name": "ThreeDimentionBoxReplacer",
+      "name": "ThreeDimensionBoxReplacer",
       "type": "processor",
-      "description": "Replaces a three dimention box with a polygon.",
+      "description": "Replaces a three Dimension box with a polygon.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ThreeDimentionBoxReplacer",
+        "title": "ThreeDimensionBoxReplacer",
         "type": "object",
         "required": [
           "maxX",
@@ -2193,12 +2211,12 @@
       ]
     },
     {
-      "name": "ThreeDimentionRotator",
+      "name": "ThreeDimensionRotator",
       "type": "processor",
-      "description": "Replaces a three dimention box with a polygon.",
+      "description": "Replaces a three Dimension box with a polygon.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ThreeDimentionRotatorParam",
+        "title": "ThreeDimensionRotatorParam",
         "type": "object",
         "required": [
           "angleDegree",
@@ -2250,9 +2268,9 @@
       ]
     },
     {
-      "name": "TwoDimentionForcer",
+      "name": "TwoDimensionForcer",
       "type": "processor",
-      "description": "Forces a geometry to be two dimentional.",
+      "description": "Forces a geometry to be two dimensional.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [

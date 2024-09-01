@@ -24,7 +24,7 @@ const ActionComponent: React.FC<Props> = ({
 
   const onDragStart = (
     event: DragEvent<HTMLDivElement>,
-    actionName: string
+    actionName: string,
   ) => {
     event.dataTransfer.setData("application/reactflow", actionName);
     event.dataTransfer.effectAllowed = "move";
@@ -36,11 +36,10 @@ const ActionComponent: React.FC<Props> = ({
     root.render(
       <div className="flex size-12 rounded bg-secondary">
         <div
-          className={`flex w-full justify-center rounded align-middle  ${type === "reader" ? "bg-[#164E63]/60" : type === "writer" ? "bg-[#635116]/60" : "bg-[#631628]/60"}`}
-        >
+          className={`flex w-full justify-center rounded align-middle  ${type === "reader" ? "bg-node-reader/60" : type === "writer" ? "bg-node-writer/60" : "bg-node-transformer/60"}`}>
           <Lightning className="self-center" />
         </div>
-      </div>
+      </div>,
     );
 
     document.body.appendChild(dragPreviewContainer);

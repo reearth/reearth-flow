@@ -135,8 +135,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 {item.children ? (
                   <AccordionPrimitive.Root
                     type="multiple"
-                    defaultValue={expandedItemIds}
-                  >
+                    defaultValue={expandedItemIds}>
                     <AccordionPrimitive.Item value={item.id}>
                       <AccordionTrigger
                         className={cn(
@@ -144,8 +143,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                           selectedItemId === item.id &&
                             "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-red-800/50",
                         )}
-                        onClick={() => handleSelectChange(item)}
-                      >
+                        onClick={() => handleSelectChange(item)}>
                         {item.icon && (
                           <item.icon
                             className={cn("h-4 w-4 shrink-0 mr-2")}
@@ -223,8 +221,7 @@ const Leaf = forwardRef<
         isSelected &&
           "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-red-800/50",
       )}
-      {...props}
-    >
+      {...props}>
       {item.icon && (
         <item.icon
           className={cn("h-4 w-4 shrink-0 mr-2")}
@@ -257,8 +254,7 @@ const AccordionTrigger = forwardRef<
         "flex flex-1 w-full items-center py-2 transition-all last:[&[data-state=open]>svg]:rotate-90",
         className,
       )}
-      {...props}
-    >
+      {...props}>
       {children}
       <CaretRight className="ml-auto size-4 shrink-0 transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
@@ -276,8 +272,7 @@ const AccordionContent = forwardRef<
       "overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
       className,
     )}
-    {...props}
-  >
+    {...props}>
     <div className="pb-1 pt-0">{children}</div>
   </AccordionPrimitive.Content>
 ));

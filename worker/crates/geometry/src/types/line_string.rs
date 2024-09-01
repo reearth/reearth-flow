@@ -1,4 +1,5 @@
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
@@ -13,6 +14,7 @@ use super::conversion::geojson::{
 use super::coordinate::{self, Coordinate};
 use super::coordnum::{CoordFloat, CoordNum};
 use super::line::Line;
+use super::traits::Elevation;
 use super::triangle::Triangle;
 use super::{no_value::NoValue, point::Point};
 
@@ -362,5 +364,16 @@ where
                 Point::new_(b.max().x, b.max().y, b.max().z),
             ),
         }
+    }
+}
+
+impl<T, Z> Elevation for LineString<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.0.iter().all(|c| c.is_elevation_zero())
     }
 }

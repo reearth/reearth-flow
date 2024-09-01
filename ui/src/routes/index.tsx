@@ -16,7 +16,7 @@ function Index() {
 
   useEffect(() => {
     if (!me || !me?.myWorkspaceId) return;
-    navigate({ to: `/workspace/${me?.myWorkspaceId}`, replace: true });
+    navigate({ to: `/workspaces/${me?.myWorkspaceId}`, replace: true });
   }, [me, navigate]);
 
   return !isLoading && (isError || !me || !me?.myWorkspaceId) ? (
@@ -32,7 +32,7 @@ function ErrorPage({ errorMessage }: { errorMessage: string }) {
     <div className="flex h-screen items-center justify-center">
       <div className="flex flex-col items-center gap-10">
         <div className="flex items-center gap-4">
-          <div className="rounded bg-red-900 p-2">
+          <div className="rounded bg-logo p-2">
             <FlowLogo className="size-[75px]" />
           </div>
         </div>

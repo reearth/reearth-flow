@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
+id: 00caad2a-9f7d-4189-b479-153fa9ea36dc
+name: "SimpleWorkflow"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                testAttribute: "test01"
+              },
+              #{
+                testAttribute: "test02"
+              },
+            ]
+
+      - id: d2b4977d-e218-4628-96f2-d26407aeea14
+        name: attributeManager_01
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: addAttribute
+              method: create
+              value: |
+                "createValue"
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: Echo
+        type: action
+        action: Echo
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: d2b4977d-e218-4628-96f2-d26407aeea14
+        fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+        from: d2b4977d-e218-4628-96f2-d26407aeea14
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: default
+        toPort: default

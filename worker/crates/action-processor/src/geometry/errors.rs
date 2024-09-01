@@ -7,10 +7,10 @@ pub(super) enum GeometryProcessorError {
     ExtruderFactory(String),
     #[error("Extruder error: {0}")]
     Extruder(String),
-    #[error("ThreeDimentionBoxReplacer Factory error: {0}")]
-    ThreeDimentionBoxReplacerFactory(String),
-    #[error("ThreeDimentionBoxReplacer error: {0}")]
-    ThreeDimentionBoxReplacer(String),
+    #[error("ThreeDimensionBoxReplacer Factory error: {0}")]
+    ThreeDimensionBoxReplacerFactory(String),
+    #[error("ThreeDimensionBoxReplacer error: {0}")]
+    ThreeDimensionBoxReplacer(String),
     #[error("CoordinateSystemSetter Factory error: {0}")]
     CoordinateSystemSetterFactory(String),
     #[error("CoordinateSystemSetter error: {0}")]
@@ -23,10 +23,10 @@ pub(super) enum GeometryProcessorError {
     ReprojectorFactory(String),
     #[error("Reprojector error: {0}")]
     Reprojector(String),
-    #[error("TwoDimentionForcer Factory error: {0}")]
-    TwoDimentionForcerFactory(String),
-    #[error("TwoDimentionForcer error: {0}")]
-    TwoDimentionForcer(String),
+    #[error("TwoDimensionForcer Factory error: {0}")]
+    TwoDimensionForcerFactory(String),
+    #[error("TwoDimensionForcer error: {0}")]
+    TwoDimensionForcer(String),
     #[error("GeometryExtractor Factory error: {0}")]
     GeometryExtractorFactory(String),
     #[error("GeometryExtractor error: {0}")]
@@ -63,10 +63,10 @@ pub(super) enum GeometryProcessorError {
     GeometryReplacerFactory(String),
     #[error("GeometryReplacer error: {0}")]
     GeometryReplacer(String),
-    #[error("ThreeDimentionRotator Factory error: {0}")]
-    ThreeDimentionRotatorFactory(String),
-    #[error("ThreeDimentionRotator error: {0}")]
-    ThreeDimentionRotator(String),
+    #[error("ThreeDimensionRotator Factory error: {0}")]
+    ThreeDimensionRotatorFactory(String),
+    #[error("ThreeDimensionRotator error: {0}")]
+    ThreeDimensionRotator(String),
     #[error("Clipper Factory error: {0}")]
     ClipperFactory(String),
     #[error("Clipper error: {0}")]
@@ -83,6 +83,10 @@ pub(super) enum GeometryProcessorError {
     DissolverFactory(String),
     #[error("Dissolver error: {0}")]
     Dissolver(String),
+    #[error("DimensionFilter Factory error: {0}")]
+    DimensionFilterFactory(String),
+    #[error("DimensionFilter error: {0}")]
+    DimensionFilter(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

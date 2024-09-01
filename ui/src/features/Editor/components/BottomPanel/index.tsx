@@ -45,7 +45,7 @@ const BottomPanel: React.FC<Props> = ({
 
   const handlePanelToggle = useCallback(
     (open: boolean) => onOpen(open ? "bottom" : undefined),
-    [onOpen]
+    [onOpen],
   );
 
   const panelContents: PanelContent[] = [
@@ -81,7 +81,7 @@ const BottomPanel: React.FC<Props> = ({
         handlePanelToggle?.(!isOpen);
       }
     },
-    [isOpen, handlePanelToggle, selectedId, setSelectedId]
+    [isOpen, handlePanelToggle, selectedId, setSelectedId],
   );
 
   useShortcuts([
@@ -108,13 +108,11 @@ const BottomPanel: React.FC<Props> = ({
             ? "calc(100vh - 1px)"
             : "50vh"
           : "29px",
-      }}
-    >
+      }}>
       {isOpen && (
         <div
           id="top-edge"
-          className="flex h-[29px] shrink-0 items-center gap-1"
-        >
+          className="flex h-[29px] shrink-0 items-center gap-1">
           <div className="flex h-full flex-1 items-center justify-end gap-1 px-1">
             <BaseActionButtons
               panelContents={panelContents}
@@ -148,21 +146,18 @@ const BottomPanel: React.FC<Props> = ({
       )}
       <div
         id="content"
-        className={`flex h-[calc(100%-64px)] flex-1 bg-background ${isOpen ? "flex" : "hidden"}`}
-      >
+        className={`flex h-[calc(100%-64px)] flex-1 bg-background ${isOpen ? "flex" : "hidden"}`}>
         {panelContents.map((p) => (
           <div
             className={`flex-1 ${selectedId === p.id ? "flex" : "hidden"}`}
-            key={p.id}
-          >
+            key={p.id}>
             {p.component}
           </div>
         ))}
       </div>
       <div
         id="bottom-edge"
-        className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-secondary"
-      >
+        className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-secondary">
         <WorkflowTabs
           currentWorkflowId={currentWorkflowId}
           openWorkflows={openWorkflows}
@@ -202,8 +197,7 @@ const BaseActionButtons: React.FC<{
               ? "bg-popover text-popover-foreground"
               : ""
           }`}
-          onClick={() => onSelection?.(content.id)}
-        >
+          onClick={() => onSelection?.(content.id)}>
           {content.icon}
           <p className="text-sm font-thin">{content.title}</p>
         </div>
