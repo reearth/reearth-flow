@@ -296,8 +296,6 @@ fn handle_feature(
             break;
         }
     }
-    //     }
-    // }
     Ok(())
 }
 
