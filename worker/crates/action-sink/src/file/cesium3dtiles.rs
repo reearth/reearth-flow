@@ -1,12 +1,20 @@
 use super::tree::{TileContent, TileTree};
 use super::util::make_gltf;
 use crate::errors::SinkError;
+use itertools::Itertools;
 use nusamai_gltf::nusamai_gltf_json::models::Node;
 use nusamai_mvt::tileid::TileIdMethod;
 use reearth_flow_common::gltf::{
-    geometric_error, x_slice_range, x_step, y_slice_range, zxy_from_lng_lat,
+    geometric_error, iter_x_slice, iter_y_slice, x_slice_range, x_step, y_slice_range,
+    zxy_from_lng_lat,
 };
 use reearth_flow_common::uri::Uri;
+use reearth_flow_geometry::algorithm::coords_iter::CoordsIter;
+use reearth_flow_geometry::types::coordinate::Coordinate;
+use reearth_flow_geometry::types::line_string::LineString;
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon;
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+use reearth_flow_geometry::types::polygon::Polygon;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -133,14 +141,15 @@ impl Sink for Cesium3dtilesWriter {
                     .eval::<String>(output.as_ref())
                     .unwrap_or_else(|_| output.as_ref().to_string());
                 let output = Uri::from_str(path.as_str())?;
-                let contents = match handle_city_gml_geometry(
+                match handle_city_gml_geometry(
                     &output,
                     storage_resolver.clone(),
                     city_gml,
                     self.params.min_zoom,
                     self.params.max_zoom,
+                    &mut self.contents,
                 ) {
-                    Ok(contents) => contents,
+                    Ok(_) => {}
                     Err(e) => {
                         return Err(Box::new(SinkError::Cesium3DTilesWriter(format!(
                             "CityGmlGeometry handle Error: {:?}",
@@ -148,10 +157,6 @@ impl Sink for Cesium3dtilesWriter {
                         ))))
                     }
                 };
-                self.contents
-                    .lock()
-                    .unwrap()
-                    .extend(contents.lock().unwrap().iter().cloned());
             }
             geomotry_types::GeometryValue::FlowGeometry2D(_flow_geom_2d) => {
                 return Err(Box::new(SinkError::Cesium3DTilesWriter(
@@ -213,9 +218,8 @@ fn handle_city_gml_geometry(
     city_gml: geomotry_types::CityGmlGeometry,
     min_zoom: Option<u8>,
     max_zoom: Option<u8>,
-) -> Result<Arc<Mutex<std::vec::Vec<TileContent>>>, crate::errors::SinkError> {
-    let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
-
+    contents: &mut Arc<Mutex<Vec<TileContent>>>,
+) -> Result<(), crate::errors::SinkError> {
     let features = city_gml.features.clone();
     for feature in features {
         match handle_feature(
@@ -225,13 +229,9 @@ fn handle_city_gml_geometry(
             feature,
             min_zoom,
             max_zoom,
+            contents,
         ) {
-            Ok(contens) => {
-                contents
-                    .lock()
-                    .unwrap()
-                    .extend(contens.lock().unwrap().iter().cloned());
-            }
+            Ok(_) => {}
             Err(e) => {
                 return Err(crate::errors::SinkError::file_writer(format!(
                     "Feature handle Error: {:?}",
@@ -240,7 +240,7 @@ fn handle_city_gml_geometry(
             }
         }
     }
-    Ok(contents)
+    Ok(())
 }
 
 fn handle_feature(
@@ -250,9 +250,10 @@ fn handle_feature(
     feature: geomotry_types::GeometryFeature,
     min_zoom: Option<u8>,
     max_zoom: Option<u8>,
-) -> Result<Arc<Mutex<std::vec::Vec<TileContent>>>, crate::errors::SinkError> {
+    contents: &mut Arc<Mutex<Vec<TileContent>>>,
+) -> Result<(), crate::errors::SinkError> {
     let typename = feature.ty.name();
-    let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
+
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
     let tile_id_conv = TileIdMethod::Hilbert;
 
@@ -291,109 +292,248 @@ fn handle_feature(
             }
         }
 
-        let (z, x, y) = zxy_from_lng_lat(zoom, lng_center, lat_center);
-        let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-        // Tile information
-        let (content, translation) = {
-            let zxy = tile_id_conv.id_to_zxy(tile_id);
-            let (tile_zoom, tile_x, tile_y) = zxy;
-            let (min_lat, max_lat) = y_slice_range(tile_zoom, tile_y);
-            let (min_lng, max_lng) =
-                x_slice_range(tile_zoom, tile_x as i32, x_step(tile_zoom, tile_y));
+        for polygon in feature.polygons.clone() {
+            let keys =
+                match slice_polygon(zoom, polygon, city_gml.polygon_uv.as_ref().unwrap().clone()) {
+                    Ok(keys) => keys,
+                    Err(e) => {
+                        return Err(crate::errors::SinkError::file_writer(format!(
+                            "Failed to slice polygon: {}",
+                            e
+                        )));
+                    }
+                };
 
-            // Use the tile center as the translation of the glTF mesh
-            let translation = {
-                let (tx, ty, tz) = nusamai_projection::cartesian::geodetic_to_geocentric(
-                    &ellipsoid,
-                    (min_lng + max_lng) / 2.0,
-                    (min_lat + max_lat) / 2.0,
-                    0.,
-                );
-                // z-up to y-up
-                let [tx, ty, tz] = [tx, tz, -ty];
-                // double-precision to single-precision
-                [(tx as f32) as f64, (ty as f32) as f64, (tz as f32) as f64]
-            };
+            for (z, x, y) in keys {
+                let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+                // Tile information
+                let (content, translation) = {
+                    let zxy = tile_id_conv.id_to_zxy(tile_id);
+                    let (tile_zoom, tile_x, tile_y) = zxy;
+                    let (min_lat, max_lat) = y_slice_range(tile_zoom, tile_y);
+                    let (min_lng, max_lng) =
+                        x_slice_range(tile_zoom, tile_x as i32, x_step(tile_zoom, tile_y));
 
-            let content_path = {
-                let normalized_typename = typename.replace(':', "_");
-                format!("{tile_zoom}/{tile_x}/{tile_y}_{normalized_typename}.glb")
-            };
-            let content = TileContent {
-                zxy,
-                content_path,
-                min_lng: f64::MAX,
-                max_lng: f64::MIN,
-                min_lat: f64::MAX,
-                max_lat: f64::MIN,
-                min_height: f64::MAX,
-                max_height: f64::MIN,
-            };
+                    // Use the tile center as the translation of the glTF mesh
+                    let translation = {
+                        let (tx, ty, tz) = nusamai_projection::cartesian::geodetic_to_geocentric(
+                            &ellipsoid,
+                            (min_lng + max_lng) / 2.0,
+                            (min_lat + max_lat) / 2.0,
+                            0.,
+                        );
+                        // z-up to y-up
+                        let [tx, ty, tz] = [tx, tz, -ty];
+                        // double-precision to single-precision
+                        [(tx as f32) as f64, (ty as f32) as f64, (tz as f32) as f64]
+                    };
 
-            (content, translation)
-        };
+                    let content_path = {
+                        let normalized_typename = typename.replace(':', "_");
+                        format!("{tile_zoom}/{tile_x}/{tile_y}_{normalized_typename}.glb")
+                    };
+                    let content = TileContent {
+                        zxy,
+                        content_path,
+                        min_lng: f64::MAX,
+                        max_lng: f64::MIN,
+                        min_lat: f64::MAX,
+                        max_lat: f64::MIN,
+                        min_height: f64::MAX,
+                        max_height: f64::MIN,
+                    };
 
-        contents.lock().unwrap().push(content.clone());
+                    (content, translation)
+                };
 
-        let mut gltf = match make_gltf(city_gml.clone()) {
-            Ok(gltf) => gltf,
-            Err(e) => {
-                return Err(crate::errors::SinkError::file_writer(format!(
-                    "Failed to create glTF: {}",
-                    e
-                )));
+                contents.lock().unwrap().push(content.clone());
+
+                let mut gltf = match make_gltf(city_gml.clone()) {
+                    Ok(gltf) => gltf,
+                    Err(e) => {
+                        return Err(crate::errors::SinkError::file_writer(format!(
+                            "Failed to create glTF: {}",
+                            e
+                        )));
+                    }
+                };
+
+                let gltf_textures = &gltf.textures;
+
+                let has_webp = gltf_textures.iter().any(|texture| {
+                    texture
+                        .extensions
+                        .as_ref()
+                        .and_then(|ext| ext.ext_texture_webp.as_ref())
+                        .map_or(false, |_| true)
+                });
+
+                let extensions_used = {
+                    let mut extensions_used = vec![
+                        "EXT_mesh_features".to_string(),
+                        "EXT_structural_metadata".to_string(),
+                    ];
+
+                    // Add "EXT_texture_webp" extension if WebP textures are present
+                    if has_webp {
+                        extensions_used.push("EXT_texture_webp".to_string());
+                    }
+
+                    extensions_used
+                };
+
+                gltf.nodes = vec![Node {
+                    mesh: gltf.nodes[0].mesh,
+                    translation,
+                    ..Default::default()
+                }];
+
+                gltf.extensions_used = extensions_used;
+
+                let gltf_json = serde_json::to_value(&gltf).unwrap();
+                let buf = gltf_json.to_string().as_bytes().to_owned();
+
+                let content_path = content.content_path;
+                let storage = storage_resolver
+                    .resolve(output)
+                    .map_err(crate::errors::SinkError::file_writer)?;
+                let output_path = output.path().join(Path::new(&content_path));
+
+                if let Some(dir) = output_path.parent() {
+                    fs::create_dir_all(dir).unwrap();
+                }
+                let path = Path::new(&output_path);
+
+                storage
+                    .put_sync(path, bytes::Bytes::from(buf))
+                    .map_err(crate::errors::SinkError::file_writer)?;
             }
-        };
-
-        let gltf_textures = &gltf.textures;
-
-        let has_webp = gltf_textures.iter().any(|texture| {
-            texture
-                .extensions
-                .as_ref()
-                .and_then(|ext| ext.ext_texture_webp.as_ref())
-                .map_or(false, |_| true)
-        });
-
-        let extensions_used = {
-            let mut extensions_used = vec![
-                "EXT_mesh_features".to_string(),
-                "EXT_structural_metadata".to_string(),
-            ];
-
-            // Add "EXT_texture_webp" extension if WebP textures are present
-            if has_webp {
-                extensions_used.push("EXT_texture_webp".to_string());
-            }
-
-            extensions_used
-        };
-
-        gltf.nodes = vec![Node {
-            mesh: gltf.nodes[0].mesh,
-            translation,
-            ..Default::default()
-        }];
-
-        gltf.extensions_used = extensions_used;
-
-        let gltf_json = serde_json::to_value(&gltf).unwrap();
-        let buf = gltf_json.to_string().as_bytes().to_owned();
-
-        let content_path = content.content_path;
-        let storage = storage_resolver
-            .resolve(output)
-            .map_err(crate::errors::SinkError::file_writer)?;
-        let output_path = output.path().join(Path::new(&content_path));
-
-        if let Some(dir) = output_path.parent() {
-            fs::create_dir_all(dir).unwrap();
         }
-        let path = Path::new(&output_path);
-
-        storage
-            .put_sync(path, bytes::Bytes::from(buf))
-            .map_err(crate::errors::SinkError::file_writer)?;
     }
-    Ok(contents)
+    Ok(())
+}
+
+/// Slice a polygon into tiles. The slicing algorithm is based on [geojson-vt](https://github.com/mapbox/geojson-vt).
+fn slice_polygon(
+    zoom: u8,
+    poly: Polygon<f64>,
+    poly_uv: MultiPolygon2D<f64>,
+) -> Result<Vec<(u8, u32, u32)>, BoxedError> {
+    if poly.exterior().into_iter().len() == 0 {
+        return Ok(Vec::new());
+    }
+
+    let mut keys: Vec<(u8, u32, u32)> = Vec::new();
+
+    let mut ring_buffer: Vec<[f64; 5]> = Vec::with_capacity(poly.exterior().into_iter().len() + 1);
+
+    // Slice along Y-axis
+    let y_range = {
+        let (min_y, max_y) = poly
+            .exterior()
+            .into_iter()
+            .fold((f64::MAX, f64::MIN), |(min_y, max_y), c| {
+                (min_y.min(c.y), max_y.max(c.y))
+            });
+        iter_y_slice(zoom, min_y, max_y)
+    };
+
+    let mut y_sliced_polys: MultiPolygon = Default::default();
+
+    for yi in y_range.clone() {
+        let (k1, k2) = y_slice_range(zoom, yi);
+
+        for poly_uv in poly_uv.iter() {
+            for (ri, (ring, uv_ring)) in poly.rings().iter().zip_eq(poly_uv.rings()).enumerate() {
+                if ring.coords_iter().len() == 0 {
+                    continue;
+                }
+
+                ring_buffer.clear();
+                ring.into_iter()
+                    .zip_eq(uv_ring.into_iter())
+                    .fold(None, |a, b| {
+                        let Some((a, a_uv)) = a else { return Some(b) };
+                        let (b, b_uv) = b;
+
+                        if a.y < k1 {
+                            if b.y > k1 {
+                                let t = (k1 - a.y) / (b.y - a.y);
+                                let x = (b.x - a.x) * t + a.x;
+                                let z = (b.z - a.z) * t + a.z;
+                                let u = (b_uv.x - a_uv.x) * t + a_uv.x;
+                                let v = (b_uv.y - a_uv.y) * t + a_uv.y;
+                                ring_buffer.push([x, k1, z, u, v])
+                            }
+                        } else if a.y > k2 {
+                            if b.y < k2 {
+                                let t = (k2 - a.y) / (b.y - a.y);
+                                let x = (b.x - a.x) * t + a.x;
+                                let z = (b.z - a.z) * t + a.z;
+                                let u = (b_uv.x - a_uv.x) * t + a_uv.x;
+                                let v = (b_uv.y - a_uv.y) * t + a_uv.y;
+                                ring_buffer.push([x, k2, z, u, v])
+                            }
+                        } else {
+                            ring_buffer.push([a.x, a.y, a.z, a_uv.x, a_uv.y])
+                        }
+
+                        if b.y < k1 && a.y > k1 {
+                            let t = (k1 - a.y) / (b.y - a.y);
+                            let x = (b.x - a.x) * t + a.x;
+                            let z = (b.z - a.z) * t + a.z;
+                            let u = (b_uv.x - a_uv.x) * t + a_uv.x;
+                            let v = (b_uv.y - a_uv.y) * t + a_uv.y;
+                            ring_buffer.push([x, k1, z, u, v])
+                        } else if b.y > k2 && a.y < k2 {
+                            let t = (k2 - a.y) / (b.y - a.y);
+                            let x = (b.x - a.x) * t + a.x;
+                            let z = (b.z - a.z) * t + a.z;
+                            let u = (b_uv.x - a_uv.x) * t + a_uv.x;
+                            let v = (b_uv.y - a_uv.y) * t + a_uv.y;
+                            ring_buffer.push([x, k2, z, u, v])
+                        }
+
+                        Some((b, b_uv))
+                    })
+                    .unwrap();
+
+                let ls: LineString = LineString::new(
+                    ring_buffer
+                        .iter()
+                        .map(|c| Coordinate::new__(c[0], c[1], c[2]))
+                        .collect(),
+                );
+                match ri {
+                    0 => y_sliced_polys.add_exterior(ls),
+                    _ => y_sliced_polys.add_interior(ls),
+                }
+            }
+        }
+    }
+
+    // Slice along X-axis
+    for (yi, y_sliced_poly) in y_range.zip_eq(y_sliced_polys.iter()) {
+        let x_iter = {
+            let (min_x, max_x) = y_sliced_poly
+                .exterior()
+                .into_iter()
+                .fold((f64::MAX, f64::MIN), |(min_x, max_x), c| {
+                    (min_x.min(c.x), max_x.max(c.x))
+                });
+
+            iter_x_slice(zoom, yi, min_x, max_x)
+        };
+
+        for (xi, _xs) in x_iter {
+            let key = (
+                zoom,
+                xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
+                yi,
+            );
+
+            keys.push(key);
+        }
+    }
+    Ok(keys)
 }
