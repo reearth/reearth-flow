@@ -1,0 +1,9 @@
+dist/
+build/
+
+node_modules/
+.env
+.env.*
+
+yarn.lock
+.yarn/*

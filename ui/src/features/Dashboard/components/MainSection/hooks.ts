@@ -10,7 +10,7 @@ export default ({ workspace }: { workspace: Workspace }) => {
 
   const [currentProject, setCurrentProject] = useCurrentProject();
 
-  const navigate = useNavigate({ from: "/workspace/$workspaceId" });
+  const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
   const { useGetWorkspaceProjectsInfinite, deleteProject, updateProject } =
     useProject();
   const { pages, hasNextPage, isFetching, fetchNextPage } =
@@ -28,7 +28,7 @@ export default ({ workspace }: { workspace: Workspace }) => {
 
   const handleProjectSelect = (p: Project) => {
     setCurrentProject(p);
-    navigate({ to: `/workspace/${workspace.id}/project/${p.id}` });
+    navigate({ to: `/workspaces/${workspace.id}/projects/${p.id}` });
   };
 
   const handleDeleteProject = async (id: string) => {

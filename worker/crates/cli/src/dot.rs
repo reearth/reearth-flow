@@ -38,7 +38,7 @@ impl DotCliCommand {
     pub fn parse_cli_args(mut matches: ArgMatches) -> crate::Result<Self> {
         let workflow_path = matches
             .remove_one::<String>("workflow")
-            .ok_or(crate::Error::init("No workflow uri provided"))?;
+            .ok_or(crate::errors::Error::init("No workflow uri provided"))?;
         Ok(DotCliCommand { workflow_path })
     }
 
@@ -46,16 +46,16 @@ impl DotCliCommand {
         debug!(args = ?self, "dot");
         let storage_resolver = resolve::StorageResolver::new();
         let json = if self.workflow_path == "-" {
-            io::read_to_string(io::stdin()).map_err(crate::Error::init)?
+            io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?
         } else {
             let path = Uri::for_test(self.workflow_path.as_str());
             let storage = storage_resolver
                 .resolve(&path)
-                .map_err(crate::Error::init)?;
+                .map_err(crate::errors::Error::init)?;
             let bytes = storage
                 .get_sync(path.path().as_path())
-                .map_err(crate::Error::init)?;
-            String::from_utf8(bytes.to_vec()).map_err(crate::Error::init)?
+                .map_err(crate::errors::Error::init)?;
+            String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?
         };
         let mut factories = HashMap::new();
         factories.extend(ALL_ACTION_FACTORIES.clone());

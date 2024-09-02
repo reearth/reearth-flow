@@ -1,3 +1,4 @@
+use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::traits::Elevation;
 use std::fmt::Display;
 use std::{hash::Hash, path::Path};
@@ -286,13 +287,14 @@ impl From<CityGmlGeometry> for FlowGeometry2D {
 pub struct GeometryFeature {
     pub id: Option<String>,
     #[serde(rename = "type")]
-    pub ty: GeometryFeatureType,
+    pub ty: GeometryType,
     pub lod: Option<u8>,
     pub pos: u32,
     pub len: u32,
     pub polygons: Vec<Polygon3D<f64>>,
     pub feature_id: Option<String>,
     pub feature_type: Option<String>,
+    pub composite_surfaces: Vec<GeometryFeature>,
 }
 
 impl GeometryFeature {
@@ -312,7 +314,7 @@ impl From<GeometryFeature> for Vec<geojson::Value> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub enum GeometryFeatureType {
+pub enum GeometryType {
     /// Polygons (solids)
     Solid,
     /// Polygons (surfaces)
@@ -332,7 +334,7 @@ pub enum GeometryFeatureType {
     Tin,
 }
 
-impl From<nusamai_citygml::geometry::GeometryType> for GeometryFeatureType {
+impl From<nusamai_citygml::geometry::GeometryType> for GeometryType {
     fn from(ty: nusamai_citygml::geometry::GeometryType) -> Self {
         match ty {
             nusamai_citygml::geometry::GeometryType::Solid => Self::Solid,
@@ -349,7 +351,29 @@ impl From<nusamai_citygml::geometry::GeometryType> for GeometryFeatureType {
     }
 }
 
-impl GeometryFeatureType {
+impl<T: CoordNum, Z: CoordNum> From<&reearth_flow_geometry::types::geometry::Geometry<T, Z>>
+    for GeometryType
+{
+    fn from(geometry: &reearth_flow_geometry::types::geometry::Geometry<T, Z>) -> Self {
+        match geometry {
+            reearth_flow_geometry::types::geometry::Geometry::Solid(_) => Self::Solid,
+            reearth_flow_geometry::types::geometry::Geometry::Triangle(_) => Self::Triangle,
+            reearth_flow_geometry::types::geometry::Geometry::MultiPoint(_) => Self::MultiPoint,
+            reearth_flow_geometry::types::geometry::Geometry::Point(_) => Self::Point,
+            reearth_flow_geometry::types::geometry::Geometry::Line(_) => Self::Curve,
+            reearth_flow_geometry::types::geometry::Geometry::LineString(_) => Self::MultiCurve,
+            reearth_flow_geometry::types::geometry::Geometry::Polygon(_) => Self::Surface,
+            reearth_flow_geometry::types::geometry::Geometry::MultiLineString(_) => {
+                Self::MultiCurve
+            }
+            reearth_flow_geometry::types::geometry::Geometry::MultiPolygon(_) => Self::MultiSurface,
+            reearth_flow_geometry::types::geometry::Geometry::Rect(_) => Self::Surface,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl GeometryType {
     pub fn all_type_names() -> Vec<String> {
         [
             "Solid",
@@ -403,6 +427,7 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GeometryFeature {
             polygons: Vec::new(),
             feature_id: geometry.feature_id,
             feature_type: geometry.feature_type,
+            composite_surfaces: Vec::new(),
         }
     }
 }

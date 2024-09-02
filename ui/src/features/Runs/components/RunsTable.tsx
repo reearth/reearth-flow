@@ -52,8 +52,6 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
       accessorKey: "id",
       header: t("ID"),
       size: 20,
-      minSize: 10,
-      maxSize: 30,
     },
     {
       accessorKey: "project.name",
@@ -153,14 +151,14 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="rounded-md border">
+      <div>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+              <TableRow key={headerGroup.id} className="border-none">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead key={header.id} className="h-8 font-thin">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -178,7 +176,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="cursor-pointer"
+                  className="h-10 cursor-pointer transition-all hover:bg-primary"
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => row.toggleSelected()}
                   onSelect={(s) => console.log("S", s)}>
