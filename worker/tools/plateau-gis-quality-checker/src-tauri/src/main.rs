@@ -4,7 +4,7 @@
     windows_subsystem = "windows"
 )]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use log::{debug, LevelFilter};
 use tauri_plugin_log::{LogTarget, RotationStrategy, TimezoneStrategy};
@@ -40,9 +40,25 @@ pub(crate) fn run_flow(
     workflow_path: String,
     params: HashMap<String, String>,
 ) -> Result<(), crate::errors::Error> {
+    // Validate workflow_path
+    if !Path::new(&workflow_path).exists() {
+        return Err(crate::errors::Error::InvalidPath(workflow_path));
+    }
+
     debug!(
         "Running workflow: workflow path = {:?}, params = {:?}",
         workflow_path, params
     );
-    handler::run_flow(workflow_path, params)
+
+    // Execute workflow
+    match handler::run_flow(workflow_path, params) {
+        Ok(_) => {
+            debug!("Workflow executed successfully");
+            Ok(())
+        }
+        Err(e) => {
+            log::error!("Workflow execution failed: {:?}", e);
+            Err(e)
+        }
+    }
 }

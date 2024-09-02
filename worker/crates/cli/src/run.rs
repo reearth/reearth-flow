@@ -1,14 +1,13 @@
 use std::{collections::HashMap, fs, io, path::PathBuf, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use directories::ProjectDirs;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_state::State;
 use reearth_flow_types::Workflow;
 use tracing::debug;
 
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
-use reearth_flow_common::uri::Uri;
+use reearth_flow_common::{dir::get_project_cache_dir_path, uri::Uri};
 use reearth_flow_storage::resolve;
 
 use crate::factory::ALL_ACTION_FACTORIES;
@@ -136,15 +135,9 @@ impl RunCliCommand {
         let action_log_uri = match &self.action_log_uri {
             Some(uri) => Uri::from_str(uri).map_err(crate::errors::Error::init)?,
             None => {
-                let p = ProjectDirs::from("reearth", "flow", "worker")
-                    .ok_or(crate::errors::Error::init("No action log uri provided"))?;
-                let p = p
-                    .cache_dir()
-                    .to_str()
-                    .ok_or(crate::errors::Error::init("Invalid action log uri"))?;
+                let p = get_project_cache_dir_path("worker").map_err(crate::errors::Error::init)?;
                 fs::create_dir_all(
-                    PathBuf::default()
-                        .join(p)
+                    PathBuf::from(p.clone())
                         .join("action-log")
                         .join(job_id.to_string())
                         .as_path(),
@@ -154,11 +147,9 @@ impl RunCliCommand {
             }
         };
         let state_uri = {
-            let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
-            let p = p.cache_dir().to_str().unwrap();
+            let p = get_project_cache_dir_path("worker").map_err(crate::errors::Error::init)?;
             fs::create_dir_all(
-                PathBuf::default()
-                    .join(p)
+                PathBuf::from(p.clone())
                     .join("feature-store")
                     .join(job_id.to_string())
                     .as_path(),
@@ -167,7 +158,9 @@ impl RunCliCommand {
             Uri::for_test(format!("file://{}", p).as_str())
         };
 
-        let state = Arc::new(State::new(&state_uri, &storage_resolver).unwrap());
+        let state = Arc::new(
+            State::new(&state_uri, &storage_resolver).map_err(crate::errors::Error::init)?,
+        );
 
         let logger_factory = Arc::new(LoggerFactory::new(
             create_root_logger(action_log_uri.path()),

@@ -8,12 +8,12 @@ async function onButtonClick() {
   try {
     const result = await invoke("run_flow", {
       workflowPath:
-        "$workflowPath",
+        "Try to get the path from the input file.",
       params: {
-        cityGmlPath: "$cityGmlPath",
-        codelistsPath: "$codelistsPath", // optional: Not necessary if cityGmlPath is Zip
-        schemasPath: "$schemasPath", // optional: Not necessary if cityGmlPath is Zip
-        outputPath: "$outputPath",
+        cityGmlPath: "Try to get the path from the input file.",
+        codelistsPath: "Try to get the path from the input file.", // optional: Not necessary if cityGmlPath is Zip
+        schemasPath: "Try to get the path from the input file.", // optional: Not necessary if cityGmlPath is Zip
+        outputPath: "Try to get the path from the input file.",
       },
     });
     debug(JSON.stringify(result));
