@@ -75,7 +75,8 @@ pub(crate) fn execute(workflow: &str) {
         logger_factory,
         storage_resolver,
         state,
-    );
+    )
+    .expect("Failed to run workflow.");
 }
 
 pub fn create_workflow(workflow: &str) -> Workflow {

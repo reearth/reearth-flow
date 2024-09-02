@@ -10779,6 +10779,7 @@ __metadata:
     tailwind-merge: "npm:2.4.0"
     tailwindcss: "npm:3.4.7"
     tailwindcss-animate: "npm:1.0.7"
+    tauri-plugin-log-api: "https://github.com/tauri-apps/tauri-plugin-log"
     ts-node: "npm:10.9.2"
     typescript: "npm:5.5.4"
     use-resize-observer: "npm:9.1.0"
@@ -12565,6 +12566,15 @@ __metadata:
     mkdirp: "npm:^1.0.3"
     yallist: "npm:^4.0.0"
   checksum: 10c0/a5eca3eb50bc11552d453488344e6507156b9193efd7635e98e867fab275d527af53d8866e2370cd09dfe74378a18111622ace35af6a608e5223a7d27fe99537
+  languageName: node
+  linkType: hard
+
+"tauri-plugin-log-api@https://github.com/tauri-apps/tauri-plugin-log":
+  version: 0.0.0
+  resolution: "tauri-plugin-log-api@https://github.com/tauri-apps/tauri-plugin-log.git#commit=2bb26e22f7f7b4f164bad02f0ae4085796f77fff"
+  dependencies:
+    "@tauri-apps/api": "npm:1.6.0"
+  checksum: 10c0/04b05563e4f4097ac9a3bf6be84c0b4e17dfa542ff139073cc022411060beb6d2fbd1ba380f562de571573999fa88a6eabb994e225b6d0ea8d4d787f731492b8
   languageName: node
   linkType: hard
 
