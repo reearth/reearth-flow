@@ -15,7 +15,7 @@ use reearth_flow_types::workflow::Workflow;
 use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
 
-use crate::errors::OrchestrationError;
+use crate::errors::Error;
 use crate::executor::{run_dag_executor, Executor};
 
 #[derive(Clone)]
@@ -38,7 +38,7 @@ impl Orchestrator {
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
-    ) -> Result<(), OrchestrationError> {
+    ) -> Result<(), Error> {
         let executor = Executor {};
         let options = ExecutorOptions {
             channel_buffer_sz: 20,
@@ -90,7 +90,7 @@ impl Orchestrator {
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
-    ) -> Result<(), OrchestrationError> {
+    ) -> Result<(), Error> {
         let pipeline_shutdown = shutdown.clone();
         self.run_apps(
             job_id,
@@ -105,12 +105,10 @@ impl Orchestrator {
     }
 }
 
-async fn flatten_join_handle(
-    handle: JoinHandle<Result<(), OrchestrationError>>,
-) -> Result<(), OrchestrationError> {
+async fn flatten_join_handle(handle: JoinHandle<Result<(), Error>>) -> Result<(), Error> {
     match handle.await {
         Ok(Ok(_)) => Ok(()),
         Ok(Err(err)) => Err(err),
-        Err(err) => Err(OrchestrationError::JoinError(err)),
+        Err(err) => Err(Error::JoinError(err)),
     }
 }
