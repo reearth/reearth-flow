@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, io, path::PathBuf, str::FromStr, sync::Arc};
+use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use reearth_flow_runner::runner::Runner;
@@ -7,7 +7,7 @@ use reearth_flow_types::Workflow;
 use tracing::debug;
 
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
-use reearth_flow_common::{dir::get_project_cache_dir_path, uri::Uri};
+use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
 use reearth_flow_storage::resolve;
 
 use crate::factory::ALL_ACTION_FACTORIES;
@@ -134,30 +134,11 @@ impl RunCliCommand {
         };
         let action_log_uri = match &self.action_log_uri {
             Some(uri) => Uri::from_str(uri).map_err(crate::errors::Error::init)?,
-            None => {
-                let p = get_project_cache_dir_path("worker").map_err(crate::errors::Error::init)?;
-                fs::create_dir_all(
-                    PathBuf::from(p.clone())
-                        .join("action-log")
-                        .join(job_id.to_string())
-                        .as_path(),
-                )
-                .map_err(crate::errors::Error::init)?;
-                Uri::for_test(format!("file://{}", p).as_str())
-            }
+            None => setup_job_directory("worker", "action-log", job_id)
+                .map_err(crate::errors::Error::init)?,
         };
-        let state_uri = {
-            let p = get_project_cache_dir_path("worker").map_err(crate::errors::Error::init)?;
-            fs::create_dir_all(
-                PathBuf::from(p.clone())
-                    .join("feature-store")
-                    .join(job_id.to_string())
-                    .as_path(),
-            )
+        let state_uri = setup_job_directory("worker", "feature-store", job_id)
             .map_err(crate::errors::Error::init)?;
-            Uri::for_test(format!("file://{}", p).as_str())
-        };
-
         let state = Arc::new(
             State::new(&state_uri, &storage_resolver).map_err(crate::errors::Error::init)?,
         );
