@@ -2,8 +2,6 @@
 id: 00caad2a-9f7d-4189-b479-153fa9ea36dc
 name: "SimpleWorkflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
-with:
-  outputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -35,13 +33,9 @@ graphs:
                 "createValue"
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: fileWriter
+        name: Echo
         type: action
-        action: FileWriter
-        with:
-          format: csv
-          output: |
-            env.get("outputPath") + "/" + "hoge.csv"
+        action: Echo
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
