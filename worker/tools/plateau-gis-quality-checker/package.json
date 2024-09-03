@@ -64,6 +64,7 @@
     "react-dom": "18.3.1",
     "react-i18next": "15.0.0",
     "react-resizable-panels": "2.0.22",
+    "tauri-plugin-log-api": "https://github.com/tauri-apps/tauri-plugin-log",
     "use-resize-observer": "9.1.0"
   },
   "devDependencies": {
