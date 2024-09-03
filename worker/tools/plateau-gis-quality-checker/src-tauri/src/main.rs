@@ -4,8 +4,9 @@
     windows_subsystem = "windows"
 )]
 
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 
+use handler::QualityCheckWorkflow;
 use log::{debug, LevelFilter};
 use tauri_plugin_log::{LogTarget, RotationStrategy, TimezoneStrategy};
 
@@ -30,28 +31,26 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_loggger)
-        .invoke_handler(tauri::generate_handler![run_flow,])
+        .invoke_handler(tauri::generate_handler![
+            run_flow,
+            get_quality_check_workflows,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running plateau-gis-quality-checker");
 }
 
 #[tauri::command]
 pub(crate) fn run_flow(
-    workflow_path: String,
+    workflow_id: String,
     params: HashMap<String, String>,
 ) -> Result<(), crate::errors::Error> {
-    // Validate workflow_path
-    if !Path::new(&workflow_path).exists() {
-        return Err(crate::errors::Error::InvalidPath(workflow_path));
-    }
-
     debug!(
-        "Running workflow: workflow path = {:?}, params = {:?}",
-        workflow_path, params
+        "Running workflow: workflow id = {:?}, params = {:?}",
+        workflow_id, params
     );
 
     // Execute workflow
-    match handler::run_flow(workflow_path, params) {
+    match handler::run_flow(workflow_id, params) {
         Ok(_) => {
             debug!("Workflow executed successfully");
             Ok(())
@@ -61,4 +60,10 @@ pub(crate) fn run_flow(
             Err(e)
         }
     }
+}
+
+#[tauri::command]
+pub(crate) fn get_quality_check_workflows() -> Vec<QualityCheckWorkflow> {
+    debug!("Getting quality check workflows");
+    handler::get_quality_check_workflows()
 }

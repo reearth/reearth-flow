@@ -1,6 +1,6 @@
 [package]
-name = "plateau-gis-quality-checker"
 description = "Re:Earth Flow GIS Quality Checker"
+name = "plateau-gis-quality-checker"
 version = "0.1.0"
 
 authors.workspace = true
@@ -27,14 +27,15 @@ reearth-flow-storage.workspace = true
 reearth-flow-telemetry.workspace = true
 reearth-flow-types.workspace = true
 
-serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
-tauri = { version = "1.6.8", features = [ "shell-open", "fs-read-dir", "dialog-all"] }
-thiserror.workspace = true
-tauri-plugin-log = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
+directories.workspace = true
 log = "0.4.22"
 once_cell.workspace = true
-directories.workspace = true
+rust-embed = "8.5.0"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tauri = { version = "1.6.8", features = ["dialog-all", "fs-read-dir", "shell-open"] }
+tauri-plugin-log = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
+thiserror.workspace = true
 uuid.workspace = true
 
 [features]

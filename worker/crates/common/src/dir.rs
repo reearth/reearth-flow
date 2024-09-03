@@ -5,13 +5,13 @@ use directories::ProjectDirs;
 use crate::{uri::Uri, Error};
 
 pub fn project_output_dir(id: &str) -> crate::Result<String> {
-    let p = ProjectDirs::from("reearth", "flow", "worker")
-        .ok_or(Error::dir("No output path uri provided"))?;
-    let p = p
-        .cache_dir()
+    let p = get_project_cache_dir_path("worker")?;
+    Ok(PathBuf::from(p)
+        .join("output")
+        .join(id)
         .to_str()
-        .ok_or(Error::dir("Invalid output path uri"))?;
-    Ok(format!("{}/output/{}/", p, id))
+        .ok_or(Error::dir("Invalid project directory path"))?
+        .to_string())
 }
 
 pub fn get_project_cache_dir_path(key: &str) -> crate::Result<String> {
@@ -29,5 +29,14 @@ pub fn setup_job_directory(key: &str, sub_dir: &str, job_id: uuid::Uuid) -> crat
         .join(sub_dir)
         .join(job_id.to_string());
     fs::create_dir_all(&dir_path).map_err(Error::dir)?;
-    Ok(Uri::for_test(format!("file://{}", p).as_str()))
+    Ok(Uri::for_test(
+        format!(
+            "file://{}",
+            dir_path
+                .as_path()
+                .to_str()
+                .ok_or(Error::dir("Invalid job directory path"))?
+        )
+        .as_str(),
+    ))
 }
