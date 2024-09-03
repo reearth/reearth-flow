@@ -44,12 +44,11 @@ async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: Arc<AppSt
 
     if let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
-            if handle_message(msg, addr, state).await.is_err() {
-                return;
+            if let Err(e) = handle_message(msg, addr, state).await {
+                eprintln!("Error handling message from {addr}: {e}");
             }
         } else {
             println!("client {addr} disconnected");
-            return;
         }
     }
 }
@@ -92,7 +91,7 @@ pub async fn handle_error(
     state: Arc<AppState>,
 ) -> impl IntoResponse {
     if err.is::<tower::timeout::error::Elapsed>() {
-        state.timeout();
+        let _ = state.timeout().await;
         (StatusCode::REQUEST_TIMEOUT, "timeout".to_string())
     } else {
         (
@@ -107,13 +106,15 @@ impl AppState {
         unimplemented!()
     }
     async fn join(&self, room_id: &str) -> Result<()> {
-        self.rooms
-            .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
-            .get_mut(room_id)
-            .ok_or(WsError::WsError)?
-            .join("brabrabra".to_string());
-        Ok(())
+        let mut rooms = self.rooms.lock().await;
+
+        match rooms.get_mut(room_id) {
+            Some(room) => room
+                .join("brabrabra".to_string())
+                .await
+                .map_err(|e| WsError::JoinError(e.to_string())),
+            None => Err(WsError::RoomNotFound(room_id.to_string())),
+        }
     }
     async fn leave(&self, room_id: &str) -> Result<()> {
         unimplemented!()

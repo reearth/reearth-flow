@@ -1,7 +1,9 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use uuid::Uuid;
 
-use super::errors::{Result, WsError};
+use super::errors::Result;
 use super::room::Room;
 
 #[derive(Clone)]
@@ -9,28 +11,28 @@ pub struct AppState {
     pub rooms: Arc<Mutex<HashMap<String, Room>>>,
 }
 
-impl AppState {
-    pub fn new() -> Self {
+impl Default for AppState {
+    fn default() -> Self {
         AppState {
             rooms: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+}
 
-    pub fn make_room(&mut self) -> Result<String> {
-        let id = uuid::Uuid::new_v4().to_string();
+impl AppState {
+    pub fn new() -> Self {
+        AppState::default()
+    }
+
+    pub async fn make_room(&self) -> Result<String> {
+        let id: String = Uuid::new_v4().to_string();
         let room = Room::new();
-        self.rooms
-            .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
-            .insert(id.clone(), room);
+        self.rooms.lock().await.insert(id.clone(), room);
         Ok(id)
     }
 
-    pub fn delete_room(&mut self, id: String) -> Result<()> {
-        self.rooms
-            .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
-            .remove(&id);
+    pub async fn delete_room(&self, id: String) -> Result<()> {
+        self.rooms.lock().await.remove(&id);
         Ok(())
     }
 }
