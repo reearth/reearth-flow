@@ -7,7 +7,7 @@ async function onButtonClick() {
   debug("start flow");
   try {
     const result = await invoke("run_flow", {
-      workflowPath:
+      workflowId:
         "Try to get the path from the input file.",
       params: {
         cityGmlPath: "Try to get the path from the input file.",

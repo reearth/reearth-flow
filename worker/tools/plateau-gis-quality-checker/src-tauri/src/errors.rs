@@ -4,8 +4,8 @@ use thiserror::Error;
 pub(crate) enum Error {
     #[error("I/O error: {0}")]
     Io(String),
-    #[error("Invalid path: {0}")]
-    InvalidPath(String),
+    #[error("Invalid workflow ID: {0}")]
+    InvalidWorkflowId(String),
     #[error("Setup Error: {0}")]
     Setup(String),
     #[error("Execute failed: {0}")]
@@ -28,8 +28,8 @@ impl From<std::io::Error> for Error {
 }
 
 impl Error {
-    pub(crate) fn invalid_path<T: ToString>(message: T) -> Self {
-        Self::InvalidPath(message.to_string())
+    pub(crate) fn invalid_workflow_id<T: ToString>(message: T) -> Self {
+        Self::InvalidWorkflowId(message.to_string())
     }
 
     pub(crate) fn io<T: ToString>(message: T) -> Self {
