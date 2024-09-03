@@ -19,7 +19,7 @@ impl Runner {
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
-    ) {
+    ) -> Result<(), crate::errors::Error> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(30)
             .enable_all()
@@ -38,8 +38,8 @@ impl Runner {
         let (_shutdown_sender, shutdown_receiver) = shutdown::new(&runtime);
         let runtime = Arc::new(runtime);
         let orchestraotr = Orchestrator::new(runtime.clone());
-        runtime.block_on(async move {
-            let result = orchestraotr
+        let result = runtime.block_on(async move {
+            orchestraotr
                 .run_all(
                     job_id,
                     workflow,
@@ -49,11 +49,13 @@ impl Runner {
                     storage_resolver,
                     state,
                 )
-                .await;
-            if let Err(e) = result {
-                error!("Failed to workflow: {:?}", e);
-            }
+                .await
         });
+
+        if let Err(e) = &result {
+            error!("Failed to workflow: {:?}", e);
+        }
         info!(parent: &span, "Finish workflow = {:?}, duration = {:?}", workflow_name.as_str(), start.elapsed());
+        result
     }
 }
