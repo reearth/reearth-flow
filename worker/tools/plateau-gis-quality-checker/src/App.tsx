@@ -1,9 +1,9 @@
-import { SlidersHorizontal } from "@phosphor-icons/react";
+import { CaretDown, SlidersHorizontal } from "@phosphor-icons/react";
 import { invoke } from "@tauri-apps/api/tauri";
-import { ChangeEvent, useState } from "react";
+import { ReactNode, useState } from "react";
 import { debug } from "tauri-plugin-log-api";
 
-import { Button, FlowLogo, Label, Input, Progress } from "./components";
+import { FileSelector, Button, FlowLogo } from "./components";
 
 import "./index.css";
 
@@ -26,32 +26,28 @@ async function onButtonClick() {
 }
 
 function App() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [fileContent, setFileContent] = useState<string>("");
+  const [workflowPath, setWorkflowPath] = useState<string>("");
+  const [cityGmlPath, setCityGmlPath] = useState<string>("");
+  const [outputPath, setOutputPath] = useState<string>("");
+  const [codelistsPath, setCodelistsPath] = useState<string>("");
+  const [schemasPath, setSchemasPath] = useState<string>("");
 
-  const [workflowProgress, setworkflowProgress] = useState<number>(0);
+  const [showOptionalSettings, setShowOptionalSettings] = useState<boolean>(false);
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null;
-    setSelectedFile(file);
-
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setFileContent(result);
-      };
-      reader.readAsText(file);
-    }
-  };
+  // const [workflowProgress, setworkflowProgress] = useState<number>(0);
 
   const handleRunWorkflow = () => {
-    if (selectedFile) {
-      setworkflowProgress(10);
-      console.log("File to run:", selectedFile);
-      console.log("File content:", fileContent);
+    if (workflowPath && cityGmlPath) {
+      // setworkflowProgress(10);
+      console.log("workflowPath", workflowPath);
+      console.log("cityGmlPath", cityGmlPath);
+      console.log("codelistsPath", codelistsPath);
+      console.log("schemasPath", schemasPath);
+      console.log("outputPath", outputPath);
     }
   };
+
+  console.log("workflowPath", workflowPath);
 
   return (
     <div className="dark relative flex h-screen flex-col items-center justify-center bg-card p-2 text-zinc-300">
@@ -65,29 +61,47 @@ function App() {
         </Button>
       </div>
       <div
-        className={`h-[146px] w-[500px] overflow-hidden rounded-lg border bg-secondary transition-all duration-300 ease-linear ${selectedFile ? "h-[338px]" : undefined}`}>
+        className={`h-[142px] w-[500px] overflow-hidden rounded-lg border bg-secondary transition-all duration-300 ease-linear ${outputPath ? (showOptionalSettings ? "h-[699px]" : "h-[469px]") : cityGmlPath ? "h-[369px]" : workflowPath ? "h-[256px]" : undefined}`}>
         <div className="flex flex-col justify-center gap-6 p-6">
-          <div className="flex flex-col justify-center gap-4">
-            <p>Step 1:</p>
-            <div className="flex flex-col gap-2 font-thin">
-              <Label htmlFor="file">Select a workflow file</Label>
-              <Input type="file" onChange={handleFileChange} />
-            </div>
+          <StepWrapper step="1">
+            <FileSelector label="ワークフローファイルを選択" onFilePathSelected={setWorkflowPath} />
+          </StepWrapper>
+          <StepWrapper step="2">
+            <FileSelector label="CityGMLファイルを選択" onFilePathSelected={setCityGmlPath} />
+          </StepWrapper>
+          <StepWrapper step="3">
+            <FileSelector label="Select an output directory" directorySelect onFilePathSelected={setOutputPath} />
+          </StepWrapper>
+          {/* <div> */}
+          <div className="flex items-center justify-between" onClick={() => setShowOptionalSettings((o) => !o)}>
+            <p className="text-sm font-thin">任意設定</p>
+            <CaretDown />
           </div>
-          <div className="flex flex-col justify-center gap-4">
-            <p>Step 2:</p>
-            <div className="flex flex-col gap-2 font-thin">
-              <Label htmlFor="file">Select some other thing since this is imporant too</Label>
-              <Input type="file" onChange={handleFileChange} />
-            </div>
+          <div className={`flex flex-col gap-6 ${showOptionalSettings ? "block" : "hidden"}`}>
+            <StepWrapper step="4">
+              <FileSelector label="Select a Codelists file" onFilePathSelected={setCodelistsPath} />
+            </StepWrapper>
+            <StepWrapper step="5">
+              <FileSelector label="Select a Schemas file" onFilePathSelected={setSchemasPath} />
+            </StepWrapper>
           </div>
+          {/* </div> */}
           <Button className="self-end" variant="outline" onClick={handleRunWorkflow}>
-            Run
+            発行
           </Button>
         </div>
-        <Progress className={`${!workflowProgress ? "bg-transparent" : undefined}`} value={workflowProgress} />
+        {/* <Progress className={`${!workflowProgress ? "bg-transparent" : undefined}`} value={workflowProgress} /> */}
       </div>
     </div>
   );
 }
 export { App };
+
+const StepWrapper = ({ step, children }: { step: string; children: ReactNode }) => {
+  return (
+    <div className="flex flex-col justify-center gap-4">
+      <p>第{step}</p>
+      {children}
+    </div>
+  );
+};
