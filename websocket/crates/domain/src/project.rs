@@ -50,7 +50,9 @@ impl ProjectEditingSession {
         let session_id = generate_id(14, "editor-session");
         self.session_id = Some(session_id.clone());
         if !self.session_setup_complete {
-            let latest_snapshot_state = snapshot_repo.get_latest_snapshot_state(&self.project_id).await?;
+            let _latest_snapshot_state = snapshot_repo
+                .get_latest_snapshot_state(&self.project_id)
+                .await?;
             // Initialize Redis with latest snapshot state
         }
         self.session_setup_complete = true;
@@ -108,7 +110,7 @@ impl ProjectEditingSession {
         snapshot_repo: &impl ProjectSnapshotRepository,
         data: SnapshotData,
     ) -> Result<(), Box<dyn Error>> {
-        let merged_state = self.merge_updates().await?;
+        self.merge_updates().await?;
         let snapshot = ProjectSnapshot {
             id: generate_id(14, "snap"),
             project_id: self.project_id.clone(),
