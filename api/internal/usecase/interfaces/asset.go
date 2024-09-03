@@ -25,9 +25,7 @@ type CreateAssetParam struct {
 	File        *file.File
 }
 
-var (
-	ErrCreateAssetFailed error = errors.New("failed to create asset")
-)
+var ErrCreateAssetFailed error = errors.New("failed to create asset")
 
 type Asset interface {
 	Fetch(context.Context, []id.AssetID, *usecase.Operator) ([]*asset.Asset, error)

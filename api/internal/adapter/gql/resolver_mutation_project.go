@@ -29,7 +29,6 @@ func (r *mutationResolver) CreateProject(ctx context.Context, input gqlmodel.Cre
 }
 
 func (r *mutationResolver) UpdateProject(ctx context.Context, input gqlmodel.UpdateProjectInput) (*gqlmodel.ProjectPayload, error) {
-
 	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
 	if err != nil {
 		return nil, err
