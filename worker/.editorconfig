@@ -18,5 +18,5 @@ max_line_length = 120
 # denotes a line break in Markdown
 trim_trailing_whitespace = false
 
-[*.{yml,yaml,json}]
+[*.{yml,yaml,json,js,jsx,ts,tsx,html,css,scss,less,md}]
 indent_size = 2

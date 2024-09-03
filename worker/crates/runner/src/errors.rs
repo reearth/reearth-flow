@@ -4,7 +4,7 @@ use reearth_flow_runtime::errors::ExecutionError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum OrchestrationError {
+pub enum Error {
     #[error("Failed to find any build")]
     NoBuildFound,
     #[error("Missing api config or security input")]

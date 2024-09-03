@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::{env, fs, path::Path, sync::Arc};
 
-use directories::ProjectDirs;
 use once_cell::sync::Lazy;
+use reearth_flow_common::dir::setup_job_directory;
 use tracing::Level;
 use tracing_subscriber::fmt::time::UtcTime;
 use tracing_subscriber::prelude::*;
@@ -14,7 +14,6 @@ use reearth_flow_action_plateau_processor::mapping::ACTION_FACTORY_MAPPINGS as P
 use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR_MAPPINGS;
 use reearth_flow_action_sink::mapping::ACTION_FACTORY_MAPPINGS as SINK_MAPPINGS;
 use reearth_flow_action_source::mapping::ACTION_FACTORY_MAPPINGS as SOURCE_MAPPINGS;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_runtime::node::NodeKind;
 use reearth_flow_state::State;
@@ -47,20 +46,10 @@ pub(crate) fn execute(workflow: &str) {
     unsafe { env::set_var("RAYON_NUM_THREADS", "10") };
     setup_logging_and_tracing();
     let job_id = uuid::Uuid::new_v4();
-    let action_log_uri = {
-        let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
-        let p = p.cache_dir().to_str().unwrap();
-        let p = format!("{}/action-log/{}", p, job_id);
-        let _ = fs::create_dir_all(Path::new(p.as_str()));
-        Uri::for_test(format!("file://{}", p).as_str())
-    };
-    let state_uri = {
-        let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
-        let p = p.cache_dir().to_str().unwrap();
-        let p = format!("{}/feature-store/{}", p, job_id);
-        let _ = fs::create_dir_all(Path::new(p.as_str()));
-        Uri::for_test(format!("file://{}", p).as_str())
-    };
+    let action_log_uri = setup_job_directory("worker", "action-log", job_id)
+        .expect("Failed to setup job directory.");
+    let state_uri = setup_job_directory("worker", "feature-store", job_id)
+        .expect("Failed to setup job directory.");
     let storage_resolver = Arc::new(StorageResolver::new());
     let state = Arc::new(State::new(&state_uri, &storage_resolver).unwrap());
     let workflow = create_workflow(workflow);
@@ -75,7 +64,8 @@ pub(crate) fn execute(workflow: &str) {
         logger_factory,
         storage_resolver,
         state,
-    );
+    )
+    .expect("Failed to run workflow.");
 }
 
 pub fn create_workflow(workflow: &str) -> Workflow {
