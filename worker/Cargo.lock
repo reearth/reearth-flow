@@ -3784,6 +3784,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-telemetry",
  "reearth-flow-types",
+ "rust-embed",
  "serde",
  "serde_json",
  "tauri",

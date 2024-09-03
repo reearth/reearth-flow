@@ -11,7 +11,7 @@ async function onButtonClick() {
   debug("start flow");
   try {
     const result = await invoke("run_flow", {
-      workflowPath: "Try to get the path from the input file.",
+      workflowId: "Try to get the path from the input file.",
       params: {
         cityGmlPath: "Try to get the path from the input file.",
         codelistsPath: "Try to get the path from the input file.", // optional: Not necessary if cityGmlPath is Zip

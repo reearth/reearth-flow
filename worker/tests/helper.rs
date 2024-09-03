@@ -70,5 +70,6 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) {
         logger_factory,
         storage_resolver,
         state,
-    );
+    )
+    .expect("Failed to run workflow");
 }
