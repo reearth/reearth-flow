@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, sans-serif;
+  font-feature-settings:
+    "liga" 1,
+    "calt" 1; /* fix for Chrome */
+}
+
+@layer base {
+  /* TODO: Fix light mode colors and enable light mode */
+  :root {
+    --background: 250, 250, 250;
+    --foreground: 39, 39, 42;
+
+    --card: 250, 250, 250;
+    --card-foreground: 39, 39, 42;
+
+    --popover: 250, 250, 250;
+    --popover-foreground: 49, 49, 42;
+
+    --primary: 126, 126, 129;
+    --primary-foreground: 51, 51, 56;
+
+    --secondary: 250, 250, 250;
+    --secondary-foreground: 31, 31, 34;
+
+    --muted: 161, 161, 170;
+    --muted-foreground: 26, 26, 26;
+
+    --accent: 212, 212, 216;
+    --accent-foreground: 63, 63, 70;
+
+    --destructive: 239, 68, 68;
+    --destructive-foreground: 250, 250, 250;
+
+    --border: 228, 228, 231;
+    --input: 228, 228, 231;
+    --ring: 24, 24, 27;
+    --radius: 0.5rem;
+
+    /* Custom Flow colors */
+    --logo: 69, 10, 10;
+
+    /* Workflow colors */
+    --node-entrance: 162, 28, 175;
+    --node-exit: 126, 34, 206;
+    --node-reader: 22, 78, 99;
+    --node-transformer: 99, 22, 40;
+    --node-writer: 99, 81, 22;
+
+    /* success green */
+    --success: 34, 197, 94;
+  }
+
+  .dark {
+    --background: 39, 39, 42;
+    --foreground: 250, 250, 250;
+
+    --card: 39, 39, 42;
+    --card-foreground: 250, 250, 250;
+
+    --popover: 49, 49, 53;
+    --popover-foreground: 250, 250, 250;
+
+    --primary: 51, 51, 56;
+    --primary-foreground: 126, 126, 129;
+
+    --secondary: 31, 31, 34;
+    --secondary-foreground: 250, 250, 250;
+
+    --muted: 26, 26, 26;
+    --muted-foreground: 161, 161, 170;
+
+    --accent: 63, 63, 70;
+    --accent-foreground: 212, 212, 216;
+
+    --destructive: 239, 67, 67;
+    --destructive-foreground: 250, 250, 250;
+
+    --border: 63, 63, 70;
+    --input: 26, 26, 26;
+    --ring: 2, 8, 23;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Animation for active node */
+@keyframes cycleColors {
+  0% {
+    @apply bg-background;
+  }
+  50% {
+    @apply bg-foreground;
+  }
+  100% {
+    @apply bg-background;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.active-node-status {
+  animation:
+    cycleColors 3s infinite,
+    pulse 1.5s infinite;
+}
+/* Animation for active node END */

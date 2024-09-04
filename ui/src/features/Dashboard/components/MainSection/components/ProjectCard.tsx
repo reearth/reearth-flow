@@ -42,7 +42,7 @@ const ProjectCard: React.FC<Props> = ({
       className={`group relative cursor-pointer border-transparent bg-secondary ${currentProject && currentProject.id === id ? "border-border" : "hover:border-border"}`}
       key={id}
       onClick={() => onProjectSelect(project)}>
-      <CardContent className="flex h-[120px] items-center justify-center rounded-t-lg bg-logo/50 p-0">
+      <CardContent className="flex h-[120px] items-center justify-center rounded-t-lg bg-logo/30 p-0">
         <FlowLogo
           className={`size-[40px] text-zinc-300 ${description ? "group:hover:opacity-90" : ""}`}
         />
