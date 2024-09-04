@@ -91,7 +91,7 @@ function App() {
       </div>
       <div className={`flex justify-center gap-4 transition-all`}>
         <div
-          className={`flex h-[98px] w-[500px] flex-col overflow-hidden rounded-lg border bg-secondary transition-all duration-300 ease-linear ${outputPath ? (showOptionalSettings ? "mt-[12vh] h-auto w-[800px]" : "mt-[12vh] h-auto") : cityGmlPath ? "mt-[15vh] h-[245px]" : workflowId ? "mt-[20vh] h-[170px]" : "mt-[25vh]"}`}>
+          className={`flex w-[500px] flex-col overflow-hidden rounded-lg border bg-secondary transition-all duration-300 ease-linear ${outputPath ? (showOptionalSettings ? "mt-[12vh] h-auto w-[800px]" : "mt-[12vh] h-auto") : cityGmlPath ? "mt-[15vh] h-[245px]" : workflowId ? "mt-[20vh] h-[170px]" : "mt-[25vh] h-[98px]"}`}>
           <div className="flex">
             <div className="flex w-full max-w-[500px] flex-col justify-center gap-6 px-6 pt-6">
               {/* <Label className="">一般設定</Label> */}
