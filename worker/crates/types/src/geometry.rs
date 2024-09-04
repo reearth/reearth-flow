@@ -1,6 +1,9 @@
+use nusamai_plateau::models::appearance::X3DMaterial;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::traits::Elevation;
 use std::fmt::Display;
+use std::hash::Hasher;
 use std::{hash::Hash, path::Path};
 use url::Url;
 
@@ -117,6 +120,34 @@ pub struct Material {
     pub ambient_intensity: f64,
 }
 
+impl From<X3DMaterial> for Material {
+    fn from(src: X3DMaterial) -> Self {
+        Self {
+            diffuse_color: src.diffuse_color.unwrap_or(Color::new(0.8, 0.8, 0.8)),
+            specular_color: src.specular_color.unwrap_or(Color::new(1., 1., 1.)),
+            ambient_intensity: src.ambient_intensity.unwrap_or(0.2),
+        }
+    }
+}
+
+impl Default for Material {
+    fn default() -> Self {
+        Self {
+            diffuse_color: Color::new(0.8, 0.8, 0.8),
+            specular_color: Color::new(1., 1., 1.),
+            ambient_intensity: 0.2,
+        }
+    }
+}
+
+impl Hash for Material {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.diffuse_color.hash(state);
+        self.specular_color.hash(state);
+        self.ambient_intensity.to_bits().hash(state);
+    }
+}
+
 use indexmap::IndexSet;
 use nusamai_gltf::nusamai_gltf_json;
 use nusamai_gltf::nusamai_gltf_json::{BufferView, MimeType};
@@ -160,14 +191,6 @@ impl PartialEq for Material {
 
 impl Eq for Material {}
 
-impl Hash for Material {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.diffuse_color.hash(state);
-        self.specular_color.hash(state);
-        self.ambient_intensity.to_bits().hash(state);
-    }
-}
-
 impl From<nusamai_plateau::appearance::Material> for Material {
     fn from(material: nusamai_plateau::appearance::Material) -> Self {
         Self {
@@ -193,35 +216,35 @@ impl Appearance {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlGeometry {
-    pub features: Vec<GeometryFeature>,
+    pub gml_geometries: Vec<GmlGeometry>,
     pub materials: Vec<Material>,
     pub textures: Vec<Texture>,
     pub polygon_materials: Vec<Option<u32>>,
     pub polygon_textures: Vec<Option<u32>>,
-    pub polygon_uv: Option<MultiPolygon2D<f64>>,
+    pub polygon_uvs: MultiPolygon2D<f64>,
 }
 
 impl CityGmlGeometry {
     pub fn new(
-        features: Vec<GeometryFeature>,
+        gml_geometries: Vec<GmlGeometry>,
         materials: Vec<Material>,
         textures: Vec<Texture>,
     ) -> Self {
         Self {
-            features,
+            gml_geometries,
             materials,
             textures,
             polygon_materials: Vec::new(),
             polygon_textures: Vec::new(),
-            polygon_uv: None,
+            polygon_uvs: MultiPolygon2D::default(),
         }
     }
 
     pub fn split_feature(&self) -> Vec<CityGmlGeometry> {
-        self.features
+        self.gml_geometries
             .iter()
             .map(|feature| CityGmlGeometry {
-                features: vec![feature.clone()],
+                gml_geometries: vec![feature.clone()],
                 ..self.clone()
             })
             .collect()
@@ -236,7 +259,7 @@ impl CityGmlGeometry {
     }
 
     pub fn hole_count(&self) -> usize {
-        self.features
+        self.gml_geometries
             .iter()
             .map(|feature| {
                 feature
@@ -248,7 +271,7 @@ impl CityGmlGeometry {
             .sum()
     }
     pub fn are_points_coplanar(&self) -> bool {
-        self.features.iter().all(|feature| {
+        self.gml_geometries.iter().all(|feature| {
             feature.polygons.iter().all(|poly| {
                 let result = are_points_coplanar(poly.clone().into(), EPSILON);
                 result.is_some()
@@ -257,7 +280,7 @@ impl CityGmlGeometry {
     }
 
     pub fn elevation(&self) -> f64 {
-        self.features
+        self.gml_geometries
             .first()
             .and_then(|feature| feature.polygons.first())
             .and_then(|poly| poly.exterior().0.first())
@@ -265,17 +288,71 @@ impl CityGmlGeometry {
     }
 
     pub fn is_elevation_zero(&self) -> bool {
-        self.features
+        self.gml_geometries
             .iter()
             .all(|feature| feature.polygons.iter().all(|poly| poly.is_elevation_zero()))
+    }
+
+    pub fn max_min_vertice(&self) -> MaxMinVertice {
+        let mut max_min = MaxMinVertice::default();
+        for gml_geometry in &self.gml_geometries {
+            for polygon in &gml_geometry.polygons {
+                for line in &polygon.rings() {
+                    for point in line {
+                        if point.x < max_min.min_lng {
+                            max_min.min_lng = point.x;
+                        }
+                        if point.x > max_min.max_lng {
+                            max_min.max_lng = point.x;
+                        }
+                        if point.y < max_min.min_lat {
+                            max_min.min_lat = point.y;
+                        }
+                        if point.y > max_min.max_lat {
+                            max_min.max_lat = point.y;
+                        }
+                        if point.z < max_min.min_height {
+                            max_min.min_height = point.z;
+                        }
+                        if point.z > max_min.max_height {
+                            max_min.max_height = point.z;
+                        }
+                    }
+                }
+            }
+        }
+        max_min
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct MaxMinVertice {
+    pub min_lng: f64,
+    pub max_lng: f64,
+    pub min_lat: f64,
+    pub max_lat: f64,
+    pub min_height: f64,
+    pub max_height: f64,
+}
+
+impl Default for MaxMinVertice {
+    fn default() -> Self {
+        Self {
+            min_lng: f64::MAX,
+            max_lng: f64::MIN,
+            min_lat: f64::MAX,
+            max_lat: f64::MIN,
+            min_height: f64::MAX,
+            max_height: f64::MIN,
+        }
     }
 }
 
 impl From<CityGmlGeometry> for FlowGeometry2D {
     fn from(geometry: CityGmlGeometry) -> Self {
         let mut polygons = Vec::<Polygon2D<f64>>::new();
-        for feature in geometry.features {
-            for polygon in feature.polygons {
+        for gml_geometry in geometry.gml_geometries {
+            for polygon in gml_geometry.polygons {
                 polygons.push(polygon.into());
             }
         }
@@ -284,7 +361,7 @@ impl From<CityGmlGeometry> for FlowGeometry2D {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct GeometryFeature {
+pub struct GmlGeometry {
     pub id: Option<String>,
     #[serde(rename = "type")]
     pub ty: GeometryType,
@@ -294,17 +371,22 @@ pub struct GeometryFeature {
     pub polygons: Vec<Polygon3D<f64>>,
     pub feature_id: Option<String>,
     pub feature_type: Option<String>,
-    pub composite_surfaces: Vec<GeometryFeature>,
+    pub composite_surfaces: Vec<GmlGeometry>,
 }
 
-impl GeometryFeature {
+impl GmlGeometry {
     pub fn name(&self) -> &str {
         self.ty.name()
     }
+
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        self.polygons.iter_mut().for_each(|poly| poly.transform_inplace(jgd2wgs));
+
+    }
 }
 
-impl From<GeometryFeature> for Vec<geojson::Value> {
-    fn from(feature: GeometryFeature) -> Self {
+impl From<GmlGeometry> for Vec<geojson::Value> {
+    fn from(feature: GmlGeometry) -> Self {
         feature
             .polygons
             .into_iter()
@@ -408,14 +490,14 @@ impl GeometryType {
     }
 }
 
-impl Display for GeometryFeature {
+impl Display for GmlGeometry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let msg = format!("lod{}{:?}", self.lod.unwrap_or_default(), self.ty);
         write!(f, "{}", msg)
     }
 }
 
-impl From<nusamai_citygml::geometry::GeometryRef> for GeometryFeature {
+impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
     fn from(geometry: nusamai_citygml::geometry::GeometryRef) -> Self {
         let id = geometry.id.map(|id| id.value());
         Self {

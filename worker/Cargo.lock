@@ -2700,7 +2700,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc7#886de99c529535dc7c3f07f0aab6566e21ea4522"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc8#cf152951f95d59ab9df3069fe9513f287c5d5c8d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3061,7 +3061,7 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc7#886de99c529535dc7c3f07f0aab6566e21ea4522"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc8#cf152951f95d59ab9df3069fe9513f287c5d5c8d"
 dependencies = [
  "ahash 0.8.11",
  "chrono",
@@ -3082,7 +3082,7 @@ dependencies = [
 [[package]]
 name = "nusamai-geometry"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc7#886de99c529535dc7c3f07f0aab6566e21ea4522"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc8#cf152951f95d59ab9df3069fe9513f287c5d5c8d"
 dependencies = [
  "num-traits",
  "serde",
@@ -3091,7 +3091,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc7#886de99c529535dc7c3f07f0aab6566e21ea4522"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc8#cf152951f95d59ab9df3069fe9513f287c5d5c8d"
 dependencies = [
  "byteorder",
  "clap",
@@ -3107,7 +3107,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc7#886de99c529535dc7c3f07f0aab6566e21ea4522"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc8#cf152951f95d59ab9df3069fe9513f287c5d5c8d"
 dependencies = [
  "cesiumtiles",
  "serde",
@@ -3118,7 +3118,7 @@ dependencies = [
 [[package]]
 name = "nusamai-mvt"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc7#886de99c529535dc7c3f07f0aab6566e21ea4522"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc8#cf152951f95d59ab9df3069fe9513f287c5d5c8d"
 dependencies = [
  "ahash 0.8.11",
  "indexmap 2.5.0",
@@ -3129,7 +3129,7 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc7#886de99c529535dc7c3f07f0aab6566e21ea4522"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc8#cf152951f95d59ab9df3069fe9513f287c5d5c8d"
 dependencies = [
  "chrono",
  "hashbrown 0.14.5",
@@ -3148,7 +3148,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc7#886de99c529535dc7c3f07f0aab6566e21ea4522"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc8#cf152951f95d59ab9df3069fe9513f287c5d5c8d"
 dependencies = [
  "japan-geoid",
  "thiserror",
@@ -4346,11 +4346,14 @@ dependencies = [
  "csv",
  "earcut",
  "geojson",
+ "image 0.25.2",
  "indexmap 2.5.0",
  "itertools",
  "nusamai-citygml",
+ "nusamai-geometry",
  "nusamai-gltf",
  "nusamai-mvt",
+ "nusamai-plateau",
  "nusamai-projection",
  "once_cell",
  "opentelemetry",
@@ -4375,6 +4378,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "url",
  "uuid",
 ]
 
@@ -4462,6 +4466,7 @@ dependencies = [
  "directories",
  "futures",
  "home",
+ "image 0.25.2",
  "jsonpath_lib",
  "libxml",
  "nusamai-mvt",
