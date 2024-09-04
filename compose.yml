@@ -1,0 +1,44 @@
+version: "3.9"
+services:
+  api:
+    build:
+      context: ./api/
+      dockerfile: Dockerfile
+    environment:
+      REEARTH_FLOW_DB: mongodb://mongo
+    ports:
+      - "8081:8081"
+    env_file:
+      - ./api/.env
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:6-focal
+    volumes:
+      - type: volume
+        source: reearth-flow-mongo
+        target: /data/db
+        volume:
+          nocopy: true
+    command: mongod --port 27017 --bind_ip_all
+
+  websocket:
+    build:
+      context: ./websocket/
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+
+  ui:
+    build:
+      context: ./ui/
+      dockerfile: Dockerfile
+    env_file:
+      - ./ui/.env
+    ports:
+      - "3000:3000"
+
+volumes:
+  reearth-flow-mongo:
+    driver: local
