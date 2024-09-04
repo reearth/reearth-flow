@@ -33,6 +33,7 @@ type Config struct {
 	DB_Users         []appx.NamedURI   `pp:",omitempty"`
 	GraphQL          GraphQLConfig     `pp:",omitempty"`
 	GCPProject       string            `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
+	GCPRegion        string            `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty`
 	Profiler         string            `pp:",omitempty"`
 	Tracer           string            `pp:",omitempty"`
 	TracerSample     float64           `pp:",omitempty"`
@@ -63,6 +64,9 @@ type Config struct {
 	Auth_TTL      *int          `pp:",omitempty"`
 	Auth_ClientID *string       `pp:",omitempty"`
 	Auth_JWKSURI  *string       `pp:",omitempty"`
+
+	// worker
+	Worker_ImageURL string     `pp:",omitempty"`
 }
 
 func ReadConfig(debug bool) (*Config, error) {
