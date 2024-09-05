@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useY } from "react-yjs";
+import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import type { Edge, Node } from "@flow/types";
@@ -17,9 +18,18 @@ export default ({
   workflowId?: string;
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
+  const yWebSocketRef = useRef<WebsocketProvider | null>(null);
+  useEffect(() => () => yWebSocketRef.current?.destroy(), []);
+
   const [{ yWorkflows }] = useState(() => {
-    // TODO: setup middleware/websocket provider
     const yDoc = new Y.Doc();
+    yWebSocketRef.current = new WebsocketProvider(
+      "ws://localhost:8000",
+      workflowId ? workflowId : "",
+      yDoc,
+      { params: { token: "nyaan" } },
+    );
+
     const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
     const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
     yWorkflows.push([yWorkflow]);

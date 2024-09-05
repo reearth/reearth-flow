@@ -2,6 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use super::errors::{Result, WsError};
 use super::state::AppState;
+use axum::extract::{Path, Query};
 use axum::http::{Method, StatusCode, Uri};
 use axum::{
     extract::{
@@ -12,6 +13,11 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tower::BoxError;
+use tracing::{debug, trace};
+use yrs::sync::{Awareness, SyncMessage};
+use yrs::updates::decoder::Decode;
+use yrs::updates::encoder::Encode;
+use yrs::{ReadTxn, Transact, Update};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "tag", content = "content")]
@@ -26,15 +32,31 @@ struct FlowMessage {
     event: Event,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct WebSocketQuery {
+    token: String,
+}
+
 pub async fn handle_upgrade(
     ws: WebSocketUpgrade,
+    query: Query<WebSocketQuery>,
+    Path(room_id): Path<String>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, addr, state))
+    debug!("{:?}", query);
+    ws.on_upgrade(move |socket| {
+        handle_socket(socket, addr, query.token.to_string(), room_id, state)
+    })
 }
 
-async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: Arc<AppState>) {
+async fn handle_socket(
+    mut socket: WebSocket,
+    addr: SocketAddr,
+    token: String,
+    room_id: String,
+    state: Arc<AppState>,
+) {
     if socket.send(Message::Ping(vec![4])).await.is_ok() {
         println!("pinned to {addr}");
     } else {
@@ -42,10 +64,26 @@ async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: Arc<AppSt
         return;
     }
 
-    if let Some(msg) = socket.recv().await {
+    // TODO: authentication
+    if token != "nyaan" {
+        return;
+    }
+
+    debug!("{:?}", state.make_room(room_id.clone()));
+    let _ = state.join(&room_id).await;
+
+    while let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
-            if let Err(e) = handle_message(msg, addr, state).await {
-                eprintln!("Error handling message from {addr}: {e}");
+            match handle_message(msg, addr, &room_id, state.clone()).await {
+                Ok(Some(msg)) => {
+                    let _ = socket.send(Message::Binary(msg)).await;
+                    continue;
+                }
+                Ok(_) => continue,
+                Err(_) => {
+                    debug!("client {addr} disconnected");
+                    return;
+                }
             }
         } else {
             println!("client {addr} disconnected");
@@ -53,20 +91,53 @@ async fn handle_socket(mut socket: WebSocket, addr: SocketAddr, state: Arc<AppSt
     }
 }
 
-async fn handle_message(msg: Message, addr: SocketAddr, state: Arc<AppState>) -> Result<()> {
+async fn handle_message(
+    msg: Message,
+    addr: SocketAddr,
+    room_id: &str,
+    state: Arc<AppState>,
+) -> Result<Option<Vec<u8>>> {
     match msg {
         Message::Text(t) => {
             let msg: FlowMessage = serde_json::from_str(&t).unwrap();
 
-            match msg.event {
+            let _ = match msg.event {
                 Event::Join { room_id } => state.join(&room_id).await,
                 Event::Leave => state.leave("brabra").await,
                 Event::Emit { data } => state.emit(&data).await,
-            }
+            };
+            Ok(None)
         }
         Message::Binary(d) => {
-            println!(">>> {} sent {} bytes: {:?}", addr, d.len(), d);
-            Ok(())
+            trace!("{} sent {} bytes: {:?}", addr, d.len(), d);
+            if d.len() < 3 {
+                return Ok(None);
+            };
+
+            let rooms = state.rooms.try_lock().unwrap();
+            let room = rooms.get(room_id).unwrap();
+            let doc = room.get_doc();
+            match yrs::sync::Message::decode_v1(&d) {
+                Ok(yrs::sync::Message::Sync(SyncMessage::SyncStep1(sv))) => {
+                    trace!("Sync");
+                    let txn = doc.transact();
+                    let update = txn.encode_state_as_update_v1(&sv);
+                    let sync2 = SyncMessage::SyncStep2(update).encode_v1();
+                    Ok(Some(sync2))
+                }
+                Ok(yrs::sync::Message::Sync(SyncMessage::Update(data))) => {
+                    trace!("Update");
+                    let mut txn = doc.transact_mut();
+                    txn.apply_update(Update::decode_v1(&data).unwrap());
+                    Ok(None)
+                }
+                Ok(yrs::sync::Message::Awareness(update)) => {
+                    let mut awareness = Awareness::new((*doc).clone());
+                    let _ = awareness.apply_update(update);
+                    Ok(None)
+                }
+                _ => Ok(None),
+            }
         }
         Message::Close(c) => {
             if let Some(cf) = c {
@@ -80,7 +151,7 @@ async fn handle_message(msg: Message, addr: SocketAddr, state: Arc<AppState>) ->
             Err(WsError::WsError)
         }
         // reply to ping automatically
-        _ => Ok(()),
+        _ => Ok(None),
     }
 }
 
@@ -106,15 +177,14 @@ impl AppState {
         unimplemented!()
     }
     async fn join(&self, room_id: &str) -> Result<()> {
-        let mut rooms = self.rooms.lock().await;
-
-        match rooms.get_mut(room_id) {
-            Some(room) => room
-                .join("brabrabra".to_string())
-                .await
-                .map_err(|e| WsError::JoinError(e.to_string())),
-            None => Err(WsError::RoomNotFound(room_id.to_string())),
-        }
+        let _ = self
+            .rooms
+            .try_lock()
+            .or_else(|_| Err(WsError::WsError))?
+            .get_mut(room_id)
+            .ok_or(WsError::WsError)?
+            .join("brabrabra".to_string());
+        Ok(())
     }
     async fn leave(&self, room_id: &str) -> Result<()> {
         unimplemented!()
