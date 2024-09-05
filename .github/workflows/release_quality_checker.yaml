@@ -2,7 +2,7 @@ name: Release Quality Checker
 on:
   push:
     tags:
-      - 'plateau-gis-quality-checker-v[0-9]+.[0-9]+.[0-9]+'
+      - 'plateau-gis-quality-checker-v*'
 
 jobs:
   release:
