@@ -40,8 +40,8 @@ panic = "abort"
 strip = true
 
 [profile.release-lto]
-inherits = "release"
 codegen-units = 8
+inherits = "release"
 lto = "fat"
 
 [workspace.dependencies]
