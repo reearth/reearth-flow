@@ -180,7 +180,7 @@ impl Processor for GeometryValidator {
             }
             GeometryValue::CityGmlGeometry(gml_geometry) => {
                 let result = gml_geometry
-                    .features
+                    .gml_geometries
                     .iter()
                     .flat_map(|feature| {
                         feature.polygons.iter().map(|polygon| {

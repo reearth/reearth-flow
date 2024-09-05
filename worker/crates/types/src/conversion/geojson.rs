@@ -17,7 +17,7 @@ impl TryFrom<Feature> for Vec<geojson::Feature> {
         };
         let geojson_features = match geometry.value {
             GeometryValue::CityGmlGeometry(gml_geometry) => gml_geometry
-                .features
+                .gml_geometries
                 .into_iter()
                 .flat_map(|f| {
                     let geometries: Vec<geojson::Value> = f.into();

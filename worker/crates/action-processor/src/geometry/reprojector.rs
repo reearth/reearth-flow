@@ -131,8 +131,8 @@ impl Processor for Reprojector {
                     };
                     geometry.epsg = self.epsg_code;
                     let mut geometry_value = v.clone();
-                    for feature in &mut geometry_value.features {
-                        for polygon in &mut feature.polygons {
+                    for gml_geometry in &mut geometry_value.gml_geometries {
+                        for polygon in &mut gml_geometry.polygons {
                             polygon.projection(projection)?;
                         }
                     }

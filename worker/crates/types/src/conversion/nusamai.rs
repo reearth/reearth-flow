@@ -6,7 +6,7 @@ use nusamai_plateau::Entity;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 
 use crate::error::Error;
-use crate::{CityGmlGeometry, Geometry, GeometryFeature, GeometryValue};
+use crate::{CityGmlGeometry, Geometry, GeometryValue, GmlGeometry};
 
 impl TryFrom<Entity> for Geometry {
     type Error = Error;
@@ -33,8 +33,8 @@ impl TryFrom<Entity> for Geometry {
             return Err(Error::unsupported_feature("no feature found"));
         };
         let geometries = entity.geometry_refs.clone();
-        let mut geometry_features = Vec::<GeometryFeature>::new();
-        let operation = |geometry: &GeometryRef| -> Option<GeometryFeature> {
+        let mut geometry_features = Vec::<GmlGeometry>::new();
+        let operation = |geometry: &GeometryRef| -> Option<GmlGeometry> {
             match geometry.ty {
                 GeometryType::Solid
                 | GeometryType::Surface
@@ -49,7 +49,7 @@ impl TryFrom<Entity> for Geometry {
                         let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
                         polygons.push(poly.into());
                     }
-                    let mut geometry_feature = GeometryFeature::from(geometry.clone());
+                    let mut geometry_feature = GmlGeometry::from(geometry.clone());
                     geometry_feature.polygons.extend(polygons);
                     Some(geometry_feature)
                 }
@@ -183,7 +183,7 @@ impl TryFrom<Entity> for Geometry {
                 }
                 // apply textures to polygons
                 geometry_entity.polygon_textures = poly_textures;
-                geometry_entity.polygon_uv = Some(poly_uvs.into());
+                geometry_entity.polygon_uvs = poly_uvs.into();
             }
         } else {
             // set 'null' appearance if no theme found
@@ -200,7 +200,7 @@ impl TryFrom<Entity> for Geometry {
                     }
                 }
             }
-            geometry_entity.polygon_uv = Some(poly_uvs.into());
+            geometry_entity.polygon_uvs = poly_uvs.into();
         }
         Ok(Self::new(
             epsg,

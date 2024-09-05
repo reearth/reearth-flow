@@ -278,7 +278,7 @@ impl GeometryCoercer {
         ctx: &ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) {
-        geos.features.iter().for_each(|geo_feature| {
+        geos.gml_geometries.iter().for_each(|geo_feature| {
             let mut geometries = Vec::<Geometry3D>::new();
             match &self.coercer_type {
                 CoercerType::LineString => {

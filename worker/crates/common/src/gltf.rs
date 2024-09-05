@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 #[inline]
 fn cross((ax, ay, az): (f64, f64, f64), (bx, by, bz): (f64, f64, f64)) -> (f64, f64, f64) {
     (ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx)
@@ -115,4 +117,23 @@ pub fn zxy_from_lng_lat(z: u8, lng: f64, lat: f64) -> (u8, u32, u32) {
     let xs = x_step(z, y) as i32;
     let x = ((180.0 + lng) / 360.0 * x_size as f64).floor() as i32;
     (z, (x - x.rem_euclid(xs)) as u32, y)
+}
+
+pub fn iter_y_slice(z: u8, south: f64, north: f64) -> Range<u32> {
+    let (_, y_size) = size_for_z(z);
+    let north = north.clamp(-90.0, 90.0);
+    let south = south.clamp(-90.0, 90.0);
+    let y_north = ((90.0 - north) / 180.0 * y_size as f64).floor() as u32;
+    let y_south = ((90.0 - south) / 180.0 * y_size as f64).ceil() as u32;
+    y_north..y_south
+}
+
+pub fn iter_x_slice(z: u8, y: u32, west: f64, east: f64) -> impl Iterator<Item = (i32, u32)> {
+    let (x_size, _) = size_for_z(z);
+    let x_west = ((180.0 + west) / 360.0 * x_size as f64).floor() as i32;
+    let x_east = ((180.0 + east) / 360.0 * x_size as f64).ceil() as i32;
+    let xs = x_step(z, y) as i32;
+    (x_west - x_west.rem_euclid(xs)..x_east - x_east.rem_euclid(xs))
+        .step_by(xs as usize)
+        .map(move |x| (x, xs as u32))
 }

@@ -57,12 +57,12 @@ reearth-flow-storage = { path = "crates/storage" }
 reearth-flow-telemetry = { path = "crates/telemetry" }
 reearth-flow-types = { path = "crates/types" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc7", features = ["serde", "serde_json"] }
-nusamai-geometry = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc7", features = ["serde"] }
-nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc7" }
-nusamai-mvt = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc7" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc7", features = ["serde"] }
-nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc7" }
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8", features = ["serde", "serde_json"] }
+nusamai-geometry = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8", features = ["serde"] }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8" }
+nusamai-mvt = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8", features = ["serde"] }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8" }
 
 cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs.git" }
 
