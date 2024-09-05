@@ -3,6 +3,10 @@ name: Release Quality Checker
 on:
   workflow_dispatch:
 
+env:
+  VCPKG_ROOT: 'C:\vcpkg'
+  VCPKGRS_DYNAMIC: '1'
+
 jobs:
   create-release:
     permissions:
@@ -20,6 +24,7 @@ jobs:
           node-version: lts/*
 
       - name: get version
+        working-directory: ./worker/tools/plateau-gis-quality-checker
         run: echo "PACKAGE_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
 
       - name: create release
@@ -49,11 +54,11 @@ jobs:
           - platform: windows-latest
             args: '-- --profile release-lto'
           - platform: macos-latest
-            args: '--target universal-apple-darwin -- --profile release-lto'
+            args: '--target aarch64-apple-darwin -- --profile release-lto'
           - platform: ubuntu-latest
             args: '-- --profile release-lto'
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.settings.platform }}
     steps:
       - uses: actions/checkout@v4
 
@@ -61,24 +66,42 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: "yarn"
-          cache-dependency-path: ./worker/tools/plateau-gis-quality-checker
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
 
+      - name: install dependencies (macos only)
+        if: matrix.settings.platform == 'macos-latest'
+        run: |
+          brew install libxml2 pkg-config
+          LIBXML2_PATH=$(realpath $(brew --prefix libxml2))
+          sudo mkdir -p /usr/local/lib/
+          sudo ln -s ${LIBXML2_PATH}/lib/libxml2.2.dylib /usr/local/lib/libxml-2.0.dylib
+          echo "LIBXML2=${LIBXML2_PATH}/lib/pkgconfig/libxml-2.0.pc" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=${LIBXML2_PATH}/lib/pkgconfig" >> $GITHUB_ENV
+
       - name: install dependencies (ubuntu only)
         if: matrix.settings.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: vcpkg integrate
+        if: matrix.settings.platform == 'windows-latest'
+        working-directory: ./worker
+        run: |
+          vcpkg install libxml2
+          vcpkg integrate install
+
+      - name: enable corepack
+        run: |
+          corepack enable
+        working-directory: ./worker/tools/plateau-gis-quality-checker
 
       - name: install frontend dependencies
         run: yarn install
@@ -88,8 +111,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          projectPath: ./worker/tools/plateau-gis-quality-checker
           releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: ${{ matrix.args }}
+          args: ${{ matrix.settings.args }}
 
   publish-release:
     permissions:
@@ -110,5 +134,4 @@ jobs:
               repo: context.repo.repo,
               release_id: process.env.release_id,
               draft: false,
-              prerelease: true
             })

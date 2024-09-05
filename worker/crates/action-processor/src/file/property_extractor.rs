@@ -1,8 +1,6 @@
-use std::{
-    collections::HashMap, fmt::Debug, fs, os::unix::fs::MetadataExt, path::Path, str::FromStr,
-};
+use std::{collections::HashMap, fmt::Debug, fs, path::Path, str::FromStr};
 
-use reearth_flow_common::uri::Uri;
+use reearth_flow_common::{fs::metadata, uri::Uri};
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -165,21 +163,21 @@ impl Processor for FilePropertyExtractor {
             .map_err(|e| FileProcessorError::PropertyExtractor(format!("{:?}", e)))?;
         let path = uri.path();
         if path.exists() && !path.is_symlink() {
-            let metadata = fs::metadata(&path)?;
+            let metadata = metadata(&path)?;
             let file_property = FileProperty {
-                file_type: if metadata.is_dir() {
+                file_type: if metadata.is_dir {
                     FileType::Directory
                 } else {
                     FileType::File
                 },
-                file_size: if metadata.is_dir() {
+                file_size: if metadata.is_dir {
                     get_dir_size(&path)? as i64
                 } else {
-                    metadata.len() as i64
+                    metadata.size
                 },
-                file_atime: metadata.atime(),
-                file_mtime: metadata.mtime(),
-                file_ctime: metadata.ctime(),
+                file_atime: metadata.atime,
+                file_mtime: metadata.mtime,
+                file_ctime: metadata.ctime,
             };
             let mut feature = ctx.feature.clone();
             let attributes: HashMap<Attribute, AttributeValue> = file_property.into();
