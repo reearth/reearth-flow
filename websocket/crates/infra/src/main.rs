@@ -1,10 +1,15 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use axum::{error_handling::HandleErrorLayer, routing::get, Router};
+use axum::{error_handling::HandleErrorLayer, middleware::from_fn, routing::get, Router};
+use infra::auth_middleware;
 use socket::{
     handler::{handle_error, handle_upgrade},
     state::AppState,
 };
+
+use common::Config;
+use services::AuthServiceClient;
+
 use tower::timeout::TimeoutLayer;
 use tower::ServiceBuilder;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
@@ -21,14 +26,23 @@ async fn main() -> std::io::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    let config = Config::from_env().expect("Failed to load configuration");
+
+    let auth_client =
+        AuthServiceClient::new(&config.auth_service_url).expect("Failed to create auth client");
+
     let state = Arc::new(AppState::default());
     let state_err = state.clone();
     let app = Router::new()
         .route("/:room", get(handle_upgrade))
+        .layer(from_fn(move |req, next| {
+            let auth_client = auth_client.clone();
+            auth_middleware::<axum::body::Body>(auth_client, req, next)
+        }))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(move |method, uri, err| {
-                    handle_error(method, uri, err, state_err)
+                    handle_error(method, uri, err, state_err.clone())
                 }))
                 .layer(TimeoutLayer::new(Duration::from_secs(10)))
                 .layer(
@@ -39,7 +53,7 @@ async fn main() -> std::io::Result<()> {
         )
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8000")
+    let listener = tokio::net::TcpListener::bind(&config.server_addr)
         .await
         .unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());

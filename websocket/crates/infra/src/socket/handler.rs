@@ -12,8 +12,9 @@ use axum::{
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
+use services::AuthServiceClient;
 use tower::BoxError;
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 use yrs::sync::{Awareness, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
@@ -64,10 +65,35 @@ async fn handle_socket(
         return;
     }
 
-    // TODO: authentication
-    if token != "nyaan" {
-        return;
+    // Optional authentication
+    // This authentication step is optional because the token has already been verified during the HTTP upgrade process
+    /*
+    let auth_server_url = "http://localhost:8080/api/validate_token";
+
+    let auth_server = match AuthServiceClient::new(auth_server_url) {
+        Ok(client) => client,
+        Err(e) => {
+            error!("Failed to create AuthServiceClient: {}", e);
+            return;
+        }
+    };
+
+    let res = auth_server.forward_request(&token).await;
+    match res {
+        Ok(response) => {
+            if response.status().is_success() {
+                debug!("Authentication successful");
+            } else {
+                error!("Authentication failed: Status code {}", response.status());
+                return;
+            }
+        }
+        Err(e) => {
+            error!("Authentication request failed: {}", e);
+            return;
+        }
     }
+    */
 
     debug!("{:?}", state.make_room(room_id.clone()));
     let _ = state.join(&room_id).await;

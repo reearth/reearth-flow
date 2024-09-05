@@ -102,3 +102,11 @@ func SignupVerify() echo.HandlerFunc {
 		return c.JSON(http.StatusOK, output)
 	}
 }
+
+func ValidateToken() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"status": "authenticated",
+		})
+	}
+}

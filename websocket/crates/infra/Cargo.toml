@@ -11,6 +11,9 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+services = { path = "../services" }
+common = { path = "../common" }
+
 flow-websocket-domain.workspace = true
 
 async-trait.workspace = true
@@ -32,3 +35,16 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
 yrs.workspace = true
+thiserror.workspace = true
+reqwest.workspace = true
+jsonwebtoken.workspace = true
+wiremock.workspace = true
+rsa.workspace = true
+rand.workspace = true
+base64.workspace = true
+hyper.workspace = true
+http-body-util.workspace = true
+once_cell.workspace = true
+dotenv.workspace = true
+url.workspace = true
+http.workspace = true
