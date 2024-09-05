@@ -42,6 +42,8 @@ export default () => {
     handleWorkflowClose,
     handleNodesUpdate,
     handleEdgesUpdate,
+    handleWorkflowRedo,
+    handleWorkflowUndo,
   } = useYjsStore({
     workflowId: currentWorkflowId,
     handleWorkflowIdChange,
@@ -175,5 +177,7 @@ export default () => {
     handleNodePickerClose,
     handleEdgesUpdate,
     handleEdgeHover,
+    handleWorkflowRedo,
+    handleWorkflowUndo,
   };
 };
