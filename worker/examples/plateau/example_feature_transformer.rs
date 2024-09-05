@@ -1,5 +1,5 @@
 mod helper;
 
 fn main() {
-    helper::execute("cesium_3d_tiles.yml");
+    helper::execute("quality-check/01-common/workflow.yml");
 }

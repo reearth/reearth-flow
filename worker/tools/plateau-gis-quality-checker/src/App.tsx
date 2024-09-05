@@ -80,7 +80,7 @@ function App() {
       <div className="relative flex h-[53px] items-center justify-between border-b bg-secondary px-4 py-2">
         <FlowLogo className="" />
         <p className="absolute left-1/2 mx-auto -translate-x-1/2 text-xl font-thin text-white">
-          PLATEAU GISの品質検査ツール
+          PLATEAU 品質検査ツール
         </p>
         {/* <Button size="icon" variant="ghost">
           <SlidersHorizontal size={22} onClick={handleReset} />

@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_state::State;
 use reearth_flow_types::workflow::Workflow;
-use tokio::runtime::Runtime;
+use tokio::runtime::Handle;
 
 use crate::errors::Error;
 
@@ -43,7 +43,7 @@ impl Executor {
 
 pub fn run_dag_executor(
     ctx: NodeContext,
-    runtime: &Arc<Runtime>,
+    runtime: &Arc<Handle>,
     dag_executor: DagExecutor,
     shutdown: ShutdownReceiver,
     state: Arc<State>,

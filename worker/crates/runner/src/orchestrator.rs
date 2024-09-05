@@ -12,7 +12,7 @@ use reearth_flow_runtime::shutdown::ShutdownReceiver;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Workflow;
-use tokio::runtime::Runtime;
+use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
 
 use crate::errors::Error;
@@ -20,11 +20,11 @@ use crate::executor::{run_dag_executor, Executor};
 
 #[derive(Clone)]
 pub struct Orchestrator {
-    pub runtime: Arc<Runtime>,
+    pub runtime: Arc<Handle>,
 }
 
 impl Orchestrator {
-    pub fn new(runtime: Arc<Runtime>) -> Self {
+    pub fn new(runtime: Arc<Handle>) -> Self {
         Self { runtime }
     }
 
