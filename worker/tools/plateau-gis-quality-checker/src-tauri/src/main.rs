@@ -39,8 +39,8 @@ fn main() {
         .expect("error while running plateau-gis-quality-checker");
 }
 
-#[tauri::command]
-pub(crate) fn run_flow(
+#[tauri::command(async)]
+pub(crate) async fn run_flow(
     workflow_id: String,
     params: HashMap<String, String>,
 ) -> Result<(), crate::errors::Error> {
@@ -50,7 +50,7 @@ pub(crate) fn run_flow(
     );
 
     // Execute workflow
-    match handler::run_flow(workflow_id, params) {
+    match handler::run_flow(workflow_id, params).await {
         Ok(_) => {
             debug!("Workflow executed successfully");
             Ok(())

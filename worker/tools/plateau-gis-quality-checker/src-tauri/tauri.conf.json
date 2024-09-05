@@ -6,7 +6,7 @@
     "distDir": "../build"
   },
   "package": {
-    "productName": "品質検査ツール",
+    "productName": "plateau-gis-quality-checker",
     "version": "0.1.0"
   },
   "tauri": {
@@ -62,7 +62,7 @@
     },
     "windows": [
       {
-        "title": "品質検査ツール",
+        "title": "PLATEAU GIS Quality Checker",
 				"fullscreen": false,
 				"resizable": false,
 				"height": 550,

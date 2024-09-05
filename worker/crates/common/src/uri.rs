@@ -193,7 +193,7 @@ impl Uri {
     }
 
     pub fn is_file(&self) -> bool {
-        !self._path().is_file()
+        !self.is_dir()
     }
 
     pub fn dir(&self) -> Option<Uri> {

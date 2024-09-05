@@ -11,7 +11,7 @@ use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_action_log::{action_error_log, action_log, ActionLogger};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
-use tokio::runtime::Runtime;
+use tokio::runtime::Handle;
 use tracing::{info_span, Span};
 
 use crate::error_manager::ErrorManager;
@@ -46,7 +46,7 @@ pub struct ProcessorNode<F> {
     shutdown: F,
     /// The runtime to run the source in.
     #[allow(dead_code)]
-    runtime: Arc<Runtime>,
+    runtime: Arc<Handle>,
     #[allow(dead_code)]
     error_manager: Arc<ErrorManager>,
     logger_factory: Arc<LoggerFactory>,
@@ -67,7 +67,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         dag: &mut ExecutionDag,
         node_index: NodeIndex,
         shutdown: F,
-        runtime: Arc<Runtime>,
+        runtime: Arc<Handle>,
     ) -> Self {
         let node = dag.node_weight_mut(node_index);
         let Some(kind) = node.kind.take() else {

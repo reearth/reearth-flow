@@ -11,7 +11,7 @@ use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Graph;
-use tokio::runtime::Runtime;
+use tokio::runtime::Handle;
 use tokio::sync::broadcast::Receiver;
 use tokio::sync::Notify;
 
@@ -59,7 +59,7 @@ impl DagExecutor {
     pub async fn start<F: Send + 'static + Future + Unpin + Debug + Clone>(
         self,
         shutdown: F,
-        runtime: Arc<Runtime>,
+        runtime: Arc<Handle>,
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
         logger: Arc<LoggerFactory>,

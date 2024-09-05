@@ -35,4 +35,6 @@ pub enum Error {
     Aborted,
     #[error("This feature is only supported in enterprise: {0}")]
     UnsupportedFeature(String),
+    #[error("Runtime Error: {0}")]
+    RuntimeError(String),
 }
