@@ -38,9 +38,9 @@ impl Runner {
         let handle = runtime.handle().clone();
         let (_shutdown_sender, shutdown_receiver) = shutdown::new(&handle);
         let handle = Arc::new(handle);
-        let orchestraotr = Orchestrator::new(handle.clone());
+        let orchestrator = Orchestrator::new(handle.clone());
         let result = runtime.block_on(async move {
-            orchestraotr
+            orchestrator
                 .run_all(
                     job_id,
                     workflow,
@@ -84,8 +84,8 @@ impl AsyncRunner {
         let runtime = tokio::runtime::Handle::try_current()
             .map_err(|e| crate::errors::Error::RuntimeError(format!("{:?}", e)))?;
         let (_shutdown_sender, shutdown_receiver) = shutdown::new(&runtime);
-        let orchestraotr = Orchestrator::new(Arc::new(runtime));
-        let result = orchestraotr
+        let orchestrator = Orchestrator::new(Arc::new(runtime));
+        let result = orchestrator
             .run_all(
                 job_id,
                 workflow,
