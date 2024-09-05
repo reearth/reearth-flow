@@ -8,7 +8,7 @@ use reearth_flow_action_log::{action_log, factory::LoggerFactory};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::{
-    runtime::Runtime,
+    runtime::Handle,
     sync::mpsc::{channel, Receiver, Sender},
 };
 use tracing::info_span;
@@ -38,7 +38,7 @@ pub struct SourceNode<F> {
     /// The shutdown future.
     shutdown: F,
     /// The runtime to run the source in.
-    runtime: Arc<Runtime>,
+    runtime: Arc<Handle>,
 
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
@@ -175,7 +175,7 @@ pub async fn create_source_node<F>(
     dag: &mut ExecutionDag,
     options: &ExecutorOptions,
     shutdown: F,
-    runtime: Arc<Runtime>,
+    runtime: Arc<Handle>,
 ) -> SourceNode<F> {
     let mut sources = vec![];
     let mut source_runners = vec![];

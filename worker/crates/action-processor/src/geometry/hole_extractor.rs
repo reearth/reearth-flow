@@ -111,7 +111,7 @@ impl Processor for HoleExtractor {
                 }
             },
             GeometryValue::CityGmlGeometry(geometry) => {
-                for geo_feature in geometry.features.iter() {
+                for geo_feature in geometry.gml_geometries.iter() {
                     for polygon in &geo_feature.polygons {
                         handle_polygon3d(polygon, feature, &ctx, fw);
                     }

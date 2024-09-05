@@ -80,11 +80,13 @@ async fn handle_socket(
                     continue;
                 }
                 Ok(_) => continue,
-                Err(_) => return,
+                Err(_) => {
+                    debug!("client {addr} disconnected");
+                    return;
+                }
             }
         } else {
             println!("client {addr} disconnected");
-            return;
         }
     }
 }
@@ -160,7 +162,7 @@ pub async fn handle_error(
     state: Arc<AppState>,
 ) -> impl IntoResponse {
     if err.is::<tower::timeout::error::Elapsed>() {
-        let _ = state.timeout();
+        let _ = state.timeout().await;
         (StatusCode::REQUEST_TIMEOUT, "timeout".to_string())
     } else {
         (

@@ -6,7 +6,7 @@
     "distDir": "../build"
   },
   "package": {
-    "productName": "PLATEAU GIS Quality Checker",
+    "productName": "plateau-gis-quality-checker",
     "version": "0.1.0"
   },
   "tauri": {
@@ -64,11 +64,9 @@
       {
         "title": "PLATEAU GIS Quality Checker",
 				"fullscreen": false,
-				"resizable": true,
-				"height": 800,
-				"width": 640,
-				"minHeight": 600,
-				"minWidth": 500
+				"resizable": false,
+				"height": 550,
+				"width": 900
       }
     ]
   }

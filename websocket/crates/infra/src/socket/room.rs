@@ -1,9 +1,9 @@
 use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
-use tokio::sync::broadcast;
+use std::sync::Arc;
 use yrs::Doc;
 
 use super::errors::{Result, WsError};
+use tokio::sync::{broadcast, Mutex};
 
 pub struct Room {
     users: Arc<Mutex<HashSet<String>>>,
@@ -11,33 +11,33 @@ pub struct Room {
     doc: Arc<Doc>,
 }
 
-impl Room {
-    pub fn new() -> Self {
+impl Default for Room {
+    fn default() -> Self {
         Room {
             users: Arc::new(Mutex::new(HashSet::new())),
             tx: Arc::new(broadcast::Sender::new(100)),
             doc: Arc::new(Doc::new()),
         }
     }
+}
 
-    pub fn join(&mut self, user_id: String) -> Result<()> {
-        self.users
-            .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
-            .insert(user_id);
+impl Room {
+    pub fn new() -> Self {
+        Room::default()
+    }
+
+    pub async fn join(&self, user_id: String) -> Result<()> {
+        self.users.lock().await.insert(user_id);
         Ok(())
     }
 
-    pub fn leave(&mut self, user_id: String) -> Result<()> {
-        self.users
-            .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
-            .remove(&user_id);
+    pub async fn leave(&self, user_id: String) -> Result<()> {
+        self.users.lock().await.remove(&user_id);
         Ok(())
     }
 
-    pub fn broadcast(&mut self, msg: String) -> Result<()> {
-        self.tx.send(msg).or_else(|_| Err(WsError::WsError))?;
+    pub fn broadcast(&self, msg: String) -> Result<()> {
+        self.tx.send(msg).map_err(|_| WsError::WsError)?;
         Ok(())
     }
 
