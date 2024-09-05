@@ -5,20 +5,29 @@ import type { Edge } from "@flow/types";
 
 import { YEdgesArray, YWorkflow } from "./workflowBuilder";
 
-export default (workflow: YWorkflow) => {
+export default ({
+  currentYWorkflow,
+  undoTrackerActionWrapper,
+}: {
+  currentYWorkflow: YWorkflow;
+  undoTrackerActionWrapper: (callback: () => void) => void;
+}) => {
   const handleEdgesUpdate = useCallback(
-    (newEdges: Edge[]) => {
-      const yEdges = workflow?.get("edges") as YEdgesArray | undefined;
-      if (!yEdges) return;
+    (newEdges: Edge[]) =>
+      undoTrackerActionWrapper(() => {
+        const yEdges = currentYWorkflow?.get("edges") as
+          | YEdgesArray
+          | undefined;
+        if (!yEdges) return;
 
-      const e = yEdges.toJSON() as Edge[];
+        const e = yEdges.toJSON() as Edge[];
 
-      if (isEqual(e, newEdges)) return;
+        if (isEqual(e, newEdges)) return;
 
-      yEdges.delete(0, e.length);
-      yEdges.insert(0, newEdges);
-    },
-    [workflow],
+        yEdges.delete(0, e.length);
+        yEdges.insert(0, newEdges);
+      }),
+    [currentYWorkflow, undoTrackerActionWrapper],
   );
   return {
     handleEdgesUpdate,

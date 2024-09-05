@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useY } from "react-yjs";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
@@ -10,6 +10,8 @@ import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
 import { yWorkflowBuilder, type YWorkflow } from "./workflowBuilder";
+
+class CustomBinding {} // eslint-disable-line @typescript-eslint/no-extraneous-class
 
 export default ({
   workflowId,
@@ -36,26 +38,19 @@ export default ({
       const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
       yWorkflows.push([yWorkflow]);
 
-      const currentUserClientId = yDoc?.clientID;
-
-      // const undoManager = new Y.UndoManager(yWorkflows, {
-      //   trackedOrigins: new Set([currentUserClientId]), // Only track local changes
-      // });
-
-      // setUndoManager(undoManager);
+      const currentUserClientId = yDoc.clientID;
 
       // NOTE: any changes to the yDoc should be wrapped in a transact
       const undoTrackerActionWrapper = (callback: () => void) =>
-        yDoc.transact(callback);
+        yDoc.transact(callback, CustomBinding);
 
       return { yWorkflows, currentUserClientId, undoTrackerActionWrapper };
     });
 
   useEffect(() => {
     if (yWorkflows) {
-      // Now that yWorkflow is set, create the UndoManager
       const manager = new Y.UndoManager(yWorkflows, {
-        trackedOrigins: new Set([currentUserClientId]), // Only track local changes
+        trackedOrigins: new Set([currentUserClientId, CustomBinding]), // Only track local changes
       });
       setUndoManager(manager);
 
@@ -65,17 +60,8 @@ export default ({
     }
   }, [yWorkflows, currentUserClientId]);
 
-  const undo = () => {
-    undoManager?.undo();
-    console.log("Undo stack size:", undoManager?.undoStack.length);
-    console.log("Redo stack size:", undoManager?.redoStack.length);
-  };
-  const redo = () => {
-    console.log("REDO");
-    undoManager?.redo();
-    console.log("Undo stack size:", undoManager?.undoStack.length);
-    console.log("Redo stack size:", undoManager?.redoStack.length);
-  };
+  const undo = useCallback(() => undoManager?.undo(), [undoManager]);
+  const redo = useCallback(() => undoManager?.redo(), [undoManager]);
 
   const rawWorkflows = useY(yWorkflows);
 
@@ -113,7 +99,10 @@ export default ({
     handleWorkflowsRemove,
   });
 
-  const { handleEdgesUpdate } = useYEdge(currentYWorkflow);
+  const { handleEdgesUpdate } = useYEdge({
+    currentYWorkflow,
+    undoTrackerActionWrapper,
+  });
 
   return {
     nodes,

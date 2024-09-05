@@ -15,9 +15,8 @@ export default ({
   handleWorkflowsRemove: (workflowId: string[]) => void;
 }) => {
   const handleNodesUpdate = useCallback(
-    (newNodes: Node[]) => {
+    (newNodes: Node[]) =>
       undoTrackerActionWrapper(() => {
-        console.log("CHANGLKANSDKF");
         const yNodes = currentYWorkflow?.get("nodes") as
           | YNodesArray
           | undefined;
@@ -39,8 +38,7 @@ export default ({
 
         yNodes.delete(0, n.length);
         yNodes.insert(0, newNodes);
-      });
-    },
+      }),
     [currentYWorkflow, undoTrackerActionWrapper, handleWorkflowsRemove],
   );
   return {
