@@ -21,11 +21,11 @@ reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
 nusamai-citygml.workspace = true
+nusamai-geometry.workspace = true
 nusamai-gltf.workspace = true
 nusamai-mvt.workspace = true
 nusamai-plateau.workspace = true
 nusamai-projection.workspace = true
-nusamai-geometry.workspace = true
 
 ahash.workspace = true
 async-trait.workspace = true
@@ -35,6 +35,7 @@ cesiumtiles.workspace = true
 csv.workspace = true
 earcut.workspace = true
 geojson.workspace = true
+image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
@@ -49,11 +50,10 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-tracing-subscriber.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
 url.workspace = true
 uuid.workspace = true
-image.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true

@@ -6,7 +6,7 @@ use nusamai_plateau::Entity;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 
 use crate::error::Error;
-use crate::{CityGmlGeometry, Geometry, GmlGeometry, GeometryValue};
+use crate::{CityGmlGeometry, Geometry, GeometryValue, GmlGeometry};
 
 impl TryFrom<Entity> for Geometry {
     type Error = Error;

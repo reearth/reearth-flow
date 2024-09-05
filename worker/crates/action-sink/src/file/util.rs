@@ -14,9 +14,7 @@ use nusamai_gltf::nusamai_gltf_json::models::{
     MeshPrimitive, Node, PrimitiveMode, Scene,
 };
 use nusamai_mvt::TileZXY;
-use reearth_flow_common::gltf::{
-    iter_x_slice, iter_y_slice, x_slice_range, y_slice_range,
-};
+use reearth_flow_common::gltf::{iter_x_slice, iter_y_slice, x_slice_range, y_slice_range};
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_types::geometry as geomotry_types;
 use std::collections::HashMap;
@@ -32,7 +30,7 @@ pub(super) struct PrimitiveInfo {
 pub(super) type Primitives = HashMap<Material, PrimitiveInfo>;
 
 pub(super) fn make_gltf(
-    city_gml: geomotry_types::CityGmlGeometry,
+    _city_gml: geomotry_types::CityGmlGeometry,
 ) -> Result<(Gltf, Vec<u8>), SinkError> {
     Err(SinkError::FileWriter("Unsupported input".to_string()))
 }
@@ -405,9 +403,8 @@ pub fn write_gltf_glb<W: Write>(
     let gltf_images = image_set
         .into_iter()
         .map(|img| {
-            Ok(img
-                .to_gltf(&mut gltf_buffer_views, &mut bin_content)
-                .map_err(SinkError::file_writer)?)
+            img.to_gltf(&mut gltf_buffer_views, &mut bin_content)
+                .map_err(SinkError::file_writer)
         })
         .collect::<Result<Vec<nusamai_gltf::nusamai_gltf_json::Image>, SinkError>>()?;
 

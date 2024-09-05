@@ -234,7 +234,6 @@ impl Cesium3dtilesWriter {
     ) -> Result<(), crate::errors::SinkError> {
         let ellipsoid = nusamai_projection::ellipsoid::wgs84();
 
-
         let default_material = reearth_flow_types::Material::default();
         let mut sliced_tiles: HashMap<(u8, u32, u32), SlicedFeature> = HashMap::new();
         let mut materials: IndexSet<Material> = IndexSet::new();

@@ -380,8 +380,9 @@ impl GmlGeometry {
     }
 
     pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
-        self.polygons.iter_mut().for_each(|poly| poly.transform_inplace(jgd2wgs));
-
+        self.polygons
+            .iter_mut()
+            .for_each(|poly| poly.transform_inplace(jgd2wgs));
     }
 }
 
