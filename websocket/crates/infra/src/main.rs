@@ -21,7 +21,7 @@ async fn main() -> std::io::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let state = Arc::new(AppState::new());
+    let state = Arc::new(AppState::default());
     let state_err = state.clone();
     let app = Router::new()
         .route("/:room", get(handle_upgrade))
