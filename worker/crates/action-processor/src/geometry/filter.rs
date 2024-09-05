@@ -218,7 +218,7 @@ fn filter_multiple_geometry(
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone())),
         },
         GeometryValue::CityGmlGeometry(geometry) => {
-            if geometry.features.len() > 1 {
+            if geometry.gml_geometries.len() > 1 {
                 fw.send(ctx.new_with_feature_and_port(
                     feature.clone(),
                     GeometryFilterParam::Multiple.output_port(),
@@ -255,10 +255,10 @@ fn filter_geometry_type(
             ))
         }
         GeometryValue::CityGmlGeometry(geometry) => {
-            if geometry.features.len() != 1 {
+            if geometry.gml_geometries.len() != 1 {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
             } else {
-                let Some(first_feature) = geometry.features.first() else {
+                let Some(first_feature) = geometry.gml_geometries.first() else {
                     fw.send(
                         ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()),
                     );

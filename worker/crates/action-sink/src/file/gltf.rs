@@ -47,8 +47,8 @@ fn handle_city_gml_geometry(
     storage_resolver: Arc<StorageResolver>,
     city_gml: geomotry_types::CityGmlGeometry,
 ) -> Result<(), crate::errors::SinkError> {
-    let mut gltf = match make_gltf(city_gml) {
-        Ok(gltf) => gltf,
+    let (mut gltf, _) = match make_gltf(city_gml) {
+        Ok((gltf, bin_content)) => (gltf, bin_content),
         Err(e) => {
             return Err(SinkError::FileWriter(format!(
                 "Failed to make gltf: {:?}",

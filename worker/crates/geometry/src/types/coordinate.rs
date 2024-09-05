@@ -4,6 +4,7 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 use approx::{AbsDiffEq, RelativeEq, UlpsEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
@@ -98,6 +99,15 @@ impl From<Coordinate<f64, f64>> for Coordinate<f64, NoValue> {
     #[inline]
     fn from(coords: Coordinate<f64, f64>) -> Self {
         Coordinate::new__(coords.x, coords.y, NoValue)
+    }
+}
+
+impl Coordinate3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        let (x, y, z) = jgd2wgs.convert(self.x, self.y, self.z);
+        self.x = x;
+        self.y = y;
+        self.z = z;
     }
 }
 

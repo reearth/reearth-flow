@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc, vec};
 use once_cell::sync::Lazy;
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
 use reearth_flow_common::dir::setup_job_directory;
-use reearth_flow_runner::runner::Runner;
+use reearth_flow_runner::runner::AsyncRunner;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve;
 use reearth_flow_types::Workflow;
@@ -28,7 +28,7 @@ pub(crate) static QUALITY_CHECK_WORKFLOWS: Lazy<Vec<QualityCheckWorkflow>> = Laz
     }]
 });
 
-pub(crate) fn run_flow(
+pub(crate) async fn run_flow(
     workflow_id: String,
     params: HashMap<String, String>,
 ) -> Result<(), crate::errors::Error> {
@@ -52,7 +52,7 @@ pub(crate) fn run_flow(
         create_root_logger(action_log_uri.path()),
         action_log_uri.path(),
     ));
-    Runner::run(
+    AsyncRunner::run(
         job_id.to_string(),
         workflow,
         ALL_ACTION_FACTORIES.clone(),
@@ -60,6 +60,7 @@ pub(crate) fn run_flow(
         storage_resolver,
         state,
     )
+    .await
     .map_err(crate::errors::Error::execute_failed)
 }
 
