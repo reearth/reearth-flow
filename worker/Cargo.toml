@@ -39,6 +39,11 @@ opt-level = 3
 panic = "abort"
 strip = true
 
+[profile.release-lto]
+inherits = "release"
+codegen-units = 8
+lto = "fat"
+
 [workspace.dependencies]
 reearth-flow-action-log = { path = "crates/action-log" }
 reearth-flow-action-plateau-processor = { path = "crates/action-plateau-processor" }
