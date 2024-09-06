@@ -92,6 +92,7 @@ export default ({
       yWorkflows,
       workflows,
       currentWorkflowIndex,
+      undoTrackerActionWrapper,
       setWorkflows,
       setOpenWorkflowIds,
       handleWorkflowIdChange,
