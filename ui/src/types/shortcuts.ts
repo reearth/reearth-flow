@@ -40,9 +40,13 @@ export type Shortcuts = {
   shortcuts: Shortcut[];
 };
 
+export const GeneralKeyBindings: Partial<Record<PossibleActions, KeyBinding>> =
+  {
+    shortcutsDialog: { key: "/", commandKey: true },
+  };
+
 export const EditorKeyBindings: Partial<Record<PossibleActions, KeyBinding>> = {
   fullscreen: { key: "f", commandKey: true },
-  shortcutsDialog: { key: "/", commandKey: true },
   readerDialog: { key: "r" },
   transformerDialog: { key: "t" },
   writerDialog: { key: "w" },
