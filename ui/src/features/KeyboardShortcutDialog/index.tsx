@@ -16,15 +16,20 @@ type Props = {
 };
 
 const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
-  const { title, editorShortcuts, canvasShortcuts } = useHooks();
+  const { title, generalShortcuts, editorShortcuts, canvasShortcuts } =
+    useHooks();
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => onOpenChange(o)}>
-      <DialogContent size="2xl">
+      <DialogContent size="2xl" position="center">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <DialogContentWrapper className="flex-row gap-10">
+        <DialogContentWrapper className="flex gap-10">
+          <DialogContentSection className="flex-1">
+            <p className="text-lg">{generalShortcuts.title}</p>
+            <Shortcuts shortcuts={generalShortcuts.shortcuts} />
+          </DialogContentSection>
           <DialogContentSection className="flex-1">
             <p className="text-lg">{editorShortcuts.title}</p>
             <Shortcuts shortcuts={editorShortcuts.shortcuts} />

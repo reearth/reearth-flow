@@ -1,10 +1,25 @@
 import { useT } from "@flow/lib/i18n";
-import { Shortcuts, EditorKeyBindings, CanvasKeyBindings } from "@flow/types";
+import {
+  Shortcuts,
+  EditorKeyBindings,
+  CanvasKeyBindings,
+  GeneralKeyBindings,
+} from "@flow/types";
 
 export default () => {
   const t = useT();
 
   const title = t("Keyboard shortcuts");
+
+  const generalShortcuts: Shortcuts = {
+    title: t("General shortcuts"),
+    shortcuts: [
+      {
+        keyBinding: GeneralKeyBindings["shortcutsDialog"],
+        description: t("Open the keyboard shortcuts dialog"),
+      },
+    ],
+  };
 
   const editorShortcuts: Shortcuts = {
     title: t("Editor shortcuts"),
@@ -12,10 +27,6 @@ export default () => {
       {
         keyBinding: EditorKeyBindings["fullscreen"],
         description: t("Toggle fullscreen mode"),
-      },
-      {
-        keyBinding: EditorKeyBindings["shortcutsDialog"],
-        description: t("Open the keyboard shortcuts dialog"),
       },
       {
         keyBinding: EditorKeyBindings["readerDialog"],
@@ -64,6 +75,7 @@ export default () => {
 
   return {
     title,
+    generalShortcuts,
     editorShortcuts,
     canvasShortcuts,
   };
