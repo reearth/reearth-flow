@@ -30,10 +30,10 @@ export default ({
     useState(() => {
       const yDoc = new Y.Doc();
       const { websocket, websocketToken } = config();
-      if (websocket && websocketToken) {
+      if (workflowId && websocket && websocketToken) {
         yWebSocketRef.current = new WebsocketProvider(
           websocket,
-          workflowId ? workflowId : "",
+          workflowId,
           yDoc,
           { params: { token: websocketToken } },
         );
