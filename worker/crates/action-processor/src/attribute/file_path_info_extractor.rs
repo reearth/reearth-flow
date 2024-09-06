@@ -1,6 +1,6 @@
-use std::{collections::HashMap, fs, os::unix::fs::MetadataExt, path::Path};
+use std::{collections::HashMap, path::Path};
 
-use reearth_flow_common::fs::get_dir_size;
+use reearth_flow_common::fs::{get_dir_size, metadata};
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -101,8 +101,8 @@ impl Processor for AttributeFilePathInfoExtractor {
         let path = Path::new(path);
         let mut attributes = feature.attributes.clone();
         if path.exists() && !path.is_symlink() {
-            let metadata = fs::metadata(path)?;
-            if metadata.is_dir() {
+            let metadata = metadata(&path)?;
+            if metadata.is_dir {
                 attributes.insert(
                     Attribute::new("fileType"),
                     AttributeValue::String("Directory".to_string()),
@@ -119,28 +119,25 @@ impl Processor for AttributeFilePathInfoExtractor {
                 );
                 attributes.insert(
                     Attribute::new("fileSize"),
-                    AttributeValue::Number(Number::from(metadata.len())),
+                    AttributeValue::Number(Number::from(metadata.size)),
                 );
             }
 
-            if let Some(atime) =
-                chrono::DateTime::<chrono::Utc>::from_timestamp(metadata.atime(), 0)
+            if let Some(atime) = chrono::DateTime::<chrono::Utc>::from_timestamp(metadata.atime, 0)
             {
                 attributes.insert(
                     Attribute::new("fileAtime"),
                     AttributeValue::DateTime(atime.into()),
                 );
             }
-            if let Some(mtime) =
-                chrono::DateTime::<chrono::Utc>::from_timestamp(metadata.mtime(), 0)
+            if let Some(mtime) = chrono::DateTime::<chrono::Utc>::from_timestamp(metadata.mtime, 0)
             {
                 attributes.insert(
                     Attribute::new("fileMtime"),
                     AttributeValue::DateTime(mtime.into()),
                 );
             }
-            if let Some(ctime) =
-                chrono::DateTime::<chrono::Utc>::from_timestamp(metadata.ctime(), 0)
+            if let Some(ctime) = chrono::DateTime::<chrono::Utc>::from_timestamp(metadata.ctime, 0)
             {
                 attributes.insert(
                     Attribute::new("fileCtime"),
