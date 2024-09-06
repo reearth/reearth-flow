@@ -3,6 +3,7 @@ import { useY } from "react-yjs";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
+import { config } from "@flow/config";
 import type { Edge, Node } from "@flow/types";
 
 import useWorkflowTabs from "./useWorkflowTabs";
@@ -20,19 +21,23 @@ export default ({
   workflowId?: string;
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
-  const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
   const yWebSocketRef = useRef<WebsocketProvider | null>(null);
   useEffect(() => () => yWebSocketRef.current?.destroy(), []);
+
+  const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
 
   const [{ yWorkflows, currentUserClientId, undoTrackerActionWrapper }] =
     useState(() => {
       const yDoc = new Y.Doc();
-      yWebSocketRef.current = new WebsocketProvider(
-        "ws://localhost:8000",
-        workflowId ? workflowId : "",
-        yDoc,
-        { params: { token: "nyaan" } },
-      );
+      const { websocket, websocketToken } = config();
+      if (websocket && websocketToken) {
+        yWebSocketRef.current = new WebsocketProvider(
+          websocket,
+          workflowId ? workflowId : "",
+          yDoc,
+          { params: { token: websocketToken } },
+        );
+      }
 
       const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
       const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
@@ -60,8 +65,15 @@ export default ({
     }
   }, [yWorkflows, currentUserClientId]);
 
-  const undo = useCallback(() => undoManager?.undo(), [undoManager]);
-  const redo = useCallback(() => undoManager?.redo(), [undoManager]);
+  const handleWorkflowUndo = useCallback(
+    () => undoManager?.undo(),
+    [undoManager],
+  );
+
+  const handleWorkflowRedo = useCallback(
+    () => undoManager?.redo(),
+    [undoManager],
+  );
 
   const rawWorkflows = useY(yWorkflows);
 
@@ -112,7 +124,7 @@ export default ({
     handleWorkflowAdd,
     handleNodesUpdate,
     handleEdgesUpdate,
-    handleWorkflowUndo: undo,
-    handleWorkflowRedo: redo,
+    handleWorkflowUndo,
+    handleWorkflowRedo,
   };
 };
