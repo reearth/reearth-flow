@@ -6,6 +6,7 @@ use geomotry_types::GeometryType;
 use hashbrown::HashMap as BrownHashMap;
 use indexmap::IndexSet;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_geometry::algorithm::area2d::Area2D;
 use reearth_flow_geometry::algorithm::coords_iter::CoordsIter;
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
@@ -126,7 +127,7 @@ impl Sink for MVTWriter {
                     .eval::<String>(output.as_ref())
                     .unwrap_or_else(|_| output.as_ref().to_string());
                 let output = Uri::from_str(path.as_str())?;
-                match handle_city_gml_geometry(
+                match self.handle_city_gml_geometry(
                     &output,
                     storage_resolver.clone(),
                     attributes,
@@ -162,121 +163,123 @@ impl Sink for MVTWriter {
     }
 }
 
-fn handle_city_gml_geometry(
-    output: &Uri,
-    storage_resolver: Arc<StorageResolver>,
-    attributes: HashMap<Attribute, AttributeValue>,
-    city_gml: geomotry_types::CityGmlGeometry,
-    min_zoom: u8,
-    max_zoom: u8,
-) -> Result<(), crate::errors::SinkError> {
-    let bincode_config = bincode::config::standard();
+impl MVTWriter {
+    fn handle_city_gml_geometry(
+        &self,
+        output: &Uri,
+        storage_resolver: Arc<StorageResolver>,
+        attributes: HashMap<Attribute, AttributeValue>,
+        city_gml: geomotry_types::CityGmlGeometry,
+        min_zoom: u8,
+        max_zoom: u8,
+    ) -> Result<(), crate::errors::SinkError> {
+        let bincode_config = bincode::config::standard();
 
-    let max_detail = 12; // 4096
-    let buffer_pixels = 5;
+        let max_detail = 12; // 4096
+        let buffer_pixels = 5;
 
-    let mut tiled_mpolys = HashMap::new();
+        let mut tiled_mpolys = HashMap::new();
 
-    let extent = 1 << max_detail;
-    let buffer = extent * buffer_pixels / 256;
+        let extent = 1 << max_detail;
+        let buffer = extent * buffer_pixels / 256;
 
-    for entry in city_gml.gml_geometries.iter() {
-        match entry.ty {
-            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
-                for idx_poly in city_gml.clone().polygon_uvs {
-                    // Early rejection of polygons that are not front-facing.
-                    if idx_poly.exterior().signed_area2d() < 0.0 {
-                        continue;
-                    }
-
-                    let area = idx_poly.exterior().signed_area2d();
-
-                    // Slice for each zoom level
-                    for zoom in min_zoom..=max_zoom {
-                        // Skip if the polygon is smaller than 4 square subpixels
-                        //
-                        // TODO: emulate the 'tiny-polygon-reduction' of tippecanoe
-                        if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
+        for entry in city_gml.gml_geometries.iter() {
+            match entry.ty {
+                GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
+                    for idx_poly in city_gml.clone().polygon_uvs {
+                        // Early rejection of polygons that are not front-facing.
+                        if idx_poly.exterior().signed_area2d() < 0.0 {
                             continue;
                         }
 
-                        slice_polygon(zoom, extent, buffer, &idx_poly, &mut tiled_mpolys);
+                        let area = idx_poly.exterior().signed_area2d();
+
+                        // Slice for each zoom level
+                        for zoom in min_zoom..=max_zoom {
+                            // Skip if the polygon is smaller than 4 square subpixels
+                            //
+                            // TODO: emulate the 'tiny-polygon-reduction' of tippecanoe
+                            if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
+                                continue;
+                            }
+
+                            slice_polygon(zoom, extent, buffer, &idx_poly, &mut tiled_mpolys);
+                        }
                     }
                 }
-            }
-            GeometryType::Curve => {
-                // TODO: implement
-            }
-            GeometryType::Point => {
-                // TODO: implement
-            }
-            _ => {
-                // TODO: implement
+                GeometryType::Curve => {
+                    // TODO: implement
+                }
+                GeometryType::Point => {
+                    // TODO: implement
+                }
+                _ => {
+                    // TODO: implement
+                }
             }
         }
-    }
 
-    for ((zoom, x, y), mpoly) in tiled_mpolys {
-        if mpoly.is_empty() {
-            continue;
-        }
-        let feature = SlicedFeature {
-            geometry: mpoly,
-            properties: attributes.clone(),
-        };
-
-        let bytes = match bincode::serde::encode_to_vec(&feature, bincode_config) {
-            Ok(bytes) => bytes,
-            Err(e) => {
-                return Err(SinkError::FileWriter(format!(
-                    "Failed to serialize a sliced feature: {:?}",
-                    e
-                )));
-            }
-        };
-
-        let default_detail = 12;
-        let min_detail = 9;
-
-        let serialized_feats = [bytes];
-
-        let storage = storage_resolver
-            .resolve(output)
-            .map_err(crate::errors::SinkError::file_writer)?;
-        let output_path = output
-            .path()
-            .join(Path::new(&format!("{zoom}/{x}/{y}.pbf")));
-        if let Some(dir) = output_path.parent() {
-            fs::create_dir_all(dir).map_err(crate::errors::SinkError::file_writer)?;
-        }
-        let path = Path::new(&output_path);
-
-        for detail in (min_detail..=default_detail).rev() {
-            // Make a MVT tile binary
-            let bytes = make_tile(detail, &serialized_feats)?;
-
-            // Retry with a lower detail level if the compressed tile size is too large
-            let compressed_size = {
-                let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
-                e.write_all(&bytes)
-                    .map_err(crate::errors::SinkError::file_writer)?;
-                let compressed_bytes = e.finish().map_err(crate::errors::SinkError::file_writer)?;
-                compressed_bytes.len()
-            };
-            if detail != min_detail && compressed_size > 500_000 {
-                // If the tile is too large, try a lower detail level
+        for ((zoom, x, y), mpoly) in tiled_mpolys {
+            if mpoly.is_empty() {
                 continue;
             }
-            storage
-                .put_sync(path, bytes::Bytes::from(bytes))
-                .map_err(crate::errors::SinkError::file_writer)?;
-            break;
-        }
-    }
-    Ok(())
-}
+            let feature = SlicedFeature {
+                geometry: mpoly,
+                properties: attributes.clone(),
+            };
 
-use reearth_flow_geometry::algorithm::area2d::Area2D;
+            let bytes = match bincode::serde::encode_to_vec(&feature, bincode_config) {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    return Err(SinkError::FileWriter(format!(
+                        "Failed to serialize a sliced feature: {:?}",
+                        e
+                    )));
+                }
+            };
+
+            let default_detail = 12;
+            let min_detail = 9;
+
+            let serialized_feats = [bytes];
+
+            let storage = storage_resolver
+                .resolve(output)
+                .map_err(crate::errors::SinkError::file_writer)?;
+            let output_path = output
+                .path()
+                .join(Path::new(&format!("{zoom}/{x}/{y}.pbf")));
+            if let Some(dir) = output_path.parent() {
+                fs::create_dir_all(dir).map_err(crate::errors::SinkError::file_writer)?;
+            }
+            let path = Path::new(&output_path);
+
+            for detail in (min_detail..=default_detail).rev() {
+                // Make a MVT tile binary
+                let bytes = make_tile(detail, &serialized_feats)?;
+
+                // Retry with a lower detail level if the compressed tile size is too large
+                let compressed_size = {
+                    let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
+                    e.write_all(&bytes)
+                        .map_err(crate::errors::SinkError::file_writer)?;
+                    let compressed_bytes =
+                        e.finish().map_err(crate::errors::SinkError::file_writer)?;
+                    compressed_bytes.len()
+                };
+                if detail != min_detail && compressed_size > 500_000 {
+                    // If the tile is too large, try a lower detail level
+                    continue;
+                }
+                storage
+                    .put_sync(path, bytes::Bytes::from(bytes))
+                    .map_err(crate::errors::SinkError::file_writer)?;
+                break;
+            }
+        }
+        Ok(())
+    }
+}
 
 fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> Result<Vec<u8>, SinkError> {
     let mut layers: BrownHashMap<String, LayerData> = BrownHashMap::new();
