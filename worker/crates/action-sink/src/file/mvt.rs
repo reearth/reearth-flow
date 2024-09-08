@@ -81,9 +81,7 @@ impl SinkFactory for MVTSinkFactory {
             );
         };
 
-        let sink = MVTWriter {
-            params,
-        };
+        let sink = MVTWriter { params };
         Ok(Box::new(sink))
     }
 }
