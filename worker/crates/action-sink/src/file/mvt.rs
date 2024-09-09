@@ -1,18 +1,16 @@
-use super::tree::TileContent;
 use super::vector_tile::tile;
 use crate::errors::SinkError;
 use ahash::RandomState;
 use flate2::{write::ZlibEncoder, Compression};
+use geomotry_types::GeometryType;
 use hashbrown::HashMap as BrownHashMap;
 use indexmap::IndexSet;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_geometry::algorithm::area3d::Area3D;
 use reearth_flow_geometry::algorithm::coords_iter::CoordsIter;
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::line_string::LineString;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
-use reearth_flow_geometry::types::polygon::Polygon;
 use reearth_flow_geometry::types::polygon::Polygon2D;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -33,7 +31,6 @@ use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::vec;
 
 #[derive(Debug, Clone, Default)]
@@ -86,7 +83,6 @@ impl SinkFactory for MVTSinkFactory {
 
         let sink = MVTWriter {
             params,
-            contents: Arc::new(Mutex::new(Vec::new())),
         };
         Ok(Box::new(sink))
     }
@@ -95,7 +91,6 @@ impl SinkFactory for MVTSinkFactory {
 #[derive(Debug, Clone)]
 pub struct MVTWriter {
     pub(super) params: MVTWriterParam,
-    pub(super) contents: Arc<Mutex<Vec<TileContent>>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -133,7 +128,7 @@ impl Sink for MVTWriter {
                     .eval::<String>(output.as_ref())
                     .unwrap_or_else(|_| output.as_ref().to_string());
                 let output = Uri::from_str(path.as_str())?;
-                let contents = match handle_city_gml_geometry(
+                match handle_city_gml_geometry(
                     &output,
                     storage_resolver.clone(),
                     attributes,
@@ -141,7 +136,7 @@ impl Sink for MVTWriter {
                     self.params.min_zoom,
                     self.params.max_zoom,
                 ) {
-                    Ok(contents) => contents,
+                    Ok(_) => (),
                     Err(e) => {
                         return Err(Box::new(SinkError::FileWriter(format!(
                             "CityGmlGeometry handle Error: {:?}",
@@ -149,10 +144,6 @@ impl Sink for MVTWriter {
                         ))))
                     }
                 };
-                self.contents
-                    .lock()
-                    .unwrap()
-                    .extend(contents.lock().unwrap().iter().cloned());
             }
             geomotry_types::GeometryValue::FlowGeometry2D(_flow_geom_2d) => {
                 return Err(Box::new(SinkError::FileWriter(
@@ -180,67 +171,50 @@ fn handle_city_gml_geometry(
     city_gml: geomotry_types::CityGmlGeometry,
     min_zoom: u8,
     max_zoom: u8,
-) -> Result<Arc<Mutex<std::vec::Vec<TileContent>>>, crate::errors::SinkError> {
-    let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
+) -> Result<(), crate::errors::SinkError> {
+    let bincode_config = bincode::config::standard();
 
     let max_detail = 12; // 4096
     let buffer_pixels = 5;
 
-    let features = city_gml.features.clone();
-    for feature in features {
-        match handle_feature(
-            output,
-            storage_resolver.clone(),
-            attributes.clone(),
-            feature,
-            min_zoom,
-            max_zoom,
-            max_detail,
-            buffer_pixels,
-        ) {
-            Ok(_) => {}
-            Err(e) => {
-                return Err(crate::errors::SinkError::file_writer(format!(
-                    "Feature handle Error: {:?}",
-                    e
-                )))
-            }
-        }
-    }
-    Ok(contents)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn handle_feature(
-    output: &Uri,
-    storage_resolver: Arc<StorageResolver>,
-    attributes: HashMap<Attribute, AttributeValue>,
-    feature: geomotry_types::GeometryFeature,
-    min_zoom: u8,
-    max_zoom: u8,
-    max_detail: u32,
-    buffer_pixels: u32,
-) -> Result<(), crate::errors::SinkError> {
     let mut tiled_mpolys = HashMap::new();
 
     let extent = 1 << max_detail;
     let buffer = extent * buffer_pixels / 256;
 
-    let default_detail = 12;
-    let min_detail = 9;
+    for entry in city_gml.gml_geometries.iter() {
+        match entry.ty {
+            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
+                for idx_poly in city_gml.clone().polygon_uvs {
+                    // Early rejection of polygons that are not front-facing.
+                    if idx_poly.exterior().signed_area2d() < 0.0 {
+                        continue;
+                    }
 
-    for poly in feature.clone().polygons {
-        if poly.exterior().signed_area3d() < 0.0 {
-            continue;
-        }
+                    let area = idx_poly.exterior().signed_area2d();
 
-        let area = poly.exterior().signed_area3d();
+                    // Slice for each zoom level
+                    for zoom in min_zoom..=max_zoom {
+                        // Skip if the polygon is smaller than 4 square subpixels
+                        //
+                        // TODO: emulate the 'tiny-polygon-reduction' of tippecanoe
+                        if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
+                            continue;
+                        }
 
-        for zoom in min_zoom..=max_zoom {
-            if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
-                continue;
+                        slice_polygon(zoom, extent, buffer, &idx_poly, &mut tiled_mpolys);
+                    }
+                }
             }
-            slice_polygon(zoom, extent, buffer, &poly, &mut tiled_mpolys);
+            GeometryType::Curve => {
+                // TODO: implement
+            }
+            GeometryType::Point => {
+                // TODO: implement
+            }
+            _ => {
+                // TODO: implement
+            }
         }
     }
 
@@ -249,17 +223,22 @@ fn handle_feature(
             continue;
         }
         let feature = SlicedFeature {
-            id: feature.clone().id.map(|id| {
-                id.as_bytes()
-                    .iter()
-                    .fold(5381u64, |a, c| a.wrapping_mul(33) ^ *c as u64)
-            }),
             geometry: mpoly,
             properties: attributes.clone(),
         };
 
-        let bincode_config = bincode::config::standard();
-        let bytes = bincode::serde::encode_to_vec(&feature, bincode_config).unwrap();
+        let bytes = match bincode::serde::encode_to_vec(&feature, bincode_config) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(SinkError::FileWriter(format!(
+                    "Failed to serialize a sliced feature: {:?}",
+                    e
+                )));
+            }
+        };
+
+        let default_detail = 12;
+        let min_detail = 9;
 
         let serialized_feats = [bytes];
 
@@ -394,7 +373,12 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> Result<Vec<u8
 
             let geomery_cloned = geometry.clone();
             layer.features.push(vector_tile::tile::Feature {
-                id: feature.id,
+                id: Some(
+                    key.type_name()
+                        .as_bytes()
+                        .iter()
+                        .fold(5381u64, |a, c| a.wrapping_mul(33) ^ *c as u64),
+                ),
                 tags: tags_clone,
                 r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
                 geometry: geomery_cloned,
@@ -507,6 +491,7 @@ pub struct TagsEncoder {
 
 /// Utility for encoding MVT attributes (tags).
 impl TagsEncoder {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Default::default()
     }
@@ -542,7 +527,6 @@ pub enum Value {
     String(String),
     Float([u8; 4]),
     Double([u8; 8]),
-    Int(i64),
     Uint(u64),
     SInt(i64),
     Bool(bool),
@@ -562,10 +546,6 @@ impl Value {
             },
             Double(v) => tile::Value {
                 double_value: Some(f64::from_ne_bytes(v)),
-                ..Default::default()
-            },
-            Int(v) => tile::Value {
-                int_value: Some(v),
                 ..Default::default()
             },
             Uint(v) => tile::Value {
@@ -646,7 +626,6 @@ struct LayerData {
 
 #[derive(Serialize, Deserialize)]
 struct SlicedFeature {
-    id: Option<u64>,
     geometry: MultiPolygon2D<i16>,
     properties: HashMap<Attribute, AttributeValue>,
 }
@@ -699,7 +678,7 @@ fn slice_polygon(
     zoom: u8,
     extent: u32,
     buffer: u32,
-    poly: &Polygon,
+    poly: &Polygon2D<f64>,
     out: &mut HashMap<(u8, u32, u32), MultiPolygon2D<i16>>,
 ) {
     let z_scale = (1 << zoom) as f64;
