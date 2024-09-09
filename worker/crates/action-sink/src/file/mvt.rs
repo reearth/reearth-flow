@@ -108,6 +108,11 @@ pub struct MVTWriterParam {
 
 impl Sink for MVTWriter {
     fn initialize(&self, _ctx: NodeContext) {}
+
+    fn name(&self) -> &str {
+        "MVTWriter"
+    }
+
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let geometry = ctx.feature.geometry.as_ref().unwrap();
         let attributes = ctx.feature.attributes.clone();

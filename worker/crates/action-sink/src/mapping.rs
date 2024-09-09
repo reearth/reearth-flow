@@ -4,8 +4,11 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, SinkFactory};
 
 use crate::{
-    echo::EchoSinkFactory, file::cesium3dtiles::Cesium3DTilesSinkFactory,
-    file::geojson::GeoJsonWriterFactory, file::writer::FileWriterSinkFactory,
+    echo::EchoSinkFactory,
+    file::{
+        cesium3dtiles::Cesium3DTilesSinkFactory, geojson::GeoJsonWriterFactory,
+        mvt::MVTSinkFactory, writer::FileWriterSinkFactory,
+    },
     noop::NoopSinkFactory,
 };
 
