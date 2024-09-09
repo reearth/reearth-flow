@@ -5,3 +5,7 @@ mod gltf;
 pub(super) mod types;
 mod util;
 pub(crate) mod writer;
+pub mod mvt;
+mod util;
+mod vector_tile;
+pub mod writer;

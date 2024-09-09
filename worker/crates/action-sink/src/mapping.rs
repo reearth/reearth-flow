@@ -16,6 +16,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<EchoSinkFactory>::default(),
         Box::<NoopSinkFactory>::default(),
         Box::<GeoJsonWriterFactory>::default(),
+        Box::<MVTSinkFactory>::default(),
     ];
     factories
         .into_iter()
