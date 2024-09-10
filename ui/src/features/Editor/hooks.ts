@@ -1,11 +1,12 @@
-import { useReactFlow, XYPosition } from "@xyflow/react";
+import { addEdge, useReactFlow, XYPosition } from "@xyflow/react";
 import { MouseEvent, useCallback, useState } from "react";
 
 import { useShortcuts } from "@flow/hooks";
+import { useCopyPaste } from "@flow/hooks/useCopyPaste";
 import { useYjsStore } from "@flow/lib/yjs";
 import { useCurrentWorkflowId } from "@flow/stores";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
-import { cancellableDebounce } from "@flow/utils";
+import { cancellableDebounce, randomID } from "@flow/utils";
 
 export default () => {
   const [currentWorkflowId, setCurrentWorkflowId] = useCurrentWorkflowId();
@@ -141,6 +142,64 @@ export default () => {
     [hoveredDetails],
   );
 
+  const { copy, paste } = useCopyPaste<
+    { nodes: Node[]; edges: Edge[] } | undefined
+  >();
+
+  const handleCopy = useCallback(() => {
+    const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
+      nodes: nodes.filter((n) => n.selected),
+      edges: edges.filter((e) => e.selected),
+    };
+    if (selected.nodes.length === 0 && selected.edges.length === 0) return;
+    copy(selected);
+  }, [nodes, edges, copy]);
+
+  const handlePaste = useCallback(() => {
+    const { nodes: pn, edges: pe } = paste() || { nodes: [], edges: [] };
+
+    const newNodes: Node[] = [];
+    for (const n of pn) {
+      const newNode: Node = {
+        ...n,
+        id: randomID(),
+        position: { x: n.position.x + 40, y: n.position.y + 20 },
+        selected: true, // select pasted nodes
+      };
+      newNodes.push(newNode);
+    }
+
+    let newEdges: Edge[] = edges;
+    for (const e of pe) {
+      const sourceNode = newNodes[pn?.findIndex((n) => n.id === e.source)];
+      const targetNode = newNodes[pn?.findIndex((n) => n.id === e.target)];
+
+      if (!sourceNode || !targetNode) continue;
+
+      newEdges = addEdge(
+        {
+          source: sourceNode.id,
+          target: targetNode.id,
+          sourceHandle: e.sourceHandle ?? null,
+          targetHandle: e.targetHandle ?? null,
+        },
+        newEdges,
+      );
+    }
+
+    copy({
+      nodes: newNodes,
+      edges: newEdges.filter((e) => !edges.find((e2) => e2.id === e.id)),
+    });
+
+    handleNodesUpdate([
+      ...nodes.map((n) => ({ ...n, selected: false })), // deselect all previously selected nodes
+      ...(newNodes || []),
+    ]);
+
+    handleEdgesUpdate(newEdges);
+  }, [nodes, edges, copy, paste, handleNodesUpdate, handleEdgesUpdate]);
+
   useShortcuts([
     {
       keyBinding: { key: "r", commandKey: false },
@@ -153,6 +212,14 @@ export default () => {
     {
       keyBinding: { key: "w", commandKey: false },
       callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "writer"),
+    },
+    {
+      keyBinding: { key: "c", commandKey: true },
+      callback: handleCopy,
+    },
+    {
+      keyBinding: { key: "v", commandKey: true },
+      callback: handlePaste,
     },
   ]);
 

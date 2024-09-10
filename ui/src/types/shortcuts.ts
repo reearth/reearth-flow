@@ -10,7 +10,8 @@ export type PossibleKeys =
   | "w" // writer dialog
   | "l" // bottom panel logs
   | "p" // bottom panel preview
-  | "c"; // left panel canvas navigator
+  | "v" // paste
+  | "c"; // w CMD = Copy, wout CMD = left panel canvas navigator
 
 type PossibleActions =
   | "zoomIn"
