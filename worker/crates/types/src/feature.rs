@@ -234,6 +234,11 @@ impl Feature {
         }
     }
 
+    pub fn contains_key<T: AsRef<str> + std::fmt::Display>(&self, key: &T) -> bool {
+        self.attributes
+            .contains_key(&Attribute::new(key.to_string()))
+    }
+
     pub fn get<T: AsRef<str> + std::fmt::Display>(&self, key: &T) -> Option<&AttributeValue> {
         self.attributes.get(&Attribute::new(key.to_string()))
     }

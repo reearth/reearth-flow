@@ -6,6 +6,7 @@ on:
 env:
   VCPKG_ROOT: 'C:\vcpkg'
   VCPKGRS_DYNAMIC: '1'
+  RUSTFLAGS: '-C target-feature=+crt-static'
 
 jobs:
   create-release:
@@ -55,8 +56,6 @@ jobs:
             args: '-- --profile release-lto'
           - platform: macos-latest
             args: '--target aarch64-apple-darwin -- --profile release-lto'
-          - platform: ubuntu-latest
-            args: '-- --profile release-lto'
 
     runs-on: ${{ matrix.settings.platform }}
     steps:
@@ -95,7 +94,7 @@ jobs:
         if: matrix.settings.platform == 'windows-latest'
         working-directory: ./worker
         run: |
-          vcpkg install libxml2
+          vcpkg install libxml2 --triplet x64-windows-static
           vcpkg integrate install
 
       - name: enable corepack
