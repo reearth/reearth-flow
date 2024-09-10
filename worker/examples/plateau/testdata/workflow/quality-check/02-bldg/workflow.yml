@@ -104,13 +104,13 @@ graphs:
                 env.get("__value").gmlId
             - attribute: "Related XML Tag"
               expr: |
-                (env.get("__value").relatedXMLTags ?? []).reduce(|sum, v, i| if i == 0 { v } else { sum + "," +  v })
+                collection::join_array((env.get("__value").relatedXMLTags ?? []), ",")
             - attribute: Attribute
               expr: |
                 env.get("__value").Attribute
             - attribute: UnmatchedXlinkIds
               expr: |
-                (env.get("__value").unmatchedXlinkIds ?? []).reduce(|sum, v, i| if i == 0 { v } else { sum + "," +  v })
+                collection::join_array((env.get("__value").unmatchedXlinkIds ?? []), ",")
 
       - id: fba9510a-5667-4095-a77a-9b9d363c537c
         name: FileWriterTsvL-bldg-06
@@ -119,7 +119,7 @@ graphs:
         with:
           format: tsv
           output: |
-            env.get("outputPath") + "/02_bldg_l_bldg_06エラー.tsv"
+            file::join_path(env.get("outputPath"), "02_bldg_l_bldg_06エラー.tsv")
 
       ## T-bldg-02
       - id: 439adabe-d55c-4c58-972f-e4cd27a54d22
@@ -166,7 +166,7 @@ graphs:
         with:
           format: tsv
           output: |
-            env.get("outputPath") + "/02_bldg_t_bldg_02エラー.tsv"
+            file::join_path(env.get("outputPath"), "02_bldg_t_bldg_02エラー.tsv")
 
       - id: d8727ebe-226a-4d60-9677-1fda5a071531
         name: StatisticsCalculatorT-bldg-02
@@ -195,7 +195,7 @@ graphs:
         type: action
         action: StatisticsCalculator
         with:
-          aggregateName: "gmlFilePath"
+          aggregateName: "GmlFilePath"
           aggregateAttribute: "cityGmlPath"
           calculations:
             - newAttribute: Building
@@ -309,7 +309,7 @@ graphs:
         with:
           format: tsv
           output: |
-            env.get("outputPath") + "/地物インスタンス数.tsv"
+            file::join_path(env.get("outputPath"), "02_bldg_地物インスタンス数.tsv")
     edges:
       - id: 2c9f5fa9-40bb-4692-b157-815f583172b6
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
