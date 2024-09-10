@@ -19,10 +19,11 @@ graphs:
     name: entry_point
     nodes:
       - id: d3773442-1ba8-47c1-b7c1-0bafa23adec9
-        name: FolderAndfilePathReader01
+        name: FolderAndfilePathReader
         type: subGraph
         subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
+      ## L-bldg-06
       - id: 278ab965-ce22-473d-98c6-c7b381c38679
         name: UnmatchedXlinkDetector
         type: action
@@ -31,7 +32,7 @@ graphs:
           attribute: cityGmlPath
 
       - id: 3fafb79d-ce23-4c47-b6c8-5d7306d48400
-        name: NoopSummary
+        name: Noop-L-bldg-06-Summary
         type: action
         action: Noop
 
@@ -70,7 +71,7 @@ graphs:
               value: unmatchedXlinkIds
 
       - id: 5c3d1652-3cd9-4166-87cb-c39155acc3e9
-        name: AttributeMapper
+        name: AttributeMapperL-bldg-06
         type: action
         action: AttributeMapper
         with:
@@ -95,15 +96,84 @@ graphs:
                 (env.get("__value").unmatchedXlinkIds ?? []).reduce(|sum, v, i| if i == 0 { v } else { sum + "," +  v })
 
       - id: fba9510a-5667-4095-a77a-9b9d363c537c
-        name: FileWriterTsv
+        name: FileWriterTsvL-bldg-06
         type: action
         action: FileWriter
         with:
           format: tsv
           output: |
-            env.get("outputPath") + "/01_bldg_l_bldg_06エラー.tsv"
+            env.get("outputPath") + "/02_bldg_l_bldg_06エラー.tsv"
+
+      ## T-bldg-02
+      - id: 439adabe-d55c-4c58-972f-e4cd27a54d22
+        name: BuildingInstallationGeometryTypeExtractor
+        type: action
+        action: PLATEAU.BuildingInstallationGeometryTypeExtractor
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: FeatureFilterByBuildingInstallationGeometryType
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").geomTag in ["gml:Solid"]
+              outputPort: default
+
+      - id: 9399e3b3-d255-43c1-a3b1-f7d841e89bc2
+        name: AttributeMapperT-bldg-02
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: "Building gml:id"
+              expr: |
+                env.get("__value").bldgGmlId
+            - attribute: "BuildingInstallation gml:id"
+              expr: |
+                env.get("__value").instGmlId
+            - attribute: "GeometryType"
+              expr: |
+                env.get("__value").geomTag
+
+      - id: c4afa6a5-8e9f-4d77-8cd9-f50c146b64b8
+        name: FileWriterTsvT-bldg-02
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            env.get("outputPath") + "/02_bldg_t_bldg_02エラー.tsv"
+
+      - id: d8727ebe-226a-4d60-9677-1fda5a071531
+        name: StatisticsCalculatorT-bldg-02
+        type: action
+        action: StatisticsCalculator
+        with:
+          aggregateName: "cityGmlPath"
+          aggregateAttribute: "cityGmlPath"
+          calculations:
+            - newAttribute: instGmlIdTotalCount
+              expr: |
+                let gml_id = env.get("__value").instGmlId ?? "";
+                if gml_id != "" {
+                  1
+                } else {
+                  0
+                }
+      - id: 129a0f24-4be9-4a54-9b4b-83080a7cec64
+        name: NoopT-bldg-02
+        type: action
+        action: Noop
 
     edges:
+      ## L-bldg-06
       - id: c064cf52-705f-443a-b2de-6795266c540d
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
         to: 278ab965-ce22-473d-98c6-c7b381c38679
@@ -137,5 +207,37 @@ graphs:
       - id: 45b326d0-0b05-4622-9098-ecccfec2f57a
         from: 5c3d1652-3cd9-4166-87cb-c39155acc3e9
         to: fba9510a-5667-4095-a77a-9b9d363c537c
+        fromPort: default
+        toPort: default
+
+      ## T-bldg-02
+      - id: ba369f1a-fe0e-4b7a-97e7-f4b16958a31f
+        from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        to: 439adabe-d55c-4c58-972f-e4cd27a54d22
+        fromPort: default
+        toPort: default
+      - id: f23b1f56-c5d8-4311-9239-6dd205b538ab
+        from: 439adabe-d55c-4c58-972f-e4cd27a54d22
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: default
+        toPort: default
+      - id: 17ebcc4b-7ec5-4fb7-89d3-1fb202ed168b
+        from: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        to: 9399e3b3-d255-43c1-a3b1-f7d841e89bc2
+        fromPort: unfiltered
+        toPort: default
+      - id: d06de795-10ec-446b-8e28-1552a658291d
+        from: 9399e3b3-d255-43c1-a3b1-f7d841e89bc2
+        to: c4afa6a5-8e9f-4d77-8cd9-f50c146b64b8
+        fromPort: default
+        toPort: default
+      - id: f3d35a32-7e05-4cc3-901f-1f10705b2f50
+        from: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        to: d8727ebe-226a-4d60-9677-1fda5a071531
+        fromPort: unfiltered
+        toPort: default
+      - id: 07cfbaec-b95a-4738-9c67-89e724596a26
+        from: d8727ebe-226a-4d60-9677-1fda5a071531
+        to: 129a0f24-4be9-4a54-9b4b-83080a7cec64
         fromPort: default
         toPort: default
