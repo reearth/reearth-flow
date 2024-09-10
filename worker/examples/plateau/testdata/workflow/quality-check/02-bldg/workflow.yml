@@ -1,0 +1,141 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
+id: 8220e525-5f5d-4612-b6b0-462c059f15fe
+name: "QualityCheck-02-bldg-workflow"
+entryGraphId: 129b7659-ba08-4b3a-8f70-fac7e96d5ccf
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../../../config/schema.txt
+  targetPackages:
+    - bldg
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+  outputPath:
+graphs:
+  - !include ../../../graphs/folder_and_file_path_reader.yml
+  - id: 129b7659-ba08-4b3a-8f70-fac7e96d5ccf
+    name: entry_point
+    nodes:
+      - id: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        name: FolderAndfilePathReader01
+        type: subGraph
+        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+
+      - id: 278ab965-ce22-473d-98c6-c7b381c38679
+        name: UnmatchedXlinkDetector
+        type: action
+        action: PLATEAU.UnmatchedXlinkDetector
+        with:
+          attribute: cityGmlPath
+
+      - id: 3fafb79d-ce23-4c47-b6c8-5d7306d48400
+        name: NoopSummary
+        type: action
+        action: Noop
+
+      - id: 1dba2525-cf5f-4e30-a807-da6c68d2b37e
+        name: AttributeManagerUnmatchedXlinkFrom
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: Attribute
+              method: create
+              value: |
+                "参照元 xlink:href"
+            - attribute: unmatchedXlinkFromTags
+              method: rename
+              value: relatedXMLTags
+            - attribute: unmatchedXlinkFromIds
+              method: rename
+              value: unmatchedXlinkIds
+
+      - id: 051fe789-a4b1-4123-8661-7d16f78f993f
+        name: AttributeManagerUnmatchedXlinkTo
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: Attribute
+              method: create
+              value: |
+                "参照先 gml:id"
+            - attribute: unmatchedXlinkToTags
+              method: rename
+              value: relatedXMLTags
+            - attribute: unmatchedXlinkToIds
+              method: rename
+              value: unmatchedXlinkIds
+
+      - id: 5c3d1652-3cd9-4166-87cb-c39155acc3e9
+        name: AttributeMapper
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: "Building gml:id"
+              expr: |
+                env.get("__value").gmlId
+            - attribute: "Related XML Tag"
+              expr: |
+                (env.get("__value").relatedXMLTags ?? []).reduce(|sum, v, i| if i == 0 { v } else { sum + "," +  v })
+            - attribute: Attribute
+              expr: |
+                env.get("__value").Attribute
+            - attribute: UnmatchedXlinkIds
+              expr: |
+                (env.get("__value").unmatchedXlinkIds ?? []).reduce(|sum, v, i| if i == 0 { v } else { sum + "," +  v })
+
+      - id: fba9510a-5667-4095-a77a-9b9d363c537c
+        name: FileWriterTsv
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            env.get("outputPath") + "/01_bldg_l_bldg_06エラー.tsv"
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        to: 278ab965-ce22-473d-98c6-c7b381c38679
+        fromPort: default
+        toPort: default
+      - id: e25147d3-300b-47f3-8f20-84b74db7492f
+        from: 278ab965-ce22-473d-98c6-c7b381c38679
+        to: 3fafb79d-ce23-4c47-b6c8-5d7306d48400
+        fromPort: summary
+        toPort: default
+      - id: e00e01be-5401-4a0f-ba60-e3efa52e7897
+        from: 278ab965-ce22-473d-98c6-c7b381c38679
+        to: 1dba2525-cf5f-4e30-a807-da6c68d2b37e
+        fromPort: unMatchedXlinkFrom
+        toPort: default
+      - id: 1640698e-fba8-449c-a349-f0ddd6e3da17
+        from: 278ab965-ce22-473d-98c6-c7b381c38679
+        to: 051fe789-a4b1-4123-8661-7d16f78f993f
+        fromPort: unMatchedXlinkTo
+        toPort: default
+      - id: f38fc1db-88cd-4cce-a5ac-142736221bda
+        from: 1dba2525-cf5f-4e30-a807-da6c68d2b37e
+        to: 5c3d1652-3cd9-4166-87cb-c39155acc3e9
+        fromPort: default
+        toPort: default
+      - id: cd4db01a-1e17-4b29-b0d8-543d14ddd3e5
+        from: 051fe789-a4b1-4123-8661-7d16f78f993f
+        to: 5c3d1652-3cd9-4166-87cb-c39155acc3e9
+        fromPort: default
+        toPort: default
+      - id: 45b326d0-0b05-4622-9098-ecccfec2f57a
+        from: 5c3d1652-3cd9-4166-87cb-c39155acc3e9
+        to: fba9510a-5667-4095-a77a-9b9d363c537c
+        fromPort: default
+        toPort: default

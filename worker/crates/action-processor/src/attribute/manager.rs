@@ -189,16 +189,15 @@ fn process_feature(feature: &Feature, operations: &[Operate], expr_engine: Arc<E
                 }
             }
             Operate::Rename { new_key, attribute } => {
-                let value = feature.get(attribute);
-                if value.is_none() {
+                if !feature.contains_key(attribute) || feature.contains_key(new_key) {
                     continue;
                 }
+                let value = feature.get(attribute);
                 result.remove(attribute);
-                result.insert(new_key.clone(), value.unwrap().clone());
+                result.insert(new_key.clone(), value.cloned().unwrap_or_default());
             }
             Operate::Remove { attribute } => {
-                let value = feature.get(attribute);
-                if value.is_none() {
+                if !feature.contains_key(attribute) {
                     continue;
                 }
                 result.remove(attribute);
