@@ -23,6 +23,23 @@ graphs:
         type: subGraph
         subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
+      - id: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        name: FeatureCityGmlReader
+        type: action
+        action: FeatureReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value").cityGmlPath
+
+      - id: 1b3a610e-83fc-447f-aba6-5d147d394228
+        name: FeatureCounterFeatureIndex
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          outputAttribute: featureIndex
+
       ## L-bldg-06
       - id: 278ab965-ce22-473d-98c6-c7b381c38679
         name: UnmatchedXlinkDetector
@@ -117,7 +134,7 @@ graphs:
         with:
           conditions:
             - expr: |
-                env.get("__value").geomTag in ["gml:Solid"]
+                env.get("__value").geomTag in ["gml:MultiSurface", "gml:Solid"]
               outputPort: default
 
       - id: 9399e3b3-d255-43c1-a3b1-f7d841e89bc2
@@ -172,7 +189,139 @@ graphs:
         type: action
         action: Noop
 
+      ## C02
+      - id: 0b97e715-8e5b-4581-9476-48665024c45a
+        name: StaticsCalculationC02
+        type: action
+        action: StatisticsCalculator
+        with:
+          aggregateName: "gmlFilePath"
+          aggregateAttribute: "cityGmlPath"
+          calculations:
+            - newAttribute: Building
+              expr: |
+                let gml_name = env.get("__value").gmlName ?? "";
+                if gml_name == "Building" {
+                  1
+                } else {
+                  0
+                }
+            - newAttribute: BuildingPart
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:BuildingPart" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: RoofSurface
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:RoofSurface" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: GroundSurface
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:GroundSurface" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: WallSurface
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:WallSurface" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: ClosureSurface
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:ClosureSurface" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: OuterFlooringSurface
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:OuterFlooringSurface" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: OuterCeillingSurface
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:OuterCeillingSurface" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: BuildingInstallation
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let building_installations = attributes["bldg:outerBuildingInstallation"] ?? [];
+                building_installations.reduce(|sum| { if this["type"] == "bldg:BuildingInstallation" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: Door
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:Door" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: Window
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:Window" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: Room
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:Room" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: InteriorWallSurface
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:InteriorWallSurface" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: CeillingSurface
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:CeillingSurface" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: FloorSurface
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:FloorSurface" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: IntBuildingInstallation
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:IntBuildingInstallation" { sum + 1 } else { sum } }, 0)
+
+            - newAttribute: BuildingFurniture
+              expr: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let bounded_by = attributes["bldg:boundedBy"] ?? [];
+                bounded_by.reduce(|sum| { if this["type"] == "bldg:BuildingFurniture" { sum + 1 } else { sum } }, 0)
+
+      - id: 7debf320-37c4-414e-acab-9f2fb41e2848
+        name: FileTSVWriterC02
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            env.get("outputPath") + "/地物インスタンス数.tsv"
     edges:
+      - id: 2c9f5fa9-40bb-4692-b157-815f583172b6
+        from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        to: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        fromPort: default
+        toPort: default
+      - id: 0c58e794-2973-4d7d-a2f4-560d75ec7bff
+        from: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        to: 1b3a610e-83fc-447f-aba6-5d147d394228
+        fromPort: default
+        toPort: default
+
       ## L-bldg-06
       - id: c064cf52-705f-443a-b2de-6795266c540d
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
@@ -239,5 +388,17 @@ graphs:
       - id: 07cfbaec-b95a-4738-9c67-89e724596a26
         from: d8727ebe-226a-4d60-9677-1fda5a071531
         to: 129a0f24-4be9-4a54-9b4b-83080a7cec64
+        fromPort: default
+        toPort: default
+
+      ## C02
+      - id: e4104b43-e168-4306-9864-f72d9403dd8e
+        from: 1b3a610e-83fc-447f-aba6-5d147d394228
+        to: 0b97e715-8e5b-4581-9476-48665024c45a
+        fromPort: default
+        toPort: default
+      - id: 10e00c6e-a16d-4e2a-a442-cb6c5381a9c2
+        from: 0b97e715-8e5b-4581-9476-48665024c45a
+        to: 7debf320-37c4-414e-acab-9f2fb41e2848
         fromPort: default
         toPort: default
