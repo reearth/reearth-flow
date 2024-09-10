@@ -143,20 +143,22 @@ export default () => {
   );
 
   const { copy, paste } = useCopyPaste<
-    { nodes: Node[]; edges: Edge[] } | undefined
+    { nodeIds: string[]; edges: Edge[] } | undefined
   >();
 
   const handleCopy = useCallback(() => {
-    const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
-      nodes: nodes.filter((n) => n.selected),
+    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
+      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
       edges: edges.filter((e) => e.selected),
     };
-    if (selected.nodes.length === 0 && selected.edges.length === 0) return;
+    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
     copy(selected);
   }, [nodes, edges, copy]);
 
   const handlePaste = useCallback(() => {
-    const { nodes: pn, edges: pe } = paste() || { nodes: [], edges: [] };
+    const { nodeIds: pnid, edges: pe } = paste() || { nodeIds: [], edges: [] };
+
+    const pn = nodes.filter((n) => pnid.includes(n.id));
 
     const newNodes: Node[] = [];
     for (const n of pn) {
@@ -188,7 +190,7 @@ export default () => {
     }
 
     copy({
-      nodes: newNodes,
+      nodeIds: newNodes.map((n) => n.id),
       edges: newEdges.filter((e) => !edges.find((e2) => e2.id === e.id)),
     });
 
