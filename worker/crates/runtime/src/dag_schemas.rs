@@ -247,11 +247,11 @@ impl DagSchemas {
         for edge in graph.edges.iter() {
             let from_node_index = dag
                 .node_index_by_node_id(NodeId::new(edge.from.to_string()))
-                .unwrap();
+                .unwrap_or_else(|| panic!("From Node not found: {}", edge.from));
             let from_node_kind = node_mappings.get(from_node_index);
             let to_node_index = dag
                 .node_index_by_node_id(NodeId::new(edge.to.to_string()))
-                .unwrap();
+                .unwrap_or_else(|| panic!("Edge Node not found: {}", edge.to));
             dag.connect(
                 EdgeId::new(edge.id.to_string()),
                 &Endpoint::new(*from_node_index, Port::new(edge.from_port.clone())),
