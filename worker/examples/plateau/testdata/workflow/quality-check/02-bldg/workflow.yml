@@ -373,6 +373,106 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "02_bldg_l-bldg-04-05-エラー.tsv")
 
+      ## c-bldg-01
+      - id: 64bce9d0-9e72-4109-a8ce-22ecdc0fab29
+        name: AttributeAggregator-c-bldg-01
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+            - newAttribute: uroBuildingId
+              attributeValue: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let building_id_attribute = attributes["uro:buildingIDAttribute"] ?? [];
+                if building_id_attribute.len == 1 {
+                  building_id_attribute[0]["uro:buildingID"] ?? ""
+                } else {
+                  ""
+                }
+            - newAttribute: uroBranchId
+              attributeValue: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let building_id_attribute = attributes["uro:buildingIDAttribute"] ?? [];
+                if building_id_attribute.len == 1 {
+                  building_id_attribute[0]["uro:branchID"] ?? ""
+                } else {
+                  ""
+                }
+            - newAttribute: uroPartId
+              attributeValue: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let building_id_attribute = attributes["uro:buildingIDAttribute"] ?? [];
+                if building_id_attribute.len == 1 {
+                  building_id_attribute[0]["uro:partID"] ?? ""
+                } else {
+                  ""
+                }
+          calculation: |
+            1
+          calculationAttribute: |
+            uroBuildingIdAttributeCount
+          method: count
+
+      - id: c7be0988-6afa-4ea1-aad3-be87066a7795
+        name: FeatureMerger-c-bldg-01
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttribute: |
+            let attributes = env.get("__value").cityGmlAttributes ?? #{};
+            let building_id_attribute = attributes["uro:buildingIDAttribute"] ?? [];
+            if building_id_attribute.len == 1 {
+              building_id_attribute[0]["uro:buildingID"] ?? "" + "-" + building_id_attribute[0]["uro:branchID"] ?? "" + "-" + building_id_attribute[0]["uro:partID"] ?? ""
+            } else {
+              ""
+            }
+          supplierAttribute: |
+            env.get("__value").uroBuildingId ?? "" + "-" + env.get("__value").uroBranchId ?? "" + "-" + env.get("__value").uroPartId ?? ""
+
+      - id: 57285867-91df-4c77-8e71-2f84c8e6ee2b
+        name: FeatureFilterByMultipleBuildingId-c-bldg-01
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").uroBuildingIdAttributeCount > 1
+              outputPort: multipleBuildingId
+
+      - id: 0361e205-4d43-442d-b004-2ea981dbca84
+        name: AttributeMapper-c-bldg-01
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: GmlId
+              expr: |
+                env.get("__value").gmlId
+            - attribute: UroBuildingId
+              expr: |
+                env.get("__value").uroBuildingId
+            - attribute: UroBranchId
+              expr: |
+                env.get("__value").uroBranchId
+            - attribute: UroPartId
+              expr: |
+                env.get("__value").uroPartId
+
+      - id: d7124377-8f43-4170-b157-a1f1af27f9fd
+        name: FileWriterTsv-c-bldg-01
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "02_bldg_c_bldg_01エラー.tsv")
+
     edges:
       - id: 2c9f5fa9-40bb-4692-b157-815f583172b6
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
@@ -490,5 +590,37 @@ graphs:
       - id: 3d022169-d417-4e93-ae7e-9baecb9fb435
         from: dabd469e-2dc6-4d0b-b1b3-d8a5026210b1
         to: e31f82df-e776-4368-9440-182e1b817f46
+        fromPort: default
+        toPort: default
+
+      ## i-ur c-bldg-01
+      - id: 054f0a71-ba6f-47f1-a9c2-9a9fcb0e88e2
+        from: 1b3a610e-83fc-447f-aba6-5d147d394228
+        to: 64bce9d0-9e72-4109-a8ce-22ecdc0fab29
+        fromPort: default
+        toPort: default
+      - id: 02f80706-0dd7-4312-8037-fa264fa93677
+        from: 64bce9d0-9e72-4109-a8ce-22ecdc0fab29
+        to: c7be0988-6afa-4ea1-aad3-be87066a7795
+        fromPort: default
+        toPort: supplier
+      - id: a08b52ff-ad24-4251-a39e-f2d6a08c42c7
+        from: 1b3a610e-83fc-447f-aba6-5d147d394228
+        to: c7be0988-6afa-4ea1-aad3-be87066a7795
+        fromPort: default
+        toPort: requestor
+      - id: 5a1e3e40-da89-4b44-8b90-e21c2c5ce2df
+        from: c7be0988-6afa-4ea1-aad3-be87066a7795
+        to: 57285867-91df-4c77-8e71-2f84c8e6ee2b
+        fromPort: merged
+        toPort: default
+      - id: 5111b83e-647d-41fa-86d5-898d024307c6
+        from: 57285867-91df-4c77-8e71-2f84c8e6ee2b
+        to: 0361e205-4d43-442d-b004-2ea981dbca84
+        fromPort: multipleBuildingId
+        toPort: default
+      - id: 02b14148-8f40-41f2-9f00-ea36bc96d59c
+        from: 0361e205-4d43-442d-b004-2ea981dbca84
+        to: d7124377-8f43-4170-b157-a1f1af27f9fd
         fromPort: default
         toPort: default
