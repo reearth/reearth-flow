@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import type { KeyBinding, PossibleKeys } from "@flow/types";
 
 type ShortcutProps = {
-  id?: string;
   keyBinding: KeyBinding;
   callback: () => void;
 };
