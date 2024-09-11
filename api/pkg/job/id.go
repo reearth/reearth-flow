@@ -6,11 +6,12 @@ import (
 )
 
 type ID = id.JobID
-type DeploymentID id.DeploymentID
-type ProjectID = id.ProjectID
+type DeploymentID = id.DeploymentID
 type WorkflowID = id.WorkflowID
 type WorkspaceID = accountdomain.WorkspaceID
 
 var NewID = id.NewJobID
+
+var DeploymentIDFrom = id.DeploymentIDFrom
 
 var ErrInvalidID = id.ErrInvalidID

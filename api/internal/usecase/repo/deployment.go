@@ -15,7 +15,6 @@ type Deployment interface {
 	FindByIDs(context.Context, id.DeploymentIDList) ([]*deployment.Deployment, error)
 	FindByID(context.Context, id.DeploymentID) (*deployment.Deployment, error)
 	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination) ([]*deployment.Deployment, *usecasex.PageInfo, error)
-	CountByWorkspace(context.Context, accountdomain.WorkspaceID) (int, error)
 	Save(context.Context, *deployment.Deployment) error
 	Remove(context.Context, id.DeploymentID) error
 }

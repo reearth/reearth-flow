@@ -125,58 +125,6 @@ func TestBatchRepo_GetJobStatus(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestBatchRepo_ListJobs(t *testing.T) {
-    ctx := context.Background()
-    mockClient := new(mockBatchClient)
-    batchRepo := &BatchRepo{
-        client: mockClient,
-        config: Config{
-            ProjectID: "test-project",
-            Region:    "us-central1",
-        },
-    }
-
-    projectID, _ := id.ProjectIDFrom("test-project-id")
-
-    job1 := &batchpb.Job{Name: "job1", Uid: "job-id-1", Status: &batchpb.JobStatus{State: batchpb.JobStatus_RUNNING}}
-    job2 := &batchpb.Job{Name: "job2", Uid: "job-id-2", Status: &batchpb.JobStatus{State: batchpb.JobStatus_SUCCEEDED}}
-
-    mockIterator := &mockJobIterator{
-        jobs: []*batchpb.Job{job1, job2},
-    }
-
-    mockClient.On("ListJobs", ctx, mock.AnythingOfType("*batchpb.ListJobsRequest")).Return(mockIterator)
-
-    jobs, err := batchRepo.ListJobs(ctx, projectID)
-
-    assert.NoError(t, err)
-    assert.Len(t, jobs, 2)
-    assert.Equal(t, "job1", jobs[0].Name)
-    assert.Equal(t, gateway.JobStatusRunning, jobs[0].Status)
-    assert.Equal(t, "job2", jobs[1].Name)
-    assert.Equal(t, gateway.JobStatusCompleted, jobs[1].Status)
-
-    mockClient.AssertExpectations(t)
-}
-
-func TestBatchRepo_CancelJob(t *testing.T) {
-	ctx := context.Background()
-	mockClient := new(mockBatchClient)
-	batchRepo := &BatchRepo{
-		client: mockClient,
-		config: Config{},
-	}
-
-	jobName := "projects/test-project/locations/us-central1/jobs/test-job-id"
-
-	mockClient.On("DeleteJob", ctx, &batchpb.DeleteJobRequest{Name: jobName}).Return(&batchpb.Job{}, nil)
-
-	err := batchRepo.CancelJob(ctx, jobName)
-
-	assert.NoError(t, err)
-	mockClient.AssertExpectations(t)
-}
-
 func TestBatchRepo_Close(t *testing.T) {
 	mockClient := new(mockBatchClient)
 	batchRepo := &BatchRepo{

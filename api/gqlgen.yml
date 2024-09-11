@@ -28,6 +28,24 @@ models:
     fields:
       workspace:
         resolver: true
+  Me:
+    fields:
+      workspaces:
+        resolver: true
+      myWorkspace:
+        resolver: true
+  Deployment:
+    fields:
+      workspace:
+        resolver: true
+      project:
+        resolver: true
+  Job:
+    fields:
+      workspaces:
+        resolver: true
+      deployment:
+        resolver: true
   Project:
     fields:
       workspace:
@@ -41,10 +59,4 @@ models:
   WorkspaceMember:
     fields:
       user:
-        resolver: true
-  Me:
-    fields:
-      workspaces:
-        resolver: true
-      myWorkspace:
         resolver: true

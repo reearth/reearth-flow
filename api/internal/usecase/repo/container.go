@@ -18,12 +18,14 @@ type Container struct {
 	Asset       Asset
 	AuthRequest authserver.RequestRepo
 	Config      Config
+	Deployment Deployment
+	Job 		Job
 	Lock        Lock
-	Workflow    Workflow
 	Project     Project
-	Workspace   accountrepo.Workspace
-	User        accountrepo.User
 	Transaction usecasex.Transaction
+	User        accountrepo.User
+	Workflow    Workflow
+	Workspace   accountrepo.Workspace
 }
 
 func (c *Container) AccountRepos() *accountrepo.Container {

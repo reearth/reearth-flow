@@ -1,9 +1,9 @@
 package workflow
 
 import (
-	"log"
-	"os"
+	"fmt"
 
+	"github.com/spf13/afero"
 	"gopkg.in/yaml.v2"
 )
 
@@ -34,29 +34,25 @@ func ToWorkflowYaml(id ID, name, entryGraphID string, with *map[string]interface
 
 	yamlData, err := yaml.Marshal(w)
 	if err != nil {
-		return nil, err
-	}
-
-	fileName := id.String() + "-workflow" + ".yaml"
-
-	f, err := os.CreateTemp("", fileName)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer func() {
-		if err := f.Close(); err != nil {
-			log.Println("Error closing file:", err)
-		}
-		if err := os.Remove(f.Name()); err != nil {
-			log.Println("Error removing file:", err)
-		}
-	}()
-
-	if _, err := f.Write(yamlData); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error marshaling YAML: %w", err)
 	}
 
 	stringifiedYaml := string(yamlData)
 	return &stringifiedYaml, nil
+}
+
+func WriteWorkflowToFile(fs afero.Fs, id ID, yamlData []byte) error {
+	fileName := id.String() + "-workflow.yaml"
+	
+	f, err := afero.TempFile(fs, "", fileName)
+	if err != nil {
+		return fmt.Errorf("error creating temp file: %w", err)
+	}
+	defer f.Close()
+
+	if _, err := f.Write(yamlData); err != nil {
+		return fmt.Errorf("error writing to file: %w", err)
+	}
+
+	return nil
 }

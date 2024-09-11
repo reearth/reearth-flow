@@ -56,15 +56,6 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, workspace accountdomai
 	}, pagination)
 }
 
-func (r *Deployment) CountByWorkspace(ctx context.Context, ws accountdomain.WorkspaceID) (int, error) {
-	if !r.f.CanRead(ws) {
-		return 0, nil
-	}
-	return int(r.client.Count(ctx, bson.M{
-		"workspaceid": ws.String(),
-	}))
-}
-
 func (r *Deployment) Save(ctx context.Context, deployment *deployment.Deployment) error {
 	if !r.f.CanWrite(deployment.Workspace()) {
 		return repo.ErrOperationDenied

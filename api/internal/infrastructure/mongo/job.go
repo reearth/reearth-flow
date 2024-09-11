@@ -95,13 +95,6 @@ func (r *Job) Remove(ctx context.Context, id id.JobID) error {
 	return r.client.RemoveOne(ctx, r.writeFilter(bson.M{"id": id.String()}))
 }
 
-func (r *Job) UpdateStatus(ctx context.Context, id id.JobID, status job.Status) error {
-	if !r.f.CanWrite(id) {
-		return repo.ErrOperationDenied
-	}
-	return r.client.UpdateOne(ctx, bson.M{"id": id.String()}, bson.M{"$set": bson.M{"status": string(status)}})
-}
-
 func (r *Job) find(ctx context.Context, filter interface{}) ([]*job.Job, error) {
 	c := mongodoc.NewJobConsumer(r.f.Readable)
 	if err := r.client.Find(ctx, filter, c); err != nil {

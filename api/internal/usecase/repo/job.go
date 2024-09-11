@@ -15,10 +15,8 @@ type Job interface {
 	FindByIDs(context.Context, id.JobIDList) ([]*job.Job, error)
 	FindByID(context.Context, id.JobID) (*job.Job, error)
 	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination) ([]*job.Job, *usecasex.PageInfo, error)
-	CountByWorkspace(context.Context, accountdomain.WorkspaceID) (int, error)
 	Save(context.Context, *job.Job) error
 	Remove(context.Context, id.JobID) error
-	UpdateStatus(context.Context, id.JobID, job.Status) error
 }
 
 func IterateJobsByWorkspace(repo Job, ctx context.Context, tid accountdomain.WorkspaceID, batch int64, callback func([]*job.Job) error) error {

@@ -23,6 +23,8 @@ var (
 
 type Container struct {
 	Asset     Asset
+	Deployment Deployment
+	Job        Job
 	Project   Project
 	User      accountinterfaces.User
 	Workspace accountinterfaces.Workspace
