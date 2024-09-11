@@ -12,8 +12,6 @@ import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
 import { yWorkflowBuilder, type YWorkflow } from "./workflowBuilder";
 
-class CustomBinding {} // eslint-disable-line @typescript-eslint/no-extraneous-class
-
 export default ({
   workflowId,
   handleWorkflowIdChange,
@@ -47,7 +45,7 @@ export default ({
 
       // NOTE: any changes to the yDoc should be wrapped in a transact
       const undoTrackerActionWrapper = (callback: () => void) =>
-        yDoc.transact(callback, CustomBinding);
+        yDoc.transact(callback, currentUserClientId);
 
       return { yWorkflows, currentUserClientId, undoTrackerActionWrapper };
     });
@@ -55,7 +53,8 @@ export default ({
   useEffect(() => {
     if (yWorkflows) {
       const manager = new Y.UndoManager(yWorkflows, {
-        trackedOrigins: new Set([currentUserClientId, CustomBinding]), // Only track local changes
+        trackedOrigins: new Set([currentUserClientId]), // Only track local changes
+        captureTimeout: 200, // default is 500. 200ms is a good balance between performance and user experience
       });
       setUndoManager(manager);
 
@@ -65,15 +64,17 @@ export default ({
     }
   }, [yWorkflows, currentUserClientId]);
 
-  const handleWorkflowUndo = useCallback(
-    () => undoManager?.undo(),
-    [undoManager],
-  );
+  const handleWorkflowUndo = useCallback(() => {
+    if (undoManager?.undoStack && undoManager.undoStack.length > 0) {
+      undoManager?.undo();
+    }
+  }, [undoManager]);
 
-  const handleWorkflowRedo = useCallback(
-    () => undoManager?.redo(),
-    [undoManager],
-  );
+  const handleWorkflowRedo = useCallback(() => {
+    if (undoManager?.redoStack && undoManager.redoStack.length > 0) {
+      undoManager?.redo();
+    }
+  }, [undoManager]);
 
   const rawWorkflows = useY(yWorkflows);
 

@@ -4,6 +4,9 @@ import {
   EditorKeyBindings,
   CanvasKeyBindings,
   GeneralKeyBindings,
+  CanvasKeys,
+  EditorKeys,
+  GeneralKeys,
 } from "@flow/types";
 
 export default () => {
@@ -11,7 +14,7 @@ export default () => {
 
   const title = t("Keyboard shortcuts");
 
-  const generalShortcuts: Shortcuts = {
+  const generalShortcuts: Shortcuts<GeneralKeys> = {
     title: t("General shortcuts"),
     shortcuts: [
       {
@@ -21,7 +24,7 @@ export default () => {
     ],
   };
 
-  const editorShortcuts: Shortcuts = {
+  const editorShortcuts: Shortcuts<EditorKeys> = {
     title: t("Editor shortcuts"),
     shortcuts: [
       {
@@ -55,9 +58,25 @@ export default () => {
     ],
   };
 
-  const canvasShortcuts: Shortcuts = {
+  const canvasShortcuts: Shortcuts<CanvasKeys> = {
     title: t("Canvas shortcuts"),
     shortcuts: [
+      {
+        keyBinding: CanvasKeyBindings["copy"],
+        description: t("Copy the selected nodes"),
+      },
+      {
+        keyBinding: CanvasKeyBindings["paste"],
+        description: t("Paste the copied nodes"),
+      },
+      {
+        keyBinding: CanvasKeyBindings["undo"],
+        description: t("Undo the last action"),
+      },
+      {
+        keyBinding: CanvasKeyBindings["redo"],
+        description: t("Redo the last action"),
+      },
       {
         keyBinding: CanvasKeyBindings["zoomIn"],
         description: t("Zoom in on the canvas"),

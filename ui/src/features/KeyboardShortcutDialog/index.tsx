@@ -25,7 +25,7 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <DialogContentWrapper className="flex gap-10">
+        <DialogContentWrapper className="gap-10">
           <DialogContentSection className="flex-1">
             <p className="text-lg">{generalShortcuts.title}</p>
             <Shortcuts shortcuts={generalShortcuts.shortcuts} />

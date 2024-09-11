@@ -1,31 +1,17 @@
-import { addEdge, useReactFlow, XYPosition } from "@xyflow/react";
+import { XYPosition } from "@xyflow/react";
 import { MouseEvent, useCallback, useState } from "react";
 
 import { useShortcuts } from "@flow/hooks";
-import { useCopyPaste } from "@flow/hooks/useCopyPaste";
 import { useYjsStore } from "@flow/lib/yjs";
 import { useCurrentWorkflowId } from "@flow/stores";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
-import { cancellableDebounce, randomID } from "@flow/utils";
+import { cancellableDebounce } from "@flow/utils";
+
+import useCanvasCopyPaste from "./useCanvasCopyPaste";
+import useNodeLocker from "./useNodeLocker";
 
 export default () => {
   const [currentWorkflowId, setCurrentWorkflowId] = useCurrentWorkflowId();
-  const { getNodes } = useReactFlow();
-
-  const [openPanel, setOpenPanel] = useState<
-    "left" | "right" | "bottom" | undefined
-  >(undefined);
-
-  const handlePanelOpen = useCallback(
-    (panel?: "left" | "right" | "bottom") => {
-      if (!panel || openPanel === panel) {
-        setOpenPanel(undefined);
-      } else {
-        setOpenPanel(panel);
-      }
-    },
-    [openPanel],
-  );
 
   const handleWorkflowIdChange = useCallback(
     (id?: string) => {
@@ -50,51 +36,31 @@ export default () => {
     handleWorkflowIdChange,
   });
 
-  // Will be used to keep track of all locked nodes, local and for other users (while collaborative editing)
-  const [lockedNodeIds, setLockedNodeIds] = useState<string[]>([]);
-
-  // Can have only one node locked at a time (locally)
-  const [locallyLockedNode, setLocallyLockedNode] = useState<Node | undefined>(
-    undefined,
+  const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
+    { handleNodesUpdate },
   );
 
-  // consider making a node context and supplying vars and functions like this to the nodes that way
-  const handleNodeLocking = useCallback(
-    (nodeId: string) => {
-      handleNodesUpdate(
-        getNodes().map((n) => {
-          if (n.id === nodeId) {
-            const newNode = {
-              ...n,
-              data: {
-                ...n.data,
-                locked: !n.data.locked,
-              },
-            };
+  const { handleCopy, handlePaste } = useCanvasCopyPaste({
+    nodes,
+    edges,
+    handleNodesUpdate,
+    handleEdgesUpdate,
+  });
 
-            setLockedNodeIds((ids) => {
-              if (ids.includes(newNode.id)) {
-                return ids.filter((id) => id !== nodeId);
-              }
-              return [...ids, newNode.id];
-            });
+  const [openPanel, setOpenPanel] = useState<
+    "left" | "right" | "bottom" | undefined
+  >(undefined);
 
-            setLocallyLockedNode((lln) =>
-              lln?.id === newNode.id ? undefined : newNode,
-            );
-
-            return newNode;
-          }
-          return n;
-        }),
-      );
+  const handlePanelOpen = useCallback(
+    (panel?: "left" | "right" | "bottom") => {
+      if (!panel || openPanel === panel) {
+        setOpenPanel(undefined);
+      } else {
+        setOpenPanel(panel);
+      }
     },
-    [getNodes, handleNodesUpdate],
+    [openPanel],
   );
-
-  const [hoveredDetails, setHoveredDetails] = useState<
-    Node | Edge | undefined
-  >();
 
   const [nodePickerOpen, setNodePickerOpen] = useState<
     { position: XYPosition; nodeType: ActionNodeType } | undefined
@@ -113,6 +79,10 @@ export default () => {
     () => setNodePickerOpen(undefined),
     [],
   );
+
+  const [hoveredDetails, setHoveredDetails] = useState<
+    Node | Edge | undefined
+  >();
 
   const hoverActionDebounce = cancellableDebounce(
     (callback: () => void) => callback(),
@@ -142,66 +112,6 @@ export default () => {
     [hoveredDetails],
   );
 
-  const { copy, paste } = useCopyPaste<
-    { nodeIds: string[]; edges: Edge[] } | undefined
-  >();
-
-  const handleCopy = useCallback(() => {
-    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
-      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
-      edges: edges.filter((e) => e.selected),
-    };
-    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
-    copy(selected);
-  }, [nodes, edges, copy]);
-
-  const handlePaste = useCallback(() => {
-    const { nodeIds: pnid, edges: pe } = paste() || { nodeIds: [], edges: [] };
-
-    const pn = nodes.filter((n) => pnid.includes(n.id));
-
-    const newNodes: Node[] = [];
-    for (const n of pn) {
-      const newNode: Node = {
-        ...n,
-        id: randomID(),
-        position: { x: n.position.x + 40, y: n.position.y + 20 },
-        selected: true, // select pasted nodes
-      };
-      newNodes.push(newNode);
-    }
-
-    let newEdges: Edge[] = edges;
-    for (const e of pe) {
-      const sourceNode = newNodes[pn?.findIndex((n) => n.id === e.source)];
-      const targetNode = newNodes[pn?.findIndex((n) => n.id === e.target)];
-
-      if (!sourceNode || !targetNode) continue;
-
-      newEdges = addEdge(
-        {
-          source: sourceNode.id,
-          target: targetNode.id,
-          sourceHandle: e.sourceHandle ?? null,
-          targetHandle: e.targetHandle ?? null,
-        },
-        newEdges,
-      );
-    }
-
-    copy({
-      nodeIds: newNodes.map((n) => n.id),
-      edges: newEdges.filter((e) => !edges.find((e2) => e2.id === e.id)),
-    });
-
-    handleNodesUpdate([
-      ...nodes.map((n) => ({ ...n, selected: false })), // deselect all previously selected nodes
-      ...(newNodes || []),
-    ]);
-
-    handleEdgesUpdate(newEdges);
-  }, [nodes, edges, copy, paste, handleNodesUpdate, handleEdgesUpdate]);
-
   useShortcuts([
     {
       keyBinding: { key: "r", commandKey: false },
@@ -222,6 +132,14 @@ export default () => {
     {
       keyBinding: { key: "v", commandKey: true },
       callback: handlePaste,
+    },
+    {
+      keyBinding: { key: "z", commandKey: true, shiftKey: true },
+      callback: handleWorkflowRedo,
+    },
+    {
+      keyBinding: { key: "z", commandKey: true },
+      callback: handleWorkflowUndo,
     },
   ]);
 
