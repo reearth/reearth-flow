@@ -1,5 +1,5 @@
 use indexmap::{IndexMap, IndexSet};
-use nusamai_citygml::schema::{Attribute, FeatureTypeDef};
+use nusamai_citygml::schema::{Attribute, FeatureTypeDef, Schema, TypeDef};
 use nusamai_gltf::nusamai_gltf_json::{
     extensions::gltf::ext_structural_metadata::{
         self, ClassPropertyComponentType, ClassPropertyType, Enum, EnumValue, EnumValueType,
@@ -7,27 +7,52 @@ use nusamai_gltf::nusamai_gltf_json::{
     },
     BufferView,
 };
+use reearth_flow_types::{Attribute as FlowAttribute, AttributeValue as FlowAttributeValue};
 use std::collections::HashMap;
 
+const ENUM_NO_DATA: u32 = 0;
 const ENUM_NO_DATA_NAME: &str = "";
 const FLOAT_NO_DATA: f64 = f64::MAX;
 const INT64_NO_DATA: i64 = i64::MIN;
 const UINT64_NO_DATA: u64 = u64::MAX;
+const NULL_NO_DATA: u32 = 0;
 
-pub struct MetadataEncoder {
+pub struct MetadataEncoder<'a> {
+    original_schema: &'a Schema,
     classes: IndexMap<String, Class>,
     enum_set: IndexSet<String>,
 }
 
-impl MetadataEncoder {
-    pub fn new() -> Self {
+impl<'a> MetadataEncoder<'a> {
+    pub fn new(original_schema: &'a Schema) -> Self {
         let mut enum_set: IndexSet<String> = Default::default();
         enum_set.insert(ENUM_NO_DATA_NAME.to_string());
 
         Self {
+            original_schema,
             classes: Default::default(),
             enum_set,
         }
+    }
+
+    // Add a feature and return the assigned feature ID.
+    pub fn add_feature(
+        &mut self,
+        typename: &str,
+        attributes: HashMap<FlowAttribute, FlowAttributeValue>,
+    ) -> Result<usize, ()> {
+        let Some(TypeDef::Feature(feature_def)) = self.original_schema.types.get(typename) else {
+            return Err(());
+        };
+
+        let typename = typename.replace(':', "_");
+
+        let class = self
+            .classes
+            .entry(typename)
+            .or_insert_with(|| Class::from(feature_def));
+
+        class.add_feature(attributes)
     }
 
     pub fn into_metadata(
@@ -114,6 +139,65 @@ impl From<&FeatureTypeDef> for Class {
 }
 
 impl Class {
+    fn add_feature(
+        &mut self,
+        attributes: HashMap<FlowAttribute, FlowAttributeValue>,
+    ) -> Result<usize, ()> {
+        // Encode id
+        if let Some(FlowAttributeValue::Map(city_gml_attributes)) =
+            attributes.get(&FlowAttribute::new("cityGmlAttributes"))
+        {
+            if let Some(FlowAttributeValue::String(id)) = city_gml_attributes.get("id") {
+                let value = FlowAttributeValue::String(id.to_string());
+                if let Some(prop) = self.properties.get_mut("id") {
+                    encode_value(value, prop);
+                    prop.used = true;
+                }
+            };
+        }
+
+        // Encode attributes
+        for (attr_name, value) in attributes {
+            let Some(prop) = self.properties.get_mut(&attr_name.to_string()) else {
+                continue;
+            };
+            encode_value(value, prop);
+            prop.used = true;
+        }
+
+        // Fill in the default values for the properties that don't occur in the input
+        for (_key, prop) in &mut self.properties {
+            if prop.is_array {
+                match prop.type_ {
+                    PropertyType::String => {
+                        prop.array_offsets
+                            .push(prop.string_offsets.len() as u32 - 1);
+                    }
+                    // PropertyType::Boolean => todo!(), // TODO
+                    _ => {
+                        prop.array_offsets.push(prop.count);
+                    }
+                }
+            } else {
+                match prop.type_ {
+                    PropertyType::Int64 => prop.value_buffer.extend(INT64_NO_DATA.to_le_bytes()),
+                    PropertyType::Uint64 => prop.value_buffer.extend(UINT64_NO_DATA.to_le_bytes()),
+                    PropertyType::Float64 => prop.value_buffer.extend(FLOAT_NO_DATA.to_le_bytes()),
+                    PropertyType::String => {
+                        prop.string_offsets.push(prop.value_buffer.len() as u32)
+                    }
+                    PropertyType::Enum => prop.value_buffer.extend(ENUM_NO_DATA.to_le_bytes()),
+                    // PropertyType::Boolean => todo!(),
+                };
+            }
+        }
+
+        // Return the assigned feature ID
+        let feature_id = self.feature_count;
+        self.feature_count += 1;
+        Ok(feature_id)
+    }
+
     fn make_metadata(
         self,
         class_name: &str,
@@ -251,10 +335,68 @@ impl Class {
     }
 }
 
+fn encode_value(value: FlowAttributeValue, prop: &mut Property) {
+    use reearth_flow_types::AttributeValue as Value;
+
+    match value {
+        Value::String(s) => {
+            prop.value_buffer.extend_from_slice(s.as_bytes());
+            prop.string_offsets.push(prop.value_buffer.len() as u32);
+            prop.count += 1;
+        }
+        Value::Map(m) => {
+            for (_k, v) in m {
+                encode_value(v, prop);
+            }
+        }
+        Value::Null => {
+            prop.value_buffer.extend(NULL_NO_DATA.to_le_bytes());
+            prop.count += 1;
+        }
+        Value::Bytes(b) => {
+            prop.value_buffer.extend(b);
+            prop.count += 1;
+        }
+        Value::DateTime(d) => {
+            prop.value_buffer
+                .extend_from_slice(d.to_string().as_bytes());
+            prop.string_offsets.push(prop.value_buffer.len() as u32);
+            prop.count += 1;
+        }
+        Value::Number(i) => {
+            let b: [u8; 8] = (i.as_f64().unwrap()).to_le_bytes(); // ensure: 8 bytes
+            prop.value_buffer.extend(b);
+            prop.count += 1;
+        }
+        Value::Bool(b) => {
+            let b: [u8; 8] = (b as u64).to_le_bytes(); // ensure: 8 bytes
+            prop.value_buffer.extend(b);
+            prop.count += 1;
+        }
+        Value::Array(arr) => {
+            for v in arr {
+                encode_value(v, prop);
+            }
+
+            match prop.type_ {
+                PropertyType::String => {
+                    prop.array_offsets
+                        .push(prop.string_offsets.len() as u32 - 1);
+                }
+                // PropertyType::Boolean => todo!(), // TODO
+                _ => {
+                    prop.array_offsets.push(prop.count);
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 struct Property {
     type_: PropertyType,
     value_buffer: Vec<u8>,
+    count: u32,
     is_array: bool,
     /// Whether the property is used at least once.
     used: bool,
@@ -275,6 +417,7 @@ impl Property {
         Property {
             type_,
             value_buffer: Default::default(),
+            count: 0,
             is_array,
             used: false,
             string_offsets,
@@ -299,7 +442,7 @@ impl From<&Attribute> for Property {
             TypeRef::DateTime => PropertyType::String,
             TypeRef::Measure => PropertyType::Float64,
             TypeRef::Point => PropertyType::String, // TODO: VEC3<f64>
-            TypeRef::Named(_) => unreachable!(),
+            TypeRef::Named(_) => PropertyType::String,
             TypeRef::Unknown => unreachable!(),
         };
         let is_array = attr.max_occurs != Some(1);
