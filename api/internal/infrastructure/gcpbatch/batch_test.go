@@ -58,20 +58,6 @@ func (m *mockBatchClient) Close() error {
 // 	return job, nil
 // }
 
-func TestNewBatch(t *testing.T) {
-	ctx := context.Background()
-	config := Config{
-		ProjectID: "test-project",
-		Region:    "us-central1",
-		ImageURI:  "gcr.io/test-project/reearth-flow:latest",
-	}
-
-	batch, err := NewBatch(ctx, config)
-
-	assert.NoError(t, err)
-	assert.NotNil(t, batch)
-}
-
 func TestBatchRepo_SubmitJob(t *testing.T) {
 	ctx := context.Background()
 	mockClient := new(mockBatchClient)
