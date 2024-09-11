@@ -129,6 +129,7 @@ const LeftPanel: React.FC<Props> = ({
   };
 
   useShortcuts([
+    // TODO: Need to redfine navigator shorcut
     {
       keyBinding: { key: "c", commandKey: false },
       callback: () => {
