@@ -19,6 +19,13 @@ pub(crate) mod file_module {
             .unwrap_or_default()
             .to_string()
     }
+
+    pub fn join_path(path1: &str, path2: &str) -> String {
+        Uri::from_str(path1)
+            .and_then(|uri| uri.join(path2))
+            .map(|uri| uri.to_string())
+            .unwrap_or_default()
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -31,5 +38,23 @@ mod tests {
 
         // Test with empty file path
         assert_eq!(extract_filename(""), "");
+    }
+
+    #[test]
+    fn test_join_path() {
+        // Test with valid paths
+        assert_eq!(
+            join_path("/path/to", "file.txt"),
+            "file:///path/to/file.txt"
+        );
+
+        // Test with empty paths
+        assert_eq!(join_path("", ""), "");
+
+        // Test with invalid paths
+        assert_eq!(
+            join_path("/path/to/", "file.txt"),
+            "file:///path/to/file.txt"
+        );
     }
 }

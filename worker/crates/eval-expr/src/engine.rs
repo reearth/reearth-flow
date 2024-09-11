@@ -6,6 +6,7 @@ use super::module::console::console_module;
 use super::module::env::{env_module, scope_module};
 use super::module::file::file_module;
 use super::module::str::str_module;
+use crate::module::collection::collection_module;
 use crate::module::json::json_module;
 use crate::module::xml::xml_module;
 use crate::{error::Error, scope::Scope, ShareLock, Value, Vars};
@@ -41,6 +42,10 @@ impl Engine {
         script_engine.register_static_module("str", rhai::exported_module!(str_module).into());
         script_engine.register_static_module("xml", rhai::exported_module!(xml_module).into());
         script_engine.register_static_module("json", rhai::exported_module!(json_module).into());
+        script_engine.register_static_module(
+            "collection",
+            rhai::exported_module!(collection_module).into(),
+        );
 
         let engine = Self {
             script_engine: Arc::new(script_engine),

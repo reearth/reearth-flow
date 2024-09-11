@@ -77,13 +77,13 @@ graphs:
         action: FeatureMerger
         with:
           requestorAttribute: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let building_id_attribute = attributes["uro:buildingIDAttribute"] ?? [];
-                if building_id_attribute.len == 1 {
-                  building_id_attribute[0]["uro:buildingID"] ?? "" + "-" + building_id_attribute[0]["uro:branchID"] ?? "" + "-" + building_id_attribute[0]["uro:partID"] ?? ""
-                } else {
-                  ""
-                }
+            let attributes = env.get("__value").cityGmlAttributes ?? #{};
+            let building_id_attribute = attributes["uro:buildingIDAttribute"] ?? [];
+            if building_id_attribute.len == 1 {
+              building_id_attribute[0]["uro:buildingID"] ?? "" + "-" + building_id_attribute[0]["uro:branchID"] ?? "" + "-" + building_id_attribute[0]["uro:partID"] ?? ""
+            } else {
+              ""
+            }
           supplierAttribute: |
             env.get("__value").uroBuildingId ?? "" + "-" + env.get("__value").uroBranchId ?? "" + "-" + env.get("__value").uroPartId ?? ""
 
