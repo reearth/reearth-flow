@@ -115,7 +115,10 @@ impl DagSchemas {
         factories: HashMap<String, NodeKind>,
         global_params: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> Self {
-        let entry_graph = graphs.iter().find(|dag| dag.id == entry_graph_id).unwrap();
+        let entry_graph = graphs
+            .iter()
+            .find(|dag| dag.id == entry_graph_id)
+            .unwrap_or_else(|| panic!("Entry graph not found. with id = {}", entry_graph_id));
         let other_graphs = graphs
             .iter()
             .filter(|graph| graph.id != entry_graph_id)

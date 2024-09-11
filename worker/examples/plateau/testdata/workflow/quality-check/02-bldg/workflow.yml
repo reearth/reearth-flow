@@ -310,6 +310,69 @@ graphs:
           format: tsv
           output: |
             file::join_path(env.get("outputPath"), "02_bldg_地物インスタンス数.tsv")
+
+      ## i-ur l-bldg-04,05 city code error
+      - id: 94382791-5b1e-403f-bbff-c326612f8f24
+        name: PLATEAU.BuildingUsageAttributeValidator
+        type: action
+        action: PLATEAU.BuildingUsageAttributeValidator
+
+      - id: b0a6c73a-f0be-40e1-a575-aba47f28a16a
+        name: AttributeMapper-city-code-error
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: GMLID
+              expr: |
+                env.get("__value").gmlId
+            - attribute: CityCodeError
+              expr: |
+                env.get("__value").cityCodeError
+
+      - id: 702a1096-35c8-4b85-a20b-ea5547a5f5e4
+        name: FileWriterTsv-city-code-error
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "02_bldg_市町村コードエラー.tsv")
+
+      - id: dabd469e-2dc6-4d0b-b1b3-d8a5026210b1
+        name: AttributeMapper-l-bldg-04-05-error
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: GMLID
+              expr: |
+                env.get("__value").gmlId
+            - attribute: BuildingUsageAttributeError
+              expr: |
+                collection::join_array((env.get("__value").errors ?? []), ",")
+
+      - id: e31f82df-e776-4368-9440-182e1b817f46
+        name: FileWriterTsv-l-bldg-04-05-error
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "02_bldg_l-bldg-04-05-エラー.tsv")
+
     edges:
       - id: 2c9f5fa9-40bb-4692-b157-815f583172b6
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
@@ -400,5 +463,32 @@ graphs:
       - id: 10e00c6e-a16d-4e2a-a442-cb6c5381a9c2
         from: 0b97e715-8e5b-4581-9476-48665024c45a
         to: 7debf320-37c4-414e-acab-9f2fb41e2848
+        fromPort: default
+        toPort: default
+
+      ## i-ur l-bldg-04,05 city code error
+      - id: 8a900d91-9b04-4c7a-8477-48f3fa57ff7a
+        from: 1b3a610e-83fc-447f-aba6-5d147d394228
+        to: 94382791-5b1e-403f-bbff-c326612f8f24
+        fromPort: default
+        toPort: default
+      - id: d8635d75-d257-4658-b7a3-91dd1854c25a
+        from: 94382791-5b1e-403f-bbff-c326612f8f24
+        to: b0a6c73a-f0be-40e1-a575-aba47f28a16a
+        fromPort: codeError
+        toPort: default
+      - id: dc51496c-268b-448c-8509-af593b3b447c
+        from: b0a6c73a-f0be-40e1-a575-aba47f28a16a
+        to: 702a1096-35c8-4b85-a20b-ea5547a5f5e4
+        fromPort: default
+        toPort: default
+      - id: 63c6f0b4-5d01-4ee8-8dd9-d6ca967749d2
+        from: 94382791-5b1e-403f-bbff-c326612f8f24
+        to: dabd469e-2dc6-4d0b-b1b3-d8a5026210b1
+        fromPort: lBldgError
+        toPort: default
+      - id: 3d022169-d417-4e93-ae7e-9baecb9fb435
+        from: dabd469e-2dc6-4d0b-b1b3-d8a5026210b1
+        to: e31f82df-e776-4368-9440-182e1b817f46
         fromPort: default
         toPort: default
