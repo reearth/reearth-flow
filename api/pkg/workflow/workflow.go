@@ -43,16 +43,22 @@ func ToWorkflowYaml(id ID, name, entryGraphID string, with *map[string]interface
 
 func WriteWorkflowToFile(fs afero.Fs, id ID, yamlData []byte) error {
 	fileName := id.String() + "-workflow.yaml"
-	
+
 	f, err := afero.TempFile(fs, "", fileName)
 	if err != nil {
 		return fmt.Errorf("error creating temp file: %w", err)
 	}
-	defer f.Close()
+
+	defer func() {
+		closeErr := f.Close()
+		if err == nil && closeErr != nil {
+			err = fmt.Errorf("error closing file: %w", closeErr)
+		}
+	}()
 
 	if _, err := f.Write(yamlData); err != nil {
 		return fmt.Errorf("error writing to file: %w", err)
 	}
 
-	return nil
+	return err
 }

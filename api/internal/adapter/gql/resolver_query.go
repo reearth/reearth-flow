@@ -25,7 +25,7 @@ func (r *queryResolver) Me(ctx context.Context) (*gqlmodel.Me, error) {
 	return gqlmodel.ToMe(u), nil
 }
 
-func (r *queryResolver) Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination,) (*gqlmodel.DeploymentConnection, error) {
+func (r *queryResolver) Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.DeploymentConnection, error) {
 	return loaders(ctx).Deployment.FindByWorkspace(ctx, workspaceID, pagination)
 }
 
@@ -33,7 +33,7 @@ func (r *queryResolver) Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job,
 	return loaders(ctx).Job.FindByID(ctx, id)
 }
 
-func (r *queryResolver) Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination,) (*gqlmodel.JobConnection, error) {
+func (r *queryResolver) Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.JobConnection, error) {
 	return loaders(ctx).Job.FindByWorkspace(ctx, workspaceID, pagination)
 }
 

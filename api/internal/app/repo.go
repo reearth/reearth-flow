@@ -110,12 +110,12 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 			Region:    "us-central1",
 			ImageURI:  conf.Worker_ImageURL,
 		}
-		
+
 		batchRepo, err = gcpbatch.NewBatch(ctx, config)
 		if err != nil {
 			log.Fatalf("Failed to create Batch repository: %v", err)
 		}
-		return 
+		return
 	}
 
 	return batchRepo

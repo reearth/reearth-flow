@@ -18,8 +18,8 @@ type Container struct {
 	Asset       Asset
 	AuthRequest authserver.RequestRepo
 	Config      Config
-	Deployment Deployment
-	Job 		Job
+	Deployment  Deployment
+	Job         Job
 	Lock        Lock
 	Project     Project
 	Transaction usecasex.Transaction

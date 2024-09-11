@@ -19,7 +19,7 @@ func (AuthRequest) Type() string { return "authRequest" }
 func (Edge) Type() string        { return "edge" }
 func (Node) Type() string        { return "node" }
 func (Graph) Type() string       { return "graph" }
-func (Workflow) Type() string     { return "workflow" }
+func (Workflow) Type() string    { return "workflow" }
 func (Project) Type() string     { return "project" }
 func (Workspace) Type() string   { return "workspace" }
 func (User) Type() string        { return "user" }

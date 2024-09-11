@@ -24,7 +24,7 @@ type Project struct {
 	workspaceRepo accountrepo.Workspace
 	transaction   usecasex.Transaction
 	file          gateway.File
-	batch 	 	 gateway.Batch
+	batch         gateway.Batch
 }
 
 func NewProject(r *repo.Container, gr *gateway.Container) interfaces.Project {

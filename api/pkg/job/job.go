@@ -12,23 +12,23 @@ const (
 )
 
 type Job struct {
-	id           ID
-	deployment   DeploymentID
-	workspace    WorkspaceID  
-	gcpJobID     string
-	status       Status
-	startedAt    time.Time
-	completedAt  *time.Time
+	id          ID
+	deployment  DeploymentID
+	workspace   WorkspaceID
+	gcpJobID    string
+	status      Status
+	startedAt   time.Time
+	completedAt *time.Time
 }
 
 func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
 	return &Job{
-		id:           id,
+		id:         id,
 		deployment: deployment,
 		workspace:  workspace,
-		gcpJobID:     gcpJobID,
-		status:       StatusPending,
-		startedAt:    time.Now(),
+		gcpJobID:   gcpJobID,
+		status:     StatusPending,
+		startedAt:  time.Now(),
 	}
 }
 

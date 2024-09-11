@@ -14,9 +14,9 @@ import (
 )
 
 type CreateDeploymentParam struct {
-	Project id.ProjectID
+	Project   id.ProjectID
 	Workspace accountdomain.WorkspaceID
-	Workflow *workflow.Workflow
+	Workflow  *workflow.Workflow
 }
 
 type ExecuteDeploymentParam struct {

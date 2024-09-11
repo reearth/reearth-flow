@@ -6,12 +6,12 @@ import (
 
 	batch "cloud.google.com/go/batch/apiv1"
 	batchpb "cloud.google.com/go/batch/apiv1/batchpb"
+	"github.com/googleapis/gax-go/v2"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/workflow"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
-	"github.com/googleapis/gax-go/v2"
 )
 
 type Config struct {
@@ -24,7 +24,7 @@ type BatchClient interface {
 	CreateJob(ctx context.Context, req *batchpb.CreateJobRequest, opts ...gax.CallOption) (*batchpb.Job, error)
 	GetJob(ctx context.Context, req *batchpb.GetJobRequest, opts ...gax.CallOption) (*batchpb.Job, error)
 	ListJobs(ctx context.Context, req *batchpb.ListJobsRequest, opts ...gax.CallOption) *batch.JobIterator
-	DeleteJob(ctx context.Context, req *batchpb.DeleteJobRequest, opts ...gax.CallOption)(*batch.DeleteJobOperation, error)
+	DeleteJob(ctx context.Context, req *batchpb.DeleteJobRequest, opts ...gax.CallOption) (*batch.DeleteJobOperation, error)
 	Close() error
 }
 
@@ -32,7 +32,6 @@ type BatchRepo struct {
 	client BatchClient
 	config Config
 }
-
 
 func NewBatch(ctx context.Context, config Config) (gateway.Batch, error) {
 	client, err := batch.NewClient(ctx)
@@ -135,7 +134,6 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflow *wor
 
 	return resp.Name, nil
 }
-
 
 func (b *BatchRepo) GetJobStatus(ctx context.Context, jobName string) (gateway.JobStatus, error) {
 	req := &batchpb.GetJobRequest{

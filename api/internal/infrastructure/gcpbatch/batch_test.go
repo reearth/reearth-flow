@@ -12,7 +12,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/workflow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"google.golang.org/api/iterator"
+	// "google.golang.org/api/iterator"
 )
 
 type mockBatchClient struct {
@@ -30,8 +30,8 @@ func (m *mockBatchClient) GetJob(ctx context.Context, req *batchpb.GetJobRequest
 }
 
 func (m *mockBatchClient) ListJobs(ctx context.Context, req *batchpb.ListJobsRequest, opts ...gax.CallOption) *batch.JobIterator {
-    args := m.Called(ctx, req)
-    return args.Get(0).(*batch.JobIterator)
+	args := m.Called(ctx, req)
+	return args.Get(0).(*batch.JobIterator)
 }
 
 func (m *mockBatchClient) DeleteJob(ctx context.Context, req *batchpb.DeleteJobRequest, opts ...gax.CallOption) (*batch.DeleteJobOperation, error) {
@@ -44,19 +44,19 @@ func (m *mockBatchClient) Close() error {
 	return args.Error(0)
 }
 
-type mockJobIterator struct {
-    jobs []*batchpb.Job
-    current int
-}
+// type mockJobIterator struct {
+// 	jobs    []*batchpb.Job
+// 	current int
+// }
 
-func (m *mockJobIterator) Next() (*batchpb.Job, error) {
-    if m.current >= len(m.jobs) {
-        return nil, iterator.Done
-    }
-    job := m.jobs[m.current]
-    m.current++
-    return job, nil
-}
+// func (m *mockJobIterator) Next() (*batchpb.Job, error) {
+// 	if m.current >= len(m.jobs) {
+// 		return nil, iterator.Done
+// 	}
+// 	job := m.jobs[m.current]
+// 	m.current++
+// 	return job, nil
+// }
 
 func TestNewBatch(t *testing.T) {
 	ctx := context.Background()

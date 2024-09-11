@@ -77,7 +77,7 @@ func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentPa
 		Project(p.Project).
 		Workspace(p.Workspace).
 		Workflow(p.Workflow.ID).
-		Version("v0.1"). //version is hardcoded for now @pyshx 
+		Version("v0.1"). //version is hardcoded for now @pyshx
 		Build()
 	if err != nil {
 		return nil, err

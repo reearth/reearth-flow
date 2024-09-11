@@ -5,25 +5,25 @@ import (
 )
 
 type Deployment struct {
-	id          ID
-	project     ProjectID
-	workspace   WorkspaceID
-	workflow     WorkflowID
-	version     string
-	createdAt   time.Time
-	updatedAt   time.Time
+	id        ID
+	project   ProjectID
+	workspace WorkspaceID
+	workflow  WorkflowID
+	version   string
+	createdAt time.Time
+	updatedAt time.Time
 }
 
 func NewDeployment(id ID, project ProjectID, workspace WorkspaceID, workflow WorkflowID, version string) *Deployment {
 	now := time.Now()
 	return &Deployment{
-		id:          id,
+		id:        id,
 		project:   project,
 		workspace: workspace,
-		workflow:   workflow,
-		version:     version,
-		createdAt:   now,
-		updatedAt:   now,
+		workflow:  workflow,
+		version:   version,
+		createdAt: now,
+		updatedAt: now,
 	}
 }
 
