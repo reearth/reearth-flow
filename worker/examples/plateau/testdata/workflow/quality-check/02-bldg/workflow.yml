@@ -373,6 +373,63 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "02_bldg_l-bldg-04-05-エラー.tsv")
 
+      ## i-ur c-bldg-01
+      - id: 7078eeed-adb1-40cd-a894-c1132474f67b
+        name: AttributeAggregator-c-bldg-01
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+            - newAttribute: uroBuildingId
+              attributeValue: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let building_id_attribute = attributes["uro:buildingIDAttribute"] ?? [];
+                if building_id_attribute.len == 1 {
+                  building_id_attribute[0]["uro:buildingID"] ?? ""
+                } else {
+                  ""
+                }
+            - newAttribute: uroBranchId
+              attributeValue: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let building_id_attribute = attributes["uro:buildingIDAttribute"] ?? [];
+                if building_id_attribute.len == 1 {
+                  building_id_attribute[0]["uro:branchID"] ?? ""
+                } else {
+                  ""
+                }
+            - newAttribute: uroPartId
+              attributeValue: |
+                let attributes = env.get("__value").cityGmlAttributes ?? #{};
+                let building_id_attribute = attributes["uro:buildingIDAttribute"] ?? [];
+                if building_id_attribute.len == 1 {
+                  building_id_attribute[0]["uro:partID"] ?? ""
+                } else {
+                  ""
+                }
+          calculation: |
+            1
+          calculationAttribute: |
+            uroBuildingIdAttributeCount
+          method: count
+
+      - id: 7fa16399-297b-426f-b034-8d30e2e8fbeb
+        name: FeatureMerger-c-bldg-01
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttribute: |
+            let attributes = env.get("__value").cityGmlAttributes ?? #{};
+            let building_id_attribute = attributes["uro:buildingIDAttribute"] ?? [];
+            if building_id_attribute.len == 1 {
+              building_id_attribute[0]["uro:buildingID"] ?? "" + "-" + building_id_attribute[0]["uro:branchID"] ?? "" + "-" + building_id_attribute[0]["uro:partID"] ?? ""
+            } else {
+              ""
+            }
+          supplierAttribute: |
+            env.get("__value").uroBuildingId ?? "" + "-" + env.get("__value").uroBranchId ?? "" + "-" + env.get("__value").uroPartId ?? ""
+
+
     edges:
       - id: 2c9f5fa9-40bb-4692-b157-815f583172b6
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9

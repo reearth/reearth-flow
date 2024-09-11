@@ -33,7 +33,7 @@ graphs:
             env.get("__value").cityGmlPath
 
       - id: 64bce9d0-9e72-4109-a8ce-22ecdc0fab29
-        name: "AttributeAggregator01"
+        name: AttributeAggregator-c-bldg-01
         type: action
         action: AttributeAggregator
         with:
@@ -72,7 +72,7 @@ graphs:
           method: count
 
       - id: c7be0988-6afa-4ea1-aad3-be87066a7795
-        name: FeatureMerger01
+        name: FeatureMerger-c-bldg-01
         type: action
         action: FeatureMerger
         with:
