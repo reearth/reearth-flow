@@ -1,8 +1,10 @@
 import {
   OnConnect,
   OnEdgesChange,
+  OnReconnect,
   addEdge,
   applyEdgeChanges,
+  reconnectEdge,
 } from "@xyflow/react";
 import { useCallback } from "react";
 
@@ -24,8 +26,15 @@ export default ({ edges, onEdgeChange }: Props) => {
     [edges, onEdgeChange],
   );
 
+  const handleReconnect: OnReconnect = useCallback(
+    (oldEdge, newConnection) =>
+      onEdgeChange(reconnectEdge(oldEdge, newConnection, edges)),
+    [edges, onEdgeChange],
+  );
+
   return {
     handleEdgesChange,
     handleConnect,
+    handleReconnect,
   };
 };
