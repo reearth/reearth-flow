@@ -487,9 +487,9 @@ graphs:
         subGraphId: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
 
       - id: 923d550b-fe20-4b31-b988-213e13f4cfa6
-        name: Echo-L-7-8-9-11-13
+        name: Noop-L-7-8-9-11-13
         type: action
-        action: EchoSink
+        action: NoopSink
 
     edges:
       - id: 2c9f5fa9-40bb-4692-b157-815f583172b6
