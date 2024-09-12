@@ -1,4 +1,4 @@
-name: build-api
+name: build-deploy-api
 on:
   workflow_call:
     inputs:

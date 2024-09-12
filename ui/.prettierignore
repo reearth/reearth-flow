@@ -4,6 +4,7 @@ build/
 node_modules/
 .env
 .env.*
+.env-local
 
 yarn.lock
 .yarn/*

@@ -54,7 +54,7 @@ const ProjectAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => onOpenChange(o)}>
-      <DialogContent size="md">
+      <DialogContent size="md" position="off-center">
         <DialogHeader>
           <DialogTitle>{t("New project")}</DialogTitle>
         </DialogHeader>

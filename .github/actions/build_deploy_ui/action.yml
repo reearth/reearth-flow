@@ -1,4 +1,4 @@
-name: build-ui
+name: build-deploy-ui
 on:
   workflow_call:
     inputs:

@@ -11,7 +11,7 @@ pub struct NoopSinkFactory;
 
 impl SinkFactory for NoopSinkFactory {
     fn name(&self) -> &str {
-        "Noop"
+        "NoopSink"
     }
 
     fn description(&self) -> &str {
@@ -23,7 +23,7 @@ impl SinkFactory for NoopSinkFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Debug"]
+        &["Noop"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -41,18 +41,18 @@ impl SinkFactory for NoopSinkFactory {
         _action: String,
         _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        Ok(Box::new(Noop))
+        Ok(Box::new(NoopSink))
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Noop;
+pub struct NoopSink;
 
-impl Sink for Noop {
+impl Sink for NoopSink {
     fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "Noop"
+        "NoopSink"
     }
 
     fn process(&mut self, _ctx: ExecutorContext) -> Result<(), BoxedError> {

@@ -10,7 +10,7 @@ use crossbeam::channel::{Receiver, Sender, TryRecvError};
 use futures::Future;
 use petgraph::graph::NodeIndex;
 use reearth_flow_action_log::{action_log, ActionLogger};
-use tokio::runtime::Runtime;
+use tokio::runtime::Handle;
 use tracing::info_span;
 
 use crate::{
@@ -103,7 +103,7 @@ pub struct SinkNode<F> {
     shutdown: F,
     /// The runtime to run the source in.
     #[allow(dead_code)]
-    runtime: Arc<Runtime>,
+    runtime: Arc<Handle>,
     logger: Arc<ActionLogger>,
     span: tracing::Span,
 }
@@ -114,7 +114,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         dag: &mut ExecutionDag,
         node_index: NodeIndex,
         shutdown: F,
-        runtime: Arc<Runtime>,
+        runtime: Arc<Handle>,
     ) -> Self {
         let node = dag.node_weight_mut(node_index);
         let Some(kind) = node.kind.take() else {

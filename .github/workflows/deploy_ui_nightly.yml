@@ -1,0 +1,22 @@
+name: Deploy UI Nightly
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+
+jobs:
+  deploy-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Deploy UI
+        uses: ./.github/actions/build_deploy_ui/action.yml
+        with:
+          sha_short: ${{ github.sha }}
+          new_tag: blank
+          new_tag_short: blank
+          name: nightly
+          sha: ${{ github.sha }}

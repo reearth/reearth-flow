@@ -2,6 +2,40 @@ use std::path::{Path, PathBuf};
 
 use tokio;
 
+pub struct Metadata {
+    pub size: i64,
+    pub atime: i64,
+    pub mtime: i64,
+    pub ctime: i64,
+    pub is_dir: bool,
+}
+
+pub fn metadata<P: AsRef<Path>>(path: &P) -> std::io::Result<Metadata> {
+    let metadata = std::fs::metadata(path)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        Ok(Metadata {
+            size: metadata.len() as i64,
+            atime: metadata.atime() as i64,
+            mtime: metadata.mtime() as i64,
+            ctime: metadata.ctime() as i64,
+            is_dir: metadata.is_dir(),
+        })
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        Ok(Metadata {
+            size: metadata.file_size() as i64,
+            atime: metadata.last_access_time() as i64,
+            mtime: metadata.last_write_time() as i64,
+            ctime: metadata.creation_time() as i64,
+            is_dir: metadata.is_dir(),
+        })
+    }
+}
+
 pub async fn empty_dir<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
     let mut entries = tokio::fs::read_dir(path).await?;
     while let Some(entry) = entries.next_entry().await? {

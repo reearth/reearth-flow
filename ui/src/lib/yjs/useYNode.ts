@@ -7,34 +7,39 @@ import { YNodesArray, YWorkflow } from "./workflowBuilder";
 
 export default ({
   currentYWorkflow,
+  undoTrackerActionWrapper,
   handleWorkflowsRemove,
 }: {
   currentYWorkflow: YWorkflow;
+  undoTrackerActionWrapper: (callback: () => void) => void;
   handleWorkflowsRemove: (workflowId: string[]) => void;
 }) => {
   const handleNodesUpdate = useCallback(
-    (newNodes: Node[]) => {
-      const yNodes = currentYWorkflow?.get("nodes") as YNodesArray | undefined;
-      if (!yNodes) return;
+    (newNodes: Node[]) =>
+      undoTrackerActionWrapper(() => {
+        const yNodes = currentYWorkflow?.get("nodes") as
+          | YNodesArray
+          | undefined;
+        if (!yNodes) return;
 
-      const n = yNodes.toJSON() as Node[];
+        const n = yNodes.toJSON() as Node[];
 
-      if (isEqual(n, newNodes)) return;
+        if (isEqual(n, newNodes)) return;
 
-      if (newNodes.length < n.length) {
-        const idsToBeRemoved = nodesToBeRemoved(n, newNodes)
-          .filter((n) => n.type === "subworkflow")
-          .map((n) => n.id);
+        if (newNodes.length < n.length) {
+          const idsToBeRemoved = nodesToBeRemoved(n, newNodes)
+            .filter((n) => n.type === "subworkflow")
+            .map((n) => n.id);
 
-        if (idsToBeRemoved.length > 0) {
-          handleWorkflowsRemove(idsToBeRemoved);
+          if (idsToBeRemoved.length > 0) {
+            handleWorkflowsRemove(idsToBeRemoved);
+          }
         }
-      }
 
-      yNodes.delete(0, n.length);
-      yNodes.insert(0, newNodes);
-    },
-    [currentYWorkflow, handleWorkflowsRemove],
+        yNodes.delete(0, n.length);
+        yNodes.insert(0, newNodes);
+      }),
+    [currentYWorkflow, undoTrackerActionWrapper, handleWorkflowsRemove],
   );
   return {
     handleNodesUpdate,

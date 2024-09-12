@@ -23,7 +23,12 @@ describe("useYEdge", () => {
     const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
     yWorkflows.push([yWorkflow]);
 
-    const { result } = renderHook(() => useYEdge(yWorkflow));
+    const { result } = renderHook(() =>
+      useYEdge({
+        currentYWorkflow: yWorkflow,
+        undoTrackerActionWrapper: () => {},
+      }),
+    );
 
     const initialEdges: Edge[] = [
       { id: "1", source: "a", target: "b" },
@@ -47,7 +52,12 @@ describe("useYEdge", () => {
     const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
     yWorkflows.push([yWorkflow]);
 
-    const { result } = renderHook(() => useYEdge(yWorkflow));
+    const { result } = renderHook(() =>
+      useYEdge({
+        currentYWorkflow: yWorkflow,
+        undoTrackerActionWrapper: () => {},
+      }),
+    );
 
     const initialEdges: Edge[] = [{ id: "1", source: "a", target: "b" }];
 
@@ -66,7 +76,12 @@ describe("useYEdge", () => {
     const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
     const yWorkflow = new Y.Map<Y.Text | YNodesArray | YEdgesArray>();
     yWorkflows.push([yWorkflow]);
-    const { result } = renderHook(() => useYEdge(yWorkflow));
+    const { result } = renderHook(() =>
+      useYEdge({
+        currentYWorkflow: yWorkflow,
+        undoTrackerActionWrapper: () => {},
+      }),
+    );
 
     const newEdges: Edge[] = [{ id: "1", source: "a", target: "b" }];
 

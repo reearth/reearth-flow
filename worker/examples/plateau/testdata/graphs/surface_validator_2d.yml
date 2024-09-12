@@ -1,0 +1,94 @@
+id: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
+name: "PLATEAU.SurfaceValidator2D"
+nodes:
+  - id: 6a141be1-ee08-4cc4-9c0a-c3f8cad6679f
+    name: Noop
+    type: action
+    action: NoopProcessor
+
+  - id: 722b4540-d606-438f-b4cc-fd55eeaeeb42
+    name: SurfaceRouter
+    type: action
+    action: Router
+    with:
+      routingPort: default
+
+  - id: 8a1e6f15-67c6-45ae-a1dc-8e4ae3217574
+    name: GeometryExtractor
+    type: action
+    action: GeometryExtractor
+    with:
+      outputAttribute: dumpGeometry
+
+  - id: 923a0c9f-ab74-4935-819d-fe254d0cfc12
+    name: TwoDimensionForcer
+    type: action
+    action: TwoDimensionForcer
+
+  - id: 0361e205-4d43-442d-b004-2ea981dbca84
+    name: OrientationExtractor
+    type: action
+    action: OrientationExtractor
+    with:
+      outputAttribute: outerOrientation
+
+  - id: 27cd7ebf-7d16-4a1c-ac27-02eddb61a7b9
+    name: FeatureFilterByOrientation
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("__value").outerOrientation != "clockwise"
+          outputPort: inCorrectOrientation
+
+  - id: 6a005159-a30d-4a30-8cca-ebea4e89c351
+    name: GeometryReplacer
+    type: action
+    action: GeometryReplacer
+    with:
+      sourceAttribute: dumpGeometry
+
+  - id: 516e430a-8416-4f21-98cc-8b421ea76ad6
+    name: InCorrectOrientationRouter
+    type: action
+    action: Router
+    with:
+      routingPort: inCorrectOrientation
+
+edges:
+  - id: 1919452e-36db-4f28-9c60-679073fb85bf
+    from: 6a141be1-ee08-4cc4-9c0a-c3f8cad6679f
+    to: 722b4540-d606-438f-b4cc-fd55eeaeeb42
+    fromPort: default
+    toPort: default
+  - id: 273ad558-f7a8-4dc0-9882-7b7ae1f9b58d
+    from: 6a141be1-ee08-4cc4-9c0a-c3f8cad6679f
+    to: 8a1e6f15-67c6-45ae-a1dc-8e4ae3217574
+    fromPort: default
+    toPort: default
+  - id: 61d65610-a843-4971-ad71-d5c754057343
+    from: 8a1e6f15-67c6-45ae-a1dc-8e4ae3217574
+    to: 923a0c9f-ab74-4935-819d-fe254d0cfc12
+    fromPort: default
+    toPort: default
+  - id: e53448ae-1183-466f-8b7d-8e42ec1c742f
+    from: 923a0c9f-ab74-4935-819d-fe254d0cfc12
+    to: 0361e205-4d43-442d-b004-2ea981dbca84
+    fromPort: default
+    toPort: default
+  - id: 78ce97f6-a91d-432a-928a-4da1361bb06f
+    from: 0361e205-4d43-442d-b004-2ea981dbca84
+    to: 27cd7ebf-7d16-4a1c-ac27-02eddb61a7b9
+    fromPort: default
+    toPort: default
+  - id: 7bace900-8f44-45f6-b07b-c936b5cf4263
+    from: 27cd7ebf-7d16-4a1c-ac27-02eddb61a7b9
+    to: 6a005159-a30d-4a30-8cca-ebea4e89c351
+    fromPort: inCorrectOrientation
+    toPort: default
+  - id: 244ba77c-f169-48e6-82e3-2c2b60a8f072
+    from: 6a005159-a30d-4a30-8cca-ebea4e89c351
+    to: 516e430a-8416-4f21-98cc-8b421ea76ad6
+    fromPort: default
+    toPort: default

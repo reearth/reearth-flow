@@ -1,4 +1,5 @@
 use std::iter::FromIterator;
+use std::ops::Range;
 
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
@@ -96,6 +97,10 @@ impl<T: CoordNum, Z: CoordNum> MultiPolygon<T, Z> {
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn range(&self, range: Range<usize>) -> Vec<Polygon<T, Z>> {
+        self.0[range].to_vec()
     }
 }
 
