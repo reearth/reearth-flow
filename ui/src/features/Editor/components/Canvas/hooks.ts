@@ -55,7 +55,7 @@ export default ({
     onNodePickerOpen,
   });
 
-  const { handleEdgesChange, handleConnect } = useEdges({
+  const { handleEdgesChange, handleConnect, handleReconnect } = useEdges({
     edges,
     onEdgeChange: onEdgesUpdate,
   });
@@ -68,5 +68,6 @@ export default ({
     handleNodeDrop,
     handleEdgesChange,
     handleConnect,
+    handleReconnect,
   };
 };
