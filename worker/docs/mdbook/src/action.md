@@ -538,7 +538,21 @@ Filters the dimension of features
 ### Category
 * Geometry
 
-## Echo
+## EchoProcessor
+### Type
+* processor
+### Description
+Echo features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Debug
+
+## EchoSink
 ### Type
 * sink
 ### Description
@@ -1730,7 +1744,21 @@ Intersection points are turned into point features that can contain the merged l
 ### Category
 * Geometry
 
-## Noop
+## NoopProcessor
+### Type
+* processor
+### Description
+Noop features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Noop
+
+## NoopSink
 ### Type
 * sink
 ### Description
@@ -1741,7 +1769,7 @@ noop sink
 * default
 ### Output Ports
 ### Category
-* Debug
+* Noop
 
 ## OrientationExtractor
 ### Type

@@ -133,7 +133,7 @@ graphs:
   - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
     name: echo01
     type: action
-    action: Echo
+    action: EchoSink
   edges:
   - id: c064cf52-705f-443a-b2de-6795266c540d
     from: d3773442-1ba8-47c1-b7c1-0bafa23adec9

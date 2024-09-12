@@ -1,0 +1,21 @@
+id: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
+name: "PLATEAU.SurfaceValidator2D"
+nodes:
+  - id: 6a141be1-ee08-4cc4-9c0a-c3f8cad6679f
+    name: Noop
+    type: action
+    action: NoopProcessor
+
+  - id: 722b4540-d606-438f-b4cc-fd55eeaeeb42
+    name: SurfaceRouter
+    type: action
+    action: Router
+    with:
+      routingPort: default
+
+edges:
+  - id: 1919452e-36db-4f28-9c60-679073fb85bf
+    from: 6a141be1-ee08-4cc4-9c0a-c3f8cad6679f
+    to: 722b4540-d606-438f-b4cc-fd55eeaeeb42
+    fromPort: default
+    toPort: default
