@@ -145,7 +145,7 @@ graphs:
       - id: 5ffe00f3-4554-4fc9-91c7-f7d272691cc4
         name: EchoFeatureTypeExtractor
         type: action
-        action: Echo
+        action: EchoSink
 
       - id: 24825ad1-d005-4a45-b9bf-cbb605b86626
         name: FeatureFilterByRwy
@@ -183,7 +183,7 @@ graphs:
       - id: 69f22583-c0c8-4343-b83b-79842ad0d9ce
         name: Noop
         type: action
-        action: Noop
+        action: NoopSink
 
     edges:
       - id: 3f6eadb8-9092-425b-a41c-100c24ec6e5c

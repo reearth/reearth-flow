@@ -15,6 +15,8 @@ with:
   outputPath:
 graphs:
   - !include ../../../graphs/folder_and_file_path_reader.yml
+  - !include ../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../graphs/surface_validator_2d.yml
   - id: 129b7659-ba08-4b3a-8f70-fac7e96d5ccf
     name: entry_point
     nodes:
@@ -51,7 +53,7 @@ graphs:
       - id: 3fafb79d-ce23-4c47-b6c8-5d7306d48400
         name: Noop-L-bldg-06-Summary
         type: action
-        action: Noop
+        action: NoopSink
 
       - id: 1dba2525-cf5f-4e30-a807-da6c68d2b37e
         name: AttributeManagerUnmatchedXlinkFrom
@@ -187,7 +189,7 @@ graphs:
       - id: 129a0f24-4be9-4a54-9b4b-83080a7cec64
         name: NoopT-bldg-02
         type: action
-        action: Noop
+        action: NoopSink
 
       ## C02
       - id: 0b97e715-8e5b-4581-9476-48665024c45a
@@ -473,6 +475,22 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "02_bldg_c_bldg_01エラー.tsv")
 
+      # l7-8-9-11-13
+      - id: f7a310d1-6d53-43ce-91c1-f1da01747043
+        name: LodSplitterWithDm
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      - id: 56b82536-3b1a-4fe2-93e4-9780c790c12b
+        name: SurfaceValidator2D
+        type: subGraph
+        subGraphId: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
+
+      - id: 923d550b-fe20-4b31-b988-213e13f4cfa6
+        name: Echo-L-7-8-9-11-13
+        type: action
+        action: EchoSink
+
     edges:
       - id: 2c9f5fa9-40bb-4692-b157-815f583172b6
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
@@ -622,5 +640,22 @@ graphs:
       - id: 02b14148-8f40-41f2-9f00-ea36bc96d59c
         from: 0361e205-4d43-442d-b004-2ea981dbca84
         to: d7124377-8f43-4170-b157-a1f1af27f9fd
+        fromPort: default
+        toPort: default
+
+     # l7-8-9-11-13
+      - id: e0ed93af-c98f-4b8c-afdb-4da29a46eadd
+        from: 1b3a610e-83fc-447f-aba6-5d147d394228
+        to: f7a310d1-6d53-43ce-91c1-f1da01747043
+        fromPort: default
+        toPort: default
+      - id: 337a7047-225f-4950-8d6c-03562ace402d
+        from: f7a310d1-6d53-43ce-91c1-f1da01747043
+        to: 56b82536-3b1a-4fe2-93e4-9780c790c12b
+        fromPort: lod0
+        toPort: default
+      - id: 2a6f7d28-6765-4f1b-b5f9-df4eb7a198ff
+        from: 56b82536-3b1a-4fe2-93e4-9780c790c12b
+        to: 923d550b-fe20-4b31-b988-213e13f4cfa6
         fromPort: default
         toPort: default

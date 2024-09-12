@@ -118,7 +118,7 @@ graphs:
       - id: 307fb8b0-0fba-4d1c-be4e-77e4670e7fff
         name: EchoValidatorIntersection
         type: action
-        action: Echo
+        action: EchoSink
 
       - id: 52a4bcab-854d-41e8-a9b3-e391c79631a9
         name: HoleExtractor
@@ -179,7 +179,7 @@ graphs:
       - id: 2f03d753-a8f0-43bc-a85d-0c5554f93ddc
         name: Echo
         type: action
-        action: Echo
+        action: EchoSink
 
       - id: 28adf769-e6d6-4ee1-945a-828680190879
         name: ElevationExtractor
@@ -209,7 +209,7 @@ graphs:
       - id: d7f0130c-80bd-44ee-a1b3-e6988c916308
         name: EchoIntersection
         type: action
-        action: Echo
+        action: EchoSink
 
       - id: dc478fb7-3b17-4801-8644-c271fca39e96
         name: OrientationExtractorInterior
@@ -231,7 +231,7 @@ graphs:
       - id: b2b58fe2-374b-4acd-a38a-b9d0c718d3ef
         name: EchoInterior
         type: action
-        action: Echo
+        action: EchoSink
 
     edges:
       - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd

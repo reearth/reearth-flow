@@ -548,7 +548,23 @@
       ]
     },
     {
-      "name": "Echo",
+      "name": "EchoProcessor",
+      "type": "processor",
+      "description": "Echo features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Debug"
+      ]
+    },
+    {
+      "name": "EchoSink",
       "type": "sink",
       "description": "Echo features",
       "parameter": null,
@@ -1742,7 +1758,23 @@
       ]
     },
     {
-      "name": "Noop",
+      "name": "NoopProcessor",
+      "type": "processor",
+      "description": "Noop features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Noop"
+      ]
+    },
+    {
+      "name": "NoopSink",
       "type": "sink",
       "description": "noop sink",
       "parameter": null,
@@ -1752,7 +1784,7 @@
       ],
       "outputPorts": [],
       "categories": [
-        "Debug"
+        "Noop"
       ]
     },
     {

@@ -17,7 +17,7 @@ graphs:
     name: entry_point
     nodes:
       - id: 725d0323-6a27-4154-acb4-9e6bff200a84
-        name: FilePathExtractor01
+        name: FilePathExtractor
         type: action
         action: FilePathExtractor
         with:
