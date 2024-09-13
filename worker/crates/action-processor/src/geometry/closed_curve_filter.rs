@@ -16,7 +16,7 @@ use reearth_flow_types::{Feature, GeometryValue};
 use serde_json::Value;
 
 pub static CLOSED_PORT: Lazy<Port> = Lazy::new(|| Port::new("closed"));
-pub static OPEN_PORT: Lazy<Port> = Lazy::new(|| Port::new("line"));
+pub static OPEN_PORT: Lazy<Port> = Lazy::new(|| Port::new("open"));
 
 #[derive(Debug, Clone, Default)]
 pub struct ClosedCurveFilterFactory;
