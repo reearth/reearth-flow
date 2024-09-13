@@ -487,7 +487,7 @@ Checks if curves form closed loops
 * default
 ### Output Ports
 * closed
-* line
+* open
 * rejected
 ### Category
 * Geometry

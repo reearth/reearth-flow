@@ -492,7 +492,7 @@
       ],
       "outputPorts": [
         "closed",
-        "line",
+        "open",
         "rejected"
       ],
       "categories": [
