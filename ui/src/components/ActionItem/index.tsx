@@ -8,7 +8,7 @@ type Props = {
   selected: boolean | undefined;
   draggable?: boolean;
   onMouseDown?: () => void;
-  onTypeClick: (type: string) => void;
+  onTypeClick?: (type: string) => void;
   onCategoryClick?: (category: string) => void;
   onDragStart?: (event: DragEvent<HTMLDivElement>, actionName: string) => void;
   onSingleClick?: (name?: string) => void;
@@ -29,6 +29,7 @@ const ActionItem: React.FC<Props> = ({
 }) => {
   const handleTypeClick = useCallback(
     (type: string) => (e: MouseEvent) => {
+      if (!onTypeClick) return;
       e.stopPropagation();
       onTypeClick(type);
     },
