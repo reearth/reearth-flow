@@ -149,7 +149,7 @@ const LeftPanel: React.FC<Props> = ({
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
         <div className="flex flex-col gap-2 border-b px-4 py-2">
-          <p className="text-lg font-thin">
+          <p className="text-lg dark:font-thin">
             {tabs?.find((tc) => tc.id === selectedTab)?.title}
           </p>
         </div>

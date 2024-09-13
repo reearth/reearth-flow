@@ -41,13 +41,13 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-6">
         <div className="flex items-center justify-between gap-2 border-b pb-4">
-          <p className="text-lg font-extralight">{t("Projects")}</p>
+          <p className="text-lg dark:font-extralight">{t("Projects")}</p>
           <Button
             className="flex gap-2"
             variant="outline"
             onClick={() => setOpenProjectAddDialog(true)}>
             <Plus weight="thin" />
-            <p className="text-xs font-light">{t("New Project")}</p>
+            <p className="text-xs dark:font-light">{t("New Project")}</p>
           </Button>
         </div>
         <div

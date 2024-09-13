@@ -12,6 +12,7 @@ import {
   Input,
   Label,
 } from "@flow/components";
+import { ThemeToggle } from "@flow/features/ThemeToggle";
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 
@@ -119,6 +120,10 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
                 onChange={(e) => setPasswordConfirmation(e.target.value)}
               />
             </DialogContentSection>
+          </DialogContentSection>
+          <DialogContentSection className="flex-1">
+            <Label htmlFor="theme">{t("Theme")}</Label>
+            <ThemeToggle />
           </DialogContentSection>
         </DialogContentWrapper>
         <div

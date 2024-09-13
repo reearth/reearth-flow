@@ -23,9 +23,11 @@ const TopNavigation: React.FC = () => {
             }>
             <FlowLogo className="size-5" />
           </div>
-          <h1 className="select-none font-extralight">
+          <h1 className="select-none dark:font-extralight">
             {brandName ?? "Re:Earth Flow"}{" "}
-            <span className="text-xs font-thin">v{version ?? "X.X.X"}</span>
+            <span className="text-xs dark:font-thin">
+              v{version ?? "X.X.X"}
+            </span>
           </h1>
         </div>
         <div
@@ -36,7 +38,6 @@ const TopNavigation: React.FC = () => {
           </div>
         </div>
         <div id="dashboard-right" className="z-10 flex items-center gap-5">
-          {/* <ThemeToggle /> */}
           <UserNavigation />
         </div>
       </div>

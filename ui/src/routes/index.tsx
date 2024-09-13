@@ -36,9 +36,9 @@ function ErrorPage({ errorMessage }: { errorMessage: string }) {
             <FlowLogo className="size-[75px]" />
           </div>
         </div>
-        <p className=" font-extralight text-destructive">{errorMessage}</p>
+        <p className=" dark:font-extralight text-destructive">{errorMessage}</p>
         <Button variant="outline" onClick={() => window.location.reload()}>
-          <p className="font-extralight">{t("Reload")}</p>
+          <p className="dark:font-extralight">{t("Reload")}</p>
         </Button>
       </div>
     </div>

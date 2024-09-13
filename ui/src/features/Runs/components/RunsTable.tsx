@@ -158,7 +158,7 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
               <TableRow key={headerGroup.id} className="border-none">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className="h-8 font-thin">
+                    <TableHead key={header.id} className="h-8 dark:font-thin">
                       {header.isPlaceholder
                         ? null
                         : flexRender(

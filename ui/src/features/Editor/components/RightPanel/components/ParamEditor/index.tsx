@@ -111,7 +111,7 @@ const ParamEditor: React.FC<Props> = ({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="params">
-          <Card className="bg-transparent font-extralight">
+          <Card className="bg-transparent dark:font-extralight">
             <CardHeader>
               <CardTitle>{t("Parameter Editor")}</CardTitle>
               <CardDescription>

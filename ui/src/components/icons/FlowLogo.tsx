@@ -8,7 +8,7 @@ const FlowLogo: React.FC<{
 }> = ({ className, wrapperClassName, id, style }) => (
   <div id={id} className={wrapperClassName}>
     <svg
-      className={className}
+      className={`text-primary dark:text-secondary-foreground ${className}`}
       id={id}
       width="24"
       height="24"

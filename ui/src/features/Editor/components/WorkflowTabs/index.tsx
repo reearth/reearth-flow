@@ -44,7 +44,7 @@ const WorkflowTabs: React.FC<Props> = ({
           className={`mx-1 flex w-[135px] cursor-pointer items-center justify-center rounded px-[6px] py-[2px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"}`}
           onClick={() => onWorkflowChange(mainWorkflow?.id)}>
           <p
-            className={`select-none truncate text-center text-xs font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-accent-foreground"}`}>
+            className={`select-none truncate text-center text-xs dark:font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-accent-foreground"}`}>
             {t("Main Workflow")}
           </p>
         </div>
@@ -59,7 +59,7 @@ const WorkflowTabs: React.FC<Props> = ({
                     onClick={() => onWorkflowChange(sw.id)}
                     onDoubleClick={() => console.log("Double Click")}>
                     <p
-                      className={`select-none truncate px-[15px] text-center text-xs font-extralight group-hover:text-accent-foreground ${currentWorkflowId === sw?.id && "text-accent-foreground"}`}>
+                      className={`select-none truncate px-[15px] text-center text-xs dark:font-extralight group-hover:text-accent-foreground ${currentWorkflowId === sw?.id && "text-accent-foreground"}`}>
                       {sw.name}
                     </p>
                     <X
