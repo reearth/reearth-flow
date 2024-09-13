@@ -39,7 +39,7 @@ const DateTimePicker: React.FC<Props> = ({ className }) => {
 
   return (
     <DatePicker
-      className={`w-full rounded-md border bg-transparent text-sm font-extralight focus-visible:border-none ${className}`}
+      className={`w-full rounded-md border bg-transparent text-sm dark:font-extralight focus-visible:border-none ${className}`}
       selected={startDate}
       dateFormat="yyyy-MM-dd HH:mm"
       timeFormat="HH:mm"

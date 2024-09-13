@@ -199,7 +199,7 @@ const BaseActionButtons: React.FC<{
           }`}
           onClick={() => onSelection?.(content.id)}>
           {content.icon}
-          <p className="text-sm font-thin">{content.title}</p>
+          <p className="text-sm dark:font-thin">{content.title}</p>
         </div>
       ))}
     </>

@@ -15,7 +15,9 @@ export type EditorKeys =
   | "w" // writer dialog
   | "l" // bottom panel logs
   | "p" // bottom panel preview
-  | "c"; // left panel canvas navigator
+  | "a" // SHIFT + a = left panel actions list
+  | "r" // SHIFT + r = left panel resources
+  | "c"; // SHIFT + c = left panel canvas navigator
 
 export type CanvasKeys =
   | "c" // w CMD = Copy, wout CMD = left panel canvas navigator
@@ -43,7 +45,9 @@ type PossibleActions =
   | "writerDialog"
   | "bottomPanelLogs"
   | "bottomPanelPreview"
-  | "leftPanelCanvasNavigator";
+  | "leftPanelCanvasNavigator"
+  | "leftPanelActionsList"
+  | "leftPanelResources";
 
 export type KeyBinding<K extends PossibleKeys = PossibleKeys> = {
   key: K;
@@ -77,7 +81,9 @@ export const EditorKeyBindings: Partial<
   writerDialog: { key: "w" },
   bottomPanelLogs: { key: "l", commandKey: true },
   bottomPanelPreview: { key: "p", commandKey: true },
-  leftPanelCanvasNavigator: { key: "c", commandKey: true },
+  leftPanelCanvasNavigator: { key: "c", shiftKey: true },
+  leftPanelActionsList: { key: "a", shiftKey: true },
+  leftPanelResources: { key: "r", shiftKey: true },
 };
 
 export const CanvasKeyBindings: Partial<

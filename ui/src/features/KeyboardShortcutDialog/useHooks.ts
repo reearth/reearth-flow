@@ -55,6 +55,14 @@ export default () => {
         keyBinding: EditorKeyBindings["leftPanelCanvasNavigator"],
         description: t("Toggle the canvas navigator panel"),
       },
+      {
+        keyBinding: EditorKeyBindings["leftPanelActionsList"],
+        description: t("Toggle the actions list panel"),
+      },
+      {
+        keyBinding: EditorKeyBindings["leftPanelResources"],
+        description: t("Toggle the resources panel"),
+      },
     ],
   };
 

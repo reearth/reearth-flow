@@ -93,20 +93,20 @@ const Runs: React.FC = () => {
       <div className="flex flex-1">
         <div className="flex w-[250px] flex-col gap-3 border-r bg-secondary px-2 py-4">
           <div className="flex p-2">
-            <p className="flex-1 text-lg font-light">{t("Runs")}</p>
+            <p className="flex-1 text-lg dark:font-light">{t("Runs")}</p>
             <Button
               className="gap-1"
               size="sm"
               onClick={() => handleTabChange("new")}>
               <Play />
-              <p className="font-extralight">{t("New Run")}</p>
+              <p className="dark:font-extralight">{t("New Run")}</p>
             </Button>
           </div>
           <div className="flex-1">
             <div
               className={`mb-1 rounded-md border-transparent px-2 py-[2px] hover:cursor-pointer hover:bg-accent ${tab === "all" ? "bg-accent text-secondary-foreground" : undefined}`}
               onClick={() => handleTabChange("all")}>
-              <p className="font-thin">{t("All")}</p>
+              <p className="dark:font-thin">{t("All")}</p>
             </div>
             <div className="-mx-2 border-b" />
             <div className="flex flex-col gap-1 p-2">
@@ -115,7 +115,7 @@ const Runs: React.FC = () => {
                   key={id}
                   className={`-mx-2 rounded-md border-l-2 border-transparent px-2 py-[2px] hover:cursor-pointer hover:bg-accent ${tab === id ? "bg-accent text-secondary-foreground" : undefined}`}
                   onClick={() => handleTabChange(id)}>
-                  <p className="text-sm font-thin">{name}</p>
+                  <p className="text-sm dark:font-thin">{name}</p>
                 </div>
               ))}
             </div>

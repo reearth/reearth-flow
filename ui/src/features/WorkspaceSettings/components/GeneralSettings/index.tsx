@@ -55,7 +55,7 @@ const GeneralSettings: React.FC = () => {
 
   return (
     <div>
-      <p className="text-lg font-extralight">{t("General Settings")}</p>
+      <p className="text-lg dark:font-extralight">{t("General Settings")}</p>
       <div className="mt-4 flex max-w-[700px] flex-col gap-6">
         <div className="flex flex-col gap-2">
           <Label htmlFor="workspace-name">{t("Workspace Name")}</Label>
