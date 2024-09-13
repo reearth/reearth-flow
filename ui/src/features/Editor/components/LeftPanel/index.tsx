@@ -129,12 +129,17 @@ const LeftPanel: React.FC<Props> = ({
   };
 
   useShortcuts([
-    // TODO: Need to redfine navigator shorcut
     {
-      keyBinding: { key: "c", commandKey: false },
-      callback: () => {
-        handleTabChange("navigator");
-      },
+      keyBinding: { key: "c", shiftKey: true },
+      callback: () => handleTabChange("navigator"),
+    },
+    {
+      keyBinding: { key: "a", shiftKey: true },
+      callback: () => handleTabChange("actions-list"),
+    },
+    {
+      keyBinding: { key: "r", shiftKey: true },
+      callback: () => handleTabChange("resources"),
     },
   ]);
 
