@@ -12,7 +12,7 @@ import {
   Input,
   Label,
 } from "@flow/components";
-import { ThemeToggle } from "@flow/features/ThemeToggle";
+// import { ThemeToggle } from "@flow/features/ThemeToggle";
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 
@@ -121,10 +121,10 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
               />
             </DialogContentSection>
           </DialogContentSection>
-          <DialogContentSection className="flex-1">
+          {/* <DialogContentSection className="flex-1">
             <Label htmlFor="theme">{t("Theme")}</Label>
             <ThemeToggle />
-          </DialogContentSection>
+          </DialogContentSection> */}
         </DialogContentWrapper>
         <div
           className={`text-xs text-destructive ${showError ? "opacity-70" : "opacity-0"}`}>

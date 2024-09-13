@@ -7,8 +7,8 @@ import {
   DropdownMenuTrigger,
   Button,
 } from "@flow/components";
-import { useTheme } from "@flow/components/ThemeProvider";
 import { useT } from "@flow/lib/i18n";
+import { useTheme } from "@flow/lib/theme";
 
 const ThemeToggle = () => {
   const { setTheme } = useTheme();
