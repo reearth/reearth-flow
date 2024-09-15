@@ -210,6 +210,27 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
             }
         }
     }
+
+    pub fn ring_area(&self) -> f64 {
+        self.signed_ring_area().abs()
+    }
+
+    pub fn signed_ring_area(&self) -> f64 {
+        if self.is_empty() {
+            return 0.0;
+        }
+        let mut area = 0.0;
+        let mut ring_iter = self.iter();
+        let mut prev = ring_iter.next().unwrap().x_y();
+        // shoelace formula
+        for coord in ring_iter {
+            let xy = coord.x_y();
+            area += (prev.0.to_f64().unwrap() * xy.1.to_f64().unwrap())
+                - (prev.1.to_f64().unwrap() * xy.0.to_f64().unwrap());
+            prev = xy;
+        }
+        area / 2.0
+    }
 }
 
 impl<T: CoordNum, Z: CoordNum, IC: Into<Coordinate<T, Z>>> From<Vec<IC>> for LineString<T, Z> {

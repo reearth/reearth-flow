@@ -6,13 +6,13 @@ use geomotry_types::GeometryType;
 use hashbrown::HashMap as BrownHashMap;
 use indexmap::IndexSet;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_geometry::algorithm::area2d::Area2D;
 use reearth_flow_geometry::algorithm::coords_iter::CoordsIter;
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::line_string::LineString;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 use reearth_flow_geometry::types::polygon::Polygon2D;
+use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -178,8 +178,6 @@ impl MVTWriter {
         min_zoom: u8,
         max_zoom: u8,
     ) -> Result<(), crate::errors::SinkError> {
-        let bincode_config = bincode::config::standard();
-
         let max_detail = 12; // 4096
         let buffer_pixels = 5;
 
@@ -191,13 +189,13 @@ impl MVTWriter {
         for entry in city_gml.gml_geometries.iter() {
             match entry.ty {
                 GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
-                    for idx_poly in city_gml.clone().polygon_uvs {
+                    for poly in entry.clone().polygons {
                         // Early rejection of polygons that are not front-facing.
-                        if idx_poly.exterior().signed_area2d() < 0.0 {
+                        if poly.exterior().signed_ring_area() >= 0.0 {
                             continue;
                         }
 
-                        let area = idx_poly.exterior().signed_area2d();
+                        let area = poly.area();
 
                         // Slice for each zoom level
                         for zoom in min_zoom..=max_zoom {
@@ -207,8 +205,7 @@ impl MVTWriter {
                             if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
                                 continue;
                             }
-
-                            slice_polygon(zoom, extent, buffer, &idx_poly, &mut tiled_mpolys);
+                            slice_polygon(zoom, extent, buffer, &poly, &mut tiled_mpolys);
                         }
                     }
                 }
@@ -233,20 +230,10 @@ impl MVTWriter {
                 properties: attributes.clone(),
             };
 
-            let bytes = match bincode::serde::encode_to_vec(&feature, bincode_config) {
-                Ok(bytes) => bytes,
-                Err(e) => {
-                    return Err(SinkError::FileWriter(format!(
-                        "Failed to serialize a sliced feature: {:?}",
-                        e
-                    )));
-                }
-            };
-
             let default_detail = 12;
             let min_detail = 9;
 
-            let serialized_feats = [bytes];
+            // let serialized_feats = vec![bytes];
 
             let storage = storage_resolver
                 .resolve(output)
@@ -261,7 +248,7 @@ impl MVTWriter {
 
             for detail in (min_detail..=default_detail).rev() {
                 // Make a MVT tile binary
-                let bytes = make_tile(detail, &serialized_feats)?;
+                let bytes = make_tile(detail, &feature)?;
 
                 // Retry with a lower detail level if the compressed tile size is too large
                 let compressed_size = {
@@ -286,110 +273,102 @@ impl MVTWriter {
     }
 }
 
-fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> Result<Vec<u8>, SinkError> {
+fn make_tile(default_detail: i32, feature: &SlicedFeature) -> Result<Vec<u8>, SinkError> {
     let mut layers: BrownHashMap<String, LayerData> = BrownHashMap::new();
     let mut int_ring_buf = Vec::new();
     let mut int_ring_buf2 = Vec::new();
     let extent = 1 << default_detail;
-    let bincode_config = bincode::config::standard();
 
-    for serialized_feat in serialized_feats {
-        let (feature, _): (SlicedFeature, _) =
-            bincode::serde::decode_from_slice(serialized_feat, bincode_config).map_err(|err| {
-                SinkError::FileWriter(format!("Failed to deserialize a sliced feature: {:?}", err))
-            })?;
+    let mpoly = feature.geometry.clone();
+    let mut int_mpoly: MultiPolygon2D<i16> = Default::default(); // 2D only
 
-        let mpoly = feature.geometry;
-        let mut int_mpoly: MultiPolygon2D<i16> = Default::default(); // 2D only
+    for poly in &mpoly {
+        for (ri, ring) in poly.rings().into_iter().enumerate() {
+            int_ring_buf.clear();
+            int_ring_buf.extend(ring.into_iter().map(|c| {
+                let x = (c.x as f64 * extent as f64 + 0.5) as i16;
+                let y = (c.y as f64 * extent as f64 + 0.5) as i16;
+                [x, y]
+            }));
 
-        for poly in &mpoly {
-            for (ri, ring) in poly.rings().into_iter().enumerate() {
-                int_ring_buf.clear();
-                int_ring_buf.extend(ring.into_iter().map(|c| {
-                    let x = (c.x as f64 * extent as f64 + 0.5) as i16;
-                    let y = (c.y as f64 * extent as f64 + 0.5) as i16;
-                    [x, y]
-                }));
+            // some simplification
+            {
+                int_ring_buf2.clear();
+                int_ring_buf2.push(int_ring_buf[0]);
+                for c in int_ring_buf.windows(3) {
+                    let &[prev, curr, next] = c.try_into().unwrap();
 
-                // some simplification
-                {
-                    int_ring_buf2.clear();
-                    int_ring_buf2.push(int_ring_buf[0]);
-                    for c in int_ring_buf.windows(3) {
-                        let &[prev, curr, next] = c.try_into().unwrap();
-
-                        // Remove duplicate points
-                        if prev == curr {
-                            continue;
-                        }
-
-                        // Reject collinear points
-                        let [curr_x, curr_y] = curr;
-                        let [prev_x, prev_y] = prev;
-                        let [next_x, next_y] = next;
-                        if curr != next
-                            && ((next_y - prev_y) as i32 * (curr_x - prev_x) as i32).abs()
-                                == ((curr_y - prev_y) as i32 * (next_x - prev_x) as i32).abs()
-                        {
-                            continue;
-                        }
-
-                        int_ring_buf2.push(curr);
+                    // Remove duplicate points
+                    if prev == curr {
+                        continue;
                     }
-                    int_ring_buf2.push(*int_ring_buf.last().unwrap());
-                }
 
-                let ls = LineString::new(
-                    int_ring_buf2
-                        .iter()
-                        .map(|c| Coordinate::new_(c[0], c[1]))
-                        .collect(),
-                );
-                match ri {
-                    0 => int_mpoly.add_exterior(ls),
-                    _ => int_mpoly.add_interior(ls),
+                    // Reject collinear points
+                    let [curr_x, curr_y] = curr;
+                    let [prev_x, prev_y] = prev;
+                    let [next_x, next_y] = next;
+                    if curr != next
+                        && ((next_y - prev_y) as i32 * (curr_x - prev_x) as i32).abs()
+                            == ((curr_y - prev_y) as i32 * (next_x - prev_x) as i32).abs()
+                    {
+                        continue;
+                    }
+
+                    int_ring_buf2.push(curr);
+                }
+                int_ring_buf2.push(*int_ring_buf.last().unwrap());
+            }
+
+            let ls = LineString::new(
+                int_ring_buf2
+                    .iter()
+                    .map(|c| Coordinate::new_(c[0], c[1]))
+                    .collect(),
+            );
+            match ri {
+                0 => int_mpoly.add_exterior(ls),
+                _ => int_mpoly.add_interior(ls),
+            }
+        }
+    }
+
+    // encode geometry
+    let mut geom_enc = GeometryEncoder::new();
+    for poly in &int_mpoly {
+        let exterior = poly.exterior();
+        if exterior.signed_ring_area() < 0.0 {
+            geom_enc.add_ring(exterior.into_iter().map(|c| [c.x, c.y]));
+            for interior in poly.interiors() {
+                if interior.signed_ring_area() < 0.0 {
+                    geom_enc.add_ring(interior.into_iter().map(|c| [c.x, c.y]));
                 }
             }
         }
+    }
+    let geometry = geom_enc.into_vec();
+    if geometry.is_empty() {
+        return Ok(vec![]);
+    }
 
-        // encode geometry
-        let mut geom_enc = GeometryEncoder::new();
-        for poly in &int_mpoly {
-            let exterior = poly.exterior();
-            if exterior.signed_area2d() < 0 {
-                geom_enc.add_ring(exterior.into_iter().map(|c| [c.x, c.y]));
-                for interior in poly.interiors() {
-                    if interior.signed_area2d() > 0 {
-                        geom_enc.add_ring(interior.into_iter().map(|c| [c.x, c.y]));
-                    }
-                }
-            }
-        }
-        let geometry = geom_enc.into_vec();
-        if geometry.is_empty() {
-            continue;
-        }
+    let tags: Vec<u32> = Vec::new();
 
-        let tags: Vec<u32> = Vec::new();
+    for (key, value) in &feature.properties {
+        let layer = layers.entry_ref(key.type_name()).or_default();
+        let mut tags_clone = tags.clone();
+        convert_properties(&mut tags_clone, &mut layer.tags_enc, key.type_name(), value);
 
-        for (key, value) in &feature.properties {
-            let layer = layers.entry_ref(key.type_name()).or_default();
-            let mut tags_clone = tags.clone();
-            convert_properties(&mut tags_clone, &mut layer.tags_enc, key.type_name(), value);
-
-            let geomery_cloned = geometry.clone();
-            layer.features.push(vector_tile::tile::Feature {
-                id: Some(
-                    key.type_name()
-                        .as_bytes()
-                        .iter()
-                        .fold(5381u64, |a, c| a.wrapping_mul(33) ^ *c as u64),
-                ),
-                tags: tags_clone,
-                r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
-                geometry: geomery_cloned,
-            });
-        }
+        let geomery_cloned = geometry.clone();
+        layer.features.push(vector_tile::tile::Feature {
+            id: Some(
+                key.type_name()
+                    .as_bytes()
+                    .iter()
+                    .fold(5381u64, |a, c| a.wrapping_mul(33) ^ *c as u64),
+            ),
+            tags: tags_clone,
+            r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
+            geometry: geomery_cloned,
+        });
     }
 
     let layers = layers
@@ -684,7 +663,7 @@ fn slice_polygon(
     zoom: u8,
     extent: u32,
     buffer: u32,
-    poly: &Polygon2D<f64>,
+    poly: &Polygon3D<f64>,
     out: &mut HashMap<(u8, u32, u32), MultiPolygon2D<i16>>,
 ) {
     let z_scale = (1 << zoom) as f64;
@@ -757,7 +736,7 @@ fn slice_polygon(
 
             let linestring = LineString::from(coordinates);
 
-            y_sliced_poly.interiors_push(linestring);
+            y_sliced_poly.add_ring(linestring);
         }
 
         y_sliced_polys.push(y_sliced_poly);
