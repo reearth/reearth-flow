@@ -48,3 +48,5 @@ once_cell.workspace = true
 dotenv.workspace = true
 url.workspace = true
 http.workspace = true
+dashmap.workspace = true
+cached.workspace = true

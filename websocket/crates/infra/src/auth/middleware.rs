@@ -1,16 +1,15 @@
 use crate::auth::error::JwtError;
-use crate::auth::jwt::Jwt;
+use crate::auth::jwt::JwtValidator;
 use axum::{
     body::Body,
     http::{Request, StatusCode},
     middleware::Next,
     response::Response,
 };
-use services::AuthServiceClient;
 use tracing::{debug, error, info};
 
 pub async fn auth_middleware<B>(
-    client: AuthServiceClient,
+    jwt: JwtValidator,
     req: Request<Body>,
     next: Next,
 ) -> Result<Response, JwtError> {
@@ -27,10 +26,9 @@ pub async fn auth_middleware<B>(
         }
     };
 
-    let jwt = Jwt::new(token.clone(), client);
     debug!("Attempting to verify token");
 
-    match jwt.verify().await {
+    match jwt.verify(&token).await {
         Ok(_) => {
             info!("Token verified successfully");
             let response = next.run(req).await;
@@ -54,6 +52,9 @@ fn extract_token<B>(req: &Request<B>) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use services::AuthServiceClient;
+    use std::time::Duration;
+
     use super::*;
     use axum::{
         body::Body,
@@ -102,12 +103,14 @@ mod tests {
             .await;
 
         let uri = format!("{}/auth", auth_service_url);
+        let client = AuthServiceClient::new(&uri).unwrap();
+        let jwt = JwtValidator::new(client, Duration::from_secs(300));
 
         let app = Router::new()
             .route("/", get(|| async { "Protected" }))
             .layer(from_fn(move |req, next| {
-                let client = AuthServiceClient::new(&uri).unwrap();
-                auth_middleware::<Body>(client, req, next)
+                let jwt = jwt.clone();
+                auth_middleware::<Body>(jwt, req, next)
             }));
 
         let request = Request::builder()
@@ -144,12 +147,14 @@ mod tests {
             .await;
 
         let uri = format!("{}/auth", auth_service_url);
+        let client = AuthServiceClient::new(&uri).unwrap();
+        let jwt = JwtValidator::new(client, Duration::from_secs(300));
 
         let app = Router::new()
             .route("/", get(|| async { "Protected" }))
             .layer(from_fn(move |req, next| {
-                let client = AuthServiceClient::new(&uri).unwrap();
-                auth_middleware::<Body>(client, req, next)
+                let jwt = jwt.clone();
+                auth_middleware::<Body>(jwt, req, next)
             }));
         let request = Request::builder()
             .uri("/")

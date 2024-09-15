@@ -1,7 +1,6 @@
-use http::{uri::InvalidUri, Uri};
+use http::Uri;
 use reqwest::Response;
 use std::{str::FromStr, time::Duration};
-use tower::timeout;
 
 use thiserror::Error;
 

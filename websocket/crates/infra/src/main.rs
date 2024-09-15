@@ -1,7 +1,7 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{error_handling::HandleErrorLayer, middleware::from_fn, routing::get, Router};
-use infra::auth_middleware;
+use infra::{auth_middleware, JwtValidator};
 use socket::{
     handler::{handle_error, handle_upgrade},
     state::AppState,
@@ -14,6 +14,7 @@ use tower::timeout::TimeoutLayer;
 use tower::ServiceBuilder;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
 mod socket;
 
 #[tokio::main]
@@ -30,14 +31,15 @@ async fn main() -> std::io::Result<()> {
 
     let auth_client =
         AuthServiceClient::new(&config.auth_service_url).expect("Failed to create auth client");
+    let jwt_validator = JwtValidator::new(auth_client, Duration::from_secs(300));
 
     let state = Arc::new(AppState::default());
     let state_err = state.clone();
     let app = Router::new()
         .route("/:room", get(handle_upgrade))
         .layer(from_fn(move |req, next| {
-            let auth_client = auth_client.clone();
-            auth_middleware::<axum::body::Body>(auth_client, req, next)
+            let jwt_validator = jwt_validator.clone();
+            auth_middleware::<axum::body::Body>(jwt_validator, req, next)
         }))
         .layer(
             ServiceBuilder::new()
