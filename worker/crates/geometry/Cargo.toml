@@ -17,7 +17,7 @@ nusamai-projection.workspace = true
 
 approx.workspace = true
 bytes.workspace = true
-clipper-sys = "0.7.2"
+clipper-sys.workspace = true
 float_next_after.workspace = true
 geojson.workspace = true
 nalgebra.workspace = true
