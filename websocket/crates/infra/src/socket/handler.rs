@@ -12,9 +12,10 @@ use axum::{
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
-use services::AuthServiceClient;
+//use services::AuthServiceClient;
 use tower::BoxError;
-use tracing::{debug, error, trace};
+use tracing::{debug, trace};
+//use tracing::error;
 use yrs::sync::{Awareness, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
@@ -54,7 +55,7 @@ pub async fn handle_upgrade(
 async fn handle_socket(
     mut socket: WebSocket,
     addr: SocketAddr,
-    token: String,
+    _token: String,
     room_id: String,
     state: Arc<AppState>,
 ) {

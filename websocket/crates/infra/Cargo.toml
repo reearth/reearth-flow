@@ -50,3 +50,5 @@ url.workspace = true
 http.workspace = true
 dashmap.workspace = true
 cached.workspace = true
+tokio-tungstenite.workspace = true
+futures-util.workspace = true
