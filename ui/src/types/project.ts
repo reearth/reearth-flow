@@ -36,3 +36,8 @@ export type UpdateProject = {
 export type DeleteProject = {
   projectId?: string;
 } & ApiResponse;
+
+export type RunProject = {
+  projectId?: string;
+  started?: boolean;
+} & ApiResponse;

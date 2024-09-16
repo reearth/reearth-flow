@@ -5,7 +5,9 @@ import {
   DeleteProject,
   GetProject,
   GetWorkspaceProjects,
+  RunProject,
   UpdateProject,
+  Workflow,
 } from "@flow/types";
 
 import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
@@ -18,10 +20,11 @@ export const useProject = () => {
 
   const {
     createProjectMutation,
-    useGetProjectsInfiniteQuery,
-    useGetProjectByIdQuery,
     deleteProjectMutation,
     updateProjectMutation,
+    runProjectMutation,
+    useGetProjectsInfiniteQuery,
+    useGetProjectByIdQuery,
   } = useQueries();
 
   const createProject = async (
@@ -85,6 +88,38 @@ export const useProject = () => {
         variant: "destructive",
       });
       return { projectId: data.projectId, ...rest };
+    } catch (_err) {
+      return { projectId: undefined, ...rest };
+    }
+  };
+
+  const runProject = async (
+    projectId: string,
+    workspaceId: string,
+    workflows: Workflow[],
+  ): Promise<RunProject> => {
+    const { mutateAsync, ...rest } = runProjectMutation;
+
+    // TODO: convert to InputWorkflow type
+    const gqlWorkflows = workflows.map((workflow) => ({
+      ...workflow,
+      nodes: workflow.nodes ?? [],
+      edges: workflow.edges ?? [],
+    }));
+    try {
+      const data = await mutateAsync({
+        projectId,
+        workspaceId,
+        workflows: gqlWorkflows,
+      });
+      toast({
+        title: t("Successful Deletion"),
+        description: t(
+          "Project has been successfully deleted from your workspace.",
+        ),
+        variant: "destructive",
+      });
+      return { projectId: data.projectId, started: data.started, ...rest };
     } catch (_err) {
       return { projectId: undefined, ...rest };
     }

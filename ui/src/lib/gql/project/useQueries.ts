@@ -15,6 +15,7 @@ import {
   DeleteProjectInput,
   UpdateProjectInput,
   ProjectFragment,
+  RunProjectInput,
 } from "../__gen__/graphql";
 
 enum ProjectQueryKeys {
@@ -129,11 +130,33 @@ export const useQueries = () => {
       }),
   });
 
+  const runProjectMutation = useMutation({
+    mutationFn: async ({
+      projectId,
+      workspaceId,
+      workflows,
+    }: RunProjectInput) => {
+      const data = await graphQLContext?.RunProject({
+        input: { projectId, workspaceId, workflows },
+      });
+      return {
+        projectId: data?.runProject?.projectId,
+        workspaceId: workspaceId,
+        started: data?.runProject?.started,
+      };
+    },
+    onSuccess: ({ workspaceId }) =>
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
+      }),
+  });
+
   return {
     createProjectMutation,
-    useGetProjectsInfiniteQuery,
-    useGetProjectByIdQuery,
     deleteProjectMutation,
     updateProjectMutation,
+    runProjectMutation,
+    useGetProjectsInfiniteQuery,
+    useGetProjectByIdQuery,
   };
 };
