@@ -90,7 +90,7 @@ const NewRun: React.FC = () => {
   return (
     <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-6">
       <div className="flex items-center justify-between gap-4">
-        <p className="text-xl font-extralight">{t("New run")}</p>
+        <p className="text-xl dark:font-extralight">{t("New run")}</p>
         <Button className="self-end" variant="outline">
           {t("Run")}
         </Button>

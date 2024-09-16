@@ -130,10 +130,16 @@ const LeftPanel: React.FC<Props> = ({
 
   useShortcuts([
     {
-      keyBinding: { key: "c", commandKey: false },
-      callback: () => {
-        handleTabChange("navigator");
-      },
+      keyBinding: { key: "c", shiftKey: true },
+      callback: () => handleTabChange("navigator"),
+    },
+    {
+      keyBinding: { key: "a", shiftKey: true },
+      callback: () => handleTabChange("actions-list"),
+    },
+    {
+      keyBinding: { key: "r", shiftKey: true },
+      callback: () => handleTabChange("resources"),
     },
   ]);
 
@@ -148,7 +154,7 @@ const LeftPanel: React.FC<Props> = ({
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
         <div className="flex flex-col gap-2 border-b px-4 py-2">
-          <p className="text-lg font-thin">
+          <p className="text-lg dark:font-thin">
             {tabs?.find((tc) => tc.id === selectedTab)?.title}
           </p>
         </div>
@@ -157,7 +163,7 @@ const LeftPanel: React.FC<Props> = ({
           {tabs?.find((tc) => tc.id === selectedTab)?.component}
         </div>
       </div>
-      <aside className="relative z-10 w-14 border-r bg-secondary  ">
+      <aside className="relative z-10 w-14 border-r bg-secondary">
         <div className="flex h-full flex-col">
           <nav className="flex flex-col items-center gap-4 p-2">
             <Link

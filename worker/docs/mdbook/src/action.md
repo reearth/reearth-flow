@@ -487,7 +487,7 @@ Checks if curves form closed loops
 * default
 ### Output Ports
 * closed
-* line
+* open
 * rejected
 ### Category
 * Geometry
@@ -538,7 +538,21 @@ Filters the dimension of features
 ### Category
 * Geometry
 
-## Echo
+## EchoProcessor
+### Type
+* processor
+### Description
+Echo features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Debug
+
+## EchoSink
 ### Type
 * sink
 ### Description
@@ -1774,7 +1788,21 @@ Writes features to a file
 ### Category
 * File
 
-## Noop
+## NoopProcessor
+### Type
+* processor
+### Description
+Noop features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Noop
+
+## NoopSink
 ### Type
 * sink
 ### Description
@@ -1785,7 +1813,7 @@ noop sink
 * default
 ### Output Ports
 ### Category
-* Debug
+* Noop
 
 ## OrientationExtractor
 ### Type

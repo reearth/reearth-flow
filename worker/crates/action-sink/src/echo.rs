@@ -12,7 +12,7 @@ pub struct EchoSinkFactory;
 
 impl SinkFactory for EchoSinkFactory {
     fn name(&self) -> &str {
-        "Echo"
+        "EchoSink"
     }
 
     fn description(&self) -> &str {
@@ -42,18 +42,18 @@ impl SinkFactory for EchoSinkFactory {
         _action: String,
         _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        Ok(Box::new(Echo))
+        Ok(Box::new(EchoSink))
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Echo;
+pub struct EchoSink;
 
-impl Sink for Echo {
+impl Sink for EchoSink {
     fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "Echo"
+        "EchoSink"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {

@@ -48,7 +48,7 @@ graphs:
       - id: 10d0ffea-5178-4ab8-ae5b-909168fbd253
         name: Noop
         type: action
-        action: Noop
+        action: NoopSink
 
     edges:
       - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd

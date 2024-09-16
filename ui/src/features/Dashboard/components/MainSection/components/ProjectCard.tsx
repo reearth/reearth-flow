@@ -44,14 +44,14 @@ const ProjectCard: React.FC<Props> = ({
       onClick={() => onProjectSelect(project)}>
       <CardContent className="flex h-[120px] items-center justify-center rounded-t-lg bg-logo/30 p-0">
         <FlowLogo
-          className={`size-[40px] text-zinc-300 ${description ? "group:hover:opacity-90" : ""}`}
+          className={`size-[40px] ${description ? "group:hover:opacity-90" : ""}`}
         />
       </CardContent>
       <CardHeader className="px-2 py-1">
-        <CardTitle className="truncate font-extralight">{name}</CardTitle>
+        <CardTitle className="truncate dark:font-extralight">{name}</CardTitle>
       </CardHeader>
       <CardFooter className="flex px-2 pb-1">
-        <p className="text-xs font-thin text-zinc-400">
+        <p className="text-xs text-zinc-400 dark:font-thin">
           {t("Last modified:")} {formatDate(updatedAt)}
         </p>
       </CardFooter>
@@ -59,7 +59,7 @@ const ProjectCard: React.FC<Props> = ({
         className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-lg group-hover:flex group-hover:flex-col`}>
         <div
           className={`flex h-[120px] items-center justify-center rounded-t-lg bg-black/30 p-4 ${description ? "backdrop-blur-sm" : ""}`}>
-          <p className="line-clamp-4 overflow-hidden text-ellipsis whitespace-normal break-words text-center text-sm font-light">
+          <p className="line-clamp-4 overflow-hidden text-ellipsis whitespace-normal break-words text-center text-sm text-secondary dark:font-light dark:text-foreground">
             {description}
           </p>
         </div>

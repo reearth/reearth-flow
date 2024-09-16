@@ -17,7 +17,7 @@ graphs:
     name: entry_point
     nodes:
       - id: 725d0323-6a27-4154-acb4-9e6bff200a84
-        name: FilePathExtractor01
+        name: FilePathExtractor
         type: action
         action: FilePathExtractor
         with:
@@ -210,7 +210,7 @@ graphs:
         with:
           format: tsv
           output: |
-            env.get("outputPath") + "/01_共通.tsv"
+            file::join_path(env.get("outputPath"), "01_共通.tsv")
 
       - id: 3b6f77dc-fc94-4610-bec8-3b1cd2789f3d
         name: StatisticsCalculator
@@ -279,7 +279,7 @@ graphs:
               result
             }
           output: |
-            env.get("outputPath") + "/summary_common.json"
+            file::join_path(env.get("outputPath"), "summary_common.json")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

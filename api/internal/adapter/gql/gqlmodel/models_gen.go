@@ -62,6 +62,12 @@ type CreateAssetPayload struct {
 	Asset *Asset `json:"asset"`
 }
 
+type CreateDeploymentInput struct {
+	ProjectID   ID               `json:"projectId"`
+	WorkspaceID ID               `json:"workspaceId"`
+	Workflows   []*InputWorkflow `json:"workflows"`
+}
+
 type CreateProjectInput struct {
 	WorkspaceID ID      `json:"workspaceId"`
 	Name        *string `json:"name,omitempty"`
@@ -101,6 +107,41 @@ type DeleteWorkspacePayload struct {
 	WorkspaceID ID `json:"workspaceId"`
 }
 
+type Deployment struct {
+	ID          ID         `json:"id"`
+	ProjectID   ID         `json:"projectId"`
+	WorkspaceID ID         `json:"workspaceId"`
+	WorkflowID  ID         `json:"workflowId"`
+	Version     string     `json:"version"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+	Project     *Project   `json:"project,omitempty"`
+	Workspace   *Workspace `json:"workspace,omitempty"`
+}
+
+func (Deployment) IsNode()        {}
+func (this Deployment) GetID() ID { return this.ID }
+
+type DeploymentConnection struct {
+	Edges      []*DeploymentEdge `json:"edges"`
+	Nodes      []*Deployment     `json:"nodes"`
+	PageInfo   *PageInfo         `json:"pageInfo"`
+	TotalCount int               `json:"totalCount"`
+}
+
+type DeploymentEdge struct {
+	Cursor usecasex.Cursor `json:"cursor"`
+	Node   *Deployment     `json:"node,omitempty"`
+}
+
+type DeploymentPayload struct {
+	Deployment *Deployment `json:"deployment"`
+}
+
+type ExecuteDeploymentInput struct {
+	DeploymentID ID `json:"deploymentId"`
+}
+
 type InputData struct {
 	Name     string        `json:"name"`
 	ActionID ID            `json:"actionId"`
@@ -134,6 +175,36 @@ type InputWorkflowNode struct {
 	ID   ID                    `json:"id"`
 	Type InputWorkflowNodeType `json:"type"`
 	Data *InputData            `json:"data"`
+}
+
+type Job struct {
+	ID           ID          `json:"id"`
+	DeploymentID ID          `json:"deploymentId"`
+	WorkspaceID  ID          `json:"workspaceId"`
+	Status       JobStatus   `json:"status"`
+	StartedAt    time.Time   `json:"startedAt"`
+	CompletedAt  *time.Time  `json:"completedAt,omitempty"`
+	Deployment   *Deployment `json:"deployment,omitempty"`
+	Workspace    *Workspace  `json:"workspace,omitempty"`
+}
+
+func (Job) IsNode()        {}
+func (this Job) GetID() ID { return this.ID }
+
+type JobConnection struct {
+	Edges      []*JobEdge `json:"edges"`
+	Nodes      []*Job     `json:"nodes"`
+	PageInfo   *PageInfo  `json:"pageInfo"`
+	TotalCount int        `json:"totalCount"`
+}
+
+type JobEdge struct {
+	Cursor usecasex.Cursor `json:"cursor"`
+	Node   *Job            `json:"node,omitempty"`
+}
+
+type JobPayload struct {
+	Job *Job `json:"job"`
 }
 
 type Me struct {
@@ -441,6 +512,51 @@ func (e *InputWorkflowNodeType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e InputWorkflowNodeType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type JobStatus string
+
+const (
+	JobStatusPending   JobStatus = "PENDING"
+	JobStatusRunning   JobStatus = "RUNNING"
+	JobStatusCompleted JobStatus = "COMPLETED"
+	JobStatusFailed    JobStatus = "FAILED"
+)
+
+var AllJobStatus = []JobStatus{
+	JobStatusPending,
+	JobStatusRunning,
+	JobStatusCompleted,
+	JobStatusFailed,
+}
+
+func (e JobStatus) IsValid() bool {
+	switch e {
+	case JobStatusPending, JobStatusRunning, JobStatusCompleted, JobStatusFailed:
+		return true
+	}
+	return false
+}
+
+func (e JobStatus) String() string {
+	return string(e)
+}
+
+func (e *JobStatus) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = JobStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid JobStatus", str)
+	}
+	return nil
+}
+
+func (e JobStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

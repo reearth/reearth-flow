@@ -106,7 +106,9 @@ const MembersSettings: React.FC = () => {
     <div>
       <div className="mt-4 flex max-w-[800px] flex-col gap-6">
         <div className="flex justify-between">
-          <p className="text-lg font-extralight">{t("Members Settings")}</p>
+          <p className="text-lg dark:font-extralight">
+            {t("Members Settings")}
+          </p>
         </div>
         <div className="flex items-center justify-between">
           {/* TODO: This will be a dialog component */}
@@ -123,7 +125,7 @@ const MembersSettings: React.FC = () => {
             {t("Add Member")}
           </Button>
         </div>
-        <div className="rounded border font-extralight">
+        <div className="rounded border dark:font-extralight">
           <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
             <div className="flex items-center gap-2">
               <User weight="thin" />
@@ -153,7 +155,7 @@ const MembersSettings: React.FC = () => {
             {members?.map((m) => (
               <div key={m.userId} className="flex gap-4 px-4 py-2">
                 <p className="flex-1">{m.user?.name}</p>
-                <p className="flex-1 px-4 text-sm font-thin capitalize">
+                <p className="flex-1 px-4 text-sm dark:font-thin capitalize">
                   {m.role}
                 </p>
                 <DropdownMenu>

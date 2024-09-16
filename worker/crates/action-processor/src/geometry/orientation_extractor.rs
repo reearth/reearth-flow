@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use reearth_flow_geometry::algorithm::winding_order::Winding;
 use reearth_flow_geometry::types::geometry::Geometry3D;
@@ -125,45 +125,42 @@ impl Processor for OrientationExtractor {
                 );
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
-            GeometryValue::FlowGeometry2D(geometry) => {
-                match geometry {
-                    Geometry2D::Polygon(polygon) => {
-                        let mut feature = feature.clone();
-                        let ring_winding_orders = polygon
-                            .rings()
-                            .iter()
-                            .map(|ring| ring.winding_order())
-                            .collect::<Vec<_>>();
-                        let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
-                        feature.attributes.insert(
-                            self.output_attribute.clone(),
-                            AttributeValue::String(result.to_string()),
-                        );
-                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-                    }
-                    Geometry2D::MultiPolygon(polygons) => {
-                        let mut feature = feature.clone();
-                        let ring_winding_orders = polygons
-                            .iter()
-                            .flat_map(|polygon| {
-                                polygon
-                                    .rings()
-                                    .iter()
-                                    .map(|ring| ring.winding_order())
-                                    .collect::<Vec<_>>()
-                            })
-                            .collect::<Vec<_>>();
-                        let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
-                        feature.attributes.insert(
-                            self.output_attribute.clone(),
-                            AttributeValue::String(result.to_string()),
-                        );
-                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-                    }
-                    _ => unimplemented!(),
+            GeometryValue::FlowGeometry2D(geometry) => match geometry {
+                Geometry2D::Polygon(polygon) => {
+                    let mut feature = feature.clone();
+                    let ring_winding_orders = polygon
+                        .rings()
+                        .iter()
+                        .map(|ring| ring.winding_order())
+                        .collect::<Vec<_>>();
+                    let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
+                    feature.attributes.insert(
+                        self.output_attribute.clone(),
+                        AttributeValue::String(result.to_string()),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-            }
+                Geometry2D::MultiPolygon(polygons) => {
+                    let mut feature = feature.clone();
+                    let ring_winding_orders = polygons
+                        .iter()
+                        .flat_map(|polygon| {
+                            polygon
+                                .rings()
+                                .iter()
+                                .map(|ring| ring.winding_order())
+                                .collect::<Vec<_>>()
+                        })
+                        .collect::<Vec<_>>();
+                    let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
+                    feature.attributes.insert(
+                        self.output_attribute.clone(),
+                        AttributeValue::String(result.to_string()),
+                    );
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
+                _ => unimplemented!(),
+            },
             GeometryValue::FlowGeometry3D(geometry) => match geometry {
                 Geometry3D::Polygon(polygon) => {
                     let mut feature = feature.clone();
@@ -221,22 +218,29 @@ impl Processor for OrientationExtractor {
 fn detect_orientation_by_ring_winding_orders(
     ring_winding_orders: Vec<Option<WindingOrder>>,
 ) -> WindingOrderResult {
-    if ring_winding_orders
+    if ring_winding_orders.is_empty() {
+        return NO_ORIENTATION;
+    }
+    if !ring_winding_orders
         .iter()
         .all(|winding_order| winding_order.is_some())
     {
-        let set: HashSet<_> = ring_winding_orders.iter().cloned().collect();
-        if set.len() == 1 {
-            let winding_order = ring_winding_orders[0].unwrap();
-            match winding_order {
-                WindingOrder::Clockwise => CLOCKWISE_ORIENTATION,
-                WindingOrder::CounterClockwise => COUNTER_CLOCKWISE_ORIENTATION,
-                WindingOrder::None => NO_ORIENTATION,
-            }
-        } else {
-            INVALID_ORIENTATION
+        return INVALID_ORIENTATION;
+    }
+    let ring_winding_orders = ring_winding_orders.iter().flatten().collect::<Vec<_>>();
+    for ring_winding_order in ring_winding_orders.iter() {
+        let orientation = match ring_winding_order {
+            WindingOrder::Clockwise => CLOCKWISE_ORIENTATION,
+            WindingOrder::CounterClockwise => COUNTER_CLOCKWISE_ORIENTATION,
+            WindingOrder::None => NO_ORIENTATION,
+        };
+        if orientation == NO_ORIENTATION {
+            return orientation;
         }
-    } else {
-        INVALID_ORIENTATION
+    }
+    match ring_winding_orders.first().unwrap() {
+        WindingOrder::Clockwise => CLOCKWISE_ORIENTATION,
+        WindingOrder::CounterClockwise => COUNTER_CLOCKWISE_ORIENTATION,
+        WindingOrder::None => NO_ORIENTATION,
     }
 }

@@ -235,9 +235,12 @@ impl Processor for BuildingUsageAttributeValidator {
                 }
             });
         let mut error_messages = Vec::<String>::new();
-        let all_keys = feature.all_attribute_keys();
+        let all_keys = gml_attributes
+            .keys()
+            .map(|key| key.to_string())
+            .collect::<Vec<_>>();
         for (key, value) in USAGE_ATTRIBUTES.iter() {
-            if !all_keys.contains(&key.to_string()) && all_keys.contains(&value.to_string()) {
+            if all_keys.contains(&key.to_string()) && !all_keys.contains(&value.to_string()) {
                 error_messages.push(format!(
                     "{}年建物利用現況: '{}' が存在しますが '{}' が存在しません。",
                     survey_year.clone().unwrap_or_default(),
@@ -249,15 +252,15 @@ impl Processor for BuildingUsageAttributeValidator {
         let city_name = if let Some(AttributeValue::Array(detail_attributes)) =
             gml_attributes.get("uro:buildingIDAttribute")
         {
-            detail_attributes.first().map(|detail_attribute| {
+            detail_attributes.first().and_then(|detail_attribute| {
                 if let AttributeValue::Map(details_attribute) = detail_attribute {
                     if let Some(AttributeValue::String(city)) = details_attribute.get("uro:city") {
-                        city.clone()
+                        Some(city.clone())
                     } else {
-                        "".to_string()
+                        None
                     }
                 } else {
-                    "".to_string()
+                    None
                 }
             })
         } else {

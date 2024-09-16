@@ -41,17 +41,31 @@ export default (shortcuts?: ShortcutProps[]) => {
 
     const handleShortcuts = (e: KeyboardEvent) => {
       for (const shortcut of shortcuts) {
-        const { keyBinding } = shortcut;
+        const { keyBinding, callback } = shortcut;
 
-        const eventKey = getKey(e.key as PossibleKeys);
+        const eventKey = getKey(e.key as PossibleKeys).toLowerCase();
         if (eventKey === keyBinding.key) {
-          if (
-            (keyBinding.commandKey && !e.metaKey && !e.ctrlKey) ||
-            (!keyBinding.commandKey && (e.metaKey || e.ctrlKey))
-          )
-            return;
+          const isCommandKeyPressed = e.metaKey || e.ctrlKey;
+          const isShiftKeyPressed = e.shiftKey;
+          const isAltKeyPressed = e.altKey;
+
+          // 1. Check if the keybinding requires the command key, but it's not pressed
+          if (keyBinding.commandKey && !isCommandKeyPressed) continue;
+
+          // 2. Check if the keybinding requires the shift key, but it's not pressed
+          if (keyBinding.shiftKey && !isShiftKeyPressed) continue;
+
+          // 3. Check if the keybinding requires the alt key, but it's not pressed
+          if (keyBinding.altKey && !isAltKeyPressed) continue;
+
+          // 4. Prevent simple keybinding from triggering when modifier keys are pressed
+          if (!keyBinding.commandKey && isCommandKeyPressed) continue;
+          if (!keyBinding.shiftKey && isShiftKeyPressed) continue;
+          if (!keyBinding.altKey && isAltKeyPressed) continue;
+
+          // If all conditions match, trigger the shortcut callback
           e.preventDefault();
-          shortcut.callback();
+          callback();
         }
       }
     };
