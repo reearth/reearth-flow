@@ -260,7 +260,8 @@ impl FlowProjectRedisDataManager {
             self.global_lock
                 .lock_state(&project_id, 5000, move |_lock_guard| {
                     Box::pin(async move {
-                        self.set_state_data_internal(&encoded_state_update, &updated_by_json).await?;
+                        self.set_state_data_internal(&encoded_state_update, &updated_by_json)
+                            .await?;
                         Ok::<(), BoxError>(())
                     })
                 })
