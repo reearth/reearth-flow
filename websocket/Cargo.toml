@@ -39,33 +39,43 @@ async-trait = "0.1.80"
 axum = { version = "0.7", features = ["ws"] }
 axum-extra = { version = "0.9", features = ["typed-header"] }
 axum-macros = "0.4"
+base64 = "0.22.1"
+cached = "0.53.1"
 chrono = { version = "0.4", features = ["serde"] }
+dashmap = "6.1.0"
+dotenv = "0.15.0"
+futures-util = "0.3"
 google-cloud-storage = "0.18"
 lru = "0.12.4"
+http = "1.1.0"
+http-body-util = "0.1.0"
+hyper = "1.4.1"
+jsonwebtoken = "9.3.0"
+once_cell = "1.18.0"
+rand = "0.8"
 redis = { version = "0.25.4", features = ["aio", "tokio-comp"] }
+reqwest = { version = "0.12.7", features = ["json"] }
+rsa = { version = "0.9.6", features = ["pem"] }
 rslock = "0.3.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.117", features = ["arbitrary_precision"] }
-<<<<<<< HEAD
 tempfile = "3.12.0"
 tokio = { version = "1.40.0", features = ["full", "time"] }
-=======
+thiserror = "1.0.63"
 tokio = { version = "1.38.0", features = ["full", "time"] }
->>>>>>> de7cab8 (Bump dependencieis)
+tokio-tungstenite = "0.24.0"
+>>>>>>> 1c5a483 (Format TOML files using taplo)
 tower = { version = "0.4", features = ["timeout"] }
 tower-http = { version = "0.5", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = "2.5.2"
 uuid = { version = "1.8.0", features = [
   "fast-rng",
   "macro-diagnostics",
   "serde",
   "v4",
 ] }
-yrs = "0.18"
-reqwest = { version = "0.12.7", features = ["json"] }
-thiserror = "1.0.63"
-jsonwebtoken = "9.3.0"
 wiremock = "0.6.2"
 rsa = { version = "0.9.6", features = ["pem"] }
 rand = "0.8"
@@ -79,3 +89,4 @@ http = "1.1.0"
 cached = "0.53.1"
 tokio-tungstenite = "0.24.0"
 futures-util = "0.3"
+yrs = "0.18"
