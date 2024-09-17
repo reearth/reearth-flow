@@ -24,8 +24,8 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::Expr;
 use reearth_flow_types::{geometry as geomotry_types, Feature};
+use reearth_flow_types::{AttributeValue, Expr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -240,6 +240,11 @@ impl Cesium3dtilesWriter {
 
         let mut schema = nusamai_citygml::schema::Schema::default();
         TopLevelCityObject::collect_schema(&mut schema);
+        let Some(AttributeValue::String(typename)) = feature.get(&"gmlName") else {
+            return Err(crate::errors::SinkError::Cesium3DTilesWriter(
+                "Missing typename".to_string(),
+            ));
+        };
 
         let (lng_center, lat_center, approx_dx, approx_dy, approx_dh) = {
             let vertice = city_gml.max_min_vertice();
@@ -341,7 +346,7 @@ impl Cesium3dtilesWriter {
                 };
 
                 let content_path = {
-                    let normalized_typename = sliced_feature.typename.replace(':', "_");
+                    let normalized_typename = typename.replace(':', "_");
                     format!("{tile_zoom}/{tile_x}/{tile_y}_{normalized_typename}.glb")
                 };
                 let content = TileContent {

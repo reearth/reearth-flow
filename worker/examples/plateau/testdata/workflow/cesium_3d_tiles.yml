@@ -32,6 +32,16 @@ graphs:
           dataset: |
             env.get("__value").cityGmlPath
 
+      - id: 2242214d-c7a0-4ef8-930d-9444731d11cf
+        name: CityGmlGeometryLodFilter
+        type: action
+        action: CityGmlGeometryLodFilter
+        with:
+          lods:
+            - 2
+            - 3
+            - 4
+
       - id: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
         name: cesium3DTilesWriter
         type: action
@@ -47,8 +57,13 @@ graphs:
         to: 3c0bc9cd-284d-4553-83ae-f90365c5930c
         fromPort: default
         toPort: default
-      - id: e1c7680d-5830-4e48-8cd8-8d9d762c76ff
+      - id: 007b4406-090a-41d4-a578-3e3964140f57
         from: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        to: 2242214d-c7a0-4ef8-930d-9444731d11cf
+        fromPort: default
+        toPort: default
+      - id: e1c7680d-5830-4e48-8cd8-8d9d762c76ff
+        from: 2242214d-c7a0-4ef8-930d-9444731d11cf
         to: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
         fromPort: default
         toPort: default
