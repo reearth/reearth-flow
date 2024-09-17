@@ -148,7 +148,7 @@ async fn handle_message(
             } else {
                 println!(">>> {addr} somehow sent close message without CloseFrame");
             }
-            Err(WsError::WsError)
+            Err(WsError::Error)
         }
         // reply to ping automatically
         _ => Ok(None),
@@ -173,23 +173,23 @@ pub async fn handle_error(
 }
 
 impl AppState {
-    async fn on_disconnect(&self) {
+    async fn _on_disconnect(&self) {
         unimplemented!()
     }
     async fn join(&self, room_id: &str) -> Result<()> {
-        let _ = self
-            .rooms
+        self.rooms
             .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
+            .map_err(|_| WsError::Error)?
             .get_mut(room_id)
-            .ok_or(WsError::WsError)?
-            .join("brabrabra".to_string());
+            .ok_or(WsError::Error)?
+            .join("brabrabra".to_string())
+            .await?;
         Ok(())
     }
-    async fn leave(&self, room_id: &str) -> Result<()> {
+    async fn leave(&self, _room_id: &str) -> Result<()> {
         unimplemented!()
     }
-    async fn emit(&self, data: &str) -> Result<()> {
+    async fn emit(&self, _data: &str) -> Result<()> {
         unimplemented!()
     }
     async fn timeout(&self) -> Result<()> {

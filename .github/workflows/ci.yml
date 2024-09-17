@@ -10,10 +10,24 @@ jobs:
       ui: ${{ steps.ui.outputs.any_changed }}
       api: ${{ steps.api.outputs.any_changed }}
       worker: ${{ steps.worker.outputs.any_changed }}
+      websocket: ${{ steps.websocket.outputs.any_changed }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: changed files for api
+        id: api
+        uses: tj-actions/changed-files@v41
+        with:
+            files: |
+              api/**
+              .github/workflows/ci.yml
+              .github/workflows/ci_api.yml
+              .github/workflows/build_api.yml
+              .github/workflows/deploy_api_nightly.yml
+              CHANGELOG.md
+
       - name: changed files for ui
         id: ui
         uses: tj-actions/changed-files@v41
@@ -26,16 +40,14 @@ jobs:
             .github/workflows/deploy_ui_nightly.yml
             CHANGELOG.md
 
-      - name: changed files for api
-        id: api
+      - name: changed files for websocket
+        id: websocket
         uses: tj-actions/changed-files@v41
         with:
           files: |
-            api/**
+            websocket/**
             .github/workflows/ci.yml
-            .github/workflows/ci_api.yml
-            .github/workflows/build_api.yml
-            .github/workflows/deploy_api_nightly.yml
+            .github/workflows/ci_websocket.yml
             CHANGELOG.md
 
       - name: changed files for worker
@@ -50,15 +62,18 @@ jobs:
             .github/workflows/ci.yml
             .github/workflows/ci_worker.yml
             CHANGELOG.md
-
-  ci-ui:
-    needs: prepare
-    if: needs.prepare.outputs.ui == 'true'
-    uses: ./.github/workflows/ci_ui.yml
   ci-api:
     needs: prepare
     if: needs.prepare.outputs.api == 'true'
     uses: ./.github/workflows/ci_api.yml
+  ci-ui:
+    needs: prepare
+    if: needs.prepare.outputs.ui == 'true'
+    uses: ./.github/workflows/ci_ui.yml
+  ci-websocket:
+      needs: prepare
+      if: needs.prepare.outputs.websocket == 'true'
+      uses: ./.github/workflows/ci_websocket.yml
   ci-worker:
     needs: prepare
     if: needs.prepare.outputs.worker == 'true'
@@ -66,8 +81,9 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     needs:
-      - ci-ui
       - ci-api
+      - ci-ui
+      - ci-websocket
       - ci-worker
     if: '!failure()'
     steps:

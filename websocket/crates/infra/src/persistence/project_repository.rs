@@ -58,7 +58,7 @@ pub struct ProjectGcsRepository {
 }
 
 impl ProjectGcsRepository {
-    fn new(client: GcsClient) -> Self {
+    fn _new(client: GcsClient) -> Self {
         Self { client }
     }
 }
