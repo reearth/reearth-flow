@@ -90,7 +90,6 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                             geometry_refs: st.geometry_refs().clone(),
                         };
                         entities.push(entity);
-
                     }
                 }
                 st.refresh_geomrefs();

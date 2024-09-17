@@ -93,7 +93,6 @@ fn parse_tree_reader<R: BufRead>(
                             geometry_refs: st.geometry_refs().clone(),
                         };
                         entities.push(entity);
-
                     }
                 }
                 st.refresh_geomrefs();
