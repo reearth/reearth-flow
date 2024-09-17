@@ -463,7 +463,7 @@ Writes features to a file
 ### Type
 * processor
 ### Description
-Reprojects the geometry of a feature to a specified coordinate system
+Filters CityGML geometries by LOD
 ### Parameters
 ```json
 {
@@ -489,6 +489,7 @@ Reprojects the geometry of a feature to a specified coordinate system
 * default
 ### Output Ports
 * default
+* rejected
 ### Category
 * Geometry
 
