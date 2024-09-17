@@ -66,7 +66,7 @@ impl ProjectGcsRepository {
 #[async_trait]
 impl ProjectSnapshotRepository for ProjectGcsRepository {
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Box<dyn Error>> {
-        let path = format!("snapshot/{}", snapshot.id);
+        let path = format!("snapshot/{}", snapshot.metadata.id);
         self.client.upload(path, &snapshot).await?;
         Ok(())
     }
