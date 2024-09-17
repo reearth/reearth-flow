@@ -1,7 +1,5 @@
 [workspace]
-members = [
-  "crates/*",
-]
+members = ["crates/*"]
 
 resolver = "2"
 
@@ -53,9 +51,10 @@ tower-http = { version = "0.5", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.8.0", features = [
+  "v4",
   "fast-rng",
   "macro-diagnostics",
   "serde",
-  "v4",
 ] }
 yrs = "0.18"
+tempfile = "3.12.0"
