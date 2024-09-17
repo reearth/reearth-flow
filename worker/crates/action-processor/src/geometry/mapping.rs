@@ -6,8 +6,9 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 use super::{
     area_on_area_overlayer::AreaOnAreaOverlayerFactory, bounds_extractor::BoundsExtractorFactory,
     bufferer::BuffererFactory, center_point_replacer::CenterPointReplacerFactory,
-    clipper::ClipperFactory, closed_curve_filter::ClosedCurveFilterFactory,
-    coercer::GeometryCoercerFactory, coordinate_system_setter::CoordinateSystemSetterFactory,
+    city_gml_geometry_lod_filter::CityGmlGeometryLodFilterFactory, clipper::ClipperFactory,
+    closed_curve_filter::ClosedCurveFilterFactory, coercer::GeometryCoercerFactory,
+    coordinate_system_setter::CoordinateSystemSetterFactory,
     dimension_filter::DimensionFilterFactory, dissolver::GeometryDissolverFactory,
     elevation_extractor::ElevationExtractorFactory, extractor::GeometryExtractorFactory,
     extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
@@ -53,6 +54,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<ElevationExtractorFactory>::default(),
         Box::<GeometryDissolverFactory>::default(),
         Box::<DimensionFilterFactory>::default(),
+        Box::<CityGmlGeometryLodFilterFactory>::default(),
     ];
     factories
         .into_iter()
