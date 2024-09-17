@@ -3,7 +3,7 @@ use std::error::Error;
 use serde::{Deserialize, Serialize};
 
 use crate::repository::ProjectSnapshotRepository;
-use crate::snapshot::{ObjectDelete, ObjectTenant, ProjectSnapshot};
+use crate::snapshot::{ObjectDelete, ObjectTenant, ProjectMetadata, ProjectSnapshot};
 use crate::utils::generate_id;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -49,7 +49,7 @@ impl ProjectEditingSession {
         // Logic to start or join a session
         let session_id = generate_id(14, "editor-session");
         self.session_id = Some(session_id.clone());
-        if !self.session_setup_complete {
+        if (!self.session_setup_complete) {
             let _latest_snapshot_state = snapshot_repo
                 .get_latest_snapshot_state(&self.project_id)
                 .await?;
@@ -111,12 +111,17 @@ impl ProjectEditingSession {
         data: SnapshotData,
     ) -> Result<(), Box<dyn Error>> {
         self.merge_updates().await?;
-        let snapshot = ProjectSnapshot {
+
+        let metadata = ProjectMetadata {
             id: generate_id(14, "snap"),
             project_id: self.project_id.clone(),
             session_id: self.session_id.clone(),
             name: data.name.unwrap_or_default(),
             path: String::new(),
+        };
+
+        let snapshot = ProjectSnapshot {
+            metadata,
             created_by: data.created_by.clone(),
             changes_by: vec![], // populate changes_by appropriately
             tenant: ObjectTenant {
@@ -130,6 +135,7 @@ impl ProjectEditingSession {
             created_at: None,
             updated_at: None,
         };
+
         snapshot_repo.create_snapshot(snapshot).await?;
         Ok(())
     }

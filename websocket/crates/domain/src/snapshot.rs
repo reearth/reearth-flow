@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ObjectDelete {
@@ -14,12 +14,17 @@ pub struct ObjectTenant {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ProjectSnapshot {
+pub struct ProjectMetadata {
     pub id: String,
     pub project_id: String,
     pub session_id: Option<String>,
     pub name: String,
     pub path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ProjectSnapshot {
+    pub metadata: ProjectMetadata,
     pub created_by: Option<String>,
     pub changes_by: Vec<String>,
     pub tenant: ObjectTenant,
@@ -30,11 +35,7 @@ pub struct ProjectSnapshot {
 
 impl ProjectSnapshot {
     pub fn new(
-        id: String,
-        project_id: String,
-        session_id: Option<String>,
-        name: String,
-        path: String,
+        metadata: ProjectMetadata,
         created_by: Option<String>,
         changes_by: Vec<String>,
         tenant: ObjectTenant,
@@ -43,11 +44,7 @@ impl ProjectSnapshot {
         updated_at: Option<DateTime<Utc>>,
     ) -> Self {
         Self {
-            id,
-            project_id,
-            session_id,
-            name,
-            path,
+            metadata,
             created_by,
             changes_by,
             tenant,
