@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::GeometryValue;
 use schemars::JsonSchema;
@@ -23,7 +23,7 @@ impl ProcessorFactory for CityGmlGeometryLodFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Reprojects the geometry of a feature to a specified coordinate system"
+        "Filters CityGML geometries by LOD"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -39,7 +39,7 @@ impl ProcessorFactory for CityGmlGeometryLodFilterFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
     fn build(
         &self,
@@ -109,6 +109,10 @@ impl Processor for CityGmlGeometryLodFilter {
                             false
                         }
                     });
+                    if geometry_value.gml_geometries.is_empty() {
+                        fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
+                        return Ok(());
+                    }
                     geometry.value = GeometryValue::CityGmlGeometry(geometry_value);
                     feature.geometry = Some(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
