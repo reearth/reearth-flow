@@ -257,21 +257,10 @@ impl FlowProjectRedisDataManager {
                 .await?;
         } else {
             let project_id = self.project_id.clone();
-            let redis_client = Arc::clone(&self.redis_client);
-            let state_key = self.state_key();
-            let state_updated_by_key = self.state_updated_by_key();
-
             self.global_lock
                 .lock_state(&project_id, 5000, move |_lock_guard| {
                     Box::pin(async move {
-                        let connection = redis_client.connection();
-                        let mut connection_guard = connection.lock().await;
-                        let _: () = connection_guard
-                            .set(&state_key, &encoded_state_update)
-                            .await?;
-                        let _: () = connection_guard
-                            .set(&state_updated_by_key, &updated_by_json)
-                            .await?;
+                        self.set_state_data_internal(&encoded_state_update, &updated_by_json).await?;
                         Ok::<(), BoxError>(())
                     })
                 })
