@@ -49,7 +49,7 @@ impl ProjectEditingSession {
         // Logic to start or join a session
         let session_id = generate_id(14, "editor-session");
         self.session_id = Some(session_id.clone());
-        if (!self.session_setup_complete) {
+        if !self.session_setup_complete {
             let _latest_snapshot_state = snapshot_repo
                 .get_latest_snapshot_state(&self.project_id)
                 .await?;
@@ -61,7 +61,7 @@ impl ProjectEditingSession {
 
     pub async fn get_diff_update(
         &self,
-        state_vector: Vec<u8>,
+        _state_vector: Vec<u8>,
     ) -> Result<(Vec<u8>, Vec<u8>), Box<dyn Error>> {
         self.check_session_setup()?;
         // Logic to get the diff update
@@ -82,8 +82,8 @@ impl ProjectEditingSession {
 
     pub async fn push_update(
         &self,
-        update: Vec<u8>,
-        updated_by: Option<String>,
+        _update: Vec<u8>,
+        _updated_by: Option<String>,
     ) -> Result<(), Box<dyn Error>> {
         self.check_session_setup()?;
         // Logic to push an update
