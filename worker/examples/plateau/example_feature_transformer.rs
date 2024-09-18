@@ -1,5 +1,3 @@
-use std::panic;
-
 mod helper;
 
 fn main() {
