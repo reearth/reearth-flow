@@ -1,4 +1,4 @@
 pub mod project;
-pub mod snapshot;
 pub mod repository;
+pub mod snapshot;
 pub mod utils;

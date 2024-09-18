@@ -55,15 +55,15 @@ export default defineConfig(() => {
 
 function config(): Plugin {
   return {
-    name: "flow-config",
+    name: "reearth_config",
     async configureServer(server) {
       const envs = loadEnv(
         server.config.mode,
         server.config.envDir ?? process.cwd(),
         server.config.envPrefix,
       );
-      const remoteConfig = envs.FLOW_CONFIG_URL
-        ? await (await fetch(envs.FLOW_CONFIG_URL)).json()
+      const remoteConfig = envs.REEARTH_CONFIG_URL
+        ? await (await fetch(envs.REEARTH_CONFIG_URL)).json()
         : {};
 
       const configRes = JSON.stringify(
@@ -73,14 +73,14 @@ function config(): Plugin {
           ...readEnv("FLOW", {
             source: envs,
           }),
-          ...loadJSON("./flow-config.json"),
+          ...loadJSON("./reearth_config.json"),
         },
         null,
         2,
       );
 
       server.middlewares.use((req, res, next) => {
-        if (req.method === "GET" && req.url === "/flow_config.json") {
+        if (req.method === "GET" && req.url === "/reearth_config.json") {
           res.statusCode = 200;
           res.setHeader("Content-Type", "application/json");
           res.write(configRes);
