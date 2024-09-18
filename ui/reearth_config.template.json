@@ -1,11 +1,11 @@
 {
-    "api": "${FLOW_API}",
-    "auth0Audience": "${FLOW_AUTH0_AUDIENCE}",
-    "auth0ClientId": "${FLOW_AUTH0_CLIENT_ID}",
-    "auth0Domain": "${FLOW_AUTH0_DOMAIN}",
-    "brandName": "${FLOW_BRAND_NAME}",
-    "devMode": "${FLOW_DEV_MODE}",
-    "documentationUrl": "${FLOW_DOCUMENTATION_URL}",
-    "tosUrl": "${FLOW_TOS_URL}",
-    "version": "${FLOW_VERSION}"
+  "api": "${FLOW_API}",
+  "auth0Audience": "${FLOW_AUTH0_AUDIENCE}",
+  "auth0ClientId": "${FLOW_AUTH0_CLIENT_ID}",
+  "auth0Domain": "${FLOW_AUTH0_DOMAIN}",
+  "brandName": "${FLOW_BRAND_NAME}",
+  "devMode": "${FLOW_DEV_MODE}",
+  "documentationUrl": "${FLOW_DOCUMENTATION_URL}",
+  "tosUrl": "${FLOW_TOS_URL}",
+  "version": "${FLOW_VERSION}"
 }
