@@ -60,7 +60,7 @@ impl State {
         for<'de> T: Serialize + Deserialize<'de>,
     {
         let s = self.object_to_string(obj)?;
-        let content = bytes::Bytes::from(s);
+        let content = bytes::Bytes::from(s + "\n");
         let p = self.id_to_location(id, "jsonl");
         self.storage
             .append(p.as_path(), content)
