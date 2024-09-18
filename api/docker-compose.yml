@@ -2,22 +2,21 @@ version: "3"
 services:
   reearth-flow-api:
     image: reearth/reearth-flow:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     environment:
-      REEARTH_DB: mongodb://reearth-flow-mongo
+      REEARTH_FLOW_DB: mongodb://reearth-flow-mongo
+      PORT: 8080
     ports:
-      - "8081:8080"
-    # env_file:
-    #  - ./.env
-    links:
-      - reearth-flow-mongo
+      - "8080:8080"
     depends_on:
       - reearth-flow-mongo
     volumes:
-      - ./data:/reearth-flow/data
+      - ./data:/app/data
   reearth-flow-mongo:
     image: mongo:6-focal
     ports:
-      - 12345:12345
+      - 27017:27017
     volumes:
       - ./mongo:/data/db
-    command: mongod --port 12345

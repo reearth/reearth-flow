@@ -22,15 +22,15 @@ impl AppState {
         let room = Room::new();
         self.rooms
             .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
+            .map_err(|_| WsError::Error)?
             .insert(room_id, room);
         Ok(())
     }
 
-    pub fn delete_room(&self, id: String) -> Result<()> {
+    pub fn _delete_room(&self, id: String) -> Result<()> {
         self.rooms
             .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
+            .map_err(|_| WsError::Error)?
             .remove(&id);
         Ok(())
     }
