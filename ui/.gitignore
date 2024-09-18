@@ -13,7 +13,7 @@ dist
 dist-ssr
 *.local
 .env
-flow-config.json
+reearth_config.json
 
 # Editor directories and files
 .vscode/*

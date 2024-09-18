@@ -16,7 +16,7 @@ FROM nginx:stable
 
 COPY --from=build app/dist /usr/share/nginx/html
 
-COPY flow_config.template.json /usr/share/nginx/html/
+COPY reearth_config.template.json /usr/share/nginx/html/
 
 RUN rm /etc/nginx/conf.d/default.conf
 
