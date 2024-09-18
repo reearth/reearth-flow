@@ -30,20 +30,20 @@ const DeployDialog: React.FC<Props> = ({ setShowDialog }) => {
         <DialogContentWrapper>
           <DialogContentSection className="flex flex-col">
             <Label>{t("Project to deploy: ")}</Label>
-            <p className="truncate font-thin">
+            <p className="truncate dark:font-thin">
               {currentProject?.name ?? t("N/A")}
             </p>
           </DialogContentSection>
           <DialogContentSection>
             <Label>{t("Deploy version: ")}</Label>
             <div className="flex items-center">
-              <p className="font-thin">1.0</p>
+              <p className="dark:font-thin">1.0</p>
               <CaretRight />
               <p className="font-semibold">2.0</p>
             </div>
           </DialogContentSection>
           <DialogContentSection>
-            <p className="font-light">
+            <p className="dark:font-light">
               {t("Are you sure you want to proceed?")}
             </p>
           </DialogContentSection>

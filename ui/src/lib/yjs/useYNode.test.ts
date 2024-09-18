@@ -27,6 +27,7 @@ describe("useYNode", () => {
       useYNode({
         currentYWorkflow: yWorkflow,
         handleWorkflowsRemove: () => {},
+        undoTrackerActionWrapper: () => {},
       }),
     );
 
@@ -58,6 +59,7 @@ describe("useYNode", () => {
       useYNode({
         currentYWorkflow: yWorkflow,
         handleWorkflowsRemove: () => {},
+        undoTrackerActionWrapper: () => {},
       }),
     );
 
@@ -84,6 +86,7 @@ describe("useYNode", () => {
       useYNode({
         currentYWorkflow: yWorkflow,
         handleWorkflowsRemove: () => {},
+        undoTrackerActionWrapper: () => {},
       }),
     );
 

@@ -12,13 +12,14 @@ version.workspace = true
 
 [dependencies]
 approx.workspace = true
-async-recursion = "1.1.1"
-base64 = "0.22.1"
+async-recursion.workspace = true
+base64.workspace = true
 bytes.workspace = true
 colorsys.workspace = true
 directories.workspace = true
 futures.workspace = true
-home = "0.5.9"
+home.workspace = true
+image.workspace = true
 jsonpath_lib.workspace = true
 libxml.workspace = true
 nusamai-mvt.workspace = true
@@ -40,3 +41,4 @@ tokio-util.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 url.workspace = true
+uuid.workspace = true

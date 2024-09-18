@@ -22,8 +22,10 @@ var (
 )
 
 type Container struct {
-	Asset     Asset
-	Project   Project
-	User      accountinterfaces.User
-	Workspace accountinterfaces.Workspace
+	Asset      Asset
+	Deployment Deployment
+	Job        Job
+	Project    Project
+	User       accountinterfaces.User
+	Workspace  accountinterfaces.Workspace
 }

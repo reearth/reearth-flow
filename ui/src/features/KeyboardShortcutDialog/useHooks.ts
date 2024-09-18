@@ -1,21 +1,35 @@
 import { useT } from "@flow/lib/i18n";
-import { Shortcuts, EditorKeyBindings, CanvasKeyBindings } from "@flow/types";
+import {
+  Shortcuts,
+  EditorKeyBindings,
+  CanvasKeyBindings,
+  GeneralKeyBindings,
+  CanvasKeys,
+  EditorKeys,
+  GeneralKeys,
+} from "@flow/types";
 
 export default () => {
   const t = useT();
 
   const title = t("Keyboard shortcuts");
 
-  const editorShortcuts: Shortcuts = {
+  const generalShortcuts: Shortcuts<GeneralKeys> = {
+    title: t("General shortcuts"),
+    shortcuts: [
+      {
+        keyBinding: GeneralKeyBindings["shortcutsDialog"],
+        description: t("Open the keyboard shortcuts dialog"),
+      },
+    ],
+  };
+
+  const editorShortcuts: Shortcuts<EditorKeys> = {
     title: t("Editor shortcuts"),
     shortcuts: [
       {
         keyBinding: EditorKeyBindings["fullscreen"],
         description: t("Toggle fullscreen mode"),
-      },
-      {
-        keyBinding: EditorKeyBindings["shortcutsDialog"],
-        description: t("Open the keyboard shortcuts dialog"),
       },
       {
         keyBinding: EditorKeyBindings["readerDialog"],
@@ -41,12 +55,36 @@ export default () => {
         keyBinding: EditorKeyBindings["leftPanelCanvasNavigator"],
         description: t("Toggle the canvas navigator panel"),
       },
+      {
+        keyBinding: EditorKeyBindings["leftPanelActionsList"],
+        description: t("Toggle the actions list panel"),
+      },
+      {
+        keyBinding: EditorKeyBindings["leftPanelResources"],
+        description: t("Toggle the resources panel"),
+      },
     ],
   };
 
-  const canvasShortcuts: Shortcuts = {
+  const canvasShortcuts: Shortcuts<CanvasKeys> = {
     title: t("Canvas shortcuts"),
     shortcuts: [
+      {
+        keyBinding: CanvasKeyBindings["copy"],
+        description: t("Copy the selected nodes"),
+      },
+      {
+        keyBinding: CanvasKeyBindings["paste"],
+        description: t("Paste the copied nodes"),
+      },
+      {
+        keyBinding: CanvasKeyBindings["undo"],
+        description: t("Undo the last action"),
+      },
+      {
+        keyBinding: CanvasKeyBindings["redo"],
+        description: t("Redo the last action"),
+      },
       {
         keyBinding: CanvasKeyBindings["zoomIn"],
         description: t("Zoom in on the canvas"),
@@ -64,6 +102,7 @@ export default () => {
 
   return {
     title,
+    generalShortcuts,
     editorShortcuts,
     canvasShortcuts,
   };

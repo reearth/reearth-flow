@@ -203,7 +203,7 @@ impl BoundsExtractor {
     fn calc_city_gml(geos: &CityGmlGeometry) -> Option<Bounds> {
         let mut out_bounds: Option<Bounds> = None;
 
-        geos.features.iter().for_each(|geo_feature| {
+        geos.gml_geometries.iter().for_each(|geo_feature| {
             let mut bounds: Option<Bounds> = None;
             for polygon in &geo_feature.polygons {
                 let p = Geometry::Polygon(polygon.clone());

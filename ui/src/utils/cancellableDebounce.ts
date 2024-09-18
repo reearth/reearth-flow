@@ -6,7 +6,7 @@ export type DebouncedFunction<T extends (...args: any[]) => void> = {
 
 export function cancellableDebounce<T extends (...args: any[]) => void>(
   func: T,
-  wait: number
+  wait: number,
 ): DebouncedFunction<T> {
   let timeout: ReturnType<typeof setTimeout> | null = null;
 

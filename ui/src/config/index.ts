@@ -17,6 +17,8 @@ export type Config = {
   documentationUrl?: string;
   multiTenant?: Record<string, AuthInfo>;
   api?: string;
+  websocket?: string;
+  websocketToken?: string;
 } & AuthInfo;
 
 const defaultConfig: Config = {

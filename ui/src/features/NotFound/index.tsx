@@ -14,15 +14,17 @@ const NotFound: React.FC<Props> = ({ message }) => {
     <div className="flex h-screen items-center justify-center">
       <div className="flex flex-col items-center gap-10">
         <div className="flex items-center gap-4">
-          <div className="rounded bg-red-900 p-2">
+          <div className="rounded bg-logo p-2">
             <FlowLogo className="size-[75px]" />
           </div>
-          <p className="text-4xl font-extralight">{t("Not Found")}</p>
+          <p className="text-4xl dark:font-extralight">{t("Not Found")}</p>
         </div>
-        {message && <p className="font-extralight text-red-500">{message}</p>}
+        {message && (
+          <p className="dark:font-extralight text-red-500">{message}</p>
+        )}
         <Link to={"/"}>
           <Button variant="outline">
-            <p className="font-extralight italic">{t("Go to Home")}</p>
+            <p className="dark:font-extralight italic">{t("Go to Home")}</p>
           </Button>
         </Link>
       </div>

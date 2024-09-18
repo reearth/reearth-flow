@@ -37,10 +37,11 @@ const WorkspaceNavigation: React.FC = () => {
     <>
       <DropdownMenu
         open={openDropdown}
-        onOpenChange={(o) => setOpenDropdown(o)}
-      >
+        onOpenChange={(o) => setOpenDropdown(o)}>
         <DropdownMenuTrigger className="-mx-2 flex max-w-[30vw] items-center rounded-md px-2 py-1 hover:bg-background">
-          <p className="truncate text-lg font-thin">{currentWorkspace?.name}</p>
+          <p className="truncate text-lg dark:font-thin">
+            {currentWorkspace?.name}
+          </p>
           <div className="ml-2">
             <CaretDown size="12px" />
           </div>
@@ -48,16 +49,14 @@ const WorkspaceNavigation: React.FC = () => {
         <DropdownMenuContent
           className="min-w-[150px] max-w-[300px] border"
           sideOffset={5}
-          align="center"
-        >
+          align="center">
           <DropdownMenuGroup className="flex max-h-[200px] flex-col gap-1 overflow-auto">
             {workspaces?.map((workspace) => (
               <DropdownMenuItem
                 key={workspace.id}
                 className={`rounded-md px-4 py-1 ${currentWorkspace?.id === workspace.id ? "bg-accent" : ""}`}
-                onClick={() => handleWorkspaceChange(workspace)}
-              >
-                <p className="w-full truncate text-center font-extralight">
+                onClick={() => handleWorkspaceChange(workspace)}>
+                <p className="w-full truncate text-center dark:font-extralight">
                   {workspace.name}
                 </p>
               </DropdownMenuItem>
@@ -69,10 +68,9 @@ const WorkspaceNavigation: React.FC = () => {
             onClick={() => {
               setOpenWorkspaceAddDialog(true);
               setOpenDropdown(false);
-            }}
-          >
+            }}>
             <Plus weight="thin" />
-            <p className="text-xs font-light">{t("New Workspace")}</p>
+            <p className="text-xs dark:font-light">{t("New Workspace")}</p>
           </div>
         </DropdownMenuContent>
       </DropdownMenu>

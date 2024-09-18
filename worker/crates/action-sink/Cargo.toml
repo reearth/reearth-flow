@@ -20,6 +20,13 @@ reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
+nusamai-citygml.workspace = true
+nusamai-geometry.workspace = true
+nusamai-gltf.workspace = true
+nusamai-mvt.workspace = true
+nusamai-plateau.workspace = true
+nusamai-projection.workspace = true
+
 ahash.workspace = true
 async-trait.workspace = true
 byteorder.workspace = true
@@ -28,11 +35,9 @@ cesiumtiles.workspace = true
 csv.workspace = true
 earcut.workspace = true
 geojson.workspace = true
+image.workspace = true
 indexmap.workspace = true
-nusamai-citygml.workspace = true
-nusamai-gltf.workspace = true
-nusamai-mvt.workspace = true
-nusamai-projection.workspace = true
+itertools.workspace = true
 once_cell.workspace = true
 opentelemetry.workspace = true
 petgraph.workspace = true
@@ -47,6 +52,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+url.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]

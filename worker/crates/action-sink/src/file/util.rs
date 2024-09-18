@@ -1,90 +1,229 @@
 extern crate nusamai_gltf;
-use super::metadata::MetadataEncoder;
+use super::types::material::{Image, Material, Texture};
+use super::types::metadata::MetadataEncoder;
 use crate::errors::SinkError;
-use ahash::{HashSet, RandomState};
+use ahash::HashSet;
 use byteorder::{ByteOrder, LittleEndian};
 use indexmap::IndexSet;
+use itertools::Itertools;
 use nusamai_gltf::nusamai_gltf_json;
 use nusamai_gltf::nusamai_gltf_json::extensions;
 use nusamai_gltf::nusamai_gltf_json::extensions::mesh::ext_mesh_features;
 use nusamai_gltf::nusamai_gltf_json::models::{
-    Accessor, AccessorType, Buffer, BufferView, BufferViewTarget, ComponentType, Gltf, Image, Mesh,
+    Accessor, AccessorType, Buffer, BufferView, BufferViewTarget, ComponentType, Gltf, Mesh,
     MeshPrimitive, Node, PrimitiveMode, Scene,
 };
-use reearth_flow_common::gltf::calculate_normal;
+use nusamai_mvt::TileZXY;
+use reearth_flow_common::gltf::{iter_x_slice, iter_y_slice, x_slice_range, y_slice_range};
+use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_types::geometry as geomotry_types;
-use reearth_flow_types::geometry::{Image as geometryImage, Material, Texture};
 use std::collections::HashMap;
 use std::io::Write;
 use std::vec;
 
 #[derive(Default)]
-pub struct PrimitiveInfo {
+pub(super) struct PrimitiveInfo {
     pub indices: Vec<u32>,
     pub feature_ids: HashSet<u32>,
 }
 
-pub type Primitives = HashMap<Material, PrimitiveInfo>;
+pub(super) type Primitives = HashMap<Material, PrimitiveInfo>;
 
-pub fn make_gltf(city_gml: geomotry_types::CityGmlGeometry) -> Result<Gltf, SinkError> {
-    let mut bin_content: Vec<u8> = Vec::new();
-    let mut gltf_buffer_views = vec![];
-    let mut gltf_accessors = vec![];
+pub(super) fn make_gltf(
+    _city_gml: geomotry_types::CityGmlGeometry,
+) -> Result<(Gltf, Vec<u8>), SinkError> {
+    Err(SinkError::FileWriter("Unsupported input".to_string()))
+}
 
-    let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default();
-    let mut primitives: Primitives = Default::default();
-
-    // let schema = nusamai_citygml::schema::Schema::default();
-    let metadata_encoder = MetadataEncoder::new();
-
-    let materials = city_gml.materials;
-    let features = city_gml.features;
-    let polygon_uv = city_gml.polygon_uv;
-
-    let mut u: f64 = 0.0;
-    let mut v: f64 = 0.0;
-
-    if let Some(polygon_uv) = polygon_uv {
-        polygon_uv.into_iter().for_each(|c| {
-            c.exterior().into_iter().for_each(|c| {
-                u = c.x;
-                v = c.y;
-            });
-        });
+pub(super) fn slice_polygon(
+    zoom: u8,
+    poly: &Polygon3D<f64>,
+    poly_uv: &Polygon2D<f64>,
+    mut send_polygon: impl FnMut(TileZXY, &nusamai_geometry::Polygon<'static, [f64; 5]>),
+) {
+    if poly.exterior().is_empty() {
+        return;
     }
 
-    for (index, feature) in features.iter().enumerate() {
-        for poly in feature.polygons.iter() {
-            // let mat = materials.get(index).unwrap().clone();
-            let Some(mat) = materials.get(index).cloned() else {
-                continue;
-            };
-            let primitive = primitives.entry(mat).or_default();
-            primitive.feature_ids.insert(index as u32);
+    let mut ring_buffer: Vec<[f64; 5]> = Vec::with_capacity(poly.exterior().len() + 1);
 
-            if let Some((nx, ny, nz)) =
-                calculate_normal(poly.exterior().into_iter().map(|c| [c.x, c.y, c.z]))
-            {
-                poly.exterior().into_iter().for_each(|c| {
-                    let x = c.x;
-                    let y = c.y;
-                    let z = c.z;
-                    let vbits = [
-                        (x as f32).to_bits(),
-                        (y as f32).to_bits(),
-                        (z as f32).to_bits(),
-                        (nx as f32).to_bits(),
-                        (ny as f32).to_bits(),
-                        (nz as f32).to_bits(),
-                        (u as f32).to_bits(),
-                        (v as f32).to_bits(),
-                        (index as f32).to_bits(),
-                    ];
-                    let (_, _) = vertices.insert_full(vbits);
-                });
+    // Slice along Y-axis
+    let y_range = {
+        let (min_y, max_y) = poly
+            .exterior()
+            .iter()
+            .fold((f64::MAX, f64::MIN), |(min_y, max_y), c| {
+                (min_y.min(c.y), max_y.max(c.y))
+            });
+        iter_y_slice(zoom, min_y, max_y)
+    };
+
+    let mut y_sliced_polys = nusamai_geometry::MultiPolygon::new();
+
+    for yi in y_range.clone() {
+        let (k1, k2) = y_slice_range(zoom, yi);
+
+        // todo?: check interior bbox to optimize
+
+        for (ri, (ring, uv_ring)) in poly.rings().iter().zip_eq(poly_uv.rings()).enumerate() {
+            if ring.coords().collect_vec().is_empty() {
+                continue;
+            }
+
+            ring_buffer.clear();
+            ring.iter()
+                .zip_eq(uv_ring.iter())
+                .fold(None, |a, b| {
+                    let Some((a, a_uv)) = a else { return Some(b) };
+                    let (b, b_uv) = b;
+
+                    if a.y < k1 {
+                        if b.y > k1 {
+                            let t = (k1 - a.y) / (b.y - a.y);
+                            let x = (b.x - a.x) * t + a.x;
+                            let z = (b.z - a.z) * t + a.z;
+                            let u = (b_uv.x - a_uv.x) * t + a_uv.x;
+                            let v = (b_uv.y - a_uv.y) * t + a_uv.y;
+                            ring_buffer.push([x, k1, z, u, v])
+                        }
+                    } else if a.y > k2 {
+                        if b.y < k2 {
+                            let t = (k2 - a.y) / (b.y - a.y);
+                            let x = (b.x - a.x) * t + a.x;
+                            let z = (b.z - a.z) * t + a.z;
+                            let u = (b_uv.x - a_uv.x) * t + a_uv.x;
+                            let v = (b_uv.y - a_uv.y) * t + a_uv.y;
+                            ring_buffer.push([x, k2, z, u, v])
+                        }
+                    } else {
+                        ring_buffer.push([a.x, a.y, a.z, a_uv.x, a_uv.y])
+                    }
+
+                    if b.y < k1 && a.y > k1 {
+                        let t = (k1 - a.y) / (b.y - a.y);
+                        let x = (b.x - a.x) * t + a.x;
+                        let z = (b.z - a.z) * t + a.z;
+                        let u = (b_uv.x - a_uv.x) * t + a_uv.x;
+                        let v = (b_uv.y - a_uv.y) * t + a_uv.y;
+                        ring_buffer.push([x, k1, z, u, v])
+                    } else if b.y > k2 && a.y < k2 {
+                        let t = (k2 - a.y) / (b.y - a.y);
+                        let x = (b.x - a.x) * t + a.x;
+                        let z = (b.z - a.z) * t + a.z;
+                        let u = (b_uv.x - a_uv.x) * t + a_uv.x;
+                        let v = (b_uv.y - a_uv.y) * t + a_uv.y;
+                        ring_buffer.push([x, k2, z, u, v])
+                    }
+
+                    Some((b, b_uv))
+                })
+                .unwrap();
+
+            match ri {
+                0 => y_sliced_polys.add_exterior(ring_buffer.drain(..)),
+                _ => y_sliced_polys.add_interior(ring_buffer.drain(..)),
             }
         }
     }
+
+    // Slice along X-axis
+    let mut poly_buf: nusamai_geometry::Polygon<[f64; 5]> = nusamai_geometry::Polygon::new();
+    for (yi, y_sliced_poly) in y_range.zip_eq(y_sliced_polys.iter()) {
+        let x_iter = {
+            let (min_x, max_x) = y_sliced_poly
+                .exterior()
+                .iter()
+                .fold((f64::MAX, f64::MIN), |(min_x, max_x), c| {
+                    (min_x.min(c[0]), max_x.max(c[0]))
+                });
+
+            iter_x_slice(zoom, yi, min_x, max_x)
+        };
+
+        for (xi, xs) in x_iter {
+            let (k1, k2) = x_slice_range(zoom, xi, xs);
+
+            // todo?: check interior bbox to optimize ...
+
+            let key = (
+                zoom,
+                xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
+                yi,
+            );
+            poly_buf.clear();
+
+            for ring in y_sliced_poly.rings() {
+                if ring.raw_coords().is_empty() {
+                    continue;
+                }
+
+                ring_buffer.clear();
+                ring.iter_closed()
+                    .fold(None, |a, b| {
+                        let Some(a) = a else { return Some(b) };
+
+                        if a[0] < k1 {
+                            if b[0] > k1 {
+                                let t = (k1 - a[0]) / (b[0] - a[0]);
+                                let y = (b[1] - a[1]) * t + a[1];
+                                let z = (b[2] - a[2]) * t + a[2];
+                                let u = (b[3] - a[3]) * t + a[3];
+                                let v = (b[4] - a[4]) * t + a[4];
+                                ring_buffer.push([k1, y, z, u, v])
+                            }
+                        } else if a[0] > k2 {
+                            if b[0] < k2 {
+                                let t = (k2 - a[0]) / (b[0] - a[0]);
+                                let y = (b[1] - a[1]) * t + a[1];
+                                let z = (b[2] - a[2]) * t + a[2];
+                                let u = (b[3] - a[3]) * t + a[3];
+                                let v = (b[4] - a[4]) * t + a[4];
+                                ring_buffer.push([k2, y, z, u, v])
+                            }
+                        } else {
+                            ring_buffer.push(a)
+                        }
+
+                        if b[0] < k1 && a[0] > k1 {
+                            let t = (k1 - a[0]) / (b[0] - a[0]);
+                            let y = (b[1] - a[1]) * t + a[1];
+                            let z = (b[2] - a[2]) * t + a[2];
+                            let u = (b[3] - a[3]) * t + a[3];
+                            let v = (b[4] - a[4]) * t + a[4];
+                            ring_buffer.push([k1, y, z, u, v])
+                        } else if b[0] > k2 && a[0] < k2 {
+                            let t = (k2 - a[0]) / (b[0] - a[0]);
+                            let y = (b[1] - a[1]) * t + a[1];
+                            let z = (b[2] - a[2]) * t + a[2];
+                            let u = (b[3] - a[3]) * t + a[3];
+                            let v = (b[4] - a[4]) * t + a[4];
+                            ring_buffer.push([k2, y, z, u, v])
+                        }
+
+                        Some(b)
+                    })
+                    .unwrap();
+
+                poly_buf.add_ring(ring_buffer.drain(..))
+            }
+
+            send_polygon(key, &poly_buf);
+        }
+    }
+}
+
+pub fn write_gltf_glb<W: Write>(
+    writer: W,
+    translation: [f64; 3],
+    vertices: impl IntoIterator<Item = [u32; 9]>,
+    primitives: Primitives,
+    num_features: usize,
+    metadata_encoder: MetadataEncoder,
+) -> Result<(), crate::errors::SinkError> {
+    // The buffer for the BIN part
+    let mut bin_content: Vec<u8> = Vec::new();
+    let mut gltf_buffer_views = vec![];
+    let mut gltf_accessors = vec![];
 
     // vertices
     {
@@ -110,7 +249,9 @@ pub fn make_gltf(city_gml: geomotry_types::CityGmlGeometry) -> Result<Gltf, Sink
             ];
 
             LittleEndian::write_u32_into(&[x, y, z, nx, ny, nz, u, v, feature_id], &mut buf);
-            let _ = bin_content.write_all(&buf);
+            bin_content
+                .write_all(&buf)
+                .map_err(crate::errors::SinkError::file_writer)?;
             vertices_count += 1;
         }
 
@@ -182,10 +323,12 @@ pub fn make_gltf(city_gml: geomotry_types::CityGmlGeometry) -> Result<Gltf, Sink
         let indices_offset = bin_content.len();
 
         let mut byte_offset = 0;
-        for (mat_idx, (_, primitive)) in primitives.iter().enumerate() {
+        for (mat_idx, (mat, primitive)) in primitives.iter().enumerate() {
             let mut indices_count = 0;
             for idx in &primitive.indices {
-                let _ = bin_content.write_all(&idx.to_le_bytes());
+                bin_content
+                    .write_all(&idx.to_le_bytes())
+                    .map_err(crate::errors::SinkError::file_writer)?;
                 indices_count += 1;
             }
 
@@ -200,17 +343,21 @@ pub fn make_gltf(city_gml: geomotry_types::CityGmlGeometry) -> Result<Gltf, Sink
             });
 
             let mut attributes = vec![("POSITION".to_string(), 0), ("NORMAL".to_string(), 1)];
+            // TODO: For no-texture data, it's better to exclude u, v from the vertex buffer
+            if mat.base_texture.is_some() {
+                attributes.push(("TEXCOORD_0".to_string(), 2));
+            }
             attributes.push(("_FEATURE_ID_0".to_string(), 3));
 
             gltf_primitives.push(MeshPrimitive {
                 attributes: attributes.into_iter().collect(),
                 indices: Some(gltf_accessors.len() as u32 - 1),
-                material: Some(mat_idx as u32),
+                material: Some(mat_idx as u32), // TODO
                 mode: PrimitiveMode::Triangles,
                 extensions: extensions::mesh::MeshPrimitive {
                     ext_mesh_features: ext_mesh_features::ExtMeshFeatures {
                         feature_ids: vec![ext_mesh_features::FeatureId {
-                            feature_count: primitive.feature_ids.len() as u32,
+                            feature_count: num_features as u32, // primitive.feature_ids.len() as u32,
                             attribute: Some(0),
                             property_table: Some(0),
                             ..Default::default()
@@ -239,36 +386,27 @@ pub fn make_gltf(city_gml: geomotry_types::CityGmlGeometry) -> Result<Gltf, Sink
         }
     }
 
-    let mut image_set: IndexSet<geometryImage, ahash::RandomState> = Default::default();
+    let mut image_set: IndexSet<Image, ahash::RandomState> = Default::default();
     let mut texture_set: IndexSet<Texture, ahash::RandomState> = Default::default();
 
     // materials
     let gltf_materials = primitives
-        .iter()
-        .enumerate()
-        .map(|(idx, (material, _))| {
-            let texture = city_gml.textures.get(idx);
-            material.to_gltf(&mut texture_set, texture)
-        })
+        .keys()
+        .map(|material| material.to_gltf(&mut texture_set))
         .collect();
 
-    // textures
     let gltf_textures: Vec<_> = texture_set
         .into_iter()
         .map(|t| t.to_gltf(&mut image_set))
         .collect();
 
-    // images
     let gltf_images = image_set
         .into_iter()
-        .map(|img| img.to_gltf(&mut gltf_buffer_views, &mut bin_content))
-        .collect::<Result<Vec<Image>, std::io::Error>>()
-        .map_err(|e| {
-            crate::errors::SinkError::file_writer(format!(
-                "Failed to convert image to GLTF: {:?}",
-                e
-            ))
-        })?;
+        .map(|img| {
+            img.to_gltf(&mut gltf_buffer_views, &mut bin_content)
+                .map_err(SinkError::file_writer)
+        })
+        .collect::<Result<Vec<nusamai_gltf::nusamai_gltf_json::Image>, SinkError>>()?;
 
     let mut gltf_meshes = vec![];
     if !gltf_primitives.is_empty() {
@@ -297,6 +435,7 @@ pub fn make_gltf(city_gml: geomotry_types::CityGmlGeometry) -> Result<Gltf, Sink
         }],
         nodes: vec![Node {
             mesh: (!primitives.is_empty()).then_some(0),
+            translation,
             ..Default::default()
         }],
         meshes: gltf_meshes,
@@ -311,9 +450,20 @@ pub fn make_gltf(city_gml: geomotry_types::CityGmlGeometry) -> Result<Gltf, Sink
             ..Default::default()
         }
         .into(),
-        extensions_used: vec![],
+        extensions_used: vec![
+            "EXT_mesh_features".to_string(),
+            "EXT_structural_metadata".to_string(),
+        ],
         ..Default::default()
     };
 
-    Ok(gltf)
+    // Write glb to the writer
+    nusamai_gltf::glb::Glb {
+        json: serde_json::to_vec(&gltf).unwrap().into(),
+        bin: Some(bin_content.into()),
+    }
+    .to_writer_with_alignment(writer, 8)
+    .map_err(SinkError::file_writer)?;
+
+    Ok(())
 }

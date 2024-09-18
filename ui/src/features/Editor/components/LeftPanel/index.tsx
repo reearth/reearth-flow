@@ -130,10 +130,16 @@ const LeftPanel: React.FC<Props> = ({
 
   useShortcuts([
     {
-      keyBinding: { key: "c", commandKey: false },
-      callback: () => {
-        handleTabChange("navigator");
-      },
+      keyBinding: { key: "c", shiftKey: true },
+      callback: () => handleTabChange("navigator"),
+    },
+    {
+      keyBinding: { key: "a", shiftKey: true },
+      callback: () => handleTabChange("actions-list"),
+    },
+    {
+      keyBinding: { key: "r", shiftKey: true },
+      callback: () => handleTabChange("resources"),
     },
   ]);
 
@@ -146,10 +152,9 @@ const LeftPanel: React.FC<Props> = ({
           transitionDuration: isOpen ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-        }}
-      >
+        }}>
         <div className="flex flex-col gap-2 border-b px-4 py-2">
-          <p className="text-lg font-thin">
+          <p className="text-lg dark:font-thin">
             {tabs?.find((tc) => tc.id === selectedTab)?.title}
           </p>
         </div>
@@ -158,20 +163,19 @@ const LeftPanel: React.FC<Props> = ({
           {tabs?.find((tc) => tc.id === selectedTab)?.component}
         </div>
       </div>
-      <aside className="relative z-10 w-14 border-r bg-secondary  ">
+      <aside className="relative z-10 w-14 border-r bg-secondary">
         <div className="flex h-full flex-col">
           <nav className="flex flex-col items-center gap-4 p-2">
             <Link
-              to={`/workspace/${workspaceId}`}
-              className="flex shrink-0 items-center justify-center gap-2 rounded bg-red-800/50 p-2 text-lg font-semibold hover:bg-red-800/80 md:size-8 md:text-base"
-            >
+              to={`/workspaces/${workspaceId}`}
+              className="flex shrink-0 items-center justify-center gap-2 rounded bg-red-800/50 p-2 text-lg font-semibold hover:bg-red-800/80 md:size-8 md:text-base">
               <FlowLogo className="size-5" />
               <span className="sr-only">{t("Dashboard")}</span>
             </Link>
             {tabs.map((tab) => (
               <IconButton
                 key={tab.id}
-                className={`text-popover-foreground/50 flex size-9 items-center justify-center rounded transition-colors hover:text-popover-foreground md:size-8 ${selectedTab === tab.id && "bg-popover text-popover-foreground"}`}
+                className={`flex size-9 items-center justify-center rounded text-popover-foreground/50 transition-colors hover:text-popover-foreground md:size-8 ${selectedTab === tab.id && "bg-popover text-popover-foreground"}`}
                 icon={tab.icon}
                 onClick={() => handleTabChange(tab.id)}
               />
@@ -179,11 +183,11 @@ const LeftPanel: React.FC<Props> = ({
           </nav>
           <nav className="mt-auto flex flex-col items-center gap-4 p-2">
             <MagnifyingGlass
-              className="hover: text-popover-foreground/50 size-6 cursor-pointer hover:text-popover-foreground"
+              className="size-6 cursor-pointer text-popover-foreground/50 hover:text-popover-foreground"
               weight="thin"
               onClick={() =>
                 alert(
-                  "Need to implement a global search and assign a shortcut as well"
+                  "Need to implement a global search and assign a shortcut as well",
                 )
               }
             />

@@ -21,8 +21,7 @@ const IconButton: React.FC<Props> = ({
       variant="ghost"
       size="icon"
       tooltipText={tooltipText}
-      {...props}
-    >
+      {...props}>
       {icon}
     </ButtonWithTooltip>
   ) : (
@@ -30,8 +29,7 @@ const IconButton: React.FC<Props> = ({
       className={`cursor-pointer transition-all ${className}`}
       variant="ghost"
       size="icon"
-      {...props}
-    >
+      {...props}>
       {icon}
     </Button>
   );

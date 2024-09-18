@@ -5,7 +5,7 @@ use std::sync::{
 
 use futures_util::Future;
 use tokio::{
-    runtime::Runtime,
+    runtime::Handle,
     sync::watch::{channel, Receiver, Sender},
 };
 
@@ -38,7 +38,7 @@ async fn wait_shutdown(sender: Arc<Sender<()>>) {
     sender.closed().await;
 }
 
-pub fn new(runtime: &Runtime) -> (ShutdownSender, ShutdownReceiver) {
+pub fn new(runtime: &Handle) -> (ShutdownSender, ShutdownReceiver) {
     let (sender, receiver) = channel(());
     let sender = Arc::new(sender);
     let running = Arc::new(AtomicBool::new(true));

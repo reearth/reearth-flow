@@ -1,0 +1,47 @@
+[package]
+description = "Re:Earth Flow GIS Quality Checker"
+name = "plateau-gis-quality-checker"
+version = "0.0.0-alpha.0"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "1.5.4", features = [] }
+
+[dependencies]
+reearth-flow-action-log.workspace = true
+reearth-flow-action-plateau-processor.workspace = true
+reearth-flow-action-processor.workspace = true
+reearth-flow-action-sink.workspace = true
+reearth-flow-action-source.workspace = true
+reearth-flow-common.workspace = true
+reearth-flow-runner.workspace = true
+reearth-flow-runtime.workspace = true
+reearth-flow-state.workspace = true
+reearth-flow-storage.workspace = true
+reearth-flow-telemetry.workspace = true
+reearth-flow-types.workspace = true
+
+directories.workspace = true
+log = "0.4.22"
+once_cell.workspace = true
+rust-embed = "8.5.0"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tauri = { version = "1.6.8", features = ["dialog-all", "fs-read-dir", "shell-open"] }
+tauri-plugin-log = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
+thiserror.workspace = true
+uuid.workspace = true
+
+[features]
+# by default Tauri runs in production mode
+# when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
+#default = ["custom-protocol"]
+# this feature is used used for production builds where `devPath` points to the filesystem
+# DO NOT remove this
+custom-protocol = ["tauri/custom-protocol"]

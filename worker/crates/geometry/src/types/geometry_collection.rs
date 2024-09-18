@@ -1,9 +1,11 @@
 use super::no_value::NoValue;
+use super::traits::Elevation;
 use super::{coordnum::CoordNum, geometry::Geometry};
 
 use alloc::vec::Vec;
 use core::iter::FromIterator;
 use core::ops::{Index, IndexMut};
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
@@ -167,6 +169,17 @@ impl<'a, T: CoordNum, Z: CoordNum> GeometryCollection<T, Z> {
 
     pub fn iter_mut(&'a mut self) -> IterMutHelper<'a, T, Z> {
         self.into_iter()
+    }
+}
+
+impl<T, Z> Elevation for GeometryCollection<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.0.iter().all(|g| g.is_elevation_zero())
     }
 }
 

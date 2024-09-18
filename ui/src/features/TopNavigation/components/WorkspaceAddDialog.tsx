@@ -48,7 +48,7 @@ const WorkspaceAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
     setShowError(false);
     onOpenChange(false);
 
-    navigate({ to: `/workspace/${workspace.id}` });
+    navigate({ to: `/workspaces/${workspace.id}` });
   }, [name, currentWorkspace, navigate, createWorkspace, onOpenChange]);
 
   return (
@@ -68,8 +68,7 @@ const WorkspaceAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
           </DialogContentSection>
           <div className="flex flex-col gap-6">
             <div
-              className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}
-            >
+              className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}>
               {t("Failed to create workspace")}
             </div>
           </div>
@@ -79,8 +78,7 @@ const WorkspaceAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
             className="self-end"
             disabled={!name || buttonDisabled}
             size="sm"
-            onClick={handleClick}
-          >
+            onClick={handleClick}>
             {t("Create")}
           </Button>
         </DialogFooter>

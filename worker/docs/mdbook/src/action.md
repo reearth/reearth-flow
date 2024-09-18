@@ -459,6 +459,40 @@ Writes features to a file
 ### Category
 * File
 
+## CityGmlGeometryLodFilter
+### Type
+* processor
+### Description
+Filters CityGML geometries by LOD
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlGeometryLodFilter",
+  "type": "object",
+  "required": [
+    "lods"
+  ],
+  "properties": {
+    "lods": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "format": "uint8",
+        "minimum": 0.0
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
+
 ## Clipper
 ### Type
 * processor
@@ -487,7 +521,7 @@ Checks if curves form closed loops
 * default
 ### Output Ports
 * closed
-* line
+* open
 * rejected
 ### Category
 * Geometry
@@ -522,7 +556,37 @@ Sets the coordinate system of a feature
 ### Category
 * Geometry
 
-## Echo
+## DimensionFilter
+### Type
+* processor
+### Description
+Filters the dimension of features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* 2d
+* 3d
+* rejected
+### Category
+* Geometry
+
+## EchoProcessor
+### Type
+* processor
+### Description
+Echo features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Debug
+
+## EchoSink
 ### Type
 * sink
 ### Description
@@ -1714,7 +1778,21 @@ Intersection points are turned into point features that can contain the merged l
 ### Category
 * Geometry
 
-## Noop
+## NoopProcessor
+### Type
+* processor
+### Description
+Noop features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Noop
+
+## NoopSink
 ### Type
 * sink
 ### Description
@@ -1725,7 +1803,7 @@ noop sink
 * default
 ### Output Ports
 ### Category
-* Debug
+* Noop
 
 ## OrientationExtractor
 ### Type

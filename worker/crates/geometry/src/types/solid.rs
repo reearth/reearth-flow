@@ -1,8 +1,10 @@
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
 use super::face::Face;
 use super::no_value::NoValue;
+use super::traits::Elevation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash, Default)]
 pub struct Solid<T: CoordNum = f64, Z: CoordNum = f64> {
@@ -35,5 +37,18 @@ impl From<Solid3D<f64>> for Solid2D<f64> {
             p.top.into_iter().map(|c| c.into()).collect(),
             p.sides.into_iter().map(|c| c.into()).collect(),
         )
+    }
+}
+
+impl<T, Z> Elevation for Solid<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.bottom.iter().all(|f| f.is_elevation_zero())
+            && self.top.iter().all(|f| f.is_elevation_zero())
+            && self.sides.iter().all(|f| f.is_elevation_zero())
     }
 }

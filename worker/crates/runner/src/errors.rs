@@ -4,7 +4,7 @@ use reearth_flow_runtime::errors::ExecutionError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum OrchestrationError {
+pub enum Error {
     #[error("Failed to find any build")]
     NoBuildFound,
     #[error("Missing api config or security input")]
@@ -35,4 +35,6 @@ pub enum OrchestrationError {
     Aborted,
     #[error("This feature is only supported in enterprise: {0}")]
     UnsupportedFeature(String),
+    #[error("Runtime Error: {0}")]
+    RuntimeError(String),
 }

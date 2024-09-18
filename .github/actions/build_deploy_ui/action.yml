@@ -1,60 +1,43 @@
-name: build-ui
-on:
-  workflow_call:
-    inputs:
-      sha_short:
-        required: true
-        type: string
-      new_tag:
-        required: true
-        type: string
-      new_tag_short:
-        required: true
-        type: string
-      name:
-        required: true
-        type: string
-      sha:
-        required: true
-        type: string
+name: build-deploy-ui
+description: Build and deploy the UI
+inputs:
+  sha_short:
+    required: true
+    type: string
+  new_tag:
+    required: true
+    type: string
+  new_tag_short:
+    required: true
+    type: string
+  name:
+    required: true
+    type: string
+  sha:
+    required: true
+    type: string
 
-jobs:
-  build-ui:
-    name: Build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ui
-    if: inputs.name != 'blank'
-    env:
-      NODE_OPTIONS: "--max-old-space-size=8192"
-    steps:
-      - uses: actions/setup-node@v3
-        with:
-          node-version: lts/*
-      - uses: actions/checkout@v3
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: |
-          CACHE_DIR=$(yarn cache dir)
-          echo "dir=$CACHE_DIR" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v3
-        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
-        with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-      - name: Install
-        run: yarn install
-      - name: Build
-        run: yarn build
-      - name: Pack
-        run: mv dist flow-ui && tar -zcvf flow-ui.tar.gz flow-ui
-      - uses: actions/upload-artifact@v2
-        with:
-          name: flow-ui
-          path: ui/flow-ui.tar.gz
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: lts/*
+    - name: Build UI
+      shell: bash
+      env:
+        NODE_OPTIONS: "--max-old-space-size=8192"
+      run: |
+        if [[ "${{ inputs.name }}" != "blank" ]]; then
+          cd ui
+          yarn install
+          yarn build
+          tar -zcvf flow-ui.tar.gz dist
+          mv flow-ui.tar.gz flow-ui_${{ inputs.name }}.tar.gz
+        fi
 
   release:
     name: Release

@@ -1,3 +1,5 @@
 examples/plateau/testdata/**/* linguist-vendored
 tests/fixture/**/* linguist-vendored
-tools/**/* linguist-vendored
+tools/cesium/**/* linguist-vendored
+tools/mvt/**/* linguist-vendored
+tools/plateau-gis-quality-checker/src-tauri/embed/**/* linguist-vendored

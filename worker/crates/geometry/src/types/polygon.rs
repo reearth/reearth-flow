@@ -1,6 +1,8 @@
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use crate::algorithm::contains::Contains;
@@ -11,12 +13,12 @@ use super::conversion::geojson::create_polygon_type;
 use super::coordnum::{CoordFloat, CoordNum};
 use super::face::Face;
 use super::line::Line;
-use super::line_string::LineString;
+use super::line_string::{from_line_string_5d, LineString, LineString2D, LineString3D};
 use super::no_value::NoValue;
 use super::point::Point;
 use super::rect::Rect;
 use super::solid::Solid;
-use super::traits::Surface;
+use super::traits::{Elevation, Surface};
 use super::triangle::Triangle;
 use super::validation::Validation;
 
@@ -180,6 +182,15 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
         Validation {
             is_valid: errors.is_empty(),
             errors,
+        }
+    }
+}
+
+impl Polygon3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        self.exterior.transform_inplace(jgd2wgs);
+        for interior in &mut self.interiors {
+            interior.transform_inplace(jgd2wgs);
         }
     }
 }
@@ -354,6 +365,22 @@ impl<'a> From<NPolygon3<'a>> for Polygon<f64> {
     }
 }
 
+pub fn from_polygon_5d(
+    polygon: &nusamai_geometry::Polygon<[f64; 5]>,
+) -> (Polygon3D<f64>, Polygon2D<f64>) {
+    let (exterior3d, exterior2d) = from_line_string_5d(polygon.exterior());
+    let mut interiors3d: Vec<LineString3D<f64>> = Default::default();
+    let mut interiors2d: Vec<LineString2D<f64>> = Default::default();
+    for interior in polygon.interiors() {
+        let (interior3d, interior2d) = from_line_string_5d(interior);
+        interiors3d.push(interior3d);
+        interiors2d.push(interior2d);
+    }
+    let polygon3d = Polygon3D::new(exterior3d, interiors3d);
+    let polygon2d = Polygon2D::new(exterior2d, interiors2d);
+    (polygon3d, polygon2d)
+}
+
 impl<T: CoordFloat, Z: CoordFloat> From<Polygon<T, Z>> for geojson::Value {
     fn from(polygon: Polygon<T, Z>) -> Self {
         let coords = create_polygon_type(&polygon);
@@ -449,5 +476,17 @@ where
 
     fn envelope(&self) -> Self::Envelope {
         self.exterior.envelope()
+    }
+}
+
+impl<T, Z> Elevation for Polygon<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.exterior.is_elevation_zero()
+            && self.interiors.iter().all(LineString::is_elevation_zero)
     }
 }

@@ -74,8 +74,8 @@ impl Processor for GeometrySplitter {
         };
         match &geometry.value {
             GeometryValue::CityGmlGeometry(city_gml_geometry) => {
-                if city_gml_geometry.features.len() < 2 {
-                    let Some(feature_geometry) = city_gml_geometry.features.first() else {
+                if city_gml_geometry.gml_geometries.len() < 2 {
+                    let Some(feature_geometry) = city_gml_geometry.gml_geometries.first() else {
                         fw.send(
                             ctx.new_with_feature_and_port(
                                 ctx.feature.clone(),
@@ -149,7 +149,7 @@ impl Processor for GeometrySplitter {
                 for split_feature in city_gml_geometry.split_feature() {
                     let mut geometry = geometry.clone();
                     let mut attributes = feature.attributes.clone();
-                    let Some(geometry_feature) = split_feature.features.first() else {
+                    let Some(geometry_feature) = split_feature.gml_geometries.first() else {
                         continue;
                     };
                     attributes.insert(

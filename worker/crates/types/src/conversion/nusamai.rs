@@ -6,7 +6,7 @@ use nusamai_plateau::Entity;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 
 use crate::error::Error;
-use crate::{CityGmlGeometry, Geometry, GeometryFeature, GeometryValue};
+use crate::{CityGmlGeometry, Geometry, GeometryValue, GmlGeometry};
 
 impl TryFrom<Entity> for Geometry {
     type Error = Error;
@@ -33,8 +33,8 @@ impl TryFrom<Entity> for Geometry {
             return Err(Error::unsupported_feature("no feature found"));
         };
         let geometries = entity.geometry_refs.clone();
-        let mut geometry_features = Vec::<GeometryFeature>::new();
-        let operation = |geometry: &GeometryRef| -> Option<GeometryFeature> {
+        let mut geometry_features = Vec::<GmlGeometry>::new();
+        let operation = |geometry: &GeometryRef| -> Option<GmlGeometry> {
             match geometry.ty {
                 GeometryType::Solid
                 | GeometryType::Surface
@@ -49,7 +49,7 @@ impl TryFrom<Entity> for Geometry {
                         let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
                         polygons.push(poly.into());
                     }
-                    let mut geometry_feature = GeometryFeature::from(geometry.clone());
+                    let mut geometry_feature = GmlGeometry::from(geometry.clone());
                     geometry_feature.polygons.extend(polygons);
                     Some(geometry_feature)
                 }
@@ -59,12 +59,17 @@ impl TryFrom<Entity> for Geometry {
             }
         };
         geometry_features.extend(geometries.iter().flat_map(operation));
-        let bounded_map = entity
-            .bounded
+
+        let feature_map = geometry_features
             .iter()
-            .flat_map(|bound| {
-                let id = bound.id.clone()?;
-                Some((id, bound.clone()))
+            .flat_map(|f| f.id.as_ref().map(|id| (id.clone(), f.clone())))
+            .collect::<HashMap<_, _>>();
+        let bounded_map = entity
+            .bounded_by
+            .iter()
+            .map(|bound| {
+                let id = bound.id.clone();
+                (id, bound)
             })
             .collect::<HashMap<_, _>>();
 
@@ -84,16 +89,21 @@ impl TryFrom<Entity> for Geometry {
                         return;
                     };
                     geometry.solid_ids.iter().for_each(|solid_id| {
-                        if let Some(bound) = bounded_map.get(solid_id) {
-                            let mut polygons = Vec::<Polygon3D<f64>>::new();
-                            for idx_poly in geoms
-                                .multipolygon
-                                .iter_range(bound.pos as usize..(bound.pos + bound.len) as usize)
-                            {
-                                let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
-                                polygons.push(poly.into());
+                        if let Some(other_feature) = feature_map.get(&solid_id.value()) {
+                            feature.composite_surfaces.push(other_feature.clone());
+                            return;
+                        }
+                        if let Some(bounded_by) = bounded_map.get(&solid_id.value()) {
+                            for bound in bounded_by.geometry_refs.iter() {
+                                let mut polygons = Vec::<Polygon3D<f64>>::new();
+                                for idx_poly in geoms.multipolygon.iter_range(
+                                    bound.pos as usize..(bound.pos + bound.len) as usize,
+                                ) {
+                                    let poly = idx_poly.transform(|c| geoms.vertices[*c as usize]);
+                                    polygons.push(poly.into());
+                                }
+                                feature.polygons.extend(polygons);
                             }
-                            feature.polygons.extend(polygons);
                         }
                     });
                 }
@@ -101,8 +111,6 @@ impl TryFrom<Entity> for Geometry {
                 GeometryType::Point | GeometryType::MultiPoint => unimplemented!(),
                 GeometryType::Tin => unimplemented!(),
             });
-
-        geometry_features.extend(entity.bounded.iter().flat_map(operation));
 
         let mut geometry_entity = CityGmlGeometry::new(
             geometry_features,
@@ -175,7 +183,7 @@ impl TryFrom<Entity> for Geometry {
                 }
                 // apply textures to polygons
                 geometry_entity.polygon_textures = poly_textures;
-                geometry_entity.polygon_uv = Some(poly_uvs.into());
+                geometry_entity.polygon_uvs = poly_uvs.into();
             }
         } else {
             // set 'null' appearance if no theme found
@@ -192,7 +200,7 @@ impl TryFrom<Entity> for Geometry {
                     }
                 }
             }
-            geometry_entity.polygon_uv = Some(poly_uvs.into());
+            geometry_entity.polygon_uvs = poly_uvs.into();
         }
         Ok(Self::new(
             epsg,

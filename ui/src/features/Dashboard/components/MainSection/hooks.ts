@@ -10,7 +10,7 @@ export default ({ workspace }: { workspace: Workspace }) => {
 
   const [currentProject, setCurrentProject] = useCurrentProject();
 
-  const navigate = useNavigate({ from: "/workspace/$workspaceId" });
+  const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
   const { useGetWorkspaceProjectsInfinite, deleteProject, updateProject } =
     useProject();
   const { pages, hasNextPage, isFetching, fetchNextPage } =
@@ -23,12 +23,12 @@ export default ({ workspace }: { workspace: Workspace }) => {
     string | undefined
   >(undefined);
   const [editProject, setEditProject] = useState<undefined | Project>(
-    undefined
+    undefined,
   );
 
   const handleProjectSelect = (p: Project) => {
     setCurrentProject(p);
-    navigate({ to: `/workspace/${workspace.id}/project/${p.id}` });
+    navigate({ to: `/workspaces/${workspace.id}/projects/${p.id}` });
   };
 
   const handleDeleteProject = async (id: string) => {
@@ -72,7 +72,7 @@ export default ({ workspace }: { workspace: Workspace }) => {
         }
         return projects;
       }, [] as Project[]),
-    [pages]
+    [pages],
   );
 
   // Auto fills the page

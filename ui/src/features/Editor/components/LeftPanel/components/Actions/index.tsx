@@ -105,7 +105,7 @@ const ActionsList: React.FC<Props> = ({
         },
       };
       onNodesChange(nodes.concat(newNode));
-    }
+    },
   );
 
   const handleActionSelect = (name?: string) => {
@@ -121,12 +121,15 @@ const ActionsList: React.FC<Props> = ({
               (result += (
                 Array.isArray(value) ? value.join() : value
               ).toLowerCase()),
-            ""
+            "",
           )
-          .includes(filter.toLowerCase())
+          .includes(filter.toLowerCase()),
       ),
-    []
+    [],
   );
+
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchDone, setSearchDone] = useState<string>("");
 
   // Don't worry too much about this implementation. It's only placeholder till we get an actual one using API
   const handleSearch = debounce((filter: string) => {
@@ -147,17 +150,24 @@ const ActionsList: React.FC<Props> = ({
           (obj: Record<string, Action[] | undefined>, key) => {
             obj[key] = getFilteredActions(
               filter,
-              actionsSegregatedData[rootKey][key]
+              actionsSegregatedData[rootKey][key],
             );
             return obj;
           },
-          {}
+          {},
         );
         return obj;
       }, {} as Segregated);
 
     setActionsSegregated(actionsSegregated);
+    setSearchDone(filter);
   }, 200);
+
+  useEffect(() => {
+    if (searchTerm !== searchDone) {
+      handleSearch(searchTerm);
+    }
+  }, [searchTerm, searchDone, handleSearch]);
 
   return (
     <Tabs defaultValue={tabs[0].order}>
@@ -173,23 +183,31 @@ const ActionsList: React.FC<Props> = ({
           <Input
             className="mx-auto my-2 h-7 w-full"
             placeholder={t("Search")}
-            onChange={(e) => handleSearch(e.target.value)}
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+            }}
           />
         </div>
       </div>
       <div className="mt-[52px] p-2">
         {tabs.map(({ order, actions }) => (
           <TabsContent
-            className="dark flex flex-col gap-1"
+            className="flex flex-col gap-1"
             key={order}
-            value={order}
-          >
+            value={order}>
             {Array.isArray(actions) ? (
               actions.map((action) => (
                 <Fragment key={action.name}>
                   <ActionComponent
                     action={action}
                     selected={selected === action.name}
+                    onTypeClick={(type) =>
+                      setSearchTerm((st) => (st === type ? "" : type))
+                    }
+                    onCategoryClick={(category) =>
+                      setSearchTerm((st) => (st === category ? "" : category))
+                    }
                     onSingleClick={handleSingleClick}
                     onDoubleClick={handleDoubleClick}
                     onSelect={() => handleActionSelect(action.name)}
@@ -211,6 +229,14 @@ const ActionsList: React.FC<Props> = ({
                             <ActionComponent
                               action={action}
                               selected={selected === action.name}
+                              onTypeClick={(type) =>
+                                setSearchTerm((st) => (st === type ? "" : type))
+                              }
+                              onCategoryClick={(category) =>
+                                setSearchTerm((st) =>
+                                  st === category ? "" : category,
+                                )
+                              }
                               onSingleClick={handleSingleClick}
                               onDoubleClick={handleDoubleClick}
                               onSelect={() => handleActionSelect(action.name)}

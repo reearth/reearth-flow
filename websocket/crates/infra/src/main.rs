@@ -7,10 +7,7 @@ use socket::{
 };
 use tower::timeout::TimeoutLayer;
 use tower::ServiceBuilder;
-use tower_http::{
-    services::ServeDir,
-    trace::{DefaultMakeSpan, TraceLayer},
-};
+use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod socket;
 
@@ -19,16 +16,15 @@ async fn main() -> std::io::Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_websockets=debug,tower_http=debug".into()),
+                .unwrap_or_else(|_| "trace,tower_http=debug,".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let state = Arc::new(AppState::new());
+    let state = Arc::new(AppState::default());
     let state_err = state.clone();
     let app = Router::new()
-        .fallback_service(ServeDir::new("assets").append_index_html_on_directories(true))
-        .route("/ws", get(handle_upgrade))
+        .route("/:room", get(handle_upgrade))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(move |method, uri, err| {

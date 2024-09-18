@@ -1,14 +1,13 @@
-use std::{collections::HashMap, fs, io, path::Path, str::FromStr, sync::Arc};
+use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use directories::ProjectDirs;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_state::State;
 use reearth_flow_types::Workflow;
 use tracing::debug;
 
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
-use reearth_flow_common::uri::Uri;
+use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
 use reearth_flow_storage::resolve;
 
 use crate::factory::ALL_ACTION_FACTORIES;
@@ -82,7 +81,7 @@ impl RunCliCommand {
     pub fn parse_cli_args(mut matches: ArgMatches) -> crate::Result<Self> {
         let workflow_path = matches
             .remove_one::<String>("workflow")
-            .ok_or(crate::Error::init("No workflow uri provided"))?;
+            .ok_or(crate::errors::Error::init("No workflow uri provided"))?;
         let job_id = matches.remove_one::<String>("job_id");
         let dataframe_state_uri = matches.remove_one::<String>("dataframe_state");
         let action_log_uri = matches.remove_one::<String>("action_log");
@@ -114,46 +113,35 @@ impl RunCliCommand {
         debug!(args = ?self, "run-workflow");
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
         let json = if self.workflow_path == "-" {
-            io::read_to_string(io::stdin()).map_err(crate::Error::init)?
+            io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?
         } else {
             let path = Uri::for_test(self.workflow_path.as_str());
             let storage = storage_resolver
                 .resolve(&path)
-                .map_err(crate::Error::init)?;
+                .map_err(crate::errors::Error::init)?;
             let bytes = storage
                 .get_sync(path.path().as_path())
-                .map_err(crate::Error::init)?;
-            String::from_utf8(bytes.to_vec()).map_err(crate::Error::init)?
+                .map_err(crate::errors::Error::init)?;
+            String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?
         };
         let mut workflow = Workflow::try_from_str(&json);
         workflow.merge_with(self.vars.clone());
         let job_id = match &self.job_id {
-            Some(job_id) => uuid::Uuid::from_str(job_id.as_str()).map_err(crate::Error::init)?,
+            Some(job_id) => {
+                uuid::Uuid::from_str(job_id.as_str()).map_err(crate::errors::Error::init)?
+            }
             None => uuid::Uuid::new_v4(),
         };
         let action_log_uri = match &self.action_log_uri {
-            Some(uri) => Uri::from_str(uri).map_err(crate::Error::init)?,
-            None => {
-                let p = ProjectDirs::from("reearth", "flow", "worker")
-                    .ok_or(crate::Error::init("No action log uri provided"))?;
-                let p = p
-                    .cache_dir()
-                    .to_str()
-                    .ok_or(crate::Error::init("Invalid action log uri"))?;
-                let p = format!("{}/action-log/{}", p, job_id);
-                fs::create_dir_all(Path::new(p.as_str())).map_err(crate::Error::init)?;
-                Uri::for_test(format!("file://{}", p).as_str())
-            }
+            Some(uri) => Uri::from_str(uri).map_err(crate::errors::Error::init)?,
+            None => setup_job_directory("worker", "action-log", job_id)
+                .map_err(crate::errors::Error::init)?,
         };
-        let state_uri = {
-            let p = ProjectDirs::from("reearth", "flow", "worker").unwrap();
-            let p = p.cache_dir().to_str().unwrap();
-            let p = format!("{}/feature-store/{}", p, job_id);
-            let _ = fs::create_dir_all(Path::new(p.as_str()));
-            Uri::for_test(format!("file://{}", p).as_str())
-        };
-
-        let state = Arc::new(State::new(&state_uri, &storage_resolver).unwrap());
+        let state_uri = setup_job_directory("worker", "feature-store", job_id)
+            .map_err(crate::errors::Error::init)?;
+        let state = Arc::new(
+            State::new(&state_uri, &storage_resolver).map_err(crate::errors::Error::init)?,
+        );
 
         let logger_factory = Arc::new(LoggerFactory::new(
             create_root_logger(action_log_uri.path()),
@@ -166,7 +154,7 @@ impl RunCliCommand {
             logger_factory,
             storage_resolver,
             state,
-        );
-        Ok(())
+        )
+        .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {}", e)))
     }
 }

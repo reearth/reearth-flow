@@ -1,3 +1,4 @@
+pub(crate) mod collection;
 pub(crate) mod console;
 pub(crate) mod env;
 pub(crate) mod file;

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crossbeam::channel::Sender;
-use tokio::runtime::Runtime;
+use tokio::runtime::Handle;
 
 use crate::channels::ProcessorChannelForwarder;
 use crate::error_manager::ErrorManager;
@@ -44,7 +44,7 @@ pub struct ChannelManager {
     feature_writers: HashMap<Port, Box<dyn FeatureWriter>>,
     senders: Vec<SenderWithPortMapping>,
     error_manager: Arc<ErrorManager>,
-    runtime: Arc<Runtime>,
+    runtime: Arc<Handle>,
     #[allow(dead_code)]
     event_sender: tokio::sync::broadcast::Sender<Event>,
 }
@@ -103,7 +103,7 @@ impl ChannelManager {
         feature_writers: HashMap<Port, Box<dyn FeatureWriter>>,
         senders: Vec<SenderWithPortMapping>,
         error_manager: Arc<ErrorManager>,
-        runtime: Arc<Runtime>,
+        runtime: Arc<Handle>,
         event_sender: tokio::sync::broadcast::Sender<Event>,
     ) -> Self {
         Self {

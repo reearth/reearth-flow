@@ -1,0 +1,92 @@
+# Types
+
+type Deployment implements Node {
+  id: ID!
+  projectId: ID!
+  workspaceId: ID!
+  workflowId: ID!
+  version: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  project: Project
+  workspace: Workspace
+}
+
+type Job implements Node {
+  id: ID!
+  deploymentId: ID!
+  workspaceId: ID!
+  status: JobStatus!
+  startedAt: DateTime!
+  completedAt: DateTime
+  deployment: Deployment
+  workspace: Workspace
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+# Input Types
+
+input CreateDeploymentInput {
+  projectId: ID!
+  workspaceId: ID!
+  workflows: [InputWorkflow!]!
+}
+
+input ExecuteDeploymentInput {
+  deploymentId: ID!
+}
+
+# Payload Types
+
+type DeploymentPayload {
+  deployment: Deployment!
+}
+
+type JobPayload {
+  job: Job!
+}
+
+# Connection Types
+
+type DeploymentConnection {
+  edges: [DeploymentEdge!]!
+  nodes: [Deployment]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type DeploymentEdge {
+  cursor: Cursor!
+  node: Deployment
+}
+
+type JobConnection {
+  edges: [JobEdge!]!
+  nodes: [Job]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type JobEdge {
+  cursor: Cursor!
+  node: Job
+}
+
+# Query and Mutation Extensions
+
+extend type Query {
+  deployments(workspaceId: ID!, pagination: Pagination): DeploymentConnection!
+  jobs(workspaceId: ID!, pagination: Pagination): JobConnection!
+  job(id: ID!): Job
+}
+
+extend type Mutation {
+  createDeployment(input: CreateDeploymentInput!): DeploymentPayload
+  executeDeployment(input: ExecuteDeploymentInput!): JobPayload
+}

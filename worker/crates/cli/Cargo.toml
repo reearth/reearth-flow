@@ -10,6 +10,8 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+default-run = "reearth-flow"
+
 [[bin]]
 name = "reearth-flow"
 path = "src/main.rs"
@@ -29,8 +31,8 @@ reearth-flow-telemetry.workspace = true
 reearth-flow-types.workspace = true
 
 bytes.workspace = true
-clap = { version = "4.5.8", features = ["env", "string"] }
-colored = "2.1.0"
+clap.workspace = true
+colored.workspace = true
 directories.workspace = true
 indoc.workspace = true
 once_cell.workspace = true

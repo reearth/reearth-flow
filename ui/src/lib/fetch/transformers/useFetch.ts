@@ -21,7 +21,7 @@ const CHANGE_NAMES: Record<string, string> = {
 };
 
 const actionResponse = <T extends Action | Action[] | Segregated>(
-  response: T
+  response: T,
 ): T => {
   if (Array.isArray(response)) {
     return response.map((tr) => processAction(tr)) as T;
@@ -43,7 +43,7 @@ const actionResponse = <T extends Action | Action[] | Segregated>(
         }
         return obj;
       },
-      {}
+      {},
     );
     return obj;
   }, {} as Segregated) as T;
@@ -58,7 +58,7 @@ const actionResponse = <T extends Action | Action[] | Segregated>(
 
 export const fetcher = async <T extends Action[] | Segregated | Action>(
   url: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<T> => {
   const response = await fetch(url, { signal });
 
@@ -96,7 +96,7 @@ export const useFetch = () => {
       queryFn: async ({ signal }: { signal: AbortSignal }) =>
         fetcher<Segregated>(
           `${BASE_URL}/actions/${ActionFetchKeys.segregated}`,
-          signal
+          signal,
         ),
       staleTime: Infinity,
     });

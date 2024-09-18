@@ -1,7 +1,9 @@
 use std::iter::FromIterator;
+use std::ops::Range;
 
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
 use nusamai_geometry::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3};
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +14,7 @@ use super::coordnum::{CoordFloat, CoordNum};
 use super::line_string::LineString;
 use super::no_value::NoValue;
 use super::polygon::{Polygon, Polygon2D};
+use super::traits::Elevation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub struct MultiPolygon<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Polygon<T, Z>>);
@@ -94,6 +97,10 @@ impl<T: CoordNum, Z: CoordNum> MultiPolygon<T, Z> {
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn range(&self, range: Range<usize>) -> Vec<Polygon<T, Z>> {
+        self.0[range].to_vec()
     }
 }
 
@@ -253,5 +260,16 @@ impl From<MultiPolygon3D<f64>> for Vec<NaPoint3<f64>> {
                 })
                 .collect::<Vec<Vec<NaPoint3<f64>>>>();
         result.into_iter().flatten().collect()
+    }
+}
+
+impl<T, Z> Elevation for MultiPolygon<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.0.iter().all(|p| p.is_elevation_zero())
     }
 }

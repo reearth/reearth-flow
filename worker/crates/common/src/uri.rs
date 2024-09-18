@@ -3,6 +3,7 @@ use std::env;
 use std::ffi::OsStr;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
+use std::path::MAIN_SEPARATOR;
 use std::path::{Component, Path, PathBuf};
 use std::str::FromStr;
 
@@ -54,6 +55,16 @@ impl Protocol {
             Protocol::Google => "gs://",
             Protocol::Http => "http://",
             Protocol::Https => "https://",
+        }
+    }
+
+    pub fn separator(&self) -> char {
+        match &self {
+            Protocol::File => MAIN_SEPARATOR,
+            Protocol::Ram => '/',
+            Protocol::Google => '/',
+            Protocol::Http => '/',
+            Protocol::Https => '/',
         }
     }
 }
@@ -131,19 +142,23 @@ impl Uri {
             "{}{}{}",
             self.protocol.as_str(),
             PROTOCOL_SEPARATOR,
-            p.split('/').next().unwrap_or_default()
+            p.split(self.protocol.separator())
+                .next()
+                .unwrap_or_default()
         ))
     }
 
     pub fn root(&self) -> &str {
         let p = &self.uri[self.protocol.as_str().len() + PROTOCOL_SEPARATOR.len()..];
-        p.split('/').next().unwrap_or_default()
+        p.split(self.protocol.separator())
+            .next()
+            .unwrap_or_default()
     }
 
     pub fn path(&self) -> PathBuf {
         let p = &self.uri[self.protocol.as_str().len() + PROTOCOL_SEPARATOR.len()..];
         let sub_path = p
-            .split('/')
+            .split(self.protocol.separator())
             .skip(1)
             .collect::<Vec<&str>>()
             .join("/")
@@ -168,7 +183,13 @@ impl Uri {
     }
 
     pub fn is_dir(&self) -> bool {
-        self.extension().is_none()
+        match self.protocol() {
+            Protocol::File => self._path().is_dir(),
+            Protocol::Ram => self.extension().is_none(),
+            Protocol::Google => self.extension().is_none(),
+            Protocol::Http => self.extension().is_none(),
+            Protocol::Https => self.extension().is_none(),
+        }
     }
 
     pub fn is_file(&self) -> bool {
@@ -200,7 +221,11 @@ impl Uri {
             _ => format!(
                 "{}{}{}",
                 self.uri,
-                if self.uri.ends_with('/') { "" } else { "/" },
+                if self.uri.ends_with(self.protocol.separator()) {
+                    "".to_string()
+                } else {
+                    self.protocol.separator().to_string()
+                },
                 path.as_ref().display(),
             ),
         };
@@ -219,7 +244,6 @@ impl Uri {
         if uri_str.is_empty() {
             return Err(crate::Error::Uri("URI cannot be empty".to_string()));
         }
-        let uri_str = uri_str.replace('\\', "/");
         let (protocol, mut path) = match uri_str.split_once(PROTOCOL_SEPARATOR) {
             None => (Protocol::File, uri_str.to_string()),
             Some((protocol, path)) => (Protocol::from_str(protocol)?, path.to_string()),
@@ -585,7 +609,7 @@ mod tests {
     #[test]
     fn test_sub_path() {
         assert_eq!(
-            Uri::for_test("file:///foo/hoge").path(),
+            Uri::for_test("file:///foo/hoge")._path(),
             PathBuf::from_str("/foo/hoge").unwrap()
         );
         assert_eq!(

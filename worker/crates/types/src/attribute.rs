@@ -54,6 +54,64 @@ pub enum AttributeValue {
     Map(HashMap<String, AttributeValue>),
 }
 
+impl AttributeValue {
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Self::Bool(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn as_i64(&self) -> Option<i64> {
+        match self {
+            Self::Number(v) => v.as_i64(),
+            _ => None,
+        }
+    }
+
+    pub fn as_f64(&self) -> Option<f64> {
+        match self {
+            Self::Number(v) => v.as_f64(),
+            _ => None,
+        }
+    }
+
+    pub fn as_string(&self) -> Option<String> {
+        match self {
+            Self::String(v) => Some(v.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_datetime(&self) -> Option<DateTime> {
+        match self {
+            Self::DateTime(v) => Some(v.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_vec(&self) -> Option<Vec<AttributeValue>> {
+        match self {
+            Self::Array(v) => Some(v.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_bytes(&self) -> Option<Bytes> {
+        match self {
+            Self::Bytes(v) => Some(v.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_map(&self) -> Option<HashMap<String, AttributeValue>> {
+        match self {
+            Self::Map(v) => Some(v.clone()),
+            _ => None,
+        }
+    }
+}
+
 impl PartialEq for AttributeValue {
     fn eq(&self, rhs: &Self) -> bool {
         match (&self, &rhs) {

@@ -1,4 +1,6 @@
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
@@ -13,6 +15,7 @@ use super::conversion::geojson::{
 use super::coordinate::{self, Coordinate};
 use super::coordnum::{CoordFloat, CoordNum};
 use super::line::Line;
+use super::traits::Elevation;
 use super::triangle::Triangle;
 use super::{no_value::NoValue, point::Point};
 
@@ -31,6 +34,28 @@ impl From<LineString<f64, f64>> for LineString<f64, NoValue> {
             .map(|c| c.into())
             .collect::<Vec<Coordinate<f64, NoValue>>>();
         LineString(new_coords)
+    }
+}
+
+impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Coordinate<T, Z>> {
+        self.0.iter()
+    }
+}
+
+impl LineString3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        for coord in &mut self.0 {
+            coord.transform_inplace(jgd2wgs);
+        }
     }
 }
 
@@ -241,7 +266,7 @@ impl<'a> From<NLineString2<'a>> for LineString<f64, NoValue> {
         LineString2D::new(
             coords
                 .iter_closed()
-                .map(|a| coordinate::Coordinate2D::new_(a[0], a[1]))
+                .map(|a| coordinate::Coordinate2D::new_(a[1], a[0]))
                 .collect::<Vec<_>>(),
         )
     }
@@ -253,10 +278,27 @@ impl<'a> From<NLineString3<'a>> for LineString<f64> {
         LineString3D::new(
             coords
                 .iter_closed()
-                .map(|a| coordinate::Coordinate3D::new__(a[0], a[1], a[2]))
+                .map(|a| coordinate::Coordinate3D::new__(a[1], a[0], a[2]))
                 .collect::<Vec<_>>(),
         )
     }
+}
+
+pub fn from_line_string_5d(
+    line_strings: nusamai_geometry::LineString<[f64; 5]>,
+) -> (LineString3D<f64>, LineString2D<f64>) {
+    let targets = line_strings
+        .iter_closed()
+        .map(|line| {
+            (
+                coordinate::Coordinate3D::new__(line[0], line[1], line[2]),
+                coordinate::Coordinate2D::new_(line[3], line[4]),
+            )
+        })
+        .collect::<Vec<_>>();
+    let line_string_3d = LineString3D::new(targets.iter().map(|(a, _)| *a).collect());
+    let line_string_2d = LineString2D::new(targets.iter().map(|(_, b)| *b).collect());
+    (line_string_3d, line_string_2d)
 }
 
 impl<T: CoordFloat, Z: CoordFloat> From<LineString<T, Z>> for geojson::Value {
@@ -362,5 +404,16 @@ where
                 Point::new_(b.max().x, b.max().y, b.max().z),
             ),
         }
+    }
+}
+
+impl<T, Z> Elevation for LineString<T, Z>
+where
+    T: CoordNum + Zero,
+    Z: CoordNum + Zero,
+{
+    #[inline]
+    fn is_elevation_zero(&self) -> bool {
+        self.0.iter().all(|c| c.is_elevation_zero())
     }
 }

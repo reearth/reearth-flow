@@ -29,6 +29,8 @@ export default function Editor() {
     handleNodePickerClose,
     handleEdgesUpdate,
     handleEdgeHover,
+    handleWorkflowRedo,
+    handleWorkflowUndo,
   } = useHooks();
 
   return (
@@ -46,10 +48,11 @@ export default function Editor() {
             hoveredDetails={hoveredDetails}
             nodePickerOpen={nodePickerOpen}
             nodes={nodes}
+            onWorkflowUndo={handleWorkflowUndo}
+            onWorkflowRedo={handleWorkflowRedo}
             onNodesChange={handleNodesUpdate}
             onNodeLocking={handleNodeLocking}
-            onNodePickerClose={handleNodePickerClose}
-          >
+            onNodePickerClose={handleNodePickerClose}>
             <Canvas
               nodes={nodes}
               edges={edges}

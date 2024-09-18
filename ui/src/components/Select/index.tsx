@@ -24,11 +24,10 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border bg-transparent px-3 py-2 text-sm dark:font-extralight shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className,
     )}
-    {...props}
-  >
+    {...props}>
     {children}
     <SelectPrimitive.Icon asChild>
       <CaretSortIcon className="size-4 opacity-50" />
@@ -47,8 +46,7 @@ const SelectScrollUpButton = React.forwardRef<
       "flex cursor-default items-center justify-center py-1",
       className,
     )}
-    {...props}
-  >
+    {...props}>
     <ChevronUpIcon />
   </SelectPrimitive.ScrollUpButton>
 ));
@@ -64,8 +62,7 @@ const SelectScrollDownButton = React.forwardRef<
       "flex cursor-default items-center justify-center py-1",
       className,
     )}
-    {...props}
-  >
+    {...props}>
     <ChevronDownIcon />
   </SelectPrimitive.ScrollDownButton>
 ));
@@ -86,16 +83,14 @@ const SelectContent = React.forwardRef<
         className,
       )}
       position={position}
-      {...props}
-    >
+      {...props}>
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport
         className={cn(
           "p-1",
           position === "popper" &&
             "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
-        )}
-      >
+        )}>
         {children}
       </SelectPrimitive.Viewport>
       <SelectScrollDownButton />
@@ -126,8 +121,7 @@ const SelectItem = React.forwardRef<
       "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
-    {...props}
-  >
+    {...props}>
     <span className="absolute right-2 flex size-3.5 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
         <CheckIcon className="size-4" />

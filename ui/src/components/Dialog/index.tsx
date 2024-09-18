@@ -25,7 +25,7 @@ const DialogOverlay = forwardRef<
     className={cn(
       overlayBgClass,
       "fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
+      className,
     )}
     {...props}
   />
@@ -36,7 +36,7 @@ const DialogContent = forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     size?: "sm" | "md" | "lg" | "xl" | "2xl";
-    position?: "center" | "top";
+    position?: "center" | "off-center" | "top";
     overlayBgClass?: string;
     hideCloseButton?: boolean;
   }
@@ -53,7 +53,7 @@ const DialogContent = forwardRef<
       onCloseAutoFocus,
       ...props
     },
-    ref
+    ref,
   ) => (
     <DialogPortal>
       <DialogOverlay overlayBgClass={overlayBgClass} />
@@ -73,11 +73,13 @@ const DialogContent = forwardRef<
                     ? "max-w-[900px]"
                     : undefined,
           position === "top"
-            ? "top-[35%]"
-            : position === "center"
+            ? "top-[5%]"
+            : position === "off-center"
               ? "top-[40%] translate-y-[-50%]"
-              : undefined,
-          className
+              : position === "center"
+                ? "top-[50%] translate-y-[-50%]"
+                : undefined,
+          className,
         )}
         onOpenAutoFocus={(e) =>
           onOpenAutoFocus ? onOpenAutoFocus(e) : e.preventDefault()
@@ -85,8 +87,7 @@ const DialogContent = forwardRef<
         onCloseAutoFocus={(e) =>
           onCloseAutoFocus ? onCloseAutoFocus(e) : e.preventDefault()
         }
-        {...props}
-      >
+        {...props}>
         <div className="overflow-hidden rounded-lg bg-secondary">
           {children}
           {!hideCloseButton && (
@@ -98,7 +99,7 @@ const DialogContent = forwardRef<
         </div>
       </DialogPrimitive.Content>
     </DialogPortal>
-  )
+  ),
 );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
@@ -109,7 +110,7 @@ const DialogHeader = ({
   <div
     className={cn(
       "flex flex-col space-y-1.5 text-center sm:text-left",
-      className
+      className,
     )}
     {...props}
   />
@@ -123,7 +124,7 @@ const DialogFooter = ({
   <div
     className={cn(
       "flex flex-col-reverse px-6 pb-6 sm:flex-row sm:justify-end sm:space-x-2",
-      className
+      className,
     )}
     {...props}
   />
@@ -137,8 +138,8 @@ const DialogTitle = forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-xl text-center font-thin border-b leading-none tracking-tight px-6 py-4 rounded-t-lg",
-      className
+      "text-xl text-center dark:font-thin border-b leading-none tracking-tight px-6 py-4 rounded-t-lg",
+      className,
     )}
     {...props}
   />

@@ -106,7 +106,9 @@ const MembersSettings: React.FC = () => {
     <div>
       <div className="mt-4 flex max-w-[800px] flex-col gap-6">
         <div className="flex justify-between">
-          <p className="text-lg font-extralight">{t("Members Settings")}</p>
+          <p className="text-lg dark:font-extralight">
+            {t("Members Settings")}
+          </p>
         </div>
         <div className="flex items-center justify-between">
           {/* TODO: This will be a dialog component */}
@@ -119,12 +121,11 @@ const MembersSettings: React.FC = () => {
           />
           <Button
             onClick={() => handleAddMember(email)}
-            disabled={!email || currentWorkspace?.personal}
-          >
+            disabled={!email || currentWorkspace?.personal}>
             {t("Add Member")}
           </Button>
         </div>
-        <div className="rounded border font-extralight">
+        <div className="rounded border dark:font-extralight">
           <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
             <div className="flex items-center gap-2">
               <User weight="thin" />
@@ -142,8 +143,7 @@ const MembersSettings: React.FC = () => {
                     <DropdownMenuItem
                       key={idx}
                       className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
-                      onClick={() => setFilter(filter.id)}
-                    >
+                      onClick={() => setFilter(filter.id)}>
                       {filter.title}
                     </DropdownMenuItem>
                   ))}
@@ -155,14 +155,13 @@ const MembersSettings: React.FC = () => {
             {members?.map((m) => (
               <div key={m.userId} className="flex gap-4 px-4 py-2">
                 <p className="flex-1">{m.user?.name}</p>
-                <p className="flex-1 px-4 text-sm font-thin capitalize">
+                <p className="flex-1 px-4 text-sm dark:font-thin capitalize">
                   {m.role}
                 </p>
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={m.userId === me?.id}
-                    className={`flex flex-1 items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}
-                  >
+                    className={`flex flex-1 items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}>
                     <p className="text-sm">{t("Change role")}</p>
                     <CaretDown className="size-2" />
                   </DropdownMenuTrigger>
@@ -171,8 +170,7 @@ const MembersSettings: React.FC = () => {
                     {roles.map((role, idx) => (
                       <DropdownMenuItem
                         key={idx}
-                        onClick={() => handleChangeRole(m.userId, role)}
-                      >
+                        onClick={() => handleChangeRole(m.userId, role)}>
                         {role}
                       </DropdownMenuItem>
                     ))}
@@ -183,8 +181,7 @@ const MembersSettings: React.FC = () => {
                   size="sm"
                   variant="outline"
                   disabled={m.userId === me?.id}
-                  onClick={() => handleRemoveMembers(m.userId)}
-                >
+                  onClick={() => handleRemoveMembers(m.userId)}>
                   {t("Remove")}
                 </Button>
               </div>

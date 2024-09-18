@@ -58,6 +58,7 @@ const Canvas: React.FC<Props> = ({
     handleNodeDrop,
     handleEdgesChange,
     handleConnect,
+    handleReconnect,
   } = useHooks({
     nodes,
     edges,
@@ -119,9 +120,10 @@ const Canvas: React.FC<Props> = ({
       onEdgeMouseEnter={onEdgeHover}
       onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
-      proOptions={proOptions}
-    >
+      onReconnect={handleReconnect}
+      proOptions={proOptions}>
       <Background
+        className="bg-background"
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}
         color="rgba(63, 63, 70, 0.3)"

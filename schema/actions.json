@@ -463,6 +463,40 @@
       ]
     },
     {
+      "name": "CityGmlGeometryLodFilter",
+      "type": "processor",
+      "description": "Filters CityGML geometries by LOD",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGmlGeometryLodFilter",
+        "type": "object",
+        "required": [
+          "lods"
+        ],
+        "properties": {
+          "lods": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "Clipper",
       "type": "processor",
       "description": "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately",
@@ -492,7 +526,7 @@
       ],
       "outputPorts": [
         "closed",
-        "line",
+        "open",
         "rejected"
       ],
       "categories": [
@@ -530,7 +564,41 @@
       ]
     },
     {
-      "name": "Echo",
+      "name": "DimensionFilter",
+      "type": "processor",
+      "description": "Filters the dimension of features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "2d",
+        "3d",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "EchoProcessor",
+      "type": "processor",
+      "description": "Echo features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Debug"
+      ]
+    },
+    {
+      "name": "EchoSink",
       "type": "sink",
       "description": "Echo features",
       "parameter": null,
@@ -1724,7 +1792,23 @@
       ]
     },
     {
-      "name": "Noop",
+      "name": "NoopProcessor",
+      "type": "processor",
+      "description": "Noop features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Noop"
+      ]
+    },
+    {
+      "name": "NoopSink",
       "type": "sink",
       "description": "noop sink",
       "parameter": null,
@@ -1734,7 +1818,7 @@
       ],
       "outputPorts": [],
       "categories": [
-        "Debug"
+        "Noop"
       ]
     },
     {

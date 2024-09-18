@@ -1,40 +1,47 @@
 use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
-use tokio::sync::broadcast;
+use std::sync::Arc;
+use yrs::Doc;
 
 use super::errors::{Result, WsError};
+use tokio::sync::{broadcast, Mutex};
 
 pub struct Room {
     users: Arc<Mutex<HashSet<String>>>,
-    tx: Arc<broadcast::Sender<String>>,
+    _tx: Arc<broadcast::Sender<String>>,
+    doc: Arc<Doc>,
+}
+
+impl Default for Room {
+    fn default() -> Self {
+        Room {
+            users: Arc::new(Mutex::new(HashSet::new())),
+            _tx: Arc::new(broadcast::Sender::new(100)),
+            doc: Arc::new(Doc::new()),
+        }
+    }
 }
 
 impl Room {
     pub fn new() -> Self {
-        Room {
-            users: Arc::new(Mutex::new(HashSet::new())),
-            tx: Arc::new(broadcast::Sender::new(100)),
-        }
+        Room::default()
     }
 
-    pub fn join(&mut self, user_id: String) -> Result<()> {
-        self.users
-            .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
-            .insert(user_id);
+    pub async fn join(&self, user_id: String) -> Result<()> {
+        self.users.lock().await.insert(user_id);
         Ok(())
     }
 
-    pub fn leave(&mut self, user_id: String) -> Result<()> {
-        self.users
-            .try_lock()
-            .or_else(|_| Err(WsError::WsError))?
-            .remove(&user_id);
+    pub async fn _leave(&self, user_id: String) -> Result<()> {
+        self.users.lock().await.remove(&user_id);
         Ok(())
     }
 
-    pub fn broadcast(&mut self, msg: String) -> Result<()> {
-        self.tx.send(msg).or_else(|_| Err(WsError::WsError))?;
+    pub fn _broadcast(&self, msg: String) -> Result<()> {
+        self._tx.send(msg).map_err(|_| WsError::Error)?;
         Ok(())
+    }
+
+    pub fn get_doc(&self) -> Arc<Doc> {
+        self.doc.clone()
     }
 }

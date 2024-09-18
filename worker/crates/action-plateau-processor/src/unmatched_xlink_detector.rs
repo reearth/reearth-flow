@@ -74,8 +74,8 @@ impl From<XlinkGmlElement> for Response {
     fn from(value: XlinkGmlElement) -> Self {
         let from_ids: HashSet<String> = value.from.keys().cloned().collect();
         let to_ids: HashSet<String> = value.to.keys().cloned().collect();
-        let fi = from_ids.intersection(&to_ids);
-        let ti = to_ids.intersection(&from_ids);
+        let fi = from_ids.difference(&to_ids);
+        let ti = to_ids.difference(&from_ids);
         let fi: Vec<String> = fi.cloned().collect();
         let ti: Vec<String> = ti.cloned().collect();
         Response {
@@ -315,7 +315,7 @@ fn extract_xlink_gml_element(
             .iter()
             .flat_map(|element| {
                 let xlink = element.get_attribute_ns("href", "http://www.w3.org/1999/xlink")?;
-                Some((xlink, tag.to_string()))
+                Some((xlink.replace("#", ""), tag.to_string()))
             })
             .collect::<HashMap<String, String>>();
         xlink_from.extend(from);

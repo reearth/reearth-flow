@@ -10,10 +10,24 @@ jobs:
       ui: ${{ steps.ui.outputs.any_changed }}
       api: ${{ steps.api.outputs.any_changed }}
       worker: ${{ steps.worker.outputs.any_changed }}
+      websocket: ${{ steps.websocket.outputs.any_changed }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: changed files for api
+        id: api
+        uses: tj-actions/changed-files@v41
+        with:
+            files: |
+              api/**
+              .github/workflows/ci.yml
+              .github/workflows/ci_api.yml
+              .github/workflows/build_api.yml
+              .github/workflows/deploy_api_nightly.yml
+              CHANGELOG.md
+
       - name: changed files for ui
         id: ui
         uses: tj-actions/changed-files@v41
@@ -26,16 +40,14 @@ jobs:
             .github/workflows/deploy_ui_nightly.yml
             CHANGELOG.md
 
-      - name: changed files for api
-        id: api
+      - name: changed files for websocket
+        id: websocket
         uses: tj-actions/changed-files@v41
         with:
           files: |
-            api/**
+            websocket/**
             .github/workflows/ci.yml
-            .github/workflows/ci_api.yml
-            .github/workflows/build_api.yml
-            .github/workflows/deploy_api_nightly.yml
+            .github/workflows/ci_websocket.yml
             CHANGELOG.md
 
       - name: changed files for worker
@@ -50,15 +62,18 @@ jobs:
             .github/workflows/ci.yml
             .github/workflows/ci_worker.yml
             CHANGELOG.md
-
-  ci-ui:
-    needs: prepare
-    if: needs.prepare.outputs.ui == 'true'
-    uses: ./.github/workflows/ci_ui.yml
   ci-api:
     needs: prepare
     if: needs.prepare.outputs.api == 'true'
     uses: ./.github/workflows/ci_api.yml
+  ci-ui:
+    needs: prepare
+    if: needs.prepare.outputs.ui == 'true'
+    uses: ./.github/workflows/ci_ui.yml
+  ci-websocket:
+      needs: prepare
+      if: needs.prepare.outputs.websocket == 'true'
+      uses: ./.github/workflows/ci_websocket.yml
   ci-worker:
     needs: prepare
     if: needs.prepare.outputs.worker == 'true'
@@ -66,8 +81,9 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     needs:
-      - ci-ui
       - ci-api
+      - ci-ui
+      - ci-websocket
       - ci-worker
     if: '!failure()'
     steps:
@@ -112,36 +128,35 @@ jobs:
           NEW_TAG_SHORT: ${{ steps.info.outputs.new_tag_short }}
           NAME: ${{ steps.info.outputs.name }}
         run: echo "sha_short=$SHA_SHORT, new_tag=$NEW_TAG, new_tag_short=$NEW_TAG_SHORT, name=$NAME"
+  build-api:
+      needs:
+        - ci
+        - ci-api
+        - ci-collect-info
+      runs-on: ubuntu-latest
+      if: ${{ !failure() && needs.ci-api.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
+      steps:
+        - uses: actions/checkout@v4
+
+        - uses: ./.github/actions/build_deploy_api
+          with:
+            sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+            new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+            new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+            name: ${{ needs.ci-collect-info.outputs.name }}
+            sha: ${{ github.sha }}
+            
   build-ui:
     needs:
       - ci
       - ci-ui
       - ci-collect-info
     runs-on: ubuntu-latest
-    if: ${{!failure() && needs.ci-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/'))}}
+    if: ${{ !failure() && needs.ci-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build UI
-        uses: ./.github/actions/build_deploy_ui
-        with:
-          sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-          new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-          new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-          name: ${{ needs.ci-collect-info.outputs.name }}
-          sha: ${{ github.sha }}
-  build-api:
-    needs:
-      - ci
-      - ci-api
-      - ci-collect-info
-    runs-on: ubuntu-latest
-    if: ${{!failure() && needs.ci-api.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/'))}}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build API
-        uses: ./.github/actions/build_deploy_api
+      - uses: ./.github/actions/build_deploy_ui
         with:
           sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
           new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}

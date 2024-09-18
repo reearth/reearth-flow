@@ -1,0 +1,74 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "build": {
+    "beforeDevCommand": "yarn start",
+    "beforeBuildCommand": "yarn build",
+    "devPath": "http://localhost:3000",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "PLATEAU GIS Quality Checker",
+    "version": "0.0.1"
+  },
+  "tauri": {
+    "allowlist": {
+			"dialog": {
+				"all": true
+			},
+			"fs": {
+				"readDir": true
+			},
+			"shell": {
+				"open": true
+			}
+    },
+    "bundle": {
+      "active": true,
+      "category": "DeveloperTool",
+      "copyright": "",
+      "deb": {
+        "depends": []
+      },
+      "externalBin": [],
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "identifier": "io.reearth.plateau.flow",
+      "longDescription": "Check the quality of GIS data",
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
+        "frameworks": [],
+        "providerShortName": null,
+        "signingIdentity": null
+      },
+      "resources": [],
+      "shortDescription": "",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
+    },
+    "security": {
+      "csp": null
+    },
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "title": "PLATEAU GIS Quality Checker",
+				"fullscreen": false,
+				"resizable": false,
+				"height": 550,
+				"width": 900
+      }
+    ]
+  }
+}
