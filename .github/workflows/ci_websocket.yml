@@ -1,9 +1,6 @@
 name: ci-websocket
 
 on:
-  push:
-    branches: [main, release/*, release]
-  pull_request:
   workflow_call:
 
 env:
