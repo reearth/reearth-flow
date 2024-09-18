@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Button,
@@ -24,7 +24,7 @@ const NewRun: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
-  const { useGetWorkspaceProjectsInfinite } = useProject();
+  const { useGetWorkspaceProjectsInfinite, runProject } = useProject();
   const { pages, isFetching, fetchNextPage, hasNextPage } =
     useGetWorkspaceProjectsInfinite(currentWorkspace?.id);
 
@@ -64,6 +64,15 @@ const NewRun: React.FC = () => {
     [pages],
   );
 
+  const handleRun = useCallback(() => {
+    if (!selectedProject || !currentWorkspace) return;
+    // TODO: USE DEPLOYED PROJECT's workflow
+    runProject(selectedProject.id, currentWorkspace.id, [
+      { id: "1", name: "test" },
+      { id: "2", name: "test2" },
+    ]);
+  }, [currentWorkspace, selectedProject, runProject]);
+
   useEffect(() => {
     if (
       !selectDropDown ||
@@ -91,7 +100,7 @@ const NewRun: React.FC = () => {
     <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-6">
       <div className="flex items-center justify-between gap-4">
         <p className="text-xl dark:font-extralight">{t("New run")}</p>
-        <Button className="self-end" variant="outline">
+        <Button className="self-end" variant="outline" onClick={handleRun}>
           {t("Run")}
         </Button>
       </div>
@@ -156,9 +165,7 @@ const NewRun: React.FC = () => {
             <Label htmlFor="manual-run-project">{t("Project")}</Label>
             <Select
               onValueChange={(pid) =>
-                selectProject(
-                  currentWorkspace?.projects?.find((p) => p.id === pid),
-                )
+                selectProject(projects?.find((p) => p.id === pid))
               }>
               <SelectTrigger>
                 <SelectValue
