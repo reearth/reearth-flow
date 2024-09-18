@@ -100,10 +100,8 @@ pub struct GeometryDissolver {
 }
 
 impl Processor for GeometryDissolver {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
     fn num_threads(&self) -> usize {
-        20
+        2
     }
 
     fn process(

@@ -49,6 +49,7 @@ pub fn run_dag_executor(
     state: Arc<State>,
 ) -> Result<(), Error> {
     let shutdown_future = shutdown.create_shutdown_future();
+
     let mut join_handle = runtime.block_on(dag_executor.start(
         SharedFuture::new(Box::pin(shutdown_future)),
         runtime.clone(),

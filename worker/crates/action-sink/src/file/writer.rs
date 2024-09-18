@@ -133,8 +133,6 @@ impl FileWriterParam {
 }
 
 impl Sink for FileWriter {
-    fn initialize(&self, _ctx: NodeContext) {}
-
     fn name(&self) -> &str {
         "FileWriter"
     }
