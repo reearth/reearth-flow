@@ -39,7 +39,7 @@ input DeleteProjectInput {
 input RunProjectInput {
   projectId: ID!
   workspaceId: ID!
-  workflows: [InputWorkflow!]!
+  workflow: InputWorkflow!
 }
 
 # Payload
@@ -71,8 +71,15 @@ type ProjectEdge {
   node: Project
 }
 
-extend type Query{
-  projects(workspaceId: ID!, includeArchived: Boolean, first: Int, last: Int, after: Cursor, before: Cursor): ProjectConnection!
+extend type Query {
+  projects(
+    workspaceId: ID!
+    includeArchived: Boolean
+    first: Int
+    last: Int
+    after: Cursor
+    before: Cursor
+  ): ProjectConnection!
 }
 
 extend type Mutation {

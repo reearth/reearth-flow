@@ -63,9 +63,9 @@ type CreateAssetPayload struct {
 }
 
 type CreateDeploymentInput struct {
-	ProjectID   ID               `json:"projectId"`
-	WorkspaceID ID               `json:"workspaceId"`
-	Workflows   []*InputWorkflow `json:"workflows"`
+	ProjectID   ID             `json:"projectId"`
+	WorkspaceID ID             `json:"workspaceId"`
+	Workflow    *InputWorkflow `json:"workflow"`
 }
 
 type CreateProjectInput struct {
@@ -142,39 +142,36 @@ type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
 
-type InputData struct {
-	Name     string        `json:"name"`
-	ActionID ID            `json:"actionId"`
-	Params   []*InputParam `json:"params,omitempty"`
-}
-
-type InputParam struct {
-	ID    ID             `json:"id"`
-	Name  string         `json:"name"`
-	Type  InputParamType `json:"type"`
-	Value interface{}    `json:"value,omitempty"`
+type InputGraph struct {
+	ID    ID                   `json:"id"`
+	Name  string               `json:"name"`
+	Nodes []*InputWorkflowNode `json:"nodes"`
+	Edges []*InputWorkflowEdge `json:"edges"`
 }
 
 type InputWorkflow struct {
-	ID     ID                   `json:"id"`
-	Name   string               `json:"name"`
-	Nodes  []*InputWorkflowNode `json:"nodes"`
-	Edges  []*InputWorkflowEdge `json:"edges"`
-	IsMain *bool                `json:"isMain,omitempty"`
+	ID           ID            `json:"id"`
+	Name         string        `json:"name"`
+	EntryGraphID ID            `json:"entryGraphId"`
+	With         interface{}   `json:"with,omitempty"`
+	Graphs       []*InputGraph `json:"graphs"`
 }
 
 type InputWorkflowEdge struct {
-	ID           ID     `json:"id"`
-	Source       ID     `json:"source"`
-	Target       ID     `json:"target"`
-	SourceHandle string `json:"sourceHandle"`
-	TargetHandle string `json:"targetHandle"`
+	ID       ID     `json:"id"`
+	To       ID     `json:"to"`
+	From     ID     `json:"from"`
+	FromPort string `json:"fromPort"`
+	ToPort   string `json:"toPort"`
 }
 
 type InputWorkflowNode struct {
-	ID   ID                    `json:"id"`
-	Type InputWorkflowNodeType `json:"type"`
-	Data *InputData            `json:"data"`
+	ID         ID          `json:"id"`
+	Name       string      `json:"name"`
+	Type       *string     `json:"type,omitempty"`
+	Action     *string     `json:"action,omitempty"`
+	SubGraphID *ID         `json:"subGraphId,omitempty"`
+	With       interface{} `json:"with,omitempty"`
 }
 
 type Job struct {
@@ -293,9 +290,9 @@ type RemoveMyAuthInput struct {
 }
 
 type RunProjectInput struct {
-	ProjectID   ID               `json:"projectId"`
-	WorkspaceID ID               `json:"workspaceId"`
-	Workflows   []*InputWorkflow `json:"workflows"`
+	ProjectID   ID             `json:"projectId"`
+	WorkspaceID ID             `json:"workspaceId"`
+	Workflow    *InputWorkflow `json:"workflow"`
 }
 
 type RunProjectPayload struct {
@@ -422,96 +419,6 @@ func (e *AssetSortType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e AssetSortType) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type InputParamType string
-
-const (
-	InputParamTypeString  InputParamType = "STRING"
-	InputParamTypeNumber  InputParamType = "NUMBER"
-	InputParamTypeBoolean InputParamType = "BOOLEAN"
-	InputParamTypeObject  InputParamType = "OBJECT"
-	InputParamTypeArray   InputParamType = "ARRAY"
-)
-
-var AllInputParamType = []InputParamType{
-	InputParamTypeString,
-	InputParamTypeNumber,
-	InputParamTypeBoolean,
-	InputParamTypeObject,
-	InputParamTypeArray,
-}
-
-func (e InputParamType) IsValid() bool {
-	switch e {
-	case InputParamTypeString, InputParamTypeNumber, InputParamTypeBoolean, InputParamTypeObject, InputParamTypeArray:
-		return true
-	}
-	return false
-}
-
-func (e InputParamType) String() string {
-	return string(e)
-}
-
-func (e *InputParamType) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = InputParamType(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid InputParamType", str)
-	}
-	return nil
-}
-
-func (e InputParamType) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type InputWorkflowNodeType string
-
-const (
-	InputWorkflowNodeTypeReader      InputWorkflowNodeType = "READER"
-	InputWorkflowNodeTypeWriter      InputWorkflowNodeType = "WRITER"
-	InputWorkflowNodeTypeTransformer InputWorkflowNodeType = "TRANSFORMER"
-)
-
-var AllInputWorkflowNodeType = []InputWorkflowNodeType{
-	InputWorkflowNodeTypeReader,
-	InputWorkflowNodeTypeWriter,
-	InputWorkflowNodeTypeTransformer,
-}
-
-func (e InputWorkflowNodeType) IsValid() bool {
-	switch e {
-	case InputWorkflowNodeTypeReader, InputWorkflowNodeTypeWriter, InputWorkflowNodeTypeTransformer:
-		return true
-	}
-	return false
-}
-
-func (e InputWorkflowNodeType) String() string {
-	return string(e)
-}
-
-func (e *InputWorkflowNodeType) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = InputWorkflowNodeType(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid InputWorkflowNodeType", str)
-	}
-	return nil
-}
-
-func (e InputWorkflowNodeType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
