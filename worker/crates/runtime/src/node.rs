@@ -299,7 +299,7 @@ impl Clone for Box<dyn ProcessorFactory> {
 }
 
 pub trait Processor: Send + Sync + Debug + ProcessorClone {
-    fn initialize(&mut self, ctx: NodeContext);
+    fn initialize(&mut self, _ctx: NodeContext) {}
     fn num_threads(&self) -> usize {
         1
     }
@@ -358,7 +358,7 @@ impl Clone for Box<dyn SinkFactory> {
 }
 
 pub trait Sink: Send + Debug + SinkClone {
-    fn initialize(&self, ctx: NodeContext);
+    fn initialize(&self, _ctx: NodeContext) {}
     fn name(&self) -> &str;
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError>;
 

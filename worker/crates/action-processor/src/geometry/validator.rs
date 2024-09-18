@@ -152,8 +152,6 @@ pub struct GeometryValidator {
 }
 
 impl Processor for GeometryValidator {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
     fn num_threads(&self) -> usize {
         2
     }
