@@ -818,19 +818,56 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureMergerParam",
         "type": "object",
-        "required": [
-          "requestorAttribute",
-          "supplierAttribute"
-        ],
         "properties": {
+          "groupedChange": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "requestorAttribute": {
-            "$ref": "#/definitions/Expr"
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "requestorAttributeValue": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "supplierAttribute": {
-            "$ref": "#/definitions/Expr"
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "supplierAttributeValue": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
           "Expr": {
             "type": "string"
           }

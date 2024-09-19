@@ -173,9 +173,9 @@ nodes:
     type: action
     action: FeatureMerger
     with:
-      requestorAttribute: |
+      requestorAttributeValue: |
         env.get("__value").surfaceId.to_string()
-      supplierAttribute: |
+      supplierAttributeValue: |
         env.get("__value").surfaceId.to_string()
 
   - id: a5dfe7bf-e24a-48bb-b3d0-2312806cada3
@@ -230,9 +230,9 @@ nodes:
     type: action
     action: FeatureMerger
     with:
-      requestorAttribute: |
+      requestorAttributeValue: |
         env.get("__value").surfaceId.to_string()
-      supplierAttribute: |
+      supplierAttributeValue: |
         env.get("__value").surfaceId.to_string()
 
   - id: 6920a4e3-70e9-4e01-9a21-d5b7af9c0425

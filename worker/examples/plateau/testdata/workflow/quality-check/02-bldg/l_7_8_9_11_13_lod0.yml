@@ -161,9 +161,9 @@ graphs:
         type: action
         action: FeatureMerger
         with:
-          requestorAttribute: |
+          requestorAttributeValue: |
             env.get("__value").surfaceId.to_string()
-          supplierAttribute: |
+          supplierAttributeValue: |
             env.get("__value").surfaceId.to_string()
 
       - id: a5dfe7bf-e24a-48bb-b3d0-2312806cada3
@@ -223,9 +223,9 @@ graphs:
         type: action
         action: FeatureMerger
         with:
-          requestorAttribute: |
+          requestorAttributeValue: |
             env.get("__value").surfaceId.to_string()
-          supplierAttribute: |
+          supplierAttributeValue: |
             env.get("__value").surfaceId.to_string()
 
       - id: b2b58fe2-374b-4acd-a38a-b9d0c718d3ef
