@@ -73,7 +73,8 @@ impl LocalClient {
             // Update cache only if the path already exists in the cache
             let mut cache = self.cache.lock().await;
             if cache.contains(&path) {
-                cache.put(path.clone(), serialized);
+                let updated_content = fs::read(&full_path).await?;
+                cache.put(path.clone(), updated_content);
             }
 
             Ok(())
