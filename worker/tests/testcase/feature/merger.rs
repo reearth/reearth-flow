@@ -2,5 +2,6 @@ use crate::helper::execute;
 
 #[test]
 fn test_run() {
-    execute("feature/merger", vec!["merger.json"]);
+    let result = execute("feature/merger", vec!["merger.json"]);
+    assert!(result.is_ok());
 }

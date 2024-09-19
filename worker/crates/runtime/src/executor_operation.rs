@@ -67,10 +67,10 @@ impl Context {
         ExecutorContext {
             feature,
             port,
-            expr_engine: Arc::clone(&self.expr_engine),
-            storage_resolver: Arc::clone(&self.storage_resolver),
-            logger: Arc::clone(&self.logger),
-            kv_store: Arc::clone(&self.kv_store),
+            expr_engine: self.expr_engine.clone(),
+            storage_resolver: self.storage_resolver.clone(),
+            logger: self.logger.clone(),
+            kv_store: self.kv_store.clone(),
         }
     }
 }

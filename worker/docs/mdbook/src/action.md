@@ -810,12 +810,12 @@ Merges features by attributes
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "FeatureMergerParam",
   "type": "object",
-  "required": [
-    "groupedChange"
-  ],
   "properties": {
     "groupedChange": {
-      "type": "boolean"
+      "type": [
+        "boolean",
+        "null"
+      ]
     },
     "requestorAttribute": {
       "type": [

@@ -2,7 +2,7 @@ use crate::helper::execute;
 
 #[test]
 fn test_run() {
-    execute(
+    let result = execute(
         "file/reader/citygml",
         vec![
             "codelists/Common_districtsAndZonesType.xml",
@@ -11,4 +11,5 @@ fn test_run() {
             "udx/urf/533834_urf_6668_sigaidev_op.gml",
         ],
     );
+    assert!(result.is_ok());
 }

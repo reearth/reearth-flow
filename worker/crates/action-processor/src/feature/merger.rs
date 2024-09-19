@@ -84,7 +84,7 @@ impl ProcessorFactory for FeatureMergerFactory {
                     .compile(requestor_attribute_value.as_ref())
                     .map_err(|e| {
                         FeatureProcessorError::MergerFactory(format!(
-                            "Failed to compile requestor attribute: {}",
+                            "Failed to compile requestor attribute value: {}",
                             e
                         ))
                     })?;
@@ -98,7 +98,7 @@ impl ProcessorFactory for FeatureMergerFactory {
                     .compile(supplier_attribute_value.as_ref())
                     .map_err(|e| {
                         FeatureProcessorError::MergerFactory(format!(
-                            "Failed to compile supplier attribute: {}",
+                            "Failed to compile supplier attribute value: {}",
                             e
                         ))
                     })?;
@@ -121,12 +121,12 @@ impl ProcessorFactory for FeatureMergerFactory {
             .into());
         }
         let process = FeatureMerger {
-            params: CompliledParam {
+            params: CompiledParam {
                 requestor_attribute_value,
                 supplier_attribute_value,
                 requestor_attribute: params.requestor_attribute,
                 supplier_attribute: params.supplier_attribute,
-                grouped_change: params.grouped_change,
+                grouped_change: params.grouped_change.unwrap_or(false),
             },
             requestor_buffer: HashMap::new(),
             supplier_buffer: HashMap::new(),
@@ -144,12 +144,12 @@ pub struct FeatureMergerParam {
     supplier_attribute: Option<Vec<Attribute>>,
     requestor_attribute_value: Option<Expr>,
     supplier_attribute_value: Option<Expr>,
-    grouped_change: bool,
+    grouped_change: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FeatureMerger {
-    params: CompliledParam,
+    params: CompiledParam,
     requestor_buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped_change, features)
     supplier_buffer: HashMap<String, (bool, Vec<Feature>)>,  // (complete_grouped_change, features)
     requestor_before_value: Option<String>,
@@ -157,7 +157,7 @@ pub struct FeatureMerger {
 }
 
 #[derive(Debug, Clone)]
-struct CompliledParam {
+struct CompiledParam {
     requestor_attribute: Option<Vec<Attribute>>,
     supplier_attribute: Option<Vec<Attribute>>,
     requestor_attribute_value: Option<rhai::AST>,
