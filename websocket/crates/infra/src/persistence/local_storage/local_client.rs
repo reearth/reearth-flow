@@ -1,5 +1,7 @@
+use lru::LruCache;
 use serde::{de::DeserializeOwned, Serialize};
 use std::collections::HashMap;
+use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use tokio::fs::{self, OpenOptions};
 use tokio::io::{self, AsyncReadExt};
@@ -9,6 +11,7 @@ use tokio::sync::Mutex;
 pub struct LocalClient {
     base_path: PathBuf,
     file_locks: Mutex<HashMap<PathBuf, ()>>,
+    cache: Mutex<LruCache<String, Vec<u8>>>,
 }
 
 impl LocalClient {
@@ -18,6 +21,9 @@ impl LocalClient {
         Ok(Self {
             base_path,
             file_locks: Mutex::new(HashMap::new()),
+            cache: Mutex::new(LruCache::new(NonZero::new(100).ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidInput, "Invalid cache size")
+            })?)),
         })
     }
 
@@ -76,10 +82,21 @@ impl LocalClient {
         self.lock_file(&full_path).await;
 
         let result = async {
+            // Check if the data is in the cache
+            let mut cache = self.cache.lock().await;
+            if let Some(cached_data) = cache.get(&path) {
+                return Ok(serde_json::from_slice(cached_data)?);
+            }
+
+            // If not in cache, read from file
             let file = fs::File::open(&full_path).await?;
             let mut reader = BufReader::new(file);
             let mut contents = Vec::new();
             reader.read_to_end(&mut contents).await?;
+
+            // Store in cache
+            cache.put(path.clone(), contents.clone());
+
             let data: T = serde_json::from_slice(&contents)?;
             Ok(data)
         }
