@@ -9,7 +9,7 @@ use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR
 use reearth_flow_action_sink::mapping::ACTION_FACTORY_MAPPINGS as SINK_MAPPINGS;
 use reearth_flow_action_source::mapping::ACTION_FACTORY_MAPPINGS as SOURCE_MAPPINGS;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_runner::runner::Runner;
+use reearth_flow_runner::{errors::Error, runner::Runner};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Workflow;
@@ -33,7 +33,7 @@ struct Fixtures;
 #[folder = "fixture/workflow/"]
 struct WorkflowFiles;
 
-pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) {
+pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<(), Error> {
     let job_id = uuid::Uuid::new_v4();
     env::set_var("ACTION_LOG_DISABLE", "true");
     let storage_resolver = Arc::new(StorageResolver::new());
@@ -71,5 +71,4 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) {
         storage_resolver,
         state,
     )
-    .expect("Failed to run workflow");
 }

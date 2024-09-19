@@ -61,8 +61,6 @@ impl ProcessorFactory for VertexRemoverFactory {
 pub struct VertexRemover;
 
 impl Processor for VertexRemover {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
     fn num_threads(&self) -> usize {
         2
     }

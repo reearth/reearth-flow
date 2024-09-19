@@ -180,12 +180,6 @@ struct CompiledCommonPropertySchema {
 }
 
 impl Processor for FeatureReader {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
-    fn num_threads(&self) -> usize {
-        10
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,

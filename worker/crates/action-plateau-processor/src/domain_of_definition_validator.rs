@@ -334,10 +334,8 @@ pub struct DomainOfDefinitionValidatorParam {
 }
 
 impl Processor for DomainOfDefinitionValidator {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
     fn num_threads(&self) -> usize {
-        20
+        5
     }
 
     fn process(

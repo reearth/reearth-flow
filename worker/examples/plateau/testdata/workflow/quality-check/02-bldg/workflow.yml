@@ -420,7 +420,7 @@ graphs:
         type: action
         action: FeatureMerger
         with:
-          requestorAttribute: |
+          requestorAttributeValue: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
             let building_id_attribute = attributes["uro:buildingIDAttribute"] ?? [];
             if building_id_attribute.len == 1 {
@@ -428,7 +428,7 @@ graphs:
             } else {
               ""
             }
-          supplierAttribute: |
+          supplierAttributeValue: |
             env.get("__value").uroBuildingId ?? "" + "-" + env.get("__value").uroBranchId ?? "" + "-" + env.get("__value").uroPartId ?? ""
 
       - id: 57285867-91df-4c77-8e71-2f84c8e6ee2b

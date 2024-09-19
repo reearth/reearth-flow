@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -49,17 +48,12 @@ pub fn create_feature_writer(edge_id: EdgeId, state: Arc<State>) -> Box<dyn Feat
 #[derive(Debug, Clone)]
 pub(crate) struct PrimaryKeyLookupFeatureWriter {
     edge_id: EdgeId,
-    index: HashMap<uuid::Uuid, Feature>,
     state: Arc<State>,
 }
 
 impl PrimaryKeyLookupFeatureWriter {
     pub(crate) fn new(edge_id: EdgeId, state: Arc<State>) -> Self {
-        Self {
-            edge_id,
-            index: Default::default(),
-            state,
-        }
+        Self { edge_id, state }
     }
 }
 
@@ -70,16 +64,13 @@ impl FeatureWriter for PrimaryKeyLookupFeatureWriter {
     }
 
     fn write(&mut self, feature: &Feature) -> Result<(), FeatureWriterError> {
-        self.index.insert(feature.id, feature.clone());
-        Ok(())
+        let item: serde_json::Value = feature.clone().into();
+        self.state
+            .append_sync(&item, self.edge_id.to_string().as_str())
+            .map_err(|e| FeatureWriterError::Flush(e.to_string()))
     }
 
     async fn flush(&self) -> Result<(), FeatureWriterError> {
-        let item = self.index.values().cloned().collect::<Vec<_>>();
-        let item: Vec<serde_json::Value> = item.into_iter().map(|feature| feature.into()).collect();
-        self.state
-            .save(&item, self.edge_id.to_string().as_str())
-            .await
-            .map_err(|e| FeatureWriterError::Flush(e.to_string()))
+        Ok(())
     }
 }

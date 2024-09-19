@@ -65,12 +65,6 @@ impl ProcessorFactory for RefinerFactory {
 pub struct Refiner {}
 
 impl Processor for Refiner {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
-    fn num_threads(&self) -> usize {
-        5
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,

@@ -134,12 +134,6 @@ pub struct FeatureCounterParam {
 }
 
 impl Processor for FeatureCounter {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
-    fn num_threads(&self) -> usize {
-        1
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,

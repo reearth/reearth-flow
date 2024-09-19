@@ -8,15 +8,15 @@ use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::{BoxedError, ExecutionError},
     event::EventHub,
-    executor_operation::{ExecutorContext, NodeContext},
+    executor_operation::{Context, ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{Attribute, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::errors::FeatureProcessorError;
+use super::errors::{self, FeatureProcessorError};
 
 static REQUESTOR_PORT: Lazy<Port> = Lazy::new(|| Port::new("requestor"));
 static SUPPLIER_PORT: Lazy<Port> = Lazy::new(|| Port::new("supplier"));
@@ -78,90 +78,176 @@ impl ProcessorFactory for FeatureMergerFactory {
             .into());
         };
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let requestor_attribute = expr_engine
-            .compile(params.requestor_attribute.as_ref())
-            .map_err(|e| {
-                FeatureProcessorError::MergerFactory(format!(
-                    "Failed to compile requestor attribute: {}",
-                    e
-                ))
-            })?;
-        let supplier_attribute = expr_engine
-            .compile(params.supplier_attribute.as_ref())
-            .map_err(|e| {
-                FeatureProcessorError::MergerFactory(format!(
-                    "Failed to compile supplier attribute: {}",
-                    e
-                ))
-            })?;
-
+        let requestor_attribute_value =
+            if let Some(requestor_attribute_value) = params.requestor_attribute_value {
+                let result = expr_engine
+                    .compile(requestor_attribute_value.as_ref())
+                    .map_err(|e| {
+                        FeatureProcessorError::MergerFactory(format!(
+                            "Failed to compile requestor attribute value: {}",
+                            e
+                        ))
+                    })?;
+                Some(result)
+            } else {
+                None
+            };
+        let supplier_attribute_value =
+            if let Some(supplier_attribute_value) = params.supplier_attribute_value {
+                let result = expr_engine
+                    .compile(supplier_attribute_value.as_ref())
+                    .map_err(|e| {
+                        FeatureProcessorError::MergerFactory(format!(
+                            "Failed to compile supplier attribute value: {}",
+                            e
+                        ))
+                    })?;
+                Some(result)
+            } else {
+                None
+            };
+        if requestor_attribute_value.is_none() && params.requestor_attribute.is_none() {
+            return Err(FeatureProcessorError::MergerFactory(
+                "At least one of requestor_attribute_value or requestor_attribute must be provided"
+                    .to_string(),
+            )
+            .into());
+        }
+        if supplier_attribute_value.is_none() && params.supplier_attribute.is_none() {
+            return Err(FeatureProcessorError::MergerFactory(
+                "At least one of supplier_attribute_value or supplier_attribute must be provided"
+                    .to_string(),
+            )
+            .into());
+        }
         let process = FeatureMerger {
-            params: CompliledParam {
-                requestor_attribute,
-                supplier_attribute,
+            params: CompiledParam {
+                requestor_attribute_value,
+                supplier_attribute_value,
+                requestor_attribute: params.requestor_attribute,
+                supplier_attribute: params.supplier_attribute,
+                grouped_change: params.grouped_change.unwrap_or(false),
             },
-            request_features: vec![],
+            requestor_buffer: HashMap::new(),
             supplier_buffer: HashMap::new(),
+            requestor_before_value: None,
+            supplier_before_value: None,
         };
         Ok(Box::new(process))
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct FeatureMerger {
-    params: CompliledParam,
-    request_features: Vec<Feature>,
-    supplier_buffer: HashMap<String, Vec<Feature>>,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureMergerParam {
-    requestor_attribute: Expr,
-    supplier_attribute: Expr,
+    requestor_attribute: Option<Vec<Attribute>>,
+    supplier_attribute: Option<Vec<Attribute>>,
+    requestor_attribute_value: Option<Expr>,
+    supplier_attribute_value: Option<Expr>,
+    grouped_change: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
-struct CompliledParam {
-    requestor_attribute: rhai::AST,
-    supplier_attribute: rhai::AST,
+pub struct FeatureMerger {
+    params: CompiledParam,
+    requestor_buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped_change, features)
+    supplier_buffer: HashMap<String, (bool, Vec<Feature>)>,  // (complete_grouped_change, features)
+    requestor_before_value: Option<String>,
+    supplier_before_value: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct CompiledParam {
+    requestor_attribute: Option<Vec<Attribute>>,
+    supplier_attribute: Option<Vec<Attribute>>,
+    requestor_attribute_value: Option<rhai::AST>,
+    supplier_attribute_value: Option<rhai::AST>,
+    grouped_change: bool,
 }
 
 impl Processor for FeatureMerger {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
-    fn num_threads(&self) -> usize {
-        1
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
+        fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         match ctx.port {
             port if port == REQUESTOR_PORT.clone() => {
-                let feature = ctx.feature;
-                self.request_features.push(feature);
-            }
-            port if port == SUPPLIER_PORT.clone() => {
-                let feature = ctx.feature;
+                let feature = &ctx.feature;
                 let expr_engine = Arc::clone(&ctx.expr_engine);
-                let scope = feature.new_scope(expr_engine.clone());
-                let value = scope
-                    .eval_ast::<String>(&self.params.supplier_attribute)
-                    .map_err(|e| {
-                        FeatureProcessorError::Merger(format!(
-                            "Failed to evaluate supplier attribute: {}",
-                            e
-                        ))
-                    })?;
-                match self.supplier_buffer.entry(value) {
+                let requestor_attribute_value = feature.fetch_attribute_value(
+                    expr_engine,
+                    &self.params.requestor_attribute,
+                    &self.params.requestor_attribute_value,
+                );
+                match self
+                    .requestor_buffer
+                    .entry(requestor_attribute_value.clone())
+                {
                     Entry::Occupied(mut entry) => {
-                        entry.get_mut().push(feature);
+                        self.requestor_before_value = Some(requestor_attribute_value.clone());
+                        let (_, buffer) = entry.get_mut();
+                        buffer.push(feature.clone());
                     }
                     Entry::Vacant(entry) => {
-                        entry.insert(vec![feature]);
+                        entry.insert((false, vec![feature.clone()]));
+                        if self.requestor_before_value.is_some() {
+                            if let Entry::Occupied(mut entry) = self
+                                .requestor_buffer
+                                .entry(self.requestor_before_value.clone().unwrap())
+                            {
+                                let (complete_grouped_change, _) = entry.get_mut();
+                                *complete_grouped_change = true;
+                            }
+                            self.change_group(
+                                Context {
+                                    expr_engine: ctx.expr_engine.clone(),
+                                    storage_resolver: ctx.storage_resolver.clone(),
+                                    logger: ctx.logger.clone(),
+                                    kv_store: ctx.kv_store.clone(),
+                                },
+                                fw,
+                            )?;
+                        }
+                        self.requestor_before_value = Some(requestor_attribute_value.clone());
+                    }
+                }
+            }
+            port if port == SUPPLIER_PORT.clone() => {
+                let feature = &ctx.feature;
+                let expr_engine = Arc::clone(&ctx.expr_engine);
+                let supplier_attribute_value = feature.fetch_attribute_value(
+                    expr_engine,
+                    &self.params.supplier_attribute,
+                    &self.params.supplier_attribute_value,
+                );
+                match self.supplier_buffer.entry(supplier_attribute_value.clone()) {
+                    Entry::Occupied(mut entry) => {
+                        self.supplier_before_value = Some(supplier_attribute_value.clone());
+                        let (_, buffer) = entry.get_mut();
+                        buffer.push(feature.clone());
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert((false, vec![feature.clone()]));
+                        if self.supplier_before_value.is_some() {
+                            if let Entry::Occupied(mut entry) = self
+                                .supplier_buffer
+                                .entry(self.supplier_before_value.clone().unwrap())
+                            {
+                                let (complete_grouped_change, _) = entry.get_mut();
+                                *complete_grouped_change = true;
+                            }
+                            self.change_group(
+                                Context {
+                                    expr_engine: ctx.expr_engine.clone(),
+                                    storage_resolver: ctx.storage_resolver.clone(),
+                                    logger: ctx.logger.clone(),
+                                    kv_store: ctx.kv_store.clone(),
+                                },
+                                fw,
+                            )?;
+                        }
+                        self.supplier_before_value = Some(supplier_attribute_value.clone());
                     }
                 }
             }
@@ -175,40 +261,33 @@ impl Processor for FeatureMerger {
         ctx: NodeContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        for request_feature in self.request_features.iter() {
-            let scope = request_feature.new_scope(expr_engine.clone());
-            let request_value = scope
-                .eval_ast::<String>(&self.params.requestor_attribute)
-                .map_err(|e| {
-                    FeatureProcessorError::Merger(format!(
-                        "Failed to evaluate requestor attribute: {}",
-                        e
-                    ))
-                })?;
-
-            let Some(supplier_features) = self.supplier_buffer.get(&request_value) else {
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    request_feature.clone(),
-                    UNMERGED_PORT.clone(),
-                ));
+        for (request_value, (_, request_features)) in self.requestor_buffer.iter() {
+            let Some((_, supplier_features)) = self.supplier_buffer.get(request_value) else {
+                for request_feature in request_features.iter() {
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        &ctx,
+                        request_feature.clone(),
+                        UNMERGED_PORT.clone(),
+                    ));
+                }
                 continue;
             };
 
-            for (idx, supplier_feature) in supplier_features.iter().enumerate() {
-                let mut merged_feature = request_feature.clone();
-                if idx > 0 {
-                    merged_feature.refresh_id();
+            for request_feature in request_features.iter() {
+                for (idx, supplier_feature) in supplier_features.iter().enumerate() {
+                    let mut merged_feature = request_feature.clone();
+                    if idx > 0 {
+                        merged_feature.refresh_id();
+                    }
+                    merged_feature
+                        .attributes
+                        .extend(supplier_feature.attributes.clone());
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        &ctx,
+                        merged_feature,
+                        MERGED_PORT.clone(),
+                    ));
                 }
-                merged_feature
-                    .attributes
-                    .extend(supplier_feature.attributes.clone());
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    merged_feature,
-                    MERGED_PORT.clone(),
-                ));
             }
         }
         Ok(())
@@ -216,5 +295,57 @@ impl Processor for FeatureMerger {
 
     fn name(&self) -> &str {
         "FeatureMerger"
+    }
+}
+
+impl FeatureMerger {
+    fn change_group(
+        &mut self,
+        ctx: Context,
+        fw: &mut dyn ProcessorChannelForwarder,
+    ) -> errors::Result<()> {
+        if !self.params.grouped_change {
+            return Ok(());
+        }
+        let mut complete_keys = Vec::new();
+        for (attribute, (complete_grouped, _)) in self.requestor_buffer.iter() {
+            if !complete_grouped {
+                continue;
+            }
+            let Some((supplier_complete, _)) = self.supplier_buffer.get(attribute) else {
+                continue;
+            };
+            if !*supplier_complete {
+                continue;
+            }
+            complete_keys.push(attribute.clone());
+        }
+        for attribute_value in complete_keys.iter() {
+            let Some((_, requestor_features)) = self.requestor_buffer.remove(attribute_value)
+            else {
+                return Ok(());
+            };
+            let Some((_, supplier_features)) = self.supplier_buffer.remove(attribute_value) else {
+                for request_feature in requestor_features.iter() {
+                    fw.send(
+                        ctx.as_executor_context(request_feature.clone(), UNMERGED_PORT.clone()),
+                    );
+                }
+                return Ok(());
+            };
+            for request_feature in requestor_features.iter() {
+                for (idx, supplier_feature) in supplier_features.iter().enumerate() {
+                    let mut merged_feature = request_feature.clone();
+                    if idx > 0 {
+                        merged_feature.refresh_id();
+                    }
+                    merged_feature
+                        .attributes
+                        .extend(supplier_feature.attributes.clone());
+                    fw.send(ctx.as_executor_context(merged_feature, MERGED_PORT.clone()));
+                }
+            }
+        }
+        Ok(())
     }
 }
