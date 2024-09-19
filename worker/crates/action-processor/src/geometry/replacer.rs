@@ -80,8 +80,6 @@ pub struct GeometryReplacer {
 }
 
 impl Processor for GeometryReplacer {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
     fn num_threads(&self) -> usize {
         2
     }
@@ -104,6 +102,7 @@ impl Processor for GeometryReplacer {
         let decoded = base64_decode(dump)?;
         let geometry: Geometry = serde_json::from_str(&decoded)?;
         feature.geometry = Some(geometry);
+        feature.attributes.remove(&self.source_attribute);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }

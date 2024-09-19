@@ -158,7 +158,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                             aria-hidden="true"
                           />
                         )}
-                        <span className="truncate text-xs font-extralight">
+                        <span className="truncate text-xs dark:font-extralight">
                           {item.name}
                         </span>
                       </AccordionTrigger>
@@ -236,7 +236,9 @@ const Leaf = forwardRef<
           aria-hidden="true"
         />
       )}
-      <span className="grow truncate text-xs font-extralight">{item.name}</span>
+      <span className="grow truncate text-xs dark:font-extralight">
+        {item.name}
+      </span>
     </div>
   );
 });

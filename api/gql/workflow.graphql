@@ -1,50 +1,66 @@
 input InputWorkflow {
   id: ID!
   name: String!
-  nodes: [InputWorkflowNode!]!
-  edges: [InputWorkflowEdge!]!
-  isMain: Boolean
+  entryGraphId: ID!
+  with: Any
+  graphs: [InputGraph]!
 }
 
-enum InputWorkflowNodeType {
-  READER
-  WRITER
-  TRANSFORMER
-  # BATCH
-  # NOTE
+input InputGraph {
+  id: ID!
+  name: String!
+  nodes: [InputWorkflowNode!]!
+  edges: [InputWorkflowEdge!]!
 }
+
+# enum InputWorkflowNodeType {
+#   READER
+#   WRITER
+#   TRANSFORMER
+#   # BATCH
+#   # NOTE
+# }
+
+# input InputWorkflowNode {
+#   id: ID!
+#   type: InputWorkflowNodeType!
+#   data: InputData!
+# }
 
 input InputWorkflowNode {
   id: ID!
-  type: InputWorkflowNodeType!
-  data: InputData!
-}
-
-input InputData {
   name: String!
-  actionId: ID!
-  params: [InputParam]
+  type: String
+  action: String
+  subGraphId: ID
+  with: Any
 }
 
-input InputParam {
-  id: ID!
-  name: String!
-  type: InputParamType!
-  value: Any
-}
+# input InputData {
+#   name: String!
+#   actionId: ID!
+#   params: [InputParam]
+# }
 
-enum InputParamType {
-  STRING
-  NUMBER
-  BOOLEAN
-  OBJECT
-  ARRAY
-}
+# input InputParam {
+#   id: ID!
+#   name: String!
+#   type: InputParamType!
+#   value: Any
+# }
+
+# enum InputParamType {
+#   STRING
+#   NUMBER
+#   BOOLEAN
+#   OBJECT
+#   ARRAY
+# }
 
 input InputWorkflowEdge {
   id: ID!
-  source: ID!
-  target: ID!
-  sourceHandle: String!
-  targetHandle: String!
+  to: ID!
+  from: ID!
+  fromPort: String!
+  toPort: String!
 }

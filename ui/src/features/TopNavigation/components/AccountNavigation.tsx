@@ -66,7 +66,7 @@ const UserNavigation: React.FC<Props> = ({
             </Avatar>
             {!iconOnly ? (
               <div className="flex items-center gap-2 self-center">
-                <p className="max-w-28 truncate text-sm font-extralight transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
+                <p className="max-w-28 truncate text-sm dark:font-extralight transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500">
                   {me?.name ? me.name : "User"}
                 </p>
                 <CaretDown className="w-[12px]" weight="thin" />
@@ -79,7 +79,6 @@ const UserNavigation: React.FC<Props> = ({
           side={dropdownPosition ?? "bottom"}
           align="end"
           sideOffset={dropdownOffset ?? 4}>
-          {/* <DropdownMenuLabel>My Account</DropdownMenuLabel> */}
           <DropdownMenuItem
             className="gap-2"
             onClick={() => setOpenAccountUpdateDialog(true)}>

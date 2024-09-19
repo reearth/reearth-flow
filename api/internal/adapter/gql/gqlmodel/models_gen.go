@@ -62,6 +62,12 @@ type CreateAssetPayload struct {
 	Asset *Asset `json:"asset"`
 }
 
+type CreateDeploymentInput struct {
+	ProjectID   ID             `json:"projectId"`
+	WorkspaceID ID             `json:"workspaceId"`
+	Workflow    *InputWorkflow `json:"workflow"`
+}
+
 type CreateProjectInput struct {
 	WorkspaceID ID      `json:"workspaceId"`
 	Name        *string `json:"name,omitempty"`
@@ -101,39 +107,101 @@ type DeleteWorkspacePayload struct {
 	WorkspaceID ID `json:"workspaceId"`
 }
 
-type InputData struct {
-	Name     string        `json:"name"`
-	ActionID ID            `json:"actionId"`
-	Params   []*InputParam `json:"params,omitempty"`
+type Deployment struct {
+	ID          ID         `json:"id"`
+	ProjectID   ID         `json:"projectId"`
+	WorkspaceID ID         `json:"workspaceId"`
+	WorkflowID  ID         `json:"workflowId"`
+	Version     string     `json:"version"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+	Project     *Project   `json:"project,omitempty"`
+	Workspace   *Workspace `json:"workspace,omitempty"`
 }
 
-type InputParam struct {
-	ID    ID             `json:"id"`
-	Name  string         `json:"name"`
-	Type  InputParamType `json:"type"`
-	Value interface{}    `json:"value,omitempty"`
+func (Deployment) IsNode()        {}
+func (this Deployment) GetID() ID { return this.ID }
+
+type DeploymentConnection struct {
+	Edges      []*DeploymentEdge `json:"edges"`
+	Nodes      []*Deployment     `json:"nodes"`
+	PageInfo   *PageInfo         `json:"pageInfo"`
+	TotalCount int               `json:"totalCount"`
+}
+
+type DeploymentEdge struct {
+	Cursor usecasex.Cursor `json:"cursor"`
+	Node   *Deployment     `json:"node,omitempty"`
+}
+
+type DeploymentPayload struct {
+	Deployment *Deployment `json:"deployment"`
+}
+
+type ExecuteDeploymentInput struct {
+	DeploymentID ID `json:"deploymentId"`
+}
+
+type InputGraph struct {
+	ID    ID                   `json:"id"`
+	Name  string               `json:"name"`
+	Nodes []*InputWorkflowNode `json:"nodes"`
+	Edges []*InputWorkflowEdge `json:"edges"`
 }
 
 type InputWorkflow struct {
-	ID     ID                   `json:"id"`
-	Name   string               `json:"name"`
-	Nodes  []*InputWorkflowNode `json:"nodes"`
-	Edges  []*InputWorkflowEdge `json:"edges"`
-	IsMain *bool                `json:"isMain,omitempty"`
+	ID           ID            `json:"id"`
+	Name         string        `json:"name"`
+	EntryGraphID ID            `json:"entryGraphId"`
+	With         interface{}   `json:"with,omitempty"`
+	Graphs       []*InputGraph `json:"graphs"`
 }
 
 type InputWorkflowEdge struct {
-	ID           ID     `json:"id"`
-	Source       ID     `json:"source"`
-	Target       ID     `json:"target"`
-	SourceHandle string `json:"sourceHandle"`
-	TargetHandle string `json:"targetHandle"`
+	ID       ID     `json:"id"`
+	To       ID     `json:"to"`
+	From     ID     `json:"from"`
+	FromPort string `json:"fromPort"`
+	ToPort   string `json:"toPort"`
 }
 
 type InputWorkflowNode struct {
-	ID   ID                    `json:"id"`
-	Type InputWorkflowNodeType `json:"type"`
-	Data *InputData            `json:"data"`
+	ID         ID          `json:"id"`
+	Name       string      `json:"name"`
+	Type       *string     `json:"type,omitempty"`
+	Action     *string     `json:"action,omitempty"`
+	SubGraphID *ID         `json:"subGraphId,omitempty"`
+	With       interface{} `json:"with,omitempty"`
+}
+
+type Job struct {
+	ID           ID          `json:"id"`
+	DeploymentID ID          `json:"deploymentId"`
+	WorkspaceID  ID          `json:"workspaceId"`
+	Status       JobStatus   `json:"status"`
+	StartedAt    time.Time   `json:"startedAt"`
+	CompletedAt  *time.Time  `json:"completedAt,omitempty"`
+	Deployment   *Deployment `json:"deployment,omitempty"`
+	Workspace    *Workspace  `json:"workspace,omitempty"`
+}
+
+func (Job) IsNode()        {}
+func (this Job) GetID() ID { return this.ID }
+
+type JobConnection struct {
+	Edges      []*JobEdge `json:"edges"`
+	Nodes      []*Job     `json:"nodes"`
+	PageInfo   *PageInfo  `json:"pageInfo"`
+	TotalCount int        `json:"totalCount"`
+}
+
+type JobEdge struct {
+	Cursor usecasex.Cursor `json:"cursor"`
+	Node   *Job            `json:"node,omitempty"`
+}
+
+type JobPayload struct {
+	Job *Job `json:"job"`
 }
 
 type Me struct {
@@ -222,9 +290,9 @@ type RemoveMyAuthInput struct {
 }
 
 type RunProjectInput struct {
-	ProjectID   ID               `json:"projectId"`
-	WorkspaceID ID               `json:"workspaceId"`
-	Workflows   []*InputWorkflow `json:"workflows"`
+	ProjectID   ID             `json:"projectId"`
+	WorkspaceID ID             `json:"workspaceId"`
+	Workflow    *InputWorkflow `json:"workflow"`
 }
 
 type RunProjectPayload struct {
@@ -354,93 +422,48 @@ func (e AssetSortType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type InputParamType string
+type JobStatus string
 
 const (
-	InputParamTypeString  InputParamType = "STRING"
-	InputParamTypeNumber  InputParamType = "NUMBER"
-	InputParamTypeBoolean InputParamType = "BOOLEAN"
-	InputParamTypeObject  InputParamType = "OBJECT"
-	InputParamTypeArray   InputParamType = "ARRAY"
+	JobStatusPending   JobStatus = "PENDING"
+	JobStatusRunning   JobStatus = "RUNNING"
+	JobStatusCompleted JobStatus = "COMPLETED"
+	JobStatusFailed    JobStatus = "FAILED"
 )
 
-var AllInputParamType = []InputParamType{
-	InputParamTypeString,
-	InputParamTypeNumber,
-	InputParamTypeBoolean,
-	InputParamTypeObject,
-	InputParamTypeArray,
+var AllJobStatus = []JobStatus{
+	JobStatusPending,
+	JobStatusRunning,
+	JobStatusCompleted,
+	JobStatusFailed,
 }
 
-func (e InputParamType) IsValid() bool {
+func (e JobStatus) IsValid() bool {
 	switch e {
-	case InputParamTypeString, InputParamTypeNumber, InputParamTypeBoolean, InputParamTypeObject, InputParamTypeArray:
+	case JobStatusPending, JobStatusRunning, JobStatusCompleted, JobStatusFailed:
 		return true
 	}
 	return false
 }
 
-func (e InputParamType) String() string {
+func (e JobStatus) String() string {
 	return string(e)
 }
 
-func (e *InputParamType) UnmarshalGQL(v interface{}) error {
+func (e *JobStatus) UnmarshalGQL(v interface{}) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
 	}
 
-	*e = InputParamType(str)
+	*e = JobStatus(str)
 	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid InputParamType", str)
+		return fmt.Errorf("%s is not a valid JobStatus", str)
 	}
 	return nil
 }
 
-func (e InputParamType) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type InputWorkflowNodeType string
-
-const (
-	InputWorkflowNodeTypeReader      InputWorkflowNodeType = "READER"
-	InputWorkflowNodeTypeWriter      InputWorkflowNodeType = "WRITER"
-	InputWorkflowNodeTypeTransformer InputWorkflowNodeType = "TRANSFORMER"
-)
-
-var AllInputWorkflowNodeType = []InputWorkflowNodeType{
-	InputWorkflowNodeTypeReader,
-	InputWorkflowNodeTypeWriter,
-	InputWorkflowNodeTypeTransformer,
-}
-
-func (e InputWorkflowNodeType) IsValid() bool {
-	switch e {
-	case InputWorkflowNodeTypeReader, InputWorkflowNodeTypeWriter, InputWorkflowNodeTypeTransformer:
-		return true
-	}
-	return false
-}
-
-func (e InputWorkflowNodeType) String() string {
-	return string(e)
-}
-
-func (e *InputWorkflowNodeType) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = InputWorkflowNodeType(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid InputWorkflowNodeType", str)
-	}
-	return nil
-}
-
-func (e InputWorkflowNodeType) MarshalGQL(w io.Writer) {
+func (e JobStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

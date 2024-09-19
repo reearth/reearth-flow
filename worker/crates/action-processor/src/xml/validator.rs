@@ -189,10 +189,8 @@ impl Debug for XmlValidator {
 }
 
 impl Processor for XmlValidator {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
     fn num_threads(&self) -> usize {
-        20
+        5
     }
 
     fn process(

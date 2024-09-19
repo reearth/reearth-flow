@@ -47,12 +47,12 @@ const IntegrationsSettings: React.FC = () => {
     <div>
       <div className="mt-4 flex max-w-[800px] flex-col gap-6">
         <div className="flex justify-between">
-          <p className="text-lg font-extralight">
+          <p className="text-lg dark:font-extralight">
             {t("Integrations Settings")}
           </p>
           <Button>{t("Connect Integration")}</Button>
         </div>
-        <div className="rounded border font-extralight">
+        <div className="rounded border dark:font-extralight">
           <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
             <div className="flex items-center gap-2">
               <Checkbox
@@ -132,7 +132,7 @@ const IntegrationsSettings: React.FC = () => {
                   }
                 />
                 <p>{integration.integration?.name}</p>
-                <p className="px-4 text-sm font-thin capitalize">
+                <p className="px-4 text-sm dark:font-thin capitalize">
                   {integration.integrationRole}
                 </p>
               </div>

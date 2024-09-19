@@ -25,7 +25,7 @@ const RunDetails: React.FC<Props> = ({ selectedRun }) => {
         </Button>
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
-          <div className="rounded-md border font-thin">
+          <div className="rounded-md border dark:font-thin">
             <div className="border-b px-4 py-2">
               <p className="text-xl">{t("Run details")}</p>
             </div>

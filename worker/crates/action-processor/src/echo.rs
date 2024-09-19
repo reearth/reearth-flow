@@ -53,12 +53,6 @@ impl ProcessorFactory for EchoProcessorFactory {
 pub struct EchoProcessor;
 
 impl Processor for EchoProcessor {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
-    fn num_threads(&self) -> usize {
-        1
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,

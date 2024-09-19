@@ -273,6 +273,33 @@ impl Feature {
         scope
     }
 
+    pub fn fetch_attribute_value(
+        &self,
+        engine: Arc<Engine>,
+        attribute: &Option<Vec<Attribute>>,
+        attribute_ast: &Option<rhai::AST>,
+    ) -> String {
+        if let Some(attribute_values) = attribute {
+            let values = attribute_values
+                .iter()
+                .flat_map(|key| self.get(key))
+                .cloned()
+                .collect::<Vec<_>>();
+            values
+                .iter()
+                .map(|value| value.to_string())
+                .collect::<Vec<_>>()
+                .join("-")
+        } else if let Some(attribute_ast) = attribute_ast {
+            let scope = self.new_scope(engine.clone());
+            let value = scope.eval_ast::<String>(attribute_ast);
+
+            value.unwrap_or_else(|_| "".to_string())
+        } else {
+            "".to_string()
+        }
+    }
+
     pub fn all_attribute_keys(&self) -> Vec<String> {
         let mut keys = Vec::new();
         for (key, value) in &self.attributes {

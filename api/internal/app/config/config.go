@@ -23,9 +23,9 @@ func init() {
 type Mailer mailer.Mailer
 type Config struct {
 	mailer.Config
-	Port             string            `default:"8081" envconfig:"PORT"`
+	Port             string            `default:"8080" envconfig:"PORT"`
 	ServerHost       string            `pp:",omitempty"`
-	Host             string            `default:"http://localhost:8081"`
+	Host             string            `default:"http://localhost:8080"`
 	Host_Web         string            `pp:",omitempty"`
 	Dev              bool              `pp:",omitempty"`
 	DB               string            `default:"mongodb://localhost"`
@@ -33,10 +33,11 @@ type Config struct {
 	DB_Users         []appx.NamedURI   `pp:",omitempty"`
 	GraphQL          GraphQLConfig     `pp:",omitempty"`
 	GCPProject       string            `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
+	GCPRegion        string            `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
 	Profiler         string            `pp:",omitempty"`
 	Tracer           string            `pp:",omitempty"`
 	TracerSample     float64           `pp:",omitempty"`
-	AssetBaseURL     string            `default:"http://localhost:8081/assets"`
+	AssetBaseURL     string            `default:"http://localhost:8080/assets"`
 	Origins          []string          `pp:",omitempty"`
 	Web_Disabled     bool              `pp:",omitempty"`
 	Web_App_Disabled bool              `pp:",omitempty"`
@@ -63,6 +64,9 @@ type Config struct {
 	Auth_TTL      *int          `pp:",omitempty"`
 	Auth_ClientID *string       `pp:",omitempty"`
 	Auth_JWKSURI  *string       `pp:",omitempty"`
+
+	// worker
+	Worker_ImageURL string `pp:",omitempty"`
 }
 
 func ReadConfig(debug bool) (*Config, error) {

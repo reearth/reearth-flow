@@ -4,7 +4,7 @@ declare global {
   let __APP_VERSION__: string;
   // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
   interface Window {
-    FLOW_CONFIG?: Config;
+    REEARTH_CONFIG?: Config;
     FLOW_E2E_ACCESS_TOKEN?: string;
   }
 }
@@ -27,24 +27,24 @@ const defaultConfig: Config = {
 };
 
 export default async function loadConfig() {
-  if (window.FLOW_CONFIG) return;
+  if (window.REEARTH_CONFIG) return;
 
-  window.FLOW_CONFIG = defaultConfig;
+  window.REEARTH_CONFIG = defaultConfig;
 
   const config: Config = {
     ...defaultConfig,
-    ...(await (await fetch("/flow_config.json")).json()),
+    ...(await (await fetch("/reearth_config.json")).json()),
   };
 
-  if (window.FLOW_CONFIG.brandName) {
-    document.title = window.FLOW_CONFIG.brandName + " v" + config.version;
+  if (window.REEARTH_CONFIG.brandName) {
+    document.title = window.REEARTH_CONFIG.brandName + " v" + config.version;
   }
 
-  window.FLOW_CONFIG = config;
+  window.REEARTH_CONFIG = config;
 }
 
 export function config(): Config {
-  return window.FLOW_CONFIG ?? {};
+  return window.REEARTH_CONFIG ?? {};
 }
 
 export * from "./authInfo";

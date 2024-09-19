@@ -43,7 +43,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
                   id={input}
                   // isConnectable={1}
                 />
-                <p className="pl-1 text-[10px] font-light">{input}</p>
+                <p className="pl-1 text-[10px] dark:font-light">{input}</p>
               </div>
             ))}
           {outputs &&
@@ -58,7 +58,9 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
                   position={Position.Right}
                   id={output}
                 />
-                <p className="pr-1 text-end text-[10px] font-light">{output}</p>
+                <p className="pr-1 text-end text-[10px] dark:font-light">
+                  {output}
+                </p>
               </div>
             ))}
         </div>

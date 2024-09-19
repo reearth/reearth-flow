@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -81,8 +82,10 @@ impl ProcessorFactory for GeometryDissolverFactory {
             .into());
         };
         Ok(Box::new(GeometryDissolver {
-            params,
+            group_by: params.group_by,
+            complete_grouped: params.complete_grouped.unwrap_or_default(),
             buffer: HashMap::new(),
+            previous_group_key: None,
         }))
     }
 }
@@ -91,21 +94,18 @@ impl ProcessorFactory for GeometryDissolverFactory {
 #[serde(rename_all = "camelCase")]
 pub struct GeometryDissolverParam {
     group_by: Option<Vec<Attribute>>,
+    complete_grouped: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
 pub struct GeometryDissolver {
-    params: GeometryDissolverParam,
-    buffer: HashMap<String, Vec<Feature>>,
+    group_by: Option<Vec<Attribute>>,
+    complete_grouped: bool,
+    buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped, features)
+    previous_group_key: Option<String>,
 }
 
 impl Processor for GeometryDissolver {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
-    fn num_threads(&self) -> usize {
-        20
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -119,7 +119,7 @@ impl Processor for GeometryDissolver {
         };
         match &geometry.value {
             GeometryValue::FlowGeometry2D(_) | GeometryValue::FlowGeometry3D(_) => {
-                let key = if let Some(group_by) = &self.params.group_by {
+                let key = if let Some(group_by) = &self.group_by {
                     group_by
                         .iter()
                         .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
@@ -128,16 +128,33 @@ impl Processor for GeometryDissolver {
                 } else {
                     "_all".to_string()
                 };
-                if let Some(values) = self.buffer.get(&key) {
-                    self.handle_geometry(feature, values, &ctx, fw);
-                    {
-                        if let Some(buffer) = self.buffer.get_mut(&key) {
+
+                if let Some((_, buffer)) = self.buffer.get(&key) {
+                    self.handle_geometry(feature, buffer, &ctx, fw);
+                }
+
+                match self.buffer.entry(key.clone()) {
+                    Entry::Occupied(mut entry) => {
+                        self.previous_group_key = Some(key.clone());
+                        {
+                            let (_, buffer) = entry.get_mut();
                             buffer.push(feature.clone());
                         }
                     }
-                } else {
-                    self.buffer.insert(key, vec![feature.clone()]);
-                    self.handle_geometry(feature, &[], &ctx, fw);
+                    Entry::Vacant(entry) => {
+                        entry.insert((false, vec![feature.clone()]));
+                        self.handle_geometry(feature, &[], &ctx, fw);
+                        if let Some(previous_group_key) = &self.previous_group_key {
+                            if let Entry::Occupied(mut entry) =
+                                self.buffer.entry(previous_group_key.clone())
+                            {
+                                let (complete_grouped_change, _) = entry.get_mut();
+                                *complete_grouped_change = true;
+                            }
+                            self.change_group();
+                        }
+                        self.previous_group_key = Some(key.clone());
+                    }
                 }
             }
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
@@ -151,9 +168,18 @@ impl Processor for GeometryDissolver {
 
     fn finish(
         &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
+        ctx: NodeContext,
+        fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        for (_, (_, features)) in self.buffer.iter() {
+            for feature in features {
+                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                    &ctx,
+                    feature.clone(),
+                    REJECTED_PORT.clone(),
+                ));
+            }
+        }
         Ok(())
     }
 
@@ -269,5 +295,13 @@ impl GeometryDissolver {
                 }
             });
         }
+    }
+
+    fn change_group(&mut self) {
+        if !self.complete_grouped {
+            return;
+        }
+        self.buffer
+            .retain(|_, (complete_grouped, _)| !*complete_grouped);
     }
 }

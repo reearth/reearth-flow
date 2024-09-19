@@ -8,6 +8,7 @@ import {
   RectangleDashed,
 } from "@phosphor-icons/react";
 import { memo, type DragEvent } from "react";
+import { createRoot } from "react-dom/client";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -80,6 +81,28 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
   ) => {
     event.dataTransfer.setData("application/reactflow", nodeType);
     event.dataTransfer.effectAllowed = "move";
+    const dragPreviewContainer = document.createElement("div");
+    dragPreviewContainer.style.position = "absolute";
+    dragPreviewContainer.style.top = "-1000px"; // Move it offscreen to hide it
+
+    const root = createRoot(dragPreviewContainer);
+    root.render(
+      <div className="flex size-12 rounded bg-secondary">
+        <div
+          className={`flex w-full justify-center rounded align-middle  ${nodeType === "reader" ? "bg-node-reader/60" : nodeType === "writer" ? "bg-node-writer/60" : "bg-node-transformer/60"}`}>
+          <Lightning className="self-center" />
+        </div>
+      </div>,
+    );
+
+    document.body.appendChild(dragPreviewContainer);
+    event.dataTransfer.setDragImage(dragPreviewContainer, 10, 10);
+
+    // Clean up the container after the drag starts
+    setTimeout(() => {
+      root.unmount();
+      document.body.removeChild(dragPreviewContainer);
+    }, 0);
   };
 
   return (

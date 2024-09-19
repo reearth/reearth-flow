@@ -18,9 +18,9 @@ once_cell.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 slog.workspace = true
-slog-async = "2.8.0"
-slog-term = "2.9.1"
-sloggers = { version = "2.2.0", default-features = false }
+slog-async.workspace = true
+slog-term.workspace = true
+sloggers.workspace = true
 thiserror.workspace = true
 time.workspace = true
 tokio.workspace = true

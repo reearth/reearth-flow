@@ -459,6 +459,40 @@ Writes features to a file
 ### Category
 * File
 
+## CityGmlGeometryLodFilter
+### Type
+* processor
+### Description
+Filters CityGML geometries by LOD
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlGeometryLodFilter",
+  "type": "object",
+  "required": [
+    "lods"
+  ],
+  "properties": {
+    "lods": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "format": "uint8",
+        "minimum": 0.0
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
+
 ## Clipper
 ### Type
 * processor
@@ -487,7 +521,7 @@ Checks if curves form closed loops
 * default
 ### Output Ports
 * closed
-* line
+* open
 * rejected
 ### Category
 * Geometry
@@ -776,19 +810,56 @@ Merges features by attributes
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "FeatureMergerParam",
   "type": "object",
-  "required": [
-    "requestorAttribute",
-    "supplierAttribute"
-  ],
   "properties": {
+    "completeGrouped": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "requestorAttribute": {
-      "$ref": "#/definitions/Expr"
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "requestorAttributeValue": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "supplierAttribute": {
-      "$ref": "#/definitions/Expr"
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "supplierAttributeValue": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
     "Expr": {
       "type": "string"
     }
@@ -1400,6 +1471,12 @@ Dissolve geometries
   "title": "GeometryDissolverParam",
   "type": "object",
   "properties": {
+    "completeGrouped": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "groupBy": {
       "type": [
         "array",

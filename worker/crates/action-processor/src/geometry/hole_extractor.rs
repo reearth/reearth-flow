@@ -64,12 +64,6 @@ impl ProcessorFactory for HoleExtractorFactory {
 pub struct HoleExtractor;
 
 impl Processor for HoleExtractor {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
-    fn num_threads(&self) -> usize {
-        2
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,

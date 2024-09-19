@@ -143,9 +143,9 @@ graphs:
           method: count
 
       - id: 5ffe00f3-4554-4fc9-91c7-f7d272691cc4
-        name: EchoFeatureTypeExtractor
+        name: NoopFeatureTypeExtractor
         type: action
-        action: EchoSink
+        action: NoopSink
 
       - id: 24825ad1-d005-4a45-b9bf-cbb605b86626
         name: FeatureFilterByRwy

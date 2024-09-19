@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -23,6 +24,7 @@ type Project struct {
 	workspaceRepo accountrepo.Workspace
 	transaction   usecasex.Transaction
 	file          gateway.File
+	batch         gateway.Batch
 }
 
 func NewProject(r *repo.Container, gr *gateway.Container) interfaces.Project {
@@ -222,7 +224,11 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 		return false, err
 	}
 
-	// TODO: Send workflow to worker
+	jobID := id.NewJobID()
+	_, err = i.batch.SubmitJob(ctx, jobID, p.Workflow, prj.ID())
+	if err != nil {
+		return false, fmt.Errorf("failed to submit job: %v", err)
+	}
 
 	tx.Commit()
 	return true, nil

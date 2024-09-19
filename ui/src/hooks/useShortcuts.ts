@@ -43,7 +43,7 @@ export default (shortcuts?: ShortcutProps[]) => {
       for (const shortcut of shortcuts) {
         const { keyBinding, callback } = shortcut;
 
-        const eventKey = getKey(e.key as PossibleKeys);
+        const eventKey = getKey(e.key as PossibleKeys).toLowerCase();
         if (eventKey === keyBinding.key) {
           const isCommandKeyPressed = e.metaKey || e.ctrlKey;
           const isShiftKeyPressed = e.shiftKey;

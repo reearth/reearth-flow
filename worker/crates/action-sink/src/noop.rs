@@ -49,8 +49,6 @@ impl SinkFactory for NoopSinkFactory {
 pub struct NoopSink;
 
 impl Sink for NoopSink {
-    fn initialize(&self, _ctx: NodeContext) {}
-
     fn name(&self) -> &str {
         "NoopSink"
     }

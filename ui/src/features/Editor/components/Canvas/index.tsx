@@ -123,6 +123,7 @@ const Canvas: React.FC<Props> = ({
       onReconnect={handleReconnect}
       proOptions={proOptions}>
       <Background
+        className="bg-background"
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}
         color="rgba(63, 63, 70, 0.3)"

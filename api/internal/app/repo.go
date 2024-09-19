@@ -6,6 +6,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpbatch"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -21,7 +22,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
 )
 
-const databaseName = "flow"
+const databaseName = "reearth-flow"
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, debug bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
 	gateways := &gateway.Container{}
@@ -70,6 +71,9 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, debug bool) 
 	// File
 	gateways.File = initFile(ctx, conf)
 
+	// Batch
+	gateways.Batch = initBatch(ctx, conf)
+
 	// Auth0
 	auth0 := auth0.New(conf.Auth0.Domain, conf.Auth0.ClientID, conf.Auth0.ClientSecret)
 	gateways.Authenticator = auth0
@@ -87,7 +91,6 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 			log.Warnf("file: failed to init GCS storage: %s\n", err.Error())
 		}
 		return
-
 	}
 
 	log.Infof("file: local storage is used")
@@ -97,4 +100,23 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 		log.Fatalf("file: init error: %+v", err)
 	}
 	return fileRepo
+}
+
+func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batch) {
+	var err error
+	if conf.Worker_ImageURL != "" {
+		config := gcpbatch.Config{
+			ProjectID: conf.GCPProject,
+			Region:    "us-central1",
+			ImageURI:  conf.Worker_ImageURL,
+		}
+
+		batchRepo, err = gcpbatch.NewBatch(ctx, config)
+		if err != nil {
+			log.Fatalf("Failed to create Batch repository: %v", err)
+		}
+		return
+	}
+
+	return batchRepo
 }

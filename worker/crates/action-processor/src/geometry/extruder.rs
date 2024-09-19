@@ -94,10 +94,8 @@ pub struct ExtruderParam {
 }
 
 impl Processor for Extruder {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
     fn num_threads(&self) -> usize {
-        5
+        2
     }
 
     fn process(
