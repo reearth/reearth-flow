@@ -811,18 +811,55 @@ Merges features by attributes
   "title": "FeatureMergerParam",
   "type": "object",
   "required": [
-    "requestorAttribute",
-    "supplierAttribute"
+    "groupedChange"
   ],
   "properties": {
+    "groupedChange": {
+      "type": "boolean"
+    },
     "requestorAttribute": {
-      "$ref": "#/definitions/Expr"
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "requestorAttributeValue": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "supplierAttribute": {
-      "$ref": "#/definitions/Expr"
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "supplierAttributeValue": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
     "Expr": {
       "type": "string"
     }

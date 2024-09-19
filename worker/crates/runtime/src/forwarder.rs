@@ -57,7 +57,6 @@ impl ChannelManager {
                 Ok(()) => {}
                 Err(e) => {
                     self.error_manager.report(e.into());
-                    return Ok(());
                 }
             }
         }
