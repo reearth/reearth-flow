@@ -1,8 +1,9 @@
 use serde::{de::DeserializeOwned, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use tokio::fs;
-use tokio::io;
+use tokio::fs::{self, OpenOptions};
+use tokio::io::{self, AsyncReadExt};
+use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::sync::Mutex;
 
 pub struct LocalClient {
@@ -48,8 +49,16 @@ impl LocalClient {
             if let Some(parent) = full_path.parent() {
                 fs::create_dir_all(parent).await?;
             }
-            let serialized = serde_json::to_string(data)?;
-            fs::write(&full_path, serialized).await?;
+            let file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .append(true)
+                .open(&full_path)
+                .await?;
+            let mut writer = BufWriter::new(file);
+            let serialized = serde_json::to_vec(data)?;
+            writer.write_all(&serialized).await?;
+            writer.flush().await?;
             Ok(())
         }
         .await;
@@ -63,8 +72,11 @@ impl LocalClient {
         self.lock_file(&full_path).await;
 
         let result = async {
-            let content = fs::read_to_string(&full_path).await?;
-            let data: T = serde_json::from_str(&content)?;
+            let file = fs::File::open(&full_path).await?;
+            let mut reader = BufReader::new(file);
+            let mut contents = Vec::new();
+            reader.read_to_end(&mut contents).await?;
+            let data: T = serde_json::from_slice(&contents)?;
             Ok(data)
         }
         .await;
