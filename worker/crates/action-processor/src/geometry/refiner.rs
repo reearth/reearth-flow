@@ -62,7 +62,7 @@ impl ProcessorFactory for RefinerFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct Refiner {}
+pub struct Refiner;
 
 impl Processor for Refiner {
     fn process(

@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 use itertools::Itertools;
@@ -88,6 +89,7 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
         Ok(Box::new(AreaOnAreaOverlayer {
             params,
             buffer: HashMap::new(),
+            previous_group_key: None,
         }))
     }
 }
@@ -102,7 +104,8 @@ pub struct AreaOnAreaOverlayerParam {
 #[derive(Debug, Clone)]
 pub struct AreaOnAreaOverlayer {
     params: AreaOnAreaOverlayerParam,
-    buffer: HashMap<String, Vec<Feature>>,
+    buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped, features)
+    previous_group_key: Option<String>,
 }
 
 impl Processor for AreaOnAreaOverlayer {
@@ -127,16 +130,32 @@ impl Processor for AreaOnAreaOverlayer {
                 } else {
                     "_all".to_string()
                 };
-                if let Some(values) = self.buffer.get(&key) {
-                    self.handle_geometry(feature, values, &ctx, fw);
-                    {
-                        if let Some(buffer) = self.buffer.get_mut(&key) {
+
+                if let Some((_, buffer)) = self.buffer.get(&key) {
+                    self.handle_geometry(feature, buffer, &ctx, fw);
+                }
+                match self.buffer.entry(key.clone()) {
+                    Entry::Occupied(mut entry) => {
+                        self.previous_group_key = Some(key.clone());
+                        {
+                            let (_, buffer) = entry.get_mut();
                             buffer.push(feature.clone());
                         }
                     }
-                } else {
-                    self.buffer.insert(key, vec![feature.clone()]);
-                    self.handle_geometry(feature, &[], &ctx, fw);
+                    Entry::Vacant(entry) => {
+                        entry.insert((false, vec![feature.clone()]));
+                        self.handle_geometry(feature, &[], &ctx, fw);
+                        if let Some(previous_group_key) = &self.previous_group_key {
+                            if let Entry::Occupied(mut entry) =
+                                self.buffer.entry(previous_group_key.clone())
+                            {
+                                let (complete_grouped_change, _) = entry.get_mut();
+                                *complete_grouped_change = true;
+                            }
+                            self.change_group();
+                        }
+                        self.previous_group_key = Some(key.clone());
+                    }
                 }
             }
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
@@ -298,6 +317,18 @@ impl AreaOnAreaOverlayer {
                 GeometryValue::FlowGeometry2D(Geometry2D::MultiPolygon(remnant.clone()));
             feature.geometry = Some(geometry);
             fw.send(ctx.new_with_feature_and_port(feature, REMNANTS_PORT.clone()));
+        }
+    }
+
+    fn change_group(&mut self) {
+        let keys = self
+            .buffer
+            .iter()
+            .filter(|(_, (complete_grouped, _))| *complete_grouped)
+            .map(|(k, _)| k.clone())
+            .collect::<Vec<_>>();
+        for key in keys.iter() {
+            self.buffer.remove(key);
         }
     }
 }
