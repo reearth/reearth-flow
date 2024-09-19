@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -83,6 +84,7 @@ impl ProcessorFactory for GeometryDissolverFactory {
         Ok(Box::new(GeometryDissolver {
             params,
             buffer: HashMap::new(),
+            attribute_before_value: None,
         }))
     }
 }
@@ -91,12 +93,14 @@ impl ProcessorFactory for GeometryDissolverFactory {
 #[serde(rename_all = "camelCase")]
 pub struct GeometryDissolverParam {
     group_by: Option<Vec<Attribute>>,
+    complete_grouped: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
 pub struct GeometryDissolver {
     params: GeometryDissolverParam,
-    buffer: HashMap<String, Vec<Feature>>,
+    buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped, features)
+    attribute_before_value: Option<String>,
 }
 
 impl Processor for GeometryDissolver {
@@ -126,16 +130,34 @@ impl Processor for GeometryDissolver {
                 } else {
                     "_all".to_string()
                 };
-                if let Some(values) = self.buffer.get(&key) {
-                    self.handle_geometry(feature, values, &ctx, fw);
-                    {
-                        if let Some(buffer) = self.buffer.get_mut(&key) {
+
+                if let Some((_, buffer)) = self.buffer.get(&key) {
+                    self.handle_geometry(feature, buffer, &ctx, fw);
+                }
+
+                match self.buffer.entry(key.clone()) {
+                    Entry::Occupied(mut entry) => {
+                        self.attribute_before_value = Some(key.clone());
+                        {
+                            let (_, buffer) = entry.get_mut();
                             buffer.push(feature.clone());
                         }
                     }
-                } else {
-                    self.buffer.insert(key, vec![feature.clone()]);
-                    self.handle_geometry(feature, &[], &ctx, fw);
+                    Entry::Vacant(entry) => {
+                        entry.insert((false, vec![feature.clone()]));
+                        self.handle_geometry(feature, &[], &ctx, fw);
+                        if self.attribute_before_value.is_some() {
+                            if let Entry::Occupied(mut entry) = self
+                                .buffer
+                                .entry(self.attribute_before_value.clone().unwrap())
+                            {
+                                let (complete_grouped_change, _) = entry.get_mut();
+                                *complete_grouped_change = true;
+                            }
+                            self.change_group();
+                        }
+                        self.attribute_before_value = Some(key.clone());
+                    }
                 }
             }
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
@@ -266,6 +288,18 @@ impl GeometryDissolver {
                     fw.send(ctx.new_with_feature_and_port(feature, AREA_PORT.clone()));
                 }
             });
+        }
+    }
+
+    fn change_group(&mut self) {
+        let keys = self
+            .buffer
+            .iter()
+            .filter(|(_, (complete_grouped, _))| *complete_grouped)
+            .map(|(k, _)| k.clone())
+            .collect::<Vec<_>>();
+        for key in keys.iter() {
+            self.buffer.remove(key);
         }
     }
 }

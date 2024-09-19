@@ -1471,6 +1471,12 @@ Dissolve geometries
   "title": "GeometryDissolverParam",
   "type": "object",
   "properties": {
+    "completeGrouped": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "groupBy": {
       "type": [
         "array",
