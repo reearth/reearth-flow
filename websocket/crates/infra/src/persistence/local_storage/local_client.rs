@@ -22,7 +22,11 @@ impl LocalClient {
     }
 
     fn get_full_path(&self, path: &str) -> PathBuf {
-        self.base_path.join(path)
+        let sanitized_path = Path::new(path)
+            .components()
+            .filter(|c| matches!(c, std::path::Component::Normal(_)))
+            .collect::<PathBuf>();
+        self.base_path.join(sanitized_path)
     }
 
     async fn lock_file(&self, path: &Path) {
