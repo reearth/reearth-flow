@@ -69,6 +69,13 @@ impl LocalClient {
             let serialized = serde_json::to_vec(data)?;
             writer.write_all(&serialized).await?;
             writer.flush().await?;
+
+            // Update cache only if the path already exists in the cache
+            let mut cache = self.cache.lock().await;
+            if cache.contains(&path) {
+                cache.put(path.clone(), serialized);
+            }
+
             Ok(())
         }
         .await;
