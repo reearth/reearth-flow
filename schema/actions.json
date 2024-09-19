@@ -819,7 +819,7 @@
         "title": "FeatureMergerParam",
         "type": "object",
         "properties": {
-          "groupedChange": {
+          "completeGrouped": {
             "type": [
               "boolean",
               "null"

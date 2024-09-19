@@ -82,9 +82,10 @@ impl ProcessorFactory for GeometryDissolverFactory {
             .into());
         };
         Ok(Box::new(GeometryDissolver {
-            params,
+            group_by: params.group_by,
+            complete_grouped: params.complete_grouped.unwrap_or_default(),
             buffer: HashMap::new(),
-            attribute_before_value: None,
+            previous_group_key: None,
         }))
     }
 }
@@ -98,16 +99,13 @@ pub struct GeometryDissolverParam {
 
 #[derive(Debug, Clone)]
 pub struct GeometryDissolver {
-    params: GeometryDissolverParam,
+    group_by: Option<Vec<Attribute>>,
+    complete_grouped: bool,
     buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped, features)
-    attribute_before_value: Option<String>,
+    previous_group_key: Option<String>,
 }
 
 impl Processor for GeometryDissolver {
-    fn num_threads(&self) -> usize {
-        2
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -121,7 +119,7 @@ impl Processor for GeometryDissolver {
         };
         match &geometry.value {
             GeometryValue::FlowGeometry2D(_) | GeometryValue::FlowGeometry3D(_) => {
-                let key = if let Some(group_by) = &self.params.group_by {
+                let key = if let Some(group_by) = &self.group_by {
                     group_by
                         .iter()
                         .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
@@ -137,7 +135,7 @@ impl Processor for GeometryDissolver {
 
                 match self.buffer.entry(key.clone()) {
                     Entry::Occupied(mut entry) => {
-                        self.attribute_before_value = Some(key.clone());
+                        self.previous_group_key = Some(key.clone());
                         {
                             let (_, buffer) = entry.get_mut();
                             buffer.push(feature.clone());
@@ -146,17 +144,16 @@ impl Processor for GeometryDissolver {
                     Entry::Vacant(entry) => {
                         entry.insert((false, vec![feature.clone()]));
                         self.handle_geometry(feature, &[], &ctx, fw);
-                        if self.attribute_before_value.is_some() {
-                            if let Entry::Occupied(mut entry) = self
-                                .buffer
-                                .entry(self.attribute_before_value.clone().unwrap())
+                        if let Some(previous_group_key) = &self.previous_group_key {
+                            if let Entry::Occupied(mut entry) =
+                                self.buffer.entry(previous_group_key.clone())
                             {
                                 let (complete_grouped_change, _) = entry.get_mut();
                                 *complete_grouped_change = true;
                             }
                             self.change_group();
                         }
-                        self.attribute_before_value = Some(key.clone());
+                        self.previous_group_key = Some(key.clone());
                     }
                 }
             }
@@ -171,9 +168,18 @@ impl Processor for GeometryDissolver {
 
     fn finish(
         &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
+        ctx: NodeContext,
+        fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        for (_, (_, features)) in self.buffer.iter() {
+            for feature in features {
+                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                    &ctx,
+                    feature.clone(),
+                    REJECTED_PORT.clone(),
+                ));
+            }
+        }
         Ok(())
     }
 
@@ -292,14 +298,10 @@ impl GeometryDissolver {
     }
 
     fn change_group(&mut self) {
-        let keys = self
-            .buffer
-            .iter()
-            .filter(|(_, (complete_grouped, _))| *complete_grouped)
-            .map(|(k, _)| k.clone())
-            .collect::<Vec<_>>();
-        for key in keys.iter() {
-            self.buffer.remove(key);
+        if !self.complete_grouped {
+            return;
         }
+        self.buffer
+            .retain(|_, (complete_grouped, _)| !*complete_grouped);
     }
 }

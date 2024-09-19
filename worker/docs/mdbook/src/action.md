@@ -811,7 +811,7 @@ Merges features by attributes
   "title": "FeatureMergerParam",
   "type": "object",
   "properties": {
-    "groupedChange": {
+    "completeGrouped": {
       "type": [
         "boolean",
         "null"

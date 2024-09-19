@@ -89,7 +89,7 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
         Ok(Box::new(AreaOnAreaOverlayer {
             params,
             buffer: HashMap::new(),
-            attribute_before_value: None,
+            previous_group_key: None,
         }))
     }
 }
@@ -105,7 +105,7 @@ pub struct AreaOnAreaOverlayerParam {
 pub struct AreaOnAreaOverlayer {
     params: AreaOnAreaOverlayerParam,
     buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped, features)
-    attribute_before_value: Option<String>,
+    previous_group_key: Option<String>,
 }
 
 impl Processor for AreaOnAreaOverlayer {
@@ -136,7 +136,7 @@ impl Processor for AreaOnAreaOverlayer {
                 }
                 match self.buffer.entry(key.clone()) {
                     Entry::Occupied(mut entry) => {
-                        self.attribute_before_value = Some(key.clone());
+                        self.previous_group_key = Some(key.clone());
                         {
                             let (_, buffer) = entry.get_mut();
                             buffer.push(feature.clone());
@@ -145,17 +145,16 @@ impl Processor for AreaOnAreaOverlayer {
                     Entry::Vacant(entry) => {
                         entry.insert((false, vec![feature.clone()]));
                         self.handle_geometry(feature, &[], &ctx, fw);
-                        if self.attribute_before_value.is_some() {
-                            if let Entry::Occupied(mut entry) = self
-                                .buffer
-                                .entry(self.attribute_before_value.clone().unwrap())
+                        if let Some(previous_group_key) = &self.previous_group_key {
+                            if let Entry::Occupied(mut entry) =
+                                self.buffer.entry(previous_group_key.clone())
                             {
                                 let (complete_grouped_change, _) = entry.get_mut();
                                 *complete_grouped_change = true;
                             }
                             self.change_group();
                         }
-                        self.attribute_before_value = Some(key.clone());
+                        self.previous_group_key = Some(key.clone());
                     }
                 }
             }

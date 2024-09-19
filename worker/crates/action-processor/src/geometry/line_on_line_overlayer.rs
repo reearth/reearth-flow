@@ -87,7 +87,7 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
         Ok(Box::new(LineOnLineOverlayer {
             params,
             buffer: HashMap::new(),
-            attribute_before_value: None,
+            previous_group_key: None,
         }))
     }
 }
@@ -103,7 +103,7 @@ pub struct LineOnLineOverlayerParam {
 pub struct LineOnLineOverlayer {
     params: LineOnLineOverlayerParam,
     buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped, features)
-    attribute_before_value: Option<String>,
+    previous_group_key: Option<String>,
 }
 
 impl Processor for LineOnLineOverlayer {
@@ -134,7 +134,7 @@ impl Processor for LineOnLineOverlayer {
                 }
                 match self.buffer.entry(key.clone()) {
                     Entry::Occupied(mut entry) => {
-                        self.attribute_before_value = Some(key.clone());
+                        self.previous_group_key = Some(key.clone());
                         {
                             let (_, buffer) = entry.get_mut();
                             buffer.push(feature.clone());
@@ -143,17 +143,16 @@ impl Processor for LineOnLineOverlayer {
                     Entry::Vacant(entry) => {
                         entry.insert((false, vec![feature.clone()]));
                         self.handle_geometry(feature, &[], &ctx, fw);
-                        if self.attribute_before_value.is_some() {
-                            if let Entry::Occupied(mut entry) = self
-                                .buffer
-                                .entry(self.attribute_before_value.clone().unwrap())
+                        if let Some(previous_group_key) = &self.previous_group_key {
+                            if let Entry::Occupied(mut entry) =
+                                self.buffer.entry(previous_group_key.clone())
                             {
                                 let (complete_grouped_change, _) = entry.get_mut();
                                 *complete_grouped_change = true;
                             }
                             self.change_group();
                         }
-                        self.attribute_before_value = Some(key.clone());
+                        self.previous_group_key = Some(key.clone());
                     }
                 }
             }
@@ -396,14 +395,7 @@ impl LineOnLineOverlayer {
     }
 
     fn change_group(&mut self) {
-        let keys = self
-            .buffer
-            .iter()
-            .filter(|(_, (complete_grouped, _))| *complete_grouped)
-            .map(|(k, _)| k.clone())
-            .collect::<Vec<_>>();
-        for key in keys.iter() {
-            self.buffer.remove(key);
-        }
+        self.buffer
+            .retain(|_, (complete_grouped, _)| !*complete_grouped);
     }
 }
