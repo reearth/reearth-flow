@@ -1,0 +1,72 @@
+fragment Deployment on Deployment {
+  id
+  projectId
+  workspaceId
+  workflowId
+  version
+  createdAt
+  updatedAt
+}
+
+fragment Job on Job {
+  id
+  deploymentId
+  workspaceId
+  status
+  startedAt
+  completedAt
+  # deployment{
+  #   ...Deployment
+  # }
+  # workspace{
+  #   ...Workspace
+  # }
+}
+
+mutation CreateDeployment($input: CreateDeploymentInput!) {
+  createDeployment(input: $input) {
+    deployment {
+      ...Deployment
+    }
+  }
+}
+
+mutation ExecuteDeployment($input: ExecuteDeploymentInput!) {
+  executeDeployment(input: $input) {
+    job {
+      ...Job
+    }
+  }
+}
+
+query GetDeployments($workspaceId: ID!, $pagination: Pagination) {
+  deployments(workspaceId: $workspaceId, pagination: $pagination) {
+    totalCount
+    nodes {
+      ...Deployment
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}
+
+query GetJobs($workspaceId: ID!, $pagination: Pagination) {
+  jobs(workspaceId: $workspaceId, pagination: $pagination) {
+    totalCount
+    nodes {
+      ...Job
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}
+
+query GetJob($id: ID!) {
+  job(id: $id) {
+    ...Job
+  }
+}

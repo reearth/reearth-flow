@@ -620,6 +620,47 @@ export type WorkspaceMember = {
   userId: Scalars['ID']['output'];
 };
 
+export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowId: string, version: string, createdAt: any, updatedAt: any };
+
+export type JobFragment = { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null };
+
+export type CreateDeploymentMutationVariables = Exact<{
+  input: CreateDeploymentInput;
+}>;
+
+
+export type CreateDeploymentMutation = { __typename?: 'Mutation', createDeployment?: { __typename?: 'DeploymentPayload', deployment: { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowId: string, version: string, createdAt: any, updatedAt: any } } | null };
+
+export type ExecuteDeploymentMutationVariables = Exact<{
+  input: ExecuteDeploymentInput;
+}>;
+
+
+export type ExecuteDeploymentMutation = { __typename?: 'Mutation', executeDeployment?: { __typename?: 'JobPayload', job: { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null } } | null };
+
+export type GetDeploymentsQueryVariables = Exact<{
+  workspaceId: Scalars['ID']['input'];
+  pagination?: InputMaybe<Pagination>;
+}>;
+
+
+export type GetDeploymentsQuery = { __typename?: 'Query', deployments: { __typename?: 'DeploymentConnection', totalCount: number, nodes: Array<{ __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowId: string, version: string, createdAt: any, updatedAt: any } | null>, pageInfo: { __typename?: 'PageInfo', endCursor?: any | null, hasNextPage: boolean } } };
+
+export type GetJobsQueryVariables = Exact<{
+  workspaceId: Scalars['ID']['input'];
+  pagination?: InputMaybe<Pagination>;
+}>;
+
+
+export type GetJobsQuery = { __typename?: 'Query', jobs: { __typename?: 'JobConnection', totalCount: number, nodes: Array<{ __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null } | null>, pageInfo: { __typename?: 'PageInfo', endCursor?: any | null, hasNextPage: boolean } } };
+
+export type GetJobQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type GetJobQuery = { __typename?: 'Query', job?: { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null } | null };
+
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string };
 
 export type CreateProjectMutationVariables = Exact<{
@@ -741,6 +782,27 @@ export type UpdateMemberOfWorkspaceMutationVariables = Exact<{
 
 export type UpdateMemberOfWorkspaceMutation = { __typename?: 'Mutation', updateMemberOfWorkspace?: { __typename?: 'UpdateMemberOfWorkspacePayload', workspace: { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } } | null };
 
+export const DeploymentFragmentDoc = gql`
+    fragment Deployment on Deployment {
+  id
+  projectId
+  workspaceId
+  workflowId
+  version
+  createdAt
+  updatedAt
+}
+    `;
+export const JobFragmentDoc = gql`
+    fragment Job on Job {
+  id
+  deploymentId
+  workspaceId
+  status
+  startedAt
+  completedAt
+}
+    `;
 export const ProjectFragmentDoc = gql`
     fragment Project on Project {
   id
@@ -767,6 +829,59 @@ export const WorkspaceFragmentDoc = gql`
   }
 }
     `;
+export const CreateDeploymentDocument = gql`
+    mutation CreateDeployment($input: CreateDeploymentInput!) {
+  createDeployment(input: $input) {
+    deployment {
+      ...Deployment
+    }
+  }
+}
+    ${DeploymentFragmentDoc}`;
+export const ExecuteDeploymentDocument = gql`
+    mutation ExecuteDeployment($input: ExecuteDeploymentInput!) {
+  executeDeployment(input: $input) {
+    job {
+      ...Job
+    }
+  }
+}
+    ${JobFragmentDoc}`;
+export const GetDeploymentsDocument = gql`
+    query GetDeployments($workspaceId: ID!, $pagination: Pagination) {
+  deployments(workspaceId: $workspaceId, pagination: $pagination) {
+    totalCount
+    nodes {
+      ...Deployment
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}
+    ${DeploymentFragmentDoc}`;
+export const GetJobsDocument = gql`
+    query GetJobs($workspaceId: ID!, $pagination: Pagination) {
+  jobs(workspaceId: $workspaceId, pagination: $pagination) {
+    totalCount
+    nodes {
+      ...Job
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}
+    ${JobFragmentDoc}`;
+export const GetJobDocument = gql`
+    query GetJob($id: ID!) {
+  job(id: $id) {
+    ...Job
+  }
+}
+    ${JobFragmentDoc}`;
 export const CreateProjectDocument = gql`
     mutation CreateProject($input: CreateProjectInput!) {
   createProject(input: $input) {
@@ -930,6 +1045,21 @@ const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationTy
 
 export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
   return {
+    CreateDeployment(variables: CreateDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateDeploymentMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateDeploymentMutation>(CreateDeploymentDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateDeployment', 'mutation', variables);
+    },
+    ExecuteDeployment(variables: ExecuteDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<ExecuteDeploymentMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<ExecuteDeploymentMutation>(ExecuteDeploymentDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ExecuteDeployment', 'mutation', variables);
+    },
+    GetDeployments(variables: GetDeploymentsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetDeploymentsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetDeploymentsQuery>(GetDeploymentsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetDeployments', 'query', variables);
+    },
+    GetJobs(variables: GetJobsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetJobsQuery>(GetJobsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJobs', 'query', variables);
+    },
+    GetJob(variables: GetJobQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetJobQuery>(GetJobDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJob', 'query', variables);
+    },
     CreateProject(variables: CreateProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateProjectMutation>(CreateProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateProject', 'mutation', variables);
     },
