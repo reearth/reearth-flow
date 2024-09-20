@@ -173,10 +173,11 @@ nodes:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").surfaceId.to_string()
-      supplierAttributeValue: |
-        env.get("__value").surfaceId.to_string()
+      requestorAttribute:
+        - surfaceId
+      supplierAttribute:
+        - surfaceId
+      completeGrouped: true
 
   - id: a5dfe7bf-e24a-48bb-b3d0-2312806cada3
     name: LineOnLineOverlayer
@@ -230,10 +231,11 @@ nodes:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").surfaceId.to_string()
-      supplierAttributeValue: |
-        env.get("__value").surfaceId.to_string()
+      requestorAttribute:
+        - surfaceId
+      supplierAttribute:
+        - surfaceId
+      completeGrouped: true
 
   - id: 6920a4e3-70e9-4e01-9a21-d5b7af9c0425
     name: FeatureFilterByIncorrectInteriorOrientation

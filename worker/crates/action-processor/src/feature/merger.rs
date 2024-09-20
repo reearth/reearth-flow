@@ -126,7 +126,7 @@ impl ProcessorFactory for FeatureMergerFactory {
                 supplier_attribute_value,
                 requestor_attribute: params.requestor_attribute,
                 supplier_attribute: params.supplier_attribute,
-                grouped_change: params.grouped_change.unwrap_or(false),
+                complete_grouped: params.complete_grouped.unwrap_or(false),
             },
             requestor_buffer: HashMap::new(),
             supplier_buffer: HashMap::new(),
@@ -144,14 +144,14 @@ pub struct FeatureMergerParam {
     supplier_attribute: Option<Vec<Attribute>>,
     requestor_attribute_value: Option<Expr>,
     supplier_attribute_value: Option<Expr>,
-    grouped_change: Option<bool>,
+    complete_grouped: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FeatureMerger {
     params: CompiledParam,
-    requestor_buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped_change, features)
-    supplier_buffer: HashMap<String, (bool, Vec<Feature>)>,  // (complete_grouped_change, features)
+    requestor_buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped, features)
+    supplier_buffer: HashMap<String, (bool, Vec<Feature>)>,  // (complete_grouped, features)
     requestor_before_value: Option<String>,
     supplier_before_value: Option<String>,
 }
@@ -162,7 +162,7 @@ struct CompiledParam {
     supplier_attribute: Option<Vec<Attribute>>,
     requestor_attribute_value: Option<rhai::AST>,
     supplier_attribute_value: Option<rhai::AST>,
-    grouped_change: bool,
+    complete_grouped: bool,
 }
 
 impl Processor for FeatureMerger {
@@ -196,8 +196,8 @@ impl Processor for FeatureMerger {
                                 .requestor_buffer
                                 .entry(self.requestor_before_value.clone().unwrap())
                             {
-                                let (complete_grouped_change, _) = entry.get_mut();
-                                *complete_grouped_change = true;
+                                let (complete_grouped, _) = entry.get_mut();
+                                *complete_grouped = true;
                             }
                             self.change_group(
                                 Context {
@@ -234,8 +234,8 @@ impl Processor for FeatureMerger {
                                 .supplier_buffer
                                 .entry(self.supplier_before_value.clone().unwrap())
                             {
-                                let (complete_grouped_change, _) = entry.get_mut();
-                                *complete_grouped_change = true;
+                                let (complete_grouped, _) = entry.get_mut();
+                                *complete_grouped = true;
                             }
                             self.change_group(
                                 Context {
@@ -304,7 +304,7 @@ impl FeatureMerger {
         ctx: Context,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> errors::Result<()> {
-        if !self.params.grouped_change {
+        if !self.params.complete_grouped {
             return Ok(());
         }
         let mut complete_keys = Vec::new();

@@ -811,7 +811,7 @@ Merges features by attributes
   "title": "FeatureMergerParam",
   "type": "object",
   "properties": {
-    "groupedChange": {
+    "completeGrouped": {
       "type": [
         "boolean",
         "null"
@@ -1471,6 +1471,12 @@ Dissolve geometries
   "title": "GeometryDissolverParam",
   "type": "object",
   "properties": {
+    "completeGrouped": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "groupBy": {
       "type": [
         "array",
