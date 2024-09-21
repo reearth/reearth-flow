@@ -49,8 +49,8 @@ impl FlowProjectRedisDataManager {
         }
     }
 
-    fn project_prefix(&self) -> String {
-        self.project_id.clone()
+    fn project_prefix(&self) -> &str {
+        &self.project_id
     }
 
     fn active_editing_session_id_key(&self) -> String {
@@ -79,12 +79,12 @@ impl FlowProjectRedisDataManager {
         format!("{}:lastUpdatedAt", self.session_prefix())
     }
 
-    fn encode_state_data(data: Vec<u8>) -> String {
-        serde_json::to_string(&data).unwrap()
+    fn encode_state_data(data: Vec<u8>) -> Result<String, serde_json::Error> {
+        serde_json::to_string(&data)
     }
 
-    fn decode_state_data(data_string: String) -> Vec<u8> {
-        serde_json::from_str(&data_string).unwrap()
+    fn decode_state_data(data_string: String) -> Result<Vec<u8>, serde_json::Error> {
+        serde_json::from_str(&data_string)
     }
 
     async fn get_update_stream_items(
@@ -99,27 +99,25 @@ impl FlowProjectRedisDataManager {
 
     async fn get_flow_updates_from_stream(&self) -> Result<Vec<FlowUpdate>, BoxError> {
         let stream_items = self.get_update_stream_items().await?;
-        let mut updates = Vec::new();
-        for stream_item in stream_items {
-            let update_id = stream_item.0;
-            let value = &stream_item.1[1].1;
-            let format = &stream_item.1[3].1;
-            let encoded_update: FlowEncodedUpdate = if format == "json" {
-                serde_json::from_str(value)?
-            } else {
-                FlowEncodedUpdate {
-                    update: String::new(),
-                    updated_by: None,
-                }
-            };
-            let update = FlowUpdate {
-                stream_id: Some(update_id),
-                update: Self::decode_state_data(encoded_update.update),
-                updated_by: encoded_update.updated_by,
-            };
-            updates.push(update);
-        }
-        Ok(updates)
+        stream_items
+            .into_iter()
+            .map(|stream_item| {
+                let (update_id, fields) = stream_item;
+                let value = &fields[1].1;
+                let format = &fields[3].1;
+                let encoded_update: FlowEncodedUpdate = if format == "json" {
+                    serde_json::from_str(value)?
+                } else {
+                    return Err(format!("Unsupported format: {}", format).into());
+                };
+                let decoded_update = Self::decode_state_data(encoded_update.update)?;
+                Ok(FlowUpdate {
+                    stream_id: Some(update_id),
+                    update: decoded_update,
+                    updated_by: encoded_update.updated_by,
+                })
+            })
+            .collect()
     }
 
     async fn get_merged_update_from_stream(
@@ -129,29 +127,27 @@ impl FlowProjectRedisDataManager {
         if updates.is_empty() {
             return Ok(None);
         }
-        let merged_update = updates
-            .iter()
-            .map(|x| x.update.clone())
-            .reduce(|a, b| {
-                let doc = Doc::new();
-                let mut txn = doc.transact_mut();
-                txn.apply_update(Update::decode_v2(&a).unwrap());
-                txn.apply_update(Update::decode_v2(&b).unwrap());
-                txn.encode_update_v2()
-            })
-            .unwrap();
+        let doc = Doc::new();
+        let mut txn = doc.transact_mut();
         let updates_by = updates
             .iter()
             .filter_map(|x| x.updated_by.clone())
             .collect::<Vec<_>>();
-        let last_update_id = updates.last().unwrap().stream_id.clone().unwrap();
+        for update in &updates {
+            txn.apply_update(Update::decode_v2(&update.update).map_err(BoxError::from)?);
+        }
+        let merged_update = txn.encode_update_v2();
+        let last_update_id = updates
+            .last()
+            .and_then(|u| u.stream_id.clone())
+            .ok_or_else(|| BoxError::from("No last update ID found"))?;
         Ok(Some((merged_update, last_update_id, updates_by)))
     }
 
     async fn get_state_update_in_redis(&self) -> Result<Option<Vec<u8>>, BoxError> {
         let state_update_string: Option<String> = self.redis_client.get(&self.state_key()).await?;
         if let Some(state_update_string) = state_update_string {
-            Ok(Some(Self::decode_state_data(state_update_string)))
+            Ok(Some(Self::decode_state_data(state_update_string)?))
         } else {
             Ok(None)
         }
@@ -198,31 +194,28 @@ impl FlowProjectRedisDataManager {
     ) -> Result<(), BoxError> {
         let active_editing_session_id = self.active_editing_session_id().await?;
         if let Some(active_editing_session_id) = active_editing_session_id {
-            if active_editing_session_id
-                != self
-                    .editing_session
-                    .lock()
-                    .await
-                    .session_id
-                    .clone()
-                    .unwrap()
-            {
+            let current_session_id = self
+                .editing_session
+                .lock()
+                .await
+                .session_id
+                .clone()
+                .ok_or_else(|| BoxError::from("No session ID found"))?;
+            if active_editing_session_id != current_session_id {
                 return Err("Another Editing Session in progress".into());
             }
         }
         self.set_state_data(state_update, state_updated_by, skip_lock)
             .await?;
+        let current_session_id = self
+            .editing_session
+            .lock()
+            .await
+            .session_id
+            .clone()
+            .ok_or_else(|| BoxError::from("No session ID found"))?;
         self.redis_client
-            .set(
-                self.active_editing_session_id_key(),
-                &self
-                    .editing_session
-                    .lock()
-                    .await
-                    .session_id
-                    .clone()
-                    .unwrap(),
-            )
+            .set(self.active_editing_session_id_key(), &current_session_id)
             .await?;
         Ok(())
     }
@@ -249,7 +242,7 @@ impl FlowProjectRedisDataManager {
         state_updated_by: Vec<String>,
         skip_lock: bool,
     ) -> Result<(), BoxError> {
-        let encoded_state_update = Self::encode_state_data(state_update);
+        let encoded_state_update = Self::encode_state_data(state_update)?;
         let updated_by_json = serde_json::to_string(&state_updated_by)?;
 
         if skip_lock {
@@ -274,7 +267,7 @@ impl FlowProjectRedisDataManager {
 
     pub async fn push_update(&self, update: Vec<u8>, updated_by: String) -> Result<(), BoxError> {
         let update_data = FlowEncodedUpdate {
-            update: Self::encode_state_data(update),
+            update: Self::encode_state_data(update)?,
             updated_by: Some(updated_by),
         };
 
