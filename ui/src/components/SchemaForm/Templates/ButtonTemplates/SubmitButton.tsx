@@ -9,11 +9,13 @@ import {
 import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
-function SubmitButton<
+const SubmitButton = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
   F extends FormContextType = any,
->({ uiSchema }: SubmitButtonProps<T, S, F>) {
+>({
+  uiSchema,
+}: SubmitButtonProps<T, S, F>) => {
   const t = useT();
 
   const {
@@ -29,6 +31,6 @@ function SubmitButton<
       {submitText ? submitText : t("Submit")}
     </Button>
   );
-}
+};
 
 export { SubmitButton };
