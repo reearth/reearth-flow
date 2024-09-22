@@ -10,7 +10,12 @@ const SchemaForm = () => {
     required: ["title"],
     properties: {
       title: { type: "string", title: "Title", default: "A new task" },
-      done: { type: "boolean", title: "Done?", default: false },
+      done: {
+        type: "boolean",
+        title: "Done?",
+        default: false,
+        description: "Sample description",
+      },
     },
   };
 

@@ -6,6 +6,7 @@ import {
 } from "@rjsf/utils";
 
 import { SubmitButton } from "./ButtonTemplates";
+import { DescriptionFieldTemplate } from "./DescriptionFieldTemplate";
 import { TitleFieldTemplate } from "./TitleFieldTemplate";
 
 export function generateTemplates<
@@ -15,6 +16,7 @@ export function generateTemplates<
 >(): Partial<TemplatesType<T, S, F>> {
   return {
     TitleFieldTemplate,
+    DescriptionFieldTemplate,
     ButtonTemplates: {
       SubmitButton,
     },
