@@ -77,22 +77,23 @@ fn parse_tree_reader<R: BufRead>(
                 cityobj.parse(st)?;
                 let geometry_store = st.collect_geometries();
                 let id = cityobj.id();
-                let name = cityobj.name();
                 let description = cityobj.description();
                 let bounded_by = cityobj.bounded_by();
                 if let Some(root) = cityobj.into_object() {
-                    let entity = Entity {
-                        id,
-                        name,
-                        description,
-                        root,
-                        base_url: base_url.clone(),
-                        geometry_store: RwLock::new(geometry_store).into(),
-                        appearance_store: Default::default(),
-                        bounded_by,
-                        geometry_refs: st.geometry_refs().clone(),
-                    };
-                    entities.push(entity);
+                    if let nusamai_citygml::object::Value::Object(obj) = &root {
+                        let entity = Entity {
+                            id,
+                            description,
+                            name: obj.typename.to_string(),
+                            root,
+                            base_url: base_url.clone(),
+                            geometry_store: RwLock::new(geometry_store).into(),
+                            appearance_store: Default::default(),
+                            bounded_by,
+                            geometry_refs: st.geometry_refs().clone(),
+                        };
+                        entities.push(entity);
+                    }
                 }
                 st.refresh_geomrefs();
                 Ok(())

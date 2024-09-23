@@ -12,17 +12,16 @@ with:
     - bldg
   addNsprefixToFeatureTypes: true
   extractDmGeometryAsXmlFragment: false
-  outputPath: 
+  outputPath:
 graphs:
-  - !include ../graphs/attribute_reader.yml
   - !include ../graphs/folder_and_file_path_reader.yml
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
     nodes:
       - id: d3773442-1ba8-47c1-b7c1-0bafa23adec9
-        name: AttributeReader01
+        name: FolderAndfilePathReader
         type: subGraph
-        subGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
+        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
       - id: 3c0bc9cd-284d-4553-83ae-f90365c5930c
         name: featureReader_01
@@ -32,6 +31,16 @@ graphs:
           format: citygml
           dataset: |
             env.get("__value").cityGmlPath
+
+      - id: 2242214d-c7a0-4ef8-930d-9444731d11cf
+        name: CityGmlGeometryLodFilter
+        type: action
+        action: CityGmlGeometryLodFilter
+        with:
+          lods:
+            - 2
+            - 3
+            - 4
 
       - id: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
         name: cesium3DTilesWriter
@@ -46,10 +55,15 @@ graphs:
       - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
         to: 3c0bc9cd-284d-4553-83ae-f90365c5930c
-        fromPort: filePath
+        fromPort: default
+        toPort: default
+      - id: 007b4406-090a-41d4-a578-3e3964140f57
+        from: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        to: 2242214d-c7a0-4ef8-930d-9444731d11cf
+        fromPort: default
         toPort: default
       - id: e1c7680d-5830-4e48-8cd8-8d9d762c76ff
-        from: 3c0bc9cd-284d-4553-83ae-f90365c5930c
+        from: 2242214d-c7a0-4ef8-930d-9444731d11cf
         to: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
         fromPort: default
         toPort: default

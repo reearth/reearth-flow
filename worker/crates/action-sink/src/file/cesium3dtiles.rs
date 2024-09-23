@@ -1,6 +1,8 @@
 use earcut::utils3d::project3d_to_2d;
 use earcut::Earcut;
 use indexmap::IndexSet;
+use nusamai_citygml::CityGmlElement;
+use nusamai_plateau::models::TopLevelCityObject;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use std::collections::HashMap;
@@ -22,8 +24,8 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::Expr;
 use reearth_flow_types::{geometry as geomotry_types, Feature};
+use reearth_flow_types::{AttributeValue, Expr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -236,6 +238,14 @@ impl Cesium3dtilesWriter {
         let mut sliced_tiles: HashMap<(u8, u32, u32), SlicedFeature> = HashMap::new();
         let mut materials: IndexSet<Material> = IndexSet::new();
 
+        let mut schema = nusamai_citygml::schema::Schema::default();
+        TopLevelCityObject::collect_schema(&mut schema);
+        let Some(AttributeValue::String(typename)) = feature.get(&"gmlName") else {
+            return Err(crate::errors::SinkError::Cesium3DTilesWriter(
+                "Missing typename".to_string(),
+            ));
+        };
+
         let (lng_center, lat_center, approx_dx, approx_dy, approx_dh) = {
             let vertice = city_gml.max_min_vertice();
 
@@ -299,7 +309,7 @@ impl Cesium3dtilesWriter {
                     slice_polygon(zoom, poly, poly_uv, |(z, x, y), poly| {
                         let sliced_feature = sliced_tiles.entry((z, x, y)).or_insert_with(|| {
                             SlicedFeature {
-                                typename: entry.name().to_string(),
+                                typename: entry.feature_type.clone().unwrap_or_default(),
                                 polygons: Default::default(),
                                 attributes: feature.attributes.clone(),
                                 polygon_material_ids: Default::default(),
@@ -336,7 +346,7 @@ impl Cesium3dtilesWriter {
                 };
 
                 let content_path = {
-                    let normalized_typename = sliced_feature.typename.replace(':', "_");
+                    let normalized_typename = typename.replace(':', "_");
                     format!("{tile_zoom}/{tile_x}/{tile_y}_{normalized_typename}.glb")
                 };
                 let content = TileContent {
@@ -404,8 +414,14 @@ impl Cesium3dtilesWriter {
             let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default(); // [x, y, z, u, v, feature_id]
             let mut primitives: Primitives = Default::default();
 
-            let metadata_encoder = MetadataEncoder::new();
-            // TODO support metadata_encoder
+            let mut metadata_encoder = MetadataEncoder::new(&schema);
+
+            if metadata_encoder
+                .add_feature(&sliced_feature.typename, sliced_feature.attributes)
+                .is_err()
+            {
+                continue;
+            }
 
             for (poly, orig_mat_id) in sliced_feature
                 .polygons
