@@ -59,12 +59,6 @@ impl ProcessorFactory for BuildingInstallationGeometryTypeExtractorFactory {
 pub struct BuildingInstallationGeometryTypeExtractor;
 
 impl Processor for BuildingInstallationGeometryTypeExtractor {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
-    fn num_threads(&self) -> usize {
-        4
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,

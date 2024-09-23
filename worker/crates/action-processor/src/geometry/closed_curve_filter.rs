@@ -65,12 +65,6 @@ impl ProcessorFactory for ClosedCurveFilterFactory {
 pub struct ClosedCurveFilter;
 
 impl Processor for ClosedCurveFilter {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
-    fn num_threads(&self) -> usize {
-        2
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,

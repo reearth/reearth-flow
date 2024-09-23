@@ -463,6 +463,40 @@
       ]
     },
     {
+      "name": "CityGmlGeometryLodFilter",
+      "type": "processor",
+      "description": "Filters CityGML geometries by LOD",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGmlGeometryLodFilter",
+        "type": "object",
+        "required": [
+          "lods"
+        ],
+        "properties": {
+          "lods": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "Clipper",
       "type": "processor",
       "description": "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately",
@@ -784,19 +818,56 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureMergerParam",
         "type": "object",
-        "required": [
-          "requestorAttribute",
-          "supplierAttribute"
-        ],
         "properties": {
+          "completeGrouped": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "requestorAttribute": {
-            "$ref": "#/definitions/Expr"
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "requestorAttributeValue": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "supplierAttribute": {
-            "$ref": "#/definitions/Expr"
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "supplierAttributeValue": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
           "Expr": {
             "type": "string"
           }
@@ -1404,6 +1475,12 @@
         "title": "GeometryDissolverParam",
         "type": "object",
         "properties": {
+          "completeGrouped": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "groupBy": {
             "type": [
               "array",

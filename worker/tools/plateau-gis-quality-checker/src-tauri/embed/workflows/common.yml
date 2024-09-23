@@ -353,18 +353,18 @@ graphs:
     type: action
     action: FeatureMerger
     with:
-      requestorAttribute: |
+      requestorAttributeValue: |
         env.get("__value").index.to_string()
-      supplierAttribute: |
+      supplierAttributeValue: |
         env.get("__value").index.to_string()
   - id: 1c6330bf-218d-40c5-b0c9-fb20ab70e9da
     name: FeatureMerger02
     type: action
     action: FeatureMerger
     with:
-      requestorAttribute: |
+      requestorAttributeValue: |
         env.get("__value").index.to_string()
-      supplierAttribute: |
+      supplierAttributeValue: |
         env.get("__value").index.to_string()
   - id: e7c8f92b-11cd-474b-971f-fb23cc5a741a
     name: AttributeMapper

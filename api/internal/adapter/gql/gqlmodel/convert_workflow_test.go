@@ -8,62 +8,68 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConvertWorkflows(t *testing.T) {
-	workflowID := workflow.NewID()
-	nodeID1 := workflow.NewNodeID()
-	edgeID1 := workflow.NewEdgeID()
-	input := []*InputWorkflow{
+func TestConvertGraphs(t *testing.T) {
+	graphID1 := ID("graph1")
+	nodeType := "READER"
+	actionID := "action1"
+	nodeID1 := ID("node1")
+	edgeID1 := ID("edge1")
+
+	input := []*InputGraph{
 		{
-			ID:     IDFrom(workflowID),
-			Name:   "Test Workflow",
-			IsMain: ptrBool(true),
+			ID:   graphID1,
+			Name: "Graph 1",
 			Nodes: []*InputWorkflowNode{
 				{
-					ID:   IDFrom(nodeID1),
-					Type: "READER",
-					Data: &InputData{
-						Name:     "Node 1",
-						ActionID: "action1",
-					},
+					ID:         nodeID1,
+					Type:       &nodeType,
+					Name:       "Node 1",
+					Action:     &actionID,
+					SubGraphID: nil,
+					With:       nil,
 				},
 			},
 			Edges: []*InputWorkflowEdge{
 				{
-					ID:           IDFrom(edgeID1),
-					Source:       "node1",
-					Target:       "node2",
-					SourceHandle: "handle1",
-					TargetHandle: "handle2",
+					ID:       edgeID1,
+					From:     "node1",
+					To:       "node2",
+					FromPort: "handle1",
+					ToPort:   "handle2",
 				},
 			},
 		},
 	}
 
-	graph1ID, _ := id.GraphIDFrom(workflowID.String())
-	expectedGraphs := []*workflow.Graph{
-		workflow.NewGraph(graph1ID, "Test Workflow", []*workflow.Node{
-			workflow.NewNode(nodeID1, "Node 1", "READER", "action1", nil),
+	expectedGraphID1, _ := ToID[id.Graph](graphID1)
+	expectedNodeID1, _ := ToID[id.Node](nodeID1)
+	expectedEdgeID1, _ := ToID[id.Edge](edgeID1)
+	expected := []*workflow.Graph{
+		workflow.NewGraph(expectedGraphID1, "Graph 1", []*workflow.Node{
+			workflow.NewNode(expectedNodeID1, "Node 1", "READER", "action1", nil),
 		}, []*workflow.Edge{
-			workflow.NewEdge(edgeID1, "node1", "node2", "handle1", "handle2"),
+			workflow.NewEdge(expectedEdgeID1, "node1", "node2", "handle1", "handle2"),
 		}),
 	}
 
-	entryGraphID, graphs := convertWorkflows(input)
-	assert.Equal(t, workflowID.String(), entryGraphID)
-	assert.Equal(t, expectedGraphs, graphs)
+	result := convertGraphs(input)
+
+	assert.Equal(t, expected, result)
 }
 
 func TestConvertNodes(t *testing.T) {
 	nodeID1 := ID("node1")
+	nodeType := "READER"
+	actionID := "action1"
 
 	input := []*InputWorkflowNode{
 		{
-			ID:   "node1",
-			Type: "READER",
-			Data: &InputData{
-				Name:     "Node 1",
-				ActionID: "action1",
-			},
+			ID:         "node1",
+			Type:       &nodeType,
+			Name:       "Node 1",
+			Action:     &actionID,
+			SubGraphID: nil,
+			With:       nil,
 		},
 	}
 
@@ -81,11 +87,11 @@ func TestConvertEdges(t *testing.T) {
 
 	input := []*InputWorkflowEdge{
 		{
-			ID:           "edge1",
-			Source:       "node1",
-			Target:       "node2",
-			SourceHandle: "handle1",
-			TargetHandle: "handle2",
+			ID:       "edge1",
+			From:     "node1",
+			To:       "node2",
+			FromPort: "handle1",
+			ToPort:   "handle2",
 		},
 	}
 
@@ -96,8 +102,4 @@ func TestConvertEdges(t *testing.T) {
 
 	result := convertEdges(input)
 	assert.Equal(t, expected, result)
-}
-
-func ptrBool(b bool) *bool {
-	return &b
 }

@@ -7,7 +7,7 @@ use tokio::sync::{broadcast, Mutex};
 
 pub struct Room {
     users: Arc<Mutex<HashSet<String>>>,
-    tx: Arc<broadcast::Sender<String>>,
+    _tx: Arc<broadcast::Sender<String>>,
     doc: Arc<Doc>,
 }
 
@@ -15,7 +15,7 @@ impl Default for Room {
     fn default() -> Self {
         Room {
             users: Arc::new(Mutex::new(HashSet::new())),
-            tx: Arc::new(broadcast::Sender::new(100)),
+            _tx: Arc::new(broadcast::Sender::new(100)),
             doc: Arc::new(Doc::new()),
         }
     }
@@ -31,13 +31,13 @@ impl Room {
         Ok(())
     }
 
-    pub async fn leave(&self, user_id: String) -> Result<()> {
+    pub async fn _leave(&self, user_id: String) -> Result<()> {
         self.users.lock().await.remove(&user_id);
         Ok(())
     }
 
-    pub fn broadcast(&self, msg: String) -> Result<()> {
-        self.tx.send(msg).map_err(|_| WsError::WsError)?;
+    pub fn _broadcast(&self, msg: String) -> Result<()> {
+        self._tx.send(msg).map_err(|_| WsError::Error)?;
         Ok(())
     }
 

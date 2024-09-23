@@ -7,16 +7,16 @@ import (
 	"github.com/reearth/reearthx/idx"
 )
 
-func FromInputWorkflow(pid id.ProjectID, wsid idx.ID[accountdomain.Workspace], w []*InputWorkflow) *workflow.Workflow {
+func FromInputWorkflow(pid id.ProjectID, wsid idx.ID[accountdomain.Workspace], w *InputWorkflow) *workflow.Workflow {
 	if w == nil {
 		return nil
 	}
 
 	wfid := workflow.NewWorkflowID()
 
-	entryGraphID, graphs := convertWorkflows(w)
+	graphs := convertGraphs(w.Graphs)
 
-	yaml, err := workflow.ToWorkflowYaml(wfid, "Debug workflow", entryGraphID, nil, graphs)
+	yaml, err := workflow.ToWorkflowYaml(wfid, "Debug workflow", string(w.EntryGraphID), nil, graphs)
 	if err != nil {
 		return nil
 	}
@@ -24,33 +24,24 @@ func FromInputWorkflow(pid id.ProjectID, wsid idx.ID[accountdomain.Workspace], w
 	return workflow.NewWorkflow(wfid, pid, wsid, yaml)
 }
 
-func convertWorkflows(w []*InputWorkflow) (string, []*workflow.Graph) {
-	var entryGraphID string
+func convertGraphs(w []*InputGraph) []*workflow.Graph {
 	graphs := []*workflow.Graph{}
 
 	for _, v := range w {
-		graphID := workflow.NewGraphID()
-		if *v.IsMain {
-			eGraphID, err := ToID[id.Graph](v.ID)
-			if err == nil {
-				entryGraphID = eGraphID.String()
-				graphID = eGraphID
-			}
-		}
-
+		graphID, _ := ToID[id.Graph](v.ID)
 		nodes := convertNodes(v.Nodes)
 		edges := convertEdges(v.Edges)
 		graphs = append(graphs, workflow.NewGraph(graphID, v.Name, nodes, edges))
 	}
 
-	return entryGraphID, graphs
+	return graphs
 }
 
 func convertNodes(inputNodes []*InputWorkflowNode) []*workflow.Node {
 	nodes := []*workflow.Node{}
 	for _, n := range inputNodes {
 		nID, _ := ToID[id.Node](n.ID)
-		newNode := workflow.NewNode(nID, n.Data.Name, n.Type.String(), string(n.Data.ActionID), nil) // TODO: Need to add params here
+		newNode := workflow.NewNode(nID, n.Name, *n.Type, *n.Action, nil) // TODO: Need to add params here
 		nodes = append(nodes, newNode)
 	}
 	return nodes
@@ -60,7 +51,7 @@ func convertEdges(inputEdges []*InputWorkflowEdge) []*workflow.Edge {
 	edges := []*workflow.Edge{}
 	for _, e := range inputEdges {
 		eID, _ := ToID[id.Edge](e.ID)
-		newEdge := workflow.NewEdge(eID, string(e.Source), string(e.Target), e.SourceHandle, e.TargetHandle)
+		newEdge := workflow.NewEdge(eID, string(e.From), string(e.To), e.FromPort, e.ToPort)
 		edges = append(edges, newEdge)
 	}
 	return edges

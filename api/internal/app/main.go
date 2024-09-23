@@ -73,7 +73,7 @@ type ServerConfig struct {
 func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {
 	port := cfg.Config.Port
 	if port == "" {
-		port = "8081"
+		port = "8080"
 	}
 
 	host := cfg.Config.ServerHost

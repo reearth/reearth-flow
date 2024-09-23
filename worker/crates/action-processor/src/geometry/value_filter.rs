@@ -87,8 +87,6 @@ impl GeometryValueFilterType {
 pub struct GeometryValueFilter;
 
 impl Processor for GeometryValueFilter {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
     fn num_threads(&self) -> usize {
         2
     }

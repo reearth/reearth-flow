@@ -2,5 +2,6 @@ use crate::helper::execute;
 
 #[test]
 fn test_run() {
-    execute("attribute/duplicate", vec!["duplicate.json"]);
+    let result = execute("attribute/duplicate", vec!["duplicate.json"]);
+    assert!(result.is_ok());
 }

@@ -19,6 +19,63 @@ pub enum ExecutorOperation {
 }
 
 #[derive(Debug, Clone)]
+pub struct Context {
+    pub expr_engine: Arc<Engine>,
+    pub storage_resolver: Arc<StorageResolver>,
+    pub logger: Arc<LoggerFactory>,
+    pub kv_store: Arc<Box<dyn KvStore>>,
+}
+
+impl From<ExecutorContext> for Context {
+    fn from(ctx: ExecutorContext) -> Self {
+        Self {
+            expr_engine: ctx.expr_engine,
+            storage_resolver: ctx.storage_resolver,
+            logger: ctx.logger,
+            kv_store: ctx.kv_store,
+        }
+    }
+}
+
+impl From<NodeContext> for Context {
+    fn from(ctx: NodeContext) -> Self {
+        Self {
+            expr_engine: ctx.expr_engine,
+            storage_resolver: ctx.storage_resolver,
+            logger: ctx.logger,
+            kv_store: ctx.kv_store,
+        }
+    }
+}
+
+impl Context {
+    pub fn new(
+        expr_engine: Arc<Engine>,
+        storage_resolver: Arc<StorageResolver>,
+        logger: Arc<LoggerFactory>,
+        kv_store: Arc<Box<dyn KvStore>>,
+    ) -> Self {
+        Self {
+            expr_engine,
+            storage_resolver,
+            logger,
+            kv_store,
+        }
+    }
+
+    pub fn as_executor_context(&self, feature: Feature, port: Port) -> ExecutorContext {
+        ExecutorContext {
+            feature,
+            port,
+            expr_engine: self.expr_engine.clone(),
+            storage_resolver: self.storage_resolver.clone(),
+            logger: self.logger.clone(),
+            kv_store: self.kv_store.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ExecutorContext {
     pub feature: Feature,
     pub port: Port,
@@ -26,6 +83,19 @@ pub struct ExecutorContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub logger: Arc<LoggerFactory>,
     pub kv_store: Arc<Box<dyn KvStore>>,
+}
+
+impl From<Context> for ExecutorContext {
+    fn from(ctx: Context) -> Self {
+        Self {
+            feature: Feature::default(),
+            port: DEFAULT_PORT.clone(),
+            expr_engine: ctx.expr_engine,
+            storage_resolver: ctx.storage_resolver,
+            logger: ctx.logger,
+            kv_store: ctx.kv_store,
+        }
+    }
 }
 
 impl Default for ExecutorContext {
@@ -63,6 +133,15 @@ impl ExecutorContext {
             storage_resolver,
             logger,
             kv_store,
+        }
+    }
+
+    pub fn as_context(&self) -> Context {
+        Context {
+            expr_engine: self.expr_engine.clone(),
+            storage_resolver: self.storage_resolver.clone(),
+            logger: self.logger.clone(),
+            kv_store: self.kv_store.clone(),
         }
     }
 
@@ -124,6 +203,17 @@ pub struct NodeContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub logger: Arc<LoggerFactory>,
     pub kv_store: Arc<Box<dyn KvStore>>,
+}
+
+impl From<Context> for NodeContext {
+    fn from(ctx: Context) -> Self {
+        Self {
+            expr_engine: ctx.expr_engine,
+            storage_resolver: ctx.storage_resolver,
+            logger: ctx.logger,
+            kv_store: ctx.kv_store,
+        }
+    }
 }
 
 impl Default for NodeContext {

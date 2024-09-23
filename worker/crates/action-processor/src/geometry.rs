@@ -2,6 +2,7 @@ pub mod area_on_area_overlayer;
 pub mod bounds_extractor;
 pub mod bufferer;
 pub mod center_point_replacer;
+pub mod city_gml_geometry_lod_filter;
 pub mod clipper;
 pub mod closed_curve_filter;
 pub mod coercer;

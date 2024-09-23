@@ -50,8 +50,6 @@ impl SinkFactory for EchoSinkFactory {
 pub struct EchoSink;
 
 impl Sink for EchoSink {
-    fn initialize(&self, _ctx: NodeContext) {}
-
     fn name(&self) -> &str {
         "EchoSink"
     }

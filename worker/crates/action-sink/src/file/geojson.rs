@@ -94,8 +94,6 @@ pub struct GeoJsonWriterParam {
 }
 
 impl Sink for GeoJsonWriter {
-    fn initialize(&self, _ctx: NodeContext) {}
-
     fn name(&self) -> &str {
         "GeoJsonWriter"
     }

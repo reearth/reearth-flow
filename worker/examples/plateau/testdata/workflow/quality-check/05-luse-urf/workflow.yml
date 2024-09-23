@@ -1,0 +1,350 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
+id: e89620bc-5a16-4f21-a717-a974798a004c
+name: "QualityCheck-03-tran-rwy-trk-squr-wwy-workflow"
+entryGraphId: 43581967-2a15-450a-ba13-e450376c3d0e
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../../../config/schema.txt
+  targetPackages:
+    - luse
+    - urf
+    - area
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+  outputPath:
+graphs:
+  - !include ../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../graphs/folder_and_file_path_reader.yml
+  - !include ../../../graphs/surface_validator_2d.yml
+  - id: 43581967-2a15-450a-ba13-e450376c3d0e
+    name: entry_point
+    nodes:
+      - id: f04d8a32-6ac7-4509-8cfc-6d5a318e8dd6
+        name: FolderAndfilePathReader
+        type: subGraph
+        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+
+      - id: d14aa9aa-5fe4-4c40-8c80-b15fd674d5e0
+        name: AttributeManager
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: destDataset
+              method: create
+              value: |
+                if env.get("__value")["package"] == "luse" {
+                  "05-1_土地利用"
+                } else if env.get("__value")["package"] == "urf"{
+                  "05-2_都市計画決定情報"
+                } else if env.get("__value")["package"] == "area" {
+                  "05-3_区域"
+                } else {
+                  "Invalid Package"
+                }
+
+      - id: aa4c813c-c7b4-4e86-8513-e5d7829ec70f
+        name: FeatureReader
+        type: action
+        action: FeatureReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value").cityGmlPath
+
+      - id: 5dd7ed75-a71d-46cf-91f6-42745f70b022
+        name: LodSplitterWithDm
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      - id: 1fb4ce1c-538a-436d-8dfa-79185e032de3
+        name: AttributeAggregator
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+            - newAttribute: Index
+              attributeValue: |
+                env.get("__value").fileIndex.to_string()
+
+            - newAttribute: Folder
+              attribute: package
+
+            - newAttribute: Filename
+              attributeValue: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+
+            - newAttribute: "フィーチャータイプ"
+              attribute: featureType
+
+            - newAttribute: destDataset
+              attributeValue: |
+                env.get("__value").destDataset
+
+          calculation: |
+            1
+          calculationAttribute: "インスタンス数"
+          method: count
+
+      - id: 7debf320-37c4-414e-acab-9f2fb41e2848
+        name: FileTSVWriterC02
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "地物インスタンス数.tsv")
+
+      - id: 0d469855-57f4-4f0f-923c-c5aca71645e2
+        name: SurfaceValidator2D
+        type: subGraph
+        subGraphId: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
+
+      - id: 52411968-9cc2-4ab8-9fe5-835f85827516
+        name: AttributeAggregatorInvalidOrientation
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+            - newAttribute: Index
+              attributeValue: |
+                env.get("__value").fileIndex.to_string()
+
+            - newAttribute: destDataset
+              attributeValue: |
+                env.get("__value").destDataset
+
+          calculation: |
+            1
+          calculationAttribute: numIncorrectOrientation
+          method: count
+
+      - id: 5b113ae0-46d6-4e89-90ad-e3d154b97b89
+        name: AttributeAggregatorInvalidSurface
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+            - newAttribute: Index
+              attributeValue: |
+                env.get("__value").fileIndex.to_string()
+
+            - newAttribute: destDataset
+              attributeValue: |
+                env.get("__value").destDataset
+
+          calculation: |
+            1
+          calculationAttribute: numSurfaceError
+          method: count
+
+      - id: 2ef0424c-3158-4d5a-9ce2-a4d2d5afa3b4
+        name: AttributeMapperInvalidOrientation
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Folder
+              expr: |
+                env.get("__value").udxDirs
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: featureType
+              expr: |
+                env.get("__value").featureType
+            - attribute: "gml:id"
+              expr: |
+                env.get("__value").gmlId
+            - attribute: "エラー数"
+              expr: |
+                1
+            - attribute: "エラー内容"
+              expr: |
+                "不正な面の向き"
+
+      - id: 286ffd20-54e8-4a88-97bb-dd718b5b05e6
+        name: FileWriterTsv-05-InvalidOrientation
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(file::join_path(env.get("outputPath"), env.get("__value").destDataset), "不正な面の向きエラー.tsv")
+
+      - id: 0c30b482-b241-4d47-9a88-175c5f98ff8d
+        name: AttributeMapperInvalidSurface
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Folder
+              expr: |
+                env.get("__value").udxDirs
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: featureType
+              expr: |
+                env.get("__value").featureType
+            - attribute: "gml:id"
+              expr: |
+                env.get("__value").gmlId
+            - attribute: "エラー数"
+              expr: |
+                1
+            - attribute: "エラー内容"
+              expr: |
+                "不正な面"
+
+      - id: 70a9225b-b900-4b41-859e-6bd951841fbe
+        name: FileWriterTsv-05-InvalidSurface
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(file::join_path(env.get("outputPath"), env.get("__value").destDataset), "不正な面エラー.tsv")
+
+      - id: e51e64b4-6cc0-4698-b677-e5f7f667f24f
+        name: FeatureMerger
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttribute:
+            - fileIndex
+          supplierAttribute:
+            - Index
+          completeGrouped: true
+
+      - id: cc8de8d3-818f-4f80-8ad9-9f25c1f05081
+        name: AttributeMapperResult
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Folder
+              expr: |
+                env.get("__value").udxDirs
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: "面のエラー"
+              expr: |
+                env.get("__value").numSurfaceError ?? 0
+            - attribute: "面の向き不正"
+              expr: |
+                env.get("__value").numIncorrectOrientation ?? 0
+
+      - id: 4372e35f-fe90-442b-9bab-167d8fa08f23
+        name: FileWriterTsvResult
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "検査結果一覧.tsv")
+
+    edges:
+      - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
+        from: f04d8a32-6ac7-4509-8cfc-6d5a318e8dd6
+        to: d14aa9aa-5fe4-4c40-8c80-b15fd674d5e0
+        fromPort: default
+        toPort: default
+      - id: bb4b881e-bc51-435f-acdc-06bc6b4c0109
+        from: d14aa9aa-5fe4-4c40-8c80-b15fd674d5e0
+        to: aa4c813c-c7b4-4e86-8513-e5d7829ec70f
+        fromPort: default
+        toPort: default
+      - id: 337a7047-225f-4950-8d6c-03562ace402d
+        from: aa4c813c-c7b4-4e86-8513-e5d7829ec70f
+        to: 5dd7ed75-a71d-46cf-91f6-42745f70b022
+        fromPort: default
+        toPort: default
+      - id: 79f03631-6e78-4531-b368-7d93d54d54c8
+        from: 5dd7ed75-a71d-46cf-91f6-42745f70b022
+        to: 1fb4ce1c-538a-436d-8dfa-79185e032de3
+        fromPort: lod1
+        toPort: default
+      - id: 84ca88cc-a0f0-4992-82d6-9b6c831f9da0
+        from: 1fb4ce1c-538a-436d-8dfa-79185e032de3
+        to: 7debf320-37c4-414e-acab-9f2fb41e2848
+        fromPort: default
+        toPort: default
+      - id: 9fc119c2-2c75-4999-ba61-59a1d2835636
+        from: 5dd7ed75-a71d-46cf-91f6-42745f70b022
+        to: 0d469855-57f4-4f0f-923c-c5aca71645e2
+        fromPort: lod1
+        toPort: default
+      - id: c5af777f-04d9-40cf-8edb-45e8a42cbec2
+        from: 0d469855-57f4-4f0f-923c-c5aca71645e2
+        to: 2ef0424c-3158-4d5a-9ce2-a4d2d5afa3b4
+        fromPort: inCorrectOrientation
+        toPort: default
+      - id: bdd39468-ebf9-4c02-a13d-82b6da55775b
+        from: 0d469855-57f4-4f0f-923c-c5aca71645e2
+        to: 52411968-9cc2-4ab8-9fe5-835f85827516
+        fromPort: inCorrectOrientation
+        toPort: default
+      - id: beda00da-0d65-458c-a024-34c2011cb575
+        from: 2ef0424c-3158-4d5a-9ce2-a4d2d5afa3b4
+        to: 286ffd20-54e8-4a88-97bb-dd718b5b05e6
+        fromPort: default
+        toPort: default
+      - id: e3f70bdd-b3db-4ac8-a58f-e46611911507
+        from: 0d469855-57f4-4f0f-923c-c5aca71645e2
+        to: 0c30b482-b241-4d47-9a88-175c5f98ff8d
+        fromPort: invalidSurface
+        toPort: default
+      - id: 8ffda460-cfa9-45c6-be72-cbce911e91a9
+        from: 0d469855-57f4-4f0f-923c-c5aca71645e2
+        to: 5b113ae0-46d6-4e89-90ad-e3d154b97b89
+        fromPort: invalidSurface
+        toPort: default
+      - id: ca5a1739-7398-4e5a-b355-84e5f8fc5b94
+        from: 0c30b482-b241-4d47-9a88-175c5f98ff8d
+        to: 70a9225b-b900-4b41-859e-6bd951841fbe
+        fromPort: default
+        toPort: default
+      - id: 6fd102e3-65a8-4c54-9816-43ba28124285
+        from: d14aa9aa-5fe4-4c40-8c80-b15fd674d5e0
+        to: e51e64b4-6cc0-4698-b677-e5f7f667f24f
+        fromPort: default
+        toPort: requestor
+      - id: fc07b3e0-bfb3-4aa1-8003-ed3e2dedd2c5
+        from: 52411968-9cc2-4ab8-9fe5-835f85827516
+        to: e51e64b4-6cc0-4698-b677-e5f7f667f24f
+        fromPort: default
+        toPort: supplier
+      - id: 5f9a6b10-2c31-404e-85e1-245904178d37
+        from: 5b113ae0-46d6-4e89-90ad-e3d154b97b89
+        to: e51e64b4-6cc0-4698-b677-e5f7f667f24f
+        fromPort: default
+        toPort: supplier
+      - id: 6f08377a-986f-4ea4-84e8-3e4e2ffed1f3
+        from: e51e64b4-6cc0-4698-b677-e5f7f667f24f
+        to: cc8de8d3-818f-4f80-8ad9-9f25c1f05081
+        fromPort: merged
+        toPort: default
+      - id: baa274ba-4866-4422-bc5b-bac06f3b4531
+        from: e51e64b4-6cc0-4698-b677-e5f7f667f24f
+        to: cc8de8d3-818f-4f80-8ad9-9f25c1f05081
+        fromPort: unmerged
+        toPort: default
+      - id: 57b61269-ba87-4993-87e1-90d46ab15dd4
+        from: cc8de8d3-818f-4f80-8ad9-9f25c1f05081
+        to: 4372e35f-fe90-442b-9bab-167d8fa08f23
+        fromPort: default
+        toPort: default

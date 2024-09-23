@@ -52,34 +52,53 @@ graphs:
                 }
 
       - id: 2596b371-cb37-4856-8f6f-a4096f76f391
-        name: PLATEAU.TranXLinkChecker
+        name: PLATEAU.TranXLinkChecker-l-tran-03
         type: action
         action: PLATEAU.TranXLinkChecker
 
       - id: 30a42dee-474c-4283-b34b-3c54e16bd2b6
-        name: AttributeAggregator
+        name: AttributeAggregator-l-tran-03
         type: action
         action: AttributeAggregator
         with:
           aggregateAttributes:
-            - newAttribute: package
-              attribute: package
-
-            - newAttribute: fileIndex
+            - newAttribute: Index
               attributeValue: |
                 env.get("__value").fileIndex.to_string()
 
-            - newAttribute: lod
+            - newAttribute: Folder
+              attribute: package
+
+            - newAttribute: LOD
               attribute: lod
+
+            - newAttribute: gmlID
+              attribute: gmlId
+
+            - newAttribute: Filename
+              attributeValue: |
+                file::extract_filename(env.get("__value").cityGmlPath)
 
             - newAttribute: featureType
               attribute: featureType
 
+            - newAttribute: destDataset
+              attributeValue: |
+                env.get("__value").destDataset
           calculation: |
             env.get("__value").unreferencedSurfaceNum
           calculationAttribute: |
-            unreferencedSurfaceNumSum
+            "未参照"
           method: count
+
+      - id: 25e5965f-0d1d-400a-82c8-f6b82f31c2db
+        name: FileTSVWriter-l-tran-03
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(file::join_path(env.get("outputPath"), env.get("__value").destDataset), "xlink参照エラー.tsv")
 
       - id: 5028de22-eb9e-4ec4-80f2-62b585445042
         name: FeatureReader
@@ -191,6 +210,8 @@ graphs:
         to: d2b4977d-e218-4628-96f2-d26407aeea14
         fromPort: default
         toPort: default
+
+      ## l-tran-03
       - id: 70376f82-ea38-4755-8465-fc3173cdf0fe
         from: d2b4977d-e218-4628-96f2-d26407aeea14
         to: 2596b371-cb37-4856-8f6f-a4096f76f391
@@ -201,6 +222,12 @@ graphs:
         to: 30a42dee-474c-4283-b34b-3c54e16bd2b6
         fromPort: default
         toPort: default
+      - id: 2689d0b6-7968-4061-bd48-ad71841a7df0
+        from: 30a42dee-474c-4283-b34b-3c54e16bd2b6
+        to: 25e5965f-0d1d-400a-82c8-f6b82f31c2db
+        fromPort: default
+        toPort: default
+
       - id: 44c2c09a-bd0a-4e54-8886-132ab993ebad
         from: d2b4977d-e218-4628-96f2-d26407aeea14
         to: 5028de22-eb9e-4ec4-80f2-62b585445042

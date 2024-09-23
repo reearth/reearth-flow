@@ -87,12 +87,6 @@ pub struct ThreeDimensionBoxReplacer {
 }
 
 impl Processor for ThreeDimensionBoxReplacer {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
-    fn num_threads(&self) -> usize {
-        5
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,

@@ -192,12 +192,6 @@ pub struct BuildingUsageAttributeValidator {
 }
 
 impl Processor for BuildingUsageAttributeValidator {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
-    fn num_threads(&self) -> usize {
-        4
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,
