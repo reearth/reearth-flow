@@ -5,16 +5,37 @@ import { Form } from "./Theme";
 
 const SchemaForm = () => {
   const schema: RJSFSchema = {
-    title: "Todo",
+    title: "A registration form",
+    description: "A simple form example.",
     type: "object",
-    required: ["title"],
+    required: ["firstName", "lastName"],
     properties: {
-      title: { type: "string", title: "Title", default: "A new task" },
-      done: {
-        type: "boolean",
-        title: "Done?",
-        default: false,
-        description: "Sample description",
+      firstName: {
+        type: "string",
+        title: "First name",
+        default: "Chuck",
+      },
+      lastName: {
+        type: "string",
+        title: "Last name",
+      },
+      age: {
+        type: "integer",
+        title: "Age",
+      },
+      bio: {
+        type: "string",
+        title: "Bio",
+      },
+      password: {
+        type: "string",
+        title: "Password",
+        minLength: 3,
+      },
+      telephone: {
+        type: "string",
+        title: "Telephone",
+        minLength: 10,
       },
     },
   };
