@@ -4743,6 +4743,7 @@ dependencies = [
 name = "reearth-flow-worker"
 version = "0.0.1"
 dependencies = [
+ "once_cell",
  "reearth-flow-action-log",
  "reearth-flow-action-plateau-processor",
  "reearth-flow-action-processor",
@@ -4755,6 +4756,8 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-telemetry",
  "reearth-flow-types",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]
