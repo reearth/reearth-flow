@@ -8,22 +8,21 @@ use reearth_flow_action_source::mapping::ACTION_FACTORY_MAPPINGS as SOURCE_MAPPI
 use reearth_flow_runtime::node::NodeKind;
 
 pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
-    let mut common = HashMap::new();
-    let sink = SINK_MAPPINGS.clone();
-    let source = SOURCE_MAPPINGS.clone();
-    let processor = PROCESSOR_MAPPINGS.clone();
-    common.extend(sink);
-    common.extend(source);
-    common.extend(processor);
-    common
+    SOURCE_MAPPINGS
+        .iter()
+        .chain(PROCESSOR_MAPPINGS.iter())
+        .chain(SINK_MAPPINGS.iter())
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
 });
 
 pub(crate) static PLATEAU_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> =
     Lazy::new(|| PLATEAU_MAPPINGS.clone());
 
 pub(crate) static ALL_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
-    let mut all = HashMap::new();
-    all.extend(BUILTIN_ACTION_FACTORIES.clone());
-    all.extend(PLATEAU_ACTION_FACTORIES.clone());
-    all
+    BUILTIN_ACTION_FACTORIES
+        .iter()
+        .chain(PLATEAU_ACTION_FACTORIES.iter())
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
 });
