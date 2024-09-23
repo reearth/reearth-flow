@@ -9,7 +9,7 @@ jobs:
     outputs:
       ui: ${{ steps.ui.outputs.any_changed }}
       api: ${{ steps.api.outputs.any_changed }}
-      workflow: ${{ steps.workflow.outputs.any_changed }}
+      engine: ${{ steps.engine.outputs.any_changed }}
       websocket: ${{ steps.websocket.outputs.any_changed }}
     steps:
       - uses: actions/checkout@v4
@@ -73,7 +73,7 @@ jobs:
       uses: ./.github/workflows/ci_websocket.yml
   ci-engine:
     needs: prepare
-    if: needs.prepare.outputs.workflow == 'true'
+    if: needs.prepare.outputs.engine == 'true'
     uses: ./.github/workflows/ci_engine.yml
   ci:
     runs-on: ubuntu-latest
