@@ -65,16 +65,20 @@ async fn main() {
         Ok(listener) => listener,
         Err(e) => {
             tracing::error!("Failed to bind to address {}: {}", &config.server_addr, e);
-            std::process::exit(1);
+            return;
         }
     };
-    tracing::debug!(
-        "listening on {}",
-        listener.local_addr().unwrap_or_else(|e| {
+
+    let local_addr = match listener.local_addr() {
+        Ok(addr) => addr,
+        Err(e) => {
             tracing::error!("Failed to get local address: {}", e);
-            std::process::exit(1);
-        })
-    );
+            return;
+        }
+    };
+
+    tracing::debug!("listening on {}", local_addr);
+
     if let Err(e) = axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
