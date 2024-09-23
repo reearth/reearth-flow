@@ -34,13 +34,15 @@ bytes.workspace = true
 cesiumtiles.workspace = true
 csv.workspace = true
 earcut.workspace = true
+flate2 = "1.0.28"
 geojson.workspace = true
+hashbrown = { version = "0.14.3", features = ["serde"] }
 image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
-opentelemetry.workspace = true
 petgraph.workspace = true
+prost = "0.12.3"
 rayon.workspace = true
 regex.workspace = true
 rhai.workspace = true
@@ -51,15 +53,8 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
 url.workspace = true
 uuid.workspace = true
 
-bincode = { version = "2.0.0-rc.3", default-features = false, features = ["serde", "std"] }
-flate2 = "1.0.28"
-hashbrown = { version = "0.14.3", features = ["serde"] }
-prost = "0.12.3"
-
 [dev-dependencies]
 bytes.workspace = true
-pretty_assertions.workspace = true

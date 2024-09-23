@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: e89620bc-5a16-4f21-a717-a974798a004c
 name: "QualityCheck-03-tran-rwy-trk-squr-wwy-workflow"
 entryGraphId: 43581967-2a15-450a-ba13-e450376c3d0e

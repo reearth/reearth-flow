@@ -37,7 +37,7 @@ pub(crate) fn build_operator<B: Builder>(builder: B) -> Result<Operator> {
         // Add retry
         .layer(RetryLayer::new().with_jitter())
         .layer(LoggingLayer::default())
-        .layer(MetricsLayer)
+        .layer(MetricsLayer::default())
         .finish();
     Ok(op)
 }

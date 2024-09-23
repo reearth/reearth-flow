@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: cc5cd09e-d6e7-4bd4-b571-ee684302ee92
 name: "QualityCheck-solid-phase-consistency-validation"
 entryGraphId: 21d92bbc-b849-481d-af7a-4f255191557f

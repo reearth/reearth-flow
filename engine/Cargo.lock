@@ -371,13 +371,12 @@ dependencies = [
 
 [[package]]
 name = "backon"
-version = "0.4.4"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d67782c3f868daa71d3533538e98a8e13713231969def7536e8039606fc46bf0"
+checksum = "e4fa97bb310c33c811334143cf64c5bb2b7b3c06e453db6b095d7061eff8f113"
 dependencies = [
  "fastrand",
- "futures-core",
- "pin-project",
+ "gloo-timers",
  "tokio",
 ]
 
@@ -419,15 +418,6 @@ name = "base64ct"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
-
-[[package]]
-name = "bincode"
-version = "2.0.0-rc.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f11ea1a0346b94ef188834a65c068a03aec181c94896d481d7a0a40d85b0ce95"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "bitflags"
@@ -591,9 +581,9 @@ checksum = "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495"
 
 [[package]]
 name = "bytes"
-version = "1.7.1"
+version = "1.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8318a53db07bb3f8dca91a600466bdb3f2eaadeedfdbcf02e1accbad9271ba50"
+checksum = "428d9aa8fbc0670b7b8d6030a7fadd0f86151cae55e4dbbece15f3780a3dfaf3"
 dependencies = [
  "serde",
 ]
@@ -758,9 +748,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.17"
+version = "4.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e5a21b8495e732f1b3c364c9949b201ca7bae518c502c80256c96ad79eaf6ac"
+checksum = "b0956a43b323ac1afaffc053ed5c4b7c1f1800bacd1683c353aabbb752515dd3"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -768,9 +758,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.17"
+version = "4.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cf2dd12af7a047ad9d6da2b6b249759a22a7abc0f474c1dae1777afa4b21a73"
+checksum = "4d72166dd41634086d5803a47eb71ae740e61d84709c36f3c34110173db3961b"
 dependencies = [
  "anstream",
  "anstyle",
@@ -780,9 +770,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.5.13"
+version = "4.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "501d359d5f3dcaf6ecdeee48833ae73ec6e42723a1e52419c79abf9507eec0a0"
+checksum = "4ac6a0c7b1a9e9a5186361f67dfa1b88213572f427fb9ab038efb2bd8c582dab"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -1197,12 +1187,6 @@ dependencies = [
  "rustc_version",
  "syn 2.0.77",
 ]
-
-[[package]]
-name = "diff"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
 
 [[package]]
 name = "digest"
@@ -1870,6 +1854,18 @@ dependencies = [
  "log",
  "regex-automata 0.4.7",
  "regex-syntax 0.8.4",
+]
+
+[[package]]
+name = "gloo-timers"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbb143cf96099802033e0d4f4963b19fd2e0b728bcf076cd9cf7f6634f092994"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "js-sys",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2857,18 +2853,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nalgebra-glm"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e441f43bccdf40cb6bd4294321e6983c5bc7b9886112d19fd4c9813976b117e4"
-dependencies = [
- "approx",
- "nalgebra",
- "num-traits",
- "simba",
-]
-
-[[package]]
 name = "nalgebra-macros"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3065,7 +3049,7 @@ dependencies = [
  "nusamai-geometry",
  "nusamai-projection",
  "once_cell",
- "quick-xml 0.36.1",
+ "quick-xml 0.36.2",
  "regex",
  "serde",
  "serde_json",
@@ -3093,7 +3077,7 @@ dependencies = [
  "indexmap 2.5.0",
  "nusamai-geometry",
  "nusamai-gltf-json",
- "quick-xml 0.36.1",
+ "quick-xml 0.36.2",
  "serde_json",
  "thiserror",
 ]
@@ -3132,7 +3116,7 @@ dependencies = [
  "nusamai-citygml",
  "nusamai-geometry",
  "once_cell",
- "quick-xml 0.36.1",
+ "quick-xml 0.36.2",
  "serde",
  "serde_json",
  "stretto",
@@ -3258,9 +3242,9 @@ dependencies = [
 
 [[package]]
 name = "opendal"
-version = "0.49.2"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b04d09b9822c2f75a1d2fc513a2c1279c70e91e7407936fffdf6a6976ec530a"
+checksum = "36e44fc43be9ffe18dad3e3ef9d61c1ae01991ee6f1c8c026978c35777a711bf"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3277,7 +3261,7 @@ dependencies = [
  "metrics",
  "once_cell",
  "percent-encoding",
- "quick-xml 0.36.1",
+ "quick-xml 0.36.2",
  "reqsign",
  "reqwest",
  "serde",
@@ -3807,16 +3791,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
-name = "pretty_assertions"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ae130e2f271fbc2ac3a40fb1d07180839cdbbe443c7a27e1e3c13c5cac0116d"
-dependencies = [
- "diff",
- "yansi",
-]
-
-[[package]]
 name = "prettyplease"
 version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3997,9 +3971,9 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.36.1"
+version = "0.36.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96a05e2e8efddfa51a84ca47cec303fac86c8541b686d37cac5efc0e094417bc"
+checksum = "f7649a7b4df05aed9ea7ec6f628c67c9953a43869b8bc50929569b2999d443fe"
 dependencies = [
  "memchr",
  "serde",
@@ -4217,7 +4191,6 @@ dependencies = [
  "thiserror",
  "time",
  "tokio",
- "tokio-stream",
  "tracing",
  "uuid",
 ]
@@ -4226,23 +4199,19 @@ dependencies = [
 name = "reearth-flow-action-plateau-processor"
 version = "0.0.1"
 dependencies = [
- "Inflector",
  "approx",
  "async-trait",
  "bytes",
  "chrono",
- "csv",
  "itertools 0.13.0",
  "num-traits",
  "nusamai-citygml",
  "nusamai-plateau",
  "nusamai-projection",
  "once_cell",
- "opentelemetry",
  "parking_lot",
  "petgraph",
- "pretty_assertions",
- "quick-xml 0.36.1",
+ "quick-xml 0.36.2",
  "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
@@ -4259,7 +4228,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "url",
  "uuid",
 ]
@@ -4280,11 +4248,9 @@ dependencies = [
  "nusamai-plateau",
  "nusamai-projection",
  "once_cell",
- "opentelemetry",
  "parking_lot",
  "petgraph",
- "pretty_assertions",
- "quick-xml 0.36.1",
+ "quick-xml 0.36.2",
  "rayon",
  "reearth-flow-action-log",
  "reearth-flow-common",
@@ -4302,7 +4268,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "url",
  "uuid",
 ]
@@ -4313,7 +4278,6 @@ version = "0.0.1"
 dependencies = [
  "ahash 0.8.11",
  "async-trait",
- "bincode",
  "byteorder",
  "bytes",
  "cesiumtiles",
@@ -4332,9 +4296,7 @@ dependencies = [
  "nusamai-plateau",
  "nusamai-projection",
  "once_cell",
- "opentelemetry",
  "petgraph",
- "pretty_assertions",
  "prost 0.12.6",
  "rayon",
  "reearth-flow-action-log",
@@ -4354,7 +4316,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "url",
  "uuid",
 ]
@@ -4372,10 +4333,8 @@ dependencies = [
  "nusamai-plateau",
  "nusamai-projection",
  "once_cell",
- "opentelemetry",
  "petgraph",
- "pretty_assertions",
- "quick-xml 0.36.1",
+ "quick-xml 0.36.2",
  "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
@@ -4391,7 +4350,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "url",
  "uuid",
 ]
@@ -4446,24 +4404,16 @@ dependencies = [
  "image 0.25.2",
  "jsonpath_lib",
  "libxml",
- "nusamai-mvt",
- "nusamai-projection",
  "parking_lot",
- "petgraph",
  "rayon",
  "serde",
  "serde_json",
  "serde_yaml",
  "sha2",
- "strum",
  "strum_macros",
  "tempfile",
  "thiserror",
  "tokio",
- "tokio-stream",
- "tokio-util",
- "tracing",
- "tracing-subscriber",
  "url",
  "uuid",
 ]
@@ -4479,8 +4429,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -4490,7 +4438,6 @@ dependencies = [
  "bytes",
  "directories",
  "once_cell",
- "pretty_assertions",
  "reearth-flow-action-log",
  "reearth-flow-action-plateau-processor",
  "reearth-flow-action-processor",
@@ -4521,9 +4468,7 @@ dependencies = [
  "float_next_after",
  "geojson",
  "nalgebra",
- "nalgebra-glm",
  "num-traits",
- "nusamai-citygml",
  "nusamai-geometry",
  "nusamai-projection",
  "parking_lot",
@@ -4532,18 +4477,14 @@ dependencies = [
  "rstar",
  "serde",
  "serde_json",
- "strum",
  "strum_macros",
  "thiserror",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
 name = "reearth-flow-macros"
 version = "0.0.1"
 dependencies = [
- "heck 0.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.77",
@@ -4559,9 +4500,7 @@ dependencies = [
  "futures",
  "futures-util",
  "once_cell",
- "opentelemetry",
  "petgraph",
- "pretty_assertions",
  "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
@@ -4576,7 +4515,6 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -4593,10 +4531,8 @@ dependencies = [
  "futures-util",
  "nutype",
  "once_cell",
- "opentelemetry",
  "parking_lot",
  "petgraph",
- "pretty_assertions",
  "rayon",
  "reearth-flow-action-log",
  "reearth-flow-common",
@@ -4612,7 +4548,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -4625,10 +4560,8 @@ dependencies = [
  "reearth-flow-storage",
  "serde",
  "serde_json",
- "serde_with",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -4645,13 +4578,9 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "serde_with",
- "tempfile",
  "thiserror",
  "tokio",
- "tokio-stream",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -4665,7 +4594,6 @@ dependencies = [
  "opentelemetry-stdout",
  "opentelemetry_sdk",
  "serde",
- "serde_json",
  "thiserror",
 ]
 
@@ -4676,7 +4604,6 @@ dependencies = [
  "bytes",
  "directories",
  "once_cell",
- "pretty_assertions",
  "reearth-flow-action-log",
  "reearth-flow-action-processor",
  "reearth-flow-action-sink",
@@ -4692,7 +4619,6 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -4701,8 +4627,6 @@ name = "reearth-flow-types"
 version = "0.0.1"
 dependencies = [
  "ahash 0.8.11",
- "async-trait",
- "async_zip",
  "bytes",
  "chrono",
  "directories",
@@ -4719,22 +4643,17 @@ dependencies = [
  "nusamai-projection",
  "nutype",
  "once_cell",
- "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",
- "reearth-flow-storage",
  "rhai",
  "schemars",
  "serde",
  "serde_json",
- "strum",
  "strum_macros",
  "thiserror",
  "tokio",
- "tokio-stream",
  "tracing",
- "tracing-subscriber",
  "url",
  "uuid",
 ]
@@ -5096,9 +5015,9 @@ dependencies = [
 
 [[package]]
 name = "rust_xlsxwriter"
-version = "0.76.0"
+version = "0.77.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8391054b1f1f7b310e0d48359f6d439a3cb5de7afcb2d1ac861231a8e210c110"
+checksum = "c1ba1186cc2b2d0710edd3420d12cbb247c513063d568ca9e5bf52e20068abfb"
 dependencies = [
  "zip",
 ]
@@ -5801,12 +5720,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
-name = "strum"
-version = "0.26.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fec0f0aef304996cf250b31b5a10dee7980c85da9d759361292b8bca5a18f06"
-
-[[package]]
 name = "strum_macros"
 version = "0.26.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6244,18 +6157,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.63"
+version = "1.0.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0342370b38b6a11b6cc11d6a805569958d54cfa061a29969c3b5ce2ea405724"
+checksum = "d50af8abc119fb8bb6dbabcfa89656f46f84aa0ac7688088608076ad2b459a84"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.63"
+version = "1.0.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4558b58466b9ad7ca0f102865eccc95938dca1a74a856f2b57b6629050da261"
+checksum = "08904e7672f5eb876eaaf87e0ce17857500934f4981c4a0ab2b4aa98baac7fc3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6390,7 +6303,6 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -6403,10 +6315,7 @@ dependencies = [
  "futures-core",
  "futures-io",
  "futures-sink",
- "futures-util",
- "hashbrown 0.14.5",
  "pin-project-lite",
- "slab",
  "tokio",
 ]
 
@@ -7642,12 +7551,6 @@ checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
 dependencies = [
  "linked-hash-map",
 ]
-
-[[package]]
-name = "yansi"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 
 [[package]]
 name = "zerocopy"
