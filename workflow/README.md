@@ -94,9 +94,9 @@ graphs:
 * To specify individual variables on the command line, use the -var option when running the
 
 ``` console
-$ cargo run -- run --var="cityGmlPath=file:///root/53395658_bldg_6697_op.gml"
-$ cargo run -- run --var='cityGmlPath_list=["file:///root/53395658_bldg_6697_op.gml","file:///root/53395658_bldg_6698_op.gml"]' --var="addNsprefixToFeatureTypes=false"
-$ cargo run -- run --var='cityGmlPath_map={"path01":"file:///root/53395658_bldg_6697_op.gml","path02":"file:///root/53395658_bldg_6698_op.gml"}'
+$ cargo run --package reearth-flow-cli -- run --var="cityGmlPath=file:///root/53395658_bldg_6697_op.gml"
+$ cargo run --package reearth-flow-cli -- run --var='cityGmlPath_list=["file:///root/53395658_bldg_6697_op.gml","file:///root/53395658_bldg_6698_op.gml"]' --var="addNsprefixToFeatureTypes=false"
+$ cargo run --package reearth-flow-cli -- run --var='cityGmlPath_map={"path01":"file:///root/53395658_bldg_6697_op.gml","path02":"file:///root/53395658_bldg_6698_op.gml"}'
 ```
 
 ### Environment Variables
@@ -111,7 +111,7 @@ export FLOW_VAR_targetPackages='["bldg", "fld"]'
 
 ### Run workflow
 ```console
-$ cargo run -- run --workflow ${workflow_path}
+$ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
 ```
 
 ### Run example
@@ -127,7 +127,7 @@ $ cargo run --package reearth-flow-examples --example attribute_reader
 ```console
 $ brew install graphviz
 $ cargo install yaml-include
-$ yaml-include examples/plateau/testdata/workflow/xml_validator.yml | cargo run -- dot --workflow - | dot -Tpng > output.png
+$ yaml-include examples/plateau/testdata/workflow/xml_validator.yml | cargo run --package reearth-flow-cli -- dot --workflow - | dot -Tpng > output.png
 ```
 
 ![xml_validator](./docs/images/xml_validator.png)

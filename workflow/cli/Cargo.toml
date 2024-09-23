@@ -10,8 +10,6 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-default-run = "reearth-flow"
-
 [[bin]]
 name = "reearth-flow"
 path = "src/main.rs"
