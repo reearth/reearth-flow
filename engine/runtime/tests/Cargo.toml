@@ -28,12 +28,10 @@ reearth-flow-types.workspace = true
 bytes.workspace = true
 directories.workspace = true
 once_cell.workspace = true
-pretty_assertions.workspace = true
 rust-embed = "8.3.0"
 time.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
 uuid.workspace = true
 
 [[test]]

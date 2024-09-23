@@ -29,7 +29,6 @@ reearth-flow-types.workspace = true
 bytes.workspace = true
 directories.workspace = true
 once_cell.workspace = true
-pretty_assertions.workspace = true
 time.workspace = true
 tokio.workspace = true
 tracing.workspace = true

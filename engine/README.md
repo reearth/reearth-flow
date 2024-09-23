@@ -38,7 +38,7 @@ C:\> vcpkg integrate install
 ## Input Variables
 ### Declaring an Input Variable
 ``` yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 00caad2a-9f7d-4189-b479-153fa9ea36dc
 name: "SimpleWorkflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a

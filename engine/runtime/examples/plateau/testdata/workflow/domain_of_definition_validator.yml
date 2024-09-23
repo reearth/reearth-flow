@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/workflow.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: a7fc8f35-b84f-496b-a2cb-65be3bfec285
 name: "PLATEAU.DomainOfDefinitionValidator"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
