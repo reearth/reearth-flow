@@ -35,11 +35,11 @@ RUN \
     --mount=type=cache,target=/usr/src/${NAME}/target \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-    --mount=type=bind,source=crates,target=crates \
-    --mount=type=bind,source=examples,target=examples \
-    --mount=type=bind,source=tests,target=tests \
-    cargo build --release && mv target/release/reearth-flow /tmp/reearth-flow
-
+    --mount=type=bind,source=runtime,target=runtime \
+    --mount=type=bind,source=cli,target=cli \
+    --mount=type=bind,source=plateau-gis-quality-checker,target=plateau-gis-quality-checker \
+    --mount=type=bind,source=worker,target=worker \
+    cargo build --package reearth-flow-cli --bin reearth-flow --release && mv target/release/reearth-flow /tmp/reearth-flow
 
 FROM debian:bookworm-slim AS final
 

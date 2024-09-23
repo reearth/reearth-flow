@@ -4743,14 +4743,6 @@ dependencies = [
 name = "reearth-flow-worker"
 version = "0.0.1"
 dependencies = [
- "bytes",
- "clap",
- "colored",
- "directories",
- "indoc",
- "once_cell",
- "opentelemetry",
- "opentelemetry_sdk",
  "reearth-flow-action-log",
  "reearth-flow-action-plateau-processor",
  "reearth-flow-action-processor",
@@ -4763,15 +4755,6 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-telemetry",
  "reearth-flow-types",
- "schemars",
- "serde",
- "serde_json",
- "thiserror",
- "time",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]

@@ -1,8 +1,8 @@
 [workspace]
 members = [
-  "runtime/*",
   "cli",
   "plateau-gis-quality-checker/src-tauri",
+  "runtime/*",
   "worker",
 ]
 
