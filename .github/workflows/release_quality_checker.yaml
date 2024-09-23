@@ -25,7 +25,7 @@ jobs:
           node-version: lts/*
 
       - name: get version
-        working-directory: ./worker/tools/plateau-gis-quality-checker
+        working-directory: ./workflow/plateau-gis-quality-checker
         run: echo "PACKAGE_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
 
       - name: create release
@@ -100,17 +100,17 @@ jobs:
       - name: enable corepack
         run: |
           corepack enable
-        working-directory: ./worker/tools/plateau-gis-quality-checker
+        working-directory: ./workflow/plateau-gis-quality-checker
 
       - name: install frontend dependencies
         run: yarn install
-        working-directory: ./worker/tools/plateau-gis-quality-checker
+        working-directory: ./workflow/plateau-gis-quality-checker
 
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          projectPath: ./worker/tools/plateau-gis-quality-checker
+          projectPath: ./workflow/plateau-gis-quality-checker
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.settings.args }}
 

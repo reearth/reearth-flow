@@ -1,0 +1,36 @@
+[package]
+description = "Re:Earth Flow common library"
+name = "reearth-flow-common"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+approx.workspace = true
+async-recursion.workspace = true
+base64.workspace = true
+bytes.workspace = true
+colorsys.workspace = true
+directories.workspace = true
+futures.workspace = true
+home.workspace = true
+image.workspace = true
+jsonpath_lib.workspace = true
+libxml.workspace = true
+parking_lot.workspace = true
+rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+sha2.workspace = true
+strum_macros.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+url.workspace = true
+uuid.workspace = true

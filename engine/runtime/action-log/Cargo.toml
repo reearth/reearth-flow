@@ -1,0 +1,28 @@
+[package]
+description = "Re:Earth Flow action log library"
+name = "reearth-flow-action-log"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+reearth-flow-common.workspace = true
+
+futures.workspace = true
+once_cell.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+slog.workspace = true
+slog-async.workspace = true
+slog-term.workspace = true
+sloggers.workspace = true
+thiserror.workspace = true
+time.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true

@@ -10,9 +10,7 @@ import (
 	"github.com/reearth/reearthx/usecasex"
 )
 
-var (
-	ErrOperationDenied = errors.New("operation denied")
-)
+var ErrOperationDenied = errors.New("operation denied")
 
 type Container struct {
 	Asset       Asset
