@@ -50,14 +50,14 @@ jobs:
             .github/workflows/ci_websocket.yml
             CHANGELOG.md
 
-      - name: changed files for workflow
-        id: workflow
+      - name: changed files for engine
+        id: engine
         uses: tj-actions/changed-files@v41
         with:
           files: |
-            workflow/**
+            engine/**
             .github/workflows/ci.yml
-            .github/workflows/ci_workflow.yml
+            .github/workflows/ci_engine.yml
             CHANGELOG.md
   ci-api:
     needs: prepare
@@ -74,7 +74,7 @@ jobs:
   ci-workflow:
     needs: prepare
     if: needs.prepare.outputs.workflow == 'true'
-    uses: ./.github/workflows/ci_workflow.yml
+    uses: ./.github/workflows/ci_engine.yml
   ci:
     runs-on: ubuntu-latest
     needs:
