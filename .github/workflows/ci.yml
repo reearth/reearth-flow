@@ -71,7 +71,7 @@ jobs:
       needs: prepare
       if: needs.prepare.outputs.websocket == 'true'
       uses: ./.github/workflows/ci_websocket.yml
-  ci-workflow:
+  ci-engine:
     needs: prepare
     if: needs.prepare.outputs.workflow == 'true'
     uses: ./.github/workflows/ci_engine.yml
