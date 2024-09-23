@@ -1,0 +1,5 @@
+runtime/examples/plateau/testdata/**/* linguist-vendored
+tests/fixture/**/* linguist-vendored
+tools/cesium/**/* linguist-vendored
+tools/mvt/**/* linguist-vendored
+plateau-gis-quality-checker/src-tauri/embed/**/* linguist-vendored

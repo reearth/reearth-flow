@@ -1,4 +1,4 @@
-name: ci-worker
+name: ci-workflow
 
 on:
   workflow_call:
@@ -17,7 +17,7 @@ env:
 
 defaults:
   run:
-    working-directory: worker
+    working-directory: workflow
 
 jobs:
   ci:
@@ -30,8 +30,8 @@ jobs:
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: worker
-          shared-key: "worker-ci"
+          workspaces: workflow
+          shared-key: "workflow-ci"
       - name: install required tools
         uses: taiki-e/install-action@v2
         with:

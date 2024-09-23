@@ -1,12 +1,12 @@
 [workspace]
 members = [
-  "crates/*",
-  "examples",
-  "tests",
-  "tools/plateau-gis-quality-checker/src-tauri",
+  "runtime/*",
+  "cli",
+  "plateau-gis-quality-checker/src-tauri",
+  "worker",
 ]
 
-default-members = ["crates/*"]
+default-members = ["runtime/*"]
 
 resolver = "2"
 
@@ -45,22 +45,21 @@ inherits = "release"
 lto = "fat"
 
 [workspace.dependencies]
-reearth-flow-action-log = { path = "crates/action-log" }
-reearth-flow-action-plateau-processor = { path = "crates/action-plateau-processor" }
-reearth-flow-action-processor = { path = "crates/action-processor" }
-reearth-flow-action-sink = { path = "crates/action-sink" }
-reearth-flow-action-source = { path = "crates/action-source" }
-reearth-flow-cli = { path = "crates/cli" }
-reearth-flow-common = { path = "crates/common" }
-reearth-flow-eval-expr = { path = "crates/eval-expr" }
-reearth-flow-geometry = { path = "crates/geometry" }
-reearth-flow-macros = { path = "crates/macros" }
-reearth-flow-runner = { path = "crates/runner" }
-reearth-flow-runtime = { path = "crates/runtime" }
-reearth-flow-state = { path = "crates/state" }
-reearth-flow-storage = { path = "crates/storage" }
-reearth-flow-telemetry = { path = "crates/telemetry" }
-reearth-flow-types = { path = "crates/types" }
+reearth-flow-action-log = { path = "runtime/action-log" }
+reearth-flow-action-plateau-processor = { path = "runtime/action-plateau-processor" }
+reearth-flow-action-processor = { path = "runtime/action-processor" }
+reearth-flow-action-sink = { path = "runtime/action-sink" }
+reearth-flow-action-source = { path = "runtime/action-source" }
+reearth-flow-common = { path = "runtime/common" }
+reearth-flow-eval-expr = { path = "runtime/eval-expr" }
+reearth-flow-geometry = { path = "runtime/geometry" }
+reearth-flow-macros = { path = "runtime/macros" }
+reearth-flow-runner = { path = "runtime/runner" }
+reearth-flow-runtime = { path = "runtime/runtime" }
+reearth-flow-state = { path = "runtime/state" }
+reearth-flow-storage = { path = "runtime/storage" }
+reearth-flow-telemetry = { path = "runtime/telemetry" }
+reearth-flow-types = { path = "runtime/types" }
 
 nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8", features = ["serde", "serde_json"] }
 nusamai-geometry = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8", features = ["serde"] }

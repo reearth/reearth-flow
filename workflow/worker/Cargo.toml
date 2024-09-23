@@ -1,6 +1,6 @@
 [package]
-description = "Re:Earth Flow cli library"
-name = "reearth-flow-cli"
+description = "Re:Earth Flow worker"
+name = "reearth-flow-worker"
 
 authors.workspace = true
 edition.workspace = true
@@ -10,10 +10,8 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-default-run = "reearth-flow"
-
 [[bin]]
-name = "reearth-flow"
+name = "reearth-flow-worker"
 path = "src/main.rs"
 
 [dependencies]
