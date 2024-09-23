@@ -4740,6 +4740,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "reearth-flow-worker"
+version = "0.0.1"
+dependencies = [
+ "reearth-flow-action-log",
+ "reearth-flow-action-plateau-processor",
+ "reearth-flow-action-processor",
+ "reearth-flow-action-sink",
+ "reearth-flow-action-source",
+ "reearth-flow-common",
+ "reearth-flow-runner",
+ "reearth-flow-runtime",
+ "reearth-flow-state",
+ "reearth-flow-storage",
+ "reearth-flow-telemetry",
+ "reearth-flow-types",
+]
+
+[[package]]
 name = "regex"
 version = "1.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

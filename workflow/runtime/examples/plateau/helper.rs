@@ -69,16 +69,11 @@ pub(crate) fn execute(workflow: &str) {
 }
 
 pub fn create_workflow(workflow: &str) -> Workflow {
-    let current_dir = env::current_dir()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string()
-        .replace("examples", "");
+    let current_dir = env::current_dir().unwrap().to_str().unwrap().to_string();
     let current_dir = Path::new(&current_dir);
     let absolute_path = fs::canonicalize(
         current_dir
-            .join("examples/plateau/testdata/workflow")
+            .join("runtime/examples/plateau/testdata/workflow")
             .join(workflow),
     );
     let path = absolute_path.unwrap();

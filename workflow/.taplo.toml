@@ -1,10 +1,10 @@
 # https://taplo.tamasfe.dev/configuration/formatter-options.html
 include = [
   "Cargo.toml",
-  "crates/*/Cargo.toml",
-  "examples/Cargo.toml",
-  "tests/Cargo.toml",
-  "tools/plateau-gis-quality-checker/src-tauri/Cargo.toml",
+  "runtime/*/Cargo.toml",
+  "cli/Cargo.toml",
+  "worker/Cargo.toml",
+  "plateau-gis-quality-checker/src-tauri/Cargo.toml",
 ]
 
 [formatting]

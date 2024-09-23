@@ -61,17 +61,17 @@ git ls-files |grep -E '.rs$' |(! xargs grep 'todo!')
 [tasks.doc-action]
 script = ['''
 #!/usr/bin/env bash -eux
-rm -rf ../schema/actions.json
+rm -rf ./schema/actions.json
 rm -rf ./docs/mdbook/src/action.md
-cargo run -- schema-action > ../schema/actions.json
-cargo run -- doc-action > ./docs/mdbook/src/action.md
+cargo run --package reearth-flow-cli -- schema-action > ./schema/actions.json
+cargo run --package reearth-flow-cli -- doc-action > ./docs/mdbook/src/action.md
 ''']
 
 [tasks.doc-workflow]
 script = ['''
 #!/usr/bin/env bash -eux
 rm -rf ../schema/workflow.json
-cargo run -- schema-workflow > ../schema/workflow.json
+cargo run --package reearth-flow-cli -- schema-workflow > ./schema/workflow.json
 ''']
 
 [tasks.serve-mdbook]
