@@ -42,7 +42,6 @@ axum-macros = "0.4"
 base64 = "0.22.1"
 cached = "0.53.1"
 chrono = { version = "0.4", features = ["serde"] }
-dashmap = "6.1.0"
 dotenv = "0.15.0"
 futures-util = "0.3"
 google-cloud-storage = "0.18"

@@ -18,19 +18,25 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod socket;
 
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "trace,tower_http=debug,".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+async fn main() {
+    init_tracing_subscriber();
 
-    let config = Config::from_env().expect("Failed to load configuration");
+    let config = match Config::from_env() {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            tracing::error!("Failed to load configuration: {}", e);
+            return;
+        }
+    };
 
-    let auth_client =
-        AuthServiceClient::new(&config.auth_service_url).expect("Failed to create auth client");
+    let auth_client = match AuthServiceClient::new(&config.auth_service_url) {
+        Ok(client) => client,
+        Err(e) => {
+            tracing::error!("Failed to create auth client: {}", e);
+            return;
+        }
+    };
+
     let jwt_validator = JwtValidator::new(auth_client, Duration::from_secs(300));
 
     let state = Arc::new(AppState::default());
@@ -55,13 +61,37 @@ async fn main() -> std::io::Result<()> {
         )
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind(&config.server_addr)
-        .await
-        .unwrap();
-    tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(
+    let listener = match tokio::net::TcpListener::bind(&config.server_addr).await {
+        Ok(listener) => listener,
+        Err(e) => {
+            tracing::error!("Failed to bind to address {}: {}", &config.server_addr, e);
+            std::process::exit(1);
+        }
+    };
+    tracing::debug!(
+        "listening on {}",
+        listener.local_addr().unwrap_or_else(|e| {
+            tracing::error!("Failed to get local address: {}", e);
+            std::process::exit(1);
+        })
+    );
+    if let Err(e) = axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
     .await
+    {
+        tracing::error!("server error: {}", e);
+    }
+}
+
+#[inline]
+fn init_tracing_subscriber() {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "trace,tower_http=debug,".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 }

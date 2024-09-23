@@ -23,7 +23,6 @@ axum-macros.workspace = true
 base64.workspace = true
 cached.workspace = true
 chrono.workspace = true
-dashmap.workspace = true
 dotenv.workspace = true
 futures-util.workspace = true
 google-cloud-storage.workspace = true
