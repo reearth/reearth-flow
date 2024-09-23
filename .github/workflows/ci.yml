@@ -81,7 +81,7 @@ jobs:
       - ci-api
       - ci-ui
       - ci-websocket
-      - ci-workflow
+      - ci-engine
     if: '!failure()'
     steps:
       - run: echo OK
