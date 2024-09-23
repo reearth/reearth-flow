@@ -22,6 +22,24 @@ pub struct ProjectMetadata {
     pub path: String,
 }
 
+impl ProjectMetadata {
+    pub fn new(
+        id: String,
+        project_id: String,
+        session_id: Option<String>,
+        name: String,
+        path: String,
+    ) -> Self {
+        Self {
+            id,
+            project_id,
+            session_id,
+            name,
+            path,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProjectSnapshot {
     pub metadata: ProjectMetadata,
