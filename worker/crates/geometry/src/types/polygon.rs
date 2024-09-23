@@ -102,6 +102,26 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
         self.interiors.push(new_interior);
     }
 
+    pub fn exteriors_push(&mut self, new_exterior: impl Into<LineString<T, Z>>) {
+        let mut new_exterior = new_exterior.into();
+        new_exterior.close();
+        self.exterior = new_exterior;
+    }
+
+    pub fn area(&self) -> f64 {
+        let mut area = 0.0;
+        area += self.exterior().ring_area();
+        for interior in self.interiors() {
+            area -= interior.ring_area();
+        }
+        area
+    }
+
+    pub fn add_ring(&mut self, linestring: LineString<T, Z>) {
+        self.exteriors_push(linestring.clone());
+        self.interiors_push(linestring.clone());
+    }
+
     /// Extrudes the polygon along the Z-axis by a specified distance.
     pub fn extrude(&self, height: Z) -> Solid<T, Z> {
         let mut top_exterior = self.exterior.clone();

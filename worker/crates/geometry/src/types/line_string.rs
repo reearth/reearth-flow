@@ -199,6 +199,38 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
     pub fn is_closed(&self) -> bool {
         self.0.first() == self.0.last()
     }
+
+    /// Reverses the coordinates in the LineString.
+    pub fn reverse_inplace(&mut self) {
+        let len = self.0.len();
+        if len > 0 {
+            let data = self.0.as_mut_slice();
+            for i in 0..data.len() / 2 {
+                data.swap(i, len - (i + 1));
+            }
+        }
+    }
+
+    pub fn ring_area(&self) -> f64 {
+        self.signed_ring_area().abs()
+    }
+
+    pub fn signed_ring_area(&self) -> f64 {
+        if self.is_empty() {
+            return 0.0;
+        }
+        let mut area = 0.0;
+        let mut ring_iter = self.iter();
+        let mut prev = ring_iter.next().unwrap().x_y();
+        // shoelace formula
+        for coord in ring_iter {
+            let xy = coord.x_y();
+            area += (prev.0.to_f64().unwrap() * xy.1.to_f64().unwrap())
+                - (prev.1.to_f64().unwrap() * xy.0.to_f64().unwrap());
+            prev = xy;
+        }
+        area / 2.0
+    }
 }
 
 impl<T: CoordNum, Z: CoordNum, IC: Into<Coordinate<T, Z>>> From<Vec<IC>> for LineString<T, Z> {

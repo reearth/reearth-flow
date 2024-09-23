@@ -421,6 +421,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
+name = "bincode"
+version = "2.0.0-rc.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f11ea1a0346b94ef188834a65c068a03aec181c94896d481d7a0a40d85b0ce95"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2384,6 +2393,15 @@ checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
 
 [[package]]
 name = "itertools"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
@@ -3098,7 +3116,7 @@ source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc8#cf
 dependencies = [
  "ahash 0.8.11",
  "indexmap 2.5.0",
- "prost",
+ "prost 0.13.2",
  "prost-build",
 ]
 
@@ -3212,7 +3230,7 @@ dependencies = [
  "chrono",
  "futures",
  "humantime",
- "itertools",
+ "itertools 0.13.0",
  "parking_lot",
  "percent-encoding",
  "snafu",
@@ -3294,7 +3312,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-proto",
  "opentelemetry_sdk",
- "prost",
+ "prost 0.13.2",
  "thiserror",
  "tokio",
  "tonic",
@@ -3308,7 +3326,7 @@ checksum = "2c43620e8f93359eb7e627a3b16ee92d8585774986f24f2ab010817426c5ce61"
 dependencies = [
  "opentelemetry",
  "opentelemetry_sdk",
- "prost",
+ "prost 0.13.2",
  "tonic",
 ]
 
@@ -3868,12 +3886,22 @@ dependencies = [
 
 [[package]]
 name = "prost"
+version = "0.12.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "deb1435c188b76130da55f17a466d252ff7b1418b2ad3e037d127b94e3411f29"
+dependencies = [
+ "bytes",
+ "prost-derive 0.12.6",
+]
+
+[[package]]
+name = "prost"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b2ecbe40f08db5c006b5764a2645f7f3f141ce756412ac9e1dd6087e6d32995"
 dependencies = [
  "bytes",
- "prost-derive",
+ "prost-derive 0.13.2",
 ]
 
 [[package]]
@@ -3884,17 +3912,30 @@ checksum = "f8650aabb6c35b860610e9cff5dc1af886c9e25073b7b1712a68972af4281302"
 dependencies = [
  "bytes",
  "heck 0.5.0",
- "itertools",
+ "itertools 0.13.0",
  "log",
  "multimap",
  "once_cell",
  "petgraph",
  "prettyplease",
- "prost",
+ "prost 0.13.2",
  "prost-types",
  "regex",
  "syn 2.0.77",
  "tempfile",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.12.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81bddcdb20abf9501610992b6759a4c888aef7d1a7247ef75e2404275ac24af1"
+dependencies = [
+ "anyhow",
+ "itertools 0.12.1",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.77",
 ]
 
 [[package]]
@@ -3904,7 +3945,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acf0c195eebb4af52c752bec4f52f645da98b6e92077a04110c7f349477ae5ac"
 dependencies = [
  "anyhow",
- "itertools",
+ "itertools 0.13.0",
  "proc-macro2",
  "quote",
  "syn 2.0.77",
@@ -3916,7 +3957,7 @@ version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60caa6738c7369b940c3d49246a8d1749323674c65cb13010134f5c9bad5b519"
 dependencies = [
- "prost",
+ "prost 0.13.2",
 ]
 
 [[package]]
@@ -4191,7 +4232,7 @@ dependencies = [
  "bytes",
  "chrono",
  "csv",
- "itertools",
+ "itertools 0.13.0",
  "num-traits",
  "nusamai-citygml",
  "nusamai-plateau",
@@ -4233,7 +4274,7 @@ dependencies = [
  "bytes",
  "chrono",
  "csv",
- "itertools",
+ "itertools 0.13.0",
  "num-traits",
  "nusamai-citygml",
  "nusamai-plateau",
@@ -4272,15 +4313,18 @@ version = "0.0.1"
 dependencies = [
  "ahash 0.8.11",
  "async-trait",
+ "bincode",
  "byteorder",
  "bytes",
  "cesiumtiles",
  "csv",
  "earcut",
+ "flate2",
  "geojson",
+ "hashbrown 0.14.5",
  "image 0.25.2",
  "indexmap 2.5.0",
- "itertools",
+ "itertools 0.13.0",
  "nusamai-citygml",
  "nusamai-geometry",
  "nusamai-gltf",
@@ -4291,6 +4335,7 @@ dependencies = [
  "opentelemetry",
  "petgraph",
  "pretty_assertions",
+ "prost 0.12.6",
  "rayon",
  "reearth-flow-action-log",
  "reearth-flow-common",
@@ -4666,7 +4711,7 @@ dependencies = [
  "hashbrown 0.14.5",
  "image 0.25.2",
  "indexmap 2.5.0",
- "itertools",
+ "itertools 0.13.0",
  "nusamai-citygml",
  "nusamai-geometry",
  "nusamai-gltf",
@@ -6432,7 +6477,7 @@ dependencies = [
  "hyper-util",
  "percent-encoding",
  "pin-project",
- "prost",
+ "prost 0.13.2",
  "socket2",
  "tokio",
  "tokio-stream",
