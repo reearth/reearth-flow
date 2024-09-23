@@ -12,6 +12,6 @@ websocket:
   - changed-files:
       - any-glob-to-any-file: websocket/**/*
 
-workflow:
+engine:
   - changed-files:
-      - any-glob-to-any-file: workflow/**/*
+      - any-glob-to-any-file: engine/**/*
