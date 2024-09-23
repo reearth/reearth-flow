@@ -1,0 +1,61 @@
+[package]
+description = "Re:Earth Flow examples"
+name = "reearth-flow-examples"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+publish = false
+
+[dev-dependencies]
+reearth-flow-action-log.workspace = true
+reearth-flow-action-plateau-processor.workspace = true
+reearth-flow-action-processor.workspace = true
+reearth-flow-action-sink.workspace = true
+reearth-flow-action-source.workspace = true
+reearth-flow-common.workspace = true
+reearth-flow-eval-expr.workspace = true
+reearth-flow-runner.workspace = true
+reearth-flow-runtime.workspace = true
+reearth-flow-state.workspace = true
+reearth-flow-storage.workspace = true
+reearth-flow-types.workspace = true
+
+bytes.workspace = true
+directories.workspace = true
+once_cell.workspace = true
+time.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+yaml-include = "0.7.0"
+
+[[example]]
+name = "attribute_reader"
+path = "plateau/attribute_reader.rs"
+
+[[example]]
+name = "xml_validator"
+path = "plateau/xml_validator.rs"
+
+[[example]]
+name = "domain_of_definition_validator"
+path = "plateau/domain_of_definition_validator.rs"
+
+[[example]]
+name = "lod_splitter_with_dm"
+path = "plateau/lod_splitter_with_dm.rs"
+
+[[example]]
+name = "max_lod_extractor"
+path = "plateau/max_lod_extractor.rs"
+
+[[example]]
+name = "example_feature_transformer"
+path = "plateau/example_feature_transformer.rs"

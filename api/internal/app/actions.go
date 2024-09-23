@@ -87,7 +87,7 @@ func loadActionsData() error {
 	var err error
 	once.Do(func() {
 		// Hardcoded for now, Need to find more elegant way to deal with this @pyshx
-		resp, respErr := http.Get("https://raw.githubusercontent.com/reearth/reearth-flow/main/schema/actions.json")
+		resp, respErr := http.Get("https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/actions.json")
 		if respErr != nil {
 			err = respErr
 			return

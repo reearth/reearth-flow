@@ -5,20 +5,30 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain"
 )
 
-type ID = id.AssetID
-type WorkspaceID = accountdomain.WorkspaceID
+type (
+	ID          = id.AssetID
+	WorkspaceID = accountdomain.WorkspaceID
+)
 
-var NewID = id.NewAssetID
-var NewWorkspaceID = accountdomain.NewWorkspaceID
+var (
+	NewID          = id.NewAssetID
+	NewWorkspaceID = accountdomain.NewWorkspaceID
+)
 
-var MustID = id.MustAssetID
-var MustWorkspaceID = id.MustWorkspaceID
+var (
+	MustID          = id.MustAssetID
+	MustWorkspaceID = id.MustWorkspaceID
+)
 
-var IDFrom = id.AssetIDFrom
-var WorkspaceIDFrom = accountdomain.WorkspaceIDFrom
+var (
+	IDFrom          = id.AssetIDFrom
+	WorkspaceIDFrom = accountdomain.WorkspaceIDFrom
+)
 
-var IDFromRef = id.AssetIDFromRef
-var WorkspaceIDFromRef = accountdomain.WorkspaceIDFromRef
+var (
+	IDFromRef          = id.AssetIDFromRef
+	WorkspaceIDFromRef = accountdomain.WorkspaceIDFromRef
+)
 
 var ErrInvalidID = id.ErrInvalidID
 

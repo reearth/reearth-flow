@@ -1,0 +1,43 @@
+[package]
+description = "Re:Earth Flow runtime"
+name = "reearth-flow-runtime"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+reearth-flow-action-log.workspace = true
+reearth-flow-common.workspace = true
+reearth-flow-eval-expr.workspace = true
+reearth-flow-state.workspace = true
+reearth-flow-storage.workspace = true
+reearth-flow-types.workspace = true
+
+async-stream.workspace = true
+async-trait.workspace = true
+chrono.workspace = true
+crossbeam.workspace = true
+futures.workspace = true
+futures-util.workspace = true
+nutype.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
+petgraph.workspace = true
+rayon.workspace = true
+regex.workspace = true
+rmp-serde.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+bytes.workspace = true

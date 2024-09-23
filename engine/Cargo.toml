@@ -1,0 +1,164 @@
+[workspace]
+members = [
+  "cli",
+  "plateau-gis-quality-checker/src-tauri",
+  "runtime/*",
+  "worker",
+]
+
+default-members = ["runtime/*"]
+
+resolver = "2"
+
+[workspace.package]
+authors = ["Re:Earth Flow Contributors"]
+edition = "2021"
+exclude = ["benches/", "test-data/", "testdata/"]
+homepage = "https://github.com/reearth/reearth-flow"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/reearth/reearth-flow"
+rust-version = "1.81" # Remember to update clippy.toml as well
+version = "0.0.1"
+
+[profile.dev]
+opt-level = 0
+
+# Like release, but with full debug symbols and with stack unwinds. Useful for e.g. `perf`.
+[profile.debug-fast]
+debug = true
+incremental = false
+inherits = "release"
+panic = "unwind"
+strip = "none"
+
+# Optimized release profile
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = 3
+panic = "abort"
+strip = true
+
+[profile.release-lto]
+codegen-units = 8
+inherits = "release"
+lto = "fat"
+
+[workspace.dependencies]
+reearth-flow-action-log = { path = "runtime/action-log" }
+reearth-flow-action-plateau-processor = { path = "runtime/action-plateau-processor" }
+reearth-flow-action-processor = { path = "runtime/action-processor" }
+reearth-flow-action-sink = { path = "runtime/action-sink" }
+reearth-flow-action-source = { path = "runtime/action-source" }
+reearth-flow-common = { path = "runtime/common" }
+reearth-flow-eval-expr = { path = "runtime/eval-expr" }
+reearth-flow-geometry = { path = "runtime/geometry" }
+reearth-flow-macros = { path = "runtime/macros" }
+reearth-flow-runner = { path = "runtime/runner" }
+reearth-flow-runtime = { path = "runtime/runtime" }
+reearth-flow-state = { path = "runtime/state" }
+reearth-flow-storage = { path = "runtime/storage" }
+reearth-flow-telemetry = { path = "runtime/telemetry" }
+reearth-flow-types = { path = "runtime/types" }
+
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8", features = ["serde", "serde_json"] }
+nusamai-geometry = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8", features = ["serde"] }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8" }
+nusamai-mvt = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8", features = ["serde"] }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc8" }
+
+cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs.git" }
+
+Inflector = "0.11.4"
+ahash = "0.8.11"
+approx = "0.5.1"
+async-recursion = "1.1.1"
+async-stream = "0.3.5"
+async-trait = "0.1.82"
+async_zip = { version = "0.0.17", features = ["full"] }
+base64 = "0.22.1"
+byteorder = "1.5.0"
+bytes = { version = "1.7.2", features = ["serde"] }
+chrono = { version = "0.4.38", features = ["serde"] }
+clap = { version = "4.5.18", features = ["env", "string"] }
+clipper-sys = "0.7.2"
+color-eyre = "0.6.3"
+colored = "2.1.0"
+colorsys = "0.6.7"
+crossbeam = "0.8.4"
+csv = "1.3.0"
+directories = "5.0.1"
+earcut = "0.4.1"
+float_next_after = "1.0.0"
+futures = "0.3.30"
+futures-util = "0.3.30"
+geojson = "0.24.1"
+hashbrown = "0.14.5"
+home = "0.5.9"
+image = { version = "0.25.2", default-features = false, features = ["jpeg", "png", "rayon", "tiff", "webp"] }
+indexmap = "2.5.0"
+indoc = "2.0.5"
+itertools = "0.13.0"
+jsonpath_lib = "0.3.0"
+libxml = "0.3.3"
+nalgebra = "0.33.0"
+nalgebra-glm = "0.19.0"
+num-traits = "0.2.19"
+nutype = { version = "0.5.0", features = ["schemars08", "serde"] }
+object_store = "0.11.0"
+once_cell = "1.20.0"
+opendal = { version = "0.50.0", features = ["layers-metrics", "services-fs", "services-gcs", "services-http"] }
+opentelemetry = { version = "0.25.0", default-features = false, features = ["metrics", "trace"] }
+opentelemetry-otlp = { version = "0.25.0", default-features = false, features = ["grpc-tonic", "metrics", "trace"] }
+opentelemetry-semantic-conventions = "0.25.0"
+opentelemetry-stdout = { version = "0.25.0", default-features = false, features = ["metrics", "trace"] }
+opentelemetry_sdk = { version = "0.25.0", default-features = false, features = ["metrics", "rt-tokio", "trace"] }
+parking_lot = "0.12.3"
+petgraph = "0.6.5"
+pretty_assertions = "1.4.1"
+quick-xml = "0.36.2"
+rand = "0.8.5"
+rayon = "1.10.0"
+regex = "1.10.6"
+reqwest = { version = "0.12.7", default-features = false, features = ["blocking", "rustls-tls"] }
+rhai = { version = "1.19.0", features = ["internals", "metadata", "serde", "sync"] }
+rmp-serde = "1.3.0"
+robust = "1.1.0"
+rstar = "0.12.0"
+rstest = "0.22.0"
+rust_xlsxwriter = "0.77.0"
+schemars = { version = "0.8.21", features = ["uuid1"] }
+serde = { version = "1.0.210", features = ["derive"] }
+serde_derive = "1.0.210"
+serde_json = { version = "1.0.128", features = ["arbitrary_precision"] }
+serde_with = "3.9.0"
+serde_yaml = "0.9.34"
+sha2 = "0.10.8"
+slog = { version = "2.7.0", features = ["max_level_trace", "release_max_level_trace"] }
+slog-async = "2.8.0"
+slog-term = "2.9.1"
+sloggers = { version = "2.2.0", default-features = false }
+strum = "0.26.3"
+strum_macros = "0.26.4"
+tempfile = "3.12.0"
+thiserror = "1.0.64"
+time = { version = "0.3.36", features = ["formatting"] }
+tokio = { version = "1.38.1", features = ["full", "time"] }
+tokio-stream = { version = "0.1.16", features = ["sync"] }
+tokio-util = { version = "0.7.12", features = ["full"] }
+toml = "0.8.19"
+tracing = "0.1.40"
+tracing-opentelemetry = { version = "0.26.0", default-features = false, features = ["metrics", "tracing-log"] }
+tracing-subscriber = { version = "0.3.18", features = [
+  "env-filter",
+  "std",
+  "time",
+] }
+url = "2.5.2"
+uuid = { version = "1.10.0", features = [
+  "fast-rng",
+  "macro-diagnostics",
+  "serde",
+  "v4",
+] }

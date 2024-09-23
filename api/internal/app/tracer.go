@@ -59,7 +59,6 @@ func initJaegerTracer(conf *config.Config) io.Closer {
 		jaegercfg.Logger(jLogger),
 		jaegercfg.Metrics(jMetricsFactory),
 	)
-
 	if err != nil {
 		log.Fatalf("Could not initialize jaeger tracer: %s\n", err.Error())
 	}

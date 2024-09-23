@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
@@ -50,7 +51,7 @@ func getUser(ctx context.Context, c echo.Context, multiUser accountinterfaces.Us
 	au := adapter.GetAuthInfo(ctx)
 	if au != nil {
 		u, err := multiUser.FetchBySub(ctx, au.Sub)
-		if err != nil && err != rerror.ErrNotFound {
+		if err != nil && !errors.Is(err, rerror.ErrNotFound) {
 			return nil, err
 		}
 		if u != nil {
