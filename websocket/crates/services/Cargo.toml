@@ -1,6 +1,6 @@
 [package]
-description = "Re:Earth Flow Websocket infra library"
-name = "flow-websocket-infra"
+description = "Re:Earth Flow Websocket services library"
+name = "flow-websocket-services"
 
 authors.workspace = true
 edition.workspace = true
@@ -12,24 +12,16 @@ version.workspace = true
 
 [dependencies]
 flow-websocket-domain.workspace = true
+flow-websocket-infra.workspace = true
 
 async-trait.workspace = true
 axum.workspace = true
 axum-extra.workspace = true
 axum-macros.workspace = true
 chrono.workspace = true
-google-cloud-storage.workspace = true
-lru.workspace = true
-redis.workspace = true
-rslock.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-tempfile.workspace = true
-thiserror.workspace = true
 tokio.workspace = true
 tower.workspace = true
 tower-http.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
 uuid.workspace = true
-yrs.workspace = true

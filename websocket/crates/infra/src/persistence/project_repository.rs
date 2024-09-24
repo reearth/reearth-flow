@@ -83,7 +83,7 @@ pub struct ProjectGcsRepository {
 }
 
 impl ProjectGcsRepository {
-    fn _new(client: GcsClient) -> Self {
+    fn new(client: GcsClient) -> Self {
         Self { client }
     }
 }
@@ -115,6 +115,15 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectGcsRepository 
         let path = format!("snapshot/{}:latest_snapshot_state", project_id);
         let state = self.client.download(path).await?;
         Ok(state)
+    }
+
+    async fn update_snapshot(&self, _snapshot: ProjectSnapshot) -> Result<(), Box<dyn Error>> {
+        // Implementation details would depend on your storage solution
+        // For example, with GCS, you might:
+        // 1. Serialize the snapshot
+        // 2. Upload the serialized data to GCS, overwriting the existing file
+        // 3. Update any metadata as necessary
+        unimplemented!("update_snapshot needs to be implemented")
     }
 }
 

@@ -10,7 +10,7 @@ exclude = ["benches/", "test-data/", "testdata/"]
 homepage = "https://github.com/reearth/reearth-flow/websocket"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow/websocket"
-rust-version = "1.78"
+rust-version = "1.81"
 version = "0.1.0"
 
 [profile.dev]
@@ -34,12 +34,15 @@ strip = true
 
 [workspace.dependencies]
 flow-websocket-domain = { path = "crates/domain" }
+flow-websocket-infra = { path = "crates/infra" }
+flow-websocket-services = { path = "crates/services" }
 
 async-trait = "0.1.80"
 axum = { version = "0.7", features = ["ws"] }
 axum-extra = { version = "0.9", features = ["typed-header"] }
 axum-macros = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
+dashmap = "5.4.0" 
 google-cloud-storage = "0.18"
 lru = "0.12.4"
 redis = { version = "0.25.4", features = ["aio", "tokio-comp"] }
