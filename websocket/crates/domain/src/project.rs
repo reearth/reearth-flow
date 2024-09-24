@@ -1,6 +1,10 @@
 use crate::repository::ProjectSnapshotRepository;
-use crate::snapshot::{ObjectDelete, ObjectTenant, ProjectMetadata, ProjectSnapshot};
+use crate::snapshot::{
+    ObjectDelete, ObjectTenant, ProjectMetadata, ProjectSnapshot, SnapshotState,
+};
 use crate::utils::generate_id;
+
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use thiserror::Error;
@@ -125,29 +129,32 @@ impl ProjectEditingSession {
     ) -> Result<(), ProjectEditingSessionError<E>> {
         self.merge_updates().await?;
 
-        let metadata = ProjectMetadata {
-            id: generate_id(14, "snap"),
-            project_id: self.project_id.clone(),
-            session_id: self.session_id.clone(),
-            name: data.name.unwrap_or_default(),
-            path: String::new(),
-        };
+        let now = Utc::now();
 
-        let snapshot = ProjectSnapshot {
-            metadata,
-            created_by: data.created_by.clone(),
-            changes_by: vec![], // populate changes_by appropriately
-            tenant: ObjectTenant {
+        let metadata = ProjectMetadata::new(
+            generate_id(14, "snap"),
+            self.project_id.clone(),
+            self.session_id.clone(),
+            data.name.unwrap_or_default(),
+            String::new(), // path
+        );
+
+        let state = SnapshotState::new(
+            data.created_by,
+            vec![],
+            ObjectTenant {
                 id: "tenant_id_example".to_string(),
                 key: "tenant_key_example".to_string(),
             },
-            delete: ObjectDelete {
+            ObjectDelete {
                 deleted: false,
                 delete_after: None,
             },
-            created_at: None,
-            updated_at: None,
-        };
+            Some(now), // created_at
+            None,      // updated_at
+        );
+
+        let snapshot = ProjectSnapshot::new(metadata, state);
 
         snapshot_repo.create_snapshot(snapshot).await?;
         Ok(())

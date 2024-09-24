@@ -41,8 +41,7 @@ impl ProjectMetadata {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ProjectSnapshot {
-    pub metadata: ProjectMetadata,
+pub struct SnapshotState {
     pub created_by: Option<String>,
     pub changes_by: Vec<String>,
     pub tenant: ObjectTenant,
@@ -51,9 +50,8 @@ pub struct ProjectSnapshot {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
-impl ProjectSnapshot {
+impl SnapshotState {
     pub fn new(
-        metadata: ProjectMetadata,
         created_by: Option<String>,
         changes_by: Vec<String>,
         tenant: ObjectTenant,
@@ -62,7 +60,6 @@ impl ProjectSnapshot {
         updated_at: Option<DateTime<Utc>>,
     ) -> Self {
         Self {
-            metadata,
             created_by,
             changes_by,
             tenant,
@@ -70,5 +67,17 @@ impl ProjectSnapshot {
             created_at,
             updated_at,
         }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ProjectSnapshot {
+    pub metadata: ProjectMetadata,
+    pub state: SnapshotState,
+}
+
+impl ProjectSnapshot {
+    pub fn new(metadata: ProjectMetadata, state: SnapshotState) -> Self {
+        Self { metadata, state }
     }
 }

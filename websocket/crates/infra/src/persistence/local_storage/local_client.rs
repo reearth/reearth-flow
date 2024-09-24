@@ -51,6 +51,7 @@ impl LocalClient {
         &self,
         path: String,
         data: &T,
+        overwrite: bool,
     ) -> io::Result<()> {
         let full_path = self.get_full_path(&path);
         self.lock_file(&full_path).await;
@@ -62,7 +63,7 @@ impl LocalClient {
             let file = OpenOptions::new()
                 .write(true)
                 .create(true)
-                .append(true)
+                .append(!overwrite)
                 .open(&full_path)
                 .await?;
             let mut writer = BufWriter::new(file);
@@ -142,7 +143,7 @@ mod tests {
 
         // Test upload
         client
-            .upload("test_file.json".to_string(), &test_data)
+            .upload("test_file.json".to_string(), &test_data, true)
             .await?;
 
         // Test download
@@ -186,7 +187,7 @@ mod tests {
             let client = client.clone();
             async move {
                 client
-                    .upload("concurrent_test.json".to_string(), &test_data)
+                    .upload("concurrent_test.json".to_string(), &test_data, true)
                     .await
             }
         });

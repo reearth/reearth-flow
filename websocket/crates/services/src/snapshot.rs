@@ -1,9 +1,11 @@
 use async_trait::async_trait;
 use chrono::Utc;
-use flow_websocket_domain::snapshot::{ProjectSnapshot, ProjectMetadata, ObjectDelete, ObjectTenant};
 use flow_websocket_domain::repository::ProjectSnapshotRepository;
-use std::sync::Arc;
+use flow_websocket_domain::snapshot::{
+    ObjectDelete, ObjectTenant, ProjectMetadata, ProjectSnapshot,
+};
 use std::error::Error;
+use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct SnapshotService {
@@ -17,40 +19,58 @@ impl SnapshotService {
         }
     }
 
-    pub async fn create_snapshot(&self, data: CreateSnapshotData) -> Result<ProjectSnapshot, Box<dyn Error>> {
+    pub async fn create_snapshot(
+        &self,
+        data: CreateSnapshotData,
+    ) -> Result<ProjectSnapshot, Box<dyn Error>> {
         let snapshot_id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
-        let snapshot = ProjectSnapshot {
-            metadata: ProjectMetadata {
-                id: snapshot_id.clone(),
-                project_id: data.project_id.clone(),
-                session_id: data.session_id,
-                name: data.name.unwrap_or_default(),
-                path: String::new(),
-            },
-            created_by: data.created_by,
-            changes_by: data.changes_by,
-            tenant: data.tenant,
-            delete: ObjectDelete {
+        let metadata = ProjectMetadata::new(
+            snapshot_id.clone(),
+            data.project_id.clone(),
+            data.session_id,
+            data.name.unwrap_or_default(),
+            String::new(),
+        );
+
+        let state = SnapshotState::new(
+            data.created_by,
+            data.changes_by,
+            data.tenant,
+            ObjectDelete {
                 deleted: false,
                 delete_after: None,
             },
-            created_at: Some(now),
-            updated_at: Some(now),
-        };
+            Some(now),
+            Some(now),
+        );
 
-        self.snapshot_repository.create_snapshot(snapshot.clone()).await?;
+        let snapshot = ProjectSnapshot::new(metadata, state);
+
+        self.snapshot_repository
+            .create_snapshot(snapshot.clone())
+            .await?;
 
         Ok(snapshot)
     }
 
-    pub async fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<ProjectSnapshot>, Box<dyn Error>> {
-        self.snapshot_repository.get_latest_snapshot(project_id).await
+    pub async fn get_latest_snapshot(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<ProjectSnapshot>, Box<dyn Error>> {
+        self.snapshot_repository
+            .get_latest_snapshot(project_id)
+            .await
     }
 
-    pub async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Box<dyn Error>> {
-        self.snapshot_repository.get_latest_snapshot_state(project_id).await
+    pub async fn get_latest_snapshot_state(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<u8>, Box<dyn Error>> {
+        self.snapshot_repository
+            .get_latest_snapshot_state(project_id)
+            .await
     }
 }
 
@@ -60,12 +80,23 @@ impl ProjectSnapshotRepository for SnapshotService {
         self.snapshot_repository.create_snapshot(snapshot).await
     }
 
-    async fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<ProjectSnapshot>, Box<dyn Error>> {
-        self.snapshot_repository.get_latest_snapshot(project_id).await
+    async fn get_latest_snapshot(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<ProjectSnapshot>, Box<dyn Error>> {
+        self.snapshot_repository
+            .get_latest_snapshot(project_id)
+            .await
     }
 
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Box<dyn Error>> {
-        self.snapshot_repository.get_latest_snapshot_state(project_id).await
+        self.snapshot_repository
+            .get_latest_snapshot_state(project_id)
+            .await
+    }
+
+    async fn update_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Box<dyn Error>> {
+        self.snapshot_repository.update_snapshot(snapshot).await
     }
 }
 

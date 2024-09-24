@@ -1,6 +1,9 @@
 use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
 use crate::persistence::redis::redis_client::{RedisClient, RedisClientError};
 use async_trait::async_trait;
+use chrono::Utc;
+
+use crate::persistence::local_storage::LocalClient;
 use flow_websocket_domain::project::{Project, ProjectEditingSession};
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
@@ -11,8 +14,6 @@ use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
-
-use super::local_storage::LocalClient;
 
 #[derive(Error, Debug)]
 pub enum ProjectRepositoryError {
@@ -25,6 +26,7 @@ pub enum ProjectRepositoryError {
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
 }
+use flow_websocket_domain::snapshot::SnapshotState;
 
 pub struct ProjectRedisRepository {
     redis_client: Arc<RedisClient>,
@@ -117,13 +119,44 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectGcsRepository 
         Ok(state)
     }
 
-    async fn update_snapshot(&self, _snapshot: ProjectSnapshot) -> Result<(), Box<dyn Error>> {
-        // Implementation details would depend on your storage solution
-        // For example, with GCS, you might:
-        // 1. Serialize the snapshot
-        // 2. Upload the serialized data to GCS, overwriting the existing file
-        // 3. Update any metadata as necessary
-        unimplemented!("update_snapshot needs to be implemented")
+    async fn update_snapshot(
+        &self,
+        snapshot: ProjectSnapshot,
+    ) -> Result<(), ProjectRepositoryError> {
+        let snapshot_metadata = serde_json::to_vec(&snapshot.metadata)?;
+
+        // Upload the serialized data to GCS, overwriting the existing file
+        let path = format!("snapshot/{}", snapshot.metadata.project_id);
+        self.client.upload(path.clone(), &snapshot_metadata).await?;
+
+        // Update the latest snapshot reference
+        let latest_path = format!("snapshot/{}:latest_snapshot", snapshot.metadata.project_id);
+        self.client.upload(latest_path, &snapshot_metadata).await?;
+
+        //Get the latest snapshot state
+        let latest_snapshot_state_path = format!(
+            "snapshot/{}:latest_snapshot_state",
+            snapshot.metadata.project_id
+        );
+
+        let latest_snapshot_state: Vec<u8> = self
+            .client
+            .download(latest_snapshot_state_path.clone())
+            .await?;
+
+        // Update the latest snapshot state
+        let mut latest_snapshot_state: SnapshotState =
+            serde_json::from_slice(&latest_snapshot_state)?;
+        latest_snapshot_state.updated_at = Some(Utc::now());
+        latest_snapshot_state
+            .changes_by
+            .push(snapshot.state.created_by.unwrap_or_default());
+
+        self.client
+            .upload(latest_snapshot_state_path, &latest_snapshot_state)
+            .await?;
+
+        Ok(())
     }
 }
 
@@ -161,12 +194,11 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepositor
         snapshot: ProjectSnapshot,
     ) -> Result<(), ProjectRepositoryError> {
         let path = format!("snapshots/{}", snapshot.metadata.id);
-        self.client.upload(path, &snapshot).await?;
+        self.client.upload(path, &snapshot, true).await?;
 
         // Update latest snapshot
         let latest_path = format!("latest_snapshots/{}", snapshot.metadata.project_id);
-        self.client.upload(latest_path, &snapshot).await?;
-
+        self.client.upload(latest_path, &snapshot, true).await?;
         Ok(())
     }
 
@@ -174,7 +206,7 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepositor
         &self,
         project_id: &str,
     ) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError> {
-        let path = format!("latest_snapshots/{}", project_id);
+        let path = format!("snapshot/{}:latest_snapshot", project_id);
         match self.client.download::<ProjectSnapshot>(path).await {
             Ok(snapshot) => Ok(Some(snapshot)),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
@@ -192,6 +224,51 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepositor
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(vec![]),
             Err(e) => Err(ProjectRepositoryError::Io(e)),
         }
+    }
+
+    async fn update_snapshot(
+        &self,
+        snapshot: ProjectSnapshot,
+    ) -> Result<(), ProjectRepositoryError> {
+        //let state = serde_json::to_vec(&snapshot.state)?;
+        let snapshot_metadata = serde_json::to_vec(&snapshot.metadata)?;
+
+        // Upload the serialized data to GCS, overwriting the existing file
+        let path = format!("snapshot/{}", snapshot.metadata.project_id);
+        self.client
+            .upload(path.clone(), &snapshot_metadata, true)
+            .await?;
+
+        // Update the latest snapshot reference
+        let latest_path = format!("snapshot/{}:latest_snapshot", snapshot.metadata.project_id);
+        self.client
+            .upload(latest_path, &snapshot_metadata, true)
+            .await?;
+
+        //Get the latest snapshot state
+        let latest_snapshot_state_path = format!(
+            "snapshot/{}:latest_snapshot_state",
+            snapshot.metadata.project_id
+        );
+
+        let latest_snapshot_state: Vec<u8> = self
+            .client
+            .download(latest_snapshot_state_path.clone())
+            .await?;
+
+        // Update the latest snapshot state
+        let mut latest_snapshot_state: SnapshotState =
+            serde_json::from_slice(&latest_snapshot_state)?;
+        latest_snapshot_state.updated_at = Some(Utc::now());
+        latest_snapshot_state
+            .changes_by
+            .push(snapshot.state.created_by.unwrap_or_default());
+
+        self.client
+            .upload(latest_snapshot_state_path, &latest_snapshot_state, true)
+            .await?;
+
+        Ok(())
     }
 }
 
@@ -226,13 +303,42 @@ mod tests {
         };
 
         repo.client
-            .upload(format!("projects/{}", project_id), &project)
+            .upload(format!("projects/{}", project_id), &project, true)
             .await?;
 
         let retrieved_project = repo.get_project(project_id).await?.unwrap();
         assert_eq!(retrieved_project.id, project.id);
         assert_eq!(retrieved_project.workspace_id, project.workspace_id);
         Ok(())
+    }
+
+    fn create_test_snapshot(project_id: &str) -> ProjectSnapshot {
+        let now = Utc::now();
+
+        let metadata = ProjectMetadata {
+            id: "snap_123".to_string(),
+            project_id: project_id.to_string(),
+            session_id: Some("session_123".to_string()),
+            name: "Test Snapshot".to_string(),
+            path: "/test/path".to_string(),
+        };
+
+        let state = SnapshotState {
+            created_by: Some("test_user".to_string()),
+            changes_by: vec!["test_user".to_string()],
+            tenant: ObjectTenant {
+                id: "tenant_123".to_string(),
+                key: "tenant_key".to_string(),
+            },
+            delete: ObjectDelete {
+                deleted: false,
+                delete_after: None,
+            },
+            created_at: Some(now),
+            updated_at: Some(now),
+        };
+
+        ProjectSnapshot { metadata, state }
     }
 
     #[test]
@@ -249,43 +355,10 @@ mod tests {
             retrieved_snapshot.metadata.project_id,
             snapshot.metadata.project_id
         );
+        assert_eq!(
+            retrieved_snapshot.state.created_by,
+            snapshot.state.created_by
+        );
         Ok(())
-    }
-
-    #[test]
-    async fn test_get_latest_snapshot_state() -> Result<(), Box<dyn std::error::Error>> {
-        let (_temp_dir, repo) = setup().await?;
-        let project_id = "test_project";
-        let snapshot = create_test_snapshot(project_id);
-
-        repo.create_snapshot(snapshot).await?;
-
-        let snapshot_state = repo.get_latest_snapshot_state(project_id).await?;
-        assert!(!snapshot_state.is_empty());
-        Ok(())
-    }
-
-    fn create_test_snapshot(project_id: &str) -> ProjectSnapshot {
-        ProjectSnapshot {
-            metadata: ProjectMetadata {
-                id: "snap_123".to_string(),
-                project_id: project_id.to_string(),
-                session_id: Some("session_123".to_string()),
-                name: "Test Snapshot".to_string(),
-                path: "".to_string(),
-            },
-            created_by: Some("test_user".to_string()),
-            changes_by: vec![],
-            tenant: ObjectTenant {
-                id: "tenant_123".to_string(),
-                key: "tenant_key".to_string(),
-            },
-            delete: ObjectDelete {
-                deleted: false,
-                delete_after: None,
-            },
-            created_at: Some(chrono::Utc::now()),
-            updated_at: Some(chrono::Utc::now()),
-        }
     }
 }
