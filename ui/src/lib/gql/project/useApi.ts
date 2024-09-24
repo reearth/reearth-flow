@@ -13,14 +13,11 @@ import {
 import {
   CreateProjectInput,
   InputWorkflow,
-  InputWorkflowEdge,
-  InputWorkflowNode,
   UpdateProjectInput,
 } from "../__gen__/graphql";
+import { toGQLWorkflow } from "../convert";
 
 import { useQueries } from "./useQueries";
-
-const DEFAULT_PORT = "default";
 
 export const useProject = () => {
   const { toast } = useToast();
@@ -108,37 +105,7 @@ export const useProject = () => {
   ): Promise<RunProject> => {
     const { mutateAsync, ...rest } = runProjectMutation;
 
-    const gqlWorkflow: InputWorkflow = {
-      id: projectId,
-      name: "test",
-      graphs: [],
-      entryGraphId: workflows[0].id,
-    };
-    for (const w of workflows) {
-      const nodes: InputWorkflowNode[] =
-        w.nodes?.map((node) => ({
-          id: node.id,
-          name: node.data.name ?? "undefined node",
-          type: node.type,
-          position: node.position,
-          parameters: node.data.params,
-        })) ?? [];
-      const edges: InputWorkflowEdge[] =
-        w.edges?.map((edge) => ({
-          id: edge.id,
-          from: edge.source,
-          to: edge.target,
-          fromPort: edge.sourceHandle ?? DEFAULT_PORT,
-          toPort: edge.targetHandle ?? DEFAULT_PORT,
-        })) ?? [];
-      gqlWorkflow.graphs.push({
-        id: w.id,
-        name: w.name ?? "undefined",
-        nodes: nodes,
-        edges: edges,
-      });
-    }
-
+    const gqlWorkflow: InputWorkflow = toGQLWorkflow({ projectId, workflows });
     console.log("gqlWorkflow", gqlWorkflow);
 
     try {

@@ -8,12 +8,17 @@ import { memo, useState } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { Workflow } from "@flow/types";
 
 import { DeployDialog } from "./components";
 
 const tooltipOffset = 6;
 
-const ActionBar = () => {
+type Props = {
+  onDeploymentReadyWorkflows: () => Workflow[];
+};
+
+const ActionBar: React.FC<Props> = ({ onDeploymentReadyWorkflows }) => {
   const t = useT();
 
   const [showDialog, setShowDialog] = useState<"deploy" | undefined>(undefined);
@@ -54,7 +59,10 @@ const ActionBar = () => {
         </div>
       </div>
       {showDialog === "deploy" && (
-        <DeployDialog setShowDialog={setShowDialog} />
+        <DeployDialog
+          setShowDialog={setShowDialog}
+          onDeploymentReadyWorkflows={onDeploymentReadyWorkflows}
+        />
       )}
     </>
   );

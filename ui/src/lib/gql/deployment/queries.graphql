@@ -8,21 +8,6 @@ fragment Deployment on Deployment {
   updatedAt
 }
 
-fragment Job on Job {
-  id
-  deploymentId
-  workspaceId
-  status
-  startedAt
-  completedAt
-  # deployment{
-  #   ...Deployment
-  # }
-  # workspace{
-  #   ...Workspace
-  # }
-}
-
 mutation CreateDeployment($input: CreateDeploymentInput!) {
   createDeployment(input: $input) {
     deployment {
@@ -49,24 +34,5 @@ query GetDeployments($workspaceId: ID!, $pagination: Pagination) {
       endCursor
       hasNextPage
     }
-  }
-}
-
-query GetJobs($workspaceId: ID!, $pagination: Pagination) {
-  jobs(workspaceId: $workspaceId, pagination: $pagination) {
-    totalCount
-    nodes {
-      ...Job
-    }
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
-  }
-}
-
-query GetJob($id: ID!) {
-  job(id: $id) {
-    ...Job
   }
 }

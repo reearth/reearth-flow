@@ -4,7 +4,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
 import { Project } from "@flow/types";
@@ -23,21 +22,11 @@ enum ProjectQueryKeys {
   GetProject = "getProject",
 }
 
+const PROJECT_FETCH_AMOUNT = 5;
+
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
-
-  const createNewProjectObject = useCallback(
-    (project: ProjectFragment): Project => ({
-      id: project.id,
-      name: project.name,
-      createdAt: project.createdAt,
-      updatedAt: project.updatedAt,
-      description: project.description,
-      workspaceId: project.workspaceId,
-    }),
-    [],
-  );
 
   const createProjectMutation = useMutation({
     mutationFn: async (input: CreateProjectInput) => {
@@ -61,7 +50,7 @@ export const useQueries = () => {
       queryFn: async ({ pageParam }) => {
         const data = await graphQLContext?.GetProjects({
           workspaceId: workspaceId ?? "",
-          first: 5,
+          first: PROJECT_FETCH_AMOUNT,
           after: pageParam,
         });
         if (!data) return;
@@ -160,3 +149,14 @@ export const useQueries = () => {
     useGetProjectByIdQuery,
   };
 };
+
+function createNewProjectObject(project: ProjectFragment): Project {
+  return {
+    id: project.id,
+    name: project.name,
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
+    description: project.description,
+    workspaceId: project.workspaceId,
+  };
+}
