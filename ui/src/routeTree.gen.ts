@@ -118,13 +118,77 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexRoute,
-  WorkspacesWorkspaceIdLazyRoute,
-  WorkspacesWorkspaceIdProjectsProjectIdLazyRoute,
-  WorkspacesWorkspaceIdRunsTabLazyRoute,
-  WorkspacesWorkspaceIdSettingsTabLazyRoute,
-})
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdLazyRoute
+  '/workspaces/$workspaceId/projects/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  '/workspaces/$workspaceId/runs/$tab': typeof WorkspacesWorkspaceIdRunsTabLazyRoute
+  '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabLazyRoute
+}
+
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdLazyRoute
+  '/workspaces/$workspaceId/projects/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  '/workspaces/$workspaceId/runs/$tab': typeof WorkspacesWorkspaceIdRunsTabLazyRoute
+  '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabLazyRoute
+}
+
+export interface FileRoutesById {
+  __root__: typeof rootRoute
+  '/': typeof IndexRoute
+  '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdLazyRoute
+  '/workspaces/$workspaceId/projects/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  '/workspaces/$workspaceId/runs/$tab': typeof WorkspacesWorkspaceIdRunsTabLazyRoute
+  '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabLazyRoute
+}
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/workspaces/$workspaceId'
+    | '/workspaces/$workspaceId/projects/$projectId'
+    | '/workspaces/$workspaceId/runs/$tab'
+    | '/workspaces/$workspaceId/settings/$tab'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/workspaces/$workspaceId'
+    | '/workspaces/$workspaceId/projects/$projectId'
+    | '/workspaces/$workspaceId/runs/$tab'
+    | '/workspaces/$workspaceId/settings/$tab'
+  id:
+    | '__root__'
+    | '/'
+    | '/workspaces/$workspaceId'
+    | '/workspaces/$workspaceId/projects/$projectId'
+    | '/workspaces/$workspaceId/runs/$tab'
+    | '/workspaces/$workspaceId/settings/$tab'
+  fileRoutesById: FileRoutesById
+}
+
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  WorkspacesWorkspaceIdLazyRoute: typeof WorkspacesWorkspaceIdLazyRoute
+  WorkspacesWorkspaceIdProjectsProjectIdLazyRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  WorkspacesWorkspaceIdRunsTabLazyRoute: typeof WorkspacesWorkspaceIdRunsTabLazyRoute
+  WorkspacesWorkspaceIdSettingsTabLazyRoute: typeof WorkspacesWorkspaceIdSettingsTabLazyRoute
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  WorkspacesWorkspaceIdLazyRoute: WorkspacesWorkspaceIdLazyRoute,
+  WorkspacesWorkspaceIdProjectsProjectIdLazyRoute:
+    WorkspacesWorkspaceIdProjectsProjectIdLazyRoute,
+  WorkspacesWorkspaceIdRunsTabLazyRoute: WorkspacesWorkspaceIdRunsTabLazyRoute,
+  WorkspacesWorkspaceIdSettingsTabLazyRoute:
+    WorkspacesWorkspaceIdSettingsTabLazyRoute,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 

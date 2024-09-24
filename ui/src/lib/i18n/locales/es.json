@@ -148,7 +148,6 @@
   "Failed to update the user": "Error al actualizar el usuario",
   "Password and Confirm password are not the same": "La contraseña y la confirmación de la contraseña no son iguales",
   "Failed to update the password": "Error al actualizar la contraseña",
-  "Failed to update email and name": "Error al actualizar el correo electrónico y el nombre",
   "New workspace": "Nuevo espacio de trabajo",
   "Workspace name": "Nombre del espacio de trabajo",
   "Workspace name...": "Nombre del espacio de trabajo...",
