@@ -16,6 +16,6 @@ export function generateTheme<
 }
 
 const ThemeObject = generateTheme();
-const Form = withTheme(ThemeObject);
+const ThemedForm = withTheme(ThemeObject);
 
-export { Form };
+export { ThemedForm };
