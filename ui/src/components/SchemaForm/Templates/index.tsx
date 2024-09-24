@@ -8,6 +8,7 @@ import {
 import { BaseInputTemplate } from "./BaseInputTemplate";
 import { SubmitButton } from "./ButtonTemplates";
 import { DescriptionFieldTemplate } from "./DescriptionFieldTemplate";
+import { FieldTemplate } from "./FieldTemplate";
 import { TitleFieldTemplate } from "./TitleFieldTemplate";
 
 export function generateTemplates<
@@ -19,6 +20,7 @@ export function generateTemplates<
     TitleFieldTemplate,
     DescriptionFieldTemplate,
     BaseInputTemplate,
+    FieldTemplate,
     ButtonTemplates: {
       SubmitButton,
     },
