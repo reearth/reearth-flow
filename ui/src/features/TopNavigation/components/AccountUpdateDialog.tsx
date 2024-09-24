@@ -16,7 +16,7 @@ import {
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 
-type Errors = "failed" | "passwordNotSame" | "passwordFailed" | "emailFailed";
+type Errors = "failed" | "passwordNotSame" | "passwordFailed";
 
 type Props = {
   isOpen: boolean;
@@ -55,15 +55,17 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
       const { me: user } = await updateMe(input);
       if (!user) {
         setShowError("passwordFailed");
+        setLoading(false);
+        return;
       }
     }
 
     const input = { name, email };
     const { me: user } = await updateMe(input);
-    if (!user && showError === "passwordFailed") {
+    if (!user) {
       setShowError("failed");
-    } else {
-      setShowError("emailFailed");
+      setLoading(false);
+      return;
     }
     setLoading(false);
   };
@@ -132,7 +134,6 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
           {showError === "passwordNotSame" &&
             t("Password and Confirm password are not the same")}
           {showError === "passwordFailed" && t("Failed to update the password")}
-          {showError === "emailFailed" && t("Failed to update email and name")}
         </div>
         <DialogFooter>
           <Button

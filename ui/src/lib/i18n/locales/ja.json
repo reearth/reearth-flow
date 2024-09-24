@@ -148,7 +148,6 @@
   "Failed to update the user": "ユーザーの更新に失敗しました",
   "Password and Confirm password are not the same": "パスワードと確認用パスワードが一致しません",
   "Failed to update the password": "パスワードの更新に失敗しました",
-  "Failed to update email and name": "メールアドレスと名前の更新に失敗しました",
   "New workspace": "新規ワークスペース",
   "Workspace name": "ワークスペース名",
   "Workspace name...": "ワークスペース名...",
