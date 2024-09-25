@@ -6,6 +6,7 @@ import {
 } from "@rjsf/utils";
 
 import { ArrayFieldItemTemplate } from "./ArrayFieldItemTemplate";
+import { ArrayFieldTemplate } from "./ArrayFieldTemplate";
 import { BaseInputTemplate } from "./BaseInputTemplate";
 import {
   SubmitButton,
@@ -30,6 +31,7 @@ export function generateTemplates<
     BaseInputTemplate,
     FieldTemplate,
     ArrayFieldItemTemplate,
+    ArrayFieldTemplate,
     ButtonTemplates: {
       SubmitButton,
       AddButton,

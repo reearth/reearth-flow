@@ -38,7 +38,7 @@ const ArrayFieldItemTemplate = <
           {hasToolbar && (
             <div className="flex flex-row">
               {(hasMoveUp || hasMoveDown) && (
-                <div className="m-0 p-0">
+                <div>
                   <MoveUpButton
                     disabled={disabled || readonly || !hasMoveUp}
                     onClick={onReorderClick(index, index - 1)}
@@ -48,7 +48,7 @@ const ArrayFieldItemTemplate = <
                 </div>
               )}
               {(hasMoveUp || hasMoveDown) && (
-                <div className="m-0 p-0">
+                <div>
                   <MoveDownButton
                     disabled={disabled || readonly || !hasMoveDown}
                     onClick={onReorderClick(index, index + 1)}
@@ -58,7 +58,7 @@ const ArrayFieldItemTemplate = <
                 </div>
               )}
               {hasCopy && (
-                <div className="m-0 p-0">
+                <div>
                   <CopyButton
                     disabled={disabled || readonly}
                     onClick={onCopyIndexClick(index)}
@@ -68,7 +68,7 @@ const ArrayFieldItemTemplate = <
                 </div>
               )}
               {hasRemove && (
-                <div className="m-0 p-0">
+                <div>
                   <RemoveButton
                     disabled={disabled || readonly}
                     onClick={onDropIndexClick(index)}
