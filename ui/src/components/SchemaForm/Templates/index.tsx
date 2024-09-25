@@ -6,7 +6,14 @@ import {
 } from "@rjsf/utils";
 
 import { BaseInputTemplate } from "./BaseInputTemplate";
-import { SubmitButton } from "./ButtonTemplates";
+import {
+  SubmitButton,
+  AddButton,
+  CopyButton,
+  MoveDownButton,
+  MoveUpButton,
+  RemoveButton,
+} from "./ButtonTemplates";
 import { DescriptionFieldTemplate } from "./DescriptionFieldTemplate";
 import { FieldTemplate } from "./FieldTemplate";
 import { TitleFieldTemplate } from "./TitleFieldTemplate";
@@ -23,6 +30,11 @@ export function generateTemplates<
     FieldTemplate,
     ButtonTemplates: {
       SubmitButton,
+      AddButton,
+      CopyButton,
+      MoveDownButton,
+      MoveUpButton,
+      RemoveButton,
     },
   };
 }

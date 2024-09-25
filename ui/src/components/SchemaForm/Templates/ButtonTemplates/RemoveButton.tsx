@@ -1,0 +1,25 @@
+import { TrashIcon } from "@radix-ui/react-icons";
+import {
+  FormContextType,
+  IconButtonProps,
+  RJSFSchema,
+  StrictRJSFSchema,
+} from "@rjsf/utils";
+
+import { Button } from "@flow/components";
+
+const RemoveButton = <
+  T = any,
+  S extends StrictRJSFSchema = RJSFSchema,
+  F extends FormContextType = any,
+>(
+  props: IconButtonProps<T, S, F>,
+) => {
+  return (
+    <Button {...props}>
+      <TrashIcon />
+    </Button>
+  );
+};
+
+export { RemoveButton };
