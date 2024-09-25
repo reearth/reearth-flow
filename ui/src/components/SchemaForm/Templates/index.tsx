@@ -21,6 +21,7 @@ import { ErrorListTemplate } from "./ErrorListTemplate";
 import { FieldErrorTemplate } from "./FieldErrorTemplate";
 import { FieldHelpTemplate } from "./FieldHelpTemplate";
 import { FieldTemplate } from "./FieldTemplate";
+import { ObjectFieldTemplate } from "./ObjectFieldTemplate";
 import { TitleFieldTemplate } from "./TitleFieldTemplate";
 
 export function generateTemplates<
@@ -38,6 +39,7 @@ export function generateTemplates<
     ErrorListTemplate,
     FieldErrorTemplate,
     FieldHelpTemplate,
+    ObjectFieldTemplate,
     ButtonTemplates: {
       SubmitButton,
       AddButton,
