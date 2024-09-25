@@ -1,11 +1,9 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::time::Instant;
 
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reearth_flow_action_log::action_log;
 use reearth_flow_geometry::algorithm::bool_ops::BooleanOps;
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
@@ -112,7 +110,6 @@ impl Processor for GeometryDissolver {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let start = Instant::now();
         let Some(geometry) = &feature.geometry else {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
@@ -159,10 +156,6 @@ impl Processor for GeometryDissolver {
             }
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
         }
-        let span = ctx.info_span();
-        action_log!(
-            parent: span, ctx.logger.action_logger("dissolver"), "echo with feature = {:?}, duration = {:?}", feature.id, start.elapsed(),
-        );
         Ok(())
     }
 

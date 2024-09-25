@@ -25,12 +25,11 @@ pub mod is_convex;
 pub mod kernels;
 pub mod line_intersection;
 pub mod map_coords;
-pub mod proj;
 pub mod relate;
 pub mod remove_repeated_points;
 pub mod rotate_3d;
-pub mod simplify;
 pub mod sweep;
+pub mod transverse_mercator_proj;
 pub mod utils;
 pub mod winding_order;
 

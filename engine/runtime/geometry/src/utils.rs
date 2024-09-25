@@ -70,16 +70,15 @@ fn get_min_max<T: PartialOrd>(p: T, min: T, max: T) -> (T, T) {
     }
 }
 
-pub fn line_segment_distance<T, Z, C>(point: C, start: C, end: C) -> T
+pub fn line_segment_distance<T, Z>(
+    point: Coordinate<T, Z>,
+    start: Coordinate<T, Z>,
+    end: Coordinate<T, Z>,
+) -> T
 where
     T: CoordFloat,
     Z: CoordFloat,
-    C: Into<Coordinate<T, Z>>,
 {
-    let point = point.into();
-    let start = start.into();
-    let end = end.into();
-
     if start == end {
         return line_euclidean_length(Line::new_(point, start));
     }
@@ -363,4 +362,42 @@ pub(crate) fn rotate_3d_custom_axis(
             nalgebra::Point3::from(rotated_point)
         })
         .collect()
+}
+
+pub fn remove_redundant_vertices<Z: CoordFloat>(
+    line_string: &LineString<f64, Z>,
+    tolerance: f64,
+) -> LineString<f64, Z> {
+    let mut new_coords = Vec::new();
+    let coords = &line_string.coords().collect::<Vec<_>>();
+
+    if coords.len() < 3 {
+        return line_string.clone();
+    }
+
+    new_coords.push(*coords[0]);
+
+    for i in 1..coords.len() - 1 {
+        let prev = coords[i - 1];
+        let curr = coords[i];
+        let next = coords[i + 1];
+
+        if !is_colinear(prev, curr, next, tolerance) {
+            new_coords.push(*curr);
+        }
+    }
+
+    new_coords.push(*coords[coords.len() - 1]);
+    LineString::from(new_coords)
+}
+
+fn is_colinear<Z: CoordFloat>(
+    p1: &Coordinate<f64, Z>,
+    p2: &Coordinate<f64, Z>,
+    p3: &Coordinate<f64, Z>,
+    tolerance: f64,
+) -> bool {
+    let area =
+        ((p1.x * (p2.y - p3.y)) + (p2.x * (p3.y - p1.y)) + (p3.x * (p1.y - p2.y))).abs() / 2.0;
+    area < tolerance
 }

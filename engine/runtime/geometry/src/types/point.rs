@@ -368,17 +368,13 @@ where
     }
 }
 
-impl<T, Z> rstar::Point for Point<T, Z>
-where
-    T: num_traits::Float + rstar::RTreeNum + Debug + Default,
-    Z: num_traits::Float + rstar::RTreeNum + Debug + Default,
-{
-    type Scalar = T;
+impl rstar::Point for Point2D<f64> {
+    type Scalar = f64;
 
-    const DIMENSIONS: usize = 3;
+    const DIMENSIONS: usize = 2;
 
     fn generate(mut generator: impl FnMut(usize) -> Self::Scalar) -> Self {
-        Point::new_(generator(0), generator(1), Z::zero())
+        point!(x: generator(0), y:generator(1))
     }
 
     fn nth(&self, index: usize) -> Self::Scalar {
@@ -397,6 +393,33 @@ where
     }
 }
 
+impl rstar::Point for Point3D<f64> {
+    type Scalar = f64;
+
+    const DIMENSIONS: usize = 3;
+
+    fn generate(mut generator: impl FnMut(usize) -> Self::Scalar) -> Self {
+        Point::new_(generator(0), generator(1), generator(2))
+    }
+
+    fn nth(&self, index: usize) -> Self::Scalar {
+        match index {
+            0 => self.0.x,
+            1 => self.0.y,
+            2 => self.0.z,
+            _ => unreachable!(),
+        }
+    }
+    fn nth_mut(&mut self, index: usize) -> &mut Self::Scalar {
+        match index {
+            0 => &mut self.0.x,
+            1 => &mut self.0.y,
+            2 => &mut self.0.z,
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl<T, Z> Elevation for Point<T, Z>
 where
     T: CoordNum + Zero,
@@ -405,5 +428,11 @@ where
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.0.is_elevation_zero()
+    }
+}
+
+impl<Z: CoordFloat> Point<f64, Z> {
+    pub fn approx_eq(&self, other: &Point<f64, Z>, epsilon: f64) -> bool {
+        self.0.approx_eq(&other.0, epsilon)
     }
 }

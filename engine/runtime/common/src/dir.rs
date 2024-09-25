@@ -5,7 +5,7 @@ use directories::ProjectDirs;
 use crate::{uri::Uri, Error};
 
 pub fn project_output_dir(id: &str) -> crate::Result<String> {
-    let p = get_project_cache_dir_path("worker")?;
+    let p = get_project_cache_dir_path("engine")?;
     PathBuf::from(p)
         .join("output")
         .join(id)
