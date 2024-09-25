@@ -18,6 +18,8 @@ import {
 } from "./ButtonTemplates";
 import { DescriptionFieldTemplate } from "./DescriptionFieldTemplate";
 import { ErrorListTemplate } from "./ErrorListTemplate";
+import { FieldErrorTemplate } from "./FieldErrorTemplate";
+import { FieldHelpTemplate } from "./FieldHelpTemplate";
 import { FieldTemplate } from "./FieldTemplate";
 import { TitleFieldTemplate } from "./TitleFieldTemplate";
 
@@ -34,6 +36,8 @@ export function generateTemplates<
     ArrayFieldItemTemplate,
     ArrayFieldTemplate,
     ErrorListTemplate,
+    FieldErrorTemplate,
+    FieldHelpTemplate,
     ButtonTemplates: {
       SubmitButton,
       AddButton,
