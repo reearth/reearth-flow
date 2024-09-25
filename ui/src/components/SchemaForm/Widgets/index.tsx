@@ -10,6 +10,7 @@ import { CheckboxWidget } from "./CheckboxWidget";
 import { RadioWidget } from "./RadioWidget";
 import { RangeWidget } from "./RangeWidget";
 import { SelectWidget } from "./SelectWidget";
+import { TextareaWidget } from "./TextareaWidget";
 
 export function generateWidgets<
   T = any,
@@ -22,6 +23,7 @@ export function generateWidgets<
     RadioWidget,
     RangeWidget,
     SelectWidget,
+    TextareaWidget,
   };
 }
 
