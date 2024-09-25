@@ -1,5 +1,5 @@
 use crate::repository::ProjectSnapshotRepository;
-use crate::snapshot::{Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotState};
+use crate::snapshot::{Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotInfo};
 use crate::utils::generate_id;
 
 use chrono::Utc;
@@ -137,7 +137,7 @@ impl ProjectEditingSession {
             String::new(), // path
         );
 
-        let state = SnapshotState::new(
+        let state = SnapshotInfo::new(
             data.created_by,
             vec![],
             ObjectTenant {
@@ -181,4 +181,10 @@ impl ProjectEditingSession {
 pub struct SnapshotData {
     pub name: Option<String>,
     pub created_by: Option<String>,
+}
+
+impl SnapshotData {
+    pub fn new(name: Option<String>, created_by: Option<String>) -> Self {
+        Self { name, created_by }
+    }
 }

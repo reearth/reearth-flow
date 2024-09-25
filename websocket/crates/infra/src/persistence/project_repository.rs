@@ -8,7 +8,7 @@ use flow_websocket_domain::project::{Project, ProjectEditingSession};
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
 };
-use flow_websocket_domain::snapshot::ProjectSnapshot;
+use flow_websocket_domain::snapshot::{ProjectSnapshot, SnapshotInfo};
 use serde_json;
 use std::io;
 use std::path::PathBuf;
@@ -26,7 +26,6 @@ pub enum ProjectRepositoryError {
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
 }
-use flow_websocket_domain::snapshot::SnapshotState;
 
 pub struct ProjectRedisRepository {
     redis_client: Arc<RedisClient>,
@@ -145,12 +144,12 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectGcsRepository 
             .await?;
 
         // Update the latest snapshot state
-        let mut latest_snapshot_state: SnapshotState =
+        let mut latest_snapshot_state: SnapshotInfo =
             serde_json::from_slice(&latest_snapshot_state)?;
         latest_snapshot_state.updated_at = Some(Utc::now());
         latest_snapshot_state
             .changes_by
-            .push(snapshot.state.created_by.unwrap_or_default());
+            .push(snapshot.info.created_by.unwrap_or_default());
 
         self.client
             .upload(latest_snapshot_state_path, &latest_snapshot_state)
@@ -255,12 +254,12 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepositor
             .await?;
 
         // Update the latest snapshot state
-        let mut latest_snapshot_state: SnapshotState =
+        let mut latest_snapshot_state: SnapshotInfo =
             serde_json::from_slice(&latest_snapshot_state)?;
         latest_snapshot_state.updated_at = Some(Utc::now());
         latest_snapshot_state
             .changes_by
-            .push(snapshot.state.created_by.unwrap_or_default());
+            .push(snapshot.info.created_by.unwrap_or_default());
 
         self.client
             .upload(latest_snapshot_state_path, &latest_snapshot_state, true)
@@ -273,7 +272,7 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepositor
 #[cfg(test)]
 mod tests {
     use super::*;
-    use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant};
+    use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo};
     use tempfile::TempDir;
     use tokio::test;
 
@@ -321,7 +320,7 @@ mod tests {
             "/test/path".to_string(),
         );
 
-        let state = SnapshotState::new(
+        let info = SnapshotInfo::new(
             Some("test_user_abc".to_string()),
             vec!["test_user_abc".to_string()],
             ObjectTenant {
@@ -336,7 +335,7 @@ mod tests {
             Some(now),
         );
 
-        ProjectSnapshot { metadata, state }
+        ProjectSnapshot { metadata, info }
     }
 
     #[test]
