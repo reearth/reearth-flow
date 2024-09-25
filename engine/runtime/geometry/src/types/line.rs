@@ -229,12 +229,17 @@ impl PartialEq for Line2DFloat {
 
 impl Hash for Line2DFloat {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let precision = 0.001;
-        let start_x = (self.0.start.x * precision).round() as i64;
-        let start_y = (self.0.start.y * precision).round() as i64;
-        let end_x = (self.0.end.x * precision).round() as i64;
-        let end_y = (self.0.end.y * precision).round() as i64;
-        (start_x + start_y + end_x + end_y).hash(state);
+        let precision_inverse = 1000.0; // Inverse of epsilon used in PartialEq
+        let mut coords = [
+            (self.0.start.x * precision_inverse).round() as i64,
+            (self.0.start.y * precision_inverse).round() as i64,
+            (self.0.end.x * precision_inverse).round() as i64,
+            (self.0.end.y * precision_inverse).round() as i64,
+        ];
+        coords.sort(); // Ensure direction-independence
+        for coord in &coords {
+            coord.hash(state);
+        }
     }
 }
 
@@ -261,14 +266,19 @@ impl PartialEq for Line3DFloat {
 
 impl Hash for Line3DFloat {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let precision = 0.001;
-        let start_x = (self.0.start.x * precision).round() as i64;
-        let start_y = (self.0.start.y * precision).round() as i64;
-        let start_z = (self.0.start.z * precision).round() as i64;
-        let end_x = (self.0.end.x * precision).round() as i64;
-        let end_y = (self.0.end.y * precision).round() as i64;
-        let end_z = (self.0.end.z * precision).round() as i64;
-        (start_x + start_y + start_z + end_x + end_y + end_z).hash(state);
+        let precision_inverse = 1000.0; // Inverse of epsilon used in PartialEq
+        let mut coords = [
+            (self.0.start.x * precision_inverse).round() as i64,
+            (self.0.start.y * precision_inverse).round() as i64,
+            (self.0.start.z * precision_inverse).round() as i64,
+            (self.0.end.x * precision_inverse).round() as i64,
+            (self.0.end.y * precision_inverse).round() as i64,
+            (self.0.end.z * precision_inverse).round() as i64,
+        ];
+        coords.sort(); // Ensure direction-independence
+        for coord in &coords {
+            coord.hash(state);
+        }
     }
 }
 

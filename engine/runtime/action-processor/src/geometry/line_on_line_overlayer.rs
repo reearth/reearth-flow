@@ -1,6 +1,7 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
+use nusamai_projection::crs::EpsgCode;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::algorithm::intersects::Intersects;
 
@@ -27,7 +28,7 @@ use super::errors::GeometryProcessorError;
 pub static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
 pub static LINE_PORT: Lazy<Port> = Lazy::new(|| Port::new("line"));
 pub static COLLINEAR_PORT: Lazy<Port> = Lazy::new(|| Port::new("collinear"));
-const EPSILON: f64 = 0.1;
+const EPSILON: f64 = 0.001;
 
 #[derive(Debug, Clone, Default)]
 pub struct LineOnLineOverlayerFactory;
@@ -95,6 +96,7 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
 struct LineFeature {
     attributes: HashMap<uuid::Uuid, HashMap<Attribute, AttributeValue>>,
     overlap: u64,
+    epsg: Option<EpsgCode>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -277,6 +279,7 @@ impl LineOnLineOverlayer {
                                         attributes.insert(k.clone(), v.clone());
                                     }
                                     let line_feature = LineFeature {
+                                        epsg: feature.geometry.as_ref().and_then(|g| g.epsg),
                                         attributes: HashMap::from([(feature.id, attributes)]),
                                         overlap: 1,
                                     };
@@ -325,6 +328,7 @@ impl LineOnLineOverlayer {
                 }
             }
             if let Some(geometry) = feature.geometry.as_mut() {
+                geometry.epsg = line_feature.epsg;
                 geometry.value =
                     GeometryValue::FlowGeometry2D(Geometry2D::LineString(line.0.into()));
             }
