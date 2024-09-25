@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use nusamai_projection::{
     crs::*, ellipsoid::wgs84, etmerc::ExtendedTransverseMercatorProjection, jprect::JPRZone,
 };
-use reearth_flow_geometry::algorithm::{centroid::Centroid, proj::Projection};
+use reearth_flow_geometry::algorithm::{
+    centroid::Centroid, transverse_mercator_proj::TransverseMercatorProjection,
+};
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -131,7 +133,7 @@ impl Processor for Reprojector {
                     let mut geometry_value = v.clone();
                     for gml_geometry in &mut geometry_value.gml_geometries {
                         for polygon in &mut gml_geometry.polygons {
-                            polygon.projection(projection)?;
+                            polygon.project_forward(projection)?;
                         }
                     }
                     geometry.value = GeometryValue::CityGmlGeometry(geometry_value);
@@ -165,7 +167,7 @@ impl Processor for Reprojector {
                     let mut feature = feature.clone();
                     let mut geometry = geometry.clone();
                     let mut geos = geos.clone();
-                    geos.projection(&projection)?;
+                    geos.project_forward(&projection)?;
                     geometry.value = GeometryValue::FlowGeometry2D(geos);
                     geometry.epsg = epsg;
                     feature.geometry = Some(geometry);
@@ -198,7 +200,7 @@ impl Processor for Reprojector {
                     let mut feature = feature.clone();
                     let mut geometry = geometry.clone();
                     let mut geos = geos.clone();
-                    geos.projection(&projection)?;
+                    geos.project_forward(&projection)?;
                     geometry.value = GeometryValue::FlowGeometry3D(geos);
                     geometry.epsg = epsg;
                     feature.geometry = Some(geometry);

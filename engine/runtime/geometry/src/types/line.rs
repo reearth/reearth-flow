@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
 
 use approx::{AbsDiffEq, RelativeEq};
 use num_traits::Zero;
@@ -9,6 +10,8 @@ use crate::utils::{line_bounding_rect, point_line_euclidean_distance};
 use super::conversion::geojson::create_from_line_type;
 use super::coordinate::Coordinate;
 use super::coordnum::{CoordFloat, CoordNum};
+use super::line_string::{LineString2D, LineString3D};
+use super::point::{Point2D, Point3D};
 use super::traits::Elevation;
 use super::{no_value::NoValue, point::Point};
 
@@ -160,12 +163,8 @@ impl<T: AbsDiffEq<Epsilon = T> + CoordNum, Z: AbsDiffEq<Epsilon = Z> + CoordNum>
     }
 }
 
-impl<T, Z> rstar::RTreeObject for Line<T, Z>
-where
-    T: num_traits::Float + rstar::RTreeNum + CoordNum,
-    Z: num_traits::Float + rstar::RTreeNum + CoordNum,
-{
-    type Envelope = rstar::AABB<Point<T, Z>>;
+impl rstar::RTreeObject for Line2D<f64> {
+    type Envelope = rstar::AABB<Point2D<f64>>;
 
     fn envelope(&self) -> Self::Envelope {
         let bounding_rect = line_bounding_rect(*self);
@@ -173,12 +172,24 @@ where
     }
 }
 
-impl<T, Z> rstar::PointDistance for Line<T, Z>
-where
-    T: num_traits::Float + rstar::RTreeNum + CoordNum,
-    Z: num_traits::Float + rstar::RTreeNum + CoordNum,
-{
-    fn distance_2(&self, point: &Point<T, Z>) -> T {
+impl rstar::RTreeObject for Line3D<f64> {
+    type Envelope = rstar::AABB<Point3D<f64>>;
+
+    fn envelope(&self) -> Self::Envelope {
+        let bounding_rect = line_bounding_rect(*self);
+        rstar::AABB::from_corners(bounding_rect.min().into(), bounding_rect.max().into())
+    }
+}
+
+impl rstar::PointDistance for Line2D<f64> {
+    fn distance_2(&self, point: &Point2D<f64>) -> f64 {
+        let d = point_line_euclidean_distance(*point, *self);
+        d.powi(2)
+    }
+}
+
+impl rstar::PointDistance for Line3D<f64> {
+    fn distance_2(&self, point: &Point3D<f64>) -> f64 {
         let d = point_line_euclidean_distance(*point, *self);
         d.powi(2)
     }
@@ -192,5 +203,77 @@ where
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.start.is_elevation_zero() && self.end.is_elevation_zero()
+    }
+}
+
+impl<Z: CoordFloat> Line<f64, Z> {
+    pub fn approx_eq(&self, other: &Line<f64, Z>, epsilon: f64) -> bool {
+        self.start.approx_eq(&other.start, epsilon) && self.end.approx_eq(&other.end, epsilon)
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Line2DFloat(pub Line2D<f64>);
+
+impl Eq for Line2DFloat {}
+
+impl PartialEq for Line2DFloat {
+    fn eq(&self, other: &Self) -> bool {
+        let epsilon = 0.001;
+        (self.0.start.approx_eq(&other.0.start, epsilon)
+            && self.0.end.approx_eq(&other.0.end, epsilon))
+            || (self.0.start.approx_eq(&other.0.end, epsilon)
+                && self.0.end.approx_eq(&other.0.start, epsilon))
+    }
+}
+
+impl Hash for Line2DFloat {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let precision = 0.001;
+        let start_x = (self.0.start.x * precision).round() as i64;
+        let start_y = (self.0.start.y * precision).round() as i64;
+        let end_x = (self.0.end.x * precision).round() as i64;
+        let end_y = (self.0.end.y * precision).round() as i64;
+        (start_x + start_y + end_x + end_y).hash(state);
+    }
+}
+
+impl From<Line2DFloat> for LineString2D<f64> {
+    fn from(line: Line2DFloat) -> Self {
+        LineString2D::new(vec![line.0.start, line.0.end])
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Line3DFloat(pub Line3D<f64>);
+
+impl Eq for Line3DFloat {}
+
+impl PartialEq for Line3DFloat {
+    fn eq(&self, other: &Self) -> bool {
+        let epsilon = 0.001;
+        (self.0.start.approx_eq(&other.0.start, epsilon)
+            && self.0.end.approx_eq(&other.0.end, epsilon))
+            || (self.0.start.approx_eq(&other.0.end, epsilon)
+                && self.0.end.approx_eq(&other.0.start, epsilon))
+    }
+}
+
+impl Hash for Line3DFloat {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let precision = 0.001;
+        let start_x = (self.0.start.x * precision).round() as i64;
+        let start_y = (self.0.start.y * precision).round() as i64;
+        let start_z = (self.0.start.z * precision).round() as i64;
+        let end_x = (self.0.end.x * precision).round() as i64;
+        let end_y = (self.0.end.y * precision).round() as i64;
+        let end_z = (self.0.end.z * precision).round() as i64;
+        (start_x + start_y + start_z + end_x + end_y + end_z).hash(state);
+    }
+}
+
+impl From<Line3DFloat> for LineString3D<f64> {
+    fn from(line: Line3DFloat) -> Self {
+        LineString3D::new(vec![line.0.start, line.0.end])
     }
 }

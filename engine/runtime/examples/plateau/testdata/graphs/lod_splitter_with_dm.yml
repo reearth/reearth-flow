@@ -2,19 +2,19 @@ id: 7e98d856-1438-4148-bdcb-91747ef2e405
 name: PLATEAU3.LodSplitterWithDM
 nodes:
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
-    name: GeometryFilter01
+    name: GeometryFilter
     type: action
     action: GeometryFilter
     with:
       filterType: none
 
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
-    name: GeometrySplitter01
+    name: GeometrySplitter
     type: action
     action: GeometrySplitter
 
   - id: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
-    name: Reprojector01
+    name: Reprojector
     type: action
     action: Reprojector
     with:

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use reearth_flow_geometry::algorithm::simplify::Simplify;
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
+use reearth_flow_geometry::utils::remove_redundant_vertices;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -120,7 +120,7 @@ impl VertexRemover {
                 let mut geometry = geometry.clone();
                 let line_string: LineString2D<f64> = line_string.clone();
                 geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::LineString(
-                    line_string.simplify(&EPSILON),
+                    remove_redundant_vertices(&line_string, EPSILON),
                 ));
                 feature.geometry = Some(geometry);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -132,7 +132,7 @@ impl VertexRemover {
                 geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::MultiLineString(
                     line_strings
                         .iter()
-                        .map(|line_string| line_string.simplify(&EPSILON))
+                        .map(|line_string| remove_redundant_vertices(line_string, EPSILON))
                         .collect(),
                 ));
                 feature.geometry = Some(geometry);
@@ -158,7 +158,7 @@ impl VertexRemover {
                 let mut geometry = geometry.clone();
                 let line_string: LineString3D<f64> = line_string.clone();
                 geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::LineString(
-                    line_string.simplify(&EPSILON),
+                    remove_redundant_vertices(&line_string, EPSILON),
                 ));
                 feature.geometry = Some(geometry);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -170,7 +170,7 @@ impl VertexRemover {
                 geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::MultiLineString(
                     line_strings
                         .iter()
-                        .map(|line_string| line_string.simplify(&EPSILON))
+                        .map(|line_string| remove_redundant_vertices(line_string, EPSILON))
                         .collect(),
                 ));
                 feature.geometry = Some(geometry);

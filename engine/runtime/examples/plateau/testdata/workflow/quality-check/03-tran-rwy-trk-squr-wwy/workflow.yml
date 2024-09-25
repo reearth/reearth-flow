@@ -20,6 +20,7 @@ with:
 graphs:
   - !include ../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../graphs/folder_and_file_path_reader.yml
+  - !include ../../../graphs/surface_validator_2d.yml
   - id: 43581967-2a15-450a-ba13-e450376c3d0e
     name: entry_point
     nodes:
@@ -114,6 +115,82 @@ graphs:
         type: subGraph
         subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
+      ## start surface validate
+      - id: 023ceda2-1946-4fe8-92cf-62b1fda951e2
+        name: SurfaceValidator2D
+        type: subGraph
+        subGraphId: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
+
+      - id: b99a3bfe-5cc0-4642-b3ab-f6270df382ea
+        name: AttributeAggregatorInvalidOrientation
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+            - newAttribute: Index
+              attributeValue: |
+                env.get("__value").fileIndex.to_string()
+
+            - newAttribute: Folder
+              attribute: package
+
+            - newAttribute: lod
+              attributeValue: |
+                env.get("__value").lod.to_string()
+
+            - newAttribute: FeatureType
+              attribute: featureType
+
+            - newAttribute: destDataset
+              attributeValue: |
+                env.get("__value").destDataset
+
+          calculation: |
+            1
+          calculationAttribute: "numInvalidOrientation"
+          method: count
+
+      - id: 0659a333-dc5f-47f0-af82-c56ebbb0c72d
+        name: NoopInvalidOrientation
+        type: action
+        action: NoopSink
+
+      - id: 6b6f6ffc-fea9-4da3-944b-e6d31e805318
+        name: AttributeAggregatorInvalidSurface
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+            - newAttribute: Index
+              attributeValue: |
+                env.get("__value").fileIndex.to_string()
+
+            - newAttribute: Folder
+              attribute: package
+
+            - newAttribute: lod
+              attributeValue: |
+                env.get("__value").lod.to_string()
+
+            - newAttribute: FeatureType
+              attribute: featureType
+
+            - newAttribute: destDataset
+              attributeValue: |
+                env.get("__value").destDataset
+
+          calculation: |
+            1
+          calculationAttribute: "numInvalidSurface"
+          method: count
+
+      - id: 8663ee83-72f3-41f5-8bce-d20fba380fb4
+        name: NoopInvalidSurface
+        type: action
+        action: NoopSink
+
+      ## end surface validate
+
       - id: c074f373-44e9-40b8-af83-76f36e141a9c
         name: FeatureTypeExtractor
         type: action
@@ -184,9 +261,9 @@ graphs:
           outputAttribute: dumpGeometry
 
       - id: 79b7bc2a-735a-4f5f-9e6a-ce5d51dbda0e
-        name: TwoDimentionForcer
+        name: TwoDimensionForcer
         type: action
-        action: TwoDimentionForcer
+        action: TwoDimensionForcer
 
       - id: f45d09c3-2ea5-48c6-a215-aadfacb75260
         name: GeometryDissolver
@@ -198,6 +275,33 @@ graphs:
             - lod
             - fileIndex
             - package
+
+      - id: 73056fde-2493-44a2-9196-c2f69900a75a
+        name: GeometryCoercerByLineString
+        type: action
+        action: GeometryCoercer
+        with:
+          coercerType: lineString
+
+      - id: 5b958746-a54b-4e0f-ad26-5c7388167943
+        name: FeatureFilterByLod
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").lod == "1"
+              outputPort: lod1
+
+      - id: 46c146fb-857f-4426-a49d-ba70bc8e252f
+        name: LineOnLineOverlayerLod1
+        type: action
+        action: LineOnLineOverlayer
+        with:
+          groupBy:
+            - lod
+            - package
+          outputAttribute: overlap
 
       - id: 69f22583-c0c8-4343-b83b-79842ad0d9ce
         name: Noop
@@ -300,6 +404,54 @@ graphs:
         toPort: default
       - id: 0cd140d1-5012-49b2-b816-c7c23a3e7da8
         from: f45d09c3-2ea5-48c6-a215-aadfacb75260
-        to: 69f22583-c0c8-4343-b83b-79842ad0d9ce
+        to: 73056fde-2493-44a2-9196-c2f69900a75a
         fromPort: area
         toPort: default
+      - id: 9515cd3c-0b1d-45d5-9d68-79a3906869ab
+        from: 73056fde-2493-44a2-9196-c2f69900a75a
+        to: 5b958746-a54b-4e0f-ad26-5c7388167943
+        fromPort: default
+        toPort: default
+      - id: 46c146fb-857f-4426-a49d-ba70bc8e252f
+        from: 5b958746-a54b-4e0f-ad26-5c7388167943
+        to: 46c146fb-857f-4426-a49d-ba70bc8e252f
+        fromPort: lod1
+        toPort: default
+      - id: 3cf6418b-5991-4e36-bb93-39b4740378fe
+        from: 46c146fb-857f-4426-a49d-ba70bc8e252f
+        to: 69f22583-c0c8-4343-b83b-79842ad0d9ce
+        fromPort: line
+        toPort: default
+
+      ## start surface validate
+      - id: 025e8b3f-7884-485b-94e9-b5055040a59b
+        from: 2b984969-b0eb-49ba-adb3-72d90def032e
+        to: 023ceda2-1946-4fe8-92cf-62b1fda951e2
+        fromPort: lod1
+        toPort: default
+      - id: a5599c2e-b7c7-4024-b8c0-39b94457eeab
+        from: 2b984969-b0eb-49ba-adb3-72d90def032e
+        to: 023ceda2-1946-4fe8-92cf-62b1fda951e2
+        fromPort: lod2
+        toPort: default
+      - id: 280217dc-d385-4b21-834a-bd3f3a803e87
+        from: 023ceda2-1946-4fe8-92cf-62b1fda951e2
+        to: b99a3bfe-5cc0-4642-b3ab-f6270df382ea
+        fromPort: inCorrectOrientation
+        toPort: default
+      - id: e33421f9-ea89-4c4b-adda-221b1cfb515b
+        from: b99a3bfe-5cc0-4642-b3ab-f6270df382ea
+        to: 0659a333-dc5f-47f0-af82-c56ebbb0c72d
+        fromPort: default
+        toPort: default
+      - id: 5469dcd2-d3ca-4a7b-9856-e506b5cdddd3
+        from: 023ceda2-1946-4fe8-92cf-62b1fda951e2
+        to: 6b6f6ffc-fea9-4da3-944b-e6d31e805318
+        fromPort: invalidSurface
+        toPort: default
+      - id: ce4b7314-21ae-46cc-af66-09a545bc1a26
+        from: 6b6f6ffc-fea9-4da3-944b-e6d31e805318
+        to: 8663ee83-72f3-41f5-8bce-d20fba380fb4
+        fromPort: default
+        toPort: default
+      ## end surface validate

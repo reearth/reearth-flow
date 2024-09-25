@@ -46,9 +46,9 @@ pub(crate) fn execute(workflow: &str) {
     unsafe { env::set_var("RAYON_NUM_THREADS", "10") };
     setup_logging_and_tracing();
     let job_id = uuid::Uuid::new_v4();
-    let action_log_uri = setup_job_directory("worker", "action-log", job_id)
+    let action_log_uri = setup_job_directory("engine", "action-log", job_id)
         .expect("Failed to setup job directory.");
-    let state_uri = setup_job_directory("worker", "feature-store", job_id)
+    let state_uri = setup_job_directory("engine", "feature-store", job_id)
         .expect("Failed to setup job directory.");
     let storage_resolver = Arc::new(StorageResolver::new());
     let state = Arc::new(State::new(&state_uri, &storage_resolver).unwrap());

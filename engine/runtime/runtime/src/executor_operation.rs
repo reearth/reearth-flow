@@ -171,6 +171,17 @@ impl ExecutorContext {
         }
     }
 
+    pub fn new_with_context_feature_and_port(ctx: &Context, feature: Feature, port: Port) -> Self {
+        Self {
+            feature,
+            port,
+            expr_engine: Arc::clone(&ctx.expr_engine),
+            storage_resolver: Arc::clone(&ctx.storage_resolver),
+            logger: Arc::clone(&ctx.logger),
+            kv_store: Arc::clone(&ctx.kv_store),
+        }
+    }
+
     pub fn new_with_default_port(
         feature: Feature,
         expr_engine: Arc<Engine>,
