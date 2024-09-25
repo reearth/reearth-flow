@@ -1,3 +1,4 @@
+import { Copy } from "@phosphor-icons/react";
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -72,6 +73,7 @@ export const Default = () => {
   const [actions, setActions] = useState<any[]>([]);
   const [selectedAction, setSelectedAction] = useState();
   const [schema, setSchema] = useState<RJSFSchema>(commonArgs.schema);
+  const [showSchema, setShowSchema] = useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
@@ -82,10 +84,12 @@ export const Default = () => {
 
   useEffect(() => {
     (async () => {
-      const data = await fetcher(
+      const { parameter } = await fetcher(
         `http://localhost:8080/actions/${selectedAction}`,
       );
-      setSchema(data.parameter);
+      if (parameter) {
+        setSchema(parameter);
+      }
     })();
   }, [selectedAction, setSchema]);
 
@@ -94,15 +98,11 @@ export const Default = () => {
     [actions, selectedAction],
   );
 
-  console.log(selectedIndex);
-
-  const selectNext = () => console.log();
-
   return (
     <div className="flex w-[80vw] flex-col gap-2">
       <div className="flex items-center justify-between rounded border p-2">
         <div>Action Name: {selectedAction ? selectedAction : "Default"}</div>
-        <div className="flex w-1/3 items-center justify-between gap-2">
+        <div className="flex w-1/2 items-center justify-between gap-2">
           <Button
             size="sm"
             variant="outline"
@@ -135,8 +135,29 @@ export const Default = () => {
           <Button variant="outline" disabled size="sm" className="text-sm">
             Enter Custom Schema
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-sm"
+            onClick={() => setShowSchema(!showSchema)}>
+            {showSchema ? "Hide" : "Show"} Schema
+          </Button>
         </div>
       </div>
+      {showSchema && (
+        <pre className="relative rounded border bg-card p-2 text-xs">
+          {JSON.stringify(schema, null, 2)}
+          <Button
+            size="sm"
+            variant="outline"
+            className="absolute right-0 top-0 mr-2 mt-2"
+            onClick={() => {
+              navigator.clipboard.writeText(JSON.stringify(schema, null, 2));
+            }}>
+            <Copy />
+          </Button>
+        </pre>
+      )}
       <div className="rounded border p-2">
         <SchemaForm schema={schema} />
       </div>
