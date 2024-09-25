@@ -91,11 +91,13 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	// apis
 	api := e.Group("/api")
 	api.GET("/ping", Ping(), privateCache)
-
 	apiPrivate := api.Group("", privateCache)
 	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev))
 
 	apiPrivate.POST("/signup", Signup())
+
+	apiPrivateWithAuth := apiPrivate.Group("", echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, false))))
+	apiPrivateWithAuth.GET("/validate-token", ValidateToken())
 
 	if !cfg.Config.AuthSrv.Disabled {
 		apiPrivate.POST("/signup/verify", StartSignupVerify())

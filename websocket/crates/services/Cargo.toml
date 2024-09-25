@@ -1,0 +1,19 @@
+[package]
+authors.workspace = true
+edition.workspace = true
+exclude.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "services"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+axum.workspace = true
+http.workspace = true
+reqwest.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tower.workspace = true
+wiremock.workspace = true
