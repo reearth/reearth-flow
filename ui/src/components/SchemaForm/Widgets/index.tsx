@@ -8,6 +8,7 @@ import {
 import { CheckboxesWidget } from "./CheckboxesWidget";
 import { CheckboxWidget } from "./CheckboxWidget";
 import { RadioWidget } from "./RadioWidget";
+import { RangeWidget } from "./RangeWidget";
 
 export function generateWidgets<
   T = any,
@@ -18,6 +19,7 @@ export function generateWidgets<
     CheckboxWidget,
     CheckboxesWidget,
     RadioWidget,
+    RangeWidget,
   };
 }
 
