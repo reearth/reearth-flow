@@ -7,6 +7,7 @@ import {
 
 import { CheckboxesWidget } from "./CheckboxesWidget";
 import { CheckboxWidget } from "./CheckboxWidget";
+import { RadioWidget } from "./RadioWidget";
 
 export function generateWidgets<
   T = any,
@@ -16,6 +17,7 @@ export function generateWidgets<
   return {
     CheckboxWidget,
     CheckboxesWidget,
+    RadioWidget,
   };
 }
 
