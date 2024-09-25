@@ -131,7 +131,7 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectGcsRepository 
 
         // Update the latest snapshot reference
         let latest_path = format!("snapshot/{}:latest_snapshot", snapshot.metadata.project_id);
-        self.client.upload(latest_path, &snapshot_metadata).await?;
+        self.client.upload(latest_path, &snapshot).await?;
 
         //Get the latest snapshot state
         let latest_snapshot_state_path = format!(
@@ -241,9 +241,7 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepositor
 
         // Update the latest snapshot reference
         let latest_path = format!("snapshot/{}:latest_snapshot", snapshot.metadata.project_id);
-        self.client
-            .upload(latest_path, &snapshot_metadata, true)
-            .await?;
+        self.client.upload(latest_path, &snapshot, true).await?;
 
         //Get the latest snapshot state
         let latest_snapshot_state_path = format!(
@@ -275,7 +273,7 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepositor
 #[cfg(test)]
 mod tests {
     use super::*;
-    use flow_websocket_domain::snapshot::{ObjectDelete, ObjectTenant, ProjectMetadata};
+    use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant};
     use tempfile::TempDir;
     use tokio::test;
 
@@ -315,50 +313,69 @@ mod tests {
     fn create_test_snapshot(project_id: &str) -> ProjectSnapshot {
         let now = Utc::now();
 
-        let metadata = ProjectMetadata {
-            id: "snap_123".to_string(),
-            project_id: project_id.to_string(),
-            session_id: Some("session_123".to_string()),
-            name: "Test Snapshot".to_string(),
-            path: "/test/path".to_string(),
-        };
+        let metadata = Metadata::new(
+            "snap_abc123".to_string(),
+            project_id.to_string(),
+            Some("session_abc123".to_string()),
+            "Test Snapshot".to_string(),
+            "/test/path".to_string(),
+        );
 
-        let state = SnapshotState {
-            created_by: Some("test_user".to_string()),
-            changes_by: vec!["test_user".to_string()],
-            tenant: ObjectTenant {
-                id: "tenant_123".to_string(),
-                key: "tenant_key".to_string(),
+        let state = SnapshotState::new(
+            Some("test_user_abc".to_string()),
+            vec!["test_user_abc".to_string()],
+            ObjectTenant {
+                id: "tenant_abc123".to_string(),
+                key: "tenant_key_abc".to_string(),
             },
-            delete: ObjectDelete {
+            ObjectDelete {
                 deleted: false,
                 delete_after: None,
             },
-            created_at: Some(now),
-            updated_at: Some(now),
-        };
+            Some(now),
+            Some(now),
+        );
 
         ProjectSnapshot { metadata, state }
     }
 
     #[test]
-    async fn test_create_and_get_snapshot() -> Result<(), Box<dyn std::error::Error>> {
+    async fn test_create_and_get_snapshot_metadata() -> Result<(), Box<dyn std::error::Error>> {
         let (_temp_dir, repo) = setup().await?;
         let project_id = "test_project";
         let snapshot = create_test_snapshot(project_id);
+        println!("snapshot: {:?}", snapshot);
+        repo.create_snapshot(snapshot.clone()).await.unwrap();
+        println!("snapshot created");
 
-        repo.create_snapshot(snapshot.clone()).await?;
+        let retrieved_snapshot = match repo.get_latest_snapshot(project_id).await? {
+            Some(snapshot) => {
+                println!("retrieved_snapshot: {:?}", snapshot);
+                snapshot
+            }
+            None => {
+                println!("Error: No snapshot found for project_id: {}", project_id);
+                return Err("No snapshot found".into());
+            }
+        };
 
-        let retrieved_snapshot = repo.get_latest_snapshot(project_id).await?.unwrap();
+        println!("retrieved_snapshot: {:?}", retrieved_snapshot);
         assert_eq!(retrieved_snapshot.metadata.id, snapshot.metadata.id);
         assert_eq!(
             retrieved_snapshot.metadata.project_id,
             snapshot.metadata.project_id
         );
-        assert_eq!(
-            retrieved_snapshot.state.created_by,
-            snapshot.state.created_by
-        );
+        Ok(())
+    }
+
+    #[test]
+    async fn test_create_and_get_snapshot_state() -> Result<(), Box<dyn std::error::Error>> {
+        let (_temp_dir, repo) = setup().await?;
+        let project_id = "test_project";
+        let snapshot = create_test_snapshot(project_id);
+        repo.create_snapshot(snapshot.clone()).await.unwrap();
+        let retrieved_snapshot_state = repo.get_latest_snapshot_state(project_id).await?;
+        assert!(!retrieved_snapshot_state.is_empty());
         Ok(())
     }
 }

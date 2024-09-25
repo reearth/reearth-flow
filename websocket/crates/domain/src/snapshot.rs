@@ -14,7 +14,7 @@ pub struct ObjectTenant {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ProjectMetadata {
+pub struct Metadata {
     pub id: String,
     pub project_id: String,
     pub session_id: Option<String>,
@@ -22,7 +22,7 @@ pub struct ProjectMetadata {
     pub path: String,
 }
 
-impl ProjectMetadata {
+impl Metadata {
     pub fn new(
         id: String,
         project_id: String,
@@ -59,25 +59,26 @@ impl SnapshotState {
         created_at: Option<DateTime<Utc>>,
         updated_at: Option<DateTime<Utc>>,
     ) -> Self {
+        let now = Utc::now();
         Self {
             created_by,
             changes_by,
             tenant,
             delete,
-            created_at,
-            updated_at,
+            created_at: created_at.or(Some(now)),
+            updated_at: updated_at.or(Some(now)),
         }
     }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProjectSnapshot {
-    pub metadata: ProjectMetadata,
+    pub metadata: Metadata,
     pub state: SnapshotState,
 }
 
 impl ProjectSnapshot {
-    pub fn new(metadata: ProjectMetadata, state: SnapshotState) -> Self {
+    pub fn new(metadata: Metadata, state: SnapshotState) -> Self {
         Self { metadata, state }
     }
 }

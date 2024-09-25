@@ -1,7 +1,5 @@
 use crate::repository::ProjectSnapshotRepository;
-use crate::snapshot::{
-    ObjectDelete, ObjectTenant, ProjectMetadata, ProjectSnapshot, SnapshotState,
-};
+use crate::snapshot::{Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotState};
 use crate::utils::generate_id;
 
 use chrono::Utc;
@@ -131,7 +129,7 @@ impl ProjectEditingSession {
 
         let now = Utc::now();
 
-        let metadata = ProjectMetadata::new(
+        let metadata = Metadata::new(
             generate_id(14, "snap"),
             self.project_id.clone(),
             self.session_id.clone(),
