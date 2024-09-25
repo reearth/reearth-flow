@@ -5,6 +5,7 @@ import {
   StrictRJSFSchema,
 } from "@rjsf/utils";
 
+import { CheckboxesWidget } from "./CheckboxesWidget";
 import { CheckboxWidget } from "./CheckboxWidget";
 
 export function generateWidgets<
@@ -14,6 +15,7 @@ export function generateWidgets<
 >(): RegistryWidgetsType<T, S, F> {
   return {
     CheckboxWidget,
+    CheckboxesWidget,
   };
 }
 
