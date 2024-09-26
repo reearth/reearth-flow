@@ -12,22 +12,28 @@ cargo fmt --all
 ''']
 
 [tasks.check]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
-''']
+''',
+]
 
 [tasks.clippy]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
-''']
+''',
+]
 
 [tasks.test]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
-''']
+''',
+]
 
 [tasks.doc]
 script = ['''
@@ -37,7 +43,8 @@ cargo doc --no-deps --all-features
 ''']
 
 [tasks.coverage]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 rm -rf target/debug/deps/${PROJ_NAME}-*
 
@@ -49,7 +56,8 @@ cargo build --workspace --verbose
 cargo test --workspace --verbose
 
 grcov . -s . --binary-path ./target/debug/ -t lcov --branch --ignore-not-existing -o lcov.info
-''']
+''',
+]
 
 [tasks.check-easy-panic]
 script = ['''
