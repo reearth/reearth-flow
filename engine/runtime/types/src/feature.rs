@@ -282,6 +282,13 @@ impl Feature {
         scope
     }
 
+    pub fn to_map(&self) -> HashMap<String, AttributeValue> {
+        self.attributes
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect()
+    }
+
     pub fn fetch_attribute_value(
         &self,
         engine: Arc<Engine>,

@@ -266,6 +266,15 @@ impl NodeContext {
     pub fn error_span(&self) -> tracing::Span {
         error_span!("action")
     }
+
+    pub fn as_context(&self) -> Context {
+        Context {
+            expr_engine: self.expr_engine.clone(),
+            storage_resolver: self.storage_resolver.clone(),
+            logger: self.logger.clone(),
+            kv_store: self.kv_store.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
