@@ -148,7 +148,6 @@
   "Failed to update the user": "更新用户失败",
   "Password and Confirm password are not the same": "密码和确认密码不一致",
   "Failed to update the password": "更新密码失败",
-  "Failed to update email and name": "更新电子邮件和名称失败",
   "New workspace": "新工作区",
   "Workspace name": "工作区名称",
   "Workspace name...": "工作区名称...",

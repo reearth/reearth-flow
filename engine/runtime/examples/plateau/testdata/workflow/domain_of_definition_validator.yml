@@ -1,0 +1,63 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: a7fc8f35-b84f-496b-a2cb-65be3bfec285
+name: "PLATEAU.DomainOfDefinitionValidator"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../config/schema.txt
+graphs:
+  - !include ../graphs/domain_of_definition_validator.yml
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: 63782a85-f92b-4fea-9107-e5621e718455
+        name: filePathExtractor_01
+        type: action
+        action: FilePathExtractor
+        with:
+          sourceDataset: |
+            env.get("__value").cityGmlPath
+          extractArchive: true
+
+      - id: bd9e2a7b-b89e-4b95-8456-641a3673a3e1
+        name: featureFilter_01
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").extension == "gml"
+              outputPort: default
+
+      - id: a15932ee-2589-443d-ba70-e1797d3c9f9e
+        name: PLATEAU.UDXFolderExtractor_01
+        type: action
+        action: PLATEAU.UDXFolderExtractor
+        with:
+          cityGmlPath: |
+            env.get("__value").path
+
+      - id: 747d2fa3-2527-4324-b630-92fba84a548c
+        name: PLATEAU.DomainOfDefinitionValidator_01
+        type: subGraph
+        subGraphId: b7396083-17d0-47dd-be86-83caf6c5ac63
+
+    edges:
+      - id: 0e260272-8ec3-432c-85e9-bc3e5e87ec2f
+        from: 63782a85-f92b-4fea-9107-e5621e718455
+        to: bd9e2a7b-b89e-4b95-8456-641a3673a3e1
+        fromPort: default
+        toPort: default
+      - id: d2abf03c-98d5-4029-a0c7-198a209c99c0
+        from: bd9e2a7b-b89e-4b95-8456-641a3673a3e1
+        to: a15932ee-2589-443d-ba70-e1797d3c9f9e
+        fromPort: default
+        toPort: default
+      - id: 3132482a-1b9b-4172-b9fb-abcd591c869f
+        from: a15932ee-2589-443d-ba70-e1797d3c9f9e
+        to: 747d2fa3-2527-4324-b630-92fba84a548c
+        fromPort: default
+        toPort: default

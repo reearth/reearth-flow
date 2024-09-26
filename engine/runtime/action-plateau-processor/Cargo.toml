@@ -1,0 +1,48 @@
+[package]
+description = "Re:Earth Flow Action PLATEAU Processor"
+name = "reearth-flow-action-plateau-processor"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+reearth-flow-action-log.workspace = true
+reearth-flow-common.workspace = true
+reearth-flow-eval-expr.workspace = true
+reearth-flow-geometry.workspace = true
+reearth-flow-runtime.workspace = true
+reearth-flow-state.workspace = true
+reearth-flow-storage.workspace = true
+reearth-flow-types.workspace = true
+
+nusamai-citygml.workspace = true
+nusamai-plateau.workspace = true
+nusamai-projection.workspace = true
+
+approx.workspace = true
+async-trait.workspace = true
+chrono.workspace = true
+itertools.workspace = true
+num-traits.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
+petgraph.workspace = true
+quick-xml.workspace = true
+regex.workspace = true
+rhai.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+bytes.workspace = true

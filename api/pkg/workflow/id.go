@@ -5,32 +5,42 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain"
 )
 
-type ID = id.WorkflowID
-type EdgeID = id.EdgeID
-type NodeID = id.NodeID
-type GraphID = id.GraphID
-type ProjectID = id.ProjectID
-type WorkspaceID = accountdomain.WorkspaceID
+type (
+	ID          = id.WorkflowID
+	EdgeID      = id.EdgeID
+	NodeID      = id.NodeID
+	GraphID     = id.GraphID
+	ProjectID   = id.ProjectID
+	WorkspaceID = accountdomain.WorkspaceID
+)
 
-var NewID = id.NewWorkflowID
-var NewNodeID = id.NewNodeID
-var NewEdgeID = id.NewEdgeID
-var NewGraphID = id.NewGraphID
-var NewWorkflowID = id.NewWorkflowID
-var NewProjectID = id.NewProjectID
-var NewWorkspaceID = accountdomain.NewWorkspaceID
+var (
+	NewID          = id.NewWorkflowID
+	NewNodeID      = id.NewNodeID
+	NewEdgeID      = id.NewEdgeID
+	NewGraphID     = id.NewGraphID
+	NewWorkflowID  = id.NewWorkflowID
+	NewProjectID   = id.NewProjectID
+	NewWorkspaceID = accountdomain.NewWorkspaceID
+)
 
-var MustID = id.MustWorkflowID
-var MustProjectID = id.MustProjectID
-var MustWorkspaceID = id.MustWorkspaceID
+var (
+	MustID          = id.MustWorkflowID
+	MustProjectID   = id.MustProjectID
+	MustWorkspaceID = id.MustWorkspaceID
+)
 
-var IDFrom = id.WorkflowIDFrom
-var ProjectIDFrom = id.ProjectIDFrom
-var WorkspaceIDFrom = accountdomain.WorkspaceIDFrom
+var (
+	IDFrom          = id.WorkflowIDFrom
+	ProjectIDFrom   = id.ProjectIDFrom
+	WorkspaceIDFrom = accountdomain.WorkspaceIDFrom
+)
 
-var IDFromRef = id.WorkflowIDFromRef
-var ProjectIDFromRef = id.ProjectIDFromRef
-var WorkspaceIDFromRef = accountdomain.WorkspaceIDFromRef
+var (
+	IDFromRef          = id.WorkflowIDFromRef
+	ProjectIDFromRef   = id.ProjectIDFromRef
+	WorkspaceIDFromRef = accountdomain.WorkspaceIDFromRef
+)
 
 var ErrInvalidID = id.ErrInvalidID
 

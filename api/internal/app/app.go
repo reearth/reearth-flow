@@ -151,7 +151,8 @@ func errorMessage(err error, log func(string, ...interface{})) (int, string) {
 	code := http.StatusBadRequest
 	msg := err.Error()
 
-	if err2, ok := err.(*echo.HTTPError); ok {
+	var err2 *echo.HTTPError
+	if errors.As(err, &err2) {
 		code = err2.Code
 		if msg2, ok := err2.Message.(string); ok {
 			msg = msg2
@@ -162,14 +163,6 @@ func errorMessage(err error, log func(string, ...interface{})) (int, string) {
 		}
 		if err2.Internal != nil {
 			log("echo internal err: %+v", err2)
-		}
-	} else if errors.Is(err, rerror.ErrNotFound) {
-		code = http.StatusNotFound
-		msg = "not found"
-	} else {
-		if ierr := rerror.UnwrapErrInternal(err); ierr != nil {
-			code = http.StatusInternalServerError
-			msg = "internal server error"
 		}
 	}
 
