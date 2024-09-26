@@ -1,5 +1,4 @@
 use rslock::{LockError, LockGuard, LockManager};
-use std::fmt;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
