@@ -320,6 +320,13 @@ graphs:
                 env.get("__value").lineOverlap > 1
               outputPort: lineOverlap
 
+      - id: f243233e-6c64-4a5a-b62f-350e739f443e
+        name: ListExploderByFeatures
+        type: action
+        action: ListExploder
+        with:
+          sourceAttribute: features
+
       - id: 69f22583-c0c8-4343-b83b-79842ad0d9ce
         name: Noop
         type: action
@@ -446,8 +453,13 @@ graphs:
         toPort: default
       - id: 7afe76cf-f121-415c-a86e-91b6d4f233ed
         from: 6f4352f3-0397-4672-966d-67637a6c9b98
-        to: 69f22583-c0c8-4343-b83b-79842ad0d9ce
+        to: f243233e-6c64-4a5a-b62f-350e739f443e
         fromPort: lineOverlap
+        toPort: default
+      - id: 9c095e4b-b972-4e64-933b-6e4945b3df3a
+        from: f243233e-6c64-4a5a-b62f-350e739f443e
+        to: 69f22583-c0c8-4343-b83b-79842ad0d9ce
+        fromPort: default
         toPort: default
 
       ## start surface validate

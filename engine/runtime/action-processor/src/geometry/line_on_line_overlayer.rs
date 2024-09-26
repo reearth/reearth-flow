@@ -28,7 +28,6 @@ use super::errors::GeometryProcessorError;
 
 pub static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
 pub static LINE_PORT: Lazy<Port> = Lazy::new(|| Port::new("line"));
-pub static COLLINEAR_PORT: Lazy<Port> = Lazy::new(|| Port::new("collinear"));
 const EPSILON: f64 = 0.001;
 
 #[derive(Debug, Clone, Default)]

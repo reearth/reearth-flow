@@ -1821,6 +1821,39 @@ Intersection points are turned into point features that can contain the merged l
 ### Category
 * Geometry
 
+## ListExploder
+### Type
+* processor
+### Description
+Explodes list attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ListExploder",
+  "type": "object",
+  "required": [
+    "sourceAttribute"
+  ],
+  "properties": {
+    "sourceAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
+
 ## MVTWriter
 ### Type
 * sink
