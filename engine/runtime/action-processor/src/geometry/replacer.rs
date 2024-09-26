@@ -99,7 +99,7 @@ impl Processor for GeometryReplacer {
             fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             return Ok(());
         };
-        let dump = decode(dump.clone())?;
+        let dump = decode(dump)?;
         let geometry: Geometry = serde_json::from_str(&dump)?;
         feature.geometry = Some(geometry);
         feature.attributes.remove(&self.source_attribute);

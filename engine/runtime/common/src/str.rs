@@ -14,9 +14,7 @@ pub fn base64_encode<T: AsRef<[u8]>>(s: T) -> String {
 }
 
 pub fn base64_decode<T: AsRef<[u8]>>(s: T) -> crate::Result<String> {
-    let result = general_purpose::STANDARD
-        .decode(s)
-        .map_err(|e| crate::Error::Str(format!("{}", e)))?;
+    let result = base64_decode_byte(s)?;
     Ok(String::from_utf8_lossy(&result).to_string())
 }
 

@@ -9,7 +9,7 @@ pub fn compress(source: &str) -> Result<String> {
     Ok(base64_encode(&compressed))
 }
 
-pub fn decode(source: String) -> Result<String> {
+pub fn decode<T: AsRef<[u8]>>(source: T) -> Result<String> {
     let bytes = base64_decode_byte(source)?;
     let decoded = zstd::decode_all(bytes.as_slice())
         .map_err(|e| Error::Compress(format!("Failed to decompress: {}", e)))?;
