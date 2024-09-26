@@ -15,5 +15,5 @@ version.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 serde.workspace = true
-uuid.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
