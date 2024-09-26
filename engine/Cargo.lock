@@ -4417,6 +4417,7 @@ dependencies = [
  "tokio",
  "url",
  "uuid",
+ "zstd",
 ]
 
 [[package]]

@@ -17,7 +17,13 @@ pub fn base64_decode<T: AsRef<[u8]>>(s: T) -> crate::Result<String> {
     let result = general_purpose::STANDARD
         .decode(s)
         .map_err(|e| crate::Error::Str(format!("{}", e)))?;
-    String::from_utf8(result).map_err(|e| crate::Error::Str(format!("{}", e)))
+    Ok(String::from_utf8_lossy(&result).to_string())
+}
+
+pub fn base64_decode_byte<T: AsRef<[u8]>>(s: T) -> crate::Result<Vec<u8>> {
+    general_purpose::STANDARD
+        .decode(s)
+        .map_err(|e| crate::Error::Str(format!("{}", e)))
 }
 
 pub fn remove_trailing_slash(s: &str) -> String {
