@@ -1,22 +1,16 @@
-use std::error::Error;
-use std::fmt;
-
 use rslock::{LockError, LockGuard, LockManager};
+use std::fmt;
+use thiserror::Error;
 
-#[derive(Debug)]
-pub struct GlobalLockError(pub LockError);
-
-impl fmt::Display for GlobalLockError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Global Lock Error: {:?}", self.0)
-    }
+#[derive(Debug, Error)]
+pub enum GlobalLockError {
+    #[error("Global Lock Error: {0:?}")]
+    LockError(LockError),
 }
-
-impl Error for GlobalLockError {}
 
 impl From<LockError> for GlobalLockError {
     fn from(err: LockError) -> Self {
-        GlobalLockError(err)
+        GlobalLockError::LockError(err)
     }
 }
 
@@ -35,7 +29,7 @@ impl FlowProjectLock {
         resources: Vec<String>,
         duration_ms: u64,
         callback: F,
-    ) -> Result<T, LockError>
+    ) -> Result<T, GlobalLockError>
     where
         F: FnOnce(&LockGuard) -> T + Send,
         T: Send,
@@ -44,7 +38,8 @@ impl FlowProjectLock {
         let lock = self
             .lock_manager
             .lock(&resource_bytes, duration_ms as usize)
-            .await?;
+            .await
+            .map_err(GlobalLockError::from)?;
         let guard = LockGuard { lock };
         let result = callback(&guard);
         self.lock_manager.unlock(&guard.lock).await;
@@ -57,7 +52,7 @@ impl FlowProjectLock {
         project_id: &str,
         duration_ms: u64,
         callback: F,
-    ) -> Result<T, LockError>
+    ) -> Result<T, GlobalLockError>
     where
         F: FnOnce(&LockGuard) -> T + Send,
         T: Send,
@@ -71,7 +66,7 @@ impl FlowProjectLock {
         project_id: &str,
         duration_ms: u64,
         callback: F,
-    ) -> Result<T, LockError>
+    ) -> Result<T, GlobalLockError>
     where
         F: FnOnce(&LockGuard) -> T + Send,
         T: Send,
@@ -91,7 +86,7 @@ impl FlowProjectLock {
         project_id: &str,
         duration_ms: u64,
         callback: F,
-    ) -> Result<T, LockError>
+    ) -> Result<T, GlobalLockError>
     where
         F: FnOnce(&LockGuard) -> T + Send,
         T: Send,
@@ -112,7 +107,7 @@ impl FlowProjectLock {
         project_id: &str,
         duration_ms: u64,
         callback: F,
-    ) -> Result<T, LockError>
+    ) -> Result<T, GlobalLockError>
     where
         F: FnOnce(&LockGuard) -> T + Send,
         T: Send,
