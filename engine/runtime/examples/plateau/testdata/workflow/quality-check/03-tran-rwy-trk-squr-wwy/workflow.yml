@@ -320,12 +320,38 @@ graphs:
                 env.get("__value").lineOverlap > 1
               outputPort: lineOverlap
 
+      - id: 0ed93df9-1aae-4d3a-95d7-710cf2bdb7bc
+        name: FeatureCounterByLineOverlap
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          outputAttribute: lineId
+
       - id: f243233e-6c64-4a5a-b62f-350e739f443e
         name: ListExploderByFeatures
         type: action
         action: ListExploder
         with:
           sourceAttribute: features
+
+      - id: 2c07b025-1af0-48e5-a175-be8aa221c46f
+        name: GeometryReplacer2D
+        type: action
+        action: GeometryReplacer
+        with:
+          sourceAttribute: dumpGeometry2D
+
+      - id: 544caa2f-8f3a-4a05-9aea-c1b8a58f69b5
+        name: AreaOnAreaOverlayerByLine
+        type: action
+        action: AreaOnAreaOverlayer
+        with:
+          groupBy:
+            - lod
+            - lineId
+            - package
+          outputAttribute: overlapArea
 
       - id: 69f22583-c0c8-4343-b83b-79842ad0d9ce
         name: Noop
@@ -451,15 +477,30 @@ graphs:
         to: 6f4352f3-0397-4672-966d-67637a6c9b98
         fromPort: line
         toPort: default
-      - id: 7afe76cf-f121-415c-a86e-91b6d4f233ed
+      - id: 7179b368-6e60-4d97-b4f3-a21fdac2458f
         from: 6f4352f3-0397-4672-966d-67637a6c9b98
-        to: f243233e-6c64-4a5a-b62f-350e739f443e
+        to: 0ed93df9-1aae-4d3a-95d7-710cf2bdb7bc
         fromPort: lineOverlap
         toPort: default
-      - id: 9c095e4b-b972-4e64-933b-6e4945b3df3a
-        from: f243233e-6c64-4a5a-b62f-350e739f443e
-        to: 69f22583-c0c8-4343-b83b-79842ad0d9ce
+      - id: 7afe76cf-f121-415c-a86e-91b6d4f233ed
+        from: 0ed93df9-1aae-4d3a-95d7-710cf2bdb7bc
+        to: f243233e-6c64-4a5a-b62f-350e739f443e
         fromPort: default
+        toPort: default
+      - id: 65b636e5-da93-4d9d-8250-743187c51f25
+        from: f243233e-6c64-4a5a-b62f-350e739f443e
+        to: 2c07b025-1af0-48e5-a175-be8aa221c46f
+        fromPort: default
+        toPort: default
+      - id: 9c095e4b-b972-4e64-933b-6e4945b3df3a
+        from: 2c07b025-1af0-48e5-a175-be8aa221c46f
+        to: 544caa2f-8f3a-4a05-9aea-c1b8a58f69b5
+        fromPort: default
+        toPort: default
+      - id: f3d1f657-3592-4049-8db7-f062c6ac4ed1
+        from: 544caa2f-8f3a-4a05-9aea-c1b8a58f69b5
+        to: 69f22583-c0c8-4343-b83b-79842ad0d9ce
+        fromPort: area
         toPort: default
 
       ## start surface validate
