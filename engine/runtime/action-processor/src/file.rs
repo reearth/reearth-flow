@@ -1,3 +1,3 @@
-pub mod errors;
-pub mod mapping;
-pub mod property_extractor;
+pub(crate) mod errors;
+pub(crate) mod mapping;
+pub(crate) mod property_extractor;
