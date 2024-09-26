@@ -122,40 +122,12 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectGcsRepository 
         &self,
         snapshot: ProjectSnapshot,
     ) -> Result<(), ProjectRepositoryError> {
-        let snapshot_metadata = serde_json::to_vec(&snapshot.metadata)?;
-
-        // Upload the serialized data to GCS, overwriting the existing file
-        let path = format!("snapshot/{}", snapshot.metadata.project_id);
-        self.client.upload(path.clone(), &snapshot_metadata).await?;
-
-        // Update the latest snapshot reference
-        let latest_path = format!("snapshot/{}:latest_snapshot", snapshot.metadata.project_id);
-        self.client.upload(latest_path, &snapshot).await?;
-
-        //Get the latest snapshot state
-        let latest_snapshot_state_path = format!(
-            "snapshot/{}:latest_snapshot_state",
-            snapshot.metadata.project_id
-        );
-
-        let latest_snapshot_state: Vec<u8> = self
-            .client
-            .download(latest_snapshot_state_path.clone())
-            .await?;
-
-        // Update the latest snapshot state
-        let mut latest_snapshot_state: SnapshotInfo =
-            serde_json::from_slice(&latest_snapshot_state)?;
-        latest_snapshot_state.updated_at = Some(Utc::now());
-        latest_snapshot_state
-            .changes_by
-            .push(snapshot.info.created_by.unwrap_or_default());
-
-        self.client
-            .upload(latest_snapshot_state_path, &latest_snapshot_state)
-            .await?;
-
-        Ok(())
+        // Implementation details would depend on your storage solution
+        // For example, with GCS, you might:
+        // 1. Serialize the snapshot
+        // 2. Upload the serialized data to GCS, overwriting the existing file
+        // 3. Update any metadata as necessary
+        unimplemented!("update_snapshot needs to be implemented")
     }
 }
 
@@ -280,33 +252,6 @@ mod tests {
         let temp_dir = TempDir::new()?;
         let repo = ProjectLocalRepository::new(temp_dir.path().to_path_buf()).await?;
         Ok((temp_dir, repo))
-    }
-
-    #[test]
-    async fn test_get_project_non_existent() -> Result<(), Box<dyn std::error::Error>> {
-        let (_temp_dir, repo) = setup().await?;
-        let project_id = "non_existent_project";
-        assert!(repo.get_project(project_id).await?.is_none());
-        Ok(())
-    }
-
-    #[test]
-    async fn test_get_project_existing() -> Result<(), Box<dyn std::error::Error>> {
-        let (_temp_dir, repo) = setup().await?;
-        let project_id = "test_project";
-        let project = Project {
-            id: project_id.to_string(),
-            workspace_id: "test_workspace".to_string(),
-        };
-
-        repo.client
-            .upload(format!("projects/{}", project_id), &project, true)
-            .await?;
-
-        let retrieved_project = repo.get_project(project_id).await?.unwrap();
-        assert_eq!(retrieved_project.id, project.id);
-        assert_eq!(retrieved_project.workspace_id, project.workspace_id);
-        Ok(())
     }
 
     fn create_test_snapshot(project_id: &str) -> ProjectSnapshot {

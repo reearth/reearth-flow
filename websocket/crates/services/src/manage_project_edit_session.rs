@@ -3,6 +3,7 @@ use flow_websocket_domain::project::ProjectEditingSession;
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectSnapshotRepository,
 };
+use flow_websocket_domain::snapshot::Metadata;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::time::sleep;
@@ -94,7 +95,7 @@ impl ManageEditSessionService {
             if snapshot_time_delta > MAX_SNAPSHOT_DELTA {
                 let (state, _) = session.get_state_update().await?;
 
-                let metadata = ProjectMetadata::new(
+                let metadata = Metadata::new(
                     generate_id(14, "snap"),
                     session.project_id.clone(),
                     Some(session.session_id.clone()),

@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 use flow_websocket_domain::repository::ProjectSnapshotRepository;
 use flow_websocket_domain::snapshot::{
-    ObjectDelete, ObjectTenant, ProjectMetadata, ProjectSnapshot,
+    Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotInfo,
 };
 use std::error::Error;
 use std::sync::Arc;
@@ -26,7 +26,7 @@ impl SnapshotService {
         let snapshot_id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
-        let metadata = ProjectMetadata::new(
+        let metadata = Metadata::new(
             snapshot_id.clone(),
             data.project_id.clone(),
             data.session_id,
@@ -34,7 +34,7 @@ impl SnapshotService {
             String::new(),
         );
 
-        let state = SnapshotState::new(
+        let state = SnapshotInfo::new(
             data.created_by,
             data.changes_by,
             data.tenant,
@@ -108,4 +108,26 @@ pub struct CreateSnapshotData {
     pub changes_by: Vec<String>,
     pub tenant: ObjectTenant,
     pub state: Vec<u8>,
+}
+
+impl CreateSnapshotData {
+    pub fn new(
+        project_id: String,
+        session_id: Option<String>,
+        name: Option<String>,
+        created_by: Option<String>,
+        changes_by: Vec<String>,
+        tenant: ObjectTenant,
+        state: Vec<u8>,
+    ) -> Self {
+        Self {
+            project_id,
+            session_id,
+            name,
+            created_by,
+            changes_by,
+            tenant,
+            state,
+        }
+    }
 }
