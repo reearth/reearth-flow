@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use reearth_flow_common::str::base64_decode;
+use reearth_flow_common::compress::decode;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -99,8 +99,8 @@ impl Processor for GeometryReplacer {
             fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             return Ok(());
         };
-        let decoded = base64_decode(dump)?;
-        let geometry: Geometry = serde_json::from_str(&decoded)?;
+        let dump = decode(dump)?;
+        let geometry: Geometry = serde_json::from_str(&dump)?;
         feature.geometry = Some(geometry);
         feature.attributes.remove(&self.source_attribute);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));

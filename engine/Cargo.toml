@@ -162,3 +162,4 @@ uuid = { version = "1.10.0", features = [
   "serde",
   "v4",
 ] }
+zstd = "0.13.0"

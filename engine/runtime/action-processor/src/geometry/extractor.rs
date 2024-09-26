@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use reearth_flow_common::str::base64_encode;
+use reearth_flow_common::compress::compress;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -98,7 +98,7 @@ impl Processor for GeometryExtractor {
             ))
         })?;
         let dump = serde_json::to_string(&value)?;
-        let dump = base64_encode(dump);
+        let dump = compress(&dump)?;
         feature
             .attributes
             .insert(self.output_attribute.clone(), AttributeValue::String(dump));
