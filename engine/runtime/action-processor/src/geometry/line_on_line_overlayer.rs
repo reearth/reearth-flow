@@ -1,6 +1,7 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
+use itertools::Itertools;
 use nusamai_projection::crs::EpsgCode;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::algorithm::intersects::Intersects;
@@ -17,7 +18,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use rstar::{RTree, RTreeObject};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -293,25 +294,22 @@ impl LineOnLineOverlayer {
                     out_line_strings.push(line_string.clone());
                 }
             }
-            if out_line_strings.is_empty() {
-                continue;
-            }
-            for (idx, line_string) in out_line_strings.iter().enumerate() {
-                let mut feature = feature.clone();
-                feature.attributes.insert(
+            for line_string in out_line_strings.iter() {
+                let mut line_string_feature = feature.clone();
+                line_string_feature.attributes.insert(
                     self.params.output_attribute.clone(),
                     AttributeValue::Number(serde_json::Number::from(1)),
                 );
-                if idx != 0 {
-                    feature.refresh_id();
-                }
-                if let Some(geometry) = feature.geometry.as_mut() {
-                    geometry.value =
-                        GeometryValue::FlowGeometry2D(Geometry2D::LineString(line_string.clone()));
-                }
+                line_string_feature.refresh_id();
+                line_string_feature.geometry = Some(Geometry {
+                    epsg: feature.geometry.as_ref().and_then(|g| g.epsg),
+                    value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(
+                        line_string.clone(),
+                    )),
+                });
                 fw.send(ExecutorContext::new_with_context_feature_and_port(
                     &ctx,
-                    feature.clone(),
+                    line_string_feature.clone(),
                     LINE_PORT.clone(),
                 ));
             }
@@ -322,19 +320,59 @@ impl LineOnLineOverlayer {
                 self.params.output_attribute.clone(),
                 AttributeValue::Number(serde_json::Number::from(line_feature.overlap)),
             );
-            for attributes in line_feature.attributes.values() {
-                for (k, v) in attributes.iter() {
-                    feature.attributes.insert(k.clone(), v.clone());
-                }
+            let feature_attributes = line_feature
+                .attributes
+                .values()
+                .map(|kv| {
+                    kv.iter()
+                        .map(|(k, v)| (k.to_string(), v.clone()))
+                        .collect::<HashMap<_, _>>()
+                })
+                .collect_vec();
+            feature.attributes.insert(
+                Attribute::new("features"),
+                AttributeValue::Array(
+                    feature_attributes
+                        .into_iter()
+                        .map(AttributeValue::Map)
+                        .collect(),
+                ),
+            );
+            if line_feature.overlap > 1 {
+                let mut start_feature = feature.clone();
+                start_feature.refresh_id();
+                let start_point = line.0.start_point();
+                start_feature.geometry = Some(Geometry {
+                    epsg: line_feature.epsg,
+                    value: GeometryValue::FlowGeometry2D(Geometry2D::Point(start_point)),
+                });
+                fw.send(ExecutorContext::new_with_context_feature_and_port(
+                    &ctx,
+                    start_feature,
+                    POINT_PORT.clone(),
+                ));
+                let mut end_feature = feature.clone();
+                end_feature.refresh_id();
+                let end_point = line.0.end_point();
+                end_feature.geometry = Some(Geometry {
+                    epsg: line_feature.epsg,
+                    value: GeometryValue::FlowGeometry2D(Geometry2D::Point(end_point)),
+                });
+                fw.send(ExecutorContext::new_with_context_feature_and_port(
+                    &ctx,
+                    end_feature,
+                    POINT_PORT.clone(),
+                ));
             }
-            if let Some(geometry) = feature.geometry.as_mut() {
-                geometry.epsg = line_feature.epsg;
-                geometry.value =
-                    GeometryValue::FlowGeometry2D(Geometry2D::LineString(line.0.into()));
-            }
+            let mut line_feat = feature.clone();
+            line_feat.refresh_id();
+            line_feat.geometry = Some(Geometry {
+                epsg: line_feature.epsg,
+                value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(line.0.into())),
+            });
             fw.send(ExecutorContext::new_with_context_feature_and_port(
                 &ctx,
-                feature.clone(),
+                line_feat,
                 LINE_PORT.clone(),
             ));
         }
