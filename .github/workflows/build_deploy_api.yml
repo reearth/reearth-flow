@@ -34,24 +34,21 @@ jobs:
         with:
           go-version: '1.21'
 
-      - name: Run GoReleaser
-        shell: bash
+      - name: Build API
         run: |
-          args="release --rm-dist"
-          if [[ "${{ inputs.new_tag }}" == "blank" ]]; then
-            args="$args --snapshot"
-          fi
-          export GORELEASER_CURRENT_TAG="${{ inputs.new_tag != 'blank' && inputs.new_tag || '0.0.0' }}"
           cd api
-          goreleaser $args
+          go build -v -o reearth-flow-api .
+
+      - name: Create distribution directory
+        run: |
+          mkdir -p api/dist
+          mv api/reearth-flow-api api/dist/
 
       - name: Rename Artifacts
         if: ${{ inputs.name != 'blank' }}
         run: |
           cd api/dist
-          for f in *; do
-            mv "$f" "$(echo "$f" | sed -E 's/_0\.0\.0-SNAPSHOT-[^_]*/_${{ inputs.name }}/')"
-          done
+          mv reearth-flow-api reearth-flow-api_${{ inputs.name }}
 
       - name: List Artifacts
         run: ls -l api/dist
@@ -77,6 +74,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: api-artifacts
+          path: api/dist
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
