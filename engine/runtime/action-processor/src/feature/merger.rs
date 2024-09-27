@@ -274,20 +274,17 @@ impl Processor for FeatureMerger {
             };
 
             for request_feature in request_features.iter() {
-                for (idx, supplier_feature) in supplier_features.iter().enumerate() {
-                    let mut merged_feature = request_feature.clone();
-                    if idx > 0 {
-                        merged_feature.refresh_id();
-                    }
+                let mut merged_feature = request_feature.clone();
+                for supplier_feature in supplier_features.iter() {
                     merged_feature
                         .attributes
                         .extend(supplier_feature.attributes.clone());
-                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                        &ctx,
-                        merged_feature,
-                        MERGED_PORT.clone(),
-                    ));
                 }
+                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                    &ctx,
+                    merged_feature,
+                    MERGED_PORT.clone(),
+                ));
             }
         }
         Ok(())
@@ -334,16 +331,13 @@ impl FeatureMerger {
                 return Ok(());
             };
             for request_feature in requestor_features.iter() {
-                for (idx, supplier_feature) in supplier_features.iter().enumerate() {
-                    let mut merged_feature = request_feature.clone();
-                    if idx > 0 {
-                        merged_feature.refresh_id();
-                    }
+                let mut merged_feature = request_feature.clone();
+                for supplier_feature in supplier_features.iter() {
                     merged_feature
                         .attributes
                         .extend(supplier_feature.attributes.clone());
-                    fw.send(ctx.as_executor_context(merged_feature, MERGED_PORT.clone()));
                 }
+                fw.send(ctx.as_executor_context(merged_feature, MERGED_PORT.clone()));
             }
         }
         Ok(())

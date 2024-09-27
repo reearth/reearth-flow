@@ -351,12 +351,60 @@ graphs:
             - lod
             - lineId
             - package
-          outputAttribute: overlapArea
+          outputAttribute: areaOverlap
+
+      - id: 04b63d60-30d5-46f3-a6e5-00c8cbdf9403
+        name: FeatureFilterByAreaOverlap
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").areaOverlap > 1
+              outputPort: areaOverlap
+
+      - id: 253b86ba-da7d-4d87-a96b-2fa399854cb0
+        name: AttributeMapperAdjacentSurfaceOverlap
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Folder
+              expr: |
+                env.get("__value").udxDirs
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: "FeatureType"
+              expr: |
+                env.get("__value").featureType
+            - attribute: "LOD"
+              expr: |
+                env.get("__value").lod
+            - attribute: "gmlId"
+              expr: |
+                env.get("__value").gmlId
+
+      - id: 232e98e5-f320-48ab-8573-a04c1451c2fb
+        name: FileWriterTsvAdjacentSurfaceOverlap
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(file::join_path(env.get("outputPath"), env.get("__value").destDataset), "隣接面重複エラー.tsv")
 
       - id: 69f22583-c0c8-4343-b83b-79842ad0d9ce
-        name: Noop
+        name: NoopAdjacentSurfaceOverlap
         type: action
         action: NoopSink
+
+
+      ## Create result file
+
 
     edges:
       - id: 3f6eadb8-9092-425b-a41c-100c24ec6e5c
@@ -499,8 +547,23 @@ graphs:
         toPort: default
       - id: f3d1f657-3592-4049-8db7-f062c6ac4ed1
         from: 544caa2f-8f3a-4a05-9aea-c1b8a58f69b5
-        to: 69f22583-c0c8-4343-b83b-79842ad0d9ce
+        to: 04b63d60-30d5-46f3-a6e5-00c8cbdf9403
         fromPort: area
+        toPort: default
+      - id: 97a6aaa3-52f1-492f-8f6e-55fad2efd0e4
+        from: 04b63d60-30d5-46f3-a6e5-00c8cbdf9403
+        to: 253b86ba-da7d-4d87-a96b-2fa399854cb0
+        fromPort: areaOverlap
+        toPort: default
+      - id: 2cf423fc-ddbf-496b-a172-21ab95306a30
+        from: 253b86ba-da7d-4d87-a96b-2fa399854cb0
+        to: 232e98e5-f320-48ab-8573-a04c1451c2fb
+        fromPort: default
+        toPort: default
+      - id: ac0ebeab-596d-4892-82cb-2335d5dd40ac
+        from: 04b63d60-30d5-46f3-a6e5-00c8cbdf9403
+        to: 69f22583-c0c8-4343-b83b-79842ad0d9ce
+        fromPort: areaOverlap
         toPort: default
 
       ## start surface validate
