@@ -105,9 +105,7 @@ jobs:
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: Extract UI Artifact
-        run: |
-          mkdir ui
-          tar -xvf flow-ui_${{ inputs.name }}.tar.gz -C ui
+        run: tar -xvf flow-ui_${{ inputs.name }}.tar.gz -C ui
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v2
