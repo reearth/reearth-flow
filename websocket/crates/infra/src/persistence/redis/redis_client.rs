@@ -13,7 +13,7 @@ pub struct RedisClient {
 
 #[derive(Error, Debug)]
 pub enum RedisClientError {
-    #[error("Redis error: {0}")]
+    #[error(transparent)]
     Redis(#[from] redis::RedisError),
     #[error("Serde JSON error: {0}")]
     SerdeJson(#[from] serde_json::Error),

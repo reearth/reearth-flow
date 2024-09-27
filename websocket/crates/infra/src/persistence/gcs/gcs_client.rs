@@ -7,9 +7,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum GcsError {
-    #[error("Google Cloud Storage error: {0}")]
+    #[error(transparent)]
     Auth(#[from] google_cloud_storage::client::google_cloud_auth::error::Error),
-    #[error("HTTP error: {0}")]
+    #[error(transparent)]
     Http(#[from] google_cloud_storage::http::Error),
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),

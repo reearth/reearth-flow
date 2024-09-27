@@ -33,7 +33,7 @@ pub struct FlowProjectRedisDataManager {
 
 #[derive(Error, Debug)]
 pub enum FlowProjectRedisDataManagerError {
-    #[error("Redis error: {0}")]
+    #[error(transparent)]
     Redis(#[from] redis::RedisError),
     #[error("Serde JSON error: {0}")]
     SerdeJson(#[from] serde_json::Error),
@@ -41,9 +41,9 @@ pub enum FlowProjectRedisDataManagerError {
     GlobalLock(#[from] GlobalLockError),
     #[error("Another Editing Session in progress")]
     EditingSessionInProgress,
-    #[error("Parse int error: {0}")]
+    #[error(transparent)]
     ParseInt(#[from] std::num::ParseIntError),
-    #[error("Redis client error: {0}")]
+    #[error(transparent)]
     RedisClient(#[from] super::redis_client::RedisClientError),
     #[error("Unknown error: {0}")]
     Unknown(String),

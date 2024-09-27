@@ -16,11 +16,11 @@ use super::local_storage::LocalClient;
 
 #[derive(Error, Debug)]
 pub enum ProjectRepositoryError {
-    #[error("Redis error: {0}")]
+    #[error(transparent)]
     Redis(#[from] RedisClientError),
-    #[error("GCS error: {0}")]
+    #[error(transparent)]
     Gcs(#[from] GcsError),
-    #[error("Serialization error: {0}")]
+    #[error(transparent)]
     Serialization(#[from] serde_json::Error),
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
