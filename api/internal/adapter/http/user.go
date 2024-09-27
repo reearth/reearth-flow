@@ -69,7 +69,6 @@ func (c *UserController) Signup(ctx context.Context, input SignupInput) (SignupO
 			Sub:    *input.Sub,
 			Secret: input.Secret,
 		})
-
 		if err != nil {
 			return SignupOutput{}, err
 		}
@@ -91,7 +90,6 @@ func (c *UserController) Signup(ctx context.Context, input SignupInput) (SignupO
 		Lang:        input.Lang,
 		Theme:       input.Theme,
 	})
-
 	if err != nil {
 		return SignupOutput{}, err
 	}

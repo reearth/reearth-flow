@@ -38,7 +38,8 @@ func TestUc_checkPermission(t *testing.T) {
 			readableWorkspaces: accountdomain.WorkspaceIDList{wid},
 			op: &usecase.Operator{
 				AcOperator: &accountusecase.Operator{
-					ReadableWorkspaces: accountdomain.WorkspaceIDList{wid}},
+					ReadableWorkspaces: accountdomain.WorkspaceIDList{wid},
+				},
 			},
 			wantErr: false,
 		},
@@ -47,7 +48,9 @@ func TestUc_checkPermission(t *testing.T) {
 			readableWorkspaces: accountdomain.WorkspaceIDList{accountdomain.NewWorkspaceID()},
 			op: &usecase.Operator{
 				AcOperator: &accountusecase.Operator{
-					ReadableWorkspaces: accountdomain.WorkspaceIDList{}}},
+					ReadableWorkspaces: accountdomain.WorkspaceIDList{},
+				},
+			},
 			wantErr: true,
 		},
 		{
@@ -66,7 +69,8 @@ func TestUc_checkPermission(t *testing.T) {
 			op: &usecase.Operator{
 				AcOperator: &accountusecase.Operator{
 					WritableWorkspaces: accountdomain.WorkspaceIDList{},
-				}},
+				},
+			},
 			wantErr: true,
 		},
 	}

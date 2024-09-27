@@ -5,9 +5,7 @@ import (
 	"time"
 )
 
-var (
-	ErrInvalidAlias error = errors.New("invalid alias")
-)
+var ErrInvalidAlias error = errors.New("invalid alias")
 
 type Project struct {
 	id                ID

@@ -1,0 +1,37 @@
+[package]
+description = "Re:Earth Flow worker"
+name = "reearth-flow-worker"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "reearth-flow-worker"
+path = "src/main.rs"
+
+[features]
+default = []
+feature-async = []
+
+[dependencies]
+reearth-flow-action-log.workspace = true
+reearth-flow-action-plateau-processor.workspace = true
+reearth-flow-action-processor.workspace = true
+reearth-flow-action-sink.workspace = true
+reearth-flow-action-source.workspace = true
+reearth-flow-common.workspace = true
+reearth-flow-runner.workspace = true
+reearth-flow-runtime.workspace = true
+reearth-flow-state.workspace = true
+reearth-flow-storage.workspace = true
+reearth-flow-telemetry.workspace = true
+reearth-flow-types.workspace = true
+
+once_cell.workspace = true
+tokio.workspace = true
+uuid.workspace = true

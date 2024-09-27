@@ -1,0 +1,60 @@
+[package]
+description = "Re:Earth Flow Action Sink"
+name = "reearth-flow-action-sink"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+reearth-flow-action-log.workspace = true
+reearth-flow-common.workspace = true
+reearth-flow-eval-expr.workspace = true
+reearth-flow-geometry.workspace = true
+reearth-flow-runtime.workspace = true
+reearth-flow-state.workspace = true
+reearth-flow-storage.workspace = true
+reearth-flow-types.workspace = true
+
+nusamai-citygml.workspace = true
+nusamai-geometry.workspace = true
+nusamai-gltf.workspace = true
+nusamai-mvt.workspace = true
+nusamai-plateau.workspace = true
+nusamai-projection.workspace = true
+
+ahash.workspace = true
+async-trait.workspace = true
+byteorder.workspace = true
+bytes.workspace = true
+cesiumtiles.workspace = true
+csv.workspace = true
+earcut.workspace = true
+flate2 = "1.0.28"
+geojson.workspace = true
+hashbrown = { version = "0.14.3", features = ["serde"] }
+image.workspace = true
+indexmap.workspace = true
+itertools.workspace = true
+once_cell.workspace = true
+petgraph.workspace = true
+prost = "0.12.3"
+rayon.workspace = true
+regex.workspace = true
+rhai.workspace = true
+rust_xlsxwriter.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+bytes.workspace = true

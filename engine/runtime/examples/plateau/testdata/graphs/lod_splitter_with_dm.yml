@@ -1,0 +1,120 @@
+id: 7e98d856-1438-4148-bdcb-91747ef2e405
+name: PLATEAU3.LodSplitterWithDM
+nodes:
+  - id: 278ab965-ce22-473d-98c6-c7b381c38679
+    name: GeometryFilter
+    type: action
+    action: GeometryFilter
+    with:
+      filterType: none
+
+  - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
+    name: GeometrySplitter
+    type: action
+    action: GeometrySplitter
+
+  - id: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
+    name: Reprojector
+    type: action
+    action: Reprojector
+    with:
+      epsgCode: 6677
+
+  - id: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    name: FeatureFilterByLod
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("__value").lod == "0"
+          outputPort: lod0
+        - expr: |
+            env.get("__value").lod == "1"
+          outputPort: lod1
+        - expr: |
+            env.get("__value").lod == "2"
+          outputPort: lod2
+        - expr: |
+            env.get("__value").lod == "3"
+          outputPort: lod3
+        - expr: |
+            env.get("__value").lod == "4"
+          outputPort: lod4
+
+  - id: dab9d3b6-594e-40cc-9f6b-c605005e3320
+    name: Lod0Router
+    type: action
+    action: Router
+    with:
+      routingPort: lod0
+
+  - id: dab9d3b6-594e-40cc-9f6b-c605005e3321
+    name: Lod1Router
+    type: action
+    action: Router
+    with:
+      routingPort: lod1
+
+  - id: dab9d3b6-594e-40cc-9f6b-c605005e3322
+    name: Lod2Router
+    type: action
+    action: Router
+    with:
+      routingPort: lod2
+
+  - id: dab9d3b6-594e-40cc-9f6b-c605005e3323
+    name: Lod3Router
+    type: action
+    action: Router
+    with:
+      routingPort: lod3
+
+  - id: dab9d3b6-594e-40cc-9f6b-c605005e3324
+    name: Lod4Router
+    type: action
+    action: Router
+    with:
+      routingPort: lod4
+
+edges:
+  - id: 1386a662-cf02-4475-a5d2-3668a50a56b7
+    from: 278ab965-ce22-473d-98c6-c7b381c38679
+    to: 8fe1a102-e3f3-40dd-b235-66e9c148830f
+    fromPort: unfiltered
+    toPort: default
+  - id: 5857909b-7fc0-4d3e-adfa-65a5669a6646
+    from: 8fe1a102-e3f3-40dd-b235-66e9c148830f
+    to: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
+    fromPort: default
+    toPort: default
+  - id: 237968a8-4e1b-434d-b215-aa98c404c8d7
+    from: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
+    to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    fromPort: default
+    toPort: default
+  - id: 1a802e2e-c876-42e3-b3ae-639af1bc7780
+    from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    to: dab9d3b6-594e-40cc-9f6b-c605005e3320
+    fromPort: lod0
+    toPort: default
+  - id: 1a802e2e-c876-42e3-b3ae-639af1bc7781
+    from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    to: dab9d3b6-594e-40cc-9f6b-c605005e3321
+    fromPort: lod1
+    toPort: default
+  - id: 1a802e2e-c876-42e3-b3ae-639af1bc7782
+    from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    to: dab9d3b6-594e-40cc-9f6b-c605005e3322
+    fromPort: lod2
+    toPort: default
+  - id: 1a802e2e-c876-42e3-b3ae-639af1bc7783
+    from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    to: dab9d3b6-594e-40cc-9f6b-c605005e3323
+    fromPort: lod3
+    toPort: default
+  - id: 1a802e2e-c876-42e3-b3ae-639af1bc7784
+    from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    to: dab9d3b6-594e-40cc-9f6b-c605005e3324
+    fromPort: lod4
+    toPort: default
