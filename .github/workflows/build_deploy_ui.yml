@@ -1,0 +1,157 @@
+name: Build and Deploy UI
+
+on:
+  workflow_call:
+    inputs:
+      sha_short:
+        required: true
+        type: string
+      new_tag:
+        required: true
+        type: string
+      new_tag_short:
+        required: true
+        type: string
+      name:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+
+jobs:
+  build-ui:
+    name: Build UI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 'lts/*'
+
+      - name: Build UI
+        shell: bash
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+        run: |
+          cd ui
+          yarn install
+          yarn build
+          tar -zcvf flow-ui.tar.gz dist
+          mv flow-ui.tar.gz flow-ui_${{ inputs.name }}.tar.gz
+
+      - name: Upload UI Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: flow-ui-artifact
+          path: ui/flow-ui_${{ inputs.name }}.tar.gz
+
+  build-docker-image:
+    name: Build and Push Docker Image
+    needs: build-ui
+    runs-on: ubuntu-latest
+    if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
+    env:
+      IMAGE_NAME: reearth/reearth-flow-ui
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Download UI Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: flow-ui-artifact
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Determine Build Options
+        id: options
+        run: |
+          TAG="${{ inputs.new_tag_short != 'blank' && inputs.new_tag_short || '' }}"
+          NAME="${{ inputs.name }}"
+          SHA="${{ inputs.sha_short }}"
+
+          if [[ -n "$TAG" ]]; then
+            PLATFORMS="linux/amd64,linux/arm64"
+            VERSION="$TAG"
+            TAGS="$IMAGE_NAME:$TAG"
+
+            if [[ ! "$TAG" =~ '-' ]]; then
+              TAGS+=",${IMAGE_NAME}:${TAG%.*}"
+              TAGS+=",${IMAGE_NAME}:${TAG%%.*}"
+              TAGS+=",${IMAGE_NAME}:latest"
+            fi
+          else
+            PLATFORMS="linux/amd64"
+            VERSION="$SHA"
+            TAGS="$IMAGE_NAME:$NAME"
+          fi
+
+          echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+      - name: Extract UI Artifact
+        run: |
+          mkdir ui
+          tar -xvf flow-ui_${{ inputs.name }}.tar.gz -C ui
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v2
+        with:
+          context: ui
+          platforms: ${{ steps.options.outputs.platforms }}
+          push: true
+          build-args: VERSION=${{ steps.options.outputs.version }}
+          tags: ${{ steps.options.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-to-cloud-run:
+    name: Deploy to Cloud Run (Nightly)
+    needs: build-docker-image
+    runs-on: ubuntu-latest
+    if: ${{ inputs.name == 'nightly' }}
+    env:
+      IMAGE: reearth/reearth-flow-ui:nightly
+      IMAGE_GCP: us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-ui:nightly
+      GCP_REGION: us-central1
+      CLOUD_RUN_SERVICE: reearth-flow-ui
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Configure Docker for GCP
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Push Docker Image to GCP Artifact Registry
+        run: |
+          docker pull $IMAGE
+          docker tag $IMAGE $IMAGE_GCP
+          docker push $IMAGE_GCP
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy $CLOUD_RUN_SERVICE \
+            --image $IMAGE_GCP \
+            --region $GCP_REGION \
+            --platform managed \
+            --quiet
