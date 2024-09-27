@@ -1,7 +1,7 @@
 # General application settings
 [general]
 app_name = "WebSocket Editor Backend"
-environment = "development"           # can be "development", "staging", or "production"
+environment = "development" # can be "development", "staging", or "production"
 
 # Redis configuration
 [redis]
