@@ -4238,9 +4238,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@reearth/flow-ui@workspace:.":
+"@reearth/flow-web@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@reearth/flow-ui@workspace:."
+  resolution: "@reearth/flow-web@workspace:."
   dependencies:
     "@auth0/auth0-react": "npm:2.2.4"
     "@graphql-codegen/cli": "npm:5.0.2"
