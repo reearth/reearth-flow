@@ -1,19 +1,30 @@
-use std::error::Error;
-use std::io;
-use std::path::PathBuf;
-use std::sync::Arc;
-
+use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
+use crate::persistence::redis::redis_client::{RedisClient, RedisClientError};
 use async_trait::async_trait;
-
-use crate::persistence::gcs::gcs_client::GcsClient;
-use crate::persistence::redis::redis_client::RedisClient;
-
-use crate::persistence::local_storage::LocalClient;
 use flow_websocket_domain::project::{Project, ProjectEditingSession};
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
 };
 use flow_websocket_domain::snapshot::ProjectSnapshot;
+use serde_json;
+use std::io;
+use std::path::PathBuf;
+use std::sync::Arc;
+use thiserror::Error;
+
+use super::local_storage::LocalClient;
+
+#[derive(Error, Debug)]
+pub enum ProjectRepositoryError {
+    #[error(transparent)]
+    Redis(#[from] RedisClientError),
+    #[error(transparent)]
+    Gcs(#[from] GcsError),
+    #[error(transparent)]
+    Serialization(#[from] serde_json::Error),
+    #[error("IO error: {0}")]
+    Io(#[from] io::Error),
+}
 
 pub struct ProjectRedisRepository {
     redis_client: Arc<RedisClient>,
@@ -26,16 +37,23 @@ impl ProjectRedisRepository {
 }
 
 #[async_trait]
-impl ProjectRepository for ProjectRedisRepository {
-    async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Box<dyn Error>> {
+impl ProjectRepository<ProjectRepositoryError> for ProjectRedisRepository {
+    async fn get_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<Project>, ProjectRepositoryError> {
         let key = format!("project:{}", project_id);
-        self.redis_client.get(&key).await
+        let project = self.redis_client.get(&key).await?;
+        Ok(project)
     }
 }
 
 #[async_trait]
-impl ProjectEditingSessionRepository for ProjectRedisRepository {
-    async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Box<dyn Error>> {
+impl ProjectEditingSessionRepository<ProjectRepositoryError> for ProjectRedisRepository {
+    async fn create_session(
+        &self,
+        session: ProjectEditingSession,
+    ) -> Result<(), ProjectRepositoryError> {
         let key = format!("session:{}", session.session_id.as_ref().unwrap());
         self.redis_client.set(key, &session).await?;
         Ok(())
@@ -44,12 +62,16 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
     async fn get_active_session(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectEditingSession>, Box<dyn Error>> {
+    ) -> Result<Option<ProjectEditingSession>, ProjectRepositoryError> {
         let key = format!("project:{}:active_session", project_id);
-        self.redis_client.get(&key).await
+        let session = self.redis_client.get(&key).await?;
+        Ok(session)
     }
 
-    async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Box<dyn Error>> {
+    async fn update_session(
+        &self,
+        session: ProjectEditingSession,
+    ) -> Result<(), ProjectRepositoryError> {
         let key = format!("session:{}", session.session_id.as_ref().unwrap());
         self.redis_client.set(key, &session).await?;
         Ok(())
@@ -67,8 +89,11 @@ impl ProjectGcsRepository {
 }
 
 #[async_trait]
-impl ProjectSnapshotRepository for ProjectGcsRepository {
-    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Box<dyn Error>> {
+impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectGcsRepository {
+    async fn create_snapshot(
+        &self,
+        snapshot: ProjectSnapshot,
+    ) -> Result<(), ProjectRepositoryError> {
         let path = format!("snapshot/{}", snapshot.metadata.id);
         self.client.upload(path, &snapshot).await?;
         Ok(())
@@ -77,14 +102,19 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, Box<dyn Error>> {
+    ) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError> {
         let path = format!("snapshot/{}:latest_snapshot", project_id);
-        self.client.download(path).await
+        let snapshot = self.client.download(path).await?;
+        Ok(snapshot)
     }
 
-    async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    async fn get_latest_snapshot_state(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<u8>, ProjectRepositoryError> {
         let path = format!("snapshot/{}:latest_snapshot_state", project_id);
-        self.client.download(path).await
+        let state = self.client.download(path).await?;
+        Ok(state)
     }
 }
 
@@ -101,26 +131,26 @@ impl ProjectLocalRepository {
 }
 
 #[async_trait]
-impl ProjectRepository for ProjectLocalRepository {
+impl ProjectRepository<ProjectRepositoryError> for ProjectLocalRepository {
     async fn get_project(
         &self,
         project_id: &str,
-    ) -> Result<Option<Project>, Box<dyn std::error::Error>> {
+    ) -> Result<Option<Project>, ProjectRepositoryError> {
         let path = format!("projects/{}", project_id);
         match self.client.download::<Project>(path).await {
             Ok(project) => Ok(Some(project)),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(Box::new(e)),
+            Err(e) => Err(ProjectRepositoryError::Io(e)),
         }
     }
 }
 
 #[async_trait]
-impl ProjectSnapshotRepository for ProjectLocalRepository {
+impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepository {
     async fn create_snapshot(
         &self,
         snapshot: ProjectSnapshot,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), ProjectRepositoryError> {
         let path = format!("snapshots/{}", snapshot.metadata.id);
         self.client.upload(path, &snapshot).await?;
 
@@ -134,24 +164,24 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, Box<dyn std::error::Error>> {
+    ) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError> {
         let path = format!("latest_snapshots/{}", project_id);
         match self.client.download::<ProjectSnapshot>(path).await {
             Ok(snapshot) => Ok(Some(snapshot)),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(Box::new(e)),
+            Err(e) => Err(ProjectRepositoryError::Io(e)),
         }
     }
 
     async fn get_latest_snapshot_state(
         &self,
         project_id: &str,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<u8>, ProjectRepositoryError> {
         let path = format!("latest_snapshots/{}", project_id);
         match self.client.download::<ProjectSnapshot>(path).await {
             Ok(snapshot) => Ok(serde_json::to_vec(&snapshot)?),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(vec![]),
-            Err(e) => Err(Box::new(e)),
+            Err(e) => Err(ProjectRepositoryError::Io(e)),
         }
     }
 }
