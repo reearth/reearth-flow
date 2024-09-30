@@ -1,17 +1,19 @@
 import {
   ariaDescribedByIds,
-  enumOptionsDeselectValue,
+  // enumOptionsDeselectValue,
   enumOptionsIsSelected,
-  enumOptionsSelectValue,
+  // enumOptionsSelectValue,
   enumOptionsValueForIndex,
-  labelValue,
   optionId,
   FormContextType,
   WidgetProps,
   RJSFSchema,
   StrictRJSFSchema,
 } from "@rjsf/utils";
-import { ChangeEvent, FocusEvent } from "react";
+import {
+  // ChangeEvent,
+  FocusEvent,
+} from "react";
 
 import { Checkbox } from "@flow/components";
 
@@ -35,24 +37,24 @@ const CheckboxesWidget = <
   readonly,
   //   TODO: Fix this required
   //   required,
-  onChange,
+  // onChange,
   onBlur,
   onFocus,
 }: WidgetProps<T, S, F>) => {
   const { enumOptions, enumDisabled, emptyValue } = options;
   const checkboxesValues = Array.isArray(value) ? value : [value];
 
-  const _onChange =
-    (index: number) =>
-    ({ target: { checked } }: ChangeEvent<HTMLInputElement>) => {
-      if (checked) {
-        onChange(enumOptionsSelectValue(index, checkboxesValues, enumOptions));
-      } else {
-        onChange(
-          enumOptionsDeselectValue(index, checkboxesValues, enumOptions),
-        );
-      }
-    };
+  // const _onChange =
+  //   (index: number) =>
+  //   ({ target: { checked } }: ChangeEvent<HTMLInputElement>) => {
+  //     if (checked) {
+  //       onChange(enumOptionsSelectValue(index, checkboxesValues, enumOptions));
+  //     } else {
+  //       onChange(
+  //         enumOptionsDeselectValue(index, checkboxesValues, enumOptions),
+  //       );
+  //     }
+  //   };
 
   const _onBlur = ({ target }: FocusEvent<HTMLButtonElement>) =>
     onBlur(
@@ -95,7 +97,7 @@ const CheckboxesWidget = <
                 disabled={disabled || itemDisabled || readonly}
                 autoFocus={autofocus && index === 0}
                 // TODO: Fix this
-                onChange={_onChange(index)}
+                // onChange={_onChange(index)}
                 onBlur={_onBlur}
                 onFocus={_onFocus}
                 aria-describedby={ariaDescribedByIds<T>(id)}

@@ -1,14 +1,14 @@
 import {
   ariaDescribedByIds,
   enumOptionsIsSelected,
-  enumOptionsValueForIndex,
+  // enumOptionsValueForIndex,
   optionId,
   FormContextType,
   RJSFSchema,
   StrictRJSFSchema,
   WidgetProps,
 } from "@rjsf/utils";
-import { ChangeEvent, FocusEvent } from "react";
+// import { ChangeEvent, FocusEvent } from "react";
 
 import { RadioGroup, Label, RadioGroupItem } from "@flow/components";
 
@@ -23,34 +23,36 @@ const RadioWidget = <
   required,
   disabled,
   readonly,
-  onChange,
-  onBlur,
-  onFocus,
+  // onChange,
+  // onBlur,
+  // onFocus,
 }: WidgetProps<T, S, F>) => {
-  const { enumOptions, enumDisabled, emptyValue } = options;
+  const {
+    enumOptions,
+    enumDisabled,
+    // emptyValue
+  } = options;
 
-  const _onChange = ({ target: { value } }: ChangeEvent<HTMLInputElement>) =>
-    onChange(enumOptionsValueForIndex<S>(value, enumOptions, emptyValue));
-  const _onBlur = ({ target }: FocusEvent<HTMLInputElement>) =>
-    onBlur(
-      id,
-      enumOptionsValueForIndex<S>(
-        target && target.value,
-        enumOptions,
-        emptyValue,
-      ),
-    );
-  const _onFocus = ({ target }: FocusEvent<HTMLInputElement>) =>
-    onFocus(
-      id,
-      enumOptionsValueForIndex<S>(
-        target && target.value,
-        enumOptions,
-        emptyValue,
-      ),
-    );
-
-  const inline = Boolean(options && options.inline);
+  // const _onChange = ({ target: { value } }: ChangeEvent<HTMLInputElement>) =>
+  //   onChange(enumOptionsValueForIndex<S>(value, enumOptions, emptyValue));
+  // const _onBlur = ({ target }: FocusEvent<HTMLInputElement>) =>
+  //   onBlur(
+  //     id,
+  //     enumOptionsValueForIndex<S>(
+  //       target && target.value,
+  //       enumOptions,
+  //       emptyValue,
+  //     ),
+  //   );
+  // const _onFocus = ({ target }: FocusEvent<HTMLInputElement>) =>
+  //   onFocus(
+  //     id,
+  //     enumOptionsValueForIndex<S>(
+  //       target && target.value,
+  //       enumOptions,
+  //       emptyValue,
+  //     ),
+  //   );
 
   return (
     <RadioGroup defaultValue="comfortable">
@@ -64,19 +66,18 @@ const RadioWidget = <
           return (
             <div className="flex items-center space-x-2">
               <RadioGroupItem
-                inline={inline}
-                label={option.label}
+                // label={option.label}
                 id={optionId(id, index)}
                 key={index}
-                name={id}
+                // name={id}
                 disabled={disabled || itemDisabled || readonly}
                 checked={checked}
                 required={required}
                 value={String(index)}
                 // TODO: Fix radio group
-                onChange={_onChange}
-                onBlur={_onBlur}
-                onFocus={_onFocus}
+                // onChange={_onChange}
+                // onBlur={_onBlur}
+                // onFocus={_onFocus}
                 aria-describedby={ariaDescribedByIds<T>(id)}
               />
               <Label htmlFor={id}>Default</Label>

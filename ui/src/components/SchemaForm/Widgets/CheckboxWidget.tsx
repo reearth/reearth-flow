@@ -2,7 +2,6 @@ import {
   ariaDescribedByIds,
   descriptionId,
   getTemplate,
-  labelValue,
   schemaRequiresTrueValue,
   FormContextType,
   RJSFSchema,
