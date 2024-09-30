@@ -537,6 +537,9 @@ impl Eq for Polygon2DFloat {}
 impl PartialEq for Polygon2DFloat {
     fn eq(&self, other: &Self) -> bool {
         let epsilon = 0.001;
+        if self.0.interiors().len() != other.0.interiors().len() {
+            return false;
+        }
         self.0.exterior().approx_eq(other.0.exterior(), epsilon)
             && self
                 .0
@@ -550,15 +553,21 @@ impl PartialEq for Polygon2DFloat {
 impl Hash for Polygon2DFloat {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let precision_inverse = 1000.0; // Inverse of epsilon used in PartialEq
-        self.0
-            .exterior_coords_iter()
-            .map(|coord| {
-                (
+        for coord in self.0.exterior_coords_iter() {
+            let hashed_coord = (
+                (coord.x * precision_inverse).round() as i64,
+                (coord.y * precision_inverse).round() as i64,
+            );
+            hashed_coord.hash(state);
+        }
+        for interior in self.0.interiors() {
+            for coord in interior.coords_iter() {
+                let hashed_coord = (
                     (coord.x * precision_inverse).round() as i64,
                     (coord.y * precision_inverse).round() as i64,
-                )
-            })
-            .collect::<Vec<(i64, i64)>>()
-            .hash(state);
+                );
+                hashed_coord.hash(state);
+            }
+        }
     }
 }
