@@ -28,6 +28,15 @@ macro_rules! action_error_log {
     }};
 }
 
+#[macro_export]
+macro_rules! slow_action_log {
+    (parent: $parent:expr, $logger:expr, $($args:tt)*) => {{
+        $crate::slog_info!($logger, $($args)*);
+        let parent_clone = $parent.clone();
+        $crate::tracing_info!(parent: parent_clone, $($args)*); // Use the cloned parent context
+    }};
+}
+
 pub fn span(
     parent: tracing::Span,
     action: String,

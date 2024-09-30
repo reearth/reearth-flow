@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { ReactNode, useEffect, useState } from "react";
 import { debug } from "tauri-plugin-log-api";
 
-import { FileSelector, Button, FlowLogo, Label, WorkflowSelector, Workflow, Loading } from "./components";
+import { FileSelector, Button, Label, WorkflowSelector, Workflow, Loading } from "./components";
 
 import "./index.css";
 

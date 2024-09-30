@@ -14,19 +14,13 @@ mod errors;
 mod factory;
 mod handler;
 
-#[cfg(debug_assertions)]
-const LOG_LEVEL: LevelFilter = LevelFilter::Debug;
-
-#[cfg(not(debug_assertions))]
-const LOG_LEVEL: LevelFilter = LevelFilter::Info;
-
 fn main() {
     let tauri_loggger = tauri_plugin_log::Builder::default()
         .targets([LogTarget::Stdout, LogTarget::LogDir, LogTarget::Webview])
         .max_file_size(1_000_000) // in bytes
         .rotation_strategy(RotationStrategy::KeepOne)
         .timezone_strategy(TimezoneStrategy::UseLocal)
-        .level(LOG_LEVEL)
+        .level(LevelFilter::Info)
         .build();
 
     tauri::Builder::default()

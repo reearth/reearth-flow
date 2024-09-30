@@ -8,7 +8,7 @@ use crossbeam::channel::Receiver;
 use futures::Future;
 use petgraph::graph::NodeIndex;
 use reearth_flow_action_log::factory::LoggerFactory;
-use reearth_flow_action_log::{action_error_log, action_log, ActionLogger};
+use reearth_flow_action_log::{action_error_log, action_log, slow_action_log, ActionLogger};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
@@ -27,6 +27,8 @@ use crate::{
 
 use super::receiver_loop::init_select;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
+
+static SLOW_ACTION_THRESHOLD_MILLI_SEC: u128 = 300;
 
 /// A processor in the execution DAG.
 #[derive(Debug)]
@@ -51,6 +53,7 @@ pub struct ProcessorNode<F> {
     error_manager: Arc<ErrorManager>,
     logger_factory: Arc<LoggerFactory>,
     logger: Arc<ActionLogger>,
+    slow_logger: Arc<ActionLogger>,
     span: tracing::Span,
     thread_pool: rayon::ThreadPool,
     thread_counter: Arc<AtomicU32>,
@@ -101,6 +104,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let logger = ctx
             .logger
             .action_logger(node_handle.id.to_string().as_str());
+        let slow_logger = ctx.logger.slow_action_logger();
         let logger_factory = Arc::clone(&ctx.logger);
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
@@ -118,6 +122,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             error_manager: dag.error_manager().clone(),
             logger_factory,
             logger: Arc::new(logger),
+            slow_logger: Arc::new(slow_logger),
             span,
             thread_pool: rayon::ThreadPoolBuilder::new()
                 .num_threads(num_threads)
@@ -205,10 +210,20 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
         let span = self.span.clone();
         let logger = self.logger.clone();
+        let slow_logger = self.slow_logger.clone();
+        let node_handle = self.node_handle.clone();
         let counter = Arc::clone(&self.thread_counter);
         counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         self.thread_pool.spawn(move || {
-            process(ctx, span, logger, channel_manager, processor);
+            process(
+                ctx,
+                node_handle,
+                span,
+                logger,
+                slow_logger,
+                channel_manager,
+                processor,
+            );
             counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
         });
         Ok(())
@@ -235,8 +250,10 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
 fn process(
     ctx: ExecutorContext,
+    node_handle: NodeHandle,
     span: Span,
     logger: Arc<ActionLogger>,
+    slow_logger: Arc<ActionLogger>,
     channel_manager: Arc<parking_lot::RwLock<ChannelManager>>,
     processor: Arc<parking_lot::RwLock<Box<dyn Processor>>>,
 ) {
@@ -245,10 +262,28 @@ fn process(
     let mut processor_guard = processor.write();
     let channel_manager: &mut ChannelManager = &mut channel_manager_guard;
     let processor: &mut Box<dyn Processor> = &mut processor_guard;
+    let now = time::Instant::now();
     let result = processor.process(ctx, channel_manager);
+    let elapsed = now.elapsed();
+    if elapsed.as_millis() >= SLOW_ACTION_THRESHOLD_MILLI_SEC {
+        slow_action_log!(
+            parent: span,
+            slow_logger,
+            "Slow action, processor node name = {:?}, node_id = {}, feature id = {:?}, elapsed = {:?}",
+            processor.name(),
+            node_handle.id,
+            feature_id,
+            elapsed,
+        )
+    }
     if let Err(e) = result {
         action_error_log!(
-            parent: span, logger, "Error operation, feature id = {:?}, error = {:?}", feature_id, e,
+            parent: span,
+            logger,
+            "Error operation, processor node name = {:?}, node_id = {}, feature id = {:?}, error = {:?}", processor.name(),
+            node_handle.id,
+            feature_id,
+            e,
         )
     }
 }
