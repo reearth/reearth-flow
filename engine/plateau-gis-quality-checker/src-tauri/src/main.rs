@@ -4,7 +4,7 @@
     windows_subsystem = "windows"
 )]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, env};
 
 use handler::QualityCheckWorkflow;
 use log::{debug, LevelFilter};
@@ -15,12 +15,16 @@ mod factory;
 mod handler;
 
 fn main() {
+    let log_level = env::var("RUST_LOG")
+        .map(|v| v.parse().unwrap_or(LevelFilter::Info))
+        .unwrap_or(LevelFilter::Info);
+
     let tauri_loggger = tauri_plugin_log::Builder::default()
         .targets([LogTarget::Stdout, LogTarget::LogDir, LogTarget::Webview])
         .max_file_size(1_000_000) // in bytes
         .rotation_strategy(RotationStrategy::KeepOne)
         .timezone_strategy(TimezoneStrategy::UseLocal)
-        .level(LevelFilter::Info)
+        .level(log_level)
         .build();
 
     tauri::Builder::default()

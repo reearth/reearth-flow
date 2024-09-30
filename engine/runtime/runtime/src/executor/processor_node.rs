@@ -28,7 +28,7 @@ use crate::{
 use super::receiver_loop::init_select;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
 
-static SLOW_ACTION_THRESHOLD_MILLI_SEC: u128 = 300;
+const SLOW_ACTION_THRESHOLD: Duration = Duration::from_millis(300);
 
 /// A processor in the execution DAG.
 #[derive(Debug)]
@@ -265,7 +265,7 @@ fn process(
     let now = time::Instant::now();
     let result = processor.process(ctx, channel_manager);
     let elapsed = now.elapsed();
-    if elapsed.as_millis() >= SLOW_ACTION_THRESHOLD_MILLI_SEC {
+    if elapsed >= SLOW_ACTION_THRESHOLD {
         slow_action_log!(
             parent: span,
             slow_logger,
