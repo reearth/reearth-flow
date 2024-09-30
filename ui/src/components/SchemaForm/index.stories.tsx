@@ -62,10 +62,6 @@ const fetcher = async (url: string) => {
   if (!response.ok) {
     throw new Error("response not ok");
   }
-  const status = response.status;
-  if (status != 200) {
-    throw new Error(`status not 200. received ${status}`);
-  }
   return await response.json();
 };
 
