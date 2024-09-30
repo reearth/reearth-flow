@@ -87,9 +87,7 @@ export const Default = () => {
       const { parameter } = await fetcher(
         `http://localhost:8080/actions/${selectedAction}`,
       );
-      if (parameter) {
-        setSchema(parameter);
-      }
+      setSchema(parameter);
     })();
   }, [selectedAction, setSchema]);
 
@@ -158,9 +156,15 @@ export const Default = () => {
           </Button>
         </pre>
       )}
-      <div className="rounded border p-2">
-        <SchemaForm schema={schema} />
-      </div>
+      {schema ? (
+        <div className="rounded border p-2">
+          <SchemaForm schema={schema} />
+        </div>
+      ) : (
+        <div className="rounded border p-2 text-destructive">
+          Schema is null or undefined
+        </div>
+      )}
     </div>
   );
 };
