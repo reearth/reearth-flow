@@ -3,20 +3,25 @@ use flow_websocket_domain::project::{Project, ProjectAllowedActions, ProjectEdit
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
 };
-use std::error::Error;
+use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use std::sync::Arc;
 
-pub struct ProjectService<E: Error + Send + Sync> {
-    project_repository: Arc<dyn ProjectRepository<E>>,
-    session_repository: Arc<dyn ProjectEditingSessionRepository<E>>,
-    snapshot_repository: Arc<dyn ProjectSnapshotRepository<E>>,
+pub struct ProjectService {
+    project_repository: Arc<dyn ProjectRepository<ProjectRepositoryError> + Send + Sync>,
+    session_repository:
+        Arc<dyn ProjectEditingSessionRepository<ProjectRepositoryError> + Send + Sync>,
+    snapshot_repository: Arc<dyn ProjectSnapshotRepository<ProjectRepositoryError> + Send + Sync>,
 }
 
-impl<E: Error + Send + Sync> ProjectService<E> {
+impl ProjectService {
     pub fn new(
-        project_repository: Arc<dyn ProjectRepository<E>>,
-        session_repository: Arc<dyn ProjectEditingSessionRepository<E>>,
-        snapshot_repository: Arc<dyn ProjectSnapshotRepository<E>>,
+        project_repository: Arc<dyn ProjectRepository<ProjectRepositoryError> + Send + Sync>,
+        session_repository: Arc<
+            dyn ProjectEditingSessionRepository<ProjectRepositoryError> + Send + Sync,
+        >,
+        snapshot_repository: Arc<
+            dyn ProjectSnapshotRepository<ProjectRepositoryError> + Send + Sync,
+        >,
     ) -> Self {
         Self {
             project_repository,
@@ -25,14 +30,17 @@ impl<E: Error + Send + Sync> ProjectService<E> {
         }
     }
 
-    pub async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Box<dyn Error>> {
+    pub async fn get_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<Project>, ProjectRepositoryError> {
         self.project_repository.get_project(project_id).await
     }
 
     pub async fn get_or_create_editing_session(
         &self,
         project_id: &str,
-    ) -> Result<ProjectEditingSession, Box<dyn Error>> {
+    ) -> Result<ProjectEditingSession, ProjectRepositoryError> {
         let mut session = match self
             .session_repository
             .get_active_session(project_id)
@@ -58,7 +66,7 @@ impl<E: Error + Send + Sync> ProjectService<E> {
         &self,
         project_id: &str,
         actions: Vec<String>,
-    ) -> Result<ProjectAllowedActions, Box<dyn Error>> {
+    ) -> Result<ProjectAllowedActions, ProjectRepositoryError> {
         // This is a placeholder implementation. You should implement the actual logic
         // to determine allowed actions based on certain requirements we'll have decide @pyshx
         Ok(ProjectAllowedActions {
@@ -75,26 +83,38 @@ impl<E: Error + Send + Sync> ProjectService<E> {
 }
 
 #[async_trait]
-impl<E: Error + Send + Sync> ProjectRepository<E> for ProjectService<E> {
-    async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Box<dyn Error>> {
+impl ProjectRepository<ProjectRepositoryError> for ProjectService
+where
+    Self: Send + Sync,
+{
+    async fn get_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<Project>, ProjectRepositoryError> {
         self.project_repository.get_project(project_id).await
     }
 }
 
 #[async_trait]
-impl<E: Error + Send + Sync> ProjectEditingSessionRepository<E> for ProjectService<E> {
-    async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Box<dyn Error>> {
+impl ProjectEditingSessionRepository<ProjectRepositoryError> for ProjectService {
+    async fn create_session(
+        &self,
+        session: ProjectEditingSession,
+    ) -> Result<(), ProjectRepositoryError> {
         self.session_repository.create_session(session).await
     }
 
     async fn get_active_session(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectEditingSession>, Box<dyn Error>> {
+    ) -> Result<Option<ProjectEditingSession>, ProjectRepositoryError> {
         self.session_repository.get_active_session(project_id).await
     }
 
-    async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Box<dyn Error>> {
+    async fn update_session(
+        &self,
+        session: ProjectEditingSession,
+    ) -> Result<(), ProjectRepositoryError> {
         self.session_repository.update_session(session).await
     }
 }

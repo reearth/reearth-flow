@@ -3,7 +3,7 @@ use flow_websocket_domain::project::ProjectEditingSession;
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectSnapshotRepository,
 };
-use flow_websocket_domain::snapshot::Metadata;
+use flow_websocket_domain::snapshot::{Metadata, SnapshotInfo};
 use flow_websocket_domain::utils::generate_id;
 use std::error::Error;
 use std::sync::Arc;
@@ -104,7 +104,7 @@ impl<E: Error + Send + Sync> ManageEditSessionService<E> {
                     String::new(),
                 );
 
-                let snapshot_state = SnapshotState::new(
+                let snapshot_state = SnapshotInfo::new(
                     None,   // created_by
                     vec![], // changes_by
                     ObjectTenant {

@@ -166,10 +166,6 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepositor
     ) -> Result<(), ProjectRepositoryError> {
         let path = format!("snapshots/{}", snapshot.metadata.id);
         self.client.upload(path, &snapshot, true).await?;
-
-        // Update latest snapshot
-        let latest_path = format!("latest_snapshots/{}", snapshot.metadata.project_id);
-        self.client.upload(latest_path, &snapshot, true).await?;
         Ok(())
     }
 
@@ -178,11 +174,8 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepositor
         project_id: &str,
     ) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError> {
         let path = format!("snapshot/{}:latest_snapshot", project_id);
-        match self.client.download::<ProjectSnapshot>(path).await {
-            Ok(snapshot) => Ok(Some(snapshot)),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(ProjectRepositoryError::Io(e)),
-        }
+        let snapshot = self.client.download::<ProjectSnapshot>(path).await?;
+        Ok(Some(snapshot))
     }
 
     async fn get_latest_snapshot_state(
