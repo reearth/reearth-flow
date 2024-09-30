@@ -70,15 +70,11 @@ const ArrayFieldTemplate = <
             registry={registry}
           />
           <div key={`array-item-list-${idSchema.$id}`}>
-            {items &&
-              items.map(
-                ({
-                  key,
-                  ...itemProps
-                }: ArrayFieldTemplateItemType<T, S, F>) => (
-                  <ArrayFieldItemTemplate key={key} {...itemProps} />
-                ),
-              )}
+            {items?.map(
+              ({ key, ...itemProps }: ArrayFieldTemplateItemType<T, S, F>) => (
+                <ArrayFieldItemTemplate key={key} {...itemProps} />
+              ),
+            )}
             {canAdd && (
               <div>
                 <div className="mt-2">

@@ -59,20 +59,12 @@ const CheckboxesWidget = <
   const _onBlur = ({ target }: FocusEvent<HTMLButtonElement>) =>
     onBlur(
       id,
-      enumOptionsValueForIndex<S>(
-        target && target.value,
-        enumOptions,
-        emptyValue,
-      ),
+      enumOptionsValueForIndex<S>(target?.value, enumOptions, emptyValue),
     );
   const _onFocus = ({ target }: FocusEvent<HTMLButtonElement>) =>
     onFocus(
       id,
-      enumOptionsValueForIndex<S>(
-        target && target.value,
-        enumOptions,
-        emptyValue,
-      ),
+      enumOptionsValueForIndex<S>(target?.value, enumOptions, emptyValue),
     );
 
   return (
@@ -91,6 +83,7 @@ const CheckboxesWidget = <
               enumDisabled.indexOf(option.value) !== -1;
             return (
               <Checkbox
+                key={optionId(id, index)}
                 id={optionId(id, index)}
                 name={id}
                 checked={checked}

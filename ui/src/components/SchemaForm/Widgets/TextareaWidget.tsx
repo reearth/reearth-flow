@@ -37,9 +37,9 @@ const TextareaWidget = <
   const _onChange = ({ target: { value } }: ChangeEvent<HTMLTextAreaElement>) =>
     onChange(value === "" ? options.emptyValue : value);
   const _onBlur = ({ target }: FocusEvent<HTMLTextAreaElement>) =>
-    onBlur(id, target && target.value);
+    onBlur(id, target?.value);
   const _onFocus = ({ target }: FocusEvent<HTMLTextAreaElement>) =>
-    onFocus(id, target && target.value);
+    onFocus(id, target?.value);
 
   return (
     <Textarea

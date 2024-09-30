@@ -43,12 +43,11 @@ const FieldTemplate = <
     registry,
   } = props;
   const uiOptions = getUiOptions<T, S, F>(uiSchema);
-  const WrapIfAdditionalTemplate = getTemplate<
+  const WrapIfAdditionalTemplate = getTemplate(
     "WrapIfAdditionalTemplate",
-    T,
-    S,
-    F
-  >("WrapIfAdditionalTemplate", registry, uiOptions);
+    registry,
+    uiOptions,
+  );
 
   if (hidden) {
     return <div className="hidden">{children}</div>;

@@ -52,11 +52,11 @@ const CheckboxWidget = <
   const required = schemaRequiresTrueValue<S>(schema);
 
   const _onChange = ({ target }: FocusEvent<HTMLButtonElement>) =>
-    onChange(id, target && target.value);
+    onChange(id, target?.value);
   const _onBlur = ({ target }: FocusEvent<HTMLButtonElement>) =>
-    onBlur(id, target && target.value);
+    onBlur(id, target?.value);
   const _onFocus = ({ target }: FocusEvent<HTMLButtonElement>) =>
-    onFocus(id, target && target.value);
+    onFocus(id, target?.value);
   const description = options.description ?? schema.description;
 
   return (

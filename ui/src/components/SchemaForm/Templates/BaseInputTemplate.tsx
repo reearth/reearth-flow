@@ -66,9 +66,9 @@ const BaseInputTemplate = <
   const _onChange = ({ target: { value } }: ChangeEvent<HTMLInputElement>) =>
     onChange(value === "" ? options.emptyValue : value);
   const _onBlur = ({ target }: FocusEvent<HTMLInputElement>) =>
-    onBlur(id, target && target.value);
+    onBlur(id, target?.value);
   const _onFocus = ({ target }: FocusEvent<HTMLInputElement>) =>
-    onFocus(id, target && target.value);
+    onFocus(id, target?.value);
 
   return (
     <>
@@ -95,7 +95,7 @@ const BaseInputTemplate = <
                 ? ([schema.default] as string[])
                 : [],
             )
-            .map((example: any) => {
+            .map((example: string) => {
               return <option key={example} value={example} />;
             })}
         </datalist>
