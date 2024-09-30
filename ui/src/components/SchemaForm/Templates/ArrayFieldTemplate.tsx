@@ -52,45 +52,37 @@ const ArrayFieldTemplate = <
   } = registry.templates;
   return (
     <div>
-      <div>
-        <div>
-          <ArrayFieldTitleTemplate
-            idSchema={idSchema}
-            title={uiOptions.title || title}
-            schema={schema}
-            uiSchema={uiSchema}
-            required={required}
-            registry={registry}
-          />
-          <ArrayFieldDescriptionTemplate
-            idSchema={idSchema}
-            description={uiOptions.description || schema.description}
-            schema={schema}
-            uiSchema={uiSchema}
-            registry={registry}
-          />
-          <div key={`array-item-list-${idSchema.$id}`}>
-            {items?.map(
-              ({ key, ...itemProps }: ArrayFieldTemplateItemType<T, S, F>) => (
-                <ArrayFieldItemTemplate key={key} {...itemProps} />
-              ),
-            )}
-            {canAdd && (
-              <div>
-                <div className="mt-2">
-                  <div className="py-4">
-                    <AddButton
-                      onClick={onAddClick}
-                      disabled={disabled || readonly}
-                      uiSchema={uiSchema}
-                      registry={registry}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+      <ArrayFieldTitleTemplate
+        idSchema={idSchema}
+        title={uiOptions.title || title}
+        schema={schema}
+        uiSchema={uiSchema}
+        required={required}
+        registry={registry}
+      />
+      <ArrayFieldDescriptionTemplate
+        idSchema={idSchema}
+        description={uiOptions.description || schema.description}
+        schema={schema}
+        uiSchema={uiSchema}
+        registry={registry}
+      />
+      <div key={`array-item-list-${idSchema.$id}`}>
+        {items?.map(
+          ({ key, ...itemProps }: ArrayFieldTemplateItemType<T, S, F>) => (
+            <ArrayFieldItemTemplate key={key} {...itemProps} />
+          ),
+        )}
+        {canAdd && (
+          <div className="mt-2 py-4">
+            <AddButton
+              onClick={onAddClick}
+              disabled={disabled || readonly}
+              uiSchema={uiSchema}
+              registry={registry}
+            />
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

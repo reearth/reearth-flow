@@ -55,7 +55,7 @@ const RadioWidget = <
   //   );
 
   return (
-    <RadioGroup defaultValue="comfortable">
+    <RadioGroup>
       {Array.isArray(enumOptions) &&
         enumOptions.map((option, index) => {
           const itemDisabled =
@@ -66,9 +66,9 @@ const RadioWidget = <
           return (
             <div className="flex items-center space-x-2">
               <RadioGroupItem
+                key={optionId(id, index)}
                 // label={option.label}
                 id={optionId(id, index)}
-                key={index}
                 // name={id}
                 disabled={disabled || itemDisabled || readonly}
                 checked={checked}
@@ -80,7 +80,7 @@ const RadioWidget = <
                 // onFocus={_onFocus}
                 aria-describedby={ariaDescribedByIds<T>(id)}
               />
-              <Label htmlFor={id}>Default</Label>
+              <Label htmlFor={optionId(id, index)}>{option.label}</Label>
             </div>
           );
         })}
