@@ -78,7 +78,7 @@ function App() {
   return (
     <div className="dark relative h-screen bg-card text-zinc-300">
       <div className="relative flex h-[53px] items-center justify-between border-b bg-secondary px-4 py-2">
-        <FlowLogo className="" />
+        <div />
         <p className="absolute left-1/2 mx-auto -translate-x-1/2 text-xl font-thin text-white">
           PLATEAU 品質検査ツール
         </p>
