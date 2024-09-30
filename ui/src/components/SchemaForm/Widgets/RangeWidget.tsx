@@ -10,7 +10,7 @@ import {
 const RangeWidget = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >(
   props: WidgetProps<T, S, F>,
 ) => {

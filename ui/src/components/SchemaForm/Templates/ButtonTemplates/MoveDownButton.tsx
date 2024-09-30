@@ -11,7 +11,7 @@ import { Button } from "@flow/components";
 const MoveDownButton = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >(
   props: IconButtonProps<T, S, F>,
 ) => {

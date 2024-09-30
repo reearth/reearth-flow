@@ -15,7 +15,7 @@ import { RadioGroup, Label, RadioGroupItem } from "@flow/components";
 const RadioWidget = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >({
   id,
   options,

@@ -20,7 +20,7 @@ import { Input } from "@flow/components";
 const BaseInputTemplate = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >(
   props: BaseInputTemplateProps<T, S, F>,
 ) => {

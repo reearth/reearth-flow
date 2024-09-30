@@ -13,7 +13,7 @@ import {
 const ObjectFieldTemplate = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >({
   description,
   title,

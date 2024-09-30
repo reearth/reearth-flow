@@ -12,7 +12,7 @@ import { useT } from "@flow/lib/i18n";
 const SubmitButton = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >({
   uiSchema,
 }: SubmitButtonProps<T, S, F>) => {

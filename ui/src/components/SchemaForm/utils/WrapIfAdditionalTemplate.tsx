@@ -18,7 +18,7 @@ import { cn } from "@flow/lib/utils";
 const WrapIfAdditionalTemplate = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >(
   props: WrapIfAdditionalTemplateProps<T, S, F>,
 ) => {

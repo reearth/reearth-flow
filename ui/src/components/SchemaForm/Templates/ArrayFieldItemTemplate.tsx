@@ -8,7 +8,7 @@ import {
 const ArrayFieldItemTemplate = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >(
   props: ArrayFieldTemplateItemType<T, S, F>,
 ) => {

@@ -13,7 +13,7 @@ import {
 const FieldHelpTemplate = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >(
   props: FieldHelpProps<T, S, F>,
 ) => {

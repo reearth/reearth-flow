@@ -27,7 +27,7 @@ import { TitleFieldTemplate } from "./TitleFieldTemplate";
 export function generateTemplates<
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >(): Partial<TemplatesType<T, S, F>> {
   return {
     TitleFieldTemplate,

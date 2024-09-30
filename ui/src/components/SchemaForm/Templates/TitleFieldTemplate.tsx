@@ -14,7 +14,7 @@ import { Label } from "@flow/components";
 const TitleFieldTemplate = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >({
   id,
   title,

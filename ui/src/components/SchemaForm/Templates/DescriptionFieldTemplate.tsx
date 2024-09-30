@@ -12,7 +12,7 @@ import {
 const DescriptionFieldTemplate = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >(
   props: DescriptionFieldProps<T, S, F>,
 ) => {

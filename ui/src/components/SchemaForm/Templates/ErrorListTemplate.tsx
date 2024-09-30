@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from "@flow/components";
 const ErrorListTemplate = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >({
   errors,
   registry,

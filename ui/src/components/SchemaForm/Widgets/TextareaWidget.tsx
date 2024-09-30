@@ -12,7 +12,7 @@ import { Textarea } from "@flow/components";
 type CustomWidgetProps<
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 > = WidgetProps<T, S, F> & {
   options: any;
 };
@@ -20,7 +20,7 @@ type CustomWidgetProps<
 const TextareaWidget = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >({
   id,
   placeholder,

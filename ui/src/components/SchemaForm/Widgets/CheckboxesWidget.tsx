@@ -25,7 +25,7 @@ import { Checkbox } from "@flow/components";
 const CheckboxesWidget = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
-  F extends FormContextType = any,
+  F extends FormContextType = FormContextType,
 >({
   label,
   hideLabel,
