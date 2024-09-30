@@ -92,7 +92,7 @@ jobs:
 
       - name: vcpkg integrate
         if: matrix.settings.platform == 'windows-latest'
-        working-directory: ./worker
+        working-directory: ./engine
         run: |
           vcpkg install libxml2 --triplet x64-windows-static
           vcpkg integrate install

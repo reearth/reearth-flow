@@ -255,36 +255,35 @@ impl LineOnLineOverlayer {
                 let output_envelope = line_string.envelope();
                 let candidates = rtree.locate_in_envelope_intersecting(&output_envelope);
                 let mut intersect = false;
-                let mut candidate_line_strings = Vec::new();
                 for candidate in candidates {
                     if line_string.approx_eq(candidate, EPSILON) {
                         continue;
                     }
-                    candidate_line_strings.push(candidate.clone());
-                    if line_string.intersects(candidate) {
-                        intersect = true;
-                        for line in candidate.lines() {
-                            let line_float = Line2DFloat(line);
-                            match line_features.entry(line_float.clone()) {
-                                Entry::Occupied(mut entry) => {
-                                    let line_feature = entry.get_mut();
-                                    line_feature.overlap += 1;
-                                    line_feature
-                                        .attributes
-                                        .insert(feature.id, feature.attributes.clone());
+                    if !line_string.intersects(candidate) {
+                        continue;
+                    }
+                    intersect = true;
+                    for line in candidate.lines() {
+                        let line_float = Line2DFloat(line);
+                        match line_features.entry(line_float.clone()) {
+                            Entry::Occupied(mut entry) => {
+                                let line_feature = entry.get_mut();
+                                line_feature.overlap += 1;
+                                line_feature
+                                    .attributes
+                                    .insert(feature.id, feature.attributes.clone());
+                            }
+                            Entry::Vacant(entry) => {
+                                let mut attributes = HashMap::new();
+                                for (k, v) in feature.iter() {
+                                    attributes.insert(k.clone(), v.clone());
                                 }
-                                Entry::Vacant(entry) => {
-                                    let mut attributes = HashMap::new();
-                                    for (k, v) in feature.iter() {
-                                        attributes.insert(k.clone(), v.clone());
-                                    }
-                                    let line_feature = LineFeature {
-                                        epsg: feature.geometry.as_ref().and_then(|g| g.epsg),
-                                        attributes: HashMap::from([(feature.id, attributes)]),
-                                        overlap: 1,
-                                    };
-                                    entry.insert(line_feature);
-                                }
+                                let line_feature = LineFeature {
+                                    epsg: feature.geometry.as_ref().and_then(|g| g.epsg),
+                                    attributes: HashMap::from([(feature.id, attributes)]),
+                                    overlap: 1,
+                                };
+                                entry.insert(line_feature);
                             }
                         }
                     }
