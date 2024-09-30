@@ -8,12 +8,12 @@ use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
 
-pub struct SnapshotService {
-    snapshot_repository: Arc<dyn ProjectSnapshotRepository>,
+pub struct SnapshotService<E: Error + Send + Sync> {
+    snapshot_repository: Arc<dyn ProjectSnapshotRepository<E>>,
 }
 
-impl SnapshotService {
-    pub fn new(snapshot_repository: Arc<dyn ProjectSnapshotRepository>) -> Self {
+impl<E: Error + Send + Sync> SnapshotService<E> {
+    pub fn new(snapshot_repository: Arc<dyn ProjectSnapshotRepository<E>>) -> Self {
         Self {
             snapshot_repository,
         }
@@ -75,7 +75,7 @@ impl SnapshotService {
 }
 
 #[async_trait]
-impl ProjectSnapshotRepository for SnapshotService {
+impl<E: Error + Send + Sync> ProjectSnapshotRepository<E> for SnapshotService<E> {
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Box<dyn Error>> {
         self.snapshot_repository.create_snapshot(snapshot).await
     }

@@ -4,6 +4,7 @@ use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectSnapshotRepository,
 };
 use flow_websocket_domain::snapshot::Metadata;
+use flow_websocket_domain::utils::generate_id;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::time::sleep;
@@ -11,15 +12,15 @@ use tokio::time::sleep;
 const MAX_EMPTY_SESSION_DURATION: i64 = 10 * 1000; // 10 seconds
 const MAX_SNAPSHOT_DELTA: i64 = 5 * 60 * 1000; // 5 minutes
 
-pub struct ManageEditSessionService {
-    session_repository: Arc<dyn ProjectEditingSessionRepository>,
-    snapshot_repository: Arc<dyn ProjectSnapshotRepository>,
+pub struct ManageEditSessionService<E: Error + Send + Sync> {
+    session_repository: Arc<dyn ProjectEditingSessionRepository<E>>,
+    snapshot_repository: Arc<dyn ProjectSnapshotRepository<E>>,
 }
 
-impl ManageEditSessionService {
+impl<E: Error + Send + Sync> ManageEditSessionService<E> {
     pub fn new(
-        session_repository: Arc<dyn ProjectEditingSessionRepository>,
-        snapshot_repository: Arc<dyn ProjectSnapshotRepository>,
+        session_repository: Arc<dyn ProjectEditingSessionRepository<E>>,
+        snapshot_repository: Arc<dyn ProjectSnapshotRepository<E>>,
     ) -> Self {
         Self {
             session_repository,
