@@ -1,4 +1,5 @@
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
+use num_traits::Bounded;
 use num_traits::Zero;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
@@ -15,9 +16,13 @@ use super::conversion::geojson::{
 use super::coordinate::{self, Coordinate};
 use super::coordnum::{CoordFloat, CoordNum};
 use super::line::Line;
+use super::point::Point2D;
+use super::point::Point3D;
 use super::traits::Elevation;
 use super::triangle::Triangle;
 use super::{no_value::NoValue, point::Point};
+
+use crate::point;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
 pub struct LineString<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Coordinate<T, Z>>);
@@ -408,32 +413,44 @@ impl<
     }
 }
 
-impl<T, Z> rstar::RTreeObject for LineString<T, Z>
-where
-    T: num_traits::Float + rstar::RTreeNum + CoordNum,
-    Z: num_traits::Float + rstar::RTreeNum + CoordNum,
-{
-    type Envelope = rstar::AABB<Point<T, Z>>;
+impl rstar::RTreeObject for LineString2D<f64> {
+    type Envelope = rstar::AABB<Point2D<f64>>;
 
     fn envelope(&self) -> Self::Envelope {
-        use num_traits::Bounded;
         let bounding_rect = line_string_bounding_rect(self);
         match bounding_rect {
             None => rstar::AABB::from_corners(
-                Point::new_(
-                    Bounded::min_value(),
-                    Bounded::min_value(),
-                    Bounded::min_value(),
+                point!(
+                    x: Bounded::min_value(),
+                    y: Bounded::min_value(),
                 ),
-                Point::new_(
-                    Bounded::max_value(),
-                    Bounded::max_value(),
-                    Bounded::max_value(),
-                ),
+                point!(x: Bounded::max_value(), y: Bounded::max_value()),
             ),
             Some(b) => rstar::AABB::from_corners(
-                Point::new_(b.min().x, b.min().y, b.min().z),
-                Point::new_(b.max().x, b.max().y, b.max().z),
+                point!(x: b.min().x, y: b.min().y),
+                point!(x: b.max().x, y: b.max().y),
+            ),
+        }
+    }
+}
+
+impl rstar::RTreeObject for LineString3D<f64> {
+    type Envelope = rstar::AABB<Point3D<f64>>;
+
+    fn envelope(&self) -> Self::Envelope {
+        let bounding_rect = line_string_bounding_rect(self);
+        match bounding_rect {
+            None => rstar::AABB::from_corners(
+                point!(
+                    x: Bounded::min_value(),
+                    y: Bounded::min_value(),
+                    z: Bounded::min_value(),
+                ),
+                point!(x: Bounded::max_value(), y: Bounded::max_value(), z: Bounded::max_value()),
+            ),
+            Some(b) => rstar::AABB::from_corners(
+                point!(x: b.min().x, y: b.min().y, z: b.min().z),
+                point!(x: b.max().x, y: b.max().y, z: b.max().z),
             ),
         }
     }
@@ -447,5 +464,21 @@ where
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.0.iter().all(|c| c.is_elevation_zero())
+    }
+}
+
+impl<Z: CoordFloat> LineString<f64, Z> {
+    pub fn approx_eq(&self, other: &LineString<f64, Z>, epsilon: f64) -> bool {
+        if self.0.len() != other.0.len() {
+            return false;
+        }
+
+        let points_zipper = self.points().zip(other.points());
+        for (lhs, rhs) in points_zipper {
+            if !lhs.approx_eq(&rhs, epsilon) {
+                return false;
+            }
+        }
+        true
     }
 }

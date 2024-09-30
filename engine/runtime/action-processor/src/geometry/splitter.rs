@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -10,8 +9,6 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
 use serde_json::Value;
-
-pub static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
 
 #[derive(Debug, Clone, Default)]
 pub struct GeometrySplitterFactory;

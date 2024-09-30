@@ -26,6 +26,9 @@ pub enum Error {
 
     #[error("JsonError: {0}")]
     Json(String),
+
+    #[error("CompressError: {0}")]
+    Compress(String),
 }
 
 impl Error {
@@ -60,12 +63,17 @@ impl Error {
     pub fn json<T: ToString>(message: T) -> Self {
         Self::Json(message.to_string())
     }
+
+    pub fn compress<T: ToString>(message: T) -> Self {
+        Self::Compress(message.to_string())
+    }
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub mod collection;
 pub mod color;
+pub mod compress;
 pub mod csv;
 pub mod dir;
 pub mod fs;

@@ -20,6 +20,7 @@ with:
 graphs:
   - !include ../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../graphs/folder_and_file_path_reader.yml
+  - !include ../../../graphs/surface_validator_2d.yml
   - id: 43581967-2a15-450a-ba13-e450376c3d0e
     name: entry_point
     nodes:
@@ -114,6 +115,72 @@ graphs:
         type: subGraph
         subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
+      ## start surface validate
+      - id: 023ceda2-1946-4fe8-92cf-62b1fda951e2
+        name: SurfaceValidator2D
+        type: subGraph
+        subGraphId: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
+
+      - id: b99a3bfe-5cc0-4642-b3ab-f6270df382ea
+        name: AttributeAggregatorInvalidOrientation
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+            - newAttribute: Index
+              attributeValue: |
+                env.get("__value").fileIndex.to_string()
+
+            - newAttribute: Folder
+              attribute: package
+
+            - newAttribute: lod
+              attributeValue: |
+                env.get("__value").lod.to_string()
+
+            - newAttribute: FeatureType
+              attribute: featureType
+
+            - newAttribute: destDataset
+              attributeValue: |
+                env.get("__value").destDataset
+
+          calculation: |
+            1
+          calculationAttribute: "numInvalidOrientation"
+          method: count
+
+      - id: 6b6f6ffc-fea9-4da3-944b-e6d31e805318
+        name: AttributeAggregatorInvalidSurface
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+            - newAttribute: Index
+              attributeValue: |
+                env.get("__value").fileIndex.to_string()
+
+            - newAttribute: Folder
+              attribute: package
+
+            - newAttribute: lod
+              attributeValue: |
+                env.get("__value").lod.to_string()
+
+            - newAttribute: FeatureType
+              attribute: featureType
+
+            - newAttribute: destDataset
+              attributeValue: |
+                env.get("__value").destDataset
+
+          calculation: |
+            1
+          calculationAttribute: "numInvalidSurface"
+          method: count
+
+      ## end surface validate
+
       - id: c074f373-44e9-40b8-af83-76f36e141a9c
         name: FeatureTypeExtractor
         type: action
@@ -161,11 +228,6 @@ graphs:
             totalCount
           method: count
 
-      - id: 5ffe00f3-4554-4fc9-91c7-f7d272691cc4
-        name: NoopFeatureTypeExtractor
-        type: action
-        action: NoopSink
-
       - id: 24825ad1-d005-4a45-b9bf-cbb605b86626
         name: FeatureFilterByRwy
         type: action
@@ -177,16 +239,16 @@ graphs:
               outputPort: default
 
       - id: 92f040b7-c8d8-4fb2-a8ff-9b1d7d2a0e09
-        name: GeometryExtractor
+        name: GeometryExtractorCityGml
         type: action
         action: GeometryExtractor
         with:
-          outputAttribute: dumpGeometry
+          outputAttribute: dumpGeometryCityGml
 
       - id: 79b7bc2a-735a-4f5f-9e6a-ce5d51dbda0e
-        name: TwoDimentionForcer
+        name: TwoDimensionForcer
         type: action
-        action: TwoDimentionForcer
+        action: TwoDimensionForcer
 
       - id: f45d09c3-2ea5-48c6-a215-aadfacb75260
         name: GeometryDissolver
@@ -199,10 +261,187 @@ graphs:
             - fileIndex
             - package
 
-      - id: 69f22583-c0c8-4343-b83b-79842ad0d9ce
-        name: Noop
+      - id: 357febd2-3f43-45aa-b9cf-a10e4e3b59aa
+        name: GeometryExtractor2D
         type: action
-        action: NoopSink
+        action: GeometryExtractor
+        with:
+          outputAttribute: dumpGeometry2D
+
+      - id: 73056fde-2493-44a2-9196-c2f69900a75a
+        name: GeometryCoercerByLineString
+        type: action
+        action: GeometryCoercer
+        with:
+          coercerType: lineString
+
+      - id: 5b958746-a54b-4e0f-ad26-5c7388167943
+        name: FeatureFilterByLod
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").lod == "1"
+              outputPort: lod1
+
+      - id: 46c146fb-857f-4426-a49d-ba70bc8e252f
+        name: LineOnLineOverlayerLod1
+        type: action
+        action: LineOnLineOverlayer
+        with:
+          groupBy:
+            - lod
+            - package
+          outputAttribute: lineOverlap
+
+      - id: 6f4352f3-0397-4672-966d-67637a6c9b98
+        name: FeatureFilterByLineOverlap
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").lineOverlap > 1
+              outputPort: lineOverlap
+
+      - id: 0ed93df9-1aae-4d3a-95d7-710cf2bdb7bc
+        name: FeatureCounterByLineOverlap
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          outputAttribute: lineId
+
+      - id: f243233e-6c64-4a5a-b62f-350e739f443e
+        name: ListExploderByFeatures
+        type: action
+        action: ListExploder
+        with:
+          sourceAttribute: features
+
+      - id: 2c07b025-1af0-48e5-a175-be8aa221c46f
+        name: GeometryReplacer2D
+        type: action
+        action: GeometryReplacer
+        with:
+          sourceAttribute: dumpGeometry2D
+
+      - id: 544caa2f-8f3a-4a05-9aea-c1b8a58f69b5
+        name: AreaOnAreaOverlayerByLine
+        type: action
+        action: AreaOnAreaOverlayer
+        with:
+          groupBy:
+            - lod
+            - lineId
+            - package
+          outputAttribute: areaOverlap
+
+      - id: 04b63d60-30d5-46f3-a6e5-00c8cbdf9403
+        name: FeatureFilterByAreaOverlap
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").areaOverlap > 1
+              outputPort: areaOverlap
+
+      - id: 253b86ba-da7d-4d87-a96b-2fa399854cb0
+        name: AttributeMapperAdjacentSurfaceOverlap
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Folder
+              expr: |
+                env.get("__value")["package"]
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: "FeatureType"
+              expr: |
+                env.get("__value").featureType
+            - attribute: "LOD"
+              expr: |
+                env.get("__value").lod
+            - attribute: "gmlId"
+              expr: |
+                env.get("__value").gmlId
+
+      - id: 232e98e5-f320-48ab-8573-a04c1451c2fb
+        name: FileWriterTsvAdjacentSurfaceOverlap
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "隣接面重複エラー.tsv")
+
+      ## Create result file
+      - id: 9f84917a-560c-468d-b78d-e862f5984120
+        name: FeatureMergerCreateResult
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttribute:
+            - fileIndex
+            - featureType
+            - lod
+          supplierAttribute:
+            - fileIndex
+            - featureType
+            - lod
+
+      - id: a3ff904e-67c4-463d-97ab-cde7dbeca6ea
+        name: AttributeMapperCreateResult
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Folder
+              expr: |
+                env.get("__value")["package"]
+            - attribute: Filename
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+            - attribute: "FeatureType"
+              expr: |
+                env.get("__value").featureType
+            - attribute: "LOD"
+              expr: |
+                env.get("__value").lod
+            - attribute: "インスタンス数"
+              expr: |
+                env.get("__value").totalCount
+            - attribute: "面のエラー"
+              expr: |
+                env.get("__value").numInvalidSurface ?? 0
+            - attribute: "面の向き不正"
+              expr: |
+                env.get("__value").numInvalidOrientation ?? 0
+            - attribute: "xlink参照エラー数"
+              expr: |
+                env.get("__value")["未参照"] ?? 0
+            - attribute: "destDataset"
+              expr: |
+                env.get("__value").destDataset
+
+      - id: 8efcd690-c0b0-4d26-b8ff-8b1281440286
+        name: FileWriterTsvCreateResult
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "検査結果一覧.tsv")
 
     edges:
       - id: 3f6eadb8-9092-425b-a41c-100c24ec6e5c
@@ -263,11 +502,6 @@ graphs:
         to: 614a32df-139f-49a8-af47-2f35315cb29a
         fromPort: default
         toPort: default
-      - id: 2b001db1-e099-4466-bc4a-024f08de99ba
-        from: 614a32df-139f-49a8-af47-2f35315cb29a
-        to: 5ffe00f3-4554-4fc9-91c7-f7d272691cc4
-        fromPort: default
-        toPort: default
       - id: 6dee2e9a-2b40-4fdc-bde9-6f7726abb555
         from: 2b984969-b0eb-49ba-adb3-72d90def032e
         to: 24825ad1-d005-4a45-b9bf-cbb605b86626
@@ -298,8 +532,130 @@ graphs:
         to: f45d09c3-2ea5-48c6-a215-aadfacb75260
         fromPort: default
         toPort: default
-      - id: 0cd140d1-5012-49b2-b816-c7c23a3e7da8
+      - id: 690e045f-cc7a-406d-b324-5a54fea85158
         from: f45d09c3-2ea5-48c6-a215-aadfacb75260
-        to: 69f22583-c0c8-4343-b83b-79842ad0d9ce
+        to: 357febd2-3f43-45aa-b9cf-a10e4e3b59aa
         fromPort: area
         toPort: default
+      - id: 0cd140d1-5012-49b2-b816-c7c23a3e7da8
+        from: 357febd2-3f43-45aa-b9cf-a10e4e3b59aa
+        to: 73056fde-2493-44a2-9196-c2f69900a75a
+        fromPort: default
+        toPort: default
+      - id: 9515cd3c-0b1d-45d5-9d68-79a3906869ab
+        from: 73056fde-2493-44a2-9196-c2f69900a75a
+        to: 5b958746-a54b-4e0f-ad26-5c7388167943
+        fromPort: default
+        toPort: default
+      - id: 46c146fb-857f-4426-a49d-ba70bc8e252f
+        from: 5b958746-a54b-4e0f-ad26-5c7388167943
+        to: 46c146fb-857f-4426-a49d-ba70bc8e252f
+        fromPort: lod1
+        toPort: default
+      - id: 3cf6418b-5991-4e36-bb93-39b4740378fe
+        from: 46c146fb-857f-4426-a49d-ba70bc8e252f
+        to: 6f4352f3-0397-4672-966d-67637a6c9b98
+        fromPort: line
+        toPort: default
+      - id: 7179b368-6e60-4d97-b4f3-a21fdac2458f
+        from: 6f4352f3-0397-4672-966d-67637a6c9b98
+        to: 0ed93df9-1aae-4d3a-95d7-710cf2bdb7bc
+        fromPort: lineOverlap
+        toPort: default
+      - id: 7afe76cf-f121-415c-a86e-91b6d4f233ed
+        from: 0ed93df9-1aae-4d3a-95d7-710cf2bdb7bc
+        to: f243233e-6c64-4a5a-b62f-350e739f443e
+        fromPort: default
+        toPort: default
+      - id: 65b636e5-da93-4d9d-8250-743187c51f25
+        from: f243233e-6c64-4a5a-b62f-350e739f443e
+        to: 2c07b025-1af0-48e5-a175-be8aa221c46f
+        fromPort: default
+        toPort: default
+      - id: 9c095e4b-b972-4e64-933b-6e4945b3df3a
+        from: 2c07b025-1af0-48e5-a175-be8aa221c46f
+        to: 544caa2f-8f3a-4a05-9aea-c1b8a58f69b5
+        fromPort: default
+        toPort: default
+      - id: f3d1f657-3592-4049-8db7-f062c6ac4ed1
+        from: 544caa2f-8f3a-4a05-9aea-c1b8a58f69b5
+        to: 04b63d60-30d5-46f3-a6e5-00c8cbdf9403
+        fromPort: area
+        toPort: default
+      - id: 97a6aaa3-52f1-492f-8f6e-55fad2efd0e4
+        from: 04b63d60-30d5-46f3-a6e5-00c8cbdf9403
+        to: 253b86ba-da7d-4d87-a96b-2fa399854cb0
+        fromPort: areaOverlap
+        toPort: default
+      - id: 2cf423fc-ddbf-496b-a172-21ab95306a30
+        from: 253b86ba-da7d-4d87-a96b-2fa399854cb0
+        to: 232e98e5-f320-48ab-8573-a04c1451c2fb
+        fromPort: default
+        toPort: default
+
+      ## start surface validate
+      - id: 025e8b3f-7884-485b-94e9-b5055040a59b
+        from: 2b984969-b0eb-49ba-adb3-72d90def032e
+        to: 023ceda2-1946-4fe8-92cf-62b1fda951e2
+        fromPort: lod1
+        toPort: default
+      - id: a5599c2e-b7c7-4024-b8c0-39b94457eeab
+        from: 2b984969-b0eb-49ba-adb3-72d90def032e
+        to: 023ceda2-1946-4fe8-92cf-62b1fda951e2
+        fromPort: lod2
+        toPort: default
+      - id: 280217dc-d385-4b21-834a-bd3f3a803e87
+        from: 023ceda2-1946-4fe8-92cf-62b1fda951e2
+        to: b99a3bfe-5cc0-4642-b3ab-f6270df382ea
+        fromPort: inCorrectOrientation
+        toPort: default
+      - id: 5469dcd2-d3ca-4a7b-9856-e506b5cdddd3
+        from: 023ceda2-1946-4fe8-92cf-62b1fda951e2
+        to: 6b6f6ffc-fea9-4da3-944b-e6d31e805318
+        fromPort: invalidSurface
+        toPort: default
+      ## end surface validate
+
+      ## Create result file
+      - id: e33421f9-ea89-4c4b-adda-221b1cfb515b
+        from: b99a3bfe-5cc0-4642-b3ab-f6270df382ea
+        to: 9f84917a-560c-468d-b78d-e862f5984120
+        fromPort: default
+        toPort: supplier
+      - id: ce4b7314-21ae-46cc-af66-09a545bc1a26
+        from: 6b6f6ffc-fea9-4da3-944b-e6d31e805318
+        to: 9f84917a-560c-468d-b78d-e862f5984120
+        fromPort: default
+        toPort: supplier
+      - id: ac0ebeab-596d-4892-82cb-2335d5dd40ac
+        from: 04b63d60-30d5-46f3-a6e5-00c8cbdf9403
+        to: 9f84917a-560c-468d-b78d-e862f5984120
+        fromPort: areaOverlap
+        toPort: supplier
+      - id: 0b1dc2f2-ecb7-456a-a0de-317d3b313fa4
+        from: 30a42dee-474c-4283-b34b-3c54e16bd2b6
+        to: 9f84917a-560c-468d-b78d-e862f5984120
+        fromPort: default
+        toPort: supplier
+      - id: 22851b4d-e617-4c2c-9a52-0f53d707f10c
+        from: 614a32df-139f-49a8-af47-2f35315cb29a
+        to: 9f84917a-560c-468d-b78d-e862f5984120
+        fromPort: default
+        toPort: requestor
+      - id: da9b34bb-1094-4efb-b8c6-7452cace65aa
+        from: 9f84917a-560c-468d-b78d-e862f5984120
+        to: a3ff904e-67c4-463d-97ab-cde7dbeca6ea
+        fromPort: merged
+        toPort: default
+      - id: 4b983b9a-2ffe-43b3-a80b-f126bb833a45
+        from: 9f84917a-560c-468d-b78d-e862f5984120
+        to: a3ff904e-67c4-463d-97ab-cde7dbeca6ea
+        fromPort: unmerged
+        toPort: default
+      - id: 29215022-75dc-4e2a-9d5e-b71bd2ccb998
+        from: a3ff904e-67c4-463d-97ab-cde7dbeca6ea
+        to: 8efcd690-c0b0-4d26-b8ff-8b1281440286
+        fromPort: default
+        toPort: default
+
+

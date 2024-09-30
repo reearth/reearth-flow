@@ -252,6 +252,15 @@ impl Feature {
             .insert(Attribute::new(key.to_string()), value)
     }
 
+    pub fn extend(&mut self, attributes: HashMap<Attribute, AttributeValue>) {
+        self.attributes.extend(attributes);
+    }
+
+    pub fn extend_attributes(&mut self, attributes: HashMap<String, AttributeValue>) {
+        self.attributes
+            .extend(attributes.into_iter().map(|(k, v)| (Attribute::new(k), v)));
+    }
+
     pub fn remove<T: AsRef<str> + std::fmt::Display>(&mut self, key: &T) -> Option<AttributeValue> {
         self.attributes.remove(&Attribute::new(key.to_string()))
     }
@@ -271,6 +280,13 @@ impl Feature {
         );
         scope.set("__value", value);
         scope
+    }
+
+    pub fn to_map(&self) -> HashMap<String, AttributeValue> {
+        self.attributes
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect()
     }
 
     pub fn fetch_attribute_value(

@@ -1,11 +1,14 @@
 # syntax=docker/dockerfile:1
-FROM node:lts as build
+FROM node:lts AS build
 
 WORKDIR /app
 
 COPY . .
 
 RUN corepack enable
+
+COPY package.json yarn.lock ./
+
 RUN corepack prepare yarn@4.3.1 --activate
 
 RUN yarn install
@@ -14,19 +17,12 @@ RUN yarn build
 
 FROM nginx:stable
 
-COPY --from=build app/dist /usr/share/nginx/html
+COPY --from=build app/dist/ /opt/reearth-flow
 
-COPY reearth_config.template.json /usr/share/nginx/html/
+COPY docker/reearth_config.json.tmpl /tmp/reearth_config.json.tmpl
 
-RUN rm /etc/nginx/conf.d/default.conf
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/40-envsubst-on-reearth_config.sh /docker-entrypoint.d/
 
-RUN apt-get update && apt-get install -y gettext-base && rm -rf /var/lib/apt/lists/*
-
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
-
-EXPOSE 3000
-
-CMD ["/start.sh"]
+RUN chmod +x /docker-entrypoint.d/40-envsubst-on-reearth_config.sh

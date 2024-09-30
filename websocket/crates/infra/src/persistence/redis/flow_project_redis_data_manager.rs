@@ -1,8 +1,8 @@
-use std::error::Error;
 use std::sync::Arc;
 
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use tokio::sync::Mutex;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
@@ -31,7 +31,23 @@ pub struct FlowProjectRedisDataManager {
     global_lock: FlowProjectLock,
 }
 
-type BoxError = Box<dyn Error>;
+#[derive(Error, Debug)]
+pub enum FlowProjectRedisDataManagerError {
+    #[error(transparent)]
+    Redis(#[from] redis::RedisError),
+    #[error("Serde JSON error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("Global lock error: {0}")]
+    GlobalLock(#[from] GlobalLockError),
+    #[error("Another Editing Session in progress")]
+    EditingSessionInProgress,
+    #[error(transparent)]
+    ParseInt(#[from] std::num::ParseIntError),
+    #[error(transparent)]
+    RedisClient(#[from] super::redis_client::RedisClientError),
+    #[error("Unknown error: {0}")]
+    Unknown(String),
+}
 
 impl FlowProjectRedisDataManager {
     pub fn new(
@@ -89,7 +105,7 @@ impl FlowProjectRedisDataManager {
 
     async fn get_update_stream_items(
         &self,
-    ) -> Result<Vec<(String, Vec<(String, String)>)>, BoxError> {
+    ) -> Result<Vec<(String, Vec<(String, String)>)>, FlowProjectRedisDataManagerError> {
         let stream_data = self
             .redis_client
             .xread(&self.state_updates_key(), "0-0")
@@ -97,7 +113,9 @@ impl FlowProjectRedisDataManager {
         Ok(stream_data)
     }
 
-    async fn get_flow_updates_from_stream(&self) -> Result<Vec<FlowUpdate>, BoxError> {
+    async fn get_flow_updates_from_stream(
+        &self,
+    ) -> Result<Vec<FlowUpdate>, FlowProjectRedisDataManagerError> {
         let stream_items = self.get_update_stream_items().await?;
         let mut updates = Vec::new();
         for stream_item in stream_items {
@@ -124,7 +142,7 @@ impl FlowProjectRedisDataManager {
 
     async fn get_merged_update_from_stream(
         &self,
-    ) -> Result<Option<(Vec<u8>, String, Vec<String>)>, BoxError> {
+    ) -> Result<Option<(Vec<u8>, String, Vec<String>)>, FlowProjectRedisDataManagerError> {
         let updates = self.get_flow_updates_from_stream().await?;
         if updates.is_empty() {
             return Ok(None);
@@ -148,7 +166,9 @@ impl FlowProjectRedisDataManager {
         Ok(Some((merged_update, last_update_id, updates_by)))
     }
 
-    async fn get_state_update_in_redis(&self) -> Result<Option<Vec<u8>>, BoxError> {
+    async fn get_state_update_in_redis(
+        &self,
+    ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
         let state_update_string: Option<String> = self.redis_client.get(&self.state_key()).await?;
         if let Some(state_update_string) = state_update_string {
             Ok(Some(Self::decode_state_data(state_update_string)))
@@ -157,13 +177,18 @@ impl FlowProjectRedisDataManager {
         }
     }
 
-    pub async fn active_editing_session_id(&self) -> Result<Option<String>, BoxError> {
+    pub async fn active_editing_session_id(
+        &self,
+    ) -> Result<Option<String>, FlowProjectRedisDataManagerError> {
         self.redis_client
             .get(&self.active_editing_session_id_key())
             .await
+            .map_err(FlowProjectRedisDataManagerError::from)
     }
 
-    pub async fn get_current_state_update(&self) -> Result<Option<Vec<u8>>, BoxError> {
+    pub async fn get_current_state_update(
+        &self,
+    ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
         let state_update = self.get_state_update_in_redis().await?;
         if state_update.is_none() {
             return Ok(None);
@@ -180,7 +205,9 @@ impl FlowProjectRedisDataManager {
         }
     }
 
-    pub async fn get_current_state_updated_by(&self) -> Result<Vec<String>, BoxError> {
+    pub async fn get_current_state_updated_by(
+        &self,
+    ) -> Result<Vec<String>, FlowProjectRedisDataManagerError> {
         let state_updated_by: Option<String> =
             self.redis_client.get(&self.state_updated_by_key()).await?;
         if let Some(state_updated_by) = state_updated_by {
@@ -195,7 +222,7 @@ impl FlowProjectRedisDataManager {
         state_update: Vec<u8>,
         state_updated_by: Vec<String>,
         skip_lock: bool,
-    ) -> Result<(), BoxError> {
+    ) -> Result<(), FlowProjectRedisDataManagerError> {
         let active_editing_session_id = self.active_editing_session_id().await?;
         if let Some(active_editing_session_id) = active_editing_session_id {
             if active_editing_session_id
@@ -207,7 +234,7 @@ impl FlowProjectRedisDataManager {
                     .clone()
                     .unwrap()
             {
-                return Err("Another Editing Session in progress".into());
+                return Err(FlowProjectRedisDataManagerError::EditingSessionInProgress);
             }
         }
         self.set_state_data(state_update, state_updated_by, skip_lock)
@@ -231,7 +258,7 @@ impl FlowProjectRedisDataManager {
         &self,
         encoded_state_update: &str,
         updated_by_json: &str,
-    ) -> Result<(), BoxError> {
+    ) -> Result<(), FlowProjectRedisDataManagerError> {
         let connection = self.redis_client.connection();
         let mut connection_guard = connection.lock().await;
         let _: () = connection_guard
@@ -248,7 +275,7 @@ impl FlowProjectRedisDataManager {
         state_update: Vec<u8>,
         state_updated_by: Vec<String>,
         skip_lock: bool,
-    ) -> Result<(), BoxError> {
+    ) -> Result<(), FlowProjectRedisDataManagerError> {
         let encoded_state_update = Self::encode_state_data(state_update);
         let updated_by_json = serde_json::to_string(&state_updated_by)?;
 
@@ -262,17 +289,21 @@ impl FlowProjectRedisDataManager {
                     Box::pin(async move {
                         self.set_state_data_internal(&encoded_state_update, &updated_by_json)
                             .await?;
-                        Ok::<(), BoxError>(())
+                        Ok::<(), FlowProjectRedisDataManagerError>(())
                     })
                 })
                 .await
-                .map_err(|e| Box::new(GlobalLockError(e)) as BoxError)?
+                .map_err(FlowProjectRedisDataManagerError::from)?
                 .await?;
         }
         Ok(())
     }
 
-    pub async fn push_update(&self, update: Vec<u8>, updated_by: String) -> Result<(), BoxError> {
+    pub async fn push_update(
+        &self,
+        update: Vec<u8>,
+        updated_by: String,
+    ) -> Result<(), FlowProjectRedisDataManagerError> {
         let update_data = FlowEncodedUpdate {
             update: Self::encode_state_data(update),
             updated_by: Some(updated_by),
@@ -296,7 +327,7 @@ impl FlowProjectRedisDataManager {
         Ok(())
     }
 
-    pub async fn clear_data(&self) -> Result<(), BoxError> {
+    pub async fn clear_data(&self) -> Result<(), FlowProjectRedisDataManagerError> {
         let connection = self.redis_client.connection();
         let mut connection_guard = connection.lock().await;
 
@@ -323,7 +354,7 @@ impl FlowProjectRedisDataManager {
         Ok(())
     }
 
-    pub async fn last_updated_at(&self) -> Result<i64, BoxError> {
+    pub async fn last_updated_at(&self) -> Result<i64, FlowProjectRedisDataManagerError> {
         let last_updated_at: Option<String> =
             self.redis_client.get(&self.last_updated_at_key()).await?;
         if let Some(last_updated_at) = last_updated_at {
@@ -333,7 +364,9 @@ impl FlowProjectRedisDataManager {
         }
     }
 
-    async fn execute_merge_updates(&self) -> Result<(Vec<u8>, Vec<String>), BoxError> {
+    async fn execute_merge_updates(
+        &self,
+    ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
         let merged_stream_update = self.get_merged_update_from_stream().await?;
         let state_update = self.get_state_update_in_redis().await?;
         let state_updated_by = self.get_current_state_updated_by().await?;
@@ -391,7 +424,10 @@ impl FlowProjectRedisDataManager {
         Ok((optimized_merged_state, merged_state_updated_by))
     }
 
-    pub async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), BoxError> {
+    pub async fn merge_updates(
+        &self,
+        skip_lock: bool,
+    ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
         if skip_lock {
             self.execute_merge_updates().await
         } else {
@@ -399,13 +435,15 @@ impl FlowProjectRedisDataManager {
         }
     }
 
-    async fn lock_and_execute_merge_updates(&self) -> Result<(Vec<u8>, Vec<String>), BoxError> {
+    async fn lock_and_execute_merge_updates(
+        &self,
+    ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
         self.global_lock
             .lock_updates(&self.project_id, 5000, |_| {
-                Box::pin(async move { Ok::<(), BoxError>(()) })
+                Box::pin(async move { Ok::<(), FlowProjectRedisDataManagerError>(()) })
             })
             .await
-            .map_err(|e| Box::new(GlobalLockError(e)) as BoxError)?
+            .map_err(FlowProjectRedisDataManagerError::from)?
             .await?;
 
         self.execute_merge_updates().await

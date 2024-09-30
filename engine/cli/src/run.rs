@@ -134,10 +134,10 @@ impl RunCliCommand {
         };
         let action_log_uri = match &self.action_log_uri {
             Some(uri) => Uri::from_str(uri).map_err(crate::errors::Error::init)?,
-            None => setup_job_directory("worker", "action-log", job_id)
+            None => setup_job_directory("engine", "action-log", job_id)
                 .map_err(crate::errors::Error::init)?,
         };
-        let state_uri = setup_job_directory("worker", "feature-store", job_id)
+        let state_uri = setup_job_directory("engine", "feature-store", job_id)
             .map_err(crate::errors::Error::init)?;
         let state = Arc::new(
             State::new(&state_uri, &storage_resolver).map_err(crate::errors::Error::init)?,

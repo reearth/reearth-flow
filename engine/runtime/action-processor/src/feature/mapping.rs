@@ -4,9 +4,9 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
-    counter::FeatureCounterFactory, filter::FeatureFilterFactory, merger::FeatureMergerFactory,
-    reader::FeatureReaderFactory, rhai::RhaiCallerFactory, sorter::FeatureSorterFactory,
-    transformer::FeatureTransformerFactory,
+    counter::FeatureCounterFactory, filter::FeatureFilterFactory,
+    list_exploder::ListExploderFactory, merger::FeatureMergerFactory, reader::FeatureReaderFactory,
+    rhai::RhaiCallerFactory, sorter::FeatureSorterFactory, transformer::FeatureTransformerFactory,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -18,6 +18,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<FeatureCounterFactory>::default(),
         Box::<FeatureReaderFactory>::default(),
         Box::<RhaiCallerFactory>::default(),
+        Box::<ListExploderFactory>::default(),
     ];
     factories
         .into_iter()

@@ -7,7 +7,7 @@ use num_traits::Zero;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
-use super::coordnum::CoordNum;
+use super::coordnum::{CoordFloat, CoordNum};
 use super::no_value::NoValue;
 use super::point::Point;
 use super::traits::Elevation;
@@ -422,5 +422,16 @@ where
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.z.is_zero()
+    }
+}
+
+impl<Z: CoordFloat> Coordinate<f64, Z> {
+    pub fn approx_eq(&self, other: &Coordinate<f64, Z>, epsilon: f64) -> bool {
+        let result = (self.x - other.x).abs() <= epsilon && (self.y - other.y).abs() <= epsilon;
+        if self.is_3d() {
+            result && (self.z.to_f64().unwrap() - other.z.to_f64().unwrap()).abs() <= epsilon
+        } else {
+            result
+        }
     }
 }

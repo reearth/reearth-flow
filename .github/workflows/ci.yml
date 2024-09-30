@@ -125,38 +125,31 @@ jobs:
           NEW_TAG_SHORT: ${{ steps.info.outputs.new_tag_short }}
           NAME: ${{ steps.info.outputs.name }}
         run: echo "sha_short=$SHA_SHORT, new_tag=$NEW_TAG, new_tag_short=$NEW_TAG_SHORT, name=$NAME"
-  build-api:
-      needs:
-        - ci
-        - ci-api
-        - ci-collect-info
-      runs-on: ubuntu-latest
-      if: ${{ !failure() && needs.ci-api.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-      steps:
-        - uses: actions/checkout@v4
-
-        - uses: ./.github/actions/build_deploy_api
-          with:
-            sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-            new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-            new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-            name: ${{ needs.ci-collect-info.outputs.name }}
-            sha: ${{ github.sha }}
-
-  build-ui:
+  build-and-deploy-api:
+    needs:
+      - ci
+      - ci-api
+      - ci-collect-info
+    uses: ./.github/workflows/build_deploy_api.yml
+    if: ${{ !failure() && needs.ci-api.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
+    with:
+      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+      name: ${{ needs.ci-collect-info.outputs.name }}
+      sha: ${{ github.sha }}
+    secrets: inherit  
+  build-and-deploy-ui:
     needs:
       - ci
       - ci-ui
       - ci-collect-info
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/build_deploy_ui.yml
     if: ${{ !failure() && needs.ci-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: ./.github/actions/build_deploy_ui
-        with:
-          sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-          new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-          new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-          name: ${{ needs.ci-collect-info.outputs.name }}
-          sha: ${{ github.sha }}
+    with:
+      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+      name: ${{ needs.ci-collect-info.outputs.name }}
+      sha: ${{ github.sha }}
+    secrets: inherit
