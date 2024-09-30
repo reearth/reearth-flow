@@ -152,15 +152,9 @@ export const Default = () => {
           </Button>
         </pre>
       )}
-      {schema ? (
-        <div className="rounded border p-2">
-          <SchemaForm schema={schema} />
-        </div>
-      ) : (
-        <div className="rounded border p-2 text-destructive">
-          Schema is null or undefined
-        </div>
-      )}
+      <div className="rounded border p-2">
+        <SchemaForm schema={schema} />
+      </div>
     </div>
   );
 };
