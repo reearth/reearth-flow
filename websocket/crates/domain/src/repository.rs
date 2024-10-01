@@ -1,5 +1,6 @@
-use crate::project::{Project, ProjectEditingSession};
-use crate::snapshot::ProjectSnapshot;
+use crate::project::ProjectEditingSession;
+use crate::projection::Project;
+use crate::types::snapshot::ProjectSnapshot;
 use std::error::Error;
 
 #[async_trait::async_trait]

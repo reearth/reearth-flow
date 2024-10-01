@@ -1,29 +1,11 @@
 use crate::repository::ProjectSnapshotRepository;
-use crate::snapshot::{Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotInfo};
+use crate::types::snapshot::{Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotInfo};
 use crate::utils::generate_id;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use thiserror::Error;
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Project {
-    pub id: String,
-    pub workspace_id: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ProjectAllowedActions {
-    pub id: String,
-    pub actions: Vec<Action>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Action {
-    pub action: String,
-    pub allowed: bool,
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProjectEditingSession {
@@ -180,10 +162,9 @@ impl ProjectEditingSession {
     pub async fn load_session<E: Error + Send + Sync>(
         &self,
         snapshot_repo: &impl ProjectSnapshotRepository<E>,
+        session_id: &str,
     ) -> Result<(), ProjectEditingSessionError<E>> {
-        let _latest_snapshot_state = snapshot_repo
-            .get_latest_snapshot_state(&self.project_id)
-            .await?;
+        let session = snapshot_repo.get_latest_snapshot(session_id).await?;
         Ok(())
     }
 }
