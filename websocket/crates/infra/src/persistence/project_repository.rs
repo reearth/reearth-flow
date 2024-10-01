@@ -96,7 +96,16 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectGcsRepository 
         &self,
         snapshot: ProjectSnapshot,
     ) -> Result<(), ProjectRepositoryError> {
-        let path = format!("snapshot/{}", snapshot.metadata.id);
+        let path = format!("snapshot/{}", snapshot.metadata.project_id);
+        self.client.upload(path, &snapshot).await?;
+        Ok(())
+    }
+
+    async fn update_latest_snapshot(
+        &self,
+        snapshot: ProjectSnapshot,
+    ) -> Result<(), ProjectRepositoryError> {
+        let path = format!("snapshot/{}:latest_snapshot", snapshot.metadata.project_id);
         self.client.upload(path, &snapshot).await?;
         Ok(())
     }
@@ -151,6 +160,15 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepositor
         snapshot: ProjectSnapshot,
     ) -> Result<(), ProjectRepositoryError> {
         let path = format!("snapshots/{}", snapshot.metadata.id);
+        self.client.upload(path, &snapshot, true).await?;
+        Ok(())
+    }
+
+    async fn update_latest_snapshot(
+        &self,
+        snapshot: ProjectSnapshot,
+    ) -> Result<(), ProjectRepositoryError> {
+        let path = format!("snapshot/{}:latest_snapshot", snapshot.metadata.project_id);
         self.client.upload(path, &snapshot, true).await?;
         Ok(())
     }
