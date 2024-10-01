@@ -492,12 +492,6 @@ impl<T: CoordNum> From<LineString2D<T>> for GeoLineString<T> {
 
 impl<T: CoordNum> From<GeoLineString<T>> for LineString2D<T> {
     fn from(line_string: GeoLineString<T>) -> Self {
-        LineString2D::new(
-            line_string
-                .0
-                .into_iter()
-                .map(|c| coordinate::Coordinate2D::new_(c.x, c.y))
-                .collect(),
-        )
+        LineString2D::new(line_string.0.into_iter().map(Into::into).collect())
     }
 }

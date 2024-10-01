@@ -1,6 +1,7 @@
 use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
+use geo_types::MultiPoint as GeoMultiPoint;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
 use nusamai_geometry::{MultiPoint2 as NMultiPoint2, MultiPoint3 as NMultiPoint3};
@@ -204,6 +205,18 @@ where
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.0.iter().all(|p| p.is_elevation_zero())
+    }
+}
+
+impl<T: CoordNum> From<GeoMultiPoint<T>> for MultiPoint2D<T> {
+    fn from(coord: GeoMultiPoint<T>) -> Self {
+        MultiPoint::new(coord.0.into_iter().map(|p| p.into()).collect())
+    }
+}
+
+impl<T: CoordNum> From<MultiPoint2D<T>> for GeoMultiPoint<T> {
+    fn from(coord: MultiPoint2D<T>) -> Self {
+        GeoMultiPoint(coord.0.into_iter().map(|p| p.into()).collect())
     }
 }
 
