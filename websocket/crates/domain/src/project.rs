@@ -1,4 +1,5 @@
 use crate::repository::ProjectSnapshotRepository;
+use crate::snapshot;
 use crate::types::snapshot::{Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotInfo};
 use crate::utils::generate_id;
 
@@ -19,10 +20,8 @@ pub struct ProjectEditingSession {
 pub enum ProjectEditingSessionError<E: Error + Send + Sync> {
     #[error("Session not setup")]
     SessionNotSetup,
-    #[error("Snapshot repository error: {0}")]
-    SnapshotRepositoryError(#[from] E),
-    #[error("Other error: {0}")]
-    Other(String),
+    #[error(transparent)]
+    SnapshotRepository(#[from] E),
 }
 
 impl ProjectEditingSession {
@@ -37,7 +36,7 @@ impl ProjectEditingSession {
 
     pub async fn start_or_join_session<E: Error + Send + Sync>(
         &mut self,
-        snapshot_repo: &impl ProjectSnapshotRepository<E>,
+        snapshot_repo: Box<&dyn ProjectSnapshotRepository<E>>,
     ) -> Result<String, ProjectEditingSessionError<E>> {
         // Logic to start or join a session
         let session_id = generate_id(14, "editor-session");
@@ -160,11 +159,16 @@ impl ProjectEditingSession {
     }
 
     pub async fn load_session<E: Error + Send + Sync>(
-        &self,
+        &mut self,
         snapshot_repo: &impl ProjectSnapshotRepository<E>,
         session_id: &str,
     ) -> Result<(), ProjectEditingSessionError<E>> {
-        let session = snapshot_repo.get_latest_snapshot(session_id).await?;
+        let snapshot = snapshot_repo.get_latest_snapshot(session_id).await?;
+        if let Some(snapshot) = snapshot {
+            self.project_id = snapshot.metadata.project_id;
+        }
+        self.session_id = Some(session_id.to_string());
+        //self.session_setup_complete = true;
         Ok(())
     }
 }

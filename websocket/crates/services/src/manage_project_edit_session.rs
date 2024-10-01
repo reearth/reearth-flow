@@ -1,16 +1,26 @@
 use chrono::{DateTime, Utc};
-use flow_websocket_domain::project::ProjectEditingSession;
+use flow_websocket_domain::project::{ProjectEditingSession, ProjectEditingSessionError};
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectSnapshotRepository,
 };
 use flow_websocket_domain::snapshot::{Metadata, SnapshotInfo};
 use flow_websocket_domain::utils::generate_id;
+use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use std::error::Error;
 use std::sync::Arc;
+use thiserror::Error;
 use tokio::time::sleep;
 
 const MAX_EMPTY_SESSION_DURATION: i64 = 10 * 1000; // 10 seconds
 const MAX_SNAPSHOT_DELTA: i64 = 5 * 60 * 1000; // 5 minutes
+
+#[derive(Error, Debug)]
+pub enum ManageEditSessionServiceError<E: Error + Send + Sync> {
+    #[error(transparent)]
+    ProjectRepository(#[from] ProjectRepositoryError),
+    #[error(transparent)]
+    ProjectEditingSession(#[from] ProjectEditingSessionError<E>),
+}
 
 pub struct ManageEditSessionService<E: Error + Send + Sync> {
     session_repository: Arc<dyn ProjectEditingSessionRepository<E>>,
@@ -31,13 +41,15 @@ impl<E: Error + Send + Sync> ManageEditSessionService<E> {
     pub async fn process(
         &self,
         mut data: ManageProjectEditSessionTaskData,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), ManageEditSessionServiceError<E>> {
         let mut session = self
             .session_repository
             .get_active_session(&data.project_id)
             .await?
             .ok_or_else(|| "No active session found".to_string())?;
-        session.load_session(&data.session_id).await?;
+        session
+            .load_session(&self.snapshot_repository, &data.session_id)
+            .await?;
 
         self.update_client_count(&mut session, &mut data).await?;
         self.merge_updates(&mut session, &mut data).await?;
@@ -55,7 +67,7 @@ impl<E: Error + Send + Sync> ManageEditSessionService<E> {
         &self,
         session: &mut ProjectEditingSession,
         data: &mut ManageProjectEditSessionTaskData,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), ManageEditSessionServiceError<E>> {
         let current_client_count = session.get_client_count().await?;
         let old_client_count = data.clients_count.unwrap_or(0);
         data.clients_count = Some(current_client_count);
@@ -78,7 +90,7 @@ impl<E: Error + Send + Sync> ManageEditSessionService<E> {
         &self,
         session: &mut ProjectEditingSession,
         data: &mut ManageProjectEditSessionTaskData,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), ManageEditSessionServiceError<E>> {
         session.merge_updates().await?;
         data.last_merged_at = Some(Utc::now());
         Ok(())
@@ -88,7 +100,7 @@ impl<E: Error + Send + Sync> ManageEditSessionService<E> {
         &self,
         session: &mut ProjectEditingSession,
         data: &mut ManageProjectEditSessionTaskData,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), ManageEditSessionServiceError<E>> {
         if let Some(last_snapshot_at) = data.last_snapshot_at {
             let current_time = Utc::now();
             let snapshot_time_delta = (current_time - last_snapshot_at).num_milliseconds();
@@ -132,7 +144,7 @@ impl<E: Error + Send + Sync> ManageEditSessionService<E> {
         &self,
         session: &mut ProjectEditingSession,
         data: &ManageProjectEditSessionTaskData,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), ManageEditSessionServiceError<E>> {
         let client_count = session.get_client_count().await?;
 
         if let Some(clients_disconnected_at) = data.clients_disconnected_at {
@@ -152,7 +164,7 @@ impl<E: Error + Send + Sync> ManageEditSessionService<E> {
         &self,
         session: &ProjectEditingSession,
         data: &ManageProjectEditSessionTaskData,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), ManageEditSessionServiceError<E>> {
         let current_editing_session = session.active_editing_session().await?;
         if current_editing_session.as_ref() == Some(&data.session_id) {
             sleep(std::time::Duration::from_secs(5)).await;
