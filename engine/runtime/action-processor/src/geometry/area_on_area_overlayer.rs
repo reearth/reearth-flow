@@ -1,12 +1,11 @@
 use std::collections::hash_map::Entry;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use itertools::Itertools;
-use nusamai_projection::crs::EpsgCode;
 use once_cell::sync::Lazy;
-use reearth_flow_geometry::algorithm::intersects::Intersects;
+use reearth_flow_geometry::algorithm::bufferable::buffer_polygon;
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::multi_polygon::{MultiPolygon, MultiPolygon2D};
+use reearth_flow_geometry::types::point::Point2D;
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon2DFloat};
 use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_runtime::node::REJECTED_PORT;
@@ -17,8 +16,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::AttributeValue;
-use reearth_flow_types::{Attribute, Geometry};
+use reearth_flow_types::{Attribute, AttributeValue, Geometry};
 use reearth_flow_types::{Feature, GeometryValue};
 use rstar::{RTree, RTreeObject};
 use schemars::JsonSchema;
@@ -27,7 +25,8 @@ use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
 
-const EPSILON: f64 = 0.001;
+// const EPSILON: f64 = 0.001;
+const TOLERANCE: f64 = 0.2;
 
 pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
 pub static REMNANTS_PORT: Lazy<Port> = Lazy::new(|| Port::new("remnants"));
@@ -100,9 +99,16 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
 
 #[derive(Debug, Clone)]
 struct PolygonFeature {
-    attributes: HashMap<uuid::Uuid, HashMap<Attribute, AttributeValue>>,
-    overlap: u64,
-    epsg: Option<EpsgCode>,
+    feature_id: uuid::Uuid,
+    geometry: Polygon2D<f64>,
+}
+
+impl rstar::RTreeObject for PolygonFeature {
+    type Envelope = rstar::AABB<Point2D<f64>>;
+
+    fn envelope(&self) -> Self::Envelope {
+        self.geometry.envelope()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -116,11 +122,15 @@ pub struct AreaOnAreaOverlayerParam {
 #[derive(Debug, Clone)]
 pub struct AreaOnAreaOverlayer {
     params: AreaOnAreaOverlayerParam,
-    buffer: HashMap<String, (bool, Vec<Feature>, RTree<Polygon2D<f64>>)>, // (complete_grouped, features)
+    buffer: HashMap<String, (bool, Vec<Feature>, RTree<PolygonFeature>)>, // (complete_grouped, features)
     previous_group_key: Option<String>,
 }
 
 impl Processor for AreaOnAreaOverlayer {
+    fn num_threads(&self) -> usize {
+        10
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -151,11 +161,23 @@ impl Processor for AreaOnAreaOverlayer {
                             let feature = feature.clone();
                             match geometry {
                                 Geometry2D::Polygon(poly) => {
-                                    rtree.insert(poly.clone());
+                                    let Some(poly) = buffer_polygon(poly, -TOLERANCE) else {
+                                        return Ok(());
+                                    };
+                                    rtree.insert(PolygonFeature {
+                                        feature_id: feature.id,
+                                        geometry: poly,
+                                    });
                                 }
                                 Geometry2D::MultiPolygon(mpoly) => {
                                     for poly in mpoly.iter() {
-                                        rtree.insert(poly.clone());
+                                        let Some(poly) = buffer_polygon(poly, -TOLERANCE) else {
+                                            return Ok(());
+                                        };
+                                        rtree.insert(PolygonFeature {
+                                            feature_id: feature.id,
+                                            geometry: poly,
+                                        });
                                     }
                                 }
                                 _ => {
@@ -169,11 +191,23 @@ impl Processor for AreaOnAreaOverlayer {
                         let mut rtree = RTree::new();
                         match geometry {
                             Geometry2D::Polygon(poly) => {
-                                rtree.insert(poly.clone());
+                                let Some(poly) = buffer_polygon(poly, -TOLERANCE) else {
+                                    return Ok(());
+                                };
+                                rtree.insert(PolygonFeature {
+                                    feature_id: feature.id,
+                                    geometry: poly,
+                                });
                             }
                             Geometry2D::MultiPolygon(mpoly) => {
                                 for poly in mpoly.iter() {
-                                    rtree.insert(poly.clone());
+                                    let Some(poly) = buffer_polygon(poly, -TOLERANCE) else {
+                                        return Ok(());
+                                    };
+                                    rtree.insert(PolygonFeature {
+                                        feature_id: feature.id,
+                                        geometry: poly,
+                                    });
                                 }
                             }
                             _ => {
@@ -220,105 +254,74 @@ impl AreaOnAreaOverlayer {
         &self,
         ctx: Context,
         targets: &[Feature],
-        rtree: &RTree<Polygon2D<f64>>,
+        rtree: &RTree<PolygonFeature>,
         fw: &mut dyn ProcessorChannelForwarder,
     ) {
-        let mut polygon_features = HashMap::<Polygon2DFloat, PolygonFeature>::new();
-        for target_feature in targets {
+        let mut polygon_features = HashMap::<Polygon2DFloat, (HashSet<uuid::Uuid>, u64)>::new();
+        let target_features = targets
+            .iter()
+            .map(|feature| (feature.id, feature.clone()))
+            .collect::<HashMap<_, _>>();
+        for target_feature in target_features.values() {
             let Some(MultiPolygon(target)) =
                 self.handle_2d_polygon_and_multi_polygon(target_feature)
             else {
                 continue;
             };
-            let mut out_polygons = Vec::new();
-            let mut intersect = false;
             for target in target.iter() {
                 let candidates = rtree.locate_in_envelope_intersecting(&target.envelope());
                 for other in candidates {
-                    if target.approx_eq(other, EPSILON) {
+                    if other.feature_id == target_feature.id {
                         continue;
                     }
-                    if !target.intersects(other) {
-                        continue;
-                    }
-                    intersect = true;
-                    let polygon_float = Polygon2DFloat(other.clone());
+                    let polygon_float = Polygon2DFloat(other.geometry.clone());
                     match polygon_features.entry(polygon_float) {
                         Entry::Occupied(mut entry) => {
-                            let polygon_feature = entry.get_mut();
-                            polygon_feature.overlap += 1;
-                            polygon_feature
-                                .attributes
-                                .insert(target_feature.id, target_feature.attributes.clone());
+                            let (feature_ids, polygon_feature) = entry.get_mut();
+                            feature_ids.insert(target_feature.id);
+                            feature_ids.insert(other.feature_id);
+                            *polygon_feature += 1;
                         }
                         Entry::Vacant(entry) => {
-                            let mut attributes = HashMap::new();
-                            for (k, v) in target_feature.iter() {
-                                attributes.insert(k.clone(), v.clone());
-                            }
-                            entry.insert(PolygonFeature {
-                                attributes: HashMap::from([(target_feature.id, attributes)]),
-                                overlap: 1,
-                                epsg: target_feature.geometry.as_ref().and_then(|g| g.epsg),
-                            });
+                            let mut feature_ids = HashSet::new();
+                            feature_ids.insert(target_feature.id);
+                            feature_ids.insert(other.feature_id);
+                            entry.insert((feature_ids, 2));
                         }
                     }
                 }
-                if !intersect {
-                    out_polygons.push(target.clone());
-                }
             }
-            for polygon in out_polygons {
-                let mut feature = target_feature.clone();
-                feature.attributes.insert(
-                    self.params.output_attribute.clone(),
-                    AttributeValue::Number(serde_json::Number::from(1)),
-                );
-                feature.refresh_id();
-                feature.geometry = Some(Geometry {
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon)),
-                    epsg: feature.geometry.as_ref().and_then(|g| g.epsg),
-                });
-                fw.send(ExecutorContext::new_with_context_feature_and_port(
-                    &ctx,
-                    feature,
-                    AREA_PORT.clone(),
-                ));
-            }
+            let mut feature = target_feature.clone();
+            feature.attributes.insert(
+                self.params.output_attribute.clone(),
+                AttributeValue::Number(1.into()),
+            );
+            fw.send(ExecutorContext::new_with_context_feature_and_port(
+                &ctx,
+                feature,
+                AREA_PORT.clone(),
+            ));
         }
-        for (polygon, polygon_feature) in polygon_features.iter() {
+        for (polygon, (feature_ids, polygon_feature)) in polygon_features {
+            let features = feature_ids
+                .iter()
+                .filter_map(|feature_id| target_features.get(feature_id))
+                .collect::<Vec<_>>();
             let mut feature = Feature::new();
             feature.attributes.insert(
                 self.params.output_attribute.clone(),
-                AttributeValue::Number(serde_json::Number::from(polygon_feature.overlap)),
+                AttributeValue::Number(polygon_feature.into()),
             );
-            let feature_attributes = polygon_feature
-                .attributes
-                .values()
-                .map(|kv| {
-                    kv.iter()
-                        .map(|(k, v)| (k.to_string(), v.clone()))
-                        .collect::<HashMap<_, _>>()
-                })
-                .collect_vec();
-            feature.attributes.insert(
-                Attribute::new("features"),
-                AttributeValue::Array(
-                    feature_attributes
-                        .into_iter()
-                        .map(AttributeValue::Map)
-                        .collect(),
-                ),
-            );
-            let mut polygon_feat = feature.clone();
-            polygon_feat.refresh_id();
-            polygon_feat.geometry = Some(Geometry {
-                epsg: polygon_feature.epsg,
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon.0.clone())),
+            for other_feature in features.iter() {
+                feature.attributes.extend(other_feature.attributes.clone());
+            }
+            feature.geometry = Some(Geometry {
+                epsg: features.first().unwrap().geometry.as_ref().unwrap().epsg,
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon.0)),
             });
             fw.send(ExecutorContext::new_with_context_feature_and_port(
                 &ctx,
-                polygon_feat,
+                feature,
                 AREA_PORT.clone(),
             ));
         }

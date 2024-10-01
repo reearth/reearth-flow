@@ -1,6 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 use approx::{AbsDiffEq, RelativeEq};
+use geo_types::Polygon as GeoPolygon;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
 use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
@@ -569,5 +570,29 @@ impl Hash for Polygon2DFloat {
                 hashed_coord.hash(state);
             }
         }
+    }
+}
+
+impl<T: CoordNum> From<Polygon2D<T>> for GeoPolygon<T> {
+    fn from(polygon: Polygon2D<T>) -> Self {
+        let exterior = polygon.exterior().clone().into();
+        let interiors = polygon
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        GeoPolygon::new(exterior, interiors)
+    }
+}
+
+impl<T: CoordNum> From<GeoPolygon<T>> for Polygon2D<T> {
+    fn from(polygon: GeoPolygon<T>) -> Self {
+        let exterior = polygon.exterior().clone().into();
+        let interiors = polygon
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        Polygon2D::new(exterior, interiors)
     }
 }

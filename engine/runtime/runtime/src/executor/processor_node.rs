@@ -1,3 +1,4 @@
+use std::env;
 use std::fmt::Debug;
 use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
@@ -6,6 +7,7 @@ use std::{borrow::Cow, mem::swap};
 
 use crossbeam::channel::Receiver;
 use futures::Future;
+use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_action_log::{action_error_log, action_log, slow_action_log, ActionLogger};
@@ -28,7 +30,13 @@ use crate::{
 use super::receiver_loop::init_select;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
 
-const SLOW_ACTION_THRESHOLD: Duration = Duration::from_millis(300);
+static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_SLOW_ACTION_THRESHOLD")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .map(Duration::from_millis)
+        .unwrap_or(Duration::from_millis(300))
+});
 
 /// A processor in the execution DAG.
 #[derive(Debug)]
@@ -265,7 +273,7 @@ fn process(
     let now = time::Instant::now();
     let result = processor.process(ctx, channel_manager);
     let elapsed = now.elapsed();
-    if elapsed >= SLOW_ACTION_THRESHOLD {
+    if elapsed >= *SLOW_ACTION_THRESHOLD {
         slow_action_log!(
             parent: span,
             slow_logger,
