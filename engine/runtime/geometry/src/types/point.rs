@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use approx::{AbsDiffEq, RelativeEq};
+use geo_types::Point as GeoPoint;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
 use serde::{Deserialize, Serialize};
@@ -434,5 +435,17 @@ where
 impl<Z: CoordFloat> Point<f64, Z> {
     pub fn approx_eq(&self, other: &Point<f64, Z>, epsilon: f64) -> bool {
         self.0.approx_eq(&other.0, epsilon)
+    }
+}
+
+impl<T: CoordNum> From<GeoPoint<T>> for Point2D<T> {
+    fn from(coord: GeoPoint<T>) -> Self {
+        Point2D::from((coord.x(), coord.y()))
+    }
+}
+
+impl<T: CoordNum> From<Point2D<T>> for GeoPoint<T> {
+    fn from(coord: Point2D<T>) -> Self {
+        GeoPoint::new(coord.x(), coord.y())
     }
 }

@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use approx::{AbsDiffEq, RelativeEq, UlpsEq};
+use geo_types::Coord as GeoCoord;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
@@ -432,6 +433,21 @@ impl<Z: CoordFloat> Coordinate<f64, Z> {
             result && (self.z.to_f64().unwrap() - other.z.to_f64().unwrap()).abs() <= epsilon
         } else {
             result
+        }
+    }
+}
+
+impl<T: CoordNum> From<GeoCoord<T>> for Coordinate2D<T> {
+    fn from(coord: GeoCoord<T>) -> Self {
+        Coordinate::new_(coord.x, coord.y)
+    }
+}
+
+impl<T: CoordNum> From<Coordinate2D<T>> for GeoCoord<T> {
+    fn from(coord: Coordinate2D<T>) -> Self {
+        GeoCoord {
+            x: coord.x,
+            y: coord.y,
         }
     }
 }
