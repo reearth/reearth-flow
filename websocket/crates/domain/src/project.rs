@@ -166,6 +166,7 @@ impl ProjectEditingSession {
         Ok(())
     }
 
+    #[inline]
     fn check_session_setup<E: Error + Send + Sync>(
         &self,
     ) -> Result<(), ProjectEditingSessionError<E>> {
@@ -174,6 +175,16 @@ impl ProjectEditingSession {
         } else {
             Ok(())
         }
+    }
+
+    pub async fn load_session<E: Error + Send + Sync>(
+        &self,
+        snapshot_repo: &impl ProjectSnapshotRepository<E>,
+    ) -> Result<(), ProjectEditingSessionError<E>> {
+        let _latest_snapshot_state = snapshot_repo
+            .get_latest_snapshot_state(&self.project_id)
+            .await?;
+        Ok(())
     }
 }
 
