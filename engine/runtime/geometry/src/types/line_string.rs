@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
+use geo_types::LineString as GeoLineString;
 use nusamai_geometry::{LineString2 as NLineString2, LineString3 as NLineString3};
 
 use crate::utils::line_string_bounding_rect;
@@ -480,5 +481,23 @@ impl<Z: CoordFloat> LineString<f64, Z> {
             }
         }
         true
+    }
+}
+
+impl<T: CoordNum> From<LineString2D<T>> for GeoLineString<T> {
+    fn from(line_string: LineString2D<T>) -> Self {
+        GeoLineString(line_string.0.into_iter().map(|c| c.x_y().into()).collect())
+    }
+}
+
+impl<T: CoordNum> From<GeoLineString<T>> for LineString2D<T> {
+    fn from(line_string: GeoLineString<T>) -> Self {
+        LineString2D::new(
+            line_string
+                .0
+                .into_iter()
+                .map(|c| coordinate::Coordinate2D::new_(c.x, c.y))
+                .collect(),
+        )
     }
 }

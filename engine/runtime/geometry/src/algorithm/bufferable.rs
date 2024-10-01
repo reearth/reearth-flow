@@ -1,3 +1,5 @@
+use geo_buffer::buffer_multi_polygon as geo_buffer_multi_polygon;
+
 use crate::types::{
     coordinate::{Coordinate, Coordinate2D},
     line_string::LineString2D,
@@ -56,6 +58,18 @@ impl Bufferable for Polygon2D<f64> {
         let polygon = Polygon2D::new(coords.into(), vec![]);
         MultiPolygon2D::new(vec![polygon]).convex_hull()
     }
+}
+
+pub fn buffer_polygon(input_polygon: &Polygon2D<f64>, distance: f64) -> Option<Polygon2D<f64>> {
+    let result = buffer_multi_polygon(&MultiPolygon2D::new(vec![input_polygon.clone()]), distance);
+    result.0.first().cloned()
+}
+
+pub fn buffer_multi_polygon(
+    input_multi_polygon: &MultiPolygon2D<f64>,
+    distance: f64,
+) -> MultiPolygon2D<f64> {
+    geo_buffer_multi_polygon(&input_multi_polygon.clone().into(), distance).into()
 }
 
 #[cfg(test)]
