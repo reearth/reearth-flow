@@ -9,20 +9,23 @@ use flow_websocket_infra::persistence::project_repository::ProjectRepositoryErro
 use std::sync::Arc;
 
 pub struct ProjectService {
-    project_repository: Arc<dyn ProjectRepository<ProjectRepositoryError> + Send + Sync>,
+    project_repository: Arc<dyn ProjectRepository<Error = ProjectRepositoryError> + Send + Sync>,
     session_repository:
-        Arc<dyn ProjectEditingSessionRepository<ProjectRepositoryError> + Send + Sync>,
-    snapshot_repository: Arc<dyn ProjectSnapshotRepository<ProjectRepositoryError> + Send + Sync>,
+        Arc<dyn ProjectEditingSessionRepository<Error = ProjectRepositoryError> + Send + Sync>,
+    snapshot_repository:
+        Arc<dyn ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync>,
 }
 
 impl ProjectService {
     pub fn new(
-        project_repository: Arc<dyn ProjectRepository<ProjectRepositoryError> + Send + Sync>,
+        project_repository: Arc<
+            dyn ProjectRepository<Error = ProjectRepositoryError> + Send + Sync,
+        >,
         session_repository: Arc<
-            dyn ProjectEditingSessionRepository<ProjectRepositoryError> + Send + Sync,
+            dyn ProjectEditingSessionRepository<Error = ProjectRepositoryError> + Send + Sync,
         >,
         snapshot_repository: Arc<
-            dyn ProjectSnapshotRepository<ProjectRepositoryError> + Send + Sync,
+            dyn ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
         >,
     ) -> Self {
         Self {
@@ -57,8 +60,9 @@ impl ProjectService {
 
         if session.session_id.is_none() {
             session
-                .start_or_join_session(Box::new(&*self.snapshot_repository))
-                .await?;
+                .start_or_join_session(&*self.snapshot_repository)
+                .await
+                .map_err(ProjectServiceError::EditingSessionError)?;
             self.session_repository
                 .create_session(session.clone())
                 .await?;
@@ -86,11 +90,10 @@ impl ProjectService {
 }
 
 #[async_trait]
-impl ProjectRepository<ProjectServiceError> for ProjectService
-where
-    Self: Send + Sync,
-{
-    async fn get_project(&self, project_id: &str) -> Result<Option<Project>, ProjectServiceError> {
+impl ProjectRepository for ProjectService {
+    type Error = ProjectServiceError;
+
+    async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error> {
         self.project_repository
             .get_project(project_id)
             .await
@@ -99,11 +102,10 @@ where
 }
 
 #[async_trait]
-impl ProjectEditingSessionRepository<ProjectServiceError> for ProjectService {
-    async fn create_session(
-        &self,
-        session: ProjectEditingSession,
-    ) -> Result<(), ProjectServiceError> {
+impl ProjectEditingSessionRepository for ProjectService {
+    type Error = ProjectServiceError;
+
+    async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
         self.session_repository
             .create_session(session)
             .await
@@ -113,17 +115,14 @@ impl ProjectEditingSessionRepository<ProjectServiceError> for ProjectService {
     async fn get_active_session(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectEditingSession>, ProjectServiceError> {
+    ) -> Result<Option<ProjectEditingSession>, Self::Error> {
         self.session_repository
             .get_active_session(project_id)
             .await
             .map_err(ProjectServiceError::RepositoryError)
     }
 
-    async fn update_session(
-        &self,
-        session: ProjectEditingSession,
-    ) -> Result<(), ProjectServiceError> {
+    async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
         self.session_repository
             .update_session(session)
             .await

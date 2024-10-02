@@ -33,10 +33,13 @@ impl ProjectEditingSession {
         }
     }
 
-    pub async fn start_or_join_session<R: ProjectSnapshotRepository>(
+    pub async fn start_or_join_session<R>(
         &mut self,
         snapshot_repo: &R,
-    ) -> Result<String, ProjectEditingSessionError<R::Error>> {
+    ) -> Result<String, ProjectEditingSessionError<R::Error>>
+    where
+        R: ProjectSnapshotRepository + ?Sized,
+    {
         // Logic to start or join a session
         let session_id = generate_id(14, "editor-session");
         self.session_id = Some(session_id.clone());
