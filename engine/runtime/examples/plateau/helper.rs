@@ -46,7 +46,7 @@ struct EventHandler;
 
 #[async_trait::async_trait]
 impl reearth_flow_runtime::event::EventHandler for EventHandler {
-    async fn on_event(&self, event: reearth_flow_runtime::event::Event) {
+    async fn on_event(&self, event: &reearth_flow_runtime::event::Event) {
         match event {
             reearth_flow_runtime::event::Event::SourceFlushed { .. } => {
                 // TODO: Implement this

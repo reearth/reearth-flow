@@ -40,7 +40,7 @@ impl Clone for EventHub {
 
 #[async_trait::async_trait]
 pub trait EventHandler: Send + Sync {
-    async fn on_event(&self, event: Event);
+    async fn on_event(&self, event: &Event);
 }
 
 pub async fn subscribe_event(
@@ -55,7 +55,7 @@ pub async fn subscribe_event(
             },
             Ok(ev) = receiver.recv() => {
                 for handler in event_handlers.iter() {
-                    handler.on_event(ev.clone()).await;
+                    handler.on_event(&ev).await;
                 }
             },
         }
