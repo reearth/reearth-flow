@@ -5,7 +5,6 @@ use crate::utils::generate_id;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use thiserror::Error;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -17,7 +16,7 @@ pub struct ProjectEditingSession {
 }
 
 #[derive(Error, Debug)]
-pub enum ProjectEditingSessionError<E: Error + Send + Sync> {
+pub enum ProjectEditingSessionError<E> {
     #[error("Session not setup")]
     SessionNotSetup,
     #[error(transparent)]
@@ -34,10 +33,10 @@ impl ProjectEditingSession {
         }
     }
 
-    pub async fn start_or_join_session<E: Error + Send + Sync>(
+    pub async fn start_or_join_session<R: ProjectSnapshotRepository>(
         &mut self,
-        snapshot_repo: Box<&dyn ProjectSnapshotRepository<E>>,
-    ) -> Result<String, ProjectEditingSessionError<E>> {
+        snapshot_repo: &R,
+    ) -> Result<String, ProjectEditingSessionError<R::Error>> {
         // Logic to start or join a session
         let session_id = generate_id(14, "editor-session");
         self.session_id = Some(session_id.clone());
@@ -51,47 +50,43 @@ impl ProjectEditingSession {
         Ok(session_id)
     }
 
-    pub async fn get_diff_update<E: Error + Send + Sync>(
+    pub async fn get_diff_update(
         &self,
         _state_vector: Vec<u8>,
-    ) -> Result<(Vec<u8>, Vec<u8>), ProjectEditingSessionError<E>> {
+    ) -> Result<(Vec<u8>, Vec<u8>), ProjectEditingSessionError<()>> {
         self.check_session_setup()?;
         // Logic to get the diff update
         Ok((vec![], vec![]))
     }
 
-    pub async fn merge_updates<E: Error + Send + Sync>(
-        &self,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
+    pub async fn merge_updates(&self) -> Result<(), ProjectEditingSessionError<()>> {
         self.check_session_setup()?;
         // Logic to merge updates
         Ok(())
     }
 
-    pub async fn get_state_update<E: Error + Send + Sync>(
-        &self,
-    ) -> Result<Vec<u8>, ProjectEditingSessionError<E>> {
+    pub async fn get_state_update(&self) -> Result<Vec<u8>, ProjectEditingSessionError<()>> {
         self.check_session_setup()?;
         // Logic to get the state update
         Ok(vec![])
     }
 
-    pub async fn push_update<E: Error + Send + Sync>(
+    pub async fn push_update(
         &self,
         _update: Vec<u8>,
         _updated_by: Option<String>,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
+    ) -> Result<(), ProjectEditingSessionError<()>> {
         self.check_session_setup()?;
         // Logic to push an update
         Ok(())
     }
 
-    pub async fn create_snapshot<E: Error + Send + Sync>(
+    pub async fn create_snapshot<R: ProjectSnapshotRepository>(
         &self,
-        snapshot_repo: &impl ProjectSnapshotRepository<E>,
+        snapshot_repo: &R,
         data: SnapshotData,
         skip_lock: bool,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
+    ) -> Result<(), ProjectEditingSessionError<R::Error>> {
         self.check_session_setup()?;
         if skip_lock {
             self.create_snapshot_internal(snapshot_repo, data).await
@@ -101,12 +96,14 @@ impl ProjectEditingSession {
         }
     }
 
-    async fn create_snapshot_internal<E: Error + Send + Sync>(
+    async fn create_snapshot_internal<R: ProjectSnapshotRepository>(
         &self,
-        snapshot_repo: &impl ProjectSnapshotRepository<E>,
+        snapshot_repo: &R,
         data: SnapshotData,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
-        self.merge_updates().await?;
+    ) -> Result<(), ProjectEditingSessionError<R::Error>> {
+        self.merge_updates()
+            .await
+            .map_err(|_| ProjectEditingSessionError::SessionNotSetup)?;
 
         let now = Utc::now();
 
@@ -139,18 +136,14 @@ impl ProjectEditingSession {
         Ok(())
     }
 
-    pub async fn end_session<E: Error + Send + Sync>(
-        &self,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
+    pub async fn end_session(&self) -> Result<(), ProjectEditingSessionError<()>> {
         self.check_session_setup()?;
         // Logic to end the session
         Ok(())
     }
 
     #[inline]
-    fn check_session_setup<E: Error + Send + Sync>(
-        &self,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
+    fn check_session_setup<E>(&self) -> Result<(), ProjectEditingSessionError<E>> {
         if !self.session_setup_complete {
             Err(ProjectEditingSessionError::SessionNotSetup)
         } else {
@@ -158,11 +151,11 @@ impl ProjectEditingSession {
         }
     }
 
-    pub async fn load_session<E: Error + Send + Sync>(
+    pub async fn load_session<R: ProjectSnapshotRepository>(
         &mut self,
-        snapshot_repo: &impl ProjectSnapshotRepository<E>,
+        snapshot_repo: &R,
         session_id: &str,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
+    ) -> Result<(), ProjectEditingSessionError<R::Error>> {
         let snapshot = snapshot_repo.get_latest_snapshot(session_id).await?;
         if let Some(snapshot) = snapshot {
             self.project_id = snapshot.metadata.project_id;

@@ -39,11 +39,10 @@ impl ProjectRedisRepository {
 }
 
 #[async_trait]
-impl ProjectRepository<ProjectRepositoryError> for ProjectRedisRepository {
-    async fn get_project(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<Project>, ProjectRepositoryError> {
+impl ProjectRepository for ProjectRedisRepository {
+    type Error = ProjectRepositoryError;
+
+    async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error> {
         let key = format!("project:{}", project_id);
         let project = self.redis_client.get(&key).await?;
         Ok(project)
@@ -51,11 +50,10 @@ impl ProjectRepository<ProjectRepositoryError> for ProjectRedisRepository {
 }
 
 #[async_trait]
-impl ProjectEditingSessionRepository<ProjectRepositoryError> for ProjectRedisRepository {
-    async fn create_session(
-        &self,
-        session: ProjectEditingSession,
-    ) -> Result<(), ProjectRepositoryError> {
+impl ProjectEditingSessionRepository for ProjectRedisRepository {
+    type Error = ProjectRepositoryError;
+
+    async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
         let key = format!("session:{}", session.session_id.as_ref().unwrap());
         self.redis_client.set(key, &session).await?;
         Ok(())
@@ -64,16 +62,13 @@ impl ProjectEditingSessionRepository<ProjectRepositoryError> for ProjectRedisRep
     async fn get_active_session(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectEditingSession>, ProjectRepositoryError> {
+    ) -> Result<Option<ProjectEditingSession>, Self::Error> {
         let key = format!("project:{}:active_session", project_id);
         let session = self.redis_client.get(&key).await?;
         Ok(session)
     }
 
-    async fn update_session(
-        &self,
-        session: ProjectEditingSession,
-    ) -> Result<(), ProjectRepositoryError> {
+    async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
         let key = format!("session:{}", session.session_id.as_ref().unwrap());
         self.redis_client.set(key, &session).await?;
         Ok(())
@@ -85,26 +80,22 @@ pub struct ProjectGcsRepository {
 }
 
 impl ProjectGcsRepository {
-    fn new(client: GcsClient) -> Self {
+    pub fn new(client: GcsClient) -> Self {
         Self { client }
     }
 }
 
 #[async_trait]
-impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectGcsRepository {
-    async fn create_snapshot(
-        &self,
-        snapshot: ProjectSnapshot,
-    ) -> Result<(), ProjectRepositoryError> {
-        let path = format!("snapshot/{}", snapshot.metadata.project_id);
+impl ProjectSnapshotRepository for ProjectGcsRepository {
+    type Error = ProjectRepositoryError;
+
+    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+        let path = format!("snapshot/{}", snapshot.metadata.id);
         self.client.upload(path, &snapshot).await?;
         Ok(())
     }
 
-    async fn update_latest_snapshot(
-        &self,
-        snapshot: ProjectSnapshot,
-    ) -> Result<(), ProjectRepositoryError> {
+    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         let path = format!("snapshot/{}:latest_snapshot", snapshot.metadata.project_id);
         self.client.upload(path, &snapshot).await?;
         Ok(())
@@ -113,25 +104,19 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectGcsRepository 
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError> {
+    ) -> Result<Option<ProjectSnapshot>, Self::Error> {
         let path = format!("snapshot/{}:latest_snapshot", project_id);
         let snapshot = self.client.download(path).await?;
         Ok(snapshot)
     }
 
-    async fn get_latest_snapshot_state(
-        &self,
-        project_id: &str,
-    ) -> Result<Vec<u8>, ProjectRepositoryError> {
+    async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
         let path = format!("snapshot/{}:latest_snapshot_state", project_id);
-        let state = self.client.download(path).await?;
-        Ok(state)
+        let state: Option<Vec<u8>> = self.client.download(path).await?;
+        Ok(state.unwrap_or_default())
     }
 
-    async fn update_snapshot(
-        &self,
-        snapshot: ProjectSnapshot,
-    ) -> Result<(), ProjectRepositoryError> {
+    async fn update_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         // Implementation details would depend on your storage solution
         // For example, with GCS, you might:
         // 1. Serialize the snapshot
@@ -154,20 +139,16 @@ impl ProjectLocalRepository {
 }
 
 #[async_trait]
-impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepository {
-    async fn create_snapshot(
-        &self,
-        snapshot: ProjectSnapshot,
-    ) -> Result<(), ProjectRepositoryError> {
+impl ProjectSnapshotRepository for ProjectLocalRepository {
+    type Error = ProjectRepositoryError;
+
+    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         let path = format!("snapshots/{}", snapshot.metadata.id);
         self.client.upload(path, &snapshot, true).await?;
         Ok(())
     }
 
-    async fn update_latest_snapshot(
-        &self,
-        snapshot: ProjectSnapshot,
-    ) -> Result<(), ProjectRepositoryError> {
+    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         let path = format!("snapshot/{}:latest_snapshot", snapshot.metadata.project_id);
         self.client.upload(path, &snapshot, true).await?;
         Ok(())
@@ -176,25 +157,24 @@ impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepositor
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError> {
+    ) -> Result<Option<ProjectSnapshot>, Self::Error> {
         let path = format!("snapshot/{}:latest_snapshot", project_id);
         let snapshot = self.client.download::<ProjectSnapshot>(path).await?;
         Ok(Some(snapshot))
     }
 
-    async fn get_latest_snapshot_state(
-        &self,
-        project_id: &str,
-    ) -> Result<Vec<u8>, ProjectRepositoryError> {
+    async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
         let path = format!("snapshot/{}:latest_snapshot_state", project_id);
         let state = self.client.download(path).await?;
         Ok(state)
     }
 
-    async fn update_snapshot(
-        &self,
-        snapshot: ProjectSnapshot,
-    ) -> Result<(), ProjectRepositoryError> {
+    async fn update_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+        // Implementation details would depend on your storage solution
+        // For example, with GCS, you might:
+        // 1. Serialize the snapshot
+        // 2. Upload the serialized data to GCS, overwriting the existing file
+        // 3. Update any metadata as necessary
         unimplemented!("update_snapshot needs to be implemented")
     }
 }
