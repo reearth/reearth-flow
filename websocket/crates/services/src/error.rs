@@ -20,13 +20,13 @@ pub enum ProjectServiceError {
 
 impl<E> From<ProjectEditingSessionError<E>> for ProjectServiceError
 where
-    E: fmt::Debug + fmt::Display,
+    E: fmt::Debug,
 {
     fn from(err: ProjectEditingSessionError<E>) -> Self {
         match err {
             ProjectEditingSessionError::SessionNotSetup => ProjectServiceError::SessionNotSetup,
             ProjectEditingSessionError::SnapshotRepository(repo_err) => {
-                ProjectServiceError::SnapshotRepositoryError(format!("{}", repo_err))
+                ProjectServiceError::SnapshotRepositoryError(format!("{:?}", repo_err))
             }
         }
     }
