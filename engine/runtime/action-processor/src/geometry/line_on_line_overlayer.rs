@@ -258,8 +258,8 @@ impl LineOnLineOverlayer {
                     if line_string.approx_eq(candidate, EPSILON) {
                         continue;
                     }
-                    line_string.lines().zip(candidate.lines()).for_each(
-                        |(line1, line2)| {
+                    for line1 in line_string.lines() {
+                        for line2 in candidate.lines() {
                             if let Some(reearth_flow_geometry::algorithm::line_intersection::LineIntersection::Collinear { intersection }) =  line_intersection(line1, line2) {
                                 intersect = true;
                                 let line_float = Line2DFloat(intersection);
@@ -285,8 +285,8 @@ impl LineOnLineOverlayer {
                                     }
                                 }
                             }
-                        },
-                    );
+                        }
+                    }
                 }
                 if !intersect {
                     out_line_strings.push(line_string.clone());
