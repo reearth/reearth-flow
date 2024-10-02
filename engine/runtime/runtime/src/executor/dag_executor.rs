@@ -96,7 +96,7 @@ impl DagExecutor {
         let notify_publish = Arc::clone(&notify);
         let notify_subscribe = Arc::clone(&notify);
         runtime.spawn(async move {
-            subscribe_event(&mut receiver, notify_subscribe.clone(), event_handlers).await;
+            subscribe_event(&mut receiver, notify_subscribe.clone(), &event_handlers).await;
         });
         let mut join_handles = vec![start_source(source_node)?];
         for node_index in node_indexes {
@@ -151,7 +151,7 @@ impl DagExecutor {
 async fn subscribe_event(
     receiver: &mut Receiver<Event>,
     notify: Arc<Notify>,
-    event_handlers: Vec<Box<dyn EventHandler>>,
+    event_handlers: &[Box<dyn EventHandler>],
 ) {
     crate::event::subscribe_event(receiver, notify, event_handlers).await;
 }

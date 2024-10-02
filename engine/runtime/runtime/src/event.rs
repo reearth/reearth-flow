@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use tokio::sync::{
     broadcast::{Receiver, Sender},
@@ -46,20 +46,18 @@ pub trait EventHandler: Send + Sync {
 pub async fn subscribe_event(
     receiver: &mut Receiver<Event>,
     notify: Arc<Notify>,
-    event_handlers: Vec<Box<dyn EventHandler>>,
+    event_handlers: &[Box<dyn EventHandler>],
 ) {
     loop {
         tokio::select! {
             _ = notify.notified() => {
                 return;
             },
-            _ = tokio::time::sleep(Duration::from_millis(100)) => {}
-        }
-        let Ok(ev) = receiver.recv().await else {
-            continue;
-        };
-        for handler in event_handlers.iter() {
-            handler.on_event(ev.clone()).await;
+            Ok(ev) = receiver.recv() => {
+                for handler in event_handlers.iter() {
+                    handler.on_event(ev.clone()).await;
+                }
+            },
         }
     }
 }
