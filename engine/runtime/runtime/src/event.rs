@@ -9,8 +9,11 @@ use crate::node::NodeHandle;
 
 #[derive(Debug, Clone)]
 pub enum Event {
-    SinkFlushed { node: NodeHandle },
-    SinkFinished { node: NodeHandle },
+    SourceFlushed { node: NodeHandle, name: String },
+    ProcessorStarted { node: NodeHandle, name: String },
+    ProcessorFinished { node: NodeHandle, name: String },
+    SinkFlushed { node: NodeHandle, name: String },
+    SinkFinished { node: NodeHandle, name: String },
 }
 
 #[derive(Debug)]
@@ -35,7 +38,16 @@ impl Clone for EventHub {
     }
 }
 
-pub async fn subscribe_event(receiver: &mut Receiver<Event>, notify: Arc<Notify>) {
+#[async_trait::async_trait]
+pub trait EventHandler: Send + Sync {
+    async fn on_event(&self, event: Event);
+}
+
+pub async fn subscribe_event(
+    receiver: &mut Receiver<Event>,
+    notify: Arc<Notify>,
+    event_handlers: Vec<Box<dyn EventHandler>>,
+) {
     loop {
         tokio::select! {
             _ = notify.notified() => {
@@ -43,8 +55,11 @@ pub async fn subscribe_event(receiver: &mut Receiver<Event>, notify: Arc<Notify>
             },
             _ = tokio::time::sleep(Duration::from_millis(100)) => {}
         }
-        let Ok(_) = receiver.recv().await else {
+        let Ok(ev) = receiver.recv().await else {
             continue;
         };
+        for handler in event_handlers.iter() {
+            handler.on_event(ev.clone()).await;
+        }
     }
 }
