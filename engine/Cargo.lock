@@ -4464,6 +4464,7 @@ dependencies = [
 name = "reearth-flow-examples"
 version = "0.0.1"
 dependencies = [
+ "async-trait",
  "bytes",
  "directories",
  "once_cell",

@@ -21,7 +21,7 @@ use super::sink_node::SinkNode;
 use crate::builder_dag::{BuilderDag, NodeKind};
 use crate::dag_schemas::DagSchemas;
 use crate::errors::ExecutionError;
-use crate::event::Event;
+use crate::event::{Event, EventHandler};
 use crate::executor_operation::{ExecutorOptions, NodeContext};
 
 use super::execution_dag::ExecutionDag;
@@ -65,6 +65,7 @@ impl DagExecutor {
         logger: Arc<LoggerFactory>,
         kv_store: Arc<Box<dyn crate::kvs::KvStore>>,
         state: Arc<State>,
+        event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<DagExecutorJoinHandle, ExecutionError> {
         // Construct execution dag.
         let mut execution_dag = ExecutionDag::new(
@@ -95,7 +96,7 @@ impl DagExecutor {
         let notify_publish = Arc::clone(&notify);
         let notify_subscribe = Arc::clone(&notify);
         runtime.spawn(async move {
-            subscribe_event(&mut receiver, notify_subscribe.clone()).await;
+            subscribe_event(&mut receiver, notify_subscribe.clone(), &event_handlers).await;
         });
         let mut join_handles = vec![start_source(source_node)?];
         for node_index in node_indexes {
@@ -147,8 +148,12 @@ impl DagExecutor {
     }
 }
 
-async fn subscribe_event(receiver: &mut Receiver<Event>, notify: Arc<Notify>) {
-    crate::event::subscribe_event(receiver, notify).await;
+async fn subscribe_event(
+    receiver: &mut Receiver<Event>,
+    notify: Arc<Notify>,
+    event_handlers: &[Box<dyn EventHandler>],
+) {
+    crate::event::subscribe_event(receiver, notify, event_handlers).await;
 }
 
 impl DagExecutorJoinHandle {

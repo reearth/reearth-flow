@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use tokio::sync::{
     broadcast::{Receiver, Sender},
@@ -9,8 +9,11 @@ use crate::node::NodeHandle;
 
 #[derive(Debug, Clone)]
 pub enum Event {
-    SinkFlushed { node: NodeHandle },
-    SinkFinished { node: NodeHandle },
+    SourceFlushed { node: NodeHandle, name: String },
+    ProcessorStarted { node: NodeHandle, name: String },
+    ProcessorFinished { node: NodeHandle, name: String },
+    SinkFlushed { node: NodeHandle, name: String },
+    SinkFinished { node: NodeHandle, name: String },
 }
 
 #[derive(Debug)]
@@ -35,16 +38,26 @@ impl Clone for EventHub {
     }
 }
 
-pub async fn subscribe_event(receiver: &mut Receiver<Event>, notify: Arc<Notify>) {
+#[async_trait::async_trait]
+pub trait EventHandler: Send + Sync {
+    async fn on_event(&self, event: &Event);
+}
+
+pub async fn subscribe_event(
+    receiver: &mut Receiver<Event>,
+    notify: Arc<Notify>,
+    event_handlers: &[Box<dyn EventHandler>],
+) {
     loop {
         tokio::select! {
             _ = notify.notified() => {
                 return;
             },
-            _ = tokio::time::sleep(Duration::from_millis(100)) => {}
+            Ok(ev) = receiver.recv() => {
+                for handler in event_handlers.iter() {
+                    handler.on_event(&ev).await;
+                }
+            },
         }
-        let Ok(_) = receiver.recv().await else {
-            continue;
-        };
     }
 }

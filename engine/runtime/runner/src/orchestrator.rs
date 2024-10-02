@@ -5,6 +5,7 @@ use futures::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt};
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_runtime::event::EventHandler;
 use reearth_flow_runtime::executor_operation::{ExecutorOptions, NodeContext};
 use reearth_flow_runtime::kvs::create_kv_store;
 use reearth_flow_runtime::node::NodeKind;
@@ -31,13 +32,13 @@ impl Orchestrator {
     #[allow(clippy::too_many_arguments)]
     pub async fn run_apps(
         &self,
-        _job_id: String,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
+        event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<(), Error> {
         let executor = Executor {};
         let options = ExecutorOptions {
@@ -68,6 +69,7 @@ impl Orchestrator {
                 dag_executor,
                 shutdown_clone,
                 state,
+                event_handlers,
             )
         });
 
@@ -83,23 +85,23 @@ impl Orchestrator {
     #[allow(clippy::too_many_arguments)]
     pub async fn run_all(
         &self,
-        job_id: String,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
+        event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<(), Error> {
         let pipeline_shutdown = shutdown.clone();
         self.run_apps(
-            job_id,
             workflow,
             factories,
             pipeline_shutdown,
             logger_factory,
             storage_resolver,
             state,
+            event_handlers,
         )
         .await
     }

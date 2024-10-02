@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc, thread, time::Duration};
 
 use reearth_flow_common::future::SharedFuture;
 use reearth_flow_runtime::{
+    event::EventHandler,
     executor::dag_executor::DagExecutor,
     executor_operation::{ExecutorOptions, NodeContext},
     node::{NodeKind, RouterFactory},
@@ -47,6 +48,7 @@ pub fn run_dag_executor(
     dag_executor: DagExecutor,
     shutdown: ShutdownReceiver,
     state: Arc<State>,
+    event_handlers: Vec<Box<dyn EventHandler>>,
 ) -> Result<(), Error> {
     let shutdown_future = shutdown.create_shutdown_future();
 
@@ -58,6 +60,7 @@ pub fn run_dag_executor(
         ctx.logger.clone(),
         ctx.kv_store.clone(),
         state,
+        event_handlers,
     ))?;
     let result = join_handle.join().map_err(Error::ExecutionError);
     thread::sleep(Duration::from_millis(1000));

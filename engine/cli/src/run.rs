@@ -148,7 +148,6 @@ impl RunCliCommand {
             action_log_uri.path(),
         ));
         Runner::run(
-            job_id.to_string(),
             workflow,
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,

@@ -34,7 +34,6 @@ struct Fixtures;
 struct WorkflowFiles;
 
 pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<(), Error> {
-    let job_id = uuid::Uuid::new_v4();
     env::set_var("ACTION_LOG_DISABLE", "true");
     let storage_resolver = Arc::new(StorageResolver::new());
     let storage = storage_resolver
@@ -64,7 +63,6 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<(), Err
     ));
     let workflow = Workflow::try_from_str(workflow);
     Runner::run(
-        job_id.to_string(),
         workflow,
         BUILTIN_ACTION_FACTORIES.clone(),
         logger_factory,
