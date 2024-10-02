@@ -8,30 +8,26 @@ pub enum ProjectServiceError {
     #[error(transparent)]
     RepositoryError(#[from] ProjectRepositoryError),
 
-    #[error(transparent)]
-    ProjectEditingSessionError(#[from] Box<ProjectEditingSessionError<ProjectServiceError>>),
+    #[error("Session not setup")]
+    SessionNotSetup,
+
+    #[error("Snapshot repository error: {0}")]
+    SnapshotRepositoryError(String),
 
     #[error("Unexpected error: {0}")]
     UnexpectedError(String),
 }
 
-impl From<ProjectEditingSessionError<ProjectRepositoryError>> for ProjectServiceError {
-    fn from(err: ProjectEditingSessionError<ProjectRepositoryError>) -> Self {
+impl<E> From<ProjectEditingSessionError<E>> for ProjectServiceError
+where
+    E: fmt::Debug + fmt::Display,
+{
+    fn from(err: ProjectEditingSessionError<E>) -> Self {
         match err {
-            ProjectEditingSessionError::SessionNotSetup => {
-                ProjectServiceError::ProjectEditingSessionError(Box::new(
-                    ProjectEditingSessionError::SessionNotSetup,
-                ))
-            }
+            ProjectEditingSessionError::SessionNotSetup => ProjectServiceError::SessionNotSetup,
             ProjectEditingSessionError::SnapshotRepository(repo_err) => {
-                ProjectServiceError::RepositoryError(repo_err)
+                ProjectServiceError::SnapshotRepositoryError(format!("{}", repo_err))
             }
         }
-    }
-}
-
-impl From<ProjectEditingSessionError<ProjectServiceError>> for ProjectServiceError {
-    fn from(err: ProjectEditingSessionError<ProjectServiceError>) -> Self {
-        ProjectServiceError::ProjectEditingSessionError(Box::new(err))
     }
 }

@@ -1,5 +1,4 @@
 use crate::repository::ProjectSnapshotRepository;
-use crate::snapshot;
 use crate::types::snapshot::{Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotInfo};
 use crate::utils::generate_id;
 
