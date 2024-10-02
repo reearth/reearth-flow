@@ -1,19 +1,20 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use flow_websocket_domain::repository::ProjectSnapshotRepository;
-use flow_websocket_domain::snapshot::{
-    Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotInfo,
-};
-use std::error::Error;
+use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo};
+use flow_websocket_domain::types::snapshot::ProjectSnapshot;
 use std::sync::Arc;
 use uuid::Uuid;
 
-pub struct SnapshotService<E: Error + Send + Sync> {
-    snapshot_repository: Arc<dyn ProjectSnapshotRepository<E>>,
+pub struct SnapshotService<R> {
+    snapshot_repository: Arc<R>,
 }
 
-impl<E: Error + Send + Sync> SnapshotService<E> {
-    pub fn new(snapshot_repository: Arc<dyn ProjectSnapshotRepository<E>>) -> Self {
+impl<R> SnapshotService<R>
+where
+    R: ProjectSnapshotRepository + Send + Sync,
+{
+    pub fn new(snapshot_repository: Arc<R>) -> Self {
         Self {
             snapshot_repository,
         }
@@ -22,7 +23,7 @@ impl<E: Error + Send + Sync> SnapshotService<E> {
     pub async fn create_snapshot(
         &self,
         data: CreateSnapshotData,
-    ) -> Result<ProjectSnapshot, Box<dyn Error>> {
+    ) -> Result<ProjectSnapshot, R::Error> {
         let snapshot_id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
@@ -58,16 +59,13 @@ impl<E: Error + Send + Sync> SnapshotService<E> {
     pub async fn get_latest_snapshot(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, Box<dyn Error>> {
+    ) -> Result<Option<ProjectSnapshot>, R::Error> {
         self.snapshot_repository
             .get_latest_snapshot(project_id)
             .await
     }
 
-    pub async fn get_latest_snapshot_state(
-        &self,
-        project_id: &str,
-    ) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, R::Error> {
         self.snapshot_repository
             .get_latest_snapshot_state(project_id)
             .await
@@ -75,27 +73,38 @@ impl<E: Error + Send + Sync> SnapshotService<E> {
 }
 
 #[async_trait]
-impl<E: Error + Send + Sync> ProjectSnapshotRepository<E> for SnapshotService<E> {
-    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Box<dyn Error>> {
+impl<R> ProjectSnapshotRepository for SnapshotService<R>
+where
+    R: ProjectSnapshotRepository + Send + Sync,
+{
+    type Error = R::Error;
+
+    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         self.snapshot_repository.create_snapshot(snapshot).await
+    }
+
+    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+        self.snapshot_repository
+            .update_latest_snapshot(snapshot)
+            .await
     }
 
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, Box<dyn Error>> {
+    ) -> Result<Option<ProjectSnapshot>, Self::Error> {
         self.snapshot_repository
             .get_latest_snapshot(project_id)
             .await
     }
 
-    async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
         self.snapshot_repository
             .get_latest_snapshot_state(project_id)
             .await
     }
 
-    async fn update_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Box<dyn Error>> {
+    async fn update_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         self.snapshot_repository.update_snapshot(snapshot).await
     }
 }
