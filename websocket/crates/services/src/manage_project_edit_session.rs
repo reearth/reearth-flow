@@ -1,14 +1,12 @@
 use chrono::{DateTime, Utc};
-use flow_websocket_domain::project::{ProjectEditingSession, ProjectEditingSessionError};
+use flow_websocket_domain::project::ProjectEditingSession;
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectSnapshotRepository,
 };
-use flow_websocket_domain::snapshot::{Metadata, ObjectTenant, SnapshotInfo};
+use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo};
+use flow_websocket_domain::types::snapshot::ProjectSnapshot;
 use flow_websocket_domain::utils::generate_id;
-use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
-use std::error::Error;
 use std::sync::Arc;
-use thiserror::Error;
 use tokio::time::sleep;
 
 use crate::ProjectServiceError;
@@ -16,16 +14,21 @@ use crate::ProjectServiceError;
 const MAX_EMPTY_SESSION_DURATION: i64 = 10 * 1000; // 10 seconds
 const MAX_SNAPSHOT_DELTA: i64 = 5 * 60 * 1000; // 5 minutes
 
-pub struct ManageEditSessionService<E: Error + Send + Sync> {
-    session_repository: Arc<dyn ProjectEditingSessionRepository<E>>,
-    snapshot_repository: Arc<dyn ProjectSnapshotRepository<E>>,
+pub struct ManageEditSessionService<R, S>
+where
+    R: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync,
+    S: ProjectSnapshotRepository<Error = ProjectServiceError> + Send + Sync,
+{
+    session_repository: Arc<R>,
+    snapshot_repository: Arc<S>,
 }
 
-impl<E: Error + Send + Sync> ManageEditSessionService<E> {
-    pub fn new(
-        session_repository: Arc<dyn ProjectEditingSessionRepository<E>>,
-        snapshot_repository: Arc<dyn ProjectSnapshotRepository<E>>,
-    ) -> Self {
+impl<R, S> ManageEditSessionService<R, S>
+where
+    R: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync,
+    S: ProjectSnapshotRepository<Error = ProjectServiceError> + Send + Sync,
+{
+    pub fn new(session_repository: Arc<R>, snapshot_repository: Arc<S>) -> Self {
         Self {
             session_repository,
             snapshot_repository,
@@ -41,18 +44,22 @@ impl<E: Error + Send + Sync> ManageEditSessionService<E> {
             .get_active_session(&data.project_id)
             .await?;
 
-        session
-            .load_session(&self.snapshot_repository, &data.session_id)
-            .await?;
+        if let Some(mut session) = session {
+            session
+                .load_session(&*self.snapshot_repository, &data.session_id)
+                .await?;
 
-        self.update_client_count(&mut session, &mut data).await?;
-        self.merge_updates(&mut session, &mut data).await?;
-        self.create_snapshot_if_required(&mut session, &mut data)
-            .await?;
-        self.end_editing_session_if_conditions_met(&mut session, &data)
-            .await?;
-        self.complete_job_if_met_requirements(&session, &data)
-            .await?;
+            self.update_client_count(&mut session, &mut data).await?;
+            self.merge_updates(&mut session, &mut data).await?;
+            self.create_snapshot_if_required(&mut session, &mut data)
+                .await?;
+            self.end_editing_session_if_conditions_met(&mut session, &data)
+                .await?;
+            self.complete_job_if_met_requirements(&session, &data)
+                .await?;
+
+            self.session_repository.update_session(session).await?;
+        }
 
         Ok(())
     }

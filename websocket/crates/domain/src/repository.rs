@@ -1,6 +1,7 @@
 use crate::project::ProjectEditingSession;
 use crate::projection::Project;
 use crate::types::snapshot::ProjectSnapshot;
+use std::error::Error;
 
 #[async_trait::async_trait]
 pub trait ProjectRepository {
@@ -23,7 +24,7 @@ pub trait ProjectEditingSessionRepository {
 
 #[async_trait::async_trait]
 pub trait ProjectSnapshotRepository {
-    type Error;
+    type Error: Error + Send + Sync + 'static;
 
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error>;
     async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error>;
