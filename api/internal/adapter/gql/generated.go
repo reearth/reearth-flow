@@ -1692,9 +1692,10 @@ enum JobStatus {
 # Input Types
 
 input CreateDeploymentInput {
-  projectId: ID!
   workspaceId: ID!
-  workflow: InputWorkflow!
+  projectId: ID!
+  metaFile: Upload!
+  workflowsZip: Upload!
 }
 
 input ExecuteDeploymentInput {
@@ -1791,7 +1792,8 @@ input DeleteProjectInput {
 input RunProjectInput {
   projectId: ID!
   workspaceId: ID!
-  workflow: InputWorkflow!
+  metaFile: Upload!
+  workflowsZip: Upload!
 }
 
 # Payload
@@ -11367,20 +11369,13 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "workspaceId", "workflow"}
+	fieldsInOrder := [...]string{"workspaceId", "projectId", "metaFile", "workflowsZip"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "projectId":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ProjectID = data
 		case "workspaceId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
 			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
@@ -11388,13 +11383,27 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 				return it, err
 			}
 			it.WorkspaceID = data
-		case "workflow":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflow"))
-			data, err := ec.unmarshalNInputWorkflow2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐInputWorkflow(ctx, v)
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Workflow = data
+			it.ProjectID = data
+		case "metaFile":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metaFile"))
+			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetaFile = data
+		case "workflowsZip":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflowsZip"))
+			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkflowsZip = data
 		}
 	}
 
@@ -11947,7 +11956,7 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "workspaceId", "workflow"}
+	fieldsInOrder := [...]string{"projectId", "workspaceId", "metaFile", "workflowsZip"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -11968,13 +11977,20 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 				return it, err
 			}
 			it.WorkspaceID = data
-		case "workflow":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflow"))
-			data, err := ec.unmarshalNInputWorkflow2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐInputWorkflow(ctx, v)
+		case "metaFile":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metaFile"))
+			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Workflow = data
+			it.MetaFile = data
+		case "workflowsZip":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflowsZip"))
+			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkflowsZip = data
 		}
 	}
 
@@ -15217,11 +15233,6 @@ func (ec *executionContext) unmarshalNInputGraph2ᚕᚖgithubᚗcomᚋreearthᚋ
 		}
 	}
 	return res, nil
-}
-
-func (ec *executionContext) unmarshalNInputWorkflow2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐInputWorkflow(ctx context.Context, v interface{}) (*gqlmodel.InputWorkflow, error) {
-	res, err := ec.unmarshalInputInputWorkflow(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNInputWorkflowEdge2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐInputWorkflowEdgeᚄ(ctx context.Context, v interface{}) ([]*gqlmodel.InputWorkflowEdge, error) {
