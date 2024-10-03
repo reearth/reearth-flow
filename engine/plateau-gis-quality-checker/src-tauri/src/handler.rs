@@ -50,7 +50,9 @@ pub(crate) async fn run_flow(
     let mut workflow = Workflow::try_from(json.as_str()).map_err(|e| {
         crate::errors::Error::ExecuteFailed(format!("failed to parse workflow with {:?}", e))
     })?;
-    workflow.merge_with(params);
+    workflow.merge_with(params).map_err(|e| {
+        crate::errors::Error::ExecuteFailed(format!("failed to merge params with {:?}", e))
+    })?;
     let storage_resolver = Arc::new(resolve::StorageResolver::new());
     let job_id = uuid::Uuid::new_v4();
     let action_log_uri = setup_job_directory("plateau-gis-quality-checker", "action-log", job_id)

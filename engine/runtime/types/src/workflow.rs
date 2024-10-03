@@ -38,13 +38,13 @@ impl TryFrom<&str> for Workflow {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let mut workflow: Self = from_str(value).map_err(crate::error::Error::input)?;
-        workflow.load_variables_from_environment();
+        workflow.load_variables_from_environment()?;
         Ok(workflow)
     }
 }
 
 impl Workflow {
-    fn load_variables_from_environment(&mut self) {
+    fn load_variables_from_environment(&mut self) -> Result<(), crate::error::Error> {
         let environment_vars: Vec<(String, String)> = env::vars()
             .filter(|(key, _)| key.starts_with(ENVIRONMENT_PREFIX))
             .map(|(key, value)| (key[ENVIRONMENT_PREFIX.len()..].to_string(), value))
@@ -56,26 +56,39 @@ impl Workflow {
             })
             .collect();
         if environment_vars.is_empty() {
-            return;
+            return Ok(());
         }
         let mut with = if let Some(with) = self.with.clone() {
             with
         } else {
             serde_json::Map::<String, Value>::new()
         };
-        with.extend(environment_vars.into_iter().map(|(key, value)| {
-            let value = match determine_format(value.as_str()) {
-                SerdeFormat::Json | SerdeFormat::Yaml => from_str(value.as_str()).unwrap(),
-                SerdeFormat::Unknown => serde_json::to_value(value).unwrap(),
-            };
-            (key, value)
-        }));
+        with.extend(
+            environment_vars
+                .into_iter()
+                .map(|(key, value)| {
+                    let value = match determine_format(value.as_str()) {
+                        SerdeFormat::Json | SerdeFormat::Yaml => {
+                            from_str(value.as_str()).map_err(crate::error::Error::input)?
+                        }
+                        SerdeFormat::Unknown => {
+                            serde_json::to_value(value).map_err(crate::error::Error::input)?
+                        }
+                    };
+                    Ok((key, value))
+                })
+                .collect::<Result<Vec<_>, crate::error::Error>>()?,
+        );
         self.with = Some(with);
+        Ok(())
     }
 
-    pub fn merge_with(&mut self, params: HashMap<String, String>) {
+    pub fn merge_with(
+        &mut self,
+        params: HashMap<String, String>,
+    ) -> Result<(), crate::error::Error> {
         if params.is_empty() {
-            return;
+            return Ok(());
         }
         let mut with = if let Some(with) = self.with.clone() {
             with
@@ -92,14 +105,19 @@ impl Workflow {
             })
             .map(|(key, value)| {
                 let value = match determine_format(value.as_str()) {
-                    SerdeFormat::Json | SerdeFormat::Yaml => from_str(value.as_str()).unwrap(),
-                    SerdeFormat::Unknown => serde_json::to_value(value).unwrap(),
+                    SerdeFormat::Json | SerdeFormat::Yaml => {
+                        from_str(value.as_str()).map_err(crate::error::Error::input)?
+                    }
+                    SerdeFormat::Unknown => {
+                        serde_json::to_value(value).map_err(crate::error::Error::input)?
+                    }
                 };
-                (key, value)
+                Ok((key, value))
             })
-            .collect::<serde_json::Map<String, Value>>();
+            .collect::<Result<HashMap<_, _>, crate::error::Error>>()?;
         with.extend(params);
         self.with = Some(with);
+        Ok(())
     }
 }
 
