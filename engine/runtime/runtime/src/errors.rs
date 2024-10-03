@@ -88,6 +88,8 @@ pub enum ExecutionError {
     Source(#[source] BoxedError),
     #[error("Sink error: {0}")]
     Sink(#[source] BoxedError),
+    #[error("ChannelManager error: {0}")]
+    ChannelManager(#[source] BoxedError),
     #[error("State of {0} is not consistent across sinks")]
     SourceStateConflict(NodeHandle),
     #[error("Action name mismatch for node {0}: {1} != {2}")]

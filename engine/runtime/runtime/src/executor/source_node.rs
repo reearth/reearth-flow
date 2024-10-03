@@ -91,6 +91,9 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         Arc::clone(&self.kv_store),
                     );
                     send_to_all_nodes(&self.sources, ExecutorOperation::Terminate { ctx })?;
+                    self.event_sender
+                        .send(Event::SourceFlushed)
+                        .map_err(|e| ExecutionError::Source(Box::new(e)))?;
                     return Ok(());
                 }
                 Either::Right((next, shutdown)) => {
@@ -116,6 +119,9 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                         &self.sources,
                                         ExecutorOperation::Terminate { ctx },
                                     )?;
+                                    self.event_sender
+                                        .send(Event::SourceFlushed)
+                                        .map_err(|e| ExecutionError::Source(Box::new(e)))?;
                                     return Ok(());
                                 }
                                 continue;

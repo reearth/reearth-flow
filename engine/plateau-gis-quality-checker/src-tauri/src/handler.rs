@@ -22,10 +22,20 @@ pub(crate) struct QualityCheckWorkflow {
 }
 
 pub(crate) static QUALITY_CHECK_WORKFLOWS: Lazy<Vec<QualityCheckWorkflow>> = Lazy::new(|| {
-    vec![QualityCheckWorkflow {
-        id: "common".to_string(),
-        name: "共通".to_string(),
-    }]
+    vec![
+        QualityCheckWorkflow {
+            id: "common".to_string(),
+            name: "共通".to_string(),
+        },
+        QualityCheckWorkflow {
+            id: "tran-rwy-trk-squr-wwy".to_string(),
+            name: "道路".to_string(),
+        },
+        QualityCheckWorkflow {
+            id: "luse-urf".to_string(),
+            name: "土地利用・都市計画決定情報".to_string(),
+        },
+    ]
 });
 
 pub(crate) async fn run_flow(
@@ -53,7 +63,6 @@ pub(crate) async fn run_flow(
         action_log_uri.path(),
     ));
     AsyncRunner::run(
-        job_id.to_string(),
         workflow,
         ALL_ACTION_FACTORIES.clone(),
         logger_factory,

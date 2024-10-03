@@ -4,8 +4,7 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use nusamai_projection::crs::EpsgCode;
 use once_cell::sync::Lazy;
-use reearth_flow_geometry::algorithm::intersects::Intersects;
-
+use reearth_flow_geometry::algorithm::line_intersection::line_intersection;
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::line::Line2DFloat;
 use reearth_flow_geometry::types::line_string::LineString2D;
@@ -28,7 +27,6 @@ use super::errors::GeometryProcessorError;
 
 pub static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
 pub static LINE_PORT: Lazy<Port> = Lazy::new(|| Port::new("line"));
-pub static COLLINEAR_PORT: Lazy<Port> = Lazy::new(|| Port::new("collinear"));
 const EPSILON: f64 = 0.001;
 
 #[derive(Debug, Clone, Default)]
@@ -256,35 +254,35 @@ impl LineOnLineOverlayer {
                 let output_envelope = line_string.envelope();
                 let candidates = rtree.locate_in_envelope_intersecting(&output_envelope);
                 let mut intersect = false;
-                let mut candidate_line_strings = Vec::new();
                 for candidate in candidates {
                     if line_string.approx_eq(candidate, EPSILON) {
                         continue;
                     }
-                    candidate_line_strings.push(candidate.clone());
-                    if line_string.intersects(candidate) {
-                        intersect = true;
-                        for line in candidate.lines() {
-                            let line_float = Line2DFloat(line);
-                            match line_features.entry(line_float.clone()) {
-                                Entry::Occupied(mut entry) => {
-                                    let line_feature = entry.get_mut();
-                                    line_feature.overlap += 1;
-                                    line_feature
-                                        .attributes
-                                        .insert(feature.id, feature.attributes.clone());
-                                }
-                                Entry::Vacant(entry) => {
-                                    let mut attributes = HashMap::new();
-                                    for (k, v) in feature.iter() {
-                                        attributes.insert(k.clone(), v.clone());
+                    for line1 in line_string.lines() {
+                        for line2 in candidate.lines() {
+                            if let Some(reearth_flow_geometry::algorithm::line_intersection::LineIntersection::Collinear { intersection }) =  line_intersection(line1, line2) {
+                                intersect = true;
+                                let line_float = Line2DFloat(intersection);
+                                match line_features.entry(line_float.clone()) {
+                                    Entry::Occupied(mut entry) => {
+                                        let line_feature = entry.get_mut();
+                                        line_feature.overlap += 1;
+                                        line_feature
+                                            .attributes
+                                            .insert(feature.id, feature.attributes.clone());
                                     }
-                                    let line_feature = LineFeature {
-                                        epsg: feature.geometry.as_ref().and_then(|g| g.epsg),
-                                        attributes: HashMap::from([(feature.id, attributes)]),
-                                        overlap: 1,
-                                    };
-                                    entry.insert(line_feature);
+                                    Entry::Vacant(entry) => {
+                                        let mut attributes = HashMap::new();
+                                        for (k, v) in feature.iter() {
+                                            attributes.insert(k.clone(), v.clone());
+                                        }
+                                        let line_feature = LineFeature {
+                                            epsg: feature.geometry.as_ref().and_then(|g| g.epsg),
+                                            attributes: HashMap::from([(feature.id, attributes)]),
+                                            overlap: 1,
+                                        };
+                                        entry.insert(line_feature);
+                                    }
                                 }
                             }
                         }

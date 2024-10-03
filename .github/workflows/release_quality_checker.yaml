@@ -25,7 +25,7 @@ jobs:
           node-version: lts/*
 
       - name: get version
-        working-directory: ./workflow/plateau-gis-quality-checker
+        working-directory: ./engine/plateau-gis-quality-checker
         run: echo "PACKAGE_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
 
       - name: create release
@@ -54,8 +54,6 @@ jobs:
         settings:
           - platform: windows-latest
             args: '-- --profile release-lto'
-          - platform: macos-latest
-            args: '--target aarch64-apple-darwin -- --profile release-lto'
 
     runs-on: ${{ matrix.settings.platform }}
     steps:
@@ -92,7 +90,7 @@ jobs:
 
       - name: vcpkg integrate
         if: matrix.settings.platform == 'windows-latest'
-        working-directory: ./worker
+        working-directory: ./engine
         run: |
           vcpkg install libxml2 --triplet x64-windows-static
           vcpkg integrate install
@@ -100,17 +98,17 @@ jobs:
       - name: enable corepack
         run: |
           corepack enable
-        working-directory: ./workflow/plateau-gis-quality-checker
+        working-directory: ./engine/plateau-gis-quality-checker
 
       - name: install frontend dependencies
         run: yarn install
-        working-directory: ./workflow/plateau-gis-quality-checker
+        working-directory: ./engine/plateau-gis-quality-checker
 
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          projectPath: ./workflow/plateau-gis-quality-checker
+          projectPath: ./engine/plateau-gis-quality-checker
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.settings.args }}
 

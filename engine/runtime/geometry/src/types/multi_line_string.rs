@@ -1,6 +1,8 @@
 use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
+use geo_types::LineString as GeoLineString;
+use geo_types::MultiLineString as GeoMultiLineString;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
 use serde::{Deserialize, Serialize};
@@ -217,6 +219,18 @@ where
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.iter().all(LineString::is_elevation_zero)
+    }
+}
+
+impl<T: CoordNum> From<GeoMultiLineString<T>> for MultiLineString2D<T> {
+    fn from(line: GeoMultiLineString<T>) -> Self {
+        MultiLineString2D::new(line.into_iter().map(LineString::from).collect())
+    }
+}
+
+impl<T: CoordNum> From<MultiLineString2D<T>> for GeoMultiLineString<T> {
+    fn from(line: MultiLineString2D<T>) -> Self {
+        GeoMultiLineString::new(line.0.into_iter().map(GeoLineString::from).collect())
     }
 }
 

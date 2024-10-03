@@ -1,11 +1,11 @@
-pub mod attribute;
-pub mod echo;
-pub mod feature;
-pub mod file;
-pub mod geometry;
+pub(crate) mod attribute;
+pub(crate) mod echo;
+pub(crate) mod feature;
+pub(crate) mod file;
+pub(crate) mod geometry;
 pub mod mapping;
-pub mod noop;
-pub mod xml;
+pub(crate) mod noop;
+pub(crate) mod xml;
 
 #[cfg(test)]
 pub(crate) mod tests;

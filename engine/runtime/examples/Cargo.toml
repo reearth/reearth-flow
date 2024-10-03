@@ -26,6 +26,7 @@ reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
+async-trait.workspace = true
 bytes.workspace = true
 directories.workspace = true
 once_cell.workspace = true

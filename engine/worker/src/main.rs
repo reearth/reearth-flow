@@ -8,7 +8,6 @@ use reearth_flow_action_log;
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
 use reearth_flow_common::dir::setup_job_directory;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_runner::runner::Runner;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve;
 use reearth_flow_types::Workflow;
@@ -26,6 +25,7 @@ struct Args {
 
 #[cfg(not(feature = "feature-async"))]
 fn main() {
+    use reearth_flow_runner::runner::Runner;
     // TODO: Prepare Process
     // TODO: Please make sure to handle errors properly in the 'expect' section.
 
@@ -63,7 +63,6 @@ fn main() {
         action_log_uri.path(),
     ));
     Runner::run(
-        job_id.to_string(),
         workflow,
         ALL_ACTION_FACTORIES.clone(),
         logger_factory,
@@ -106,7 +105,6 @@ async fn main() {
         action_log_uri.path(),
     ));
     AsyncRunner::run(
-        job_id.to_string(),
         workflow,
         ALL_ACTION_FACTORIES.clone(),
         logger_factory,
