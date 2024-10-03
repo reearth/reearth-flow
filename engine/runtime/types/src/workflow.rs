@@ -16,6 +16,13 @@ pub type Parameter = Map<String, Value>;
 
 static ENVIRONMENT_PREFIX: &str = "FLOW_VAR_";
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkflowParameter {
+    pub global: Option<Parameter>,
+    pub node: Option<NodeProperty>,
+}
+
 #[derive(Serialize, Deserialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Workflow {
@@ -26,20 +33,17 @@ pub struct Workflow {
     pub graphs: Vec<Graph>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkflowParameter {
-    pub global: Option<Parameter>,
-    pub node: Option<NodeProperty>,
+impl TryFrom<&str> for Workflow {
+    type Error = crate::error::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut workflow: Self = from_str(value).map_err(crate::error::Error::input)?;
+        workflow.load_variables_from_environment();
+        Ok(workflow)
+    }
 }
 
 impl Workflow {
-    pub fn try_from_str(s: &str) -> Self {
-        let mut workflow: Self = from_str(s).unwrap();
-        workflow.load_variables_from_environment();
-        workflow
-    }
-
     fn load_variables_from_environment(&mut self) {
         let environment_vars: Vec<(String, String)> = env::vars()
             .filter(|(key, _)| key.starts_with(ENVIRONMENT_PREFIX))

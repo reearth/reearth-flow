@@ -47,7 +47,9 @@ pub(crate) async fn run_flow(
     )?;
     let json = String::from_utf8(bytes.data.iter().cloned().collect())
         .map_err(crate::errors::Error::io)?;
-    let mut workflow = Workflow::try_from_str(&json);
+    let mut workflow = Workflow::try_from(json.as_str()).map_err(|e| {
+        crate::errors::Error::ExecuteFailed(format!("failed to parse workflow with {:?}", e))
+    })?;
     workflow.merge_with(params);
     let storage_resolver = Arc::new(resolve::StorageResolver::new());
     let job_id = uuid::Uuid::new_v4();

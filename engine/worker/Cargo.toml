@@ -14,10 +14,6 @@ version.workspace = true
 name = "reearth-flow-worker"
 path = "src/main.rs"
 
-[features]
-default = []
-feature-async = []
-
 [dependencies]
 reearth-flow-action-log.workspace = true
 reearth-flow-action-plateau-processor.workspace = true
