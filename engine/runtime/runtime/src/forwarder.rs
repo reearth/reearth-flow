@@ -53,10 +53,16 @@ impl ChannelManager {
     #[inline]
     pub fn send_op(&mut self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
         if let Some(writer) = self.feature_writers.get(&ctx.port) {
+            let edge_id = writer.edge_id();
+            let feature_id = ctx.feature.id;
             let mut writer = writer.clone();
             let feature = ctx.feature.clone();
             self.runtime.spawn(async move {
                 let _ = writer.write(&feature).await;
+            });
+            let _ = self.event_sender.send(Event::EdgePassThrough {
+                feature_id,
+                edge_id,
             });
         }
 
