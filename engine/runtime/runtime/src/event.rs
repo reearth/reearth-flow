@@ -5,15 +5,27 @@ use tokio::sync::{
     Notify,
 };
 
-use crate::node::NodeHandle;
+use crate::node::{EdgeId, NodeHandle};
 
 #[derive(Debug, Clone)]
 pub enum Event {
-    SourceFlushed { node: NodeHandle, name: String },
-    ProcessorStarted { node: NodeHandle, name: String },
-    ProcessorFinished { node: NodeHandle, name: String },
-    SinkFlushed { node: NodeHandle, name: String },
-    SinkFinished { node: NodeHandle, name: String },
+    SourceFlushed,
+    ProcessorFinished {
+        node: NodeHandle,
+        name: String,
+    },
+    SinkFlushed {
+        node: NodeHandle,
+        name: String,
+    },
+    SinkFinished {
+        node: NodeHandle,
+        name: String,
+    },
+    EdgePassThrough {
+        feature_id: uuid::Uuid,
+        edge_id: EdgeId,
+    },
 }
 
 #[derive(Debug)]
