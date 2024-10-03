@@ -34,10 +34,13 @@ pub struct WorkflowParameter {
 }
 
 impl Workflow {
-    pub fn try_from_str(s: &str) -> Self {
-        let mut workflow: Self = from_str(s).unwrap();
+    pub fn try_from_str(s: &str) -> Result<Self, reearth_flow_common::Error> {
+        let mut workflow: Self = match from_str(s) {
+            Ok(x) => x,
+            Err(e) => return Err(e),
+        };
         workflow.load_variables_from_environment();
-        workflow
+        Ok(workflow)
     }
 
     fn load_variables_from_environment(&mut self) {

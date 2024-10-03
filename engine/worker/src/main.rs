@@ -35,12 +35,12 @@ fn main() {
     env_logger::init();
 
     let url = &args.url;
-    let rc = reqwest::blocking::get(url).unwrap();
-    let yaml = &rc.text().unwrap();
+    let rc = reqwest::blocking::get(url).expect("failed to download from url");
+    let src = &rc.text().expect("failed to get text");
 
     let job_id: Option<String> = None; // TODO: Read from ??
     let action_log_uri: Option<String> = None; // TODO: Read from ??
-    let workflow = Workflow::try_from_str(yaml);
+    let workflow = Workflow::try_from_str(src).expect("invalid yaml file");
 
     let storage_resolver = Arc::new(resolve::StorageResolver::new());
     let job_id = match job_id {
