@@ -124,8 +124,10 @@ impl RunCliCommand {
                 .map_err(crate::errors::Error::init)?;
             String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?
         };
-        let mut workflow = Workflow::try_from_str(&json);
-        workflow.merge_with(self.vars.clone());
+        let mut workflow = Workflow::try_from(json.as_str()).map_err(crate::errors::Error::init)?;
+        workflow
+            .merge_with(self.vars.clone())
+            .map_err(crate::errors::Error::init)?;
         let job_id = match &self.job_id {
             Some(job_id) => {
                 uuid::Uuid::from_str(job_id.as_str()).map_err(crate::errors::Error::init)?

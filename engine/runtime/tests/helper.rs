@@ -61,7 +61,7 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<(), Err
         ),
         Uri::for_test("ram:///log/").path(),
     ));
-    let workflow = Workflow::try_from_str(workflow);
+    let workflow = Workflow::try_from(workflow).expect("failed to parse workflow");
     Runner::run(
         workflow,
         BUILTIN_ACTION_FACTORIES.clone(),

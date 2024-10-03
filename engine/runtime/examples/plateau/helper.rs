@@ -107,7 +107,7 @@ pub fn create_workflow(workflow: &str) -> Workflow {
     let path = absolute_path.unwrap();
     let yaml = Transformer::new(path, false).unwrap();
     let yaml = yaml.to_string();
-    Workflow::try_from_str(yaml.as_str())
+    Workflow::try_from(yaml.as_str()).expect("Failed to parse workflow.")
 }
 
 pub fn setup_logging_and_tracing() {
