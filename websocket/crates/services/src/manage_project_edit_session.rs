@@ -6,6 +6,7 @@ use flow_websocket_domain::repository::{
 use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo};
 use flow_websocket_domain::types::snapshot::ProjectSnapshot;
 use flow_websocket_domain::utils::generate_id;
+use flow_websocket_infra::persistence::project_repository::ProjectRedisRepository;
 use std::sync::Arc;
 use tokio::time::sleep;
 
@@ -49,12 +50,12 @@ where
                 .load_session(&*self.snapshot_repository, &data.session_id)
                 .await?;
 
-            self.update_client_count(&mut session, &mut data).await?;
+            //self.update_client_count(&mut session, &mut data).await?;
             self.merge_updates(&mut session, &mut data).await?;
             self.create_snapshot_if_required(&mut session, &mut data)
                 .await?;
-            self.end_editing_session_if_conditions_met(&mut session, &data)
-                .await?;
+            //self.end_editing_session_if_conditions_met(&mut session, &data)
+            //    .await?;
             self.complete_job_if_met_requirements(&session, &data)
                 .await?;
 
@@ -66,12 +67,12 @@ where
 
     async fn update_client_count(
         &self,
-        session: &mut ProjectEditingSession,
+        session: &mut ProjectRedisRepository,
         data: &mut ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
         let current_client_count = session.get_client_count().await?;
         let old_client_count = data.clients_count.unwrap_or(0);
-        data.clients_count = Some(current_client_count.try_into().unwrap());
+        data.clients_count = Some(current_client_count);
 
         if current_client_count == 0
             && old_client_count != current_client_count
@@ -143,9 +144,10 @@ where
     async fn end_editing_session_if_conditions_met(
         &self,
         session: &mut ProjectEditingSession,
+        redis_repo: &mut ProjectRedisRepository,
         data: &ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
-        let client_count = session.get_client_count().await?;
+        let client_count = redis_repo.get_client_count().await?;
 
         if let Some(clients_disconnected_at) = data.clients_disconnected_at {
             let current_time = Utc::now();

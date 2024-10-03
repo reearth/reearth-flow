@@ -75,6 +75,13 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
     }
 }
 
+impl ProjectRedisRepository {
+    pub async fn get_client_count(&self) -> Result<usize, ProjectRepositoryError> {
+        let count = self.redis_client.get_client_count().await?;
+        Ok(count)
+    }
+}
+
 pub struct ProjectGcsRepository {
     client: GcsClient,
 }
