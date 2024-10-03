@@ -22,6 +22,7 @@ where
 {
     session_repository: Arc<R>,
     snapshot_repository: Arc<S>,
+    redis_repository: Arc<ProjectRedisRepository>,
 }
 
 impl<R, S> ManageEditSessionService<R, S>
@@ -29,10 +30,15 @@ where
     R: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync,
     S: ProjectSnapshotRepository<Error = ProjectServiceError> + Send + Sync,
 {
-    pub fn new(session_repository: Arc<R>, snapshot_repository: Arc<S>) -> Self {
+    pub fn new(
+        session_repository: Arc<R>,
+        snapshot_repository: Arc<S>,
+        redis_repository: Arc<ProjectRedisRepository>,
+    ) -> Self {
         Self {
             session_repository,
             snapshot_repository,
+            redis_repository,
         }
     }
 
@@ -50,12 +56,12 @@ where
                 .load_session(&*self.snapshot_repository, &data.session_id)
                 .await?;
 
-            //self.update_client_count(&mut session, &mut data).await?;
+            self.update_client_count(&mut session, &mut data).await?;
             self.merge_updates(&mut session, &mut data).await?;
             self.create_snapshot_if_required(&mut session, &mut data)
                 .await?;
-            //self.end_editing_session_if_conditions_met(&mut session, &data)
-            //    .await?;
+            self.end_editing_session_if_conditions_met(&mut session, &data)
+                .await?;
             self.complete_job_if_met_requirements(&session, &data)
                 .await?;
 
@@ -67,10 +73,10 @@ where
 
     async fn update_client_count(
         &self,
-        session: &mut ProjectRedisRepository,
+        _session: &mut ProjectEditingSession,
         data: &mut ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
-        let current_client_count = session.get_client_count().await?;
+        let current_client_count = self.redis_repository.get_client_count().await?;
         let old_client_count = data.clients_count.unwrap_or(0);
         data.clients_count = Some(current_client_count);
 
@@ -107,7 +113,7 @@ where
             let current_time = Utc::now();
             let snapshot_time_delta = (current_time - last_snapshot_at).num_milliseconds();
             if snapshot_time_delta > MAX_SNAPSHOT_DELTA {
-                let state = session.get_state_update().await?;
+                let _state = session.get_state_update().await?;
 
                 let metadata = Metadata::new(
                     generate_id(14, "snap"),
@@ -144,10 +150,9 @@ where
     async fn end_editing_session_if_conditions_met(
         &self,
         session: &mut ProjectEditingSession,
-        redis_repo: &mut ProjectRedisRepository,
         data: &ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
-        let client_count = redis_repo.get_client_count().await?;
+        let client_count = self.redis_repository.get_client_count().await?;
 
         if let Some(clients_disconnected_at) = data.clients_disconnected_at {
             let current_time = Utc::now();
