@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::utils::generate_id;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {

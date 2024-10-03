@@ -1,18 +1,19 @@
+use std::sync::Arc;
+
 use crate::repository::ProjectSnapshotRepository;
 use crate::types::snapshot::{Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotInfo};
 use crate::utils::generate_id;
-
 use chrono::Utc;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectEditingSession {
     pub project_id: String,
     pub session_id: Option<String>,
     pub session_setup_complete: bool,
     pub tenant: ObjectTenant,
-    pub redis_client: String, // Redis connection string or identifier
 }
 
 #[derive(Error, Debug)]
@@ -24,13 +25,12 @@ pub enum ProjectEditingSessionError<E> {
 }
 
 impl ProjectEditingSession {
-    pub fn new(project_id: String, redis_client: String, tenant: ObjectTenant) -> Self {
+    pub fn new(project_id: String, tenant: ObjectTenant) -> Self {
         Self {
             project_id,
             session_id: None,
             tenant,
             session_setup_complete: false,
-            redis_client,
         }
     }
 
@@ -166,14 +166,15 @@ impl ProjectEditingSession {
         Ok(())
     }
 
-    pub async fn get_client_count(&self) -> Result<usize, ProjectEditingSessionError<()>> {
-        unimplemented!("");
-    }
-
     pub async fn active_editing_session(
         &self,
     ) -> Result<Option<String>, ProjectEditingSessionError<()>> {
-        unimplemented!();
+        self.check_session_setup()?;
+        if self.session_setup_complete {
+            Ok(self.session_id.clone())
+        } else {
+            Ok(None)
+        }
     }
 }
 

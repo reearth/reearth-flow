@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use redis::{aio::MultiplexedConnection, streams::StreamMaxlen, AsyncCommands, Client};
+use redis::{
+    aio::{ConnectionLike, MultiplexedConnection},
+    streams::StreamMaxlen,
+    AsyncCommands, Client,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::Mutex;
@@ -15,7 +19,7 @@ pub struct RedisClient {
 pub enum RedisClientError {
     #[error(transparent)]
     Redis(#[from] redis::RedisError),
-    #[error("Serde JSON error: {0}")]
+    #[error("Redis Client Serde JSON error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }
 
@@ -92,5 +96,18 @@ impl RedisClient {
 
     pub fn connection(&self) -> Arc<Mutex<MultiplexedConnection>> {
         self.connection.clone()
+    }
+
+    pub async fn get_client_count(&self) -> Result<usize, RedisClientError> {
+        let mut connection = self.connection.lock().await;
+
+        let client_list: String = redis::cmd("CLIENT")
+            .arg("LIST")
+            .query_async(&mut *connection)
+            .await?;
+
+        let connections: Vec<&str> = client_list.lines().collect();
+
+        Ok(connections.len())
     }
 }
