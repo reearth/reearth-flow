@@ -13,6 +13,12 @@ pub struct ObjectTenant {
     pub key: String,
 }
 
+impl ObjectTenant {
+    pub fn new(id: String, key: String) -> Self {
+        Self { id, key }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Metadata {
     pub id: String,

@@ -39,7 +39,7 @@ where
         &self,
         mut data: ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
-        let mut session = self
+        let session = self
             .session_repository
             .get_active_session(&data.project_id)
             .await?;
@@ -71,7 +71,7 @@ where
     ) -> Result<(), ProjectServiceError> {
         let current_client_count = session.get_client_count().await?;
         let old_client_count = data.clients_count.unwrap_or(0);
-        data.clients_count = Some(current_client_count);
+        data.clients_count = Some(current_client_count.try_into().unwrap());
 
         if current_client_count == 0
             && old_client_count != current_client_count
@@ -105,14 +105,13 @@ where
         if let Some(last_snapshot_at) = data.last_snapshot_at {
             let current_time = Utc::now();
             let snapshot_time_delta = (current_time - last_snapshot_at).num_milliseconds();
-
             if snapshot_time_delta > MAX_SNAPSHOT_DELTA {
-                let (state, _) = session.get_state_update().await?;
+                let state = session.get_state_update().await?;
 
                 let metadata = Metadata::new(
                     generate_id(14, "snap"),
                     session.project_id.clone(),
-                    Some(session.session_id.clone()),
+                    session.session_id.clone(),
                     String::new(),
                     String::new(),
                 );
@@ -178,7 +177,7 @@ where
 pub struct ManageProjectEditSessionTaskData {
     pub session_id: String,
     pub project_id: String,
-    pub clients_count: Option<i32>,
+    pub clients_count: Option<usize>,
     pub last_merged_at: Option<DateTime<Utc>>,
     pub last_snapshot_at: Option<DateTime<Utc>>,
     pub clients_disconnected_at: Option<DateTime<Utc>>,

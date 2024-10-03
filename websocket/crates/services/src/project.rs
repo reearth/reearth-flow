@@ -5,6 +5,8 @@ use flow_websocket_domain::projection::{Action, Project, ProjectAllowedActions};
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
 };
+use flow_websocket_domain::snapshot::ObjectTenant;
+use flow_websocket_domain::utils::generate_id;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use std::sync::Arc;
 
@@ -49,7 +51,12 @@ where
             .await?
         {
             Some(session) => session,
-            None => ProjectEditingSession::new(project_id.to_string(), "REDIS_URL".to_owned()),
+
+            None => ProjectEditingSession::new(
+                project_id.to_string(),
+                "REDIS_URL".to_owned(),
+                ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+            ),
         };
 
         if session.session_id.is_none() {

@@ -11,6 +11,7 @@ pub struct ProjectEditingSession {
     pub project_id: String,
     pub session_id: Option<String>,
     pub session_setup_complete: bool,
+    pub tenant: ObjectTenant,
     pub redis_client: String, // Redis connection string or identifier
 }
 
@@ -23,10 +24,11 @@ pub enum ProjectEditingSessionError<E> {
 }
 
 impl ProjectEditingSession {
-    pub fn new(project_id: String, redis_client: String) -> Self {
+    pub fn new(project_id: String, redis_client: String, tenant: ObjectTenant) -> Self {
         Self {
             project_id,
             session_id: None,
+            tenant,
             session_setup_complete: false,
             redis_client,
         }
@@ -120,10 +122,7 @@ impl ProjectEditingSession {
         let state = SnapshotInfo::new(
             data.created_by,
             vec![],
-            ObjectTenant {
-                id: "tenant_id_example".to_string(),
-                key: "tenant_key_example".to_string(),
-            },
+            self.tenant.clone(), // use tenant from project
             ObjectDelete {
                 deleted: false,
                 delete_after: None,
@@ -165,6 +164,16 @@ impl ProjectEditingSession {
         self.session_id = Some(session_id.to_string());
         //self.session_setup_complete = true;
         Ok(())
+    }
+
+    pub async fn get_client_count(&self) -> Result<usize, ProjectEditingSessionError<()>> {
+        unimplemented!("");
+    }
+
+    pub async fn active_editing_session(
+        &self,
+    ) -> Result<Option<String>, ProjectEditingSessionError<()>> {
+        unimplemented!();
     }
 }
 
