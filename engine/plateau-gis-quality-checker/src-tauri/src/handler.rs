@@ -24,10 +24,6 @@ pub(crate) struct QualityCheckWorkflow {
 pub(crate) static QUALITY_CHECK_WORKFLOWS: Lazy<Vec<QualityCheckWorkflow>> = Lazy::new(|| {
     vec![
         QualityCheckWorkflow {
-            id: "common".to_string(),
-            name: "共通".to_string(),
-        },
-        QualityCheckWorkflow {
             id: "tran-rwy-trk-squr-wwy".to_string(),
             name: "道路".to_string(),
         },
