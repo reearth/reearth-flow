@@ -11,7 +11,7 @@ type WorkflowDocument struct {
 	ID        string
 	Project   string
 	Workspace string
-	Workflow  string
+	URL       string
 }
 
 type WorkflowConsumer = Consumer[*WorkflowDocument, *workflow.Workflow]
@@ -28,7 +28,7 @@ func NewWorkflow(workflow *workflow.Workflow) (*WorkflowDocument, string) {
 		ID:        workflow.ID.String(),
 		Project:   workflow.Project.String(),
 		Workspace: workflow.Workspace.String(),
-		Workflow:  *workflow.YamlString,
+		URL:       *&workflow.URL,
 	}, wid
 }
 
@@ -50,7 +50,7 @@ func (d *WorkflowDocument) Model() (*workflow.Workflow, error) {
 		wid,
 		pid,
 		tid,
-		&d.Workflow,
+		d.URL,
 	)
 
 	return wf, nil

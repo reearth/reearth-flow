@@ -13,14 +13,15 @@ func TestNewWorkflow(t *testing.T) {
 	workspaceID := NewWorkspaceID()
 	projectID := id.NewProjectID()
 	workflowID := id.NewWorkflowID()
+	url := "http://example.com"
 
-	result := NewWorkflow(workflowID, projectID, workspaceID, nil)
+	result := NewWorkflow(workflowID, projectID, workspaceID, url)
 
 	want := &Workflow{
-		ID:         workflowID,
-		Project:    projectID,
-		Workspace:  workspaceID,
-		YamlString: nil,
+		ID:        workflowID,
+		Project:   projectID,
+		Workspace: workspaceID,
+		URL:       url,
 	}
 
 	assert.Equal(t, result, want)

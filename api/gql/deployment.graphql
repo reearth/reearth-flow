@@ -4,7 +4,7 @@ type Deployment implements Node {
   id: ID!
   projectId: ID!
   workspaceId: ID!
-  workflowId: ID!
+  workflowUrl: String!
   version: String!
   createdAt: DateTime!
   updatedAt: DateTime!

@@ -19,19 +19,18 @@ func TestNewWorkflowConsumer(t *testing.T) {
 
 func TestNewWorkflow(t *testing.T) {
 	wf := &workflow.Workflow{
-		ID:         id.NewWorkflowID(),
-		Project:    id.NewProjectID(),
-		Workspace:  accountdomain.NewWorkspaceID(),
-		YamlString: new(string),
+		ID:        id.NewWorkflowID(),
+		Project:   id.NewProjectID(),
+		Workspace: accountdomain.NewWorkspaceID(),
+		URL:       "workflow_url",
 	}
-	*wf.YamlString = "workflow_yaml_content"
 
 	doc, wid := NewWorkflow(wf)
 
 	assert.Equal(t, wf.ID.String(), doc.ID)
 	assert.Equal(t, wf.Project.String(), doc.Project)
 	assert.Equal(t, wf.Workspace.String(), doc.Workspace)
-	assert.Equal(t, *wf.YamlString, doc.Workflow)
+	assert.Equal(t, wf.URL, doc.URL)
 	assert.Equal(t, wf.ID.String(), wid)
 }
 
@@ -39,13 +38,13 @@ func TestWorkflowDocument_Model(t *testing.T) {
 	expectedID := id.NewWorkflowID()
 	expectedProject := id.NewProjectID()
 	expectedWorkspace := accountdomain.NewWorkspaceID()
-	yamlContent := "workflow_yaml_content"
+	url := "workflow_url"
 
 	doc := &WorkflowDocument{
 		ID:        expectedID.String(),
 		Project:   expectedProject.String(),
 		Workspace: expectedWorkspace.String(),
-		Workflow:  yamlContent,
+		URL:       url,
 	}
 
 	model, err := doc.Model()
@@ -54,5 +53,5 @@ func TestWorkflowDocument_Model(t *testing.T) {
 	assert.Equal(t, expectedID, model.ID)
 	assert.Equal(t, expectedProject, model.Project)
 	assert.Equal(t, expectedWorkspace, model.Workspace)
-	assert.Equal(t, &yamlContent, model.YamlString)
+	assert.Equal(t, &url, model.URL)
 }

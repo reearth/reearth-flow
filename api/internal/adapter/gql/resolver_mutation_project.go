@@ -64,18 +64,19 @@ func (r *mutationResolver) DeleteProject(ctx context.Context, input gqlmodel.Del
 }
 
 func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunProjectInput) (*gqlmodel.RunProjectPayload, error) {
-	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
+	_, err := gqlmodel.ToID[id.Project](input.ProjectID)
 	if err != nil {
 		return nil, err
 	}
 
-	wsid, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
+	_, err = gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
 
 	res, err := usecases(ctx).Project.Run(ctx, interfaces.RunProjectParam{
-		Workflow: gqlmodel.FromInputWorkflow(pid, wsid, input.Workflow),
+		Meta:      gqlmodel.FromFile(&input.MetaFile),
+		Workflows: gqlmodel.FromFile(&input.WorkflowsZip),
 	}, getOperator(ctx))
 	if err != nil {
 		return nil, err

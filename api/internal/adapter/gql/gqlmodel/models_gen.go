@@ -63,9 +63,10 @@ type CreateAssetPayload struct {
 }
 
 type CreateDeploymentInput struct {
-	ProjectID   ID             `json:"projectId"`
-	WorkspaceID ID             `json:"workspaceId"`
-	Workflow    *InputWorkflow `json:"workflow"`
+	WorkspaceID  ID             `json:"workspaceId"`
+	ProjectID    ID             `json:"projectId"`
+	MetaFile     graphql.Upload `json:"metaFile"`
+	WorkflowsZip graphql.Upload `json:"workflowsZip"`
 }
 
 type CreateProjectInput struct {
@@ -111,7 +112,7 @@ type Deployment struct {
 	ID          ID         `json:"id"`
 	ProjectID   ID         `json:"projectId"`
 	WorkspaceID ID         `json:"workspaceId"`
-	WorkflowID  ID         `json:"workflowId"`
+	WorkflowURL string     `json:"workflowUrl"`
 	Version     string     `json:"version"`
 	CreatedAt   time.Time  `json:"createdAt"`
 	UpdatedAt   time.Time  `json:"updatedAt"`
@@ -290,9 +291,10 @@ type RemoveMyAuthInput struct {
 }
 
 type RunProjectInput struct {
-	ProjectID   ID             `json:"projectId"`
-	WorkspaceID ID             `json:"workspaceId"`
-	Workflow    *InputWorkflow `json:"workflow"`
+	ProjectID    ID             `json:"projectId"`
+	WorkspaceID  ID             `json:"workspaceId"`
+	MetaFile     graphql.Upload `json:"metaFile"`
+	WorkflowsZip graphql.Upload `json:"workflowsZip"`
 }
 
 type RunProjectPayload struct {

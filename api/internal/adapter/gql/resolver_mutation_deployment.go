@@ -20,12 +20,11 @@ func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.
 		return nil, err
 	}
 
-	workflow := gqlmodel.FromInputWorkflow(pid, wsid, input.Workflow)
-
 	res, err := usecases(ctx).Deployment.Create(ctx, interfaces.CreateDeploymentParam{
 		Project:   pid,
 		Workspace: wsid,
-		Workflow:  workflow,
+		Meta:      *gqlmodel.FromFile(&input.MetaFile),
+		Workflows: *gqlmodel.FromFile(&input.WorkflowsZip),
 	}, getOperator(ctx))
 	if err != nil {
 		return nil, err
