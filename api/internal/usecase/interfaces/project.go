@@ -30,6 +30,7 @@ type UpdateProjectParam struct {
 }
 
 type RunProjectParam struct {
+	ProjectID id.ProjectID
 	Meta      *file.File
 	Workflows *file.File
 }

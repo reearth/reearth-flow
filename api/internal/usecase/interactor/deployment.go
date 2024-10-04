@@ -17,24 +17,26 @@ import (
 
 type Deployment struct {
 	common
-	deploymentRepo repo.Deployment
-	projectRepo    repo.Project
-	workflowRepo   repo.Workflow
-	jobRepo        repo.Job
-	workspaceRepo  accountrepo.Workspace
-	transaction    usecasex.Transaction
-	batch          gateway.Batch
+	deploymentRepo  repo.Deployment
+	projectRepo     repo.Project
+	workflowRepo    repo.Workflow
+	jobRepo         repo.Job
+	workspaceRepo   accountrepo.Workspace
+	transaction     usecasex.Transaction
+	batch           gateway.Batch
+	workflowGateway gateway.Workflow
 }
 
 func NewDeployment(r *repo.Container, gr *gateway.Container) interfaces.Deployment {
 	return &Deployment{
-		deploymentRepo: r.Deployment,
-		projectRepo:    r.Project,
-		workflowRepo:   r.Workflow,
-		jobRepo:        r.Job,
-		workspaceRepo:  r.Workspace,
-		transaction:    r.Transaction,
-		batch:          gr.Batch,
+		deploymentRepo:  r.Deployment,
+		projectRepo:     r.Project,
+		workflowRepo:    r.Workflow,
+		jobRepo:         r.Job,
+		workspaceRepo:   r.Workspace,
+		transaction:     r.Transaction,
+		batch:           gr.Batch,
+		workflowGateway: gr.Workflow,
 	}
 }
 
@@ -68,7 +70,12 @@ func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentPa
 		return nil, err
 	}
 
-	if err := i.workflowRepo.Save(ctx, p.Workspace, p.Workflow); err != nil {
+	// if err := i.workflowRepo.Save(ctx, p.Workspace, p.Workflow); err != nil {
+	// 	return nil, err
+	// }
+
+	url, err := i.workflowGateway.UploadWorkflow(ctx, &p.Workflows)
+	if err != nil {
 		return nil, err
 	}
 
@@ -76,7 +83,7 @@ func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentPa
 		NewID().
 		Project(p.Project).
 		Workspace(p.Workspace).
-		Workflow(p.Workflow.ID).
+		WorkflowURL(url.String()).
 		Version("v0.1"). //version is hardcoded for now @pyshx
 		Build()
 	if err != nil {
@@ -113,11 +120,6 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	wf, err := i.workflowRepo.FindByID(ctx, d.Workspace(), d.Workflow())
-	if err != nil {
-		return nil, err
-	}
-
 	j, err := job.New().
 		NewID().
 		Deployment(d.ID()).
@@ -132,7 +134,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	_, err = i.batch.SubmitJob(ctx, j.ID(), wf, d.Project())
+	_, err = i.batch.SubmitJob(ctx, j.ID(), d.WorkflowUrl(), d.Project())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}

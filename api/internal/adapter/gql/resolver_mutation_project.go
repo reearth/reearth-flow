@@ -64,7 +64,7 @@ func (r *mutationResolver) DeleteProject(ctx context.Context, input gqlmodel.Del
 }
 
 func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunProjectInput) (*gqlmodel.RunProjectPayload, error) {
-	_, err := gqlmodel.ToID[id.Project](input.ProjectID)
+	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -75,6 +75,7 @@ func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunPro
 	}
 
 	res, err := usecases(ctx).Project.Run(ctx, interfaces.RunProjectParam{
+		ProjectID: pid,
 		Meta:      gqlmodel.FromFile(&input.MetaFile),
 		Workflows: gqlmodel.FromFile(&input.WorkflowsZip),
 	}, getOperator(ctx))
