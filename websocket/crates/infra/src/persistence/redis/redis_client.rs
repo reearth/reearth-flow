@@ -1,10 +1,6 @@
 use std::sync::Arc;
 
-use redis::{
-    aio::{ConnectionLike, MultiplexedConnection},
-    streams::StreamMaxlen,
-    AsyncCommands, Client,
-};
+use redis::{aio::MultiplexedConnection, streams::StreamMaxlen, AsyncCommands, Client};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::Mutex;

@@ -439,11 +439,10 @@ impl FlowProjectRedisDataManager {
         &self,
     ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
         self.global_lock
-            .lock_updates(&self.project_id, 5000, |_| {
-                Box::pin(async move { Ok::<(), FlowProjectRedisDataManagerError>(()) })
+            .lock_updates(&self.project_id, 5000, |_| async {
+                Ok::<(), FlowProjectRedisDataManagerError>(())
             })
-            .await
-            .map_err(FlowProjectRedisDataManagerError::from)?
+            .await?
             .await?;
 
         self.execute_merge_updates().await
