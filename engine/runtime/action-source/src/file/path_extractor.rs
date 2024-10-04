@@ -1,4 +1,9 @@
-use std::{collections::HashMap, path::{Path, MAIN_SEPARATOR}, str::FromStr, sync::Arc};
+use std::{
+    collections::HashMap,
+    path::{Path, MAIN_SEPARATOR},
+    str::FromStr,
+    sync::Arc,
+};
 
 use async_zip::base::read::mem::ZipFileReader;
 use futures::AsyncReadExt;
