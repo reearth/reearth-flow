@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::repository::ProjectSnapshotRepository;
+use crate::types::data::SnapshotData;
 use crate::types::snapshot::{Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotInfo};
 use crate::utils::generate_id;
 use chrono::Utc;
@@ -175,17 +176,5 @@ impl ProjectEditingSession {
         } else {
             Ok(None)
         }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SnapshotData {
-    pub name: Option<String>,
-    pub created_by: Option<String>,
-}
-
-impl SnapshotData {
-    pub fn new(name: Option<String>, created_by: Option<String>) -> Self {
-        Self { name, created_by }
     }
 }

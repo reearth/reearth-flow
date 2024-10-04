@@ -1,5 +1,6 @@
-use crate::project::{ProjectEditingSession, SnapshotData};
+use crate::project::ProjectEditingSession;
 use crate::projection::Project;
+use crate::types::data::SnapshotData;
 use crate::types::snapshot::ProjectSnapshot;
 use std::error::Error;
 
@@ -45,4 +46,10 @@ pub trait SnapshotDataRepository {
         &self,
         project_id: &str,
     ) -> Result<Option<SnapshotData>, Self::Error>;
+    async fn update_snapshot_data(
+        &self,
+        project_id: &str,
+        snapshot_data: SnapshotData,
+    ) -> Result<(), Self::Error>;
+    async fn delete_snapshot_data(&self, project_id: &str) -> Result<(), Self::Error>;
 }

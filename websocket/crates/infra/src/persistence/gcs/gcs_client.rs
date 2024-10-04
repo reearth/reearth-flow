@@ -1,4 +1,5 @@
 use google_cloud_storage::client::{Client, ClientConfig};
+use google_cloud_storage::http::objects::delete::DeleteObjectRequest;
 use google_cloud_storage::http::objects::download::Range;
 use google_cloud_storage::http::objects::get::GetObjectRequest;
 use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
@@ -65,5 +66,16 @@ impl GcsClient {
         let src = String::from_utf8(bytes)?;
         let data = serde_json::from_str(&src)?;
         Ok(data)
+    }
+
+    pub async fn delete(&self, path: String) -> Result<(), GcsError> {
+        self.client
+            .delete_object(&DeleteObjectRequest {
+                bucket: self.bucket.clone(),
+                object: path,
+                ..Default::default()
+            })
+            .await?;
+        Ok(())
     }
 }

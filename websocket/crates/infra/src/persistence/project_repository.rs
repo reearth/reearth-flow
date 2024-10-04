@@ -1,15 +1,16 @@
 use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
 use crate::persistence::redis::redis_client::{RedisClient, RedisClientError};
 use async_trait::async_trait;
-use chrono::Utc;
 use flow_websocket_domain::projection::Project;
+use flow_websocket_domain::types::data::SnapshotData;
 
 use crate::persistence::local_storage::LocalClient;
 use flow_websocket_domain::project::ProjectEditingSession;
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
+    SnapshotDataRepository,
 };
-use flow_websocket_domain::snapshot::{ProjectSnapshot, SnapshotInfo};
+use flow_websocket_domain::snapshot::ProjectSnapshot;
 use serde_json;
 use std::io;
 use std::path::PathBuf;
@@ -130,6 +131,42 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
         // 2. Upload the serialized data to GCS, overwriting the existing file
         // 3. Update any metadata as necessary
         unimplemented!("update_snapshot needs to be implemented")
+    }
+}
+
+#[async_trait]
+impl SnapshotDataRepository for ProjectGcsRepository {
+    type Error = ProjectRepositoryError;
+
+    async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_data.project_id);
+        self.client.upload(path, &snapshot_data).await?;
+        Ok(())
+    }
+
+    async fn get_snapshot_data(
+        &self,
+        snapshot_id: &str,
+    ) -> Result<Option<SnapshotData>, Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_id);
+        let snapshot_data = self.client.download(path).await?;
+        Ok(snapshot_data)
+    }
+
+    async fn update_snapshot_data(
+        &self,
+        snapshot_id: &str,
+        snapshot_data: SnapshotData,
+    ) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_id);
+        self.client.upload(path, &snapshot_data).await?;
+        Ok(())
+    }
+
+    async fn delete_snapshot_data(&self, snapshot_id: &str) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_id);
+        self.client.delete(path).await?;
+        Ok(())
     }
 }
 
