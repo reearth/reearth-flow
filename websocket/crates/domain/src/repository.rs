@@ -45,6 +45,12 @@ pub trait SnapshotDataRepository {
         &self,
         project_id: &str,
     ) -> Result<Option<SnapshotData>, Self::Error>;
+
+    async fn get_latest_snapshot_data(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<SnapshotData>, Self::Error>;
+
     async fn update_snapshot_data(
         &self,
         project_id: &str,

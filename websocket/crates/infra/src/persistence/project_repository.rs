@@ -98,8 +98,8 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
     type Error = ProjectRepositoryError;
 
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let path = format!("snapshot/{}", snapshot.metadata.id);
-        self.client.upload(path, &snapshot).await?;
+        let path = format!("snapshot/{}", snapshot.metadata.project_id);
+        self.client.upload_versioned(path, &snapshot).await?;
         Ok(())
     }
 
@@ -113,9 +113,12 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
     }
 
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
-        let path_prefix = format!("snapshot_data/{}", project_id);
-        let state: Option<Vec<u8>> = self.client.download_latest(&path_prefix).await?;
-        Ok(state.unwrap_or_default())
+        let snapshot_data = self.get_latest_snapshot_data(project_id).await?;
+        if let Some(data) = snapshot_data {
+            Ok(data.state)
+        } else {
+            Ok(Vec::new())
+        }
     }
 
     async fn update_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
@@ -134,7 +137,7 @@ impl SnapshotDataRepository for ProjectGcsRepository {
 
     async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_data.project_id);
-        self.client.upload(path, &snapshot_data).await?;
+        self.client.upload_versioned(path, &snapshot_data).await?;
         Ok(())
     }
 
@@ -144,6 +147,15 @@ impl SnapshotDataRepository for ProjectGcsRepository {
     ) -> Result<Option<SnapshotData>, Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
         let snapshot_data = self.client.download(path).await?;
+        Ok(snapshot_data)
+    }
+
+    async fn get_latest_snapshot_data(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<SnapshotData>, Self::Error> {
+        let path_prefix = format!("snapshot_data/{}", project_id);
+        let snapshot_data = self.client.download_latest(&path_prefix).await?;
         Ok(snapshot_data)
     }
 
