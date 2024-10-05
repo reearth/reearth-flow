@@ -127,6 +127,21 @@ impl GcsClient {
         Ok(versioned_path)
     }
 
+    pub async fn update_versioned<T: Serialize>(
+        &self,
+        path: String,
+        data: &T,
+    ) -> Result<(), GcsError> {
+        // Get the metadata to find the latest version
+        let metadata_path = format!("{}_metadata", path);
+        let metadata = self.download::<VersionMetadata>(metadata_path).await?;
+
+        // Update the data at the latest version path
+        self.upload(metadata.latest_version, data).await?;
+
+        Ok(())
+    }
+
     pub async fn get_latest_version(&self, path_prefix: &str) -> Result<Option<String>, GcsError> {
         let metadata_path = format!("{}_metadata", path_prefix);
         match self.download::<VersionMetadata>(metadata_path).await {

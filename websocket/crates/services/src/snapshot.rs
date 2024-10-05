@@ -98,8 +98,10 @@ where
             .await
     }
 
-    async fn update_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        self.snapshot_repository.update_snapshot(snapshot).await
+    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+        self.snapshot_repository
+            .update_latest_snapshot(snapshot)
+            .await
     }
 }
 

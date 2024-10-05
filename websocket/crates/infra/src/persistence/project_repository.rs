@@ -121,16 +121,21 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
         }
     }
 
-    async fn update_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        // Implementation details would depend on your storage solution
-        // For example, with GCS, you might:
-        // 1. Serialize the snapshot
-        // 2. Upload the serialized data to GCS, overwriting the existing file
-        // 3. Update any metadata as necessary
-        unimplemented!("update_snapshot needs to be implemented")
+    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+        let latest_version = self
+            .client
+            .get_latest_version(&format!("snapshot/{}", snapshot.metadata.project_id))
+            .await?;
+        if let Some(_version) = latest_version {
+            let path = format!("snapshot/{}", snapshot.metadata.project_id);
+            self.client.update_versioned(path, &snapshot).await?;
+        } else {
+            let path = format!("snapshot/{}", snapshot.metadata.project_id);
+            self.client.upload(path, &snapshot).await?;
+        }
+        Ok(())
     }
 }
-
 #[async_trait]
 impl SnapshotDataRepository for ProjectGcsRepository {
     type Error = ProjectRepositoryError;
@@ -213,7 +218,7 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
         Ok(state)
     }
 
-    async fn update_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         // Implementation details would depend on your storage solution
         // For example, with GCS, you might:
         // 1. Serialize the snapshot

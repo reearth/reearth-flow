@@ -33,7 +33,7 @@ pub trait ProjectSnapshotRepository {
         project_id: &str,
     ) -> Result<Option<ProjectSnapshot>, Self::Error>;
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error>;
-    async fn update_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error>;
+    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error>;
 }
 
 #[async_trait::async_trait]
