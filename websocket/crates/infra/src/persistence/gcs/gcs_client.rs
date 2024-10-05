@@ -26,6 +26,12 @@ pub struct GcsClient {
     bucket: String,
 }
 
+#[derive(Serialize, Deserialize)]
+struct VersionMetadata {
+    latest_version: String,
+    version_history: BTreeMap<i64, String>, // Timestamp to version path
+}
+
 impl GcsClient {
     pub async fn new(bucket: String) -> Result<Self, GcsError> {
         let config = ClientConfig::default().with_auth().await?;
@@ -174,10 +180,19 @@ impl GcsClient {
             Err(_) => Ok(vec![]),
         }
     }
-}
 
-#[derive(Serialize, Deserialize)]
-struct VersionMetadata {
-    latest_version: String,
-    version_history: BTreeMap<i64, String>, // Timestamp to version path
+    pub async fn download_latest<T: for<'de> Deserialize<'de>>(
+        &self,
+        path_prefix: &str,
+    ) -> Result<Option<T>, GcsError> {
+        let latest_version = self.get_latest_version(path_prefix).await?;
+
+        match latest_version {
+            Some(version_path) => {
+                let data = self.download(version_path).await?;
+                Ok(Some(data))
+            }
+            None => Ok(None), // No versions found
+        }
+    }
 }

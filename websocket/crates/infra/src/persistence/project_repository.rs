@@ -103,24 +103,18 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
         Ok(())
     }
 
-    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let path = format!("snapshot/{}:latest_snapshot", snapshot.metadata.project_id);
-        self.client.upload(path, &snapshot).await?;
-        Ok(())
-    }
-
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
     ) -> Result<Option<ProjectSnapshot>, Self::Error> {
-        let path = format!("snapshot/{}:latest_snapshot", project_id);
-        let snapshot = self.client.download(path).await?;
+        let path_prefix = format!("snapshot/{}", project_id);
+        let snapshot = self.client.download_latest(&path_prefix).await?;
         Ok(snapshot)
     }
 
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
-        let path = format!("snapshot/{}:latest_snapshot_state", project_id);
-        let state: Option<Vec<u8>> = self.client.download(path).await?;
+        let path_prefix = format!("snapshot_data/{}", project_id);
+        let state: Option<Vec<u8>> = self.client.download_latest(&path_prefix).await?;
         Ok(state.unwrap_or_default())
     }
 
@@ -192,17 +186,11 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
         Ok(())
     }
 
-    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let path = format!("snapshot/{}:latest_snapshot", snapshot.metadata.project_id);
-        self.client.upload(path, &snapshot, true).await?;
-        Ok(())
-    }
-
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
     ) -> Result<Option<ProjectSnapshot>, Self::Error> {
-        let path = format!("snapshot/{}:latest_snapshot", project_id);
+        let path = format!("snapshot/{}", project_id);
         let snapshot = self.client.download::<ProjectSnapshot>(path).await?;
         Ok(Some(snapshot))
     }

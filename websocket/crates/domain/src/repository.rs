@@ -28,7 +28,6 @@ pub trait ProjectSnapshotRepository {
     type Error: Error + Send + Sync + 'static;
 
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error>;
-    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error>;
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
