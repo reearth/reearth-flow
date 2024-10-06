@@ -31,7 +31,7 @@ fn main() {
     let args = Args::parse();
 
     std::env::set_var("RUST_LOG", "debug");
-    env_logger::init();
+    env_logger::try_init().expect("Failed to initialize logger");
 
     let url = &args.url;
     let rc = reqwest::blocking::get(url).expect("failed to download yaml");
