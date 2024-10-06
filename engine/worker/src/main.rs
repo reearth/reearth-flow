@@ -23,7 +23,6 @@ struct Args {
     url: String,
 }
 
-#[cfg(not(feature = "feature-async"))]
 fn main() {
     use reearth_flow_runner::runner::Runner;
     // TODO: Prepare Process
@@ -35,8 +34,9 @@ fn main() {
     env_logger::init();
 
     let url = &args.url;
-    let rc = reqwest::blocking::get(url).unwrap();
-    let yaml = &rc.text().unwrap();
+    let rc = reqwest::blocking::get(url).expect("failed to download yaml");
+    let yaml_string = rc.text().expect("failed to convert text");
+    let yaml = yaml_string.as_str();
 
     let job_id: Option<String> = None; // TODO: Read from ??
     let action_log_uri: Option<String> = None; // TODO: Read from ??
