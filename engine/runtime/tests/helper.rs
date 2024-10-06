@@ -52,7 +52,7 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<(), Err
             .unwrap();
     }
     let workflow_file = WorkflowFiles::get(format!("{}.yaml", test_id).as_str()).unwrap();
-    let workflow = std::str::from_utf8(workflow_file.data.as_ref()).unwrap();
+    let workflow = std::str::from_utf8(workflow_file.data.as_ref()).expect("invalid yaml");
     let state = Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
     let logger_factory = Arc::new(LoggerFactory::new(
         reearth_flow_action_log::ActionLogger::root(
@@ -61,7 +61,7 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<(), Err
         ),
         Uri::for_test("ram:///log/").path(),
     ));
-    let workflow = Workflow::try_from_str(workflow);
+    let workflow = Workflow::try_from_str(workflow).expect("invalid yaml");
     Runner::run(
         workflow,
         BUILTIN_ACTION_FACTORIES.clone(),
