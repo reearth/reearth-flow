@@ -28,10 +28,10 @@ reearth-flow-storage.workspace = true
 reearth-flow-telemetry.workspace = true
 reearth-flow-types.workspace = true
 
+clap = { workspace = true, features = ["derive"] }
+env_logger = "0.11.5"
+log = "0.4.22"
 once_cell.workspace = true
+reqwest.workspace = true
 tokio.workspace = true
 uuid.workspace = true
-reqwest.workspace = true
-log = "0.4.22"
-env_logger = "0.11.5"
-clap = { workspace = true, features = ["derive"] }
