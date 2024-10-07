@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use google_cloud_storage::client::{Client, ClientConfig};
 use google_cloud_storage::http::objects::delete::DeleteObjectRequest;
@@ -6,7 +7,10 @@ use google_cloud_storage::http::objects::get::GetObjectRequest;
 use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::fmt::Debug;
 use thiserror::Error;
+
+use crate::persistence::StorageClient;
 
 #[derive(Error, Debug)]
 pub enum GcsError {
@@ -32,14 +36,14 @@ struct VersionMetadata {
     version_history: BTreeMap<i64, String>, // Timestamp to version path
 }
 
-impl GcsClient {
-    pub async fn new(bucket: String) -> Result<Self, GcsError> {
-        let config = ClientConfig::default().with_auth().await?;
-        let client = Client::new(config);
-        Ok(GcsClient { client, bucket })
-    }
-
-    pub async fn upload<T: Serialize>(&self, path: String, data: &T) -> Result<(), GcsError> {
+#[async_trait]
+impl StorageClient for GcsClient {
+    type Error = GcsError;
+    async fn upload<T: Serialize + Send + Sync + 'static>(
+        &self,
+        path: String,
+        data: &T,
+    ) -> Result<(), GcsError> {
         let upload_type = UploadType::Simple(Media::new(path));
         let bytes = serde_json::to_string(data)?;
         let _uploaded = self
@@ -56,7 +60,7 @@ impl GcsClient {
         Ok(())
     }
 
-    pub async fn download<T: for<'de> Deserialize<'de>>(
+    async fn download<T: for<'de> Deserialize<'de> + Send + 'static>(
         &self,
         path: String,
     ) -> Result<T, GcsError> {
@@ -76,7 +80,7 @@ impl GcsClient {
         Ok(data)
     }
 
-    pub async fn delete(&self, path: String) -> Result<(), GcsError> {
+    async fn delete(&self, path: String) -> Result<(), GcsError> {
         self.client
             .delete_object(&DeleteObjectRequest {
                 bucket: self.bucket.clone(),
@@ -87,7 +91,7 @@ impl GcsClient {
         Ok(())
     }
 
-    pub async fn upload_versioned<T: Serialize>(
+    async fn upload_versioned<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
         data: &T,
@@ -127,7 +131,7 @@ impl GcsClient {
         Ok(versioned_path)
     }
 
-    pub async fn update_versioned<T: Serialize>(
+    async fn update_versioned<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
         data: &T,
@@ -142,7 +146,7 @@ impl GcsClient {
         Ok(())
     }
 
-    pub async fn get_latest_version(&self, path_prefix: &str) -> Result<Option<String>, GcsError> {
+    async fn get_latest_version(&self, path_prefix: &str) -> Result<Option<String>, GcsError> {
         let metadata_path = format!("{}_metadata", path_prefix);
         match self.download::<VersionMetadata>(metadata_path).await {
             Ok(metadata) => Ok(Some(metadata.latest_version)),
@@ -150,7 +154,7 @@ impl GcsClient {
         }
     }
 
-    pub async fn get_version_at(
+    async fn get_version_at(
         &self,
         path_prefix: &str,
         timestamp: DateTime<Utc>,
@@ -169,7 +173,7 @@ impl GcsClient {
         }
     }
 
-    pub async fn list_versions(
+    async fn list_versions(
         &self,
         path_prefix: &str,
         limit: Option<usize>,
@@ -196,7 +200,7 @@ impl GcsClient {
         }
     }
 
-    pub async fn download_latest<T: for<'de> Deserialize<'de>>(
+    async fn download_latest<T: for<'de> Deserialize<'de> + Send + 'static>(
         &self,
         path_prefix: &str,
     ) -> Result<Option<T>, GcsError> {
@@ -209,5 +213,88 @@ impl GcsClient {
             }
             None => Ok(None), // No versions found
         }
+    }
+}
+
+impl GcsClient {
+    pub async fn new(bucket: String) -> Result<Self, GcsError> {
+        let config = ClientConfig::default().with_auth().await?;
+        let client = Client::new(config);
+        Ok(GcsClient { client, bucket })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockall::mock;
+    use mockall::predicate::*;
+
+    mock! {
+        pub GcsClientMock {}
+        #[async_trait]
+        impl StorageClient for GcsClientMock {
+            type Error = GcsError;
+            async fn upload<T: Serialize + Send + Sync + 'static>(&self, path: String, data: &T) -> Result<(), GcsError>;
+            async fn download<T: for<'de> Deserialize<'de> + Send + 'static>(&self, path: String) -> Result<T, GcsError>;
+            async fn delete(&self, path: String) -> Result<(), GcsError>;
+            async fn upload_versioned<T: Serialize + Send + Sync + 'static>(&self, path: String, data: &T) -> Result<String, GcsError>;
+            async fn update_versioned<T: Serialize + Send + Sync + 'static>(&self, path: String, data: &T) -> Result<(), GcsError>;
+            async fn get_latest_version(&self, path_prefix: &str) -> Result<Option<String>, GcsError>;
+            async fn get_version_at(&self, path_prefix: &str, timestamp: DateTime<Utc>) -> Result<Option<String>, GcsError>;
+            async fn list_versions(&self, path_prefix: &str, limit: Option<usize>) -> Result<Vec<(DateTime<Utc>, String)>, GcsError>;
+            async fn download_latest<T: for<'de> Deserialize<'de> + Send + 'static>(&self, path_prefix: &str) -> Result<Option<T>, GcsError>;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_upload_versioned() {
+        let mut mock = MockGcsClientMock::new();
+        mock.expect_upload_versioned()
+            .with(eq("test_path".to_string()), always())
+            .returning(|path: String, _: &String| Ok(format!("{}_v1234567890", path)));
+
+        let result = mock
+            .upload_versioned("test_path".to_string(), &"test_data".to_string())
+            .await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "test_path_v1234567890".to_string());
+    }
+
+    #[tokio::test]
+    async fn test_update_versioned() {
+        let mut mock = MockGcsClientMock::new();
+        mock.expect_update_versioned()
+            .with(eq("test_path".to_string()), always())
+            .returning(|_: String, _: &String| Ok(()));
+
+        let result = mock
+            .update_versioned("test_path".to_string(), &"updated_data".to_string())
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_latest_version() {
+        let mut mock = MockGcsClientMock::new();
+        mock.expect_get_latest_version()
+            .with(eq("test_path"))
+            .returning(|path: &str| Ok(Some(format!("{}_v1234567890", path))));
+
+        let result = mock.get_latest_version("test_path").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Some("test_path_v1234567890".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_download_latest() {
+        let mut mock = MockGcsClientMock::new();
+        mock.expect_download_latest::<String>()
+            .with(eq("test_path"))
+            .returning(|_: &str| Ok(Some("test_data".to_string())));
+
+        let result: Result<Option<String>, GcsError> = mock.download_latest("test_path").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Some("test_data".to_string()));
     }
 }

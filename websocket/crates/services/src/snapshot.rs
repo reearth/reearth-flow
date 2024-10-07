@@ -1,10 +1,12 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use flow_websocket_domain::repository::ProjectSnapshotRepository;
-use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo};
+use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, SnapshotInfo};
 use flow_websocket_domain::types::snapshot::ProjectSnapshot;
 use std::sync::Arc;
 use uuid::Uuid;
+
+use crate::types::CreateSnapshotData;
 
 pub struct SnapshotService<R> {
     snapshot_repository: Arc<R>,
@@ -102,37 +104,5 @@ where
         self.snapshot_repository
             .update_latest_snapshot(snapshot)
             .await
-    }
-}
-
-pub struct CreateSnapshotData {
-    pub project_id: String,
-    pub session_id: Option<String>,
-    pub name: Option<String>,
-    pub created_by: Option<String>,
-    pub changes_by: Vec<String>,
-    pub tenant: ObjectTenant,
-    pub state: Vec<u8>,
-}
-
-impl CreateSnapshotData {
-    pub fn new(
-        project_id: String,
-        session_id: Option<String>,
-        name: Option<String>,
-        created_by: Option<String>,
-        changes_by: Vec<String>,
-        tenant: ObjectTenant,
-        state: Vec<u8>,
-    ) -> Self {
-        Self {
-            project_id,
-            session_id,
-            name,
-            created_by,
-            changes_by,
-            tenant,
-            state,
-        }
     }
 }

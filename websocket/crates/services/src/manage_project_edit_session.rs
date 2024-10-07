@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use flow_websocket_domain::project::ProjectEditingSession;
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectSnapshotRepository,
@@ -10,6 +10,7 @@ use flow_websocket_infra::persistence::project_repository::ProjectRedisRepositor
 use std::sync::Arc;
 use tokio::time::sleep;
 
+use crate::types::ManageProjectEditSessionTaskData;
 use crate::ProjectServiceError;
 
 const MAX_EMPTY_SESSION_DURATION: i64 = 10 * 1000; // 10 seconds
@@ -178,14 +179,4 @@ where
         }
         Ok(())
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct ManageProjectEditSessionTaskData {
-    pub session_id: String,
-    pub project_id: String,
-    pub clients_count: Option<usize>,
-    pub last_merged_at: Option<DateTime<Utc>>,
-    pub last_snapshot_at: Option<DateTime<Utc>>,
-    pub clients_disconnected_at: Option<DateTime<Utc>>,
 }

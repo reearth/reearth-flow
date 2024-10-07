@@ -17,6 +17,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
 
+use super::StorageClient;
+
 #[derive(Error, Debug)]
 pub enum ProjectRepositoryError {
     #[error(transparent)]
