@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::sync::Arc;
 
 use crate::repository::{ProjectSnapshotRepository, RedisDataManager};
@@ -57,16 +58,63 @@ impl ProjectEditingSession {
 
     pub async fn get_diff_update<R>(
         &self,
-        _state_vector: Vec<u8>,
+        state_vector: Vec<u8>,
         redis_data_manager: &R,
     ) -> Result<(Vec<u8>, Vec<u8>), ProjectEditingSessionError<R::Error>>
     where
         R: RedisDataManager,
     {
         self.check_session_setup()?;
-        let current_state_update = redis_data_manager.get_current_state().await?;
-        // Logic to get the diff update
-        Ok((vec![], vec![]))
+        let current_state = redis_data_manager.get_current_state().await?;
+        if let Some(current_state) = current_state {
+            if current_state == state_vector {
+                return Ok((vec![], current_state));
+            }
+            let (diff, server_state) = self.calculate_diff(&current_state, &state_vector);
+            Ok((diff, server_state))
+        } else {
+            Ok((state_vector.clone(), state_vector))
+        }
+    }
+
+    fn calculate_diff(&self, client_state: &[u8], server_state: &[u8]) -> (Vec<u8>, Vec<u8>) {
+        let mut diff = Vec::with_capacity(min(client_state.len(), server_state.len()));
+        let mut i = 0;
+        let mut j = 0;
+
+        while i < client_state.len() && j < server_state.len() {
+            if client_state[i] == server_state[j] {
+                let start = i;
+                while i < client_state.len()
+                    && j < server_state.len()
+                    && client_state[i] == server_state[j]
+                    && i - start < 255
+                {
+                    i += 1;
+                    j += 1;
+                }
+                diff.push(3);
+                diff.push((i - start) as u8);
+            } else {
+                diff.push(2);
+                diff.push(server_state[j]);
+                i += 1;
+                j += 1;
+            }
+        }
+
+        while j < server_state.len() {
+            diff.push(0);
+            diff.push(server_state[j]);
+            j += 1;
+        }
+
+        while i < client_state.len() {
+            diff.push(1);
+            i += 1;
+        }
+
+        (diff, server_state.to_vec())
     }
 
     pub async fn merge_updates(&self) -> Result<(), ProjectEditingSessionError<()>> {
