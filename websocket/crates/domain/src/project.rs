@@ -231,3 +231,49 @@ impl ProjectEditingSession {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calculate_diff() {
+        let session =
+            ProjectEditingSession::new("test_project".to_string(), ObjectTenant::default());
+
+        // Test case 1: Identical states
+        let client_state = vec![1, 2, 3, 4, 5];
+        let server_state = vec![1, 2, 3, 4, 5];
+        let (diff, result_server_state) = session.calculate_diff(&client_state, &server_state);
+        assert_eq!(diff, vec![3, 5]);
+        assert_eq!(result_server_state, server_state);
+
+        // Test case 2: Server state has additional data
+        let client_state = vec![1, 2, 3];
+        let server_state = vec![1, 2, 3, 4, 5];
+        let (diff, result_server_state) = session.calculate_diff(&client_state, &server_state);
+        assert_eq!(diff, vec![3, 3, 0, 4, 0, 5]);
+        assert_eq!(result_server_state, server_state);
+
+        // Test case 3: Client state has additional data
+        let client_state = vec![1, 2, 3, 4, 5];
+        let server_state = vec![1, 2, 3];
+        let (diff, result_server_state) = session.calculate_diff(&client_state, &server_state);
+        assert_eq!(diff, vec![3, 3, 1, 1]);
+        assert_eq!(result_server_state, server_state);
+
+        // Test case 4: Different states
+        let client_state = vec![1, 2, 3, 4, 5];
+        let server_state = vec![1, 2, 6, 7, 8];
+        let (diff, result_server_state) = session.calculate_diff(&client_state, &server_state);
+        assert_eq!(diff, vec![3, 2, 2, 6, 2, 7, 2, 8]);
+        assert_eq!(result_server_state, server_state);
+
+        // Test case 5: Empty states
+        let client_state = vec![];
+        let server_state = vec![];
+        let (diff, result_server_state) = session.calculate_diff(&client_state, &server_state);
+        assert_eq!(diff, vec![]);
+        assert_eq!(result_server_state, server_state);
+    }
+}

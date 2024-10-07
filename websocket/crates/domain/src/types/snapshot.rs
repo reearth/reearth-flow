@@ -13,6 +13,15 @@ pub struct ObjectTenant {
     pub key: String,
 }
 
+impl Default for ObjectTenant {
+    fn default() -> Self {
+        Self {
+            id: "".to_string(),
+            key: "".to_string(),
+        }
+    }
+}
+
 impl ObjectTenant {
     pub fn new(id: String, key: String) -> Self {
         Self { id, key }
