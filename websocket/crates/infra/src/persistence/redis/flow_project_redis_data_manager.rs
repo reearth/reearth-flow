@@ -11,6 +11,8 @@ use flow_websocket_domain::project::ProjectEditingSession;
 use crate::persistence::redis::flow_project_lock::{FlowProjectLock, GlobalLockError};
 use crate::persistence::redis::redis_client::RedisClient;
 
+use super::redis_client::RedisClientTrait;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FlowUpdate {
     stream_id: Option<String>,

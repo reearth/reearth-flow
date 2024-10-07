@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use lru::LruCache;
 use serde::Deserialize;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
 use std::num::NonZero;
 use std::path::{Path, PathBuf};

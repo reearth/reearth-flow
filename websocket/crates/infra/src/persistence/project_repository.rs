@@ -18,6 +18,7 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use super::local_storage::LocalStorageError;
+use super::redis::redis_client::RedisClientTrait;
 use super::StorageClient;
 
 #[derive(Error, Debug)]
@@ -281,86 +282,3 @@ impl SnapshotDataRepository for ProjectLocalRepository {
         Ok(())
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo};
-//     use tempfile::TempDir;
-//     use tokio::test;
-
-//     async fn setup() -> Result<(TempDir, ProjectLocalRepository), Box<dyn std::error::Error>> {
-//         let temp_dir = TempDir::new()?;
-//         let repo = ProjectLocalRepository::new(temp_dir.path().to_path_buf()).await?;
-//         Ok((temp_dir, repo))
-//     }
-
-//     fn create_test_snapshot(project_id: &str) -> ProjectSnapshot {
-//         let now = Utc::now();
-
-//         let metadata = Metadata::new(
-//             "snap_abc123".to_string(),
-//             project_id.to_string(),
-//             Some("session_abc123".to_string()),
-//             "Test Snapshot".to_string(),
-//             "/test/path".to_string(),
-//         );
-
-//         let info = SnapshotInfo::new(
-//             Some("test_user_abc".to_string()),
-//             vec!["test_user_abc".to_string()],
-//             ObjectTenant {
-//                 id: "tenant_abc123".to_string(),
-//                 key: "tenant_key_abc".to_string(),
-//             },
-//             ObjectDelete {
-//                 deleted: false,
-//                 delete_after: None,
-//             },
-//             Some(now),
-//             Some(now),
-//         );
-
-//         ProjectSnapshot { metadata, info }
-//     }
-
-//     #[test]
-//     async fn test_create_and_get_snapshot_metadata() -> Result<(), Box<dyn std::error::Error>> {
-//         let (_temp_dir, repo) = setup().await?;
-//         let project_id = "test_project";
-//         let snapshot = create_test_snapshot(project_id);
-//         println!("snapshot: {:?}", snapshot);
-//         repo.create_snapshot(snapshot.clone()).await.unwrap();
-//         println!("snapshot created");
-
-//         let retrieved_snapshot = match repo.get_latest_snapshot(project_id).await? {
-//             Some(snapshot) => {
-//                 println!("retrieved_snapshot: {:?}", snapshot);
-//                 snapshot
-//             }
-//             None => {
-//                 println!("Error: No snapshot found for project_id: {}", project_id);
-//                 return Err("No snapshot found".into());
-//             }
-//         };
-
-//         println!("retrieved_snapshot: {:?}", retrieved_snapshot);
-//         assert_eq!(retrieved_snapshot.metadata.id, snapshot.metadata.id);
-//         assert_eq!(
-//             retrieved_snapshot.metadata.project_id,
-//             snapshot.metadata.project_id
-//         );
-//         Ok(())
-//     }
-
-//     #[test]
-//     async fn test_create_and_get_snapshot_state() -> Result<(), Box<dyn std::error::Error>> {
-//         let (_temp_dir, repo) = setup().await?;
-//         let project_id = "test_project";
-//         let snapshot = create_test_snapshot(project_id);
-//         repo.create_snapshot(snapshot.clone()).await.unwrap();
-//         let retrieved_snapshot_state = repo.get_latest_snapshot_state(project_id).await?;
-//         assert!(!retrieved_snapshot_state.is_empty());
-//         Ok(())
-//     }
-// }
