@@ -255,7 +255,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use tempfile::tempdir;
 
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
     struct TestData {
         field1: String,
         field2: i32,
@@ -337,6 +337,145 @@ mod tests {
         let downloaded_data = download_task.await??;
 
         assert_eq!(test_data_clone, downloaded_data);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_upload_and_download_versioned() -> io::Result<()> {
+        let temp_dir = tempdir()?;
+        let base_path = temp_dir.path().to_path_buf();
+        let client = LocalClient::new(base_path).await?;
+
+        let test_data1 = TestData {
+            field1: "version1".to_string(),
+            field2: 1,
+        };
+        let test_data2 = TestData {
+            field1: "version2".to_string(),
+            field2: 2,
+        };
+
+        // Upload first version
+        let version1_path = client
+            .upload_versioned("test_file".to_string(), &test_data1)
+            .await?;
+
+        // Upload second version
+        let version2_path = client
+            .upload_versioned("test_file".to_string(), &test_data2)
+            .await?;
+
+        // Download latest version
+        let latest_data: TestData = client.download_latest("test_file").await?.unwrap();
+        assert_eq!(latest_data, test_data2);
+
+        // Download specific versions
+        let data1: TestData = client.download(version1_path).await?;
+        let data2: TestData = client.download(version2_path).await?;
+        assert_eq!(data1, test_data1);
+        assert_eq!(data2, test_data2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_update_versioned() -> io::Result<()> {
+        let temp_dir = tempdir()?;
+        let base_path = temp_dir.path().to_path_buf();
+        let client = LocalClient::new(base_path).await?;
+
+        let test_data1 = TestData {
+            field1: "initial".to_string(),
+            field2: 1,
+        };
+        let test_data2 = TestData {
+            field1: "updated".to_string(),
+            field2: 2,
+        };
+
+        // Upload initial version
+        client
+            .upload_versioned("test_file".to_string(), &test_data1)
+            .await?;
+
+        // Update the version
+        client
+            .update_versioned("test_file".to_string(), &test_data2)
+            .await?;
+
+        // Download latest version
+        let latest_data: TestData = client.download_latest("test_file").await?.unwrap();
+        assert_eq!(latest_data, test_data2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_version_at() -> io::Result<()> {
+        let temp_dir = tempdir()?;
+        let base_path = temp_dir.path().to_path_buf();
+        let client = LocalClient::new(base_path).await?;
+
+        let test_data1 = TestData {
+            field1: "version1".to_string(),
+            field2: 1,
+        };
+        let test_data2 = TestData {
+            field1: "version2".to_string(),
+            field2: 2,
+        };
+
+        // Upload first version
+        client
+            .upload_versioned("test_file".to_string(), &test_data1)
+            .await?;
+
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        let mid_time = Utc::now();
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+        // Upload second version
+        client
+            .upload_versioned("test_file".to_string(), &test_data2)
+            .await?;
+
+        // Get version at mid_time
+        let version_path = client.get_version_at("test_file", mid_time).await?.unwrap();
+        let data: TestData = client.download(version_path).await?;
+        assert_eq!(data, test_data1);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_list_versions() -> io::Result<()> {
+        let temp_dir = tempdir()?;
+        let base_path = temp_dir.path().to_path_buf();
+        let client = LocalClient::new(base_path).await?;
+
+        let test_data = TestData {
+            field1: "test".to_string(),
+            field2: 1,
+        };
+
+        // Upload multiple versions
+        for i in 0..5 {
+            let mut data = test_data.clone();
+            data.field2 = i;
+            client
+                .upload_versioned("test_file".to_string(), &data)
+                .await?;
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+
+        // List all versions
+        let versions = client.list_versions("test_file", None).await?;
+        assert_eq!(versions.len(), 5);
+
+        // List limited versions
+        let limited_versions = client.list_versions("test_file", Some(3)).await?;
+        assert_eq!(limited_versions.len(), 3);
 
         Ok(())
     }
