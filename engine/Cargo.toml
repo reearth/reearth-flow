@@ -18,7 +18,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.81" # Remember to update clippy.toml as well
-version = "0.0.1"
+version = "0.0.2"
 
 [profile.dev]
 opt-level = 0
@@ -94,6 +94,9 @@ flate2 = "1.0.34"
 float_next_after = "1.0.0"
 futures = "0.3.30"
 futures-util = "0.3.30"
+geo = "0.28.0"
+geo-buffer = "0.2.0"
+geo-types = "0.7.13"
 geojson = "0.24.1"
 hashbrown = { version = "0.14.5", features = ["serde"] }
 home = "0.5.9"

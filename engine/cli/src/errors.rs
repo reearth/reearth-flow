@@ -28,4 +28,8 @@ impl Error {
     pub(crate) fn unknown_command<T: ToString>(message: T) -> Self {
         Self::UnknownCommand(message.to_string())
     }
+
+    pub(crate) fn run<T: ToString>(message: T) -> Self {
+        Self::Run(message.to_string())
+    }
 }
