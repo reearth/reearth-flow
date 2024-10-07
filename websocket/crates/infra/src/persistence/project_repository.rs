@@ -133,6 +133,7 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
             let path = format!("snapshot/{}", snapshot.metadata.project_id);
             self.client.upload(path, &snapshot).await?;
         }
+
         Ok(())
     }
 }
@@ -199,7 +200,7 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
 
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         let path = format!("snapshots/{}", snapshot.metadata.id);
-        self.client.upload(path, &snapshot, true).await?;
+        self.client.upload_versioned(path, &snapshot).await?;
         Ok(())
     }
 
@@ -207,24 +208,72 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
         &self,
         project_id: &str,
     ) -> Result<Option<ProjectSnapshot>, Self::Error> {
-        let path = format!("snapshot/{}", project_id);
-        let snapshot = self.client.download::<ProjectSnapshot>(path).await?;
-        Ok(Some(snapshot))
+        let path = format!("snapshots/{}", project_id);
+        let snapshot = self
+            .client
+            .download_latest::<ProjectSnapshot>(&path)
+            .await?;
+        Ok(snapshot)
     }
 
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
-        let path = format!("snapshot/{}:latest_snapshot_state", project_id);
-        let state = self.client.download(path).await?;
-        Ok(state)
+        let snapshot = self.get_latest_snapshot_data(project_id).await?;
+        if let Some(snapshot) = snapshot {
+            Ok(snapshot.state)
+        } else {
+            Ok(Vec::new())
+        }
     }
 
     async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        // Implementation details would depend on your storage solution
-        // For example, with GCS, you might:
-        // 1. Serialize the snapshot
-        // 2. Upload the serialized data to GCS, overwriting the existing file
-        // 3. Update any metadata as necessary
-        unimplemented!("update_snapshot needs to be implemented")
+        let path = format!("snapshots/{}", snapshot.metadata.id);
+        self.client.update_versioned(path, &snapshot).await?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl SnapshotDataRepository for ProjectLocalRepository {
+    type Error = ProjectRepositoryError;
+
+    async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_data.project_id);
+        self.client.update_versioned(path, &snapshot_data).await?;
+        Ok(())
+    }
+
+    async fn get_snapshot_data(
+        &self,
+        snapshot_id: &str,
+    ) -> Result<Option<SnapshotData>, Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_id);
+        let snapshot_data = self.client.download(path).await?;
+        Ok(snapshot_data)
+    }
+
+    async fn get_latest_snapshot_data(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<SnapshotData>, Self::Error> {
+        let path = format!("snapshot_data/{}", project_id);
+        let snapshot_data = self.client.download_latest(&path).await?;
+        Ok(snapshot_data)
+    }
+
+    async fn update_snapshot_data(
+        &self,
+        snapshot_id: &str,
+        snapshot_data: SnapshotData,
+    ) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_id);
+        self.client.upload(path, &snapshot_data, true).await?;
+        Ok(())
+    }
+
+    async fn delete_snapshot_data(&self, snapshot_id: &str) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_id);
+        self.client.delete(&path).await?;
+        Ok(())
     }
 }
 

@@ -245,6 +245,12 @@ impl LocalClient {
             None => Ok(None), // No versions found
         }
     }
+
+    pub async fn delete(&self, path: &str) -> io::Result<()> {
+        let full_path = self.get_full_path(path);
+        fs::remove_file(full_path).await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
