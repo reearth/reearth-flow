@@ -7,19 +7,11 @@ import (
 
 type (
 	ID          = id.WorkflowID
-	EdgeID      = id.EdgeID
-	NodeID      = id.NodeID
-	GraphID     = id.GraphID
 	ProjectID   = id.ProjectID
 	WorkspaceID = accountdomain.WorkspaceID
 )
 
 var (
-	NewID          = id.NewWorkflowID
-	NewNodeID      = id.NewNodeID
-	NewEdgeID      = id.NewEdgeID
-	NewGraphID     = id.NewGraphID
-	NewWorkflowID  = id.NewWorkflowID
 	NewProjectID   = id.NewProjectID
 	NewWorkspaceID = accountdomain.NewWorkspaceID
 )
@@ -43,10 +35,3 @@ var (
 )
 
 var ErrInvalidID = id.ErrInvalidID
-
-func MockNewID(pid ID) func() {
-	NewID = func() ID { return pid }
-	return func() {
-		NewID = id.NewWorkflowID
-	}
-}
