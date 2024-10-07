@@ -17,26 +17,26 @@ import (
 
 type Deployment struct {
 	common
-	deploymentRepo  repo.Deployment
-	projectRepo     repo.Project
-	workflowRepo    repo.Workflow
-	jobRepo         repo.Job
-	workspaceRepo   accountrepo.Workspace
-	transaction     usecasex.Transaction
-	batch           gateway.Batch
-	workflowGateway gateway.Workflow
+	deploymentRepo repo.Deployment
+	projectRepo    repo.Project
+	workflowRepo   repo.Workflow
+	jobRepo        repo.Job
+	workspaceRepo  accountrepo.Workspace
+	transaction    usecasex.Transaction
+	batch          gateway.Batch
+	file           gateway.File
 }
 
 func NewDeployment(r *repo.Container, gr *gateway.Container) interfaces.Deployment {
 	return &Deployment{
-		deploymentRepo:  r.Deployment,
-		projectRepo:     r.Project,
-		workflowRepo:    r.Workflow,
-		jobRepo:         r.Job,
-		workspaceRepo:   r.Workspace,
-		transaction:     r.Transaction,
-		batch:           gr.Batch,
-		workflowGateway: gr.Workflow,
+		deploymentRepo: r.Deployment,
+		projectRepo:    r.Project,
+		workflowRepo:   r.Workflow,
+		jobRepo:        r.Job,
+		workspaceRepo:  r.Workspace,
+		transaction:    r.Transaction,
+		batch:          gr.Batch,
+		file:           gr.File,
 	}
 }
 
@@ -70,11 +70,7 @@ func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentPa
 		return nil, err
 	}
 
-	// if err := i.workflowRepo.Save(ctx, p.Workspace, p.Workflow); err != nil {
-	// 	return nil, err
-	// }
-
-	url, err := i.workflowGateway.UploadWorkflow(ctx, &p.Workflows)
+	url, err := i.file.UploadWorkflow(ctx, &p.Workflows)
 	if err != nil {
 		return nil, err
 	}

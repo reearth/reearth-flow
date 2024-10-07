@@ -51,7 +51,10 @@ func (i *Workflow) Create(ctx context.Context, p interfaces.CreateWorkflowParam,
 
 	wID := id.NewWorkflowID()
 
-	url, err := i.gateways.Workflow.UploadWorkflow(ctx, p.Workflow)
+	url, err := i.gateways.File.UploadWorkflow(ctx, p.Workflow)
+	if err != nil {
+		return nil, err
+	}
 
 	w := workflow.NewWorkflow(wID, p.ProjectID, p.WorkspaceID, url.String())
 

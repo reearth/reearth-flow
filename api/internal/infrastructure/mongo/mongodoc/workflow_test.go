@@ -53,5 +53,5 @@ func TestWorkflowDocument_Model(t *testing.T) {
 	assert.Equal(t, expectedID, model.ID)
 	assert.Equal(t, expectedProject, model.Project)
 	assert.Equal(t, expectedWorkspace, model.Workspace)
-	assert.Equal(t, &url, model.URL)
+	assert.Equal(t, url, model.URL)
 }

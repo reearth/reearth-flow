@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	gcsAssetBasePath string = "assets"
-	fileSizeLimit    int64  = 1024 * 1024 * 100 // about 100MB
+	gcsAssetBasePath    string = "assets"
+	gcsWorkflowBasePath string = "workflows"
+	fileSizeLimit       int64  = 1024 * 1024 * 100 // about 100MB
 )
 
 type fileRepo struct {
@@ -40,7 +41,7 @@ func NewFile(bucketName, base string, cacheControl string) (gateway.File, error)
 	}
 
 	var err error
-	u, _ = url.Parse(base)
+	u, err = url.Parse(base)
 	if err != nil {
 		return nil, errors.New("invalid base URL")
 	}
@@ -89,7 +90,48 @@ func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, 
 func (f *fileRepo) RemoveAsset(ctx context.Context, u *url.URL) error {
 	log.Infofc(ctx, "gcs: asset deleted: %s", u)
 
-	sn := getGCSObjectNameFromURL(f.base, u)
+	sn := getGCSObjectNameFromURL(f.base, u, gcsAssetBasePath)
+	if sn == "" {
+		return gateway.ErrInvalidFile
+	}
+	return f.delete(ctx, sn)
+}
+
+func (f *fileRepo) ReadWorkflow(ctx context.Context, name string) (io.ReadCloser, error) {
+	sn := sanitize.Path(name)
+	if sn == "" {
+		return nil, rerror.ErrNotFound
+	}
+	return f.read(ctx, path.Join(gcsWorkflowBasePath, sn))
+}
+
+func (f *fileRepo) UploadWorkflow(ctx context.Context, file *file.File) (*url.URL, error) {
+	if file == nil {
+		return nil, gateway.ErrInvalidFile
+	}
+
+	sn := sanitize.Path(newWorkflowID() + path.Ext(file.Path))
+	if sn == "" {
+		return nil, gateway.ErrInvalidFile
+	}
+
+	filename := path.Join(gcsWorkflowBasePath, sn)
+	u := getGCSObjectURL(f.base, filename)
+	if u == nil {
+		return nil, gateway.ErrInvalidFile
+	}
+
+	_, err := f.upload(ctx, filename, file.Content)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
+func (f *fileRepo) RemoveWorkflow(ctx context.Context, u *url.URL) error {
+	log.Infofc(ctx, "gcs: workflow deleted: %s", u)
+
+	sn := getGCSObjectNameFromURL(f.base, u, gcsWorkflowBasePath)
 	if sn == "" {
 		return gateway.ErrInvalidFile
 	}
@@ -198,7 +240,7 @@ func getGCSObjectURL(base *url.URL, objectName string) *url.URL {
 	return &b
 }
 
-func getGCSObjectNameFromURL(base, u *url.URL) string {
+func getGCSObjectNameFromURL(base, u *url.URL, gcsBasePath string) string {
 	if u == nil {
 		return ""
 	}
@@ -206,7 +248,7 @@ func getGCSObjectNameFromURL(base, u *url.URL) string {
 		base = &url.URL{}
 	}
 	p := sanitize.Path(strings.TrimPrefix(u.Path, "/"))
-	if p == "" || u.Host != base.Host || u.Scheme != base.Scheme || !strings.HasPrefix(p, gcsAssetBasePath+"/") {
+	if p == "" || u.Host != base.Host || u.Scheme != base.Scheme || !strings.HasPrefix(p, gcsBasePath+"/") {
 		return ""
 	}
 
@@ -215,4 +257,8 @@ func getGCSObjectNameFromURL(base, u *url.URL) string {
 
 func newAssetID() string {
 	return id.NewAssetID().String()
+}
+
+func newWorkflowID() string {
+	return id.NewWorkflowID().String()
 }
