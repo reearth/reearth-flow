@@ -1,3 +1,5 @@
+use crate::persistence::StorageClient;
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use lru::LruCache;
 use serde::Deserialize;
@@ -5,10 +7,21 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::num::NonZero;
 use std::path::{Path, PathBuf};
+use thiserror::Error;
 use tokio::fs::{self, OpenOptions};
 use tokio::io::{self, AsyncReadExt};
 use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::sync::Mutex;
+
+#[derive(Error, Debug)]
+pub enum LocalStorageError {
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+    #[error("UTF-8 conversion error: {0}")]
+    Utf8(#[from] std::string::FromUtf8Error),
+}
 
 pub struct LocalClient {
     base_path: PathBuf,
@@ -54,13 +67,15 @@ impl LocalClient {
     }
 }
 
-impl LocalClient {
-    pub async fn upload<T: Serialize + Send + Sync>(
+#[async_trait]
+impl StorageClient for LocalClient {
+    type Error = LocalStorageError;
+
+    async fn upload<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
         data: &T,
-        overwrite: bool,
-    ) -> io::Result<()> {
+    ) -> Result<(), Self::Error> {
         let full_path = self.get_full_path(&path);
         self.lock_file(&full_path).await;
 
@@ -71,7 +86,7 @@ impl LocalClient {
             let file = OpenOptions::new()
                 .write(true)
                 .create(true)
-                .append(!overwrite)
+                .truncate(true)
                 .open(&full_path)
                 .await?;
             let mut writer = BufWriter::new(file);
@@ -94,7 +109,10 @@ impl LocalClient {
         result
     }
 
-    pub async fn download<T: DeserializeOwned + Send>(&self, path: String) -> io::Result<T> {
+    async fn download<T: for<'de> Deserialize<'de> + Send + 'static>(
+        &self,
+        path: String,
+    ) -> Result<T, Self::Error> {
         let full_path = self.get_full_path(&path);
         self.lock_file(&full_path).await;
 
@@ -123,16 +141,22 @@ impl LocalClient {
         result
     }
 
-    pub async fn upload_versioned<T: Serialize + Send + Sync>(
+    async fn delete(&self, path: String) -> Result<(), Self::Error> {
+        let full_path = self.get_full_path(&path);
+        fs::remove_file(full_path).await?;
+        Ok(())
+    }
+
+    async fn upload_versioned<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
         data: &T,
-    ) -> io::Result<String> {
+    ) -> Result<String, Self::Error> {
         let timestamp = Utc::now().timestamp_millis();
         let versioned_path = format!("{}_v{}", path, timestamp);
 
         // Upload the data
-        self.upload(versioned_path.clone(), data, true).await?;
+        self.upload(versioned_path.clone(), data).await?;
 
         // Update metadata
         let metadata_path = format!("{}_metadata", path);
@@ -158,36 +182,34 @@ impl LocalClient {
             metadata.version_history.remove(&oldest);
         }
 
-        self.upload(metadata_path, &metadata, true).await?;
+        self.upload(metadata_path, &metadata).await?;
 
         Ok(versioned_path)
     }
 
-    pub async fn update_versioned<T: Serialize + Send + Sync>(
+    async fn update_versioned<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
         data: &T,
-    ) -> io::Result<()> {
+    ) -> Result<(), Self::Error> {
         let metadata_path = format!("{}_metadata", path);
         let metadata = self.download::<VersionMetadata>(metadata_path).await?;
-
-        self.upload(metadata.latest_version, data, true).await
+        self.upload(metadata.latest_version, data).await
     }
 
-    pub async fn get_latest_version(&self, path_prefix: &str) -> io::Result<Option<String>> {
+    async fn get_latest_version(&self, path_prefix: &str) -> Result<Option<String>, Self::Error> {
         let metadata_path = format!("{}_metadata", path_prefix);
         match self.download::<VersionMetadata>(metadata_path).await {
             Ok(metadata) => Ok(Some(metadata.latest_version)),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(e),
+            Err(_) => Ok(None),
         }
     }
 
-    pub async fn get_version_at(
+    async fn get_version_at(
         &self,
         path_prefix: &str,
         timestamp: DateTime<Utc>,
-    ) -> io::Result<Option<String>> {
+    ) -> Result<Option<String>, Self::Error> {
         let metadata_path = format!("{}_metadata", path_prefix);
         match self.download::<VersionMetadata>(metadata_path).await {
             Ok(metadata) => {
@@ -198,16 +220,15 @@ impl LocalClient {
                     .next_back()
                     .map(|(_, path)| path.clone()))
             }
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(e),
+            Err(_) => Ok(None),
         }
     }
 
-    pub async fn list_versions(
+    async fn list_versions(
         &self,
         path_prefix: &str,
         limit: Option<usize>,
-    ) -> io::Result<Vec<(DateTime<Utc>, String)>> {
+    ) -> Result<Vec<(DateTime<Utc>, String)>, Self::Error> {
         let metadata_path = format!("{}_metadata", path_prefix);
         match self.download::<VersionMetadata>(metadata_path).await {
             Ok(metadata) => {
@@ -226,15 +247,14 @@ impl LocalClient {
                 versions.sort_by_key(|&(timestamp, _)| timestamp);
                 Ok(versions)
             }
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(vec![]),
-            Err(e) => Err(e),
+            Err(_) => Ok(vec![]),
         }
     }
 
-    pub async fn download_latest<T: DeserializeOwned + Send>(
+    async fn download_latest<T: for<'de> Deserialize<'de> + Send + 'static>(
         &self,
         path_prefix: &str,
-    ) -> io::Result<Option<T>> {
+    ) -> Result<Option<T>, Self::Error> {
         let latest_version = self.get_latest_version(path_prefix).await?;
 
         match latest_version {
@@ -244,12 +264,6 @@ impl LocalClient {
             }
             None => Ok(None), // No versions found
         }
-    }
-
-    pub async fn delete(&self, path: &str) -> io::Result<()> {
-        let full_path = self.get_full_path(path);
-        fs::remove_file(full_path).await?;
-        Ok(())
     }
 }
 
@@ -268,10 +282,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_upload_and_download() -> io::Result<()> {
-        let temp_dir = tempdir()?;
+    async fn test_upload_and_download() -> Result<(), LocalStorageError> {
+        let temp_dir = tempdir().unwrap();
         let base_path = temp_dir.path().to_path_buf();
-        let client = LocalClient::new(base_path).await?;
+        let client = LocalClient::new(base_path).await.unwrap();
 
         let test_data = TestData {
             field1: "test".to_string(),
@@ -280,7 +294,7 @@ mod tests {
 
         // Test upload
         client
-            .upload("test_file.json".to_string(), &test_data, true)
+            .upload("test_file.json".to_string(), &test_data)
             .await?;
 
         // Test download
@@ -297,34 +311,32 @@ mod tests {
         let base_path = temp_dir.path().to_path_buf();
         let client = LocalClient::new(base_path).await.unwrap();
 
-        let result: io::Result<TestData> =
+        let result: Result<TestData, LocalStorageError> =
             client.download("non_existent_file.json".to_string()).await;
 
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::NotFound);
+        assert!(
+            matches!(result, Err(LocalStorageError::Io(e)) if e.kind() == io::ErrorKind::NotFound)
+        );
     }
 
     #[tokio::test]
-    async fn test_concurrent_access() -> io::Result<()> {
-        let temp_dir = tempdir()?;
+    async fn test_concurrent_access() -> Result<(), LocalStorageError> {
+        let temp_dir = tempdir().unwrap();
         let base_path = temp_dir.path().to_path_buf();
-        let client = Arc::new(LocalClient::new(base_path).await?);
+        let client = Arc::new(LocalClient::new(base_path).await.unwrap());
 
         let test_data = TestData {
             field1: "test".to_string(),
             field2: 42,
         };
 
-        let test_data_clone = TestData {
-            field1: "test".to_string(),
-            field2: 42,
-        };
+        let test_data_clone = test_data.clone();
 
         let upload_task = tokio::spawn({
             let client = client.clone();
             async move {
                 client
-                    .upload("concurrent_test.json".to_string(), &test_data, true)
+                    .upload("concurrent_test.json".to_string(), &test_data)
                     .await
             }
         });
@@ -339,8 +351,8 @@ mod tests {
             }
         });
 
-        upload_task.await??;
-        let downloaded_data = download_task.await??;
+        let _ = upload_task.await.unwrap();
+        let downloaded_data = download_task.await.unwrap().unwrap();
 
         assert_eq!(test_data_clone, downloaded_data);
 
@@ -348,10 +360,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_upload_and_download_versioned() -> io::Result<()> {
-        let temp_dir = tempdir()?;
+    async fn test_upload_and_download_versioned() -> Result<(), LocalStorageError> {
+        let temp_dir = tempdir().unwrap();
         let base_path = temp_dir.path().to_path_buf();
-        let client = LocalClient::new(base_path).await?;
+        let client = LocalClient::new(base_path).await.unwrap();
 
         let test_data1 = TestData {
             field1: "version1".to_string(),
@@ -386,10 +398,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_versioned() -> io::Result<()> {
-        let temp_dir = tempdir()?;
+    async fn test_update_versioned() -> Result<(), LocalStorageError> {
+        let temp_dir = tempdir().unwrap();
         let base_path = temp_dir.path().to_path_buf();
-        let client = LocalClient::new(base_path).await?;
+        let client = LocalClient::new(base_path).await.unwrap();
 
         let test_data1 = TestData {
             field1: "initial".to_string(),
@@ -418,10 +430,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_version_at() -> io::Result<()> {
-        let temp_dir = tempdir()?;
+    async fn test_get_version_at() -> Result<(), LocalStorageError> {
+        let temp_dir = tempdir().unwrap();
         let base_path = temp_dir.path().to_path_buf();
-        let client = LocalClient::new(base_path).await?;
+        let client = LocalClient::new(base_path).await.unwrap();
 
         let test_data1 = TestData {
             field1: "version1".to_string(),
@@ -455,10 +467,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_list_versions() -> io::Result<()> {
-        let temp_dir = tempdir()?;
+    async fn test_list_versions() -> Result<(), LocalStorageError> {
+        let temp_dir = tempdir().unwrap();
         let base_path = temp_dir.path().to_path_buf();
-        let client = LocalClient::new(base_path).await?;
+        let client = LocalClient::new(base_path).await.unwrap();
 
         let test_data = TestData {
             field1: "test".to_string(),

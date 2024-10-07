@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
 
+use super::local_storage::LocalStorageError;
 use super::StorageClient;
 
 #[derive(Error, Debug)]
@@ -25,6 +26,8 @@ pub enum ProjectRepositoryError {
     Redis(#[from] RedisClientError),
     #[error(transparent)]
     Gcs(#[from] GcsError),
+    #[error(transparent)]
+    Local(#[from] LocalStorageError),
     #[error(transparent)]
     Serialization(#[from] serde_json::Error),
     #[error("IO error: {0}")]
@@ -268,13 +271,13 @@ impl SnapshotDataRepository for ProjectLocalRepository {
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
-        self.client.upload(path, &snapshot_data, true).await?;
+        self.client.upload(path, &snapshot_data).await?;
         Ok(())
     }
 
     async fn delete_snapshot_data(&self, snapshot_id: &str) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
-        self.client.delete(&path).await?;
+        self.client.delete(path).await?;
         Ok(())
     }
 }
