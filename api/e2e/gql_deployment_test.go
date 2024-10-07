@@ -18,15 +18,19 @@ import (
 func TestCreateDeployment(t *testing.T) {
 	zipFilePath, zipBuffer, err := createZipFileWithYAML()
 	assert.NoError(t, err)
-	defer os.Remove(zipFilePath)
+	defer assert.NoError(t, os.Remove(zipFilePath))
 
 	metaFileContent := []byte("meta file content")
 	metaFilePath, err := os.CreateTemp("", "meta-*.txt")
 	assert.NoError(t, err)
-	defer os.Remove(metaFilePath.Name())
+
+	defer assert.NoError(t, os.Remove(metaFilePath.Name()))
+
 	_, err = metaFilePath.Write(metaFileContent)
 	assert.NoError(t, err)
-	metaFilePath.Close()
+
+	err = metaFilePath.Close()
+	assert.NoError(t, err)
 
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
@@ -37,14 +41,17 @@ func TestCreateDeployment(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = io.Copy(metaWriter, metaFileData)
 	assert.NoError(t, err)
-	metaFileData.Close()
+
+	err = metaFileData.Close()
+	assert.NoError(t, err)
 
 	zipWriter, err := writer.CreateFormFile("workflowsZip", filepath.Base(zipFilePath))
 	assert.NoError(t, err)
 	_, err = io.Copy(zipWriter, zipBuffer)
 	assert.NoError(t, err)
 
-	writer.Close()
+	err = writer.Close()
+	assert.NoError(t, err)
 
 	query := `mutation($input: CreateDeploymentInput!) {
 		createDeployment(input: $input) {
@@ -117,7 +124,12 @@ func createZipFileWithYAML() (string, *bytes.Buffer, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	defer tmpFile.Close()
+	defer func() {
+		err = tmpFile.Close()
+		if err != nil {
+			return
+		}
+	}()
 
 	_, err = tmpFile.Write(buffer.Bytes())
 	if err != nil {
