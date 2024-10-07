@@ -1,6 +1,8 @@
+use chrono::{DateTime, Utc};
 use lru::LruCache;
+use serde::Deserialize;
 use serde::{de::DeserializeOwned, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use tokio::fs::{self, OpenOptions};
@@ -12,6 +14,12 @@ pub struct LocalClient {
     base_path: PathBuf,
     file_locks: Mutex<HashMap<PathBuf, ()>>,
     cache: Mutex<LruCache<String, Vec<u8>>>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct VersionMetadata {
+    latest_version: String,
+    version_history: BTreeMap<i64, String>, // Timestamp to version path
 }
 
 impl LocalClient {
@@ -113,6 +121,129 @@ impl LocalClient {
 
         self.unlock_file(&full_path).await;
         result
+    }
+
+    pub async fn upload_versioned<T: Serialize + Send + Sync>(
+        &self,
+        path: String,
+        data: &T,
+    ) -> io::Result<String> {
+        let timestamp = Utc::now().timestamp_millis();
+        let versioned_path = format!("{}_v{}", path, timestamp);
+
+        // Upload the data
+        self.upload(versioned_path.clone(), data, true).await?;
+
+        // Update metadata
+        let metadata_path = format!("{}_metadata", path);
+        let mut metadata = match self
+            .download::<VersionMetadata>(metadata_path.clone())
+            .await
+        {
+            Ok(existing_metadata) => existing_metadata,
+            Err(_) => VersionMetadata {
+                latest_version: versioned_path.clone(),
+                version_history: BTreeMap::new(),
+            },
+        };
+
+        metadata.latest_version = versioned_path.clone();
+        metadata
+            .version_history
+            .insert(timestamp, versioned_path.clone());
+
+        // Limit version history to last 100 versions
+        if metadata.version_history.len() > 100 {
+            let oldest = *metadata.version_history.keys().next().unwrap();
+            metadata.version_history.remove(&oldest);
+        }
+
+        self.upload(metadata_path, &metadata, true).await?;
+
+        Ok(versioned_path)
+    }
+
+    pub async fn update_versioned<T: Serialize + Send + Sync>(
+        &self,
+        path: String,
+        data: &T,
+    ) -> io::Result<()> {
+        let metadata_path = format!("{}_metadata", path);
+        let metadata = self.download::<VersionMetadata>(metadata_path).await?;
+
+        self.upload(metadata.latest_version, data, true).await
+    }
+
+    pub async fn get_latest_version(&self, path_prefix: &str) -> io::Result<Option<String>> {
+        let metadata_path = format!("{}_metadata", path_prefix);
+        match self.download::<VersionMetadata>(metadata_path).await {
+            Ok(metadata) => Ok(Some(metadata.latest_version)),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn get_version_at(
+        &self,
+        path_prefix: &str,
+        timestamp: DateTime<Utc>,
+    ) -> io::Result<Option<String>> {
+        let metadata_path = format!("{}_metadata", path_prefix);
+        match self.download::<VersionMetadata>(metadata_path).await {
+            Ok(metadata) => {
+                let target_timestamp = timestamp.timestamp_millis();
+                Ok(metadata
+                    .version_history
+                    .range(..=target_timestamp)
+                    .next_back()
+                    .map(|(_, path)| path.clone()))
+            }
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn list_versions(
+        &self,
+        path_prefix: &str,
+        limit: Option<usize>,
+    ) -> io::Result<Vec<(DateTime<Utc>, String)>> {
+        let metadata_path = format!("{}_metadata", path_prefix);
+        match self.download::<VersionMetadata>(metadata_path).await {
+            Ok(metadata) => {
+                let mut versions: Vec<_> = metadata
+                    .version_history
+                    .iter()
+                    .rev()
+                    .take(limit.unwrap_or(usize::MAX))
+                    .map(|(&timestamp, path)| {
+                        (
+                            DateTime::<Utc>::from_timestamp_millis(timestamp).unwrap(),
+                            path.clone(),
+                        )
+                    })
+                    .collect();
+                versions.sort_by_key(|&(timestamp, _)| timestamp);
+                Ok(versions)
+            }
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(vec![]),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn download_latest<T: DeserializeOwned + Send>(
+        &self,
+        path_prefix: &str,
+    ) -> io::Result<Option<T>> {
+        let latest_version = self.get_latest_version(path_prefix).await?;
+
+        match latest_version {
+            Some(version_path) => {
+                let data = self.download(version_path).await?;
+                Ok(Some(data))
+            }
+            None => Ok(None), // No versions found
+        }
     }
 }
 
