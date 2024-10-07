@@ -18,13 +18,21 @@ import (
 func TestCreateDeployment(t *testing.T) {
 	zipFilePath, zipBuffer, err := createZipFileWithYAML()
 	assert.NoError(t, err)
-	defer assert.NoError(t, os.Remove(zipFilePath))
+	defer func() {
+		if err := os.Remove(zipFilePath); err != nil {
+			return
+		}
+	}()
 
 	metaFileContent := []byte("meta file content")
 	metaFilePath, err := os.CreateTemp("", "meta-*.txt")
 	assert.NoError(t, err)
 
-	defer assert.NoError(t, os.Remove(metaFilePath.Name()))
+	defer func() {
+		if err := os.Remove(metaFilePath.Name()); err != nil {
+			return
+		}
+	}()
 
 	_, err = metaFilePath.Write(metaFileContent)
 	assert.NoError(t, err)
