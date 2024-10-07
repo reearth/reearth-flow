@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::repository::ProjectSnapshotRepository;
+use crate::repository::{ProjectSnapshotRepository, RedisDataManager};
 use crate::types::data::SnapshotData;
 use crate::types::snapshot::{Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotInfo};
 use crate::utils::generate_id;
@@ -55,11 +55,16 @@ impl ProjectEditingSession {
         Ok(session_id)
     }
 
-    pub async fn get_diff_update(
+    pub async fn get_diff_update<R>(
         &self,
         _state_vector: Vec<u8>,
-    ) -> Result<(Vec<u8>, Vec<u8>), ProjectEditingSessionError<()>> {
+        redis_data_manager: &R,
+    ) -> Result<(Vec<u8>, Vec<u8>), ProjectEditingSessionError<R::Error>>
+    where
+        R: RedisDataManager,
+    {
         self.check_session_setup()?;
+        let current_state_update = redis_data_manager.get_current_state().await?;
         // Logic to get the diff update
         Ok((vec![], vec![]))
     }
