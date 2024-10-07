@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 
 use approx::{AbsDiffEq, RelativeEq};
+use geo_types::Line as GeoLine;
 use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
@@ -285,5 +286,17 @@ impl Hash for Line3DFloat {
 impl From<Line3DFloat> for LineString3D<f64> {
     fn from(line: Line3DFloat) -> Self {
         LineString3D::new(vec![line.0.start, line.0.end])
+    }
+}
+
+impl<T: CoordNum> From<GeoLine<T>> for Line2D<T> {
+    fn from(line: GeoLine<T>) -> Self {
+        Line2D::new(line.start, line.end)
+    }
+}
+
+impl<T: CoordNum> From<Line2D<T>> for GeoLine<T> {
+    fn from(line: Line2D<T>) -> Self {
+        GeoLine::new(line.start, line.end)
     }
 }

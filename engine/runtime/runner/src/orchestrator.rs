@@ -1,10 +1,13 @@
 use std::collections::HashMap;
+use std::env;
 use std::sync::Arc;
 
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt};
+use once_cell::sync::Lazy;
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_runtime::event::EventHandler;
 use reearth_flow_runtime::executor_operation::{ExecutorOptions, NodeContext};
 use reearth_flow_runtime::kvs::create_kv_store;
 use reearth_flow_runtime::node::NodeKind;
@@ -17,6 +20,27 @@ use tokio::task::JoinHandle;
 
 use crate::errors::Error;
 use crate::executor::{run_dag_executor, Executor};
+
+static CHANNEL_BUFFER_SIZE: Lazy<usize> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_CHANNEL_BUFFER_SIZE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(256)
+});
+
+static EVENT_HUB_CAPACITY: Lazy<usize> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_EVENT_HUB_CAPACITY")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(8192)
+});
+
+static THREAD_POOL_SIZE: Lazy<usize> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_THREAD_POOL_SIZE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(30)
+});
 
 #[derive(Clone)]
 pub struct Orchestrator {
@@ -31,20 +55,20 @@ impl Orchestrator {
     #[allow(clippy::too_many_arguments)]
     pub async fn run_apps(
         &self,
-        _job_id: String,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
+        event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<(), Error> {
         let executor = Executor {};
         let options = ExecutorOptions {
-            channel_buffer_sz: 20,
-            event_hub_capacity: 20,
+            channel_buffer_sz: *CHANNEL_BUFFER_SIZE,
+            event_hub_capacity: *EVENT_HUB_CAPACITY,
             error_threshold: None,
-            thread_pool_size: 30,
+            thread_pool_size: *THREAD_POOL_SIZE,
         };
         let expr_engine = Engine::new();
         if let Some(with) = &workflow.with {
@@ -68,6 +92,7 @@ impl Orchestrator {
                 dag_executor,
                 shutdown_clone,
                 state,
+                event_handlers,
             )
         });
 
@@ -83,23 +108,23 @@ impl Orchestrator {
     #[allow(clippy::too_many_arguments)]
     pub async fn run_all(
         &self,
-        job_id: String,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
+        event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<(), Error> {
         let pipeline_shutdown = shutdown.clone();
         self.run_apps(
-            job_id,
             workflow,
             factories,
             pipeline_shutdown,
             logger_factory,
             storage_resolver,
             state,
+            event_handlers,
         )
         .await
     }

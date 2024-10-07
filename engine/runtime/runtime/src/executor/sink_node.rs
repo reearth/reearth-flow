@@ -184,6 +184,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             .unwrap();
         let _ = self.event_sender.send(Event::SinkFlushed {
             node: self.node_handle.clone(),
+            name: self.sink.name().to_string(),
         });
         Ok(())
     }
@@ -304,6 +305,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)));
         let _ = self.event_sender.send(Event::SinkFinished {
             node: self.node_handle.clone(),
+            name: self.sink.name().to_string(),
         });
         let span = self.span.clone();
         let logger = self.logger.clone();

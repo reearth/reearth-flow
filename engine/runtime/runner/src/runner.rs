@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
 use reearth_flow_action_log::factory::LoggerFactory;
-use reearth_flow_runtime::{node::NodeKind, shutdown};
+use reearth_flow_runtime::{event::EventHandler, node::NodeKind, shutdown};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Workflow;
@@ -13,12 +13,29 @@ pub struct Runner;
 
 impl Runner {
     pub fn run(
-        job_id: String,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
+    ) -> Result<(), crate::errors::Error> {
+        Self::run_with_event_handler(
+            workflow,
+            factories,
+            logger_factory,
+            storage_resolver,
+            state,
+            vec![],
+        )
+    }
+
+    pub fn run_with_event_handler(
+        workflow: Workflow,
+        factories: HashMap<String, NodeKind>,
+        logger_factory: Arc<LoggerFactory>,
+        storage_resolver: Arc<StorageResolver>,
+        state: Arc<State>,
+        event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<(), crate::errors::Error> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(30)
@@ -42,13 +59,13 @@ impl Runner {
         let result = runtime.block_on(async move {
             orchestrator
                 .run_all(
-                    job_id,
                     workflow,
                     factories,
                     shutdown_receiver,
                     logger_factory,
                     storage_resolver,
                     state,
+                    event_handlers,
                 )
                 .await
         });
@@ -65,12 +82,30 @@ pub struct AsyncRunner;
 
 impl AsyncRunner {
     pub async fn run(
-        job_id: String,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
+    ) -> Result<(), crate::errors::Error> {
+        Self::run_with_event_handler(
+            workflow,
+            factories,
+            logger_factory,
+            storage_resolver,
+            state,
+            vec![],
+        )
+        .await
+    }
+
+    pub async fn run_with_event_handler(
+        workflow: Workflow,
+        factories: HashMap<String, NodeKind>,
+        logger_factory: Arc<LoggerFactory>,
+        storage_resolver: Arc<StorageResolver>,
+        state: Arc<State>,
+        event_handlers: Vec<Box<dyn EventHandler>>,
     ) -> Result<(), crate::errors::Error> {
         let start = Instant::now();
         let span = info_span!(
@@ -87,13 +122,13 @@ impl AsyncRunner {
         let orchestrator = Orchestrator::new(Arc::new(runtime));
         let result = orchestrator
             .run_all(
-                job_id,
                 workflow,
                 factories,
                 shutdown_receiver,
                 logger_factory,
                 storage_resolver,
                 state,
+                event_handlers,
             )
             .await;
         if let Err(e) = &result {

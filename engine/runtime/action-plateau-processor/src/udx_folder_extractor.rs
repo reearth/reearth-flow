@@ -1,4 +1,9 @@
-use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
+use std::{
+    collections::HashMap,
+    path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR},
+    str::FromStr,
+    sync::Arc,
+};
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
@@ -194,7 +199,7 @@ fn mapper(
             .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?
     };
     let folders = city_gml_path
-        .split('/')
+        .split(MAIN_SEPARATOR)
         .map(String::from)
         .collect::<Vec<String>>();
     let city_gml_path = Uri::from_str(city_gml_path.to_string().as_str())
@@ -214,7 +219,7 @@ fn mapper(
             root = fourth_last.to_string();
             pkg = second_last.to_string();
             dirs = second_last.to_string();
-            rtdir = PathBuf::from(folders[..folders.len() - 3].join("/"));
+            rtdir = PathBuf::from(folders[..folders.len() - 3].join(MAIN_SEPARATOR_STR));
         }
         [.., fifth_last, _fourth_last, third_last, second_last, _last]
             if PKG_FOLDERS.contains(&third_last.as_str()) =>
@@ -222,8 +227,8 @@ fn mapper(
             root = fifth_last.to_string();
             pkg = third_last.to_string();
             area = second_last.to_string();
-            dirs = format!("{}/{}", pkg, area);
-            rtdir = PathBuf::from(folders[..folders.len() - 4].join("/"));
+            dirs = format!("{}{}{}", pkg, MAIN_SEPARATOR_STR, area);
+            rtdir = PathBuf::from(folders[..folders.len() - 4].join(MAIN_SEPARATOR_STR));
         }
         [.., sixth_last, _fifth_last, fourth_last, third_last, second_last, _last]
             if PKG_FOLDERS.contains(&fourth_last.as_str()) =>
@@ -232,8 +237,11 @@ fn mapper(
             pkg = fourth_last.to_string();
             admin = third_last.to_string();
             area = second_last.to_string();
-            dirs = format!("{}/{}/{}", pkg, admin, area);
-            rtdir = PathBuf::from(folders[..folders.len() - 5].join("/"));
+            dirs = format!(
+                "{}{}{}{}{}",
+                pkg, MAIN_SEPARATOR_STR, admin, MAIN_SEPARATOR_STR, area
+            );
+            rtdir = PathBuf::from(folders[..folders.len() - 5].join(MAIN_SEPARATOR_STR));
         }
         _ => (),
     };

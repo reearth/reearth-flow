@@ -1,4 +1,7 @@
+use std::hash::{Hash, Hasher};
+
 use approx::{AbsDiffEq, RelativeEq};
+use geo_types::Polygon as GeoPolygon;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
 use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
@@ -6,6 +9,7 @@ use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use crate::algorithm::contains::Contains;
+use crate::algorithm::coords_iter::CoordsIter;
 use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
 use crate::algorithm::GeoFloat;
 
@@ -512,5 +516,83 @@ where
     fn is_elevation_zero(&self) -> bool {
         self.exterior.is_elevation_zero()
             && self.interiors.iter().all(LineString::is_elevation_zero)
+    }
+}
+
+impl<Z: CoordFloat> Polygon<f64, Z> {
+    pub fn approx_eq(&self, other: &Polygon<f64, Z>, epsilon: f64) -> bool {
+        self.exterior.approx_eq(&other.exterior, epsilon)
+            && self
+                .interiors
+                .iter()
+                .zip(other.interiors.iter())
+                .all(|(lhs, rhs)| lhs.approx_eq(rhs, epsilon))
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Polygon2DFloat(pub Polygon2D<f64>);
+
+impl Eq for Polygon2DFloat {}
+
+impl PartialEq for Polygon2DFloat {
+    fn eq(&self, other: &Self) -> bool {
+        let epsilon = 0.001;
+        if self.0.interiors().len() != other.0.interiors().len() {
+            return false;
+        }
+        self.0.exterior().approx_eq(other.0.exterior(), epsilon)
+            && self
+                .0
+                .interiors()
+                .iter()
+                .zip(other.0.interiors())
+                .all(|(lhs, rhs)| lhs.approx_eq(rhs, epsilon))
+    }
+}
+
+impl Hash for Polygon2DFloat {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let precision_inverse = 1000.0; // Inverse of epsilon used in PartialEq
+        for coord in self.0.exterior_coords_iter() {
+            let hashed_coord = (
+                (coord.x * precision_inverse).round() as i64,
+                (coord.y * precision_inverse).round() as i64,
+            );
+            hashed_coord.hash(state);
+        }
+        for interior in self.0.interiors() {
+            for coord in interior.coords_iter() {
+                let hashed_coord = (
+                    (coord.x * precision_inverse).round() as i64,
+                    (coord.y * precision_inverse).round() as i64,
+                );
+                hashed_coord.hash(state);
+            }
+        }
+    }
+}
+
+impl<T: CoordNum> From<Polygon2D<T>> for GeoPolygon<T> {
+    fn from(polygon: Polygon2D<T>) -> Self {
+        let exterior = polygon.exterior().clone().into();
+        let interiors = polygon
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        GeoPolygon::new(exterior, interiors)
+    }
+}
+
+impl<T: CoordNum> From<GeoPolygon<T>> for Polygon2D<T> {
+    fn from(polygon: GeoPolygon<T>) -> Self {
+        let exterior = polygon.exterior().clone().into();
+        let interiors = polygon
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        Polygon2D::new(exterior, interiors)
     }
 }

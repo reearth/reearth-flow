@@ -99,6 +99,11 @@ pub struct Uri {
 }
 
 impl Uri {
+    pub fn separator(&self) -> String {
+        let sep = self.protocol.separator();
+        sep.to_string()
+    }
+
     pub fn for_test(uri: &str) -> Self {
         Self::from_str(uri).unwrap()
     }
@@ -157,16 +162,27 @@ impl Uri {
 
     pub fn path(&self) -> PathBuf {
         let p = &self.uri[self.protocol.as_str().len() + PROTOCOL_SEPARATOR.len()..];
-        let sub_path = p
-            .split(self.protocol.separator())
-            .skip(1)
-            .collect::<Vec<&str>>()
-            .join("/")
-            .to_string();
-        if self.is_dir() {
-            PathBuf::from(format!("/{}/", sub_path))
-        } else {
-            PathBuf::from(format!("/{}", sub_path))
+        match self.protocol {
+            Protocol::Google | Protocol::Http | Protocol::Https => PathBuf::from(format!(
+                "{}{}",
+                self.separator().as_str(),
+                p.split(self.protocol.separator())
+                    .skip(1)
+                    .collect::<Vec<&str>>()
+                    .join(self.separator().as_str())
+            )),
+            Protocol::File | Protocol::Ram => {
+                let sub_path = p
+                    .split(self.protocol.separator())
+                    .collect::<Vec<&str>>()
+                    .join(self.separator().as_str())
+                    .to_string();
+                if self.is_dir() {
+                    PathBuf::from(format!("{}{}", sub_path, self.separator().as_str()))
+                } else {
+                    PathBuf::from(sub_path)
+                }
+            }
         }
     }
 
@@ -609,7 +625,7 @@ mod tests {
     #[test]
     fn test_sub_path() {
         assert_eq!(
-            Uri::for_test("file:///foo/hoge")._path(),
+            Uri::for_test("file:///foo/hoge").path(),
             PathBuf::from_str("/foo/hoge").unwrap()
         );
         assert_eq!(

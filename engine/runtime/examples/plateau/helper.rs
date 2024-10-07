@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::vec;
 use std::{env, fs, path::Path, sync::Arc};
 
 use once_cell::sync::Lazy;
@@ -41,6 +42,31 @@ pub(crate) static ALL_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::
     all
 });
 
+struct EventHandler;
+
+#[async_trait::async_trait]
+impl reearth_flow_runtime::event::EventHandler for EventHandler {
+    async fn on_event(&self, event: &reearth_flow_runtime::event::Event) {
+        match event {
+            reearth_flow_runtime::event::Event::SourceFlushed => {
+                // TODO: Implement this
+            }
+            reearth_flow_runtime::event::Event::ProcessorFinished { .. } => {
+                // TODO: Implement this
+            }
+            reearth_flow_runtime::event::Event::SinkFlushed { .. } => {
+                // TODO: Implement this
+            }
+            reearth_flow_runtime::event::Event::SinkFinished { .. } => {
+                // TODO: Implement this
+            }
+            reearth_flow_runtime::event::Event::EdgePassThrough { .. } => {
+                // TODO: Implement this
+            }
+        }
+    }
+}
+
 #[allow(dead_code)]
 pub(crate) fn execute(workflow: &str) {
     unsafe { env::set_var("RAYON_NUM_THREADS", "10") };
@@ -57,13 +83,15 @@ pub(crate) fn execute(workflow: &str) {
         create_root_logger(action_log_uri.path()),
         action_log_uri.path(),
     ));
-    Runner::run(
-        job_id.to_string(),
+    let handlers: Vec<Box<dyn reearth_flow_runtime::event::EventHandler>> =
+        vec![Box::new(EventHandler)];
+    Runner::run_with_event_handler(
         workflow,
         ALL_ACTION_FACTORIES.clone(),
         logger_factory,
         storage_resolver,
         state,
+        handlers,
     )
     .expect("Failed to run workflow.");
 }
@@ -79,7 +107,7 @@ pub fn create_workflow(workflow: &str) -> Workflow {
     let path = absolute_path.unwrap();
     let yaml = Transformer::new(path, false).unwrap();
     let yaml = yaml.to_string();
-    Workflow::try_from_str(yaml.as_str())
+    Workflow::try_from(yaml.as_str()).expect("Failed to parse workflow.")
 }
 
 pub fn setup_logging_and_tracing() {
