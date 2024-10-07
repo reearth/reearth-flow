@@ -22,7 +22,7 @@ where
         }
     }
 
-    pub async fn create_snapshot(
+    pub async fn create_snapshot_with_data(
         &self,
         data: CreateSnapshotData,
     ) -> Result<ProjectSnapshot, R::Error> {
@@ -56,21 +56,6 @@ where
             .await?;
 
         Ok(snapshot)
-    }
-
-    pub async fn get_latest_snapshot(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, R::Error> {
-        self.snapshot_repository
-            .get_latest_snapshot(project_id)
-            .await
-    }
-
-    pub async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, R::Error> {
-        self.snapshot_repository
-            .get_latest_snapshot_state(project_id)
-            .await
     }
 }
 

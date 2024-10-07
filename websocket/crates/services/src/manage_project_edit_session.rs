@@ -1,9 +1,10 @@
 use chrono::Utc;
 use flow_websocket_domain::project::ProjectEditingSession;
 use flow_websocket_domain::repository::{
-    ProjectEditingSessionRepository, ProjectSnapshotRepository,
+    ProjectEditingSessionRepository, ProjectSnapshotRepository, SnapshotDataRepository,
 };
 use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo};
+use flow_websocket_domain::types::data::SnapshotData;
 use flow_websocket_domain::types::snapshot::ProjectSnapshot;
 use flow_websocket_domain::utils::generate_id;
 use flow_websocket_infra::persistence::project_repository::ProjectRedisRepository;
@@ -16,29 +17,34 @@ use crate::ProjectServiceError;
 const MAX_EMPTY_SESSION_DURATION: i64 = 10 * 1000; // 10 seconds
 const MAX_SNAPSHOT_DELTA: i64 = 5 * 60 * 1000; // 5 minutes
 
-pub struct ManageEditSessionService<R, S>
+pub struct ManageEditSessionService<R, S, D>
 where
     R: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync,
     S: ProjectSnapshotRepository<Error = ProjectServiceError> + Send + Sync,
+    D: SnapshotDataRepository<Error = ProjectServiceError> + Send + Sync,
 {
     session_repository: Arc<R>,
     snapshot_repository: Arc<S>,
+    snapshot_data_repository: Arc<D>,
     redis_repository: Arc<ProjectRedisRepository>,
 }
 
-impl<R, S> ManageEditSessionService<R, S>
+impl<R, S, D> ManageEditSessionService<R, S, D>
 where
     R: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync,
     S: ProjectSnapshotRepository<Error = ProjectServiceError> + Send + Sync,
+    D: SnapshotDataRepository<Error = ProjectServiceError> + Send + Sync,
 {
     pub fn new(
         session_repository: Arc<R>,
         snapshot_repository: Arc<S>,
+        snapshot_data_repository: Arc<D>,
         redis_repository: Arc<ProjectRedisRepository>,
     ) -> Self {
         Self {
             session_repository,
             snapshot_repository,
+            snapshot_data_repository,
             redis_repository,
         }
     }
@@ -114,7 +120,7 @@ where
             let current_time = Utc::now();
             let snapshot_time_delta = (current_time - last_snapshot_at).num_milliseconds();
             if snapshot_time_delta > MAX_SNAPSHOT_DELTA {
-                let _state = session.get_state_update().await?;
+                let state = session.get_state_update().await?;
 
                 let metadata = Metadata::new(
                     generate_id(14, "snap"),
@@ -140,8 +146,14 @@ where
                 );
 
                 let snapshot = ProjectSnapshot::new(metadata, snapshot_state);
+                let snapshot_data =
+                    SnapshotData::new(session.project_id.clone(), state, None, None);
 
                 self.snapshot_repository.create_snapshot(snapshot).await?;
+                self.snapshot_data_repository
+                    .create_snapshot_data(snapshot_data)
+                    .await?;
+
                 data.last_snapshot_at = Some(current_time);
             }
         }
