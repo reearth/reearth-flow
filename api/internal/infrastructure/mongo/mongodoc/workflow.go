@@ -28,7 +28,7 @@ func NewWorkflow(workflow *workflow.Workflow) (*WorkflowDocument, string) {
 		ID:        workflow.ID.String(),
 		Project:   workflow.Project.String(),
 		Workspace: workflow.Workspace.String(),
-		URL:       *&workflow.URL,
+		URL:       workflow.URL,
 	}, wid
 }
 
