@@ -37,16 +37,13 @@ func (r *Workflow) Filtered(f repo.WorkspaceFilter) repo.Workflow {
 	}
 }
 
-func (r *Workflow) FindByID(ctx context.Context, workspaceID accountdomain.WorkspaceID, id id.WorkflowID) (*workflow.Workflow, error) {
+func (r *Workflow) FindByID(ctx context.Context, id id.WorkflowID) (*workflow.Workflow, error) {
 	return r.findOne(ctx, bson.M{
 		"id": id.String(),
 	}, true)
 }
 
-func (r *Workflow) Save(ctx context.Context, workspaceID accountdomain.WorkspaceID, workflow *workflow.Workflow) error {
-	if !r.f.CanWrite(workspaceID) {
-		return repo.ErrOperationDenied
-	}
+func (r *Workflow) Save(ctx context.Context, workflow *workflow.Workflow) error {
 	doc, id := mongodoc.NewWorkflow(workflow)
 	return r.client.SaveOne(ctx, id, doc)
 }
@@ -63,7 +60,7 @@ func (r *Workflow) findOne(ctx context.Context, filter any, filterByWorkspaces b
 	return c.Result[0], nil
 }
 
-func (r *Workflow) Remove(ctx context.Context, workspaceID accountdomain.WorkspaceID, id id.WorkflowID) error {
+func (r *Workflow) Remove(ctx context.Context, id id.WorkflowID) error {
 	return r.client.RemoveOne(ctx, r.writeFilter(bson.M{
 		"id": id.String(),
 	}))

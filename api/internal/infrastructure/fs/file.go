@@ -36,8 +36,6 @@ func NewFile(fs afero.Fs, urlBase string) (gateway.File, error) {
 	}, nil
 }
 
-// asset
-
 func (f *fileRepo) ReadAsset(ctx context.Context, filename string) (io.ReadCloser, error) {
 	return f.read(ctx, filepath.Join(assetDir, sanitize.Path(filename)))
 }
@@ -48,7 +46,7 @@ func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, 
 	if err != nil {
 		return nil, 0, err
 	}
-	return getAssetFileURL(f.urlBase, filename), size, nil
+	return getFileURL(f.urlBase, filename), size, nil
 }
 
 func (f *fileRepo) RemoveAsset(ctx context.Context, u *url.URL) error {
@@ -60,6 +58,30 @@ func (f *fileRepo) RemoveAsset(ctx context.Context, u *url.URL) error {
 		return gateway.ErrInvalidFile
 	}
 	return f.delete(ctx, filepath.Join(assetDir, filepath.Base(p)))
+}
+
+func (f *fileRepo) ReadWorkflow(ctx context.Context, filename string) (io.ReadCloser, error) {
+	return f.read(ctx, filepath.Join(workflowsDir, sanitize.Path(filename)))
+}
+
+func (f *fileRepo) UploadWorkflow(ctx context.Context, file *file.File) (*url.URL, error) {
+	filename := sanitize.Path(newWorkflowID() + filepath.Ext(file.Path))
+	_, err := f.upload(ctx, filepath.Join(workflowsDir, filename), file.Content)
+	if err != nil {
+		return nil, err
+	}
+	return getFileURL(f.urlBase, filename), nil
+}
+
+func (f *fileRepo) RemoveWorkflow(ctx context.Context, u *url.URL) error {
+	if u == nil {
+		return nil
+	}
+	p := sanitize.Path(u.Path)
+	if p == "" || f.urlBase == nil || u.Scheme != f.urlBase.Scheme || u.Host != f.urlBase.Host || path.Dir(p) != f.urlBase.Path {
+		return gateway.ErrInvalidFile
+	}
+	return f.delete(ctx, filepath.Join(workflowsDir, filepath.Base(p)))
 }
 
 // helpers
@@ -120,7 +142,7 @@ func (f *fileRepo) delete(ctx context.Context, filename string) error {
 	return nil
 }
 
-func getAssetFileURL(base *url.URL, filename string) *url.URL {
+func getFileURL(base *url.URL, filename string) *url.URL {
 	if base == nil {
 		return nil
 	}
@@ -133,4 +155,8 @@ func getAssetFileURL(base *url.URL, filename string) *url.URL {
 
 func newAssetID() string {
 	return id.NewAssetID().String()
+}
+
+func newWorkflowID() string {
+	return id.NewWorkflowID().String()
 }

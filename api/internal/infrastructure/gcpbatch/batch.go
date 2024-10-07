@@ -9,7 +9,6 @@ import (
 	"github.com/googleapis/gax-go/v2"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearth-flow/api/pkg/workflow"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
 )
@@ -45,14 +44,10 @@ func NewBatch(ctx context.Context, config Config) (gateway.Batch, error) {
 	}, nil
 }
 
-func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflow *workflow.Workflow, projectID id.ProjectID) (string, error) {
-	if workflow.YamlString == nil {
-		return "", fmt.Errorf("workflow YAML content is missing")
-	}
-
+func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL string, projectID id.ProjectID) (string, error) {
 	jobName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", b.config.ProjectID, b.config.Region, jobID)
 	parent := fmt.Sprintf("projects/%s/locations/%s", b.config.ProjectID, b.config.Region)
-	workflowCommand := fmt.Sprintf("echo %q | /bin/reearth-flow run --workflow -", *workflow.YamlString)
+	workflowCommand := fmt.Sprintf("echo %q | /bin/reearth-flow run --workflow -", workflowsURL)
 	commands := []string{
 		"/bin/sh",
 		"-c",
@@ -104,8 +99,8 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflow *wor
 	}
 
 	labels := map[string]string{
-		"workflow_id": workflow.ID.String(),
-		"project_id":  projectID.String(),
+		"workflow_url": workflowsURL,
+		"project_id":   projectID.String(),
 	}
 
 	logsPolicy := &batchpb.LogsPolicy{

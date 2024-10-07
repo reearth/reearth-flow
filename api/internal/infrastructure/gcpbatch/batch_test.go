@@ -9,7 +9,6 @@ import (
 	"github.com/googleapis/gax-go/v2"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearth-flow/api/pkg/workflow"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	// "google.golang.org/api/iterator"
@@ -72,18 +71,13 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 
 	jobID, _ := id.JobIDFrom("test-job-id")
 	projectID, _ := id.ProjectIDFrom("test-project-id")
-	workflowID, _ := id.WorkflowIDFrom("test-workflow-id")
-	yamlString := "test-yaml-content"
-	testWorkflow := &workflow.Workflow{
-		ID:         workflowID,
-		YamlString: &yamlString,
-	}
+	workflowURL := "gs://test-bucket/test-workflow.yaml"
 
 	expectedJobName := "projects/test-project/locations/us-central1/jobs/test-job-id"
 
 	mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).Return(&batchpb.Job{Name: expectedJobName}, nil)
 
-	jobName, err := batchRepo.SubmitJob(ctx, jobID, testWorkflow, projectID)
+	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, projectID)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedJobName, jobName)

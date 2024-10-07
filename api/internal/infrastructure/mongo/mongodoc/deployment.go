@@ -13,7 +13,7 @@ type DeploymentDocument struct {
 	ID          string    `bson:"id"`
 	ProjectID   string    `bson:"projectid"`
 	WorkspaceID string    `bson:"workspaceid"`
-	WorkflowID  string    `bson:"workflowid"`
+	WorkflowURL string    `bson:"workflowurl"`
 	Version     string    `bson:"version"`
 	CreatedAt   time.Time `bson:"createdat"`
 	UpdatedAt   time.Time `bson:"updatedat"`
@@ -34,7 +34,7 @@ func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, string) {
 		ID:          did,
 		ProjectID:   d.Project().String(),
 		WorkspaceID: d.Workspace().String(),
-		WorkflowID:  d.Workflow().String(),
+		WorkflowURL: d.WorkflowUrl(),
 		Version:     d.Version(),
 		CreatedAt:   d.CreatedAt(),
 		UpdatedAt:   d.UpdatedAt(),
@@ -54,16 +54,12 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 	if err != nil {
 		return nil, err
 	}
-	fid, err := id.WorkflowIDFrom(d.WorkflowID)
-	if err != nil {
-		return nil, err
-	}
 
 	return deployment.New().
 		ID(did).
 		Project(pid).
 		Workspace(wid).
-		Workflow(fid).
+		WorkflowURL(d.WorkflowURL).
 		Version(d.Version).
 		CreatedAt(d.CreatedAt).
 		UpdatedAt(d.UpdatedAt).

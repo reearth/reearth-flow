@@ -24,6 +24,7 @@ type Deployment struct {
 	workspaceRepo  accountrepo.Workspace
 	transaction    usecasex.Transaction
 	batch          gateway.Batch
+	file           gateway.File
 }
 
 func NewDeployment(r *repo.Container, gr *gateway.Container) interfaces.Deployment {
@@ -35,6 +36,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container) interfaces.Deployme
 		workspaceRepo:  r.Workspace,
 		transaction:    r.Transaction,
 		batch:          gr.Batch,
+		file:           gr.File,
 	}
 }
 
@@ -68,7 +70,8 @@ func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentPa
 		return nil, err
 	}
 
-	if err := i.workflowRepo.Save(ctx, p.Workspace, p.Workflow); err != nil {
+	url, err := i.file.UploadWorkflow(ctx, &p.Workflows)
+	if err != nil {
 		return nil, err
 	}
 
@@ -76,7 +79,7 @@ func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentPa
 		NewID().
 		Project(p.Project).
 		Workspace(p.Workspace).
-		Workflow(p.Workflow.ID).
+		WorkflowURL(url.String()).
 		Version("v0.1"). //version is hardcoded for now @pyshx
 		Build()
 	if err != nil {
@@ -113,11 +116,6 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	wf, err := i.workflowRepo.FindByID(ctx, d.Workspace(), d.Workflow())
-	if err != nil {
-		return nil, err
-	}
-
 	j, err := job.New().
 		NewID().
 		Deployment(d.ID()).
@@ -132,7 +130,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	_, err = i.batch.SubmitJob(ctx, j.ID(), wf, d.Project())
+	_, err = i.batch.SubmitJob(ctx, j.ID(), d.WorkflowUrl(), d.Project())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}
