@@ -133,9 +133,8 @@ func createZipFileWithYAML() (string, *bytes.Buffer, error) {
 		return "", nil, err
 	}
 	defer func() {
-		err = tmpFile.Close()
-		if err != nil {
-			return
+		if cerr := tmpFile.Close(); cerr != nil {
+			err = cerr // This will overwrite the return error if closing fails
 		}
 	}()
 
