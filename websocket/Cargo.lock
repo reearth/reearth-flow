@@ -619,6 +619,7 @@ dependencies = [
  "redis 0.25.4",
  "serde",
  "thiserror",
+ "tokio",
  "uuid",
 ]
 

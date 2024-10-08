@@ -18,3 +18,4 @@ redis.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 uuid.workspace = true
+tokio.workspace = true

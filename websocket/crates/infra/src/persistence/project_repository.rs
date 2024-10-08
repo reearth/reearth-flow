@@ -142,6 +142,16 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
 
         Ok(())
     }
+
+    async fn update_snapshot_data(
+        &self,
+        project_id: &str,
+        snapshot_data: SnapshotData,
+    ) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", project_id);
+        self.client.upload(path, &snapshot_data).await?;
+        Ok(())
+    }
 }
 #[async_trait]
 impl SnapshotDataRepository for ProjectGcsRepository {
