@@ -1,9 +1,8 @@
 use google_cloud_storage::client::{Client, ClientConfig};
 use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
-use std::fs;
-use std::io::Read;
-use std::path::Path;
 use thiserror::Error;
+use tokio::fs;
+use tokio::io::AsyncReadExt;
 
 #[derive(Error, Debug)]
 pub enum GcsError {
@@ -36,13 +35,13 @@ impl GcsClient {
         local_directory: &str,
         gcs_directory: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let local_path = Path::new(local_directory);
-        let dir_entries = fs::read_dir(local_path)?;
+        let local_path = fs::canonicalize(local_directory).await?;
+        let mut dir_entries = fs::read_dir(local_path).await?;
 
-        for entry in dir_entries {
-            let entry = entry?;
+        while let Some(entry) = dir_entries.next_entry().await? {
             let path = entry.path();
-            if path.is_dir() {
+            let file_type = entry.file_type().await?;
+            if file_type.is_dir() {
                 let new_local_dir = path.to_str().unwrap();
                 let new_gcs_dir = format!(
                     "{}/{}",
@@ -54,9 +53,9 @@ impl GcsClient {
             } else {
                 let file_name = path.file_name().unwrap().to_str().unwrap();
                 let gcs_path = format!("{}/{}", gcs_directory, file_name);
-                let mut file = fs::File::open(&path)?;
+                let mut file = fs::File::open(&path).await?;
                 let mut buffer = Vec::new();
-                file.read_to_end(&mut buffer)?;
+                file.read_to_end(&mut buffer).await?;
 
                 let upload_type = UploadType::Simple(Media::new(gcs_path.clone()));
                 let upload_request = UploadObjectRequest {
