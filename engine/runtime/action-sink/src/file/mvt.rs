@@ -107,8 +107,6 @@ pub struct MVTWriterParam {
 }
 
 impl Sink for MVTWriter {
-    fn initialize(&self, _ctx: NodeContext) {}
-
     fn name(&self) -> &str {
         "MVTWriter"
     }

@@ -121,7 +121,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             panic!("Must pass in a node")
         };
         let node_handle = node.handle.clone();
-        let NodeKind::Sink(sink) = kind else {
+        let NodeKind::Sink(mut sink) = kind else {
             panic!("Must pass in a sink node");
         };
 
