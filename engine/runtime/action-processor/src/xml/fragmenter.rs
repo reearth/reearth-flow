@@ -15,7 +15,6 @@ use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use uuid::Uuid;
 
 use super::errors::{Result, XmlProcessorError};
 
@@ -171,16 +170,14 @@ impl Processor for XmlFragmenter {
     ) -> Result<(), BoxedError> {
         match &self.params {
             XmlFragmenterParam::Url { property } => {
-                let fragments = action_value_to_fragment(
+                send_xml_fragment(
                     &ctx,
+                    fw,
                     &ctx.feature,
                     &property.attribute,
                     &self.elements_to_match_ast,
                     &self.elements_to_exclude_ast,
                 )?;
-                for fragment in fragments {
-                    fw.send(ctx.new_with_feature_and_port(fragment, DEFAULT_PORT.clone()));
-                }
             }
         }
         Ok(())
@@ -199,14 +196,14 @@ impl Processor for XmlFragmenter {
     }
 }
 
-fn action_value_to_fragment(
+fn send_xml_fragment(
     ctx: &ExecutorContext,
+    fw: &mut dyn ProcessorChannelForwarder,
     feature: &Feature,
     attribute: &Attribute,
     elements_to_match_ast: &rhai::AST,
     elements_to_exclude_ast: &rhai::AST,
-) -> Result<Vec<Feature>> {
-    let mut result = Vec::<Feature>::new();
+) -> Result<()> {
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let expr_engine = Arc::clone(&ctx.expr_engine);
 
@@ -221,7 +218,7 @@ fn action_value_to_fragment(
         .map(|v| v.clone().into_string().unwrap_or_default())
         .collect::<Vec<String>>();
     if elements_to_match.is_empty() {
-        return Ok(result);
+        return Ok(());
     }
 
     let elements_to_exclude = scope
@@ -251,29 +248,26 @@ fn action_value_to_fragment(
     let document = xml::parse(raw_xml.as_str())
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?;
 
-    let fragments = generate_fragment(&url, &document, &elements_to_match, &elements_to_exclude)?;
-    let xml_id_maps = fragments
-        .into_iter()
-        .map(|fragment| (fragment.xml_id.clone(), (uuid::Uuid::new_v4(), fragment)))
-        .collect::<HashMap<String, (Uuid, XmlFragment)>>();
-    for (_xml_id, (feature_id, fragment)) in xml_id_maps.into_iter() {
-        let mut value = Feature::new_with_id_and_attributes(feature_id, feature.attributes.clone());
-        XmlFragment::to_hashmap(fragment)
-            .into_iter()
-            .for_each(|(k, v)| {
-                value.attributes.insert(k, v);
-            });
-        result.push(value);
-    }
-    Ok(result)
+    generate_fragment(
+        ctx,
+        fw,
+        feature,
+        &url,
+        &document,
+        &elements_to_match,
+        &elements_to_exclude,
+    )
 }
 
 fn generate_fragment(
+    ctx: &ExecutorContext,
+    fw: &mut dyn ProcessorChannelForwarder,
+    feature: &Feature,
     uri: &Uri,
     document: &XmlDocument,
     elements_to_match: &[String],
     elements_to_exclude: &[String],
-) -> Result<Vec<XmlFragment>> {
+) -> Result<()> {
     let elements_to_match = elements_to_match
         .iter()
         .map(|element| format!("name()='{}'", element))
@@ -302,13 +296,12 @@ fn generate_fragment(
             )
         }
     };
-    let ctx = xml::create_context(document)
+    let xctx = xml::create_context(document)
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?;
     let root = xml::get_root_node(document)
         .map_err(|e| XmlProcessorError::Fragmenter(format!("{:?}", e)))?;
-    let mut nodes = xml::find_nodes_by_xpath(&ctx, &xpath, &root)
+    let mut nodes = xml::find_nodes_by_xpath(&xctx, &xpath, &root)
         .map_err(|_| XmlProcessorError::Fragmenter("Failed to evaluate xpath".to_string()))?;
-    let mut result = Vec::<XmlFragment>::new();
     for node in nodes.iter_mut() {
         let node_type = node
             .get_type()
@@ -336,13 +329,21 @@ fn generate_fragment(
             let xml_parent_id = node
                 .get_parent()
                 .map(|parent| xml::get_node_id(uri, &parent));
-            result.push(XmlFragment {
+
+            let fragment = XmlFragment {
                 xml_id,
                 fragment,
                 matched_tag: tag,
                 xml_parent_id,
-            });
+            };
+            let mut value = Feature::new_with_attributes(feature.attributes.clone());
+            XmlFragment::to_hashmap(fragment)
+                .into_iter()
+                .for_each(|(k, v)| {
+                    value.attributes.insert(k, v);
+                });
+            fw.send(ctx.new_with_feature_and_port(value, DEFAULT_PORT.clone()));
         }
     }
-    Ok(result)
+    Ok(())
 }

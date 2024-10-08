@@ -311,16 +311,50 @@ Maps attributes
     },
     "Mapper": {
       "type": "object",
-      "required": [
-        "attribute",
-        "expr"
-      ],
       "properties": {
         "attribute": {
-          "type": "string"
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "childAttribute": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "expr": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "multipleExpr": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parentAttribute": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "valueAttribute": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     }

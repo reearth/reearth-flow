@@ -2,7 +2,7 @@ id: 64931277-3a82-4a1c-88bc-9b54fe172518
 name: AttributeReader
 nodes:
   - id: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
-    name: FolderAndfilePathReader01
+    name: FolderAndfilePathReader
     type: subGraph
     subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
