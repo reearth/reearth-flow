@@ -31,7 +31,7 @@ impl GcsClient {
         })
     }
     pub async fn upload_directory(
-        self,
+        &self,
         local_directory: &str,
         gcs_directory: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -48,7 +48,7 @@ impl GcsClient {
                     gcs_directory,
                     path.file_name().unwrap().to_str().unwrap()
                 );
-                let future = self.clone().upload_directory(new_local_dir, &new_gcs_dir);
+                let future = self.upload_directory(new_local_dir, &new_gcs_dir);
                 Box::pin(future).await?;
             } else {
                 let file_name = path.file_name().unwrap().to_str().unwrap();
