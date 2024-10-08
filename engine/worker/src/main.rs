@@ -1,7 +1,9 @@
 mod factory;
+mod gcs;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use gcs::GcsClient;
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
 use reearth_flow_common::dir::setup_job_directory;
 use reearth_flow_common::uri::Uri;
@@ -52,6 +54,15 @@ fn main() {
         state,
     )
     .expect("Failed to run workflow");
+
+    // Send logs to GCS
+    let path = action_log_uri.path();
+    let rt = tokio::runtime::Runtime::new().expect("Failed to initialize tokio runtime");
+    let client = rt
+        .block_on(GcsClient::new("reearth-flow-log"))
+        .expect("Failed to initilized GCS client");
+    rt.block_on(client.upload_directory(path.to_str().unwrap(), path.to_str().unwrap()))
+        .expect("Failet to upload logs");
 
     // TODO: Clean up Process
 }
