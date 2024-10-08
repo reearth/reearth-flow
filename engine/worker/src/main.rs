@@ -60,9 +60,9 @@ fn main() {
     let rt = tokio::runtime::Runtime::new().expect("Failed to initialize tokio runtime");
     let client = rt
         .block_on(GcsClient::new("reearth-flow-log"))
-        .expect("Failed to initilized GCS client");
+        .expect("Failed to initialize GCS client");
     rt.block_on(client.upload_directory(path.to_str().unwrap(), path.to_str().unwrap()))
-        .expect("Failet to upload logs");
+        .expect("Failed to upload logs");
 
     // TODO: Clean up Process
 }
