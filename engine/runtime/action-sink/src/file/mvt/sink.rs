@@ -22,7 +22,7 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::geometry as geomotry_types;
+use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::Expr;
 use reearth_flow_types::Feature;
 use schemars::JsonSchema;
@@ -122,21 +122,11 @@ impl Sink for MVTWriter {
         };
         let geometry_value = geometry.value.clone();
         match geometry_value {
-            geomotry_types::GeometryValue::None => {
-                return Err(Box::new(SinkError::FileWriter(
-                    "Unsupported input".to_string(),
-                )));
-            }
-            geomotry_types::GeometryValue::CityGmlGeometry(_) => {
+            geometry_types::GeometryValue::CityGmlGeometry(_) => {
                 self.buffer.push(ctx.feature.clone());
             }
-            geomotry_types::GeometryValue::FlowGeometry2D(_) => {
-                return Err(Box::new(SinkError::FileWriter(
-                    "Unsupported input".to_string(),
-                )));
-            }
-            geomotry_types::GeometryValue::FlowGeometry3D(_) => {
-                return Err(Box::new(SinkError::FileWriter(
+            _ => {
+                return Err(Box::new(SinkError::MvtWriter(
                     "Unsupported input".to_string(),
                 )));
             }
@@ -145,7 +135,7 @@ impl Sink for MVTWriter {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let upstrem = &self.buffer;
+        let upstream = &self.buffer;
         let tile_id_conv = TileIdMethod::Hilbert;
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let output = self.params.output.clone();
@@ -159,7 +149,7 @@ impl Sink for MVTWriter {
             let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
             let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
             scope.spawn(|| {
-                let _ = geometry_slicing_stage(upstrem, tile_id_conv, sender_sliced, &self.params);
+                let _ = geometry_slicing_stage(upstream, tile_id_conv, sender_sliced, &self.params);
             });
             scope.spawn(|| {
                 let _ = feature_sorting_stage(receiver_sliced, sender_sorted);

@@ -24,6 +24,9 @@ pub fn convert_properties(
                 tags.extend(tags_enc.add(name, v.into()));
             } else if let Some(v) = v.as_f64() {
                 tags.extend(tags_enc.add(name, v.into()));
+            } else {
+                // Handle any remaining number types by converting to string
+                tags.extend(tags_enc.add(name, v.to_string().into()));
             }
         }
         AttributeValue::Array(_arr) => {
