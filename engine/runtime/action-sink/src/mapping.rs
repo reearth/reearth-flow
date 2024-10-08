@@ -7,7 +7,7 @@ use crate::{
     echo::EchoSinkFactory,
     file::{
         cesium3dtiles::Cesium3DTilesSinkFactory, geojson::GeoJsonWriterFactory,
-        mvt::MVTSinkFactory, writer::FileWriterSinkFactory,
+        mvt::sink::MVTSinkFactory, writer::FileWriterSinkFactory,
     },
     noop::NoopSinkFactory,
 };

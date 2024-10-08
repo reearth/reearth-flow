@@ -4,7 +4,7 @@ use approx::{AbsDiffEq, RelativeEq};
 use geo_types::Polygon as GeoPolygon;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
-use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
+use nusamai_geometry::{LineString2 as NLineString2, Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
@@ -378,6 +378,24 @@ impl<'a> From<NPolygon2<'a>> for Polygon2D<f64> {
     fn from(poly: NPolygon2<'a>) -> Self {
         let interiors = poly.interiors().map(|interior| interior.into()).collect();
         Polygon2D::new(poly.exterior().into(), interiors)
+    }
+}
+
+impl<'a> From<Polygon3D<f64>> for NPolygon2<'a> {
+    #[inline]
+    fn from(poly: Polygon3D<f64>) -> Self {
+        let interiors: Vec<NLineString2> = poly
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        let mut npoly = NPolygon2::new();
+        let exterior: NLineString2 = poly.exterior().clone().into();
+        npoly.add_ring(&exterior);
+        for interior in interiors.iter() {
+            npoly.add_ring(interior);
+        }
+        npoly
     }
 }
 
