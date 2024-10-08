@@ -1,4 +1,4 @@
-pub(super) mod material;
-pub(super) mod metadata;
-pub(super) mod slice;
-pub(super) mod tree;
+pub(crate) mod material;
+pub(crate) mod metadata;
+pub(crate) mod slice;
+pub(crate) mod tree;

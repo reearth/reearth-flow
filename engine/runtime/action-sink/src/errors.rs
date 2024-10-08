@@ -14,6 +14,8 @@ pub enum SinkError {
     GeoJsonWriterFactory(String),
     #[error("GeoJson Writer error: {0}")]
     GeoJsonWriter(String),
+    #[error("Mvt Writer error: {0}")]
+    MvtWriter(String),
 }
 
 impl SinkError {
@@ -21,3 +23,5 @@ impl SinkError {
         Self::FileWriter(message.to_string())
     }
 }
+
+pub type Result<T, E = SinkError> = std::result::Result<T, E>;

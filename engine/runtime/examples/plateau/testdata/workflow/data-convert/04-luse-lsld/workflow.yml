@@ -121,9 +121,15 @@ graphs:
                 }
 
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
-        name: NoopLuse
+        name: mvtWriter
         type: action
-        action: NoopSink
+        action: MVTWriter
+        with:
+          format: mvt
+          minZoom: 12
+          maxZoom: 18
+          output: |
+            env.get("outputPath")
 
     edges:
       - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
