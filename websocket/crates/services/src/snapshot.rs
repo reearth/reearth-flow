@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 use flow_websocket_domain::repository::ProjectSnapshotRepository;
 use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, SnapshotInfo};
+use flow_websocket_domain::types::data::SnapshotData;
 use flow_websocket_domain::types::snapshot::ProjectSnapshot;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -65,6 +66,16 @@ where
     R: ProjectSnapshotRepository + Send + Sync,
 {
     type Error = R::Error;
+
+    async fn update_snapshot_data(
+        &self,
+        project_id: &str,
+        snapshot_data: SnapshotData,
+    ) -> Result<(), Self::Error> {
+        self.snapshot_repository
+            .update_snapshot_data(project_id, snapshot_data)
+            .await
+    }
 
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         self.snapshot_repository.create_snapshot(snapshot).await

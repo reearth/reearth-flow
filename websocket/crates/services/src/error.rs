@@ -18,16 +18,21 @@ pub enum ProjectServiceError {
     UnexpectedError(String),
 }
 
-impl<E> From<ProjectEditingSessionError<E>> for ProjectServiceError
+impl<S, R> From<ProjectEditingSessionError<S, R>> for ProjectServiceError
 where
-    E: fmt::Debug,
+    S: fmt::Debug,
+    R: fmt::Debug,
 {
-    fn from(err: ProjectEditingSessionError<E>) -> Self {
+    fn from(err: ProjectEditingSessionError<S, R>) -> Self {
         match err {
             ProjectEditingSessionError::SessionNotSetup => ProjectServiceError::SessionNotSetup,
-            ProjectEditingSessionError::SnapshotRepository(repo_err) => {
+            ProjectEditingSessionError::Snapshot(repo_err) => {
                 ProjectServiceError::SnapshotRepositoryError(format!("{:?}", repo_err))
             }
+            ProjectEditingSessionError::Redis(repo_err) => {
+                ProjectServiceError::SnapshotRepositoryError(format!("{:?}", repo_err))
+            }
+            ProjectEditingSessionError::Custom(err) => ProjectServiceError::UnexpectedError(err),
         }
     }
 }

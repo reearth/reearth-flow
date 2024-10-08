@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use flow_websocket_domain::repository::RedisDataManager;
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -47,6 +48,8 @@ pub enum FlowProjectRedisDataManagerError {
     ParseInt(#[from] std::num::ParseIntError),
     #[error(transparent)]
     RedisClient(#[from] super::redis_client::RedisClientError),
+    #[error(transparent)]
+    Join(#[from] tokio::task::JoinError),
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
@@ -369,6 +372,8 @@ impl FlowProjectRedisDataManager {
     async fn execute_merge_updates(
         &self,
     ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
+        let doc = Arc::new(Doc::new());
+
         let merged_stream_update = self.get_merged_update_from_stream().await?;
         let state_update = self.get_state_update_in_redis().await?;
         let state_updated_by = self.get_current_state_updated_by().await?;
@@ -381,11 +386,14 @@ impl FlowProjectRedisDataManager {
             };
 
         let merged_update = if let Some(merged_update) = merged_update {
-            let doc = Doc::new();
-            let mut txn = doc.transact_mut();
-            txn.apply_update(Update::decode_v2(&state_update.unwrap()).unwrap());
-            txn.apply_update(Update::decode_v2(&merged_update).unwrap());
-            txn.encode_update_v2()
+            let doc_clone = Arc::clone(&doc);
+            tokio::task::spawn_blocking(move || {
+                let mut txn = doc_clone.transact_mut();
+                txn.apply_update(Update::decode_v2(&state_update.unwrap()).unwrap());
+                txn.apply_update(Update::decode_v2(&merged_update).unwrap());
+                txn.encode_update_v2()
+            })
+            .await?
         } else {
             state_update.unwrap()
         };
@@ -398,10 +406,13 @@ impl FlowProjectRedisDataManager {
             state_updated_by
         };
 
-        let doc = Doc::new();
-        let mut txn = doc.transact_mut();
-        txn.apply_update(Update::decode_v2(&merged_update).unwrap());
-        let optimized_merged_state = txn.encode_update_v2();
+        let doc_clone = Arc::clone(&doc);
+        let optimized_merged_state = tokio::task::spawn_blocking(move || {
+            let mut txn = doc_clone.transact_mut();
+            txn.apply_update(Update::decode_v2(&merged_update).unwrap());
+            txn.encode_update_v2()
+        })
+        .await?;
 
         self.set_state_data(
             optimized_merged_state.clone(),
@@ -448,5 +459,26 @@ impl FlowProjectRedisDataManager {
             .await?;
 
         self.execute_merge_updates().await
+    }
+}
+
+#[async_trait::async_trait]
+impl RedisDataManager for FlowProjectRedisDataManager {
+    type Error = FlowProjectRedisDataManagerError;
+
+    async fn get_current_state(&self) -> Result<Option<Vec<u8>>, Self::Error> {
+        self.get_current_state_update().await
+    }
+
+    async fn push_update(&self, update: Vec<u8>, updated_by: String) -> Result<(), Self::Error> {
+        self.push_update(update, updated_by).await
+    }
+
+    async fn clear_data(&self) -> Result<(), Self::Error> {
+        self.clear_data().await
+    }
+
+    async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), Self::Error> {
+        self.merge_updates(skip_lock).await
     }
 }

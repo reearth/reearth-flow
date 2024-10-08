@@ -246,6 +246,16 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
         self.client.update_versioned(path, &snapshot).await?;
         Ok(())
     }
+
+    async fn update_snapshot_data(
+        &self,
+        snapshot_id: &str,
+        snapshot_data: SnapshotData,
+    ) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_id);
+        self.client.upload(path, &snapshot_data).await?;
+        Ok(())
+    }
 }
 
 #[async_trait]
