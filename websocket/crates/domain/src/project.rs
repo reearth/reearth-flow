@@ -134,11 +134,14 @@ impl ProjectEditingSession {
         (diff, server_state.to_vec())
     }
 
-    pub async fn merge_updates<R: RedisDataManager>(
+    pub async fn merge_updates<R>(
         &self,
         redis_data_manager: &R,
         skip_lock: bool,
-    ) -> Result<(Vec<u8>, Vec<String>), ProjectEditingSessionError<R::Error, ()>> {
+    ) -> Result<(Vec<u8>, Vec<String>), ProjectEditingSessionError<R::Error, ()>>
+    where
+        R: RedisDataManager,
+    {
         if !self.session_setup_complete {
             return Err(ProjectEditingSessionError::SessionNotSetup);
         }
@@ -153,10 +156,13 @@ impl ProjectEditingSession {
         Ok(result)
     }
 
-    pub async fn get_state_update<R: RedisDataManager>(
+    pub async fn get_state_update<R>(
         &self,
         redis_data_manager: &R,
-    ) -> Result<Vec<u8>, ProjectEditingSessionError<R::Error, ()>> {
+    ) -> Result<Vec<u8>, ProjectEditingSessionError<R::Error, ()>>
+    where
+        R: RedisDataManager,
+    {
         if !self.session_setup_complete {
             return Err(ProjectEditingSessionError::SessionNotSetup);
         }
@@ -168,13 +174,16 @@ impl ProjectEditingSession {
         }
     }
 
-    pub async fn push_update<R: RedisDataManager>(
+    pub async fn push_update<R>(
         &self,
         update: Vec<u8>,
         updated_by: String,
         redis_data_manager: &R,
         skip_lock: bool,
-    ) -> Result<(), ProjectEditingSessionError<R::Error, ()>> {
+    ) -> Result<(), ProjectEditingSessionError<R::Error, ()>>
+    where
+        R: RedisDataManager,
+    {
         if !self.session_setup_complete {
             return Err(ProjectEditingSessionError::SessionNotSetup);
         }
@@ -213,12 +222,16 @@ impl ProjectEditingSession {
         }
     }
 
-    async fn create_snapshot_internal<R: ProjectSnapshotRepository, S: RedisDataManager>(
+    async fn create_snapshot_internal<R, S>(
         &self,
         snapshot_repo: &R,
         redis_data_manager: &S,
         data: SnapshotData,
-    ) -> Result<(), ProjectEditingSessionError<R::Error, S::Error>> {
+    ) -> Result<(), ProjectEditingSessionError<R::Error, S::Error>>
+    where
+        R: ProjectSnapshotRepository,
+        S: RedisDataManager,
+    {
         self.merge_updates(redis_data_manager, false)
             .await
             .map_err(|_| ProjectEditingSessionError::SessionNotSetup)?;
@@ -251,7 +264,7 @@ impl ProjectEditingSession {
         Ok(())
     }
 
-    pub async fn end_session<R, S, D>(
+    pub async fn end_session<R, S>(
         &mut self,
         redis_data_manager: &R,
         snapshot_repo: &S,
@@ -297,11 +310,14 @@ impl ProjectEditingSession {
         Ok(())
     }
 
-    pub async fn load_session<R: ProjectSnapshotRepository>(
+    pub async fn load_session<R>(
         &mut self,
         snapshot_repo: &R,
         session_id: &str,
-    ) -> Result<(), ProjectEditingSessionError<R::Error, ()>> {
+    ) -> Result<(), ProjectEditingSessionError<R::Error, ()>>
+    where
+        R: ProjectSnapshotRepository,
+    {
         let snapshot = snapshot_repo.get_latest_snapshot(session_id).await?;
         if let Some(snapshot) = snapshot {
             self.project_id = snapshot.metadata.project_id;

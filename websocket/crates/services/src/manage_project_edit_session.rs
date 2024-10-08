@@ -1,7 +1,8 @@
 use chrono::Utc;
 use flow_websocket_domain::project::ProjectEditingSession;
 use flow_websocket_domain::repository::{
-    ProjectEditingSessionRepository, ProjectSnapshotRepository, SnapshotDataRepository,
+    ProjectEditingSessionRepository, ProjectSnapshotRepository, RedisDataManager,
+    SnapshotDataRepository,
 };
 use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo};
 use flow_websocket_domain::types::data::SnapshotData;
@@ -17,35 +18,40 @@ use crate::ProjectServiceError;
 const MAX_EMPTY_SESSION_DURATION: i64 = 10 * 1000; // 10 seconds
 const MAX_SNAPSHOT_DELTA: i64 = 5 * 60 * 1000; // 5 minutes
 
-pub struct ManageEditSessionService<R, S, D>
+pub struct ManageEditSessionService<R, S, D, M>
 where
     R: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync,
     S: ProjectSnapshotRepository<Error = ProjectServiceError> + Send + Sync,
     D: SnapshotDataRepository<Error = ProjectServiceError> + Send + Sync,
+    M: RedisDataManager<Error = ProjectServiceError> + Send + Sync,
 {
     session_repository: Arc<R>,
     snapshot_repository: Arc<S>,
     snapshot_data_repository: Arc<D>,
     redis_repository: Arc<ProjectRedisRepository>,
+    redis_data_manager: Arc<M>,
 }
 
-impl<R, S, D> ManageEditSessionService<R, S, D>
+impl<R, S, D, M> ManageEditSessionService<R, S, D, M>
 where
     R: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync,
     S: ProjectSnapshotRepository<Error = ProjectServiceError> + Send + Sync,
     D: SnapshotDataRepository<Error = ProjectServiceError> + Send + Sync,
+    M: RedisDataManager<Error = ProjectServiceError> + Send + Sync,
 {
     pub fn new(
         session_repository: Arc<R>,
         snapshot_repository: Arc<S>,
         snapshot_data_repository: Arc<D>,
         redis_repository: Arc<ProjectRedisRepository>,
+        redis_data_manager: Arc<M>,
     ) -> Self {
         Self {
             session_repository,
             snapshot_repository,
             snapshot_data_repository,
             redis_repository,
+            redis_data_manager,
         }
     }
 
@@ -106,7 +112,9 @@ where
         session: &mut ProjectEditingSession,
         data: &mut ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
-        session.merge_updates().await?;
+        session
+            .merge_updates(&*self.redis_data_manager, false)
+            .await?;
         data.last_merged_at = Some(Utc::now());
         Ok(())
     }
@@ -120,7 +128,7 @@ where
             let current_time = Utc::now();
             let snapshot_time_delta = (current_time - last_snapshot_at).num_milliseconds();
             if snapshot_time_delta > MAX_SNAPSHOT_DELTA {
-                let state = session.get_state_update().await?;
+                let state = session.get_state_update(&*self.redis_data_manager).await?;
 
                 let metadata = Metadata::new(
                     generate_id(14, "snap"),
@@ -174,7 +182,9 @@ where
 
             if clients_disconnection_elapsed_time > MAX_EMPTY_SESSION_DURATION && client_count == 0
             {
-                session.end_session().await?;
+                session
+                    .end_session(&*self.redis_data_manager, &*self.snapshot_repository)
+                    .await?;
             }
         }
         Ok(())
