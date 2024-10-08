@@ -1,5 +1,6 @@
 use crate::error::ProjectServiceError;
 use async_trait::async_trait;
+use flow_websocket_domain::generate_id;
 use flow_websocket_domain::project::ProjectEditingSession;
 use flow_websocket_domain::projection::{Action, Project, ProjectAllowedActions};
 use flow_websocket_domain::repository::{
@@ -7,7 +8,6 @@ use flow_websocket_domain::repository::{
 };
 use flow_websocket_domain::snapshot::{ObjectTenant, ProjectSnapshot};
 use flow_websocket_domain::types::data::SnapshotData;
-use flow_websocket_domain::utils::generate_id;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use std::sync::Arc;
 

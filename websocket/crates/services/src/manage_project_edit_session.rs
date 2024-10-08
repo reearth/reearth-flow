@@ -1,4 +1,5 @@
 use chrono::Utc;
+use flow_websocket_domain::generate_id;
 use flow_websocket_domain::project::ProjectEditingSession;
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectSnapshotRepository, RedisDataManager,
@@ -7,7 +8,6 @@ use flow_websocket_domain::repository::{
 use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo};
 use flow_websocket_domain::types::data::SnapshotData;
 use flow_websocket_domain::types::snapshot::ProjectSnapshot;
-use flow_websocket_domain::utils::generate_id;
 use flow_websocket_infra::persistence::project_repository::ProjectRedisRepository;
 use std::sync::Arc;
 use tokio::time::sleep;
