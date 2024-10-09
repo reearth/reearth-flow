@@ -505,3 +505,123 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         self.merge_updates(skip_lock).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Clone)]
+    pub struct MockFlowProjectRedisDataManager {
+        pub current_state: Arc<Mutex<Option<Vec<u8>>>>,
+        pub push_update_result: Arc<Mutex<Result<(), FlowProjectRedisDataManagerError>>>,
+        pub merge_updates_result:
+            Arc<Mutex<Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError>>>,
+    }
+
+    impl MockFlowProjectRedisDataManager {
+        pub fn new() -> Self {
+            MockFlowProjectRedisDataManager {
+                current_state: Arc::new(Mutex::new(Some(vec![1, 2, 3]))),
+                push_update_result: Arc::new(Mutex::new(Ok(()))),
+                merge_updates_result: Arc::new(Mutex::new(Ok((
+                    vec![1, 2, 3],
+                    vec!["user1".to_string()],
+                )))),
+            }
+        }
+
+        pub fn set_current_state(&self, state: Option<Vec<u8>>) {
+            let mut current_state = self.current_state.lock().unwrap();
+            *current_state = state;
+        }
+
+        pub fn set_push_update_result(&self, result: Result<(), FlowProjectRedisDataManagerError>) {
+            let mut push_update_result = self.push_update_result.lock().unwrap();
+            *push_update_result = result;
+        }
+
+        pub fn set_merge_updates_result(
+            &self,
+            result: Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError>,
+        ) {
+            let mut merge_updates_result = self.merge_updates_result.lock().unwrap();
+            *merge_updates_result = result;
+        }
+    }
+
+    #[async_trait]
+    impl RedisDataManager for MockFlowProjectRedisDataManager {
+        type Error = FlowProjectRedisDataManagerError;
+
+        async fn get_current_state(&self) -> Result<Option<Vec<u8>>, Self::Error> {
+            let state = self.current_state.lock().unwrap();
+            Ok(state.clone())
+        }
+
+        async fn push_update(
+            &self,
+            _update: Vec<u8>,
+            _updated_by: String,
+        ) -> Result<(), Self::Error> {
+            let result = self
+                .push_update_result
+                .lock()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .to_owned();
+            Ok(result)
+        }
+
+        async fn clear_data(&self) -> Result<(), Self::Error> {
+            Ok(())
+        }
+
+        async fn merge_updates(
+            &self,
+            _skip_lock: bool,
+        ) -> Result<(Vec<u8>, Vec<String>), Self::Error> {
+            let result = self
+                .merge_updates_result
+                .lock()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .to_owned();
+            Ok(result)
+        }
+    }
+    #[tokio::test]
+    async fn test_get_current_state() {
+        let mock_manager = MockFlowProjectRedisDataManager::new();
+
+        mock_manager.set_current_state(Some(vec![1, 2, 3]));
+
+        let result = mock_manager.get_current_state().await;
+        assert_eq!(result.unwrap(), Some(vec![1, 2, 3]));
+    }
+
+    #[tokio::test]
+    async fn test_push_update() {
+        let mock_manager = MockFlowProjectRedisDataManager::new();
+
+        mock_manager.set_push_update_result(Ok(()));
+
+        let result = mock_manager
+            .push_update(vec![1, 2, 3], "user1".to_string())
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_merge_updates() {
+        let mock_manager = MockFlowProjectRedisDataManager::new();
+
+        mock_manager.set_merge_updates_result(Ok((vec![1, 2, 3], vec!["user1".to_string()])));
+
+        let result = mock_manager.merge_updates(false).await;
+        assert_eq!(result.unwrap(), (vec![1, 2, 3], vec!["user1".to_string()]));
+    }
+}

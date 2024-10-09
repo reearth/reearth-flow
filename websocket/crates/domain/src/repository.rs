@@ -6,14 +6,14 @@ use std::error::Error;
 
 #[async_trait::async_trait]
 pub trait ProjectRepository {
-    type Error;
+    type Error: Error + Send + Sync + 'static;
 
     async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error>;
 }
 
 #[async_trait::async_trait]
 pub trait ProjectEditingSessionRepository {
-    type Error;
+    type Error: Error + Send + Sync + 'static;
 
     async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error>;
     async fn get_active_session(
@@ -43,7 +43,7 @@ pub trait ProjectSnapshotRepository {
 
 #[async_trait::async_trait]
 pub trait SnapshotDataRepository {
-    type Error;
+    type Error: Error + Send + Sync + 'static;
 
     async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error>;
     async fn get_snapshot_data(
@@ -66,7 +66,7 @@ pub trait SnapshotDataRepository {
 
 #[async_trait::async_trait]
 pub trait RedisDataManager {
-    type Error: std::error::Error + Send + Sync + 'static;
+    type Error: Error + Send + Sync + 'static;
 
     async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), Self::Error>;
     async fn get_current_state(&self) -> Result<Option<Vec<u8>>, Self::Error>;

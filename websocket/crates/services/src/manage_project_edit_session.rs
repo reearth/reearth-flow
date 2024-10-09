@@ -9,6 +9,7 @@ use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant, Snap
 use flow_websocket_domain::types::data::SnapshotData;
 use flow_websocket_domain::types::snapshot::ProjectSnapshot;
 use flow_websocket_infra::persistence::project_repository::ProjectRedisRepository;
+use mockall::automock;
 use std::sync::Arc;
 use tokio::time::sleep;
 
@@ -32,12 +33,13 @@ where
     redis_data_manager: Arc<M>,
 }
 
+#[automock]
 impl<R, S, D, M> ManageEditSessionService<R, S, D, M>
 where
-    R: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync,
-    S: ProjectSnapshotRepository<Error = ProjectServiceError> + Send + Sync,
-    D: SnapshotDataRepository<Error = ProjectServiceError> + Send + Sync,
-    M: RedisDataManager<Error = ProjectServiceError> + Send + Sync,
+    R: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync + 'static,
+    S: ProjectSnapshotRepository<Error = ProjectServiceError> + Send + Sync + 'static,
+    D: SnapshotDataRepository<Error = ProjectServiceError> + Send + Sync + 'static,
+    M: RedisDataManager<Error = ProjectServiceError> + Send + Sync + 'static,
 {
     pub fn new(
         session_repository: Arc<R>,
