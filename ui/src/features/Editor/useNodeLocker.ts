@@ -8,7 +8,7 @@ export default ({
 }: {
   handleNodesUpdate: (newNodes: Node[]) => void;
 }) => {
-  const { getNodes } = useReactFlow();
+  const { getNodes } = useReactFlow<Node>();
 
   // Will be used to keep track of all locked nodes, local and for other users (while collaborative editing)
   const [lockedNodeIds, setLockedNodeIds] = useState<string[]>([]);

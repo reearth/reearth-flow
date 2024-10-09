@@ -56,6 +56,7 @@ export default ({
         id: randomID(),
         position,
         data: {
+          name: "sample",
           status: "idle",
           locked: false,
           onDoubleClick: onNodeLocking,
