@@ -21,7 +21,6 @@ use serde_json::Value;
 use crate::errors::SinkError;
 
 use super::excel::write_excel;
-use super::gltf::write_gltf;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileWriterSinkFactory;
@@ -112,10 +111,6 @@ pub enum FileWriterParam {
         #[serde(flatten)]
         common_property: FileWriterCommonParam,
     },
-    Gltf {
-        #[serde(flatten)]
-        common_property: FileWriterCommonParam,
-    },
 }
 
 impl FileWriterParam {
@@ -127,7 +122,6 @@ impl FileWriterParam {
                 common_property, ..
             } => common_property,
             FileWriterParam::Excel { common_property } => common_property,
-            FileWriterParam::Gltf { common_property } => common_property,
         }
     }
 }
@@ -165,7 +159,6 @@ impl Sink for FileWriter {
                 write_csv(&output, &self.buffer, Delimiter::Tab, storage_resolver)
             }
             FileWriterParam::Excel { .. } => write_excel(&output, &self.buffer, storage_resolver),
-            FileWriterParam::Gltf { .. } => write_gltf(&output, &self.buffer, storage_resolver),
         };
         match result {
             Ok(_) => Ok(()),

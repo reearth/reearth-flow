@@ -32,8 +32,8 @@ directories.workspace = true
 once_cell.workspace = true
 time.workspace = true
 tokio.workspace = true
-tracing.workspace = true
 tracing-subscriber.workspace = true
+tracing.workspace = true
 uuid.workspace = true
 yaml-include = "0.7.0"
 

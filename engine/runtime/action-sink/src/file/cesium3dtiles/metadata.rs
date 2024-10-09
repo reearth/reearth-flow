@@ -1,3 +1,7 @@
+//! Encode feature attributes into EXT_structural_metadata format
+
+use std::collections::HashMap;
+
 use indexmap::{IndexMap, IndexSet};
 use nusamai_citygml::schema::{Attribute, FeatureTypeDef, Schema, TypeDef};
 use nusamai_gltf::nusamai_gltf_json::{
@@ -7,24 +11,27 @@ use nusamai_gltf::nusamai_gltf_json::{
     },
     BufferView,
 };
-use reearth_flow_types::{Attribute as FlowAttribute, AttributeValue as FlowAttributeValue};
-use std::collections::HashMap;
+
+use super::utils::add_padding;
 
 const ENUM_NO_DATA: u32 = 0;
 const ENUM_NO_DATA_NAME: &str = "";
 const FLOAT_NO_DATA: f64 = f64::MAX;
 const INT64_NO_DATA: i64 = i64::MIN;
 const UINT64_NO_DATA: u64 = u64::MAX;
-const NULL_NO_DATA: u32 = 0;
 
 pub struct MetadataEncoder<'a> {
+    /// The original city model schema
     original_schema: &'a Schema,
+    /// typename -> Class
     classes: IndexMap<String, Class>,
+    // Represents Code values as enum names?
     enum_set: IndexSet<String>,
 }
 
 impl<'a> MetadataEncoder<'a> {
     pub fn new(original_schema: &'a Schema) -> Self {
+        // Use the first enum value as noData
         let mut enum_set: IndexSet<String> = Default::default();
         enum_set.insert(ENUM_NO_DATA_NAME.to_string());
 
@@ -39,7 +46,7 @@ impl<'a> MetadataEncoder<'a> {
     pub fn add_feature(
         &mut self,
         typename: &str,
-        attributes: HashMap<FlowAttribute, FlowAttributeValue>,
+        attributes: &nusamai_citygml::object::Value,
     ) -> Result<usize, ()> {
         let Some(TypeDef::Feature(feature_def)) = self.original_schema.types.get(typename) else {
             return Err(());
@@ -52,7 +59,7 @@ impl<'a> MetadataEncoder<'a> {
             .entry(typename)
             .or_insert_with(|| Class::from(feature_def));
 
-        class.add_feature(attributes)
+        class.add_feature(attributes, &mut self.enum_set)
     }
 
     pub fn into_metadata(
@@ -141,61 +148,76 @@ impl From<&FeatureTypeDef> for Class {
 impl Class {
     fn add_feature(
         &mut self,
-        attributes: HashMap<FlowAttribute, FlowAttributeValue>,
+        attributes: &nusamai_citygml::object::Value,
+        enum_set: &mut IndexSet<String>,
     ) -> Result<usize, ()> {
-        // Encode id
-        if let Some(FlowAttributeValue::Map(city_gml_attributes)) =
-            attributes.get(&FlowAttribute::new("cityGmlAttributes"))
-        {
-            if let Some(FlowAttributeValue::String(id)) = city_gml_attributes.get("id") {
-                let value = FlowAttributeValue::String(id.to_string());
+        use nusamai_citygml::object::Value;
+
+        if let Value::Object(obj) = attributes {
+            // Encode id
+            if let Some(id) = obj.stereotype.id() {
+                let value = Value::String(id.to_string());
                 if let Some(prop) = self.properties.get_mut("id") {
-                    encode_value(value, prop);
+                    encode_value(&value, prop, enum_set);
                     prop.used = true;
                 }
-            };
-        }
-
-        // Encode attributes
-        for (attr_name, value) in attributes {
-            let Some(prop) = self.properties.get_mut(&attr_name.to_string()) else {
-                continue;
-            };
-            encode_value(value, prop);
-            prop.used = true;
-        }
-
-        // Fill in the default values for the properties that don't occur in the input
-        for (_key, prop) in &mut self.properties {
-            if prop.is_array {
-                match prop.type_ {
-                    PropertyType::String => {
-                        prop.array_offsets
-                            .push(prop.string_offsets.len() as u32 - 1);
-                    }
-                    // PropertyType::Boolean => todo!(), // TODO
-                    _ => {
-                        prop.array_offsets.push(prop.count);
-                    }
-                }
-            } else {
-                match prop.type_ {
-                    PropertyType::Int64 => prop.value_buffer.extend(INT64_NO_DATA.to_le_bytes()),
-                    PropertyType::Uint64 => prop.value_buffer.extend(UINT64_NO_DATA.to_le_bytes()),
-                    PropertyType::Float64 => prop.value_buffer.extend(FLOAT_NO_DATA.to_le_bytes()),
-                    PropertyType::String => {
-                        prop.string_offsets.push(prop.value_buffer.len() as u32)
-                    }
-                    PropertyType::Enum => prop.value_buffer.extend(ENUM_NO_DATA.to_le_bytes()),
-                    // PropertyType::Boolean => todo!(),
-                };
             }
-        }
 
-        // Return the assigned feature ID
-        let feature_id = self.feature_count;
-        self.feature_count += 1;
-        Ok(feature_id)
+            // Encode attributes
+            for (attr_name, value) in &obj.attributes {
+                let Some(prop) = self.properties.get_mut(attr_name) else {
+                    continue;
+                };
+                encode_value(value, prop, enum_set);
+                prop.used = true;
+            }
+
+            // Fill in the default values for the properties that don't occur in the input
+            for (key, prop) in &mut self.properties {
+                if obj.attributes.contains_key(key)
+                    || (key == "id" && obj.stereotype.id().is_some())
+                {
+                    continue;
+                }
+
+                if prop.is_array {
+                    match prop.type_ {
+                        PropertyType::String => {
+                            prop.array_offsets
+                                .push(prop.string_offsets.len() as u32 - 1);
+                        }
+                        // PropertyType::Boolean => todo!(), // TODO
+                        _ => {
+                            prop.array_offsets.push(prop.count);
+                        }
+                    }
+                } else {
+                    match prop.type_ {
+                        PropertyType::Int64 => {
+                            prop.value_buffer.extend(INT64_NO_DATA.to_le_bytes())
+                        }
+                        PropertyType::Uint64 => {
+                            prop.value_buffer.extend(UINT64_NO_DATA.to_le_bytes())
+                        }
+                        PropertyType::Float64 => {
+                            prop.value_buffer.extend(FLOAT_NO_DATA.to_le_bytes())
+                        }
+                        PropertyType::String => {
+                            prop.string_offsets.push(prop.value_buffer.len() as u32)
+                        }
+                        PropertyType::Enum => prop.value_buffer.extend(ENUM_NO_DATA.to_le_bytes()),
+                        // PropertyType::Boolean => todo!(),
+                    };
+                }
+            }
+
+            // Return the assigned feature ID
+            let feature_id = self.feature_count;
+            self.feature_count += 1;
+            Ok(feature_id)
+        } else {
+            Err(())
+        }
     }
 
     fn make_metadata(
@@ -335,8 +357,12 @@ impl Class {
     }
 }
 
-fn encode_value(value: FlowAttributeValue, prop: &mut Property) {
-    use reearth_flow_types::AttributeValue as Value;
+fn encode_value(
+    value: &nusamai_citygml::object::Value,
+    prop: &mut Property,
+    enum_set: &mut IndexSet<String>,
+) {
+    use nusamai_citygml::object::Value;
 
     match value {
         Value::String(s) => {
@@ -344,38 +370,54 @@ fn encode_value(value: FlowAttributeValue, prop: &mut Property) {
             prop.string_offsets.push(prop.value_buffer.len() as u32);
             prop.count += 1;
         }
-        Value::Map(m) => {
-            for (_k, v) in m {
-                encode_value(v, prop);
-            }
-        }
-        Value::Null => {
-            prop.value_buffer.extend(NULL_NO_DATA.to_le_bytes());
+        Value::Uri(u) => {
+            prop.value_buffer
+                .extend_from_slice(u.value().as_str().as_bytes());
+            prop.string_offsets.push(prop.value_buffer.len() as u32);
             prop.count += 1;
         }
-        Value::Bytes(b) => {
-            prop.value_buffer.extend(b);
-            prop.count += 1;
-        }
-        Value::DateTime(d) => {
+        Value::Date(d) => {
             prop.value_buffer
                 .extend_from_slice(d.to_string().as_bytes());
             prop.string_offsets.push(prop.value_buffer.len() as u32);
             prop.count += 1;
         }
-        Value::Number(i) => {
-            let b: [u8; 8] = (i.as_f64().unwrap()).to_le_bytes(); // ensure: 8 bytes
+        Value::Code(c) => {
+            let idx = enum_set.get_index_of(c.value()).unwrap_or_else(|| {
+                let (idx, _) = enum_set.insert_full(c.value().to_string());
+                idx
+            });
+            prop.value_buffer.extend((idx as u32).to_le_bytes());
+            prop.count += 1;
+        }
+        Value::Integer(i) => {
+            let b: [u8; 8] = (*i).to_le_bytes(); // ensure: 8 bytes
             prop.value_buffer.extend(b);
             prop.count += 1;
         }
-        Value::Bool(b) => {
-            let b: [u8; 8] = (b as u64).to_le_bytes(); // ensure: 8 bytes
+        Value::NonNegativeInteger(u) => {
+            let b: [u8; 8] = (*u as i64).to_le_bytes(); // ensure: 8 bytes
             prop.value_buffer.extend(b);
             prop.count += 1;
         }
+        Value::Double(d) => {
+            prop.value_buffer.extend((*d).to_le_bytes());
+            prop.count += 1;
+        }
+        Value::Measure(m) => {
+            let b: [u8; 8] = m.value().to_le_bytes(); // ensure: 8 bytes
+            prop.value_buffer.extend(b);
+            prop.count += 1;
+        }
+        Value::Boolean(b) => {
+            let b: [u8; 8] = (*b as u64).to_le_bytes(); // ensure: 8 bytes
+            prop.value_buffer.extend(b);
+            prop.count += 1;
+        }
+        Value::Point(_) => todo!(), // TOOD
         Value::Array(arr) => {
             for v in arr {
-                encode_value(v, prop);
+                encode_value(v, prop, enum_set);
             }
 
             match prop.type_ {
@@ -388,7 +430,8 @@ fn encode_value(value: FlowAttributeValue, prop: &mut Property) {
                     prop.array_offsets.push(prop.count);
                 }
             }
-        }
+        } // TODO
+        Value::Object(_) => unreachable!(),
     }
 }
 
@@ -416,8 +459,8 @@ impl Property {
         };
         Property {
             type_,
-            value_buffer: Default::default(),
             count: 0,
+            value_buffer: Default::default(),
             is_array,
             used: false,
             string_offsets,
@@ -442,7 +485,7 @@ impl From<&Attribute> for Property {
             TypeRef::DateTime => PropertyType::String,
             TypeRef::Measure => PropertyType::Float64,
             TypeRef::Point => PropertyType::String, // TODO: VEC3<f64>
-            TypeRef::Named(_) => PropertyType::String,
+            TypeRef::Named(_) => unreachable!(),
             TypeRef::Unknown => unreachable!(),
         };
         let is_array = attr.max_occurs != Some(1);
@@ -458,10 +501,4 @@ enum PropertyType {
     String,
     // Boolean,
     Enum,
-}
-
-pub fn add_padding(buf: &mut Vec<u8>, align: usize) {
-    let len = buf.len();
-    let pad = (align - (len % align)) % align;
-    buf.resize(len + pad, 0);
 }

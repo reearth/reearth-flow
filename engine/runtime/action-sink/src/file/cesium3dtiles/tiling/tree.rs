@@ -3,9 +3,9 @@
 use cesiumtiles::tileset;
 use nusamai_mvt::TileZXY;
 
-use reearth_flow_common::gltf::{calc_parent_zxy, geometric_error};
+use super::scheme::{calc_parent_zxy, geometric_error};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TileContent {
     pub zxy: TileZXY,
     pub content_path: String,
@@ -96,14 +96,14 @@ impl Tile {
         }
     }
 
-    fn into_tileset_tile(mut self, refine: Option<&tileset::Refine>) -> tileset::Tile {
+    fn into_tileset_tile(mut self) -> tileset::Tile {
         self.update_boundary();
 
         let children = {
             let children: Vec<_> = [self.child00, self.child01, self.child10, self.child11]
                 .into_iter()
                 .flatten()
-                .map(|child| child.into_tileset_tile(refine))
+                .map(|child| child.into_tileset_tile())
                 .collect();
             if children.is_empty() {
                 None
@@ -136,16 +136,10 @@ impl Tile {
             }
         };
 
-        let refined: Option<tileset::Refine> =
-            refine.map_or(Some(tileset::Refine::Replace), |r| match r {
-                tileset::Refine::Add => Some(tileset::Refine::Add),
-                tileset::Refine::Replace => Some(tileset::Refine::Replace),
-            });
-
         let (z, _, y) = self.zxy;
         tileset::Tile {
             geometric_error: geometric_error(z, y),
-            refine: refined,
+            refine: Some(tileset::Refine::Replace),
             bounding_volume: tileset::BoundingVolume::new_region([
                 self.min_lng.to_radians(),
                 self.min_lat.to_radians(),
@@ -186,8 +180,8 @@ impl Default for TileTree {
 }
 
 impl TileTree {
-    pub fn into_tileset_root(self, refine: Option<&tileset::Refine>) -> tileset::Tile {
-        self.root.into_tileset_tile(refine)
+    pub fn into_tileset_root(self) -> tileset::Tile {
+        self.root.into_tileset_tile()
     }
 
     pub fn add_content(&mut self, content: TileContent) {

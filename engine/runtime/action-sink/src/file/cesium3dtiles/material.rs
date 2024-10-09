@@ -1,8 +1,9 @@
-use std::hash::Hash;
+//! Material mangement
+
+use std::{hash::Hash, path::Path};
 
 use indexmap::IndexSet;
-use nusamai_gltf::nusamai_gltf_json::BufferView;
-use reearth_flow_common::{image::load_image, uri::Uri};
+use nusamai_gltf::nusamai_gltf_json::{BufferView, MimeType};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -10,6 +11,7 @@ use url::Url;
 pub struct Material {
     pub base_color: [f32; 4],
     pub base_texture: Option<Texture>,
+    // NOTE: Adjust the hash implementation if you add more fields
 }
 
 impl Eq for Material {}
@@ -53,7 +55,7 @@ impl Material {
 
 #[derive(Debug, Serialize, Clone, Hash, PartialEq, Eq, Deserialize)]
 pub struct Texture {
-    pub uri: Uri,
+    pub uri: Url,
 }
 
 impl Texture {
@@ -62,11 +64,35 @@ impl Texture {
         images: &mut IndexSet<Image, ahash::RandomState>,
     ) -> nusamai_gltf::nusamai_gltf_json::Texture {
         let (image_index, _) = images.insert_full(Image {
-            uri: self.uri.clone().into(),
+            uri: self.uri.clone(),
         });
-        nusamai_gltf::nusamai_gltf_json::Texture {
-            source: Some(image_index as u32),
-            ..Default::default()
+
+        // Get the file extension
+        let extension = Path::new(self.uri.path())
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.to_lowercase());
+
+        if extension == Some("webp".to_string()) {
+            nusamai_gltf::nusamai_gltf_json::Texture {
+                extensions: Some(
+                    nusamai_gltf::nusamai_gltf_json::extensions::texture::TextureExtensions {
+                        ext_texture_webp: Some(
+                            nusamai_gltf::nusamai_gltf_json::extensions::texture::ExtTextureWebp {
+                                source: image_index as u32,
+                            },
+                        ),
+                        ..Default::default()
+                    },
+                ),
+                source: Some(image_index as u32),
+                ..Default::default()
+            }
+        } else {
+            nusamai_gltf::nusamai_gltf_json::Texture {
+                source: Some(image_index as u32),
+                ..Default::default()
+            }
         }
     }
 }
@@ -96,7 +122,7 @@ impl Image {
             bin_content.extend(content);
 
             Ok(nusamai_gltf::nusamai_gltf_json::Image {
-                mime_type: Some(into_mime_type(mime_type)),
+                mime_type: Some(mime_type),
                 buffer_view: Some(buffer_views.len() as u32 - 1),
                 ..Default::default()
             })
@@ -109,6 +135,33 @@ impl Image {
     }
 }
 
+fn load_image(path: &Path) -> std::io::Result<(Vec<u8>, MimeType)> {
+    if let Some(ext) = path.extension() {
+        match ext.to_ascii_lowercase().to_str() {
+            Some("tif" | "tiff" | "png") => {
+                let image = image::open(path)
+                    .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
+
+                let mut writer = std::io::Cursor::new(Vec::new());
+                let encoder = image::codecs::png::PngEncoder::new(&mut writer);
+                image
+                    .write_with_encoder(encoder)
+                    .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
+                Ok((writer.into_inner(), MimeType::ImagePng))
+            }
+            Some("jpg" | "jpeg") => Ok((std::fs::read(path)?, MimeType::ImageJpeg)),
+            Some("webp") => Ok((std::fs::read(path)?, MimeType::ImageWebp)),
+            _ => {
+                let err = format!("Unsupported image format: {:?}", path);
+                Err(std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+            }
+        }
+    } else {
+        let err = format!("Unsupported image format: {:?}", path);
+        Err(std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+    }
+}
+
 fn to_f64x4(c: [f32; 4]) -> [f64; 4] {
     [
         f64::from(c[0]),
@@ -116,20 +169,4 @@ fn to_f64x4(c: [f32; 4]) -> [f64; 4] {
         f64::from(c[2]),
         f64::from(c[3]),
     ]
-}
-
-fn into_mime_type(
-    mime: reearth_flow_common::image::MimeType,
-) -> nusamai_gltf::nusamai_gltf_json::MimeType {
-    match mime {
-        reearth_flow_common::image::MimeType::ImageJpeg => {
-            nusamai_gltf::nusamai_gltf_json::MimeType::ImageJpeg
-        }
-        reearth_flow_common::image::MimeType::ImagePng => {
-            nusamai_gltf::nusamai_gltf_json::MimeType::ImagePng
-        }
-        reearth_flow_common::image::MimeType::ImageWebp => {
-            nusamai_gltf::nusamai_gltf_json::MimeType::ImageWebp
-        }
-    }
 }
