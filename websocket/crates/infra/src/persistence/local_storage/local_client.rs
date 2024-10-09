@@ -29,7 +29,7 @@ pub struct LocalClient {
     cache: Mutex<LruCache<String, Vec<u8>>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct VersionMetadata {
     latest_version: String,
     version_history: BTreeMap<i64, String>, // Timestamp to version path
@@ -152,7 +152,7 @@ impl StorageClient for LocalClient {
         path: String,
         data: &T,
     ) -> Result<String, Self::Error> {
-        let timestamp = Utc::now().timestamp_nanos();
+        let timestamp = Utc::now().timestamp_millis();
         let versioned_path = format!("{}_v{}", path, timestamp);
 
         // Upload the data
@@ -378,21 +378,36 @@ mod tests {
         let version1_path = client
             .upload_versioned("test_file".to_string(), &test_data1)
             .await?;
+        println!("Uploaded version 1: {}", version1_path);
+
+        // Add a small delay to ensure different timestamps
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
         // Upload second version
         let version2_path = client
             .upload_versioned("test_file".to_string(), &test_data2)
             .await?;
+        println!("Uploaded version 2: {}", version2_path);
 
         // Download latest version
         let latest_data: TestData = client.download_latest("test_file").await?.unwrap();
-        assert_eq!(latest_data, test_data2);
+        println!("Downloaded latest version: {:?}", latest_data);
+        assert_eq!(latest_data, test_data2, "Latest version mismatch");
 
         // Download specific versions
-        let data1: TestData = client.download(version1_path).await?;
-        let data2: TestData = client.download(version2_path).await?;
-        assert_eq!(data1, test_data1);
-        assert_eq!(data2, test_data2);
+        let data1: TestData = client.download(version1_path.clone()).await?;
+        let data2: TestData = client.download(version2_path.clone()).await?;
+        println!("Version 1 path: {}", version1_path);
+        println!("Version 1 data: {:?}", data1);
+        println!("Version 2 path: {}", version2_path);
+        println!("Version 2 data: {:?}", data2);
+
+        assert_eq!(data1, test_data1, "Version 1 data mismatch");
+        assert_eq!(data2, test_data2, "Version 2 data mismatch");
+
+        // Check metadata
+        let metadata: VersionMetadata = client.download("test_file_metadata".to_string()).await?;
+        println!("Metadata: {:?}", metadata);
 
         Ok(())
     }
