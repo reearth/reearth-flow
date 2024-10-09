@@ -1,10 +1,10 @@
 use std::hash::{Hash, Hasher};
 
 use approx::{AbsDiffEq, RelativeEq};
+use flatgeom::{LineString2 as NLineString2, Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use geo_types::Polygon as GeoPolygon;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
-use nusamai_geometry::{LineString2 as NLineString2, Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
@@ -407,9 +407,7 @@ impl<'a> From<NPolygon3<'a>> for Polygon<f64> {
     }
 }
 
-pub fn from_polygon_5d(
-    polygon: &nusamai_geometry::Polygon<[f64; 5]>,
-) -> (Polygon3D<f64>, Polygon2D<f64>) {
+pub fn from_polygon_5d(polygon: &flatgeom::Polygon<[f64; 5]>) -> (Polygon3D<f64>, Polygon2D<f64>) {
     let (exterior3d, exterior2d) = from_line_string_5d(polygon.exterior());
     let mut interiors3d: Vec<LineString3D<f64>> = Default::default();
     let mut interiors2d: Vec<LineString2D<f64>> = Default::default();

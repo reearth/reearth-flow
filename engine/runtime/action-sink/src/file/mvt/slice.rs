@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use nusamai_geometry::{LineString2, MultiPolygon2, Polygon2};
+use flatgeom::{LineString2, MultiPolygon2, Polygon2};
 use nusamai_mvt::webmercator::lnglat_to_web_mercator;
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryType, GeometryValue};
 use serde::{Deserialize, Serialize};

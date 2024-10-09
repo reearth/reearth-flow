@@ -7,8 +7,8 @@ use std::sync::Arc;
 use std::vec;
 
 use flate2::{write::ZlibEncoder, Compression};
+use flatgeom::MultiPolygon as NMultiPolygon;
 use itertools::Itertools;
-use nusamai_geometry::MultiPolygon as NMultiPolygon;
 use nusamai_mvt::geometry::GeometryEncoder;
 use nusamai_mvt::tag::TagsEncoder;
 use nusamai_mvt::tileid::TileIdMethod;
@@ -155,8 +155,18 @@ impl Sink for MVTWriter {
                 let _ = feature_sorting_stage(receiver_sliced, sender_sorted);
             });
             scope.spawn(|| {
-                let _ =
-                    tile_writing_stage(ctx.as_context(), &output, receiver_sorted, tile_id_conv);
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .use_current_thread()
+                    .build()
+                    .unwrap();
+                pool.install(|| {
+                    let _ = tile_writing_stage(
+                        ctx.as_context(),
+                        &output,
+                        receiver_sorted,
+                        tile_id_conv,
+                    );
+                })
             });
         });
         Ok(())

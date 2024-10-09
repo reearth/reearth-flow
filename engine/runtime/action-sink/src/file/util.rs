@@ -39,7 +39,7 @@ pub(super) fn slice_polygon(
     zoom: u8,
     poly: &Polygon3D<f64>,
     poly_uv: &Polygon2D<f64>,
-    mut send_polygon: impl FnMut(TileZXY, &nusamai_geometry::Polygon<'static, [f64; 5]>),
+    mut send_polygon: impl FnMut(TileZXY, &flatgeom::Polygon<'static, [f64; 5]>),
 ) {
     if poly.exterior().is_empty() {
         return;
@@ -58,7 +58,7 @@ pub(super) fn slice_polygon(
         iter_y_slice(zoom, min_y, max_y)
     };
 
-    let mut y_sliced_polys = nusamai_geometry::MultiPolygon::new();
+    let mut y_sliced_polys = flatgeom::MultiPolygon::new();
 
     for yi in y_range.clone() {
         let (k1, k2) = y_slice_range(zoom, yi);
@@ -127,7 +127,7 @@ pub(super) fn slice_polygon(
     }
 
     // Slice along X-axis
-    let mut poly_buf: nusamai_geometry::Polygon<[f64; 5]> = nusamai_geometry::Polygon::new();
+    let mut poly_buf: flatgeom::Polygon<[f64; 5]> = flatgeom::Polygon::new();
     for (yi, y_sliced_poly) in y_range.zip_eq(y_sliced_polys.iter()) {
         let x_iter = {
             let (min_x, max_x) = y_sliced_poly
