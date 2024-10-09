@@ -11,27 +11,20 @@ import { useReactFlow } from "@xyflow/react";
 import { memo } from "react";
 
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Button,
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
   IconButton,
-  Input,
   Label,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  SchemaForm,
 } from "@flow/components";
 import { useFullscreen } from "@flow/hooks";
+import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import type { NodeData } from "@flow/types";
 
@@ -53,6 +46,10 @@ const ParamEditor: React.FC<Props> = ({
   const t = useT();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
+
+  const { useGetActionById } = useAction();
+
+  const { action } = useGetActionById(nodeMeta.name);
 
   const handleFitView = () =>
     fitView({ nodes: [{ id: nodeId }], duration: 400 });
@@ -111,54 +108,9 @@ const ParamEditor: React.FC<Props> = ({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="params">
-          <Card className="bg-transparent dark:font-extralight">
-            <CardHeader>
-              <CardTitle>{t("Parameter Editor")}</CardTitle>
-              <CardDescription>
-                {t(
-                  "Make changes to your account here. Click save when youre done.",
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="space-y-1">
-                <Label htmlFor="username">Name</Label>
-                <Input id="username" placeholder="Enter city name" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="username">Longitude</Label>
-                <Input
-                  id="username"
-                  type="number"
-                  placeholder="Enter longitude"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="username">Latitude</Label>
-                <Input
-                  id="username"
-                  type="number"
-                  placeholder="Enter latitude"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="name">Source</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select data source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Asset1</SelectItem>
-                    <SelectItem value="dark">Asset2</SelectItem>
-                    <SelectItem value="system">Asset3</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button>Save changes</Button>
-            </CardFooter>
-          </Card>
+          <div className="rounded border bg-card p-3">
+            {action && <SchemaForm schema={action.parameter} />}
+          </div>
         </TabsContent>
         <TabsContent value="data">
           <Card className="bg-transparent">
