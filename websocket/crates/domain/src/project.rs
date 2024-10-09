@@ -56,6 +56,7 @@ impl ProjectEditingSession {
         let session_id = generate_id(14, "editor-session");
         self.session_id = Some(session_id.clone());
         if !self.session_setup_complete {
+            // get latest snapshot state
             let latest_snapshot_state = snapshot_repo
                 .get_latest_snapshot_state(&self.project_id)
                 .await?;
@@ -86,10 +87,10 @@ impl ProjectEditingSession {
             if current_state == state_vector {
                 return Ok((vec![], current_state));
             }
-            let (diff, server_state) = calculate_diff(&current_state, &state_vector);
+            let (diff, server_state) = calculate_diff(&state_vector, &current_state);
             Ok((diff, server_state))
         } else {
-            Ok((state_vector.clone(), state_vector))
+            Ok((state_vector.clone(), vec![]))
         }
     }
 
