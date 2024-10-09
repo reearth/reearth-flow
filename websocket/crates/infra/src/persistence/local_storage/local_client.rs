@@ -152,7 +152,7 @@ impl StorageClient for LocalClient {
         path: String,
         data: &T,
     ) -> Result<String, Self::Error> {
-        let timestamp = Utc::now().timestamp_millis();
+        let timestamp = Utc::now().timestamp_nanos();
         let versioned_path = format!("{}_v{}", path, timestamp);
 
         // Upload the data
