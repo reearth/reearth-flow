@@ -140,7 +140,7 @@ impl TryFrom<Entity> for Geometry {
             {
                 let mut ring_id_iter = geoms.ring_ids.iter();
                 let mut poly_textures = Vec::with_capacity(geoms.multipolygon.len());
-                let mut poly_uvs = nusamai_geometry::MultiPolygon::new();
+                let mut poly_uvs = flatgeom::MultiPolygon::new();
 
                 for poly in &geoms.multipolygon {
                     for (i, ring) in poly.rings().enumerate() {
@@ -189,7 +189,7 @@ impl TryFrom<Entity> for Geometry {
             // set 'null' appearance if no theme found
             geometry_entity.polygon_materials = vec![None; geoms.multipolygon.len()];
             geometry_entity.polygon_textures = vec![None; geoms.multipolygon.len()];
-            let mut poly_uvs = nusamai_geometry::MultiPolygon::new();
+            let mut poly_uvs = flatgeom::MultiPolygon::new();
             for poly in &geoms.multipolygon {
                 for (i, ring) in poly.rings().enumerate() {
                     let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);

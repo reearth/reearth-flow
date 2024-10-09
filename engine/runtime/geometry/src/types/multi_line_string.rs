@@ -7,9 +7,7 @@ use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
-use nusamai_geometry::{
-    MultiLineString2 as NMultiLineString2, MultiLineString3 as NMultiLineString3,
-};
+use flatgeom::{MultiLineString2 as NMultiLineString2, MultiLineString3 as NMultiLineString3};
 
 use super::conversion::geojson::{
     create_geo_multi_line_string, create_multi_line_string_type, mismatch_geom_err,

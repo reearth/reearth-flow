@@ -61,14 +61,11 @@ reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc9", features = ["serde", "serde_json"] }
-nusamai-geometry = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc9", features = ["serde"] }
-nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc9" }
-nusamai-mvt = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc9" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc9", features = ["serde"] }
-nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.0.1-rc9" }
-
-cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs.git" }
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.1.0", features = ["serde", "serde_json"] }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.1.0" }
+nusamai-mvt = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.1.0" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.1.0", features = ["serde"] }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.1.0" }
 
 Inflector = "0.11.4"
 ahash = "0.8.11"
@@ -81,6 +78,7 @@ base64 = "0.22.1"
 bincode = { version = "2.0.0-rc.3", default-features = false, features = ["serde", "std"] }
 byteorder = "1.5.0"
 bytes = { version = "1.7.2", features = ["serde"] }
+cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs.git" }
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.19", features = ["env", "string"] }
 clipper-sys = "0.7.2"
@@ -94,6 +92,7 @@ csv = "1.3.0"
 directories = "5.0.1"
 earcut = "0.4.1"
 flate2 = "1.0.34"
+flatgeom = "0.0.2"
 float_next_after = "1.0.0"
 futures = "0.3.31"
 futures-util = "0.3.31"

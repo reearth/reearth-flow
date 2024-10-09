@@ -1,10 +1,10 @@
 use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
+use flatgeom::{MultiPoint2 as NMultiPoint2, MultiPoint3 as NMultiPoint3};
 use geo_types::MultiPoint as GeoMultiPoint;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
-use nusamai_geometry::{MultiPoint2 as NMultiPoint2, MultiPoint3 as NMultiPoint3};
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{create_geo_point, create_point_type, mismatch_geom_err};

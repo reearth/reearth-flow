@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
+use flatgeom::{LineString2 as NLineString2, LineString3 as NLineString3};
 use geo_types::LineString as GeoLineString;
-use nusamai_geometry::{LineString2 as NLineString2, LineString3 as NLineString3};
 
 use crate::utils::line_string_bounding_rect;
 
@@ -334,7 +334,7 @@ impl<'a> From<NLineString3<'a>> for LineString3D<f64> {
 }
 
 pub fn from_line_string_5d(
-    line_strings: nusamai_geometry::LineString<[f64; 5]>,
+    line_strings: flatgeom::LineString<[f64; 5]>,
 ) -> (LineString3D<f64>, LineString2D<f64>) {
     let targets = line_strings
         .iter_closed()
