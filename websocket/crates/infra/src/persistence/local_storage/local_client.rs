@@ -259,7 +259,7 @@ impl StorageClient for LocalClient {
 
         match latest_version {
             Some(version_path) => {
-                let data = self.download(version_path).await?;
+                let data = self.download::<T>(version_path).await?;
                 Ok(Some(data))
             }
             None => Ok(None), // No versions found
