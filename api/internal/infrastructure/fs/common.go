@@ -1,5 +1,6 @@
 package fs
 
 const (
-	assetDir = "assets"
+	assetDir     = "assets"
+	workflowsDir = "workflows"
 )
