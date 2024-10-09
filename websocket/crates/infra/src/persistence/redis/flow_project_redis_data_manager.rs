@@ -512,12 +512,14 @@ mod tests {
     use async_trait::async_trait;
     use std::sync::{Arc, Mutex};
 
+    type MergeUpdatesResult = Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError>;
+
     #[derive(Clone)]
     pub struct MockFlowProjectRedisDataManager {
         pub current_state: Arc<Mutex<Option<Vec<u8>>>>,
         pub push_update_result: Arc<Mutex<Result<(), FlowProjectRedisDataManagerError>>>,
-        pub merge_updates_result:
-            Arc<Mutex<Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError>>>,
+        #[warn(clippy::type_complexity)]
+        pub merge_updates_result: Arc<Mutex<MergeUpdatesResult>>,
     }
 
     impl MockFlowProjectRedisDataManager {
