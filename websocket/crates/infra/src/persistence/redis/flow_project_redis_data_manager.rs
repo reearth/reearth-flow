@@ -44,6 +44,14 @@ pub enum FlowProjectRedisDataManagerError {
     GlobalLock(#[from] GlobalLockError),
     #[error("Another Editing Session in progress")]
     EditingSessionInProgress,
+    #[error("Failed to merge updates")]
+    MergeUpdates,
+    #[error("Failed to get last update id")]
+    LastUpdateId,
+    #[error("Missing state update")]
+    MissingStateUpdate,
+    #[error(transparent)]
+    DecodeUpdate(#[from] yrs::encoding::read::Error),
     #[error(transparent)]
     ParseInt(#[from] std::num::ParseIntError),
     #[error(transparent)]
@@ -158,16 +166,23 @@ impl FlowProjectRedisDataManager {
             .reduce(|a, b| {
                 let doc = Doc::new();
                 let mut txn = doc.transact_mut();
-                txn.apply_update(Update::decode_v2(&a).unwrap());
-                txn.apply_update(Update::decode_v2(&b).unwrap());
+                if let Ok(decoded_a) = Update::decode_v2(&a) {
+                    txn.apply_update(decoded_a);
+                }
+                if let Ok(decoded_b) = Update::decode_v2(&b) {
+                    txn.apply_update(decoded_b);
+                }
                 txn.encode_update_v2()
             })
-            .unwrap();
+            .ok_or(FlowProjectRedisDataManagerError::MergeUpdates)?;
         let updates_by = updates
             .iter()
             .filter_map(|x| x.updated_by.clone())
             .collect::<Vec<_>>();
-        let last_update_id = updates.last().unwrap().stream_id.clone().unwrap();
+        let last_update_id = updates
+            .last()
+            .and_then(|x| x.stream_id.clone())
+            .ok_or(FlowProjectRedisDataManagerError::LastUpdateId)?;
         Ok(Some((merged_update, last_update_id, updates_by)))
     }
 
@@ -389,13 +404,21 @@ impl FlowProjectRedisDataManager {
             let doc_clone = Arc::clone(&doc);
             tokio::task::spawn_blocking(move || {
                 let mut txn = doc_clone.transact_mut();
-                txn.apply_update(Update::decode_v2(&state_update.unwrap()).unwrap());
-                txn.apply_update(Update::decode_v2(&merged_update).unwrap());
-                txn.encode_update_v2()
+                match state_update {
+                    Some(ref state_update) => {
+                        txn.apply_update(Update::decode_v2(state_update)?);
+                    }
+                    None => return Err(FlowProjectRedisDataManagerError::MissingStateUpdate),
+                }
+                txn.apply_update(Update::decode_v2(&merged_update)?);
+                Ok::<_, FlowProjectRedisDataManagerError>(txn.encode_update_v2())
             })
-            .await?
+            .await??
         } else {
-            state_update.unwrap()
+            match state_update {
+                Some(state_update) => state_update,
+                None => return Err(FlowProjectRedisDataManagerError::MissingStateUpdate),
+            }
         };
 
         let merged_state_updated_by = if let Some(updates_by) = updates_by {
@@ -409,10 +432,10 @@ impl FlowProjectRedisDataManager {
         let doc_clone = Arc::clone(&doc);
         let optimized_merged_state = tokio::task::spawn_blocking(move || {
             let mut txn = doc_clone.transact_mut();
-            txn.apply_update(Update::decode_v2(&merged_update).unwrap());
-            txn.encode_update_v2()
+            txn.apply_update(Update::decode_v2(&merged_update)?);
+            Ok::<_, FlowProjectRedisDataManagerError>(txn.encode_update_v2())
         })
-        .await?;
+        .await??;
 
         self.set_state_data(
             optimized_merged_state.clone(),

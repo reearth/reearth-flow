@@ -206,7 +206,7 @@ impl ProjectEditingSession {
             String::new(), // path
         );
 
-        let state = SnapshotInfo::new(
+        let snapshot_info = SnapshotInfo::new(
             data.created_by,
             vec![],
             self.tenant.clone(), // use tenant from project
@@ -218,7 +218,7 @@ impl ProjectEditingSession {
             None,      // updated_at
         );
 
-        let snapshot = ProjectSnapshot::new(metadata, state);
+        let snapshot = ProjectSnapshot::new(metadata, snapshot_info);
 
         snapshot_repo.create_snapshot(snapshot).await?;
         Ok(())

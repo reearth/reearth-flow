@@ -59,7 +59,6 @@ where
 
             None => ProjectEditingSession::new(
                 project_id.to_string(),
-                // "REDIS_URL".to_owned(),
                 ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
             ),
         };
