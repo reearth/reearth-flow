@@ -74,13 +74,15 @@ async-recursion = "1.1.1"
 async-stream = "0.3.6"
 async-trait = "0.1.83"
 async_zip = { version = "0.0.17", features = ["full"] }
+atlas-packer = { git = "https://github.com/MIERUNE/atlas-packer.git" }
 base64 = "0.22.1"
 bincode = { version = "2.0.0-rc.3", default-features = false, features = ["serde", "std"] }
+bytemuck = { version = "1.16.0", features = ["derive"] }
 byteorder = "1.5.0"
 bytes = { version = "1.7.2", features = ["serde"] }
 cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs.git" }
 chrono = { version = "0.4.38", features = ["serde"] }
-clap = { version = "4.5.19", features = ["env", "string"] }
+clap = { version = "4.5.20", features = ["env", "string"] }
 clipper-sys = "0.7.2"
 color-eyre = "0.6.3"
 colored = "2.1.0"

@@ -19,3 +19,4 @@ tools/cesium/3dtiles/**
 !tools/cesium/3dtiles/.gitkeep
 tools/mvt/dist/**
 !tools/mvt/dist/.gitkeep
+output.png
