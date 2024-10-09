@@ -1,5 +1,5 @@
 import { CaretRight } from "@phosphor-icons/react";
-import { Dispatch, SetStateAction } from "react";
+import { Dispatch, SetStateAction, useCallback } from "react";
 
 import {
   Button,
@@ -11,17 +11,39 @@ import {
   Label,
   DialogFooter,
 } from "@flow/components";
+import { useDeployment } from "@flow/lib/gql/deployment";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
+import { Workflow } from "@flow/types";
 
 type Props = {
+  onDeploymentReadyWorkflows: () => Workflow[];
   setShowDialog: Dispatch<SetStateAction<"deploy" | undefined>>;
 };
 
-const DeployDialog: React.FC<Props> = ({ setShowDialog }) => {
+const DeployDialog: React.FC<Props> = ({
+  onDeploymentReadyWorkflows,
+  setShowDialog,
+}) => {
   const t = useT();
 
   const [currentProject] = useCurrentProject();
+
+  const { createDeployment } = useDeployment();
+
+  const handleDeployment = useCallback(async () => {
+    console.log("Deploying project workflow", currentProject);
+    if (currentProject) {
+      const workflows = onDeploymentReadyWorkflows();
+      if (!workflows.length) return;
+      console.log("Deploying project workflow 123", workflows);
+      await createDeployment(
+        currentProject.id,
+        currentProject.workspaceId,
+        workflows,
+      );
+    }
+  }, [currentProject, createDeployment, onDeploymentReadyWorkflows]);
 
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(undefined)}>
@@ -50,9 +72,8 @@ const DeployDialog: React.FC<Props> = ({ setShowDialog }) => {
         </DialogContentWrapper>
         <DialogFooter>
           <Button
-          // disabled={buttonDisabled || !editProject?.name}
-          // onClick={onUpdateProject}
-          >
+            // disabled={buttonDisabled || !editProject?.name}
+            onClick={handleDeployment}>
             {t("Deploy")}
           </Button>
         </DialogFooter>

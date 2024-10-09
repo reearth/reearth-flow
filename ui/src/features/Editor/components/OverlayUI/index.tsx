@@ -1,7 +1,7 @@
 import { type XYPosition } from "@xyflow/react";
 import { memo } from "react";
 
-import type { ActionNodeType, Edge, Node } from "@flow/types";
+import type { ActionNodeType, Edge, Node, Workflow } from "@flow/types";
 
 import {
   ActionBar,
@@ -19,6 +19,7 @@ type OverlayUIProps = {
     nodeType: ActionNodeType;
   };
   nodes: Node[];
+  onDeploymentReadyWorkflows: () => Workflow[];
   onNodesChange: (nodes: Node[]) => void;
   onNodeLocking: (nodeId: string) => void;
   onNodePickerClose: () => void;
@@ -31,6 +32,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   hoveredDetails,
   nodePickerOpen,
   nodes,
+  onDeploymentReadyWorkflows,
   onNodesChange,
   onNodeLocking,
   onNodePickerClose,
@@ -46,7 +48,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {canvas}
         <Breadcrumb />
         <Toolbox onRedo={onWorkflowRedo} onUndo={onWorkflowUndo} />
-        <ActionBar />
+        <ActionBar onDeploymentReadyWorkflows={onDeploymentReadyWorkflows} />
         <CanvasActionBar />
         <Infobar hoveredDetails={hoveredDetails} />
       </div>

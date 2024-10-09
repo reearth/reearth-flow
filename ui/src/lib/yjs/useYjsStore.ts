@@ -4,13 +4,16 @@ import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
-import type { Edge, Node } from "@flow/types";
+import type { Edge, Node, Workflow } from "@flow/types";
 
+import { fromYjsText } from "./conversions";
 import useWorkflowTabs from "./useWorkflowTabs";
 import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
 import { yWorkflowBuilder, type YWorkflow } from "./workflowBuilder";
+
+export type RawWorkflow = Record<string, Y.Text | Node[] | Edge[]>;
 
 export default ({
   workflowId,
@@ -78,6 +81,21 @@ export default ({
 
   const rawWorkflows = useY(yWorkflows);
 
+  const handleDeploymentReadyWorkflows = useCallback(
+    (): Workflow[] =>
+      rawWorkflows.map((w) => {
+        const id = fromYjsText(w?.id as Y.Text);
+        const name = fromYjsText(w?.name as Y.Text);
+        const nodes = (w?.nodes as Node[])?.map((n) => ({
+          id: n.id,
+          type: n.type,
+        }));
+        const edges = w?.edges as Edge[];
+        return { id, name, nodes, edges };
+      }),
+    [rawWorkflows],
+  );
+
   const {
     workflows,
     openWorkflows,
@@ -122,6 +140,7 @@ export default ({
     nodes,
     edges,
     openWorkflows,
+    handleDeploymentReadyWorkflows,
     handleWorkflowClose,
     handleWorkflowAdd,
     handleNodesUpdate,
