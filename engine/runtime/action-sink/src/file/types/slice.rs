@@ -12,7 +12,7 @@ use super::material::Material;
 pub(crate) struct SlicedFeature {
     pub(crate) typename: String,
     // polygons [x, y, z, u, v]
-    pub polygons: nusamai_geometry::MultiPolygon<'static, [f64; 5]>,
+    pub polygons: flatgeom::MultiPolygon<'static, [f64; 5]>,
     // material ids for each polygon
     pub(crate) polygon_material_ids: Vec<u32>,
     // materials

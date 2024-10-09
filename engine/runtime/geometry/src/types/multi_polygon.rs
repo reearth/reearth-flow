@@ -2,10 +2,10 @@ use std::iter::FromIterator;
 use std::ops::Range;
 
 use approx::{AbsDiffEq, RelativeEq};
+use flatgeom::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3};
 use geo_types::{MultiPolygon as GeoMultiPolygon, Polygon as GeoPolygon};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
-use nusamai_geometry::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3};
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{

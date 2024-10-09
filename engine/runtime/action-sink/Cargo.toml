@@ -20,8 +20,9 @@ reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
+flatgeom.workspace = true
+kv-extsort = { git = "https://github.com/MIERUNE/kv-extsort-rs.git" }
 nusamai-citygml.workspace = true
-nusamai-geometry.workspace = true
 nusamai-gltf.workspace = true
 nusamai-mvt.workspace = true
 nusamai-plateau.workspace = true
@@ -29,9 +30,13 @@ nusamai-projection.workspace = true
 
 ahash.workspace = true
 async-trait.workspace = true
+bincode.workspace = true
 byteorder.workspace = true
 bytes.workspace = true
 cesiumtiles.workspace = true
+crossbeam.workspace = true
+crossbeam-channel.workspace = true
+crossbeam-utils.workspace = true
 csv.workspace = true
 earcut.workspace = true
 flate2.workspace = true
