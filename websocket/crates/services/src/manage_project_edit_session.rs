@@ -202,3 +202,160 @@ where
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use chrono::{Duration, Utc};
+    use mockall::predicate::*;
+
+    mockall::mock! {
+        ProjectEditingSessionRepository {}
+        #[async_trait::async_trait]
+        impl ProjectEditingSessionRepository for ProjectEditingSessionRepository {
+            type Error = ProjectServiceError;
+
+            async fn create_session(&self, session: ProjectEditingSession) -> Result<(), ProjectServiceError>;
+            async fn get_active_session(&self, project_id: &str) -> Result<Option<ProjectEditingSession>, ProjectServiceError>;
+            async fn update_session(&self, session: ProjectEditingSession) -> Result<(), ProjectServiceError>;
+            async fn get_client_count(&self) -> Result<usize, ProjectServiceError>;
+        }
+    }
+
+    mockall::mock! {
+        ProjectSnapshotRepository {}
+        #[async_trait::async_trait]
+        impl ProjectSnapshotRepository for ProjectSnapshotRepository {
+            type Error = ProjectServiceError;
+
+            async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectServiceError>;
+            async fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<ProjectSnapshot>, ProjectServiceError>;
+            async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, ProjectServiceError>;
+            async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectServiceError>;
+            async fn update_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
+        }
+    }
+
+    mockall::mock! {
+        SnapshotDataRepository {}
+        #[async_trait::async_trait]
+        impl SnapshotDataRepository for SnapshotDataRepository {
+            type Error = ProjectServiceError;
+
+            async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
+            async fn get_snapshot_data(&self, project_id: &str) -> Result<Option<SnapshotData>, ProjectServiceError>;
+            async fn get_latest_snapshot_data(&self, project_id: &str) -> Result<Option<SnapshotData>, ProjectServiceError>;
+            async fn update_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
+            async fn delete_snapshot_data(&self, project_id: &str) -> Result<(), ProjectServiceError>;
+        }
+    }
+
+    mockall::mock! {
+        RedisDataManager {}
+        #[async_trait::async_trait]
+        impl RedisDataManager for RedisDataManager {
+            type Error = ProjectServiceError;
+
+            async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), ProjectServiceError>;
+            async fn get_current_state(&self) -> Result<Option<Vec<u8>>, ProjectServiceError>;
+            async fn push_update(&self, update: Vec<u8>, updated_by: String) -> Result<(), ProjectServiceError>;
+            async fn clear_data(&self) -> Result<(), ProjectServiceError>;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_manage_edit_session_service() {
+        let mut mock_session_repo = MockProjectEditingSessionRepository::new();
+        let mut mock_snapshot_repo = MockProjectSnapshotRepository::new();
+        let mut mock_snapshot_data_repo = MockSnapshotDataRepository::new();
+        let mut mock_redis_manager = MockRedisDataManager::new();
+
+        // Set up expectations
+        mock_session_repo
+            .expect_get_active_session()
+            .with(eq("project_123"))
+            .returning(|project_id| {
+                Ok(Some(ProjectEditingSession::new(
+                    project_id.to_string(),
+                    ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+                )))
+            });
+
+        mock_session_repo
+            .expect_get_client_count()
+            .returning(|| Ok(1));
+
+        mock_session_repo
+            .expect_update_session()
+            .returning(|_| Ok(()));
+
+        // Create a ProjectSnapshot instance
+        let project_snapshot = ProjectSnapshot::new(
+            Metadata::new(
+                generate_id(14, "snap"),
+                "project_123".to_string(),
+                Some("session_456".to_string()),
+                "Test Snapshot".to_string(),
+                "".to_string(),
+            ),
+            SnapshotInfo::new(
+                Some("test_user".to_string()),
+                vec![],
+                ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+                ObjectDelete {
+                    deleted: false,
+                    delete_after: None,
+                },
+                Some(Utc::now()),
+                None,
+            ),
+        );
+
+        mock_snapshot_repo
+            .expect_get_latest_snapshot()
+            .with(eq("session_456"))
+            .returning(move |_| Ok(Some(project_snapshot.clone())));
+
+        mock_snapshot_repo
+            .expect_create_snapshot()
+            .returning(|_| Ok(()));
+
+        mock_snapshot_data_repo
+            .expect_create_snapshot_data()
+            .returning(|_| Ok(()));
+
+        mock_redis_manager
+            .expect_merge_updates()
+            .with(eq(false))
+            .returning(|_| Ok((vec![], vec![])));
+
+        mock_redis_manager
+            .expect_get_current_state()
+            .returning(|| Ok(Some(vec![])));
+
+        // Create the service with mock repositories
+        let service = ManageEditSessionService::new(
+            Arc::new(mock_session_repo),
+            Arc::new(mock_snapshot_repo),
+            Arc::new(mock_snapshot_data_repo),
+            Arc::new(mock_redis_manager),
+        );
+
+        // Create test data
+        let task_data = ManageProjectEditSessionTaskData {
+            project_id: "project_123".to_string(),
+            session_id: "session_456".to_string(),
+            clients_count: Some(1),
+            clients_disconnected_at: None,
+            last_merged_at: None,
+            last_snapshot_at: Some(Utc::now() - Duration::minutes(10)),
+        };
+
+        // Run the process method
+        let result = service.process(task_data).await;
+
+        // Assert the result
+        assert!(result.is_ok());
+    }
+}

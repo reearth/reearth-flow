@@ -32,6 +32,18 @@ pub enum ProjectEditingSessionError<S, R> {
     Custom(String),
 }
 
+impl Default for ProjectEditingSession {
+    fn default() -> Self {
+        Self {
+            project_id: "".to_string(),
+            session_id: None,
+            session_setup_complete: false,
+            session_lock: Arc::new(Mutex::new(())),
+            tenant: ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+        }
+    }
+}
+
 impl ProjectEditingSession {
     pub fn new(project_id: String, tenant: ObjectTenant) -> Self {
         Self {
