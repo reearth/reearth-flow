@@ -149,11 +149,9 @@ impl Sink for MVTWriter {
             let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
             let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
             scope.spawn(|| {
-                println!("geometry_slicing_stage");
                 let _ = geometry_slicing_stage(upstream, tile_id_conv, sender_sliced, &self.params);
             });
             scope.spawn(|| {
-                println!("feature_sorting_stage");
                 let _ = feature_sorting_stage(receiver_sliced, sender_sorted);
             });
             scope.spawn(|| {
@@ -162,7 +160,6 @@ impl Sink for MVTWriter {
                     .build()
                     .unwrap();
                 pool.install(|| {
-                    println!("tile_writing_stage");
                     let _ = tile_writing_stage(
                         ctx.as_context(),
                         &output,
