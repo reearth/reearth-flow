@@ -135,7 +135,7 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
             self.client.update_versioned(path, &snapshot).await?;
         } else {
             let path = format!("snapshot/{}", snapshot.metadata.project_id);
-            self.client.upload(path, &snapshot).await?;
+            self.client.upload_versioned(path, &snapshot).await?;
         }
 
         Ok(())
@@ -147,7 +147,7 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", project_id);
-        self.client.upload(path, &snapshot_data).await?;
+        self.client.upload_versioned(path, &snapshot_data).await?;
         Ok(())
     }
 }
@@ -184,7 +184,9 @@ impl SnapshotDataRepository for ProjectGcsRepository {
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
-        self.client.upload(path, &snapshot_data.state).await?;
+        self.client
+            .update_versioned(path, &snapshot_data.state)
+            .await?;
         Ok(())
     }
 
