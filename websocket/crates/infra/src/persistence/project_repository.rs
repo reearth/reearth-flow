@@ -141,13 +141,13 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
         Ok(())
     }
 
-    async fn update_snapshot_data(
+    async fn update_latest_snapshot_data(
         &self,
         project_id: &str,
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", project_id);
-        self.client.upload_versioned(path, &snapshot_data).await?;
+        self.client.update_versioned(path, &snapshot_data).await?;
         Ok(())
     }
 }
@@ -178,7 +178,7 @@ impl SnapshotDataRepository for ProjectGcsRepository {
         Ok(snapshot_data)
     }
 
-    async fn update_snapshot_data(
+    async fn update_latest_snapshot_data(
         &self,
         snapshot_id: &str,
         snapshot_data: SnapshotData,
@@ -246,13 +246,13 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
         Ok(())
     }
 
-    async fn update_snapshot_data(
+    async fn update_latest_snapshot_data(
         &self,
         snapshot_id: &str,
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
-        self.client.upload(path, &snapshot_data).await?;
+        self.client.update_versioned(path, &snapshot_data).await?;
         Ok(())
     }
 }
@@ -282,13 +282,13 @@ impl SnapshotDataRepository for ProjectLocalRepository {
         Ok(snapshot_data)
     }
 
-    async fn update_snapshot_data(
+    async fn update_latest_snapshot_data(
         &self,
         snapshot_id: &str,
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
-        self.client.upload(path, &snapshot_data).await?;
+        self.client.update_versioned(path, &snapshot_data).await?;
         Ok(())
     }
 

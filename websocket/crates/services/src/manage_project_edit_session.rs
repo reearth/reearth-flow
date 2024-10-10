@@ -232,7 +232,7 @@ mod tests {
             async fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<ProjectSnapshot>, ProjectServiceError>;
             async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, ProjectServiceError>;
             async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectServiceError>;
-            async fn update_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
+            async fn update_latest_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
         }
     }
 
@@ -245,7 +245,7 @@ mod tests {
             async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
             async fn get_snapshot_data(&self, project_id: &str) -> Result<Option<Vec<u8>>, ProjectServiceError>;
             async fn get_latest_snapshot_data(&self, project_id: &str) -> Result<Option<Vec<u8>>, ProjectServiceError>;
-            async fn update_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
+            async fn update_latest_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
             async fn delete_snapshot_data(&self, project_id: &str) -> Result<(), ProjectServiceError>;
         }
     }
@@ -463,7 +463,7 @@ mod tests {
 
         mocks
             .snapshot_repo
-            .expect_update_snapshot_data()
+            .expect_update_latest_snapshot_data()
             .times(1)
             .returning(|_, _| Ok(()));
 

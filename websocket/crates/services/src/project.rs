@@ -179,14 +179,14 @@ where
             .await?)
     }
 
-    async fn update_snapshot_data(
+    async fn update_latest_snapshot_data(
         &self,
         project_id: &str,
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         Ok(self
             .snapshot_repository
-            .update_snapshot_data(project_id, snapshot_data)
+            .update_latest_snapshot_data(project_id, snapshot_data)
             .await?)
     }
 }
@@ -260,7 +260,7 @@ mod tests {
             async fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError>;
             async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, ProjectRepositoryError>;
             async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectRepositoryError>;
-            async fn update_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectRepositoryError>;
+            async fn update_latest_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectRepositoryError>;
         }
     }
 

@@ -266,7 +266,7 @@ impl ProjectEditingSession {
         );
 
         snapshot_repo
-            .update_snapshot_data(&snapshot_data.project_id, snapshot_data.clone())
+            .update_latest_snapshot_data(&snapshot_data.project_id, snapshot_data.clone())
             .await?;
 
         // Clear the session data from Redis

@@ -68,13 +68,13 @@ where
 {
     type Error = R::Error;
 
-    async fn update_snapshot_data(
+    async fn update_latest_snapshot_data(
         &self,
         project_id: &str,
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         self.snapshot_repository
-            .update_snapshot_data(project_id, snapshot_data)
+            .update_latest_snapshot_data(project_id, snapshot_data)
             .await
     }
 
@@ -116,7 +116,7 @@ mod tests {
         impl ProjectSnapshotRepository for SnapshotRepo {
             type Error = ProjectRepositoryError;
 
-            async fn update_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectRepositoryError>;
+            async fn update_latest_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectRepositoryError>;
             async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectRepositoryError>;
             async fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError>;
             async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, ProjectRepositoryError>;
@@ -215,7 +215,7 @@ mod tests {
         let mut mock_repo = MockSnapshotRepo::new();
 
         mock_repo
-            .expect_update_snapshot_data()
+            .expect_update_latest_snapshot_data()
             .with(
                 eq("project_123"),
                 function(|data: &SnapshotData| {
@@ -238,7 +238,7 @@ mod tests {
         );
 
         let result = service
-            .update_snapshot_data("project_123", snapshot_data)
+            .update_latest_snapshot_data("project_123", snapshot_data)
             .await;
         assert!(result.is_ok());
     }
