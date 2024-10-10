@@ -1,179 +1,314 @@
-use crate::repository::ProjectSnapshotRepository;
-use crate::snapshot::{ObjectDelete, ObjectTenant, ProjectMetadata, ProjectSnapshot};
+use super::utils::calculate_diff;
+use std::sync::Arc;
+
+use crate::repository::{ProjectSnapshotRepository, RedisDataManager};
+use crate::types::data::SnapshotData;
+use crate::types::snapshot::{Metadata, ObjectDelete, ObjectTenant, ProjectSnapshot, SnapshotInfo};
 use crate::utils::generate_id;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use thiserror::Error;
+use tokio::sync::Mutex;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Project {
-    pub id: String,
-    pub workspace_id: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ProjectAllowedActions {
-    pub id: String,
-    pub actions: Vec<Action>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Action {
-    pub action: String,
-    pub allowed: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectEditingSession {
     pub project_id: String,
     pub session_id: Option<String>,
     pub session_setup_complete: bool,
-    pub redis_client: String, // Redis connection string or identifier
+    pub tenant: ObjectTenant,
+    #[serde(skip)]
+    session_lock: Arc<Mutex<()>>,
 }
 
 #[derive(Error, Debug)]
-pub enum ProjectEditingSessionError<E: Error + Send + Sync> {
+pub enum ProjectEditingSessionError<S, R> {
     #[error("Session not setup")]
     SessionNotSetup,
-    #[error("Snapshot repository error: {0}")]
-    SnapshotRepositoryError(#[from] E),
-    #[error("Other error: {0}")]
-    Other(String),
+    #[error(transparent)]
+    Snapshot(#[from] S),
+    #[error(transparent)]
+    Redis(R),
+    #[error("{0}")]
+    Custom(String),
+}
+
+impl Default for ProjectEditingSession {
+    fn default() -> Self {
+        Self {
+            project_id: "".to_string(),
+            session_id: None,
+            session_setup_complete: false,
+            session_lock: Arc::new(Mutex::new(())),
+            tenant: ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+        }
+    }
 }
 
 impl ProjectEditingSession {
-    pub fn new(project_id: String, redis_client: String) -> Self {
+    pub fn new(project_id: String, tenant: ObjectTenant) -> Self {
         Self {
             project_id,
             session_id: None,
+            tenant,
             session_setup_complete: false,
-            redis_client,
+            session_lock: Arc::new(Mutex::new(())),
         }
     }
 
-    pub async fn start_or_join_session<E: Error + Send + Sync>(
+    pub async fn start_or_join_session<R, S>(
         &mut self,
-        snapshot_repo: &impl ProjectSnapshotRepository<E>,
-    ) -> Result<String, ProjectEditingSessionError<E>> {
+        snapshot_repo: &R,
+        redis_data_manager: &S,
+    ) -> Result<String, ProjectEditingSessionError<R::Error, S::Error>>
+    where
+        R: ProjectSnapshotRepository + ?Sized,
+        S: RedisDataManager,
+    {
         // Logic to start or join a session
         let session_id = generate_id(14, "editor-session");
         self.session_id = Some(session_id.clone());
         if !self.session_setup_complete {
-            let _latest_snapshot_state = snapshot_repo
+            // get latest snapshot state
+            let latest_snapshot_state = snapshot_repo
                 .get_latest_snapshot_state(&self.project_id)
                 .await?;
             // Initialize Redis with latest snapshot state
+            redis_data_manager
+                .push_update(latest_snapshot_state, "system".to_string())
+                .await
+                .map_err(ProjectEditingSessionError::Redis)?;
         }
         self.session_setup_complete = true;
         Ok(session_id)
     }
 
-    pub async fn get_diff_update<E: Error + Send + Sync>(
+    pub async fn get_diff_update<R>(
         &self,
-        _state_vector: Vec<u8>,
-    ) -> Result<(Vec<u8>, Vec<u8>), ProjectEditingSessionError<E>> {
-        self.check_session_setup()?;
-        // Logic to get the diff update
-        Ok((vec![], vec![]))
-    }
+        state_vector: Vec<u8>,
+        redis_data_manager: &R,
+    ) -> Result<(Vec<u8>, Vec<u8>), ProjectEditingSessionError<R::Error, ()>>
+    where
+        R: RedisDataManager,
+    {
+        if !self.session_setup_complete {
+            return Err(ProjectEditingSessionError::SessionNotSetup);
+        }
 
-    pub async fn merge_updates<E: Error + Send + Sync>(
-        &self,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
-        self.check_session_setup()?;
-        // Logic to merge updates
-        Ok(())
-    }
-
-    pub async fn get_state_update<E: Error + Send + Sync>(
-        &self,
-    ) -> Result<Vec<u8>, ProjectEditingSessionError<E>> {
-        self.check_session_setup()?;
-        // Logic to get the state update
-        Ok(vec![])
-    }
-
-    pub async fn push_update<E: Error + Send + Sync>(
-        &self,
-        _update: Vec<u8>,
-        _updated_by: Option<String>,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
-        self.check_session_setup()?;
-        // Logic to push an update
-        Ok(())
-    }
-
-    pub async fn create_snapshot<E: Error + Send + Sync>(
-        &self,
-        snapshot_repo: &impl ProjectSnapshotRepository<E>,
-        data: SnapshotData,
-        skip_lock: bool,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
-        self.check_session_setup()?;
-        if skip_lock {
-            self.create_snapshot_internal(snapshot_repo, data).await
+        let current_state = redis_data_manager.get_current_state().await?;
+        if let Some(current_state) = current_state {
+            if current_state == state_vector {
+                return Ok((vec![], current_state));
+            }
+            let (diff, server_state) = calculate_diff(&state_vector, &current_state);
+            Ok((diff, server_state))
         } else {
-            // Logic to lock the session before creating a snapshot
-            self.create_snapshot_internal(snapshot_repo, data).await
+            Ok((state_vector.clone(), vec![]))
         }
     }
 
-    async fn create_snapshot_internal<E: Error + Send + Sync>(
+    pub async fn merge_updates<R>(
         &self,
-        snapshot_repo: &impl ProjectSnapshotRepository<E>,
-        data: SnapshotData,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
-        self.merge_updates().await?;
+        redis_data_manager: &R,
+        skip_lock: bool,
+    ) -> Result<(Vec<u8>, Vec<String>), ProjectEditingSessionError<R::Error, ()>>
+    where
+        R: RedisDataManager,
+    {
+        if !self.session_setup_complete {
+            return Err(ProjectEditingSessionError::SessionNotSetup);
+        }
 
-        let metadata = ProjectMetadata {
-            id: generate_id(14, "snap"),
-            project_id: self.project_id.clone(),
-            session_id: self.session_id.clone(),
-            name: data.name.unwrap_or_default(),
-            path: String::new(),
+        let result = if skip_lock {
+            redis_data_manager.merge_updates(false).await?
+        } else {
+            let _lock = self.session_lock.lock().await;
+            redis_data_manager.merge_updates(false).await?
         };
 
-        let snapshot = ProjectSnapshot {
-            metadata,
-            created_by: data.created_by.clone(),
-            changes_by: vec![], // populate changes_by appropriately
-            tenant: ObjectTenant {
-                id: "tenant_id_example".to_string(),
-                key: "tenant_key_example".to_string(),
-            },
-            delete: ObjectDelete {
+        Ok(result)
+    }
+
+    pub async fn get_state_update<R>(
+        &self,
+        redis_data_manager: &R,
+    ) -> Result<Vec<u8>, ProjectEditingSessionError<R::Error, ()>>
+    where
+        R: RedisDataManager,
+    {
+        if !self.session_setup_complete {
+            return Err(ProjectEditingSessionError::SessionNotSetup);
+        }
+        let current_state = redis_data_manager.get_current_state().await?;
+
+        match current_state {
+            Some(state) => Ok(state),
+            None => Ok(Vec::new()),
+        }
+    }
+
+    pub async fn push_update<R>(
+        &self,
+        update: Vec<u8>,
+        updated_by: String,
+        redis_data_manager: &R,
+        skip_lock: bool,
+    ) -> Result<(), ProjectEditingSessionError<R::Error, ()>>
+    where
+        R: RedisDataManager,
+    {
+        if !self.session_setup_complete {
+            return Err(ProjectEditingSessionError::SessionNotSetup);
+        }
+
+        if skip_lock {
+            redis_data_manager.push_update(update, updated_by).await?;
+        } else {
+            let _lock = self.session_lock.lock().await;
+            redis_data_manager.push_update(update, updated_by).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn create_snapshot<S, R>(
+        &self,
+        snapshot_repo: &R,
+        redis_data_manager: &S,
+        data: SnapshotData,
+        skip_lock: bool,
+    ) -> Result<(), ProjectEditingSessionError<R::Error, S::Error>>
+    where
+        R: ProjectSnapshotRepository,
+        S: RedisDataManager,
+    {
+        if !self.session_setup_complete {
+            return Err(ProjectEditingSessionError::SessionNotSetup);
+        }
+        if skip_lock {
+            self.create_snapshot_internal(snapshot_repo, redis_data_manager, data)
+                .await
+        } else {
+            let _lock = self.session_lock.lock().await;
+            self.create_snapshot_internal(snapshot_repo, redis_data_manager, data)
+                .await
+        }
+    }
+
+    async fn create_snapshot_internal<R, S>(
+        &self,
+        snapshot_repo: &R,
+        redis_data_manager: &S,
+        data: SnapshotData,
+    ) -> Result<(), ProjectEditingSessionError<R::Error, S::Error>>
+    where
+        R: ProjectSnapshotRepository,
+        S: RedisDataManager,
+    {
+        self.merge_updates(redis_data_manager, false)
+            .await
+            .map_err(|_| ProjectEditingSessionError::SessionNotSetup)?;
+
+        let now = Utc::now();
+
+        let metadata = Metadata::new(
+            generate_id(14, "snap"),
+            self.project_id.clone(),
+            self.session_id.clone(),
+            data.name.unwrap_or_default(),
+            String::new(), // path
+        );
+
+        let snapshot_info = SnapshotInfo::new(
+            data.created_by,
+            vec![],
+            self.tenant.clone(), // use tenant from project
+            ObjectDelete {
                 deleted: false,
                 delete_after: None,
             },
-            created_at: None,
-            updated_at: None,
-        };
+            Some(now), // created_at
+            None,      // updated_at
+        );
+
+        let snapshot = ProjectSnapshot::new(metadata, snapshot_info);
 
         snapshot_repo.create_snapshot(snapshot).await?;
         Ok(())
     }
 
-    pub async fn end_session<E: Error + Send + Sync>(
-        &self,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
-        self.check_session_setup()?;
-        // Logic to end the session
+    pub async fn end_session<R, S>(
+        &mut self,
+        redis_data_manager: &R,
+        snapshot_repo: &S,
+    ) -> Result<(), ProjectEditingSessionError<S::Error, R::Error>>
+    where
+        R: RedisDataManager,
+        S: ProjectSnapshotRepository,
+    {
+        if !self.session_setup_complete {
+            return Err(ProjectEditingSessionError::SessionNotSetup);
+        }
+
+        // Acquire the session lock
+        let _lock = self.session_lock.lock().await;
+
+        // Merge any pending updates
+        let (state, _) = redis_data_manager
+            .merge_updates(true)
+            .await
+            .map_err(ProjectEditingSessionError::Redis)?;
+
+        let snapshot_data = SnapshotData::new(
+            self.project_id.clone(), // project_id
+            state,
+            None, // name (Optional)
+            None, // created_by (Optional)
+        );
+
+        snapshot_repo
+            .update_latest_snapshot_data(&snapshot_data.project_id, snapshot_data.clone())
+            .await?;
+
+        // Clear the session data from Redis
+        redis_data_manager
+            .clear_data()
+            .await
+            .map_err(ProjectEditingSessionError::Redis)?;
+
+        // Reset session state
+        self.session_id = None;
+        self.session_setup_complete = false;
+
         Ok(())
     }
 
-    fn check_session_setup<E: Error + Send + Sync>(
+    pub async fn load_session<R>(
+        &mut self,
+        snapshot_repo: &R,
+        session_id: &str,
+    ) -> Result<(), ProjectEditingSessionError<R::Error, ()>>
+    where
+        R: ProjectSnapshotRepository,
+    {
+        let snapshot = snapshot_repo.get_latest_snapshot(session_id).await?;
+        if let Some(snapshot) = snapshot {
+            self.project_id = snapshot.metadata.project_id;
+        }
+        self.session_id = Some(session_id.to_string());
+        self.session_setup_complete = true;
+        Ok(())
+    }
+
+    pub async fn active_editing_session(
         &self,
-    ) -> Result<(), ProjectEditingSessionError<E>> {
+    ) -> Result<Option<String>, ProjectEditingSessionError<(), ()>> {
         if !self.session_setup_complete {
-            Err(ProjectEditingSessionError::SessionNotSetup)
+            return Err(ProjectEditingSessionError::SessionNotSetup);
+        }
+        if self.session_setup_complete {
+            Ok(self.session_id.clone())
         } else {
-            Ok(())
+            Ok(None)
         }
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SnapshotData {
-    pub name: Option<String>,
-    pub created_by: Option<String>,
 }
