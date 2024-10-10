@@ -319,7 +319,7 @@ fn tile_writing_stage(
     let texture_size_cache = TextureSizeCache::new();
 
     // Use a temporary directory for embedding in glb.
-    let binding = tempdir().unwrap();
+    let binding = tempdir().map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
     let folder_path = binding.path();
     let texture_folder_name = "textures";
     let atlas_dir = folder_path.join(texture_folder_name);
@@ -402,7 +402,11 @@ fn tile_writing_stage(
                     let mat = feature.materials[*orig_mat_id as usize].clone();
                     let t = mat.base_texture.clone();
                     if let Some(base_texture) = t {
-                        let texture_uri = base_texture.uri.to_file_path().unwrap();
+                        let texture_uri = base_texture.uri.to_file_path().map_err(|_| {
+                            crate::errors::SinkError::cesium3dtiles_writer(
+                                "Failed to convert texture URI to file path",
+                            )
+                        })?;
                         let texture_size = texture_size_cache.get_or_insert(&texture_uri);
                         max_width = max_width.max(texture_size.0);
                         max_height = max_height.max(texture_size.1);
@@ -511,7 +515,11 @@ fn tile_writing_stage(
                             .map(|(_, _, _, u, v)| (*u, *v))
                             .collect::<Vec<(f64, f64)>>();
 
-                        let texture_uri = base_texture.uri.to_file_path().unwrap();
+                        let texture_uri = base_texture.uri.to_file_path().map_err(|_| {
+                            crate::errors::SinkError::cesium3dtiles_writer(
+                                "Failed to convert texture URI to file path",
+                            )
+                        })?;
                         let texture_size = texture_size_cache.get_or_insert(&texture_uri);
 
                         let downsample_scale = get_texture_downsample_scale_of_polygon(
@@ -535,14 +543,20 @@ fn tile_writing_stage(
 
                         packer
                             .lock()
-                            .unwrap()
+                            .map_err(|_| {
+                                crate::errors::SinkError::cesium3dtiles_writer(
+                                    "Failed to lock the texture packer",
+                                )
+                            })?
                             .add_texture(texture_id, cropped_texture);
                     }
                 }
             }
 
             let placer = GuillotineTexturePlacer::new(config.clone());
-            let packer = packer.into_inner().unwrap();
+            let packer = packer.into_inner().map_err(|_| {
+                crate::errors::SinkError::cesium3dtiles_writer("Failed to get the texture packer")
+            })?;
 
             // Packing the loaded textures into an atlas
             let packed = packer.pack(placer);
@@ -608,7 +622,11 @@ fn tile_writing_stage(
                         mat = material::Material {
                             base_color: mat.base_color,
                             base_texture: Some(material::Texture {
-                                uri: Url::from_file_path(atlas_uri).unwrap(),
+                                uri: Url::from_file_path(atlas_uri).map_err(|_| {
+                                    crate::errors::SinkError::cesium3dtiles_writer(
+                                        "Failed to convert atlas URI to URL",
+                                    )
+                                })?,
                             }),
                         };
                     }

@@ -40,6 +40,9 @@ pub fn get_texture_downsample_scale_of_polygon(
             let txl_dist = ((txl0.0 as f64 - txl1.0 as f64).powi(2)
                 + (txl0.1 as f64 - txl1.1 as f64).powi(2))
             .sqrt();
+            if euc_dist == 0.0 {
+                return 0.0;
+            }
             txl_dist / euc_dist
         })
         .min_by(|a, b| a.total_cmp(b))
