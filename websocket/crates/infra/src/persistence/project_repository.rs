@@ -119,7 +119,7 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
         let snapshot_data = self.get_latest_snapshot_data(project_id).await?;
         if let Some(data) = snapshot_data {
-            Ok(data.state)
+            Ok(data)
         } else {
             Ok(Vec::new())
         }
@@ -157,25 +157,24 @@ impl SnapshotDataRepository for ProjectGcsRepository {
 
     async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_data.project_id);
-        self.client.upload_versioned(path, &snapshot_data).await?;
+        self.client
+            .upload_versioned(path, &snapshot_data.state)
+            .await?;
         Ok(())
     }
 
-    async fn get_snapshot_data(
-        &self,
-        snapshot_id: &str,
-    ) -> Result<Option<SnapshotData>, Self::Error> {
+    async fn get_snapshot_data(&self, snapshot_id: &str) -> Result<Option<Vec<u8>>, Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
-        let snapshot_data = self.client.download(path).await?;
+        let snapshot_data: Option<Vec<u8>> = self.client.download(path).await?;
         Ok(snapshot_data)
     }
 
     async fn get_latest_snapshot_data(
         &self,
         project_id: &str,
-    ) -> Result<Option<SnapshotData>, Self::Error> {
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
         let path_prefix = format!("snapshot_data/{}", project_id);
-        let snapshot_data = self.client.download_latest(&path_prefix).await?;
+        let snapshot_data: Option<Vec<u8>> = self.client.download_latest(&path_prefix).await?;
         Ok(snapshot_data)
     }
 
@@ -185,7 +184,7 @@ impl SnapshotDataRepository for ProjectGcsRepository {
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
-        self.client.upload(path, &snapshot_data).await?;
+        self.client.upload(path, &snapshot_data.state).await?;
         Ok(())
     }
 
@@ -233,7 +232,7 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
         let snapshot = self.get_latest_snapshot_data(project_id).await?;
         if let Some(snapshot) = snapshot {
-            Ok(snapshot.state)
+            Ok(snapshot)
         } else {
             Ok(Vec::new())
         }
@@ -266,10 +265,7 @@ impl SnapshotDataRepository for ProjectLocalRepository {
         Ok(())
     }
 
-    async fn get_snapshot_data(
-        &self,
-        snapshot_id: &str,
-    ) -> Result<Option<SnapshotData>, Self::Error> {
+    async fn get_snapshot_data(&self, snapshot_id: &str) -> Result<Option<Vec<u8>>, Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
         let snapshot_data = self.client.download(path).await?;
         Ok(snapshot_data)
@@ -278,9 +274,9 @@ impl SnapshotDataRepository for ProjectLocalRepository {
     async fn get_latest_snapshot_data(
         &self,
         project_id: &str,
-    ) -> Result<Option<SnapshotData>, Self::Error> {
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
         let path = format!("snapshot_data/{}", project_id);
-        let snapshot_data = self.client.download_latest(&path).await?;
+        let snapshot_data: Option<Vec<u8>> = self.client.download_latest(&path).await?;
         Ok(snapshot_data)
     }
 

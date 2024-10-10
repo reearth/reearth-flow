@@ -243,8 +243,8 @@ mod tests {
             type Error = ProjectServiceError;
 
             async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
-            async fn get_snapshot_data(&self, project_id: &str) -> Result<Option<SnapshotData>, ProjectServiceError>;
-            async fn get_latest_snapshot_data(&self, project_id: &str) -> Result<Option<SnapshotData>, ProjectServiceError>;
+            async fn get_snapshot_data(&self, project_id: &str) -> Result<Option<Vec<u8>>, ProjectServiceError>;
+            async fn get_latest_snapshot_data(&self, project_id: &str) -> Result<Option<Vec<u8>>, ProjectServiceError>;
             async fn update_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
             async fn delete_snapshot_data(&self, project_id: &str) -> Result<(), ProjectServiceError>;
         }

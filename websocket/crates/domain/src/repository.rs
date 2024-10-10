@@ -47,15 +47,13 @@ pub trait SnapshotDataRepository {
     type Error: Error + Send + Sync + 'static;
 
     async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error>;
-    async fn get_snapshot_data(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<SnapshotData>, Self::Error>;
+
+    async fn get_snapshot_data(&self, project_id: &str) -> Result<Option<Vec<u8>>, Self::Error>;
 
     async fn get_latest_snapshot_data(
         &self,
         project_id: &str,
-    ) -> Result<Option<SnapshotData>, Self::Error>;
+    ) -> Result<Option<Vec<u8>>, Self::Error>;
 
     async fn update_snapshot_data(
         &self,
