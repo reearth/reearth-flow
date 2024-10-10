@@ -21,7 +21,7 @@ pub struct ProjectService<P, E, S, R> {
 impl<P, E, S, R> ProjectService<P, E, S, R>
 where
     P: ProjectRepository<Error = ProjectRepositoryError> + Send + Sync,
-    E: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync,
+    E: ProjectEditingSessionRepository<Error = ProjectRepositoryError> + Send + Sync,
     S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManager<Error = ProjectRepositoryError> + Send + Sync,
 {
@@ -218,5 +218,362 @@ where
 
     async fn clear_data(&self) -> Result<(), Self::Error> {
         Ok(self.redis_data_manager.clear_data().await?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use flow_websocket_domain::snapshot::Metadata;
+    use flow_websocket_domain::snapshot::ObjectDelete;
+    use flow_websocket_domain::snapshot::SnapshotInfo;
+    use mockall::mock;
+    use mockall::predicate::*;
+
+    mock! {
+        ProjectRepo {}
+        #[async_trait]
+        impl ProjectRepository for ProjectRepo {
+            type Error = ProjectRepositoryError;
+            async fn get_project(&self, project_id: &str) -> Result<Option<Project>, ProjectRepositoryError>;
+        }
+    }
+
+    mock! {
+        SessionRepo {}
+        #[async_trait]
+        impl ProjectEditingSessionRepository for SessionRepo {
+            type Error = ProjectRepositoryError;
+            async fn create_session(&self, session: ProjectEditingSession) -> Result<(), ProjectRepositoryError>;
+            async fn get_active_session(&self, project_id: &str) -> Result<Option<ProjectEditingSession>, ProjectRepositoryError>;
+            async fn update_session(&self, session: ProjectEditingSession) -> Result<(), ProjectRepositoryError>;
+            async fn get_client_count(&self) -> Result<usize, ProjectRepositoryError>;
+        }
+    }
+
+    mock! {
+        SnapshotRepo {}
+        #[async_trait]
+        impl ProjectSnapshotRepository for SnapshotRepo {
+            type Error = ProjectRepositoryError;
+            async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectRepositoryError>;
+            async fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError>;
+            async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, ProjectRepositoryError>;
+            async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectRepositoryError>;
+            async fn update_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectRepositoryError>;
+        }
+    }
+
+    mock! {
+        RedisManager {}
+        #[async_trait]
+        impl RedisDataManager for RedisManager {
+            type Error = ProjectRepositoryError;
+            async fn push_update(&self, update: Vec<u8>, updated_by: String) -> Result<(), ProjectRepositoryError>;
+            async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), ProjectRepositoryError>;
+            async fn get_current_state(&self) -> Result<Option<Vec<u8>>, ProjectRepositoryError>;
+            async fn clear_data(&self) -> Result<(), ProjectRepositoryError>;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_merge_updates() {
+        let mock_project_repo = MockProjectRepo::new();
+        let mock_session_repo = MockSessionRepo::new();
+        let mock_snapshot_repo = MockSnapshotRepo::new();
+        let mut mock_redis_manager = MockRedisManager::new();
+
+        // Set up expectations
+        mock_redis_manager
+            .expect_merge_updates()
+            .with(eq(false))
+            .times(1)
+            .returning(|_| Ok((vec![1, 2, 3], vec!["user1".to_string()])));
+
+        let service = ProjectService::new(
+            Arc::new(mock_project_repo),
+            Arc::new(mock_session_repo),
+            Arc::new(mock_snapshot_repo),
+            Arc::new(mock_redis_manager),
+        );
+
+        let result = service.merge_updates(false).await;
+
+        assert!(result.is_ok());
+        if let Ok((state, users)) = result {
+            assert_eq!(state, vec![1, 2, 3]);
+            assert_eq!(users, vec!["user1".to_string()]);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_project() {
+        let mut mock_project_repo = MockProjectRepo::new();
+        let mock_session_repo = MockSessionRepo::new();
+        let mock_snapshot_repo = MockSnapshotRepo::new();
+        let mock_redis_manager = MockRedisManager::new();
+
+        let example_project = Project {
+            id: "project_123".to_string(),
+            workspace_id: "workspace_456".to_string(),
+        };
+
+        mock_project_repo
+            .expect_get_project()
+            .with(eq("project_123"))
+            .times(1)
+            .returning(move |_| Ok(Some(example_project.clone())));
+
+        let service = ProjectService::new(
+            Arc::new(mock_project_repo),
+            Arc::new(mock_session_repo),
+            Arc::new(mock_snapshot_repo),
+            Arc::new(mock_redis_manager),
+        );
+
+        let result = service.get_project("project_123").await;
+        assert!(result.is_ok());
+        let project = result.unwrap();
+        assert!(project.is_some());
+        let project = project.unwrap();
+        assert_eq!(project.id, "project_123");
+        assert_eq!(project.workspace_id, "workspace_456");
+    }
+
+    #[tokio::test]
+    async fn test_get_or_create_editing_session() {
+        let mock_project_repo = MockProjectRepo::new();
+        let mut mock_session_repo = MockSessionRepo::new();
+        let mut mock_snapshot_repo = MockSnapshotRepo::new();
+        let mut mock_redis_manager = MockRedisManager::new();
+
+        mock_session_repo
+            .expect_get_active_session()
+            .with(eq("project_123"))
+            .times(1)
+            .returning(|_| Ok(None));
+
+        mock_session_repo
+            .expect_create_session()
+            .times(1)
+            .returning(|_| Ok(()));
+
+        mock_snapshot_repo
+            .expect_get_latest_snapshot_state()
+            .times(1)
+            .returning(|_| Ok(vec![1, 2, 3]));
+
+        mock_redis_manager
+            .expect_push_update()
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        let service = ProjectService::new(
+            Arc::new(mock_project_repo),
+            Arc::new(mock_session_repo),
+            Arc::new(mock_snapshot_repo),
+            Arc::new(mock_redis_manager),
+        );
+
+        let result = service.get_or_create_editing_session("project_123").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_project_allowed_actions() {
+        let mock_project_repo = MockProjectRepo::new();
+        let mock_session_repo = MockSessionRepo::new();
+        let mock_snapshot_repo = MockSnapshotRepo::new();
+        let mock_redis_manager = MockRedisManager::new();
+
+        let service = ProjectService::new(
+            Arc::new(mock_project_repo),
+            Arc::new(mock_session_repo),
+            Arc::new(mock_snapshot_repo),
+            Arc::new(mock_redis_manager),
+        );
+
+        let actions = vec!["read".to_string(), "write".to_string()];
+        let result = service
+            .get_project_allowed_actions("project_123", actions)
+            .await;
+
+        assert!(result.is_ok());
+        let allowed_actions = result.unwrap();
+        assert_eq!(allowed_actions.id, "project_123");
+        assert_eq!(allowed_actions.actions.len(), 2);
+        assert!(allowed_actions.actions.iter().all(|a| a.allowed));
+        assert_eq!(allowed_actions.actions[0].action, "read");
+        assert_eq!(allowed_actions.actions[1].action, "write");
+    }
+
+    #[tokio::test]
+    async fn test_create_snapshot() {
+        let mock_project_repo = MockProjectRepo::new();
+        let mock_session_repo = MockSessionRepo::new();
+        let mut mock_snapshot_repo = MockSnapshotRepo::new();
+        let mock_redis_manager = MockRedisManager::new();
+
+        let snapshot = ProjectSnapshot::new(
+            Metadata::new(
+                "snapshot_123".to_string(),
+                "project_123".to_string(),
+                Some("session_456".to_string()),
+                "New Snapshot".to_string(),
+                "/path/to/new/snapshot".to_string(),
+            ),
+            SnapshotInfo::new(
+                Some("user_789".to_string()),
+                vec!["user_789".to_string()],
+                ObjectTenant::new("tenant_123".to_string(), "tenant_key".to_string()),
+                ObjectDelete {
+                    deleted: false,
+                    delete_after: None,
+                },
+                None,
+                None,
+            ),
+        );
+
+        mock_snapshot_repo
+            .expect_create_snapshot()
+            .with(function(|s: &ProjectSnapshot| {
+                s.metadata.project_id == "project_123"
+            }))
+            .times(1)
+            .returning(|_| Ok(()));
+
+        let service = ProjectService::new(
+            Arc::new(mock_project_repo),
+            Arc::new(mock_session_repo),
+            Arc::new(mock_snapshot_repo),
+            Arc::new(mock_redis_manager),
+        );
+
+        let result = service.create_snapshot(snapshot).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_latest_snapshot() {
+        let mock_project_repo = MockProjectRepo::new();
+        let mock_session_repo = MockSessionRepo::new();
+        let mut mock_snapshot_repo = MockSnapshotRepo::new();
+        let mock_redis_manager = MockRedisManager::new();
+
+        let example_snapshot = ProjectSnapshot::new(
+            Metadata::new(
+                "snapshot_123".to_string(),
+                "project_123".to_string(),
+                Some("session_456".to_string()),
+                "Example Snapshot".to_string(),
+                "/path/to/snapshot".to_string(),
+            ),
+            SnapshotInfo::new(
+                Some("user_789".to_string()),
+                vec!["user_789".to_string()],
+                ObjectTenant::new("tenant_123".to_string(), "tenant_key".to_string()),
+                ObjectDelete {
+                    deleted: false,
+                    delete_after: None,
+                },
+                None,
+                None,
+            ),
+        );
+
+        mock_snapshot_repo
+            .expect_get_latest_snapshot()
+            .with(eq("project_123"))
+            .times(1)
+            .returning(move |_| Ok(Some(example_snapshot.clone())));
+
+        let service = ProjectService::new(
+            Arc::new(mock_project_repo),
+            Arc::new(mock_session_repo),
+            Arc::new(mock_snapshot_repo),
+            Arc::new(mock_redis_manager),
+        );
+
+        let result = service.get_latest_snapshot("project_123").await;
+        assert!(result.is_ok());
+        let snapshot = result.unwrap();
+        assert!(snapshot.is_some());
+        let snapshot = snapshot.unwrap();
+        assert_eq!(snapshot.metadata.project_id, "project_123");
+        assert_eq!(snapshot.metadata.id, "snapshot_123");
+    }
+
+    #[tokio::test]
+    async fn test_push_update() {
+        let mock_project_repo = MockProjectRepo::new();
+        let mock_session_repo = MockSessionRepo::new();
+        let mock_snapshot_repo = MockSnapshotRepo::new();
+        let mut mock_redis_manager = MockRedisManager::new();
+
+        mock_redis_manager
+            .expect_push_update()
+            .with(eq(vec![1, 2, 3]), eq("user1".to_string()))
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        let service = ProjectService::new(
+            Arc::new(mock_project_repo),
+            Arc::new(mock_session_repo),
+            Arc::new(mock_snapshot_repo),
+            Arc::new(mock_redis_manager),
+        );
+
+        let result = service
+            .push_update(vec![1, 2, 3], "user1".to_string())
+            .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_current_state() {
+        let mock_project_repo = MockProjectRepo::new();
+        let mock_session_repo = MockSessionRepo::new();
+        let mock_snapshot_repo = MockSnapshotRepo::new();
+        let mut mock_redis_manager = MockRedisManager::new();
+
+        mock_redis_manager
+            .expect_get_current_state()
+            .times(1)
+            .returning(|| Ok(Some(vec![1, 2, 3])));
+
+        let service = ProjectService::new(
+            Arc::new(mock_project_repo),
+            Arc::new(mock_session_repo),
+            Arc::new(mock_snapshot_repo),
+            Arc::new(mock_redis_manager),
+        );
+
+        let result = service.get_current_state().await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Some(vec![1, 2, 3]));
+    }
+
+    #[tokio::test]
+    async fn test_clear_data() {
+        let mock_project_repo = MockProjectRepo::new();
+        let mock_session_repo = MockSessionRepo::new();
+        let mock_snapshot_repo = MockSnapshotRepo::new();
+        let mut mock_redis_manager = MockRedisManager::new();
+
+        mock_redis_manager
+            .expect_clear_data()
+            .times(1)
+            .returning(|| Ok(()));
+
+        let service = ProjectService::new(
+            Arc::new(mock_project_repo),
+            Arc::new(mock_session_repo),
+            Arc::new(mock_snapshot_repo),
+            Arc::new(mock_redis_manager),
+        );
+
+        let result = service.clear_data().await;
+        assert!(result.is_ok());
     }
 }
