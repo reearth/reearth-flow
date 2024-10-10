@@ -80,10 +80,8 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
         self.redis_client.set(key, &session).await?;
         Ok(())
     }
-}
 
-impl ProjectRedisRepository {
-    pub async fn get_client_count(&self) -> Result<usize, ProjectRepositoryError> {
+    async fn get_client_count(&self) -> Result<usize, Self::Error> {
         let count = self.redis_client.get_client_count().await?;
         Ok(count)
     }

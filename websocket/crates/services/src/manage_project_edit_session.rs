@@ -8,7 +8,6 @@ use flow_websocket_domain::repository::{
 use flow_websocket_domain::snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo};
 use flow_websocket_domain::types::data::SnapshotData;
 use flow_websocket_domain::types::snapshot::ProjectSnapshot;
-use flow_websocket_infra::persistence::project_repository::ProjectRedisRepository;
 use mockall::automock;
 use std::sync::Arc;
 use tokio::time::sleep;
@@ -29,7 +28,6 @@ where
     session_repository: Arc<R>,
     snapshot_repository: Arc<S>,
     snapshot_data_repository: Arc<D>,
-    redis_repository: Arc<ProjectRedisRepository>,
     redis_data_manager: Arc<M>,
 }
 
@@ -45,14 +43,12 @@ where
         session_repository: Arc<R>,
         snapshot_repository: Arc<S>,
         snapshot_data_repository: Arc<D>,
-        redis_repository: Arc<ProjectRedisRepository>,
         redis_data_manager: Arc<M>,
     ) -> Self {
         Self {
             session_repository,
             snapshot_repository,
             snapshot_data_repository,
-            redis_repository,
             redis_data_manager,
         }
     }
@@ -71,7 +67,7 @@ where
                 .load_session(&*self.snapshot_repository, &data.session_id)
                 .await?;
 
-            self.update_client_count(&mut session, &mut data).await?;
+            self.update_client_count(&mut data).await?;
             self.merge_updates(&mut session, &mut data).await?;
             self.create_snapshot_if_required(&mut session, &mut data)
                 .await?;
@@ -88,10 +84,9 @@ where
 
     async fn update_client_count(
         &self,
-        _session: &mut ProjectEditingSession,
         data: &mut ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
-        let current_client_count = self.redis_repository.get_client_count().await?;
+        let current_client_count = self.session_repository.get_client_count().await?;
         let old_client_count = data.clients_count.unwrap_or(0);
         data.clients_count = Some(current_client_count);
 
@@ -175,7 +170,7 @@ where
         session: &mut ProjectEditingSession,
         data: &ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
-        let client_count = self.redis_repository.get_client_count().await?;
+        let client_count = self.session_repository.get_client_count().await?;
 
         if let Some(clients_disconnected_at) = data.clients_disconnected_at {
             let current_time = Utc::now();

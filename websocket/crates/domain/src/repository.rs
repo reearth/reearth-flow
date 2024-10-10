@@ -21,6 +21,7 @@ pub trait ProjectEditingSessionRepository {
         project_id: &str,
     ) -> Result<Option<ProjectEditingSession>, Self::Error>;
     async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error>;
+    async fn get_client_count(&self) -> Result<usize, Self::Error>;
 }
 
 #[async_trait::async_trait]

@@ -518,7 +518,6 @@ mod tests {
     pub struct MockFlowProjectRedisDataManager {
         pub current_state: Arc<Mutex<Option<Vec<u8>>>>,
         pub push_update_result: Arc<Mutex<Result<(), FlowProjectRedisDataManagerError>>>,
-        #[warn(clippy::type_complexity)]
         pub merge_updates_result: Arc<Mutex<MergeUpdatesResult>>,
     }
 
@@ -625,5 +624,15 @@ mod tests {
 
         let result = mock_manager.merge_updates(false).await;
         assert_eq!(result.unwrap(), (vec![1, 2, 3], vec!["user1".to_string()]));
+    }
+
+    #[tokio::test]
+    async fn test_get_current_state_empty() {
+        let mock_manager = MockFlowProjectRedisDataManager::new();
+
+        mock_manager.set_current_state(None);
+
+        let result = mock_manager.get_current_state().await;
+        assert!(result.unwrap().is_none());
     }
 }
