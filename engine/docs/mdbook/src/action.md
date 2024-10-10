@@ -454,25 +454,21 @@ Writes features to a file
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Cesium3dtilesWriterParam",
+  "title": "Cesium3DTilesWriterParam",
   "type": "object",
   "required": [
+    "maxZoom",
+    "minZoom",
     "output"
   ],
   "properties": {
     "maxZoom": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "minZoom": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
@@ -1374,24 +1370,6 @@ Writes features to a file
           "type": "string",
           "enum": [
             "excel"
-          ]
-        },
-        "output": {
-          "$ref": "#/definitions/Expr"
-        }
-      }
-    },
-    {
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "gltf"
           ]
         },
         "output": {

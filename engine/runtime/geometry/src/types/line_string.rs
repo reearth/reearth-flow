@@ -333,6 +333,28 @@ impl<'a> From<NLineString3<'a>> for LineString3D<f64> {
     }
 }
 
+impl<'a> From<LineString2D<f64>> for NLineString2<'a> {
+    #[inline]
+    fn from(coords: LineString2D<f64>) -> Self {
+        let mut line_string = NLineString2::new();
+        for coord in coords.iter() {
+            line_string.push([coord.x, coord.y]);
+        }
+        line_string
+    }
+}
+
+impl<'a> From<LineString3D<f64>> for NLineString3<'a> {
+    #[inline]
+    fn from(coords: LineString3D<f64>) -> Self {
+        let mut line_string = NLineString3::new();
+        for coord in coords.iter() {
+            line_string.push([coord.x, coord.y, coord.z]);
+        }
+        line_string
+    }
+}
+
 pub fn from_line_string_5d(
     line_strings: flatgeom::LineString<[f64; 5]>,
 ) -> (LineString3D<f64>, LineString2D<f64>) {

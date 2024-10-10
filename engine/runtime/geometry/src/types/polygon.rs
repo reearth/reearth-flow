@@ -1,7 +1,10 @@
 use std::hash::{Hash, Hasher};
 
 use approx::{AbsDiffEq, RelativeEq};
-use flatgeom::{LineString2 as NLineString2, Polygon2 as NPolygon2, Polygon3 as NPolygon3};
+use flatgeom::{
+    LineString2 as NLineString2, LineString3 as NLineString3, Polygon2 as NPolygon2,
+    Polygon3 as NPolygon3,
+};
 use geo_types::Polygon as GeoPolygon;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
@@ -381,6 +384,24 @@ impl<'a> From<NPolygon2<'a>> for Polygon2D<f64> {
     }
 }
 
+impl<'a> From<Polygon2D<f64>> for NPolygon2<'a> {
+    #[inline]
+    fn from(poly: Polygon2D<f64>) -> Self {
+        let interiors: Vec<NLineString2> = poly
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        let mut npoly = NPolygon2::new();
+        let exterior: NLineString2 = poly.exterior().clone().into();
+        npoly.add_ring(&exterior);
+        for interior in interiors.iter() {
+            npoly.add_ring(interior);
+        }
+        npoly
+    }
+}
+
 impl<'a> From<Polygon3D<f64>> for NPolygon2<'a> {
     #[inline]
     fn from(poly: Polygon3D<f64>) -> Self {
@@ -399,11 +420,29 @@ impl<'a> From<Polygon3D<f64>> for NPolygon2<'a> {
     }
 }
 
-impl<'a> From<NPolygon3<'a>> for Polygon<f64> {
+impl<'a> From<NPolygon3<'a>> for Polygon3D<f64> {
     #[inline]
     fn from(poly: NPolygon3<'a>) -> Self {
         let interiors = poly.interiors().map(|interior| interior.into()).collect();
         Polygon3D::new(poly.exterior().into(), interiors)
+    }
+}
+
+impl<'a> From<Polygon3D<f64>> for NPolygon3<'a> {
+    #[inline]
+    fn from(poly: Polygon3D<f64>) -> Self {
+        let interiors: Vec<NLineString3> = poly
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        let mut npoly = NPolygon3::new();
+        let exterior: NLineString3 = poly.exterior().clone().into();
+        npoly.add_ring(&exterior);
+        for interior in interiors.iter() {
+            npoly.add_ring(interior);
+        }
+        npoly
     }
 }
 
