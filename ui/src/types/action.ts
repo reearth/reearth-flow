@@ -1,3 +1,5 @@
+import { RJSFSchema } from "@rjsf/utils";
+
 import { ApiResponse } from "./api";
 
 export type Action = {
@@ -7,7 +9,7 @@ export type Action = {
   categories: string[];
   inputPorts: string[];
   outputPorts: string[];
-  parameters: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  parameter: RJSFSchema;
   builtin: boolean;
 };
 
