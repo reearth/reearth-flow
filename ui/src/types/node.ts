@@ -14,7 +14,7 @@ type NodeParam = {
 };
 
 export type NodeData = {
-  name: string;
+  name?: string;
   inputs?: string[];
   outputs?: string[];
   status?: Status;

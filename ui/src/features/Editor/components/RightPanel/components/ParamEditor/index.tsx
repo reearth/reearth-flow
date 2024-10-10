@@ -49,7 +49,8 @@ const ParamEditor: React.FC<Props> = ({
 
   const { useGetActionById } = useAction();
 
-  const { action } = useGetActionById(nodeMeta.name);
+  // nodeMeta.name is always defined, this is for the TS error to go away
+  const { action } = useGetActionById(nodeMeta.name ?? "");
 
   const handleFitView = () =>
     fitView({ nodes: [{ id: nodeId }], duration: 400 });
