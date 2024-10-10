@@ -281,7 +281,7 @@ mod tests {
         mocks
             .session_repo
             .expect_get_client_count()
-            .times(..=2) // 允许被调用1到2次
+            .times(..=2)
             .returning(|| Ok(1));
 
         mocks
