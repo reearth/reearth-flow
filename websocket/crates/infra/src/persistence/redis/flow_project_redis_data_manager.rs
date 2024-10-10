@@ -50,6 +50,8 @@ pub enum FlowProjectRedisDataManagerError {
     LastUpdateId,
     #[error("Missing state update")]
     MissingStateUpdate,
+    #[error("Session not set")]
+    SessionNotSet,
     #[error(transparent)]
     DecodeUpdate(#[from] yrs::encoding::read::Error),
     #[error(transparent)]
@@ -244,33 +246,29 @@ impl FlowProjectRedisDataManager {
         skip_lock: bool,
     ) -> Result<(), FlowProjectRedisDataManagerError> {
         let active_editing_session_id = self.active_editing_session_id().await?;
+
+        let current_session_id = self
+            .editing_session
+            .lock()
+            .await
+            .session_id
+            .as_ref()
+            .ok_or(FlowProjectRedisDataManagerError::SessionNotSet)?
+            .clone();
+
         if let Some(active_editing_session_id) = active_editing_session_id {
-            if active_editing_session_id
-                != self
-                    .editing_session
-                    .lock()
-                    .await
-                    .session_id
-                    .clone()
-                    .unwrap()
-            {
+            if active_editing_session_id != current_session_id {
                 return Err(FlowProjectRedisDataManagerError::EditingSessionInProgress);
             }
         }
+
         self.set_state_data(state_update, state_updated_by, skip_lock)
             .await?;
+
         self.redis_client
-            .set(
-                &self.active_editing_session_id_key(),
-                &self
-                    .editing_session
-                    .lock()
-                    .await
-                    .session_id
-                    .clone()
-                    .unwrap(),
-            )
+            .set(&self.active_editing_session_id_key(), &current_session_id)
             .await?;
+
         Ok(())
     }
 
