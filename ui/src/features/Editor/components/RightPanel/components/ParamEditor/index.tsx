@@ -49,7 +49,8 @@ const ParamEditor: React.FC<Props> = ({
 
   const { useGetActionById } = useAction();
 
-  // nodeMeta.name is always defined, this is for the TS error to go away
+  // For action nodes, nodeMeta.name is always defined. Only actions can open 
+  // the ParamsEditor, so this is for the TS error to go away
   const { action } = useGetActionById(nodeMeta.name ?? "");
 
   const handleFitView = () =>
