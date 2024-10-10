@@ -25,10 +25,10 @@ where
     D: SnapshotDataRepository<Error = ProjectServiceError> + Send + Sync,
     M: RedisDataManager<Error = ProjectServiceError> + Send + Sync,
 {
-    session_repository: Arc<R>,
-    snapshot_repository: Arc<S>,
-    snapshot_data_repository: Arc<D>,
-    redis_data_manager: Arc<M>,
+    pub session_repository: Arc<R>,
+    pub snapshot_repository: Arc<S>,
+    pub snapshot_data_repository: Arc<D>,
+    pub redis_data_manager: Arc<M>,
 }
 
 #[automock]
@@ -206,7 +206,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use chrono::{Duration, Utc};
     use mockall::predicate::*;
 
@@ -265,33 +264,303 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_manage_edit_session_service() {
-        let mut mock_session_repo = MockProjectEditingSessionRepository::new();
-        let mut mock_snapshot_repo = MockProjectSnapshotRepository::new();
-        let mut mock_snapshot_data_repo = MockSnapshotDataRepository::new();
-        let mut mock_redis_manager = MockRedisDataManager::new();
+    async fn test_process_with_active_session() {
+        let (mut service, mut mocks) = setup_service();
+        let task_data = create_task_data();
 
-        // Set up expectations
-        mock_session_repo
+        let mut session = create_session("project_123");
+        session.session_id = Some("session_456".to_string());
+
+        mocks
+            .session_repo
             .expect_get_active_session()
             .with(eq("project_123"))
-            .returning(|project_id| {
-                Ok(Some(ProjectEditingSession::new(
-                    project_id.to_string(),
-                    ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
-                )))
-            });
+            .times(1)
+            .returning(move |_| Ok(Some(session.clone())));
 
-        mock_session_repo
+        mocks
+            .session_repo
             .expect_get_client_count()
+            .times(..=2) // 允许被调用1到2次
             .returning(|| Ok(1));
 
-        mock_session_repo
+        mocks
+            .redis_manager
+            .expect_merge_updates()
+            .with(eq(false))
+            .times(1)
+            .returning(|_| Ok((vec![], vec![])));
+
+        mocks
+            .session_repo
             .expect_update_session()
+            .times(1)
             .returning(|_| Ok(()));
 
-        // Create a ProjectSnapshot instance
-        let project_snapshot = ProjectSnapshot::new(
+        mocks
+            .snapshot_repo
+            .expect_get_latest_snapshot()
+            .with(eq("session_456"))
+            .times(1)
+            .returning(|_| Ok(Some(create_project_snapshot())));
+
+        mocks
+            .snapshot_repo
+            .expect_get_latest_snapshot()
+            .with(eq("project_123"))
+            .times(..=1)
+            .returning(|_| Ok(Some(create_project_snapshot())));
+
+        service.session_repository = Arc::new(mocks.session_repo);
+        service.snapshot_repository = Arc::new(mocks.snapshot_repo);
+        service.snapshot_data_repository = Arc::new(mocks.snapshot_data_repo);
+        service.redis_data_manager = Arc::new(mocks.redis_manager);
+
+        let result = service.process(task_data).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_process_with_no_active_session() {
+        let (mut service, mut mocks) = setup_service();
+        let task_data = create_task_data();
+
+        mocks
+            .session_repo
+            .expect_get_active_session()
+            .with(eq("project_123"))
+            .times(1)
+            .returning(|_| Ok(None));
+
+        service.session_repository = Arc::new(mocks.session_repo);
+
+        let result = service.process(task_data).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_update_client_count() {
+        let (mut service, mut mocks) = setup_service();
+        let mut task_data = create_task_data();
+
+        mocks
+            .session_repo
+            .expect_get_client_count()
+            .times(1)
+            .returning(|| Ok(0));
+
+        service.session_repository = Arc::new(mocks.session_repo);
+
+        let result = service.update_client_count(&mut task_data).await;
+        assert!(result.is_ok());
+        assert_eq!(task_data.clients_count, Some(0));
+        assert!(task_data.clients_disconnected_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_merge_updates() {
+        let (mut service, mut mocks) = setup_service();
+        let mut task_data = create_task_data();
+        let mut session = create_session("project_123");
+
+        session.session_setup_complete = true;
+        session.session_id = Some("session_456".to_string());
+
+        mocks
+            .redis_manager
+            .expect_merge_updates()
+            .with(eq(false))
+            .times(1)
+            .returning(|_| Ok((vec![1, 2, 3], vec!["user1".to_string()])));
+
+        service.redis_data_manager = Arc::new(mocks.redis_manager);
+
+        let result = service.merge_updates(&mut session, &mut task_data).await;
+
+        if let Err(ref e) = result {
+            println!("Error in merge_updates: {:?}", e);
+        }
+
+        assert!(result.is_ok());
+        assert!(task_data.last_merged_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_create_snapshot_if_required() {
+        let (mut service, mut mocks) = setup_service();
+        let mut task_data = create_task_data();
+        task_data.last_snapshot_at = Some(Utc::now() - Duration::minutes(6));
+        let mut session = create_session("project_123");
+        session.session_id = Some("session_456".to_string());
+        session.session_setup_complete = true;
+
+        mocks
+            .redis_manager
+            .expect_get_current_state()
+            .times(1)
+            .returning(|| Ok(Some(vec![1, 2, 3])));
+
+        mocks
+            .snapshot_repo
+            .expect_create_snapshot()
+            .times(1)
+            .returning(|snapshot: ProjectSnapshot| {
+                assert_eq!(snapshot.metadata.project_id, "project_123");
+                assert_eq!(
+                    snapshot.metadata.session_id,
+                    Some("session_456".to_string())
+                );
+                Ok(())
+            });
+
+        mocks
+            .snapshot_data_repo
+            .expect_create_snapshot_data()
+            .times(1)
+            .returning(|snapshot_data: SnapshotData| {
+                assert_eq!(snapshot_data.project_id, "project_123");
+                assert_eq!(snapshot_data.state, vec![1, 2, 3]);
+                Ok(())
+            });
+
+        service.redis_data_manager = Arc::new(mocks.redis_manager);
+        service.snapshot_repository = Arc::new(mocks.snapshot_repo);
+        service.snapshot_data_repository = Arc::new(mocks.snapshot_data_repo);
+
+        let result = service
+            .create_snapshot_if_required(&mut session, &mut task_data)
+            .await;
+
+        if let Err(ref e) = result {
+            println!("Error in create_snapshot_if_required: {:?}", e);
+        }
+
+        assert!(result.is_ok());
+        assert!(task_data.last_snapshot_at.unwrap() > Utc::now() - Duration::seconds(1));
+    }
+
+    #[tokio::test]
+    async fn test_end_editing_session_if_conditions_met() {
+        let (mut service, mut mocks) = setup_service();
+        let mut task_data = create_task_data();
+        task_data.clients_disconnected_at = Some(Utc::now() - Duration::seconds(11));
+        let mut session = create_session("project_123");
+        session.session_id = Some("session_456".to_string());
+        session.session_setup_complete = true;
+
+        mocks
+            .session_repo
+            .expect_get_client_count()
+            .times(1)
+            .returning(|| Ok(0));
+
+        mocks
+            .redis_manager
+            .expect_merge_updates()
+            .with(eq(true))
+            .times(1)
+            .returning(|_| Ok((vec![1, 2, 3], vec!["user1".to_string()])));
+
+        mocks
+            .snapshot_repo
+            .expect_update_snapshot_data()
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        mocks
+            .redis_manager
+            .expect_clear_data()
+            .times(1)
+            .returning(|| Ok(()));
+
+        service.session_repository = Arc::new(mocks.session_repo);
+        service.redis_data_manager = Arc::new(mocks.redis_manager);
+        service.snapshot_repository = Arc::new(mocks.snapshot_repo);
+
+        let result = service
+            .end_editing_session_if_conditions_met(&mut session, &task_data)
+            .await;
+        assert!(result.is_ok());
+        assert!(session.session_id.is_none());
+        assert!(!session.session_setup_complete);
+    }
+
+    #[tokio::test]
+    async fn test_complete_job_if_met_requirements() {
+        let (service, _mocks) = setup_service();
+        let task_data = create_task_data();
+        let mut session = create_session("project_123");
+
+        session.session_setup_complete = true;
+        session.session_id = Some("session_456".to_string());
+
+        let result = service
+            .complete_job_if_met_requirements(&session, &task_data)
+            .await;
+
+        if let Err(ref e) = result {
+            println!("Error: {:?}", e);
+        }
+
+        assert!(result.is_ok());
+    }
+
+    // Helper functions
+
+    fn setup_service() -> (
+        ManageEditSessionService<
+            MockProjectEditingSessionRepository,
+            MockProjectSnapshotRepository,
+            MockSnapshotDataRepository,
+            MockRedisDataManager,
+        >,
+        MockRepositories,
+    ) {
+        let mock_session_repo = MockProjectEditingSessionRepository::new();
+        let mock_snapshot_repo = MockProjectSnapshotRepository::new();
+        let mock_snapshot_data_repo = MockSnapshotDataRepository::new();
+        let mock_redis_manager = MockRedisDataManager::new();
+
+        let service = ManageEditSessionService::new(
+            Arc::new(MockProjectEditingSessionRepository::new()),
+            Arc::new(MockProjectSnapshotRepository::new()),
+            Arc::new(MockSnapshotDataRepository::new()),
+            Arc::new(MockRedisDataManager::new()),
+        );
+
+        let mocks = MockRepositories {
+            session_repo: mock_session_repo,
+            snapshot_repo: mock_snapshot_repo,
+            snapshot_data_repo: mock_snapshot_data_repo,
+            redis_manager: mock_redis_manager,
+        };
+
+        (service, mocks)
+    }
+
+    fn create_task_data() -> ManageProjectEditSessionTaskData {
+        ManageProjectEditSessionTaskData {
+            project_id: "project_123".to_string(),
+            session_id: "session_456".to_string(),
+            clients_count: Some(1),
+            clients_disconnected_at: None,
+            last_merged_at: None,
+            last_snapshot_at: Some(Utc::now() - Duration::minutes(4)),
+        }
+    }
+
+    fn create_session(project_id: &str) -> ProjectEditingSession {
+        let mut session = ProjectEditingSession::new(
+            project_id.to_string(),
+            ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+        );
+        session.session_setup_complete = true;
+        session.session_id = Some(generate_id(14, "session"));
+        session
+    }
+
+    fn create_project_snapshot() -> ProjectSnapshot {
+        ProjectSnapshot::new(
             Metadata::new(
                 generate_id(14, "snap"),
                 "project_123".to_string(),
@@ -310,52 +579,13 @@ mod tests {
                 Some(Utc::now()),
                 None,
             ),
-        );
+        )
+    }
 
-        mock_snapshot_repo
-            .expect_get_latest_snapshot()
-            .with(eq("session_456"))
-            .returning(move |_| Ok(Some(project_snapshot.clone())));
-
-        mock_snapshot_repo
-            .expect_create_snapshot()
-            .returning(|_| Ok(()));
-
-        mock_snapshot_data_repo
-            .expect_create_snapshot_data()
-            .returning(|_| Ok(()));
-
-        mock_redis_manager
-            .expect_merge_updates()
-            .with(eq(false))
-            .returning(|_| Ok((vec![], vec![])));
-
-        mock_redis_manager
-            .expect_get_current_state()
-            .returning(|| Ok(Some(vec![])));
-
-        // Create the service with mock repositories
-        let service = ManageEditSessionService::new(
-            Arc::new(mock_session_repo),
-            Arc::new(mock_snapshot_repo),
-            Arc::new(mock_snapshot_data_repo),
-            Arc::new(mock_redis_manager),
-        );
-
-        // Create test data
-        let task_data = ManageProjectEditSessionTaskData {
-            project_id: "project_123".to_string(),
-            session_id: "session_456".to_string(),
-            clients_count: Some(1),
-            clients_disconnected_at: None,
-            last_merged_at: None,
-            last_snapshot_at: Some(Utc::now() - Duration::minutes(10)),
-        };
-
-        // Run the process method
-        let result = service.process(task_data).await;
-
-        // Assert the result
-        assert!(result.is_ok());
+    struct MockRepositories {
+        session_repo: MockProjectEditingSessionRepository,
+        snapshot_repo: MockProjectSnapshotRepository,
+        snapshot_data_repo: MockSnapshotDataRepository,
+        redis_manager: MockRedisDataManager,
     }
 }
