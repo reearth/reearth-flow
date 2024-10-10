@@ -261,7 +261,7 @@ impl FlowProjectRedisDataManager {
             .await?;
         self.redis_client
             .set(
-                self.active_editing_session_id_key(),
+                &self.active_editing_session_id_key(),
                 &self
                     .editing_session
                     .lock()

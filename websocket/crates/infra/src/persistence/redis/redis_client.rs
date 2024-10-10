@@ -22,15 +22,16 @@ pub enum RedisClientError {
 #[async_trait]
 pub trait RedisClientTrait: Send + Sync {
     fn redis_url(&self) -> &str;
-    async fn set<T: Serialize + Send + Sync + 'static>(
+    async fn set<T: Serialize + Send + Sync>(
         &self,
-        key: String,
+        key: &str,
         value: &T,
     ) -> Result<(), RedisClientError>;
-    async fn get<T>(&self, key: &str) -> Result<Option<T>, RedisClientError>
-    where
-        T: for<'de> Deserialize<'de> + Send + Sync + 'static;
-    async fn keys(&self, pattern: String) -> Result<Vec<String>, RedisClientError>;
+    async fn get<T: for<'de> Deserialize<'de> + Send + Sync>(
+        &self,
+        key: &str,
+    ) -> Result<Option<T>, RedisClientError>;
+    async fn keys(&self, pattern: &str) -> Result<Vec<String>, RedisClientError>;
     async fn xadd(
         &self,
         key: &str,
@@ -44,7 +45,7 @@ pub trait RedisClientTrait: Send + Sync {
     ) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError>;
     async fn xtrim(&self, key: &str, max_len: usize) -> Result<usize, RedisClientError>;
     async fn xdel(&self, key: &str, ids: &[&str]) -> Result<usize, RedisClientError>;
-    fn connection(&self) -> Arc<Mutex<MultiplexedConnection>>;
+    fn connection(&self) -> &Arc<Mutex<MultiplexedConnection>>;
     async fn get_client_count(&self) -> Result<usize, RedisClientError>;
 }
 
@@ -54,9 +55,9 @@ impl RedisClientTrait for RedisClient {
         &self.redis_url
     }
 
-    async fn set<T: Serialize + Send + Sync + 'static>(
+    async fn set<T: Serialize + Send + Sync>(
         &self,
-        key: String,
+        key: &str,
         value: &T,
     ) -> Result<(), RedisClientError> {
         let mut connection = self.connection.lock().await;
@@ -64,22 +65,21 @@ impl RedisClientTrait for RedisClient {
         Ok(())
     }
 
-    async fn get<T>(&self, key: &str) -> Result<Option<T>, RedisClientError>
-    where
-        T: for<'de> Deserialize<'de> + Send + Sync + 'static,
-    {
+    async fn get<T: for<'de> Deserialize<'de> + Send + Sync>(
+        &self,
+        key: &str,
+    ) -> Result<Option<T>, RedisClientError> {
         let mut connection = self.connection.lock().await;
         let value: Option<String> = connection.get(key).await?;
-        match value {
-            Some(val) => Ok(Some(serde_json::from_str(&val)?)),
-            None => Ok(None),
-        }
+        value
+            .map(|val| serde_json::from_str(&val))
+            .transpose()
+            .map_err(Into::into)
     }
 
-    async fn keys(&self, pattern: String) -> Result<Vec<String>, RedisClientError> {
+    async fn keys(&self, pattern: &str) -> Result<Vec<String>, RedisClientError> {
         let mut connection = self.connection.lock().await;
-        let keys: Vec<String> = connection.keys(pattern).await?;
-        Ok(keys)
+        connection.keys(pattern).await.map_err(Into::into)
     }
 
     async fn xadd(
@@ -89,8 +89,7 @@ impl RedisClientTrait for RedisClient {
         fields: &[(&str, &str)],
     ) -> Result<String, RedisClientError> {
         let mut connection = self.connection.lock().await;
-        let id: String = connection.xadd(key, id, fields).await?;
-        Ok(id)
+        connection.xadd(key, id, fields).await.map_err(Into::into)
     }
 
     async fn xread(
@@ -99,37 +98,33 @@ impl RedisClientTrait for RedisClient {
         id: &str,
     ) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError> {
         let mut connection = self.connection.lock().await;
-        let result: Vec<(String, Vec<(String, String)>)> = connection.xread(&[key], &[id]).await?;
-        Ok(result)
+        connection.xread(&[key], &[id]).await.map_err(Into::into)
     }
 
     async fn xtrim(&self, key: &str, max_len: usize) -> Result<usize, RedisClientError> {
         let mut connection = self.connection.lock().await;
-        let len: usize = connection.xtrim(key, StreamMaxlen::Equals(max_len)).await?;
-        Ok(len)
+        connection
+            .xtrim(key, StreamMaxlen::Equals(max_len))
+            .await
+            .map_err(Into::into)
     }
 
     async fn xdel(&self, key: &str, ids: &[&str]) -> Result<usize, RedisClientError> {
         let mut connection = self.connection.lock().await;
-        let count: usize = connection.xdel(key, ids).await?;
-        Ok(count)
+        connection.xdel(key, ids).await.map_err(Into::into)
     }
 
-    fn connection(&self) -> Arc<Mutex<MultiplexedConnection>> {
-        self.connection.clone()
+    fn connection(&self) -> &Arc<Mutex<MultiplexedConnection>> {
+        &self.connection
     }
 
     async fn get_client_count(&self) -> Result<usize, RedisClientError> {
         let mut connection = self.connection.lock().await;
-
         let client_list: String = redis::cmd("CLIENT")
             .arg("LIST")
             .query_async(&mut *connection)
             .await?;
-
-        let connections: Vec<&str> = client_list.lines().collect();
-
-        Ok(connections.len())
+        Ok(client_list.lines().count())
     }
 }
 
@@ -157,7 +152,7 @@ mod tests {
 
     impl MockRedisClient {
         pub fn new() -> Self {
-            MockRedisClient {
+            Self {
                 data: Arc::new(Mutex::new(HashMap::new())),
             }
         }
@@ -169,38 +164,41 @@ mod tests {
             "mock://localhost"
         }
 
-        async fn set<T: Serialize + Send + Sync + 'static>(
+        async fn set<T: Serialize + Send + Sync>(
             &self,
-            key: String,
+            key: &str,
             value: &T,
         ) -> Result<(), RedisClientError> {
             let serialized_value = serde_json::to_string(value)?;
-            let mut data = self.data.lock().await;
-            data.insert(key, serialized_value);
+            self.data
+                .lock()
+                .await
+                .insert(key.to_string(), serialized_value);
             Ok(())
         }
 
-        async fn get<T>(&self, key: &str) -> Result<Option<T>, RedisClientError>
-        where
-            T: for<'de> Deserialize<'de> + Send + Sync + 'static,
-        {
-            let data = self.data.lock().await;
-            if let Some(value) = data.get(key) {
-                let deserialized_value: T = serde_json::from_str(value)?;
-                Ok(Some(deserialized_value))
-            } else {
-                Ok(None)
-            }
+        async fn get<T: for<'de> Deserialize<'de> + Send + Sync>(
+            &self,
+            key: &str,
+        ) -> Result<Option<T>, RedisClientError> {
+            self.data
+                .lock()
+                .await
+                .get(key)
+                .map(|value| serde_json::from_str(value))
+                .transpose()
+                .map_err(Into::into)
         }
 
-        async fn keys(&self, pattern: String) -> Result<Vec<String>, RedisClientError> {
-            let data = self.data.lock().await;
-            let keys: Vec<String> = data
+        async fn keys(&self, pattern: &str) -> Result<Vec<String>, RedisClientError> {
+            Ok(self
+                .data
+                .lock()
+                .await
                 .keys()
-                .filter(|k| k.contains(&pattern))
+                .filter(|k| k.contains(pattern))
                 .cloned()
-                .collect();
-            Ok(keys)
+                .collect())
         }
 
         async fn xadd(
@@ -231,7 +229,7 @@ mod tests {
             Ok(0)
         }
 
-        fn connection(&self) -> Arc<Mutex<MultiplexedConnection>> {
+        fn connection(&self) -> &Arc<Mutex<MultiplexedConnection>> {
             unimplemented!()
         }
 
@@ -243,25 +241,17 @@ mod tests {
     #[tokio::test]
     async fn test_set_and_get() {
         let client = MockRedisClient::new();
-
-        let result = client.set("test_key".to_string(), &"test_value").await;
-        assert!(result.is_ok());
-
-        let get_result: Result<Option<String>, RedisClientError> = client.get("test_key").await;
-        assert_eq!(get_result.unwrap(), Some("test_value".to_string()));
+        client.set("test_key", &"test_value").await.unwrap();
+        let result: Option<String> = client.get("test_key").await.unwrap();
+        assert_eq!(result, Some("test_value".to_string()));
     }
 
     #[tokio::test]
     async fn test_keys() {
         let client = MockRedisClient::new();
-
-        let _ = client.set("key1".to_string(), &"value1").await;
-        let _ = client.set("key2".to_string(), &"value2").await;
-
-        let keys_result = client.keys("key".to_string()).await;
-        assert!(keys_result.is_ok());
-
-        let keys = keys_result.unwrap();
+        client.set("key1", &"value1").await.unwrap();
+        client.set("key2", &"value2").await.unwrap();
+        let keys = client.keys("key").await.unwrap();
         assert_eq!(keys.len(), 2);
         assert!(keys.contains(&"key1".to_string()));
         assert!(keys.contains(&"key2".to_string()));
@@ -270,21 +260,20 @@ mod tests {
     #[tokio::test]
     async fn test_xadd() {
         let client = MockRedisClient::new();
-
-        let fields = &[("field1", "value1"), ("field2", "value2")];
-        let result = client.xadd("test_stream", "*", fields).await;
-        assert!(result.is_ok());
+        let result = client
+            .xadd(
+                "test_stream",
+                "*",
+                &[("field1", "value1"), ("field2", "value2")],
+            )
+            .await;
         assert_eq!(result.unwrap(), "mock_id");
     }
 
     #[tokio::test]
     async fn test_xread() {
         let client = MockRedisClient::new();
-
-        let result = client.xread("test_stream", "0").await;
-        assert!(result.is_ok());
-
-        let entries = result.unwrap();
+        let entries = client.xread("test_stream", "0").await.unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].0, "mock_key");
         assert_eq!(entries[0].1[0], ("field".to_string(), "value".to_string()));
@@ -293,27 +282,18 @@ mod tests {
     #[tokio::test]
     async fn test_xtrim() {
         let client = MockRedisClient::new();
-
-        let result = client.xtrim("test_stream", 100).await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 0);
+        assert_eq!(client.xtrim("test_stream", 100).await.unwrap(), 0);
     }
 
     #[tokio::test]
     async fn test_xdel() {
         let client = MockRedisClient::new();
-
-        let result = client.xdel("test_stream", &["1", "2"]).await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 0);
+        assert_eq!(client.xdel("test_stream", &["1", "2"]).await.unwrap(), 0);
     }
 
     #[tokio::test]
     async fn test_get_client_count() {
         let client = MockRedisClient::new();
-
-        let result = client.get_client_count().await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 1);
+        assert_eq!(client.get_client_count().await.unwrap(), 1);
     }
 }

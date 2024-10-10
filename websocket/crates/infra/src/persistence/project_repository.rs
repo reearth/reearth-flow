@@ -62,7 +62,7 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
 
     async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
         let key = format!("session:{}", session.session_id.as_ref().unwrap());
-        self.redis_client.set(key, &session).await?;
+        self.redis_client.set(&key, &session).await?;
         Ok(())
     }
 
@@ -77,7 +77,7 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
 
     async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
         let key = format!("session:{}", session.session_id.as_ref().unwrap());
-        self.redis_client.set(key, &session).await?;
+        self.redis_client.set(&key, &session).await?;
         Ok(())
     }
 
