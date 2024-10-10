@@ -49,7 +49,7 @@ const ParamEditor: React.FC<Props> = ({
 
   const { useGetActionById } = useAction();
 
-  // For action nodes, nodeMeta.name is always defined. Only actions can open 
+  // For action nodes, nodeMeta.name is always defined. Only actions can open
   // the ParamsEditor, so this is for the TS error to go away
   const { action } = useGetActionById(nodeMeta.name ?? "");
 
