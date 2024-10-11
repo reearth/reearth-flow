@@ -21,13 +21,13 @@ pub struct ProjectEditingSession {
 }
 
 #[derive(Error, Debug)]
-pub enum ProjectEditingSessionError<S, R> {
+pub enum ProjectEditingSessionError<R, S> {
     #[error("Session not setup")]
     SessionNotSetup,
     #[error(transparent)]
-    Snapshot(#[from] S),
+    Snapshot(#[from] R),
     #[error(transparent)]
-    Redis(R),
+    Redis(S),
     #[error("{0}")]
     Custom(String),
 }
@@ -170,7 +170,7 @@ impl ProjectEditingSession {
         Ok(())
     }
 
-    pub async fn create_snapshot<S, R>(
+    pub async fn create_snapshot<R, S>(
         &self,
         snapshot_repo: &R,
         redis_data_manager: &S,
