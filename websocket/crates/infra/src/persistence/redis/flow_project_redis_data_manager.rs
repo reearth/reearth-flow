@@ -162,29 +162,38 @@ impl FlowProjectRedisDataManager {
         if updates.is_empty() {
             return Ok(None);
         }
-        let merged_update = updates
-            .iter()
-            .map(|x| x.update.clone())
-            .reduce(|a, b| {
+
+        // Create an iterator over the cloned updates
+        let mut updates_iter = updates.iter().map(|x| x.update.clone());
+
+        // Use the first update as the initial accumulator
+        let first_update = updates_iter
+            .next()
+            .ok_or(FlowProjectRedisDataManagerError::MergeUpdates)?;
+
+        // Fold over the remaining updates
+        let merged_update = updates_iter
+            .try_fold(first_update, |acc, update| {
                 let doc = Doc::new();
                 let mut txn = doc.transact_mut();
-                if let Ok(decoded_a) = Update::decode_v2(&a) {
-                    txn.apply_update(decoded_a);
-                }
-                if let Ok(decoded_b) = Update::decode_v2(&b) {
-                    txn.apply_update(decoded_b);
-                }
-                txn.encode_update_v2()
+                txn.apply_update(Update::decode_v2(&acc)?);
+                txn.apply_update(Update::decode_v2(&update)?);
+                Ok(txn.encode_update_v2())
             })
-            .ok_or(FlowProjectRedisDataManagerError::MergeUpdates)?;
+            .map_err(FlowProjectRedisDataManagerError::DecodeUpdate)?;
+
+        // Collect all updaters into a vector
         let updates_by = updates
             .iter()
             .filter_map(|x| x.updated_by.clone())
             .collect::<Vec<_>>();
+
+        // Get the last update ID, returning an error if it's not available
         let last_update_id = updates
             .last()
             .and_then(|x| x.stream_id.clone())
             .ok_or(FlowProjectRedisDataManagerError::LastUpdateId)?;
+
         Ok(Some((merged_update, last_update_id, updates_by)))
     }
 
