@@ -17,6 +17,7 @@ use crate::{types::ManageProjectEditSessionTaskData, ProjectServiceError};
 
 const MAX_EMPTY_SESSION_DURATION: i64 = 10_000; // 10 seconds
 const MAX_SNAPSHOT_DELTA: i64 = 300_000; // 5 minutes
+const JOB_COMPLETION_DELAY: Duration = Duration::from_secs(5);
 
 pub struct ManageEditSessionService<R, S, D, M>
 where
@@ -197,7 +198,7 @@ where
         data: &ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
         if session.active_editing_session().await?.as_ref() == Some(&data.session_id) {
-            sleep(Duration::from_secs(5)).await;
+            sleep(JOB_COMPLETION_DELAY).await;
         }
         Ok(())
     }
