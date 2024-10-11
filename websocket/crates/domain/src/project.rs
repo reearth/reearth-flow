@@ -24,6 +24,8 @@ pub struct ProjectEditingSession {
 pub enum ProjectEditingSessionError<R, S> {
     #[error("Session not setup")]
     SessionNotSetup,
+    #[error("Snapshot not found")]
+    SnapshotNotFound,
     #[error(transparent)]
     Snapshot(#[from] R),
     #[error(transparent)]
@@ -290,10 +292,16 @@ impl ProjectEditingSession {
     where
         R: ProjectSnapshotRepository,
     {
+        // Get the latest snapshot for the given session_id
         let snapshot = snapshot_repo.get_latest_snapshot(session_id).await?;
+        // If a snapshot is found, update the project_id
         if let Some(snapshot) = snapshot {
             self.project_id = snapshot.metadata.project_id;
+        } else {
+            // If no snapshot is found, return an error
+            return Err(ProjectEditingSessionError::SnapshotNotFound);
         }
+        // Set the session_id and mark the session as set up
         self.session_id = Some(session_id.to_string());
         self.session_setup_complete = true;
         Ok(())
