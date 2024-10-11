@@ -311,12 +311,9 @@ impl ProjectEditingSession {
         &self,
     ) -> Result<Option<String>, ProjectEditingSessionError<(), ()>> {
         if !self.session_setup_complete {
-            return Err(ProjectEditingSessionError::SessionNotSetup);
-        }
-        if self.session_setup_complete {
-            Ok(self.session_id.clone())
+            Err(ProjectEditingSessionError::SessionNotSetup)
         } else {
-            Ok(None)
+            Ok(self.session_id.clone())
         }
     }
 }
