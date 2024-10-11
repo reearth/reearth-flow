@@ -41,7 +41,11 @@ where
 
         let state = SnapshotInfo::new(
             data.created_by,
-            data.changes_by,
+            if data.changes_by.is_empty() {
+                vec!["unknown".to_string()]
+            } else {
+                data.changes_by
+            },
             data.tenant,
             ObjectDelete {
                 deleted: false,
