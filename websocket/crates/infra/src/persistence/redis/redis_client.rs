@@ -120,11 +120,13 @@ impl RedisClientTrait for RedisClient {
 
     async fn get_client_count(&self) -> Result<usize, RedisClientError> {
         let mut connection = self.connection.lock().await;
-        let client_list: String = redis::cmd("CLIENT")
+        let client_list: Vec<String> = redis::cmd("CLIENT")
             .arg("LIST")
+            .arg("TYPE")
+            .arg("normal")
             .query_async(&mut *connection)
             .await?;
-        Ok(client_list.lines().count())
+        Ok(client_list.len())
     }
 }
 

@@ -33,6 +33,9 @@ where
                 ProjectServiceError::SnapshotRepository(format!("{:?}", repo_err))
             }
             ProjectEditingSessionError::Custom(err) => ProjectServiceError::Unexpected(err),
+            ProjectEditingSessionError::SnapshotNotFound => {
+                ProjectServiceError::SnapshotRepository("Snapshot not found".to_string())
+            }
         }
     }
 }
