@@ -165,11 +165,11 @@ const LeftPanel: React.FC<Props> = ({
       </div>
       <aside className="relative z-10 w-14 border-r bg-secondary">
         <div className="flex h-full flex-col">
-          <nav className="flex flex-col items-center gap-4 p-2">
+          <nav className="flex flex-col items-center gap-5 p-3">
             <Link
               to={`/workspaces/${workspaceId}`}
-              className="flex shrink-0 items-center justify-center gap-2 rounded bg-red-800/50 p-2 text-lg font-semibold hover:bg-red-800/80 md:size-8 md:text-base">
-              <FlowLogo className="size-5" />
+              className="flex shrink-0 items-center justify-center gap-2 text-lg font-semibold md:size-8 md:text-base">
+              <FlowLogo className="size-7 transition-all hover:size-[30px] hover:text-[#46ce7c]" />
               <span className="sr-only">{t("Dashboard")}</span>
             </Link>
             {tabs.map((tab) => (

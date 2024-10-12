@@ -116,13 +116,8 @@ const ActionsList: React.FC<Props> = ({
     (filter: string, actions?: Action[]): Action[] | undefined =>
       actions?.filter((action) =>
         Object.values(action)
-          .reduce(
-            (result, value) =>
-              (result += (
-                Array.isArray(value) ? value.join() : value
-              ).toLowerCase()),
-            "",
-          )
+          .filter((v) => typeof v === "string")
+          .join("")
           .includes(filter.toLowerCase()),
       ),
     [],

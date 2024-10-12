@@ -130,10 +130,11 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 	t.Helper()
 
 	if testing.Short() {
-		t.SkipNow()
+		t.Skip("skipping test in short mode.")
 	}
 
 	ctx := context.Background()
+
 	l, err := net.Listen("tcp", ":0")
 	if err != nil {
 		t.Fatalf("server failed to listen: %v", err)

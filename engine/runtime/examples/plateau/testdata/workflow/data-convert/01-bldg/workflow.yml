@@ -1,0 +1,116 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 83307700-04b9-490c-b6a1-11b93e7f7a8a
+name: "DataConvert-01-bldg-workflow"
+entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../../../config/schema.txt
+  targetPackages:
+    - bldg
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+  outputPath:
+graphs:
+  - !include ../../../graphs/attribute_reader.yml
+  - !include ../../../graphs/folder_and_file_path_reader.yml
+  - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
+    name: entry_point
+    nodes:
+      - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        name: AttributeReader
+        type: subGraph
+        subGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
+
+      - id: fc649773-af86-49bd-9629-149f9ac4166b
+        name: AttributeMapperFilePath
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: code
+              valueAttribute: meshCode
+            - attribute: type
+              valueAttribute: package
+            - attribute: maxLod
+              valueAttribute: maxLod
+            - attribute: length
+              expr: |
+                env.get("__value")["package"].len()
+            - attribute: file
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+
+      - id: 6e2a7c56-1ce3-48ee-b969-b1a1a0f057ca
+        name: FileWriterTsvFilePath
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "maxLod.tsv")
+
+      - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        name: FeatureReaderByCityGml
+        type: action
+        action: FeatureReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value").cityGmlPath
+
+      - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        name: AttributeMapperBldg
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: id
+              valueAttribute: gmlId
+            - attribute: meshcode
+              valueAttribute: meshCode
+            - attribute: city_code
+              valueAttribute: cityCode
+            - attribute: city_name
+              valueAttribute: cityName
+            - attribute: feature_type
+              valueAttribute: gmlName
+
+      - id: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
+        name: cesium3DTilesWriter
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          minZoom: 15
+          maxZoom: 18
+          output: |
+            env.get("outputPath")
+
+    edges:
+      - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
+        from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        to: fc649773-af86-49bd-9629-149f9ac4166b
+        fromPort: filePath
+        toPort: default
+      - id: 284b02d9-8051-4614-a03c-583274c700f8
+        from: fc649773-af86-49bd-9629-149f9ac4166b
+        to: 6e2a7c56-1ce3-48ee-b969-b1a1a0f057ca
+        fromPort: default
+        toPort: default
+      - id: a4751655-5956-4e27-a976-e35f8914ad31
+        from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        to: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        fromPort: filePath
+        toPort: default
+      - id: fb48e9e0-fa1b-4f27-8a89-84b6d2e1c6d7
+        from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        fromPort: default
+        toPort: default
+      - id: 8ca2968d-b44f-42dd-befa-86134bd9b030
+        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
+        fromPort: default
+        toPort: default

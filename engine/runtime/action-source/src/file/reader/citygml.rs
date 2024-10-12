@@ -56,6 +56,7 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
 ) -> Result<(), crate::errors::SourceError> {
     let mut entities = Vec::new();
     let mut global_appearances = AppearanceStore::default();
+    let mut envelope = Envelope::default();
 
     st.parse_children(|st| {
         let path: &[u8] = &st.current_path();
@@ -65,14 +66,13 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                 Ok(())
             }
             b"gml:boundedBy/gml:Envelope" => {
-                let mut envelope = Envelope::default();
                 envelope.parse(st)?;
                 Ok(())
             }
             b"core:cityObjectMember" => {
                 let mut cityobj: models::TopLevelCityObject = Default::default();
                 cityobj.parse(st)?;
-                let geometry_store = st.collect_geometries();
+                let geometry_store = st.collect_geometries(envelope.crs_uri.clone());
                 let id = cityobj.id();
                 let description = cityobj.description();
                 let bounded_by = cityobj.bounded_by();

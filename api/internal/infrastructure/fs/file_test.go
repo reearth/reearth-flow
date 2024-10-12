@@ -117,13 +117,107 @@ func TestGetAssetFileURL(t *testing.T) {
 	assert.NoError(t, err)
 	b, err := url.Parse("http://hoge.com/assets")
 	assert.NoError(t, err)
-	assert.Equal(t, e, getAssetFileURL(b, "xxx.yyy"))
+	assert.Equal(t, e, getFileURL(b, "xxx.yyy"))
+}
+
+func TestFile_ReadWorkflow(t *testing.T) {
+	f, _ := NewFile(mockFs(), "")
+
+	r, err := f.ReadWorkflow(context.Background(), "xxx.txt")
+	assert.NoError(t, err)
+	c, err := io.ReadAll(r)
+	assert.NoError(t, err)
+	assert.Equal(t, "hello", string(c))
+	assert.NoError(t, r.Close())
+
+	r, err = f.ReadWorkflow(context.Background(), "aaa.txt")
+	assert.ErrorIs(t, err, rerror.ErrNotFound)
+	assert.Nil(t, r)
+}
+
+func TestFile_UploadWorkflow(t *testing.T) {
+	fs := mockFs()
+	f, _ := NewFile(fs, "https://example.com/workflows")
+
+	u, err := f.UploadWorkflow(context.Background(), &file.File{
+		Path:    "aaa.txt",
+		Content: io.NopCloser(strings.NewReader("aaa")),
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "https", u.Scheme)
+	assert.Equal(t, "example.com", u.Host)
+	assert.True(t, strings.HasPrefix(u.Path, "/workflows/"))
+	assert.Equal(t, ".txt", filepath.Ext(u.Path))
+
+	uf, _ := fs.Open(filepath.Join("workflows", filepath.Base(u.Path)))
+	c, _ := io.ReadAll(uf)
+	assert.Equal(t, "aaa", string(c))
+}
+
+func TestFile_RemoveWorkflow(t *testing.T) {
+	cases := []struct {
+		Name    string
+		URL     string
+		Deleted bool
+		Err     error
+	}{
+		{
+			Name:    "deleted",
+			URL:     "https://example.com/workflows/xxx.txt",
+			Deleted: true,
+		},
+		{
+			Name: "not deleted 1",
+			URL:  "https://example.com/workflows/aaa.txt",
+			Err:  nil,
+		},
+		{
+			Name: "not deleted 2",
+			URL:  "https://example.com/plugins/xxx.txt",
+			Err:  gateway.ErrInvalidFile,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+
+			fs := mockFs()
+			f, _ := NewFile(fs, "https://example.com/workflows")
+
+			u, _ := url.Parse(tc.URL)
+			err := f.RemoveWorkflow(context.Background(), u)
+
+			if tc.Err == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.Same(t, tc.Err, err)
+			}
+
+			_, err = fs.Stat(filepath.Join("workflows", "xxx.txt"))
+			if tc.Deleted {
+				assert.ErrorIs(t, err, os.ErrNotExist)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestGetWorkflowFileURL(t *testing.T) {
+	e, err := url.Parse("http://hoge.com/workflows/xxx.yyy")
+	assert.NoError(t, err)
+	b, err := url.Parse("http://hoge.com/workflows")
+	assert.NoError(t, err)
+	assert.Equal(t, e, getFileURL(b, "xxx.yyy"))
 }
 
 func mockFs() afero.Fs {
 	files := map[string]string{
-		filepath.Join("assets", "xxx.txt"):   "hello",
-		filepath.Join("published", "s.json"): "{}",
+		filepath.Join("assets", "xxx.txt"):    "hello",
+		filepath.Join("published", "s.json"):  "{}",
+		filepath.Join("workflows", "xxx.txt"): "hello",
 	}
 
 	fs := afero.NewMemMapFs()

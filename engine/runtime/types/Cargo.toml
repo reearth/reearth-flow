@@ -15,8 +15,8 @@ reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
 reearth-flow-geometry.workspace = true
 
+flatgeom.workspace = true
 nusamai-citygml.workspace = true
-nusamai-geometry.workspace = true
 nusamai-plateau.workspace = true
 nusamai-projection.workspace = true
 

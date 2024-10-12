@@ -13,7 +13,7 @@ version.workspace = true
 [dependencies]
 reearth-flow-common.workspace = true
 
-nusamai-geometry.workspace = true
+flatgeom.workspace = true
 nusamai-projection.workspace = true
 
 approx.workspace = true

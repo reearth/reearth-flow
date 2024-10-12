@@ -358,7 +358,8 @@ impl Clone for Box<dyn SinkFactory> {
 }
 
 pub trait Sink: Send + Debug + SinkClone {
-    fn initialize(&self, _ctx: NodeContext) {}
+    fn initialize(&mut self, _ctx: NodeContext) {}
+
     fn name(&self) -> &str;
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError>;
 

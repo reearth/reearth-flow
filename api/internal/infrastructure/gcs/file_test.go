@@ -17,8 +17,8 @@ func TestGetGCSObjectNameFromURL(t *testing.T) {
 	u, _ := url.Parse("https://hoge.com/assets/xxx.yyy")
 	b, _ := url.Parse("https://hoge.com")
 	b2, _ := url.Parse("https://hoge2.com")
-	assert.Equal(t, "assets/xxx.yyy", getGCSObjectNameFromURL(b, u))
-	assert.Equal(t, "", getGCSObjectNameFromURL(b2, u))
-	assert.Equal(t, "", getGCSObjectNameFromURL(nil, u))
-	assert.Equal(t, "", getGCSObjectNameFromURL(b, nil))
+	assert.Equal(t, "assets/xxx.yyy", getGCSObjectNameFromURL(b, u, gcsAssetBasePath))
+	assert.Equal(t, "", getGCSObjectNameFromURL(b2, u, gcsAssetBasePath))
+	assert.Equal(t, "", getGCSObjectNameFromURL(nil, u, gcsAssetBasePath))
+	assert.Equal(t, "", getGCSObjectNameFromURL(b, nil, gcsAssetBasePath))
 }

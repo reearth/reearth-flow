@@ -163,14 +163,19 @@ pub fn get_node_tag(node: &XmlNode) -> String {
 }
 
 pub fn get_node_id(uri: &Uri, node: &XmlNode) -> String {
-    let tag = get_node_tag(node);
-    let mut key_values = node
-        .get_properties()
-        .iter()
-        .map(|(k, v)| format!("{}={}", k, v))
-        .collect::<Vec<_>>();
-    key_values.sort();
-    to_hash(format!("{}:{}[{}]", uri, tag, key_values.join(",")).as_str())
+    node.get_attributes()
+        .get("id")
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| {
+            let tag = get_node_tag(node);
+            let mut key_values = node
+                .get_properties()
+                .iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<_>>();
+            key_values.sort();
+            to_hash(format!("{}:{}[{}]", uri, tag, key_values.join(",")).as_str())
+        })
 }
 
 pub fn get_readonly_node_tag(node: &XmlRoNode) -> String {

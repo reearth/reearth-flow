@@ -296,6 +296,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "atlas-packer"
+version = "0.0.0"
+source = "git+https://github.com/MIERUNE/atlas-packer.git#02cf71dfa3be88964fdb66bcd1035d0b17def049"
+dependencies = [
+ "clap",
+ "hashbrown 0.14.5",
+ "image 0.25.2",
+ "rayon",
+ "rstar 0.12.0",
+ "stretto",
+ "sys-info",
+ "thiserror",
+ "webp",
+]
+
+[[package]]
 name = "atomic"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -421,6 +437,15 @@ name = "base64ct"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
+
+[[package]]
+name = "bincode"
+version = "2.0.0-rc.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f11ea1a0346b94ef188834a65c068a03aec181c94896d481d7a0a40d85b0ce95"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bitflags"
@@ -569,6 +594,20 @@ name = "bytemuck"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94bbb0ad554ad961ddc5da507a12a29b14e4ae5bda06b19f575a3e6079d2e2ae"
+dependencies = [
+ "bytemuck_derive",
+]
+
+[[package]]
+name = "bytemuck_derive"
+version = "1.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc8b54b395f2fcfbb3d90c47b01c7f444d94d05bdeb775811dec868ac3bbc26"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.79",
+]
 
 [[package]]
 name = "byteorder"
@@ -669,6 +708,16 @@ dependencies = [
 [[package]]
 name = "cesiumtiles"
 version = "0.0.0"
+source = "git+https://github.com/MIERUNE/cesiumtiles-rs.git#5ec9c251a5f56fd35767fb9f00ba3ff7a4f1741e"
+dependencies = [
+ "serde",
+ "serde_json",
+ "serde_repr",
+]
+
+[[package]]
+name = "cesiumtiles"
+version = "0.0.0"
 source = "git+https://github.com/reearth/cesiumtiles-rs.git#ff090532c77f5e995612dacf4ee318725d49e109"
 dependencies = [
  "serde",
@@ -751,9 +800,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.19"
+version = "4.5.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7be5744db7978a28d9df86a214130d106a89ce49644cbc4e3f0c22c3fba30615"
+checksum = "b97f376d85a664d5837dbae44bf546e6477a679ff6610010f17276f686d867e8"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -761,9 +810,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.19"
+version = "4.5.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5fbc17d3ef8278f55b282b2a2e75ae6f6c7d4bb70ed3d0382375104bfafdb4b"
+checksum = "19bc80abd44e4bed93ca373a0704ccbd1b710dc5749406201bb018272808dc54"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1437,6 +1486,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "flatgeom"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c862c3b8b552c209073f8023f700dff111870ccc5b74a7e407c0a2780655b36"
+dependencies = [
+ "num-traits",
+ "serde",
+]
+
+[[package]]
 name = "float_next_after"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1456,6 +1515,12 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "foldhash"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f81ec6369c545a7d40e4589b5597581fa1c441fe1cce96dd1de43159910a36a2"
 
 [[package]]
 name = "foreign-types"
@@ -2032,6 +2097,7 @@ checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 dependencies = [
  "ahash 0.8.11",
  "allocator-api2",
+ "rayon",
  "serde",
 ]
 
@@ -2040,6 +2106,12 @@ name = "hashbrown"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e087f84d4f86bf4b218b927129862374b72199ae7d8657835f1e89000eea4fb"
+dependencies = [
+ "allocator-api2",
+ "equivalent",
+ "foldhash",
+ "serde",
+]
 
 [[package]]
 name = "heapless"
@@ -2640,6 +2712,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "kv-extsort"
+version = "0.1.0"
+source = "git+https://github.com/MIERUNE/kv-extsort-rs.git#6ac60e183cca6525876b24137cb1b822236e6e0d"
+dependencies = [
+ "bytemuck",
+ "crossbeam-channel",
+ "log",
+ "rayon",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2669,6 +2754,16 @@ dependencies = [
  "bitflags 2.6.0",
  "libc",
  "redox_syscall",
+]
+
+[[package]]
+name = "libwebp-sys"
+version = "0.9.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54cd30df7c7165ce74a456e4ca9732c603e8dc5e60784558c1c6dc047f876733"
+dependencies = [
+ "cc",
+ "glob",
 ]
 
 [[package]]
@@ -2760,7 +2855,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc9#1b9070bf0a4726d308ec28f10750e305820f37b1"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3091,15 +3186,15 @@ dependencies = [
 
 [[package]]
 name = "nusamai-citygml"
-version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc9#1b9070bf0a4726d308ec28f10750e305820f37b1"
+version = "0.0.0-alpha.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "ahash 0.8.11",
  "chrono",
+ "flatgeom",
  "indexmap 2.6.0",
  "log",
  "macros",
- "nusamai-geometry",
  "nusamai-projection",
  "once_cell",
  "quick-xml 0.36.2",
@@ -3111,36 +3206,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "nusamai-geometry"
-version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc9#1b9070bf0a4726d308ec28f10750e305820f37b1"
-dependencies = [
- "num-traits",
- "serde",
-]
-
-[[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc9#1b9070bf0a4726d308ec28f10750e305820f37b1"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "byteorder",
- "clap",
- "earcut",
- "indexmap 2.6.0",
- "nusamai-geometry",
  "nusamai-gltf-json",
- "quick-xml 0.36.2",
  "serde_json",
- "thiserror",
 ]
 
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc9#1b9070bf0a4726d308ec28f10750e305820f37b1"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
- "cesiumtiles",
+ "cesiumtiles 0.0.0 (git+https://github.com/MIERUNE/cesiumtiles-rs.git)",
  "serde",
  "serde_json",
  "serde_repr",
@@ -3149,7 +3229,7 @@ dependencies = [
 [[package]]
 name = "nusamai-mvt"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc9#1b9070bf0a4726d308ec28f10750e305820f37b1"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "ahash 0.8.11",
  "indexmap 2.6.0",
@@ -3159,19 +3239,18 @@ dependencies = [
 
 [[package]]
 name = "nusamai-plateau"
-version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc9#1b9070bf0a4726d308ec28f10750e305820f37b1"
+version = "0.0.0-alpha.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "chrono",
- "hashbrown 0.14.5",
+ "flatgeom",
+ "hashbrown 0.15.0",
  "indexmap 2.6.0",
  "log",
  "nusamai-citygml",
- "nusamai-geometry",
  "once_cell",
  "quick-xml 0.36.2",
  "serde",
- "serde_json",
  "stretto",
  "url",
 ]
@@ -3179,7 +3258,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.0.1-rc9#1b9070bf0a4726d308ec28f10750e305820f37b1"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "japan-geoid",
  "thiserror",
@@ -4341,19 +4420,26 @@ version = "0.0.2"
 dependencies = [
  "ahash 0.8.11",
  "async-trait",
+ "atlas-packer",
+ "bincode",
+ "bytemuck",
  "byteorder",
  "bytes",
- "cesiumtiles",
+ "cesiumtiles 0.0.0 (git+https://github.com/reearth/cesiumtiles-rs.git)",
+ "crossbeam",
+ "crossbeam-channel",
+ "crossbeam-utils",
  "csv",
  "earcut",
  "flate2",
+ "flatgeom",
  "geojson",
  "hashbrown 0.14.5",
  "image 0.25.2",
  "indexmap 2.6.0",
  "itertools",
+ "kv-extsort",
  "nusamai-citygml",
- "nusamai-geometry",
  "nusamai-gltf",
  "nusamai-mvt",
  "nusamai-plateau",
@@ -4376,6 +4462,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",
@@ -4530,13 +4617,13 @@ dependencies = [
  "approx",
  "bytes",
  "clipper-sys",
+ "flatgeom",
  "float_next_after",
  "geo-buffer",
  "geo-types",
  "geojson",
  "nalgebra",
  "num-traits",
- "nusamai-geometry",
  "nusamai-projection",
  "parking_lot",
  "reearth-flow-common",
@@ -4697,6 +4784,7 @@ dependencies = [
  "bytes",
  "chrono",
  "directories",
+ "flatgeom",
  "futures",
  "geojson",
  "hashbrown 0.14.5",
@@ -4704,7 +4792,6 @@ dependencies = [
  "indexmap 2.6.0",
  "itertools",
  "nusamai-citygml",
- "nusamai-geometry",
  "nusamai-gltf",
  "nusamai-plateau",
  "nusamai-projection",
@@ -5874,6 +5961,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sys-info"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5cfbd84f86389198ade41b439f72a5b1b3a8ba728e61cd589e1720d0df44c39"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
 name = "system-deps"
 version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7002,6 +7099,16 @@ dependencies = [
  "pkg-config",
  "soup2-sys",
  "system-deps 6.2.2",
+]
+
+[[package]]
+name = "webp"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f53152f51fb5af0c08484c33d16cca96175881d1f3dec068c23b31a158c2d99"
+dependencies = [
+ "image 0.25.2",
+ "libwebp-sys",
 ]
 
 [[package]]
