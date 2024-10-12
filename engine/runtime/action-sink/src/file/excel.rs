@@ -23,31 +23,56 @@ pub(super) fn write_excel(
         .set_name("Sheet1")
         .map_err(crate::errors::SinkError::file_writer)?;
 
-    let row_index = features.len();
+    let mut title_map = std::collections::HashMap::new();
+    if let Some(first_row) = features.first() {
+        for (col_num, (key, _)) in first_row.iter().enumerate() {
+            worksheet
+                .write_string_with_format(
+                    0,
+                    col_num as u16,
+                    key.clone().into_inner(),
+                    &Default::default(),
+                )
+                .map_err(crate::errors::SinkError::file_writer)?;
+            title_map.insert(key.clone().into_inner(), col_num);
+        }
+    }
+
+    let row_index = 1;
     for (row_num, row) in features.iter().enumerate() {
-        for (col_num, (key, value)) in row.iter().enumerate() {
-            write_cell_value(worksheet, row_num + row_index, col_num, value)?;
-            write_cell_formatting(
-                worksheet,
-                row_num + row_index,
-                col_num,
-                key.clone().into_inner(),
-                &row.attributes,
-            )?;
-            write_cell_formula(
-                worksheet,
-                row_num + row_index,
-                col_num,
-                key.clone().into_inner(),
-                &row.attributes,
-            )?;
-            write_cell_hyperlink(
-                worksheet,
-                row_num + row_index,
-                col_num,
-                key.clone().into_inner(),
-                &row.attributes,
-            )?;
+        for (key, value) in row.iter() {
+            match title_map.get(&key.clone().into_inner()) {
+                Some(&col_num) => {
+                    write_cell_value(worksheet, row_num + row_index, col_num, value)?;
+                    write_cell_formatting(
+                        worksheet,
+                        row_num + row_index,
+                        col_num,
+                        key.clone().into_inner(),
+                        &row.attributes,
+                    )?;
+                    write_cell_formula(
+                        worksheet,
+                        row_num + row_index,
+                        col_num,
+                        key.clone().into_inner(),
+                        &row.attributes,
+                    )?;
+                    write_cell_hyperlink(
+                        worksheet,
+                        row_num + row_index,
+                        col_num,
+                        key.clone().into_inner(),
+                        &row.attributes,
+                    )?;
+                }
+                None => {
+                    return Err(crate::errors::SinkError::file_writer(format!(
+                        "Key '{}' not found in title_map",
+                        key.clone().into_inner()
+                    )));
+                }
+            }
         }
     }
     let buf = workbook
