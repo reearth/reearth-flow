@@ -201,7 +201,11 @@ where
 {
     type Error = ProjectServiceError;
 
-    async fn push_update(&self, update: Vec<u8>, updated_by: String) -> Result<(), Self::Error> {
+    async fn push_update(
+        &self,
+        update: Vec<u8>,
+        updated_by: Option<String>,
+    ) -> Result<(), Self::Error> {
         Ok(self
             .redis_data_manager
             .push_update(update, updated_by)
@@ -269,7 +273,7 @@ mod tests {
         #[async_trait]
         impl RedisDataManager for RedisManager {
             type Error = ProjectRepositoryError;
-            async fn push_update(&self, update: Vec<u8>, updated_by: String) -> Result<(), ProjectRepositoryError>;
+            async fn push_update(&self, update: Vec<u8>, updated_by: Option<String>) -> Result<(), ProjectRepositoryError>;
             async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), ProjectRepositoryError>;
             async fn get_current_state(&self) -> Result<Option<Vec<u8>>, ProjectRepositoryError>;
             async fn clear_data(&self) -> Result<(), ProjectRepositoryError>;
@@ -513,7 +517,7 @@ mod tests {
 
         mock_redis_manager
             .expect_push_update()
-            .with(eq(vec![1, 2, 3]), eq("user1".to_string()))
+            .with(eq(vec![1, 2, 3]), eq(Some("user1".to_string())))
             .times(1)
             .returning(|_, _| Ok(()));
 
@@ -525,7 +529,7 @@ mod tests {
         );
 
         let result = service
-            .push_update(vec![1, 2, 3], "user1".to_string())
+            .push_update(vec![1, 2, 3], Some("user1".to_string()))
             .await;
         assert!(result.is_ok());
     }

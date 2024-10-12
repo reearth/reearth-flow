@@ -259,7 +259,7 @@ mod tests {
 
             async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), ProjectServiceError>;
             async fn get_current_state(&self) -> Result<Option<Vec<u8>>, ProjectServiceError>;
-            async fn push_update(&self, update: Vec<u8>, updated_by: String) -> Result<(), ProjectServiceError>;
+            async fn push_update(&self, update: Vec<u8>, updated_by: Option<String>) -> Result<(), ProjectServiceError>;
             async fn clear_data(&self) -> Result<(), ProjectServiceError>;
         }
     }

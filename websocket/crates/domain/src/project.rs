@@ -76,7 +76,7 @@ impl ProjectEditingSession {
                 .await?;
             // Initialize Redis with latest snapshot state
             redis_data_manager
-                .push_update(latest_snapshot_state, "system".to_string())
+                .push_update(latest_snapshot_state, None)
                 .await
                 .map_err(ProjectEditingSessionError::Redis)?;
         }
@@ -163,10 +163,14 @@ impl ProjectEditingSession {
         }
 
         if skip_lock {
-            redis_data_manager.push_update(update, updated_by).await?;
+            redis_data_manager
+                .push_update(update, Some(updated_by))
+                .await?;
         } else {
             let _lock = self.session_lock.lock().await;
-            redis_data_manager.push_update(update, updated_by).await?;
+            redis_data_manager
+                .push_update(update, Some(updated_by))
+                .await?;
         }
 
         Ok(())

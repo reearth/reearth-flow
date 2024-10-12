@@ -69,6 +69,10 @@ pub trait RedisDataManager {
 
     async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), Self::Error>;
     async fn get_current_state(&self) -> Result<Option<Vec<u8>>, Self::Error>;
-    async fn push_update(&self, update: Vec<u8>, updated_by: String) -> Result<(), Self::Error>;
+    async fn push_update(
+        &self,
+        update: Vec<u8>,
+        updated_by: Option<String>,
+    ) -> Result<(), Self::Error>;
     async fn clear_data(&self) -> Result<(), Self::Error>;
 }

@@ -428,10 +428,14 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         }
     }
 
-    async fn push_update(&self, update: Vec<u8>, updated_by: String) -> Result<(), Self::Error> {
+    async fn push_update(
+        &self,
+        update: Vec<u8>,
+        updated_by: Option<String>,
+    ) -> Result<(), Self::Error> {
         let update_data: FlowEncodedUpdate = FlowEncodedUpdate {
             update: Self::encode_state_data(update),
-            updated_by: Some(updated_by),
+            updated_by,
         };
 
         let value = serde_json::to_string(&update_data)?;
@@ -549,7 +553,7 @@ mod tests {
         async fn push_update(
             &self,
             _update: Vec<u8>,
-            _updated_by: String,
+            _updated_by: Option<String>,
         ) -> Result<(), Self::Error> {
             let result = self
                 .push_update_result
@@ -596,7 +600,7 @@ mod tests {
         mock_manager.set_push_update_result(Ok(()));
 
         let result = mock_manager
-            .push_update(vec![1, 2, 3], "user1".to_string())
+            .push_update(vec![1, 2, 3], Some("user1".to_string()))
             .await;
         assert!(result.is_ok());
     }
