@@ -21,15 +21,15 @@ pub struct ProjectEditingSession {
 }
 
 #[derive(Error, Debug)]
-pub enum ProjectEditingSessionError<R, S> {
+pub enum ProjectEditingSessionError<S, R> {
     #[error("Session not setup")]
     SessionNotSetup,
     #[error("Snapshot not found")]
     SnapshotNotFound,
     #[error(transparent)]
-    Snapshot(#[from] R),
+    Snapshot(#[from] S),
     #[error(transparent)]
-    Redis(S),
+    Redis(R),
     #[error("{0}")]
     Custom(String),
 }
@@ -57,14 +57,14 @@ impl ProjectEditingSession {
         }
     }
 
-    pub async fn start_or_join_session<R, S>(
+    pub async fn start_or_join_session<S, R>(
         &mut self,
-        snapshot_repo: &R,
-        redis_data_manager: &S,
-    ) -> Result<String, ProjectEditingSessionError<R::Error, S::Error>>
+        snapshot_repo: &S,
+        redis_data_manager: &R,
+    ) -> Result<String, ProjectEditingSessionError<S::Error, R::Error>>
     where
-        R: ProjectSnapshotRepository + ?Sized,
-        S: RedisDataManager,
+        S: ProjectSnapshotRepository + ?Sized,
+        R: RedisDataManager,
     {
         // Logic to start or join a session
         let session_id = generate_id(14, "editor-session");
@@ -174,14 +174,14 @@ impl ProjectEditingSession {
 
     pub async fn create_snapshot<R, S>(
         &self,
-        snapshot_repo: &R,
-        redis_data_manager: &S,
+        snapshot_repo: &S,
+        redis_data_manager: &R,
         data: SnapshotData,
         skip_lock: bool,
-    ) -> Result<(), ProjectEditingSessionError<R::Error, S::Error>>
+    ) -> Result<(), ProjectEditingSessionError<S::Error, R::Error>>
     where
-        R: ProjectSnapshotRepository,
-        S: RedisDataManager,
+        S: ProjectSnapshotRepository,
+        R: RedisDataManager,
     {
         if !self.session_setup_complete {
             return Err(ProjectEditingSessionError::SessionNotSetup);
@@ -198,13 +198,13 @@ impl ProjectEditingSession {
 
     async fn create_snapshot_internal<R, S>(
         &self,
-        snapshot_repo: &R,
-        redis_data_manager: &S,
+        snapshot_repo: &S,
+        redis_data_manager: &R,
         data: SnapshotData,
-    ) -> Result<(), ProjectEditingSessionError<R::Error, S::Error>>
+    ) -> Result<(), ProjectEditingSessionError<S::Error, R::Error>>
     where
-        R: ProjectSnapshotRepository,
-        S: RedisDataManager,
+        S: ProjectSnapshotRepository,
+        R: RedisDataManager,
     {
         self.merge_updates(redis_data_manager, false)
             .await
@@ -284,13 +284,13 @@ impl ProjectEditingSession {
         Ok(())
     }
 
-    pub async fn load_session<R>(
+    pub async fn load_session<S>(
         &mut self,
-        snapshot_repo: &R,
+        snapshot_repo: &S,
         session_id: &str,
-    ) -> Result<(), ProjectEditingSessionError<R::Error, ()>>
+    ) -> Result<(), ProjectEditingSessionError<S::Error, ()>>
     where
-        R: ProjectSnapshotRepository,
+        S: ProjectSnapshotRepository,
     {
         // Get the latest snapshot for the given session_id
         let snapshot = snapshot_repo.get_latest_snapshot(session_id).await?;
