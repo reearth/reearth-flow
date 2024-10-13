@@ -10,9 +10,7 @@ use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 use flow_websocket_domain::project::ProjectEditingSession;
 
 use crate::persistence::redis::flow_project_lock::{FlowProjectLock, GlobalLockError};
-use crate::persistence::redis::redis_client::RedisClient;
-
-use super::redis_client::RedisClientTrait;
+use crate::persistence::redis::redis_client::{RedisClient, RedisClientTrait};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FlowUpdate {
@@ -111,50 +109,46 @@ impl FlowProjectRedisDataManager {
     }
 
     fn encode_state_data(data: Vec<u8>) -> Result<String, FlowProjectRedisDataManagerError> {
-        let ret = serde_json::to_string(&data)?;
-        Ok(ret)
+        Ok(serde_json::to_string(&data)?)
     }
 
     fn decode_state_data(data_string: String) -> Result<Vec<u8>, FlowProjectRedisDataManagerError> {
-        let ret: Vec<u8> = serde_json::from_str(&data_string)?;
-        Ok(ret)
+        Ok(serde_json::from_str(&data_string)?)
     }
 
     async fn get_update_stream_items(
         &self,
     ) -> Result<Vec<(String, Vec<(String, String)>)>, FlowProjectRedisDataManagerError> {
-        let stream_data = self
+        Ok(self
             .redis_client
             .xread(&self.state_updates_key(), "0-0")
-            .await?;
-        Ok(stream_data)
+            .await?)
     }
 
     async fn get_flow_updates_from_stream(
         &self,
     ) -> Result<Vec<FlowUpdate>, FlowProjectRedisDataManagerError> {
         let stream_items = self.get_update_stream_items().await?;
-        let mut updates = Vec::new();
-        for stream_item in stream_items {
-            let update_id = stream_item.0;
-            let value = &stream_item.1[1].1;
-            let format = &stream_item.1[3].1;
-            let encoded_update: FlowEncodedUpdate = if format == "json" {
-                serde_json::from_str(value)?
-            } else {
-                FlowEncodedUpdate {
-                    update: String::new(),
-                    updated_by: None,
-                }
-            };
-            let update = FlowUpdate {
-                stream_id: Some(update_id),
-                update: Self::decode_state_data(encoded_update.update)?,
-                updated_by: encoded_update.updated_by,
-            };
-            updates.push(update);
-        }
-        Ok(updates)
+        stream_items
+            .into_iter()
+            .map(|(update_id, item)| {
+                let value = &item[1].1;
+                let format = &item[3].1;
+                let encoded_update: FlowEncodedUpdate = if format == "json" {
+                    serde_json::from_str(value)?
+                } else {
+                    FlowEncodedUpdate {
+                        update: String::new(),
+                        updated_by: None,
+                    }
+                };
+                Ok(FlowUpdate {
+                    stream_id: Some(update_id),
+                    update: Self::decode_state_data(encoded_update.update)?,
+                    updated_by: encoded_update.updated_by,
+                })
+            })
+            .collect()
     }
 
     async fn get_merged_update_from_stream(
@@ -415,18 +409,17 @@ impl RedisDataManager for FlowProjectRedisDataManager {
 
     async fn get_current_state(&self) -> Result<Option<Vec<u8>>, Self::Error> {
         let state_update = self.get_state_update_in_redis().await?;
-        if state_update.is_none() {
-            return Ok(None);
-        }
         let merged_stream_update = self.get_merged_update_from_stream().await?;
-        if let Some((merged_update, _, _)) = merged_stream_update {
-            let doc = Doc::new();
-            let mut txn = doc.transact_mut();
-            txn.apply_update(Update::decode_v2(&state_update.unwrap()).unwrap());
-            txn.apply_update(Update::decode_v2(&merged_update).unwrap());
-            Ok(Some(txn.encode_update_v2()))
-        } else {
-            Ok(state_update)
+
+        match (state_update, merged_stream_update) {
+            (Some(state_update), Some((merged_update, _, _))) => {
+                let doc = Doc::new();
+                let mut txn = doc.transact_mut();
+                txn.apply_update(Update::decode_v2(&state_update)?);
+                txn.apply_update(Update::decode_v2(&merged_update)?);
+                Ok(Some(txn.encode_update_v2()))
+            }
+            (state_update, _) => Ok(state_update),
         }
     }
 
