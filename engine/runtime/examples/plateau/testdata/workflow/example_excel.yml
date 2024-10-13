@@ -33,6 +33,7 @@ graphs:
       format: excel
       output: |
             env.get("outputPath") + "sample.xlsx"
+      sheetName: "SampleSheet"
 
   edges:
   - id: c064cf52-705f-443a-b2de-6795266c540d

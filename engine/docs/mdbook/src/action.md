@@ -1374,6 +1374,16 @@ Writes features to a file
         },
         "output": {
           "$ref": "#/definitions/Expr"
+        },
+        "sheetName": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     }
