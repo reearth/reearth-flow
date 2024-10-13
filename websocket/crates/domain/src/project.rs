@@ -108,14 +108,17 @@ impl ProjectEditingSession {
             .get_current_state()
             .await
             .map_err(ProjectEditingSessionError::redis)?;
-        if let Some(current_state) = current_state {
-            if current_state == state_vector {
-                return Ok((vec![], current_state));
+
+        match current_state {
+            Some(current_state) => {
+                if current_state == state_vector {
+                    Ok((Vec::new(), current_state))
+                } else {
+                    let (diff, server_state) = calculate_diff(&state_vector, &current_state);
+                    Ok((diff, server_state))
+                }
             }
-            let (diff, server_state) = calculate_diff(&state_vector, &current_state);
-            Ok((diff, server_state))
-        } else {
-            Ok((state_vector.clone(), vec![]))
+            None => Ok((state_vector.clone(), Vec::new())),
         }
     }
 
@@ -333,5 +336,182 @@ impl ProjectEditingSession {
         } else {
             Ok(self.session_id.clone())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use mockall::mock;
+
+    // Mock RedisDataManager
+    mock! {
+        pub RedisDataManager {}
+
+        #[async_trait]
+        impl RedisDataManager for RedisDataManager {
+
+            type Error = ProjectEditingSessionError;
+            async fn push_update(
+                &self,
+                state: Vec<u8>,
+                updated_by: Option<String>,
+            ) -> Result<(), ProjectEditingSessionError>;
+
+            async fn get_current_state(&self) -> Result<Option<Vec<u8>>, ProjectEditingSessionError>;
+
+            async fn merge_updates(&self, final_merge: bool) -> Result<(Vec<u8>, Vec<String>), ProjectEditingSessionError>;
+
+            async fn clear_data(&self) -> Result<(), ProjectEditingSessionError>;
+        }
+    }
+
+    // Mock ProjectSnapshotRepository
+    mock! {
+        pub ProjectSnapshotRepository {}
+
+        #[async_trait]
+        impl ProjectSnapshotRepository for ProjectSnapshotRepository {
+            type Error = ProjectEditingSessionError;
+
+            async fn update_latest_snapshot(
+                &self,
+                snapshot: ProjectSnapshot,
+            ) -> Result<(), ProjectEditingSessionError>;
+
+            async fn get_latest_snapshot_state(
+                &self,
+                project_id: &str,
+            ) -> Result<Vec<u8>, ProjectEditingSessionError>;
+
+            async fn create_snapshot(
+                &self,
+                snapshot: ProjectSnapshot,
+            ) -> Result<(), ProjectEditingSessionError>;
+
+            async fn update_latest_snapshot_data(
+                &self,
+                project_id: &str,
+                data: SnapshotData,
+            ) -> Result<(), ProjectEditingSessionError>;
+
+            async fn get_latest_snapshot(
+                &self,
+                session_id: &str,
+            ) -> Result<Option<ProjectSnapshot>, ProjectEditingSessionError>;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_start_or_join_session() {
+        let mut session = ProjectEditingSession::new(
+            "test_project".to_string(),
+            ObjectTenant::new("tenant_id".to_string(), "tenant_name".to_string()),
+        );
+
+        let mut mock_snapshot_repo = MockProjectSnapshotRepository::new();
+        let mut mock_redis_manager = MockRedisDataManager::new();
+
+        // Mock behavior for the latest snapshot state and Redis push_update
+        mock_snapshot_repo
+            .expect_get_latest_snapshot_state()
+            .returning(|_| Ok(vec![1, 2, 3]));
+
+        mock_redis_manager
+            .expect_push_update()
+            .returning(|_, _| Ok(()));
+
+        // Call the method
+        let session_id = session
+            .start_or_join_session(&mock_snapshot_repo, &mock_redis_manager)
+            .await;
+
+        // Assert success and that session ID is set
+        assert!(session_id.is_ok());
+        assert!(session.session_id.is_some());
+        assert!(session.session_setup_complete);
+    }
+
+    #[tokio::test]
+    async fn test_get_diff_update() {
+        let mut session = ProjectEditingSession::new(
+            "test_project".to_string(),
+            ObjectTenant::new("tenant_id".to_string(), "tenant_name".to_string()),
+        );
+        session.session_setup_complete = true;
+
+        // Test case 1: Current state matches input state
+        {
+            let mut mock_redis_manager = MockRedisDataManager::new();
+            mock_redis_manager
+                .expect_get_current_state()
+                .return_once(|| Ok(Some(vec![1, 2, 3])));
+
+            let result = session
+                .get_diff_update(vec![1, 2, 3], &mock_redis_manager)
+                .await;
+
+            assert!(result.is_ok());
+            let (diff, server_state) = result.unwrap();
+            assert_eq!(diff, Vec::<u8>::new());
+            assert_eq!(server_state, vec![1, 2, 3]);
+        }
+
+        // Test case 2: Current state differs from input state
+        {
+            let mut mock_redis_manager = MockRedisDataManager::new();
+            mock_redis_manager
+                .expect_get_current_state()
+                .return_once(|| Ok(Some(vec![4, 5, 6])));
+
+            let result = session
+                .get_diff_update(vec![1, 2, 3], &mock_redis_manager)
+                .await;
+
+            assert!(result.is_ok());
+            let (diff, server_state) = result.unwrap();
+            assert_ne!(diff, Vec::<u8>::new()); // The diff should not be empty
+            assert_eq!(server_state, vec![4, 5, 6]);
+        }
+
+        // Test case 3: No current state in Redis
+        {
+            let mut mock_redis_manager = MockRedisDataManager::new();
+            mock_redis_manager
+                .expect_get_current_state()
+                .return_once(|| Ok(None));
+
+            let result = session
+                .get_diff_update(vec![1, 2, 3], &mock_redis_manager)
+                .await;
+
+            assert!(result.is_ok());
+            let (diff, server_state) = result.unwrap();
+            assert_eq!(diff, vec![1, 2, 3]);
+            assert_eq!(server_state, Vec::<u8>::new());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_merge_updates() {
+        let mut session = ProjectEditingSession::new(
+            "test_project".to_string(),
+            ObjectTenant::new("tenant_id".to_string(), "tenant_name".to_string()),
+        );
+        session.session_setup_complete = true; // Set this to true
+
+        let mut mock_redis_manager = MockRedisDataManager::new();
+
+        mock_redis_manager
+            .expect_merge_updates()
+            .returning(|_| Ok((vec![1, 2, 3], vec!["test_update".to_string()])));
+
+        let result = session.merge_updates(&mock_redis_manager, false).await;
+
+        assert!(result.is_ok());
+        let (state, updates) = result.unwrap();
+        assert_eq!(state, vec![1, 2, 3]);
+        assert_eq!(updates, vec!["test_update"]);
     }
 }
