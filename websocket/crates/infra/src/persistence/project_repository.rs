@@ -33,6 +33,8 @@ pub enum ProjectRepositoryError {
     Serialization(#[from] serde_json::Error),
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
+    #[error("Session ID not found")]
+    SessionIdNotFound,
 }
 
 pub struct ProjectRedisRepository {
@@ -61,7 +63,11 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
     type Error = ProjectRepositoryError;
 
     async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
-        let key = format!("session:{}", session.session_id.as_ref().unwrap());
+        let session_id = session
+            .session_id
+            .as_ref()
+            .ok_or(ProjectRepositoryError::SessionIdNotFound)?;
+        let key = format!("session:{}", session_id);
         self.redis_client.set(&key, &session).await?;
         Ok(())
     }
@@ -76,7 +82,11 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
     }
 
     async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
-        let key = format!("session:{}", session.session_id.as_ref().unwrap());
+        let session_id = session
+            .session_id
+            .as_ref()
+            .ok_or(ProjectRepositoryError::SessionIdNotFound)?;
+        let key = format!("session:{}", session_id);
         self.redis_client.set(&key, &session).await?;
         Ok(())
     }
@@ -118,11 +128,7 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
 
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
         let snapshot_data = self.get_latest_snapshot_data(project_id).await?;
-        if let Some(data) = snapshot_data {
-            Ok(data)
-        } else {
-            Ok(Vec::new())
-        }
+        Ok(snapshot_data.unwrap_or_default())
     }
 
     async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
@@ -137,7 +143,6 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
             let path = format!("snapshot/{}", snapshot.metadata.project_id);
             self.client.upload_versioned(path, &snapshot).await?;
         }
-
         Ok(())
     }
 
@@ -233,11 +238,7 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
 
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
         let snapshot = self.get_latest_snapshot_data(project_id).await?;
-        if let Some(snapshot) = snapshot {
-            Ok(snapshot)
-        } else {
-            Ok(Vec::new())
-        }
+        Ok(snapshot.unwrap_or_default())
     }
 
     async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
