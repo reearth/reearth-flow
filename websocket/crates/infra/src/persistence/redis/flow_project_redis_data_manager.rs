@@ -111,11 +111,13 @@ impl FlowProjectRedisDataManager {
     }
 
     fn encode_state_data(data: Vec<u8>) -> Result<String, FlowProjectRedisDataManagerError> {
-        serde_json::to_string(&data).map_err(FlowProjectRedisDataManagerError::SerdeJson)
+        let ret = serde_json::to_string(&data)?;
+        Ok(ret)
     }
 
     fn decode_state_data(data_string: String) -> Result<Vec<u8>, FlowProjectRedisDataManagerError> {
-        serde_json::from_str(&data_string).map_err(FlowProjectRedisDataManagerError::SerdeJson)
+        let ret: Vec<u8> = serde_json::from_str(&data_string)?;
+        Ok(ret)
     }
 
     async fn get_update_stream_items(
