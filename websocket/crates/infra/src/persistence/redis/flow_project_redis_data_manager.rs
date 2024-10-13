@@ -110,12 +110,12 @@ impl FlowProjectRedisDataManager {
         format!("{}:lastUpdatedAt", self.session_prefix())
     }
 
-    fn encode_state_data(data: Vec<u8>) -> String {
-        serde_json::to_string(&data).unwrap()
+    fn encode_state_data(data: Vec<u8>) -> Result<String, FlowProjectRedisDataManagerError> {
+        serde_json::to_string(&data).map_err(FlowProjectRedisDataManagerError::SerdeJson)
     }
 
-    fn decode_state_data(data_string: String) -> Vec<u8> {
-        serde_json::from_str(&data_string).unwrap()
+    fn decode_state_data(data_string: String) -> Result<Vec<u8>, FlowProjectRedisDataManagerError> {
+        serde_json::from_str(&data_string).map_err(FlowProjectRedisDataManagerError::SerdeJson)
     }
 
     async fn get_update_stream_items(
@@ -147,7 +147,7 @@ impl FlowProjectRedisDataManager {
             };
             let update = FlowUpdate {
                 stream_id: Some(update_id),
-                update: Self::decode_state_data(encoded_update.update),
+                update: Self::decode_state_data(encoded_update.update)?,
                 updated_by: encoded_update.updated_by,
             };
             updates.push(update);
@@ -202,7 +202,7 @@ impl FlowProjectRedisDataManager {
     ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
         let state_update_string: Option<String> = self.redis_client.get(&self.state_key()).await?;
         if let Some(state_update_string) = state_update_string {
-            Ok(Some(Self::decode_state_data(state_update_string)))
+            Ok(Some(Self::decode_state_data(state_update_string)?))
         } else {
             Ok(None)
         }
@@ -284,7 +284,7 @@ impl FlowProjectRedisDataManager {
         state_updated_by: Vec<String>,
         skip_lock: bool,
     ) -> Result<(), FlowProjectRedisDataManagerError> {
-        let encoded_state_update = Self::encode_state_data(state_update);
+        let encoded_state_update = Self::encode_state_data(state_update)?;
         let updated_by_json = serde_json::to_string(&state_updated_by)?;
 
         if skip_lock {
@@ -434,7 +434,7 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         updated_by: Option<String>,
     ) -> Result<(), Self::Error> {
         let update_data: FlowEncodedUpdate = FlowEncodedUpdate {
-            update: Self::encode_state_data(update),
+            update: Self::encode_state_data(update)?,
             updated_by,
         };
 
