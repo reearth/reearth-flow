@@ -198,8 +198,7 @@ where
                     format!("Invalid UTF-8 sequence: {}", e),
                 )
             })?;
-            write!(decorator, "{}", json_str)?;
-            writeln!(decorator)?;
+            writeln!(decorator, "{}", json_str)?;
             decorator.flush()?;
             Ok(())
         })
