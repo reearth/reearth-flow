@@ -9,14 +9,14 @@ use reearth_flow_storage::resolve::StorageResolver;
 
 use reearth_flow_common::uri::Uri;
 
-use reearth_flow_types::{AttributeValue, Expr, Feature};
+use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExcelWriterParam {
-    pub(super) sheet_name: Option<Expr>,
+    pub(super) sheet_name: Option<String>,
 }
 
 pub(super) fn write_excel(
@@ -30,8 +30,8 @@ pub(super) fn write_excel(
 
     let sheet_name = params
         .sheet_name
-        .as_ref()
-        .map_or("Sheet1".to_string(), Expr::to_string);
+        .clone()
+        .unwrap_or_else(|| "Sheet1".to_string());
     worksheet
         .set_name(sheet_name)
         .map_err(crate::errors::SinkError::file_writer)?;

@@ -1376,13 +1376,9 @@ Writes features to a file
           "$ref": "#/definitions/Expr"
         },
         "sheetName": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         }
       }
