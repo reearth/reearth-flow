@@ -10,17 +10,30 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_common::uri::Uri;
 
 use reearth_flow_types::{AttributeValue, Feature};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ExcelWriterParam {
+    pub(super) sheet_name: Option<String>,
+}
 
 pub(super) fn write_excel(
     output: &Uri,
+    params: &ExcelWriterParam,
     features: &[Feature],
     storage_resolver: Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
 
+    let sheet_name = params
+        .sheet_name
+        .clone()
+        .unwrap_or_else(|| "Sheet1".to_string());
     worksheet
-        .set_name("Sheet1")
+        .set_name(sheet_name)
         .map_err(crate::errors::SinkError::file_writer)?;
 
     let mut title_map = std::collections::HashMap::new();
