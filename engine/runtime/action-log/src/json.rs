@@ -118,7 +118,12 @@ where
         TL_BUF.with(|buf| {
             let mut buf = buf.borrow_mut();
 
-            buf.write_fmt(*val).unwrap();
+            buf.write_fmt(*val).map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Error formatting arguments: {}", e),
+                )
+            })?;
 
             let res = { || impl_m!(self, key, &*buf) }();
             buf.clear();
@@ -187,7 +192,12 @@ where
             let mut serializer = serde_json::Serializer::new(&mut buffer);
             self.log_impl(&mut serializer, record, values)?;
             serializer.into_inner();
-            let json_str = String::from_utf8(buffer).unwrap();
+            let json_str = String::from_utf8(buffer).map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Invalid UTF-8 sequence: {}", e),
+                )
+            })?;
             write!(decorator, "{}", json_str)?;
             writeln!(decorator)?;
             decorator.flush()?;
