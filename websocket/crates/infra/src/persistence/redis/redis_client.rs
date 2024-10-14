@@ -60,8 +60,9 @@ impl RedisClientTrait for RedisClient {
         key: &str,
         value: &T,
     ) -> Result<(), RedisClientError> {
+        let serialized = serde_json::to_string(value)?;
         let mut connection = self.connection.lock().await;
-        let _: () = connection.set(key, serde_json::to_string(value)?).await?;
+        connection.set::<_, _, ()>(key, serialized).await?;
         Ok(())
     }
 
@@ -120,13 +121,13 @@ impl RedisClientTrait for RedisClient {
 
     async fn get_client_count(&self) -> Result<usize, RedisClientError> {
         let mut connection = self.connection.lock().await;
-        let client_list: Vec<String> = redis::cmd("CLIENT")
+        let client_list: String = redis::cmd("CLIENT")
             .arg("LIST")
             .arg("TYPE")
             .arg("normal")
             .query_async(&mut *connection)
             .await?;
-        Ok(client_list.len())
+        Ok(client_list.lines().count())
     }
 }
 
