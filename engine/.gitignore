@@ -20,3 +20,4 @@ tools/cesium/3dtiles/**
 tools/mvt/dist/**
 !tools/mvt/dist/.gitkeep
 output.png
+sample.xlsx

@@ -591,9 +591,9 @@ dependencies = [
 
 [[package]]
 name = "bytemuck"
-version = "1.18.0"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94bbb0ad554ad961ddc5da507a12a29b14e4ae5bda06b19f575a3e6079d2e2ae"
+checksum = "8334215b81e418a0a7bdb8ef0849474f40bb10c8b71f1c4ed315cff49f32494d"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -2098,7 +2098,6 @@ dependencies = [
  "ahash 0.8.11",
  "allocator-api2",
  "rayon",
- "serde",
 ]
 
 [[package]]
@@ -3404,20 +3403,6 @@ dependencies = [
 
 [[package]]
 name = "opentelemetry"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "803801d3d3b71cd026851a53f974ea03df3d179cb758b260136a6c9e22e196af"
-dependencies = [
- "futures-core",
- "futures-sink",
- "js-sys",
- "once_cell",
- "pin-project-lite",
- "thiserror",
-]
-
-[[package]]
-name = "opentelemetry"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "570074cc999d1a58184080966e5bd3bf3a9a4af650c3b05047c2621e7405cd17"
@@ -3439,9 +3424,9 @@ dependencies = [
  "async-trait",
  "futures-core",
  "http 1.1.0",
- "opentelemetry 0.26.0",
+ "opentelemetry",
  "opentelemetry-proto",
- "opentelemetry_sdk 0.26.0",
+ "opentelemetry_sdk",
  "prost",
  "thiserror",
  "tokio",
@@ -3454,8 +3439,8 @@ version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abbbb5e699de56aacd607631354d0ed0315e67ed36b7398849e4f8a039eaa07e"
 dependencies = [
- "opentelemetry 0.26.0",
- "opentelemetry_sdk 0.26.0",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "prost",
  "tonic",
 ]
@@ -3475,29 +3460,11 @@ dependencies = [
  "async-trait",
  "chrono",
  "futures-util",
- "opentelemetry 0.26.0",
- "opentelemetry_sdk 0.26.0",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "ordered-float",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "opentelemetry_sdk"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0da0d6b47a3dbc6e9c9e36a0520e25cf943e046843818faaa3f87365a548c82"
-dependencies = [
- "async-trait",
- "futures-channel",
- "futures-executor",
- "futures-util",
- "glob",
- "once_cell",
- "opentelemetry 0.25.0",
- "percent-encoding",
- "rand 0.8.5",
- "thiserror",
 ]
 
 [[package]]
@@ -3512,7 +3479,7 @@ dependencies = [
  "futures-util",
  "glob",
  "once_cell",
- "opentelemetry 0.26.0",
+ "opentelemetry",
  "percent-encoding",
  "rand 0.8.5",
  "serde_json",
@@ -4434,7 +4401,7 @@ dependencies = [
  "flate2",
  "flatgeom",
  "geojson",
- "hashbrown 0.14.5",
+ "hashbrown 0.15.0",
  "image 0.25.2",
  "indexmap 2.6.0",
  "itertools",
@@ -4514,8 +4481,8 @@ dependencies = [
  "directories",
  "indoc",
  "once_cell",
- "opentelemetry 0.26.0",
- "opentelemetry_sdk 0.26.0",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "reearth-flow-action-log",
  "reearth-flow-action-plateau-processor",
  "reearth-flow-action-processor",
@@ -4742,11 +4709,11 @@ name = "reearth-flow-telemetry"
 version = "0.0.2"
 dependencies = [
  "once_cell",
- "opentelemetry 0.26.0",
+ "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
  "opentelemetry-stdout",
- "opentelemetry_sdk 0.26.0",
+ "opentelemetry_sdk",
  "serde",
  "thiserror",
 ]
@@ -4787,7 +4754,7 @@ dependencies = [
  "flatgeom",
  "futures",
  "geojson",
- "hashbrown 0.14.5",
+ "hashbrown 0.15.0",
  "image 0.25.2",
  "indexmap 2.6.0",
  "itertools",
@@ -6693,14 +6660,14 @@ dependencies = [
 
 [[package]]
 name = "tracing-opentelemetry"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5eabc56d23707ad55ba2a0750fc24767125d5a0f51993ba41ad2c441cc7b8dea"
+checksum = "dc58af5d3f6c5811462cabb3289aec0093f7338e367e5a33d28c0433b3c7360b"
 dependencies = [
  "js-sys",
  "once_cell",
- "opentelemetry 0.25.0",
- "opentelemetry_sdk 0.25.0",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "smallvec",
  "tracing",
  "tracing-core",
