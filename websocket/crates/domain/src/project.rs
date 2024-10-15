@@ -26,6 +26,8 @@ pub enum ProjectEditingSessionError {
     SessionNotSetup,
     #[error("Snapshot not found")]
     SnapshotNotFound,
+    #[error("Snapshot project ID does not match current project")]
+    SnapshotProjectIdMismatch,
     #[error("Snapshot error: {0}")]
     Snapshot(String),
     #[error("Redis error: {0}")]
@@ -319,12 +321,15 @@ impl ProjectEditingSession {
             .await
             .map_err(ProjectEditingSessionError::snapshot)?;
         if let Some(snapshot) = snapshot {
+            if snapshot.metadata.project_id != self.project_id {
+                return Err(ProjectEditingSessionError::SnapshotProjectIdMismatch);
+            }
             self.project_id = snapshot.metadata.project_id;
+            self.session_id = Some(session_id.to_string());
+            self.session_setup_complete = true;
         } else {
             return Err(ProjectEditingSessionError::SnapshotNotFound);
         }
-        self.session_id = Some(session_id.to_string());
-        self.session_setup_complete = true;
         Ok(())
     }
 
