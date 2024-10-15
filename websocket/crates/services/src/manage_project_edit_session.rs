@@ -187,7 +187,10 @@ where
             let current_time = Utc::now();
             let clients_disconnection_elapsed_time = current_time - clients_disconnected_at;
 
-            if clients_disconnection_elapsed_time.to_std().unwrap() > MAX_EMPTY_SESSION_DURATION
+            if clients_disconnection_elapsed_time
+                .to_std()
+                .map_err(ProjectServiceError::ChronoDurationConversionError)?
+                > MAX_EMPTY_SESSION_DURATION
                 && client_count == 0
             {
                 session
