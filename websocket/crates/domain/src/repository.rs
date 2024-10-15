@@ -1,5 +1,5 @@
 use crate::project::ProjectEditingSession;
-use crate::projection::Project;
+use crate::project_type::Project;
 use crate::types::data::SnapshotData;
 use crate::types::snapshot::ProjectSnapshot;
 use std::error::Error;

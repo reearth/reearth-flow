@@ -1,7 +1,7 @@
 use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
 use crate::persistence::redis::redis_client::{RedisClient, RedisClientError};
 use async_trait::async_trait;
-use flow_websocket_domain::projection::Project;
+use flow_websocket_domain::project_type::Project;
 use flow_websocket_domain::types::data::SnapshotData;
 
 use crate::persistence::local_storage::LocalClient;

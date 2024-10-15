@@ -2,7 +2,7 @@ use crate::error::ProjectServiceError;
 use async_trait::async_trait;
 use flow_websocket_domain::generate_id;
 use flow_websocket_domain::project::ProjectEditingSession;
-use flow_websocket_domain::projection::{Action, Project, ProjectAllowedActions};
+use flow_websocket_domain::project_type::{Action, Project, ProjectAllowedActions};
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository, RedisDataManager,
 };

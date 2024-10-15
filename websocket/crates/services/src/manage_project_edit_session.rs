@@ -11,12 +11,13 @@ use flow_websocket_domain::{
 };
 use mockall::automock;
 use std::sync::Arc;
-use tokio::time::{sleep, Duration};
+use std::time::Duration;
+use tokio::time::sleep;
 
 use crate::{types::ManageProjectEditSessionTaskData, ProjectServiceError};
 
-const MAX_EMPTY_SESSION_DURATION: i64 = 10_000; // 10 seconds
-const MAX_SNAPSHOT_DELTA: i64 = 300_000; // 5 minutes
+const MAX_EMPTY_SESSION_DURATION: Duration = Duration::from_secs(10);
+const MAX_SNAPSHOT_DELTA: Duration = Duration::from_secs(5 * 60);
 const JOB_COMPLETION_DELAY: Duration = Duration::from_secs(5);
 
 pub struct ManageEditSessionService<R, S, D, M>
@@ -121,7 +122,7 @@ where
     ) -> Result<(), ProjectServiceError> {
         if let Some(last_snapshot_at) = data.last_snapshot_at {
             let current_time = Utc::now();
-            if (current_time - last_snapshot_at).num_milliseconds() > MAX_SNAPSHOT_DELTA {
+            if (current_time - last_snapshot_at).to_std().unwrap() > MAX_SNAPSHOT_DELTA {
                 self.create_snapshot(session, current_time).await?;
                 data.last_snapshot_at = Some(current_time);
             }
@@ -179,10 +180,10 @@ where
 
         if let Some(clients_disconnected_at) = data.clients_disconnected_at {
             let current_time = Utc::now();
-            let clients_disconnection_elapsed_time =
-                (current_time - clients_disconnected_at).num_milliseconds();
+            let clients_disconnection_elapsed_time = current_time - clients_disconnected_at;
 
-            if clients_disconnection_elapsed_time > MAX_EMPTY_SESSION_DURATION && client_count == 0
+            if clients_disconnection_elapsed_time.to_std().unwrap() > MAX_EMPTY_SESSION_DURATION
+                && client_count == 0
             {
                 session
                     .end_session(&*self.redis_data_manager, &*self.snapshot_repository)

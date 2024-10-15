@@ -2,7 +2,7 @@ pub mod project;
 pub mod repository;
 pub mod types;
 pub use types::data::SnapshotData;
-pub use types::projection;
+pub use types::project_type;
 pub use types::snapshot;
 pub use types::user;
 mod utils;
