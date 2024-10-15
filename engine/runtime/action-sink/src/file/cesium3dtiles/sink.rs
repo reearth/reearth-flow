@@ -26,7 +26,7 @@ use itertools::Itertools;
 use nusamai_citygml::{schema::Schema, CityGmlElement};
 use nusamai_mvt::tileid::TileIdMethod;
 use nusamai_plateau::models::TopLevelCityObject;
-use nusamai_projection::{cartesian::geodetic_to_geocentric, vshift::Jgd2011ToWgs84};
+use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::prelude::*;
 use reearth_flow_common::{
     gltf::calculate_normal, texture::get_texture_downsample_scale_of_polygon, uri::Uri,
@@ -110,7 +110,6 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 
         let sink = Cesium3DTilesWriter {
             buffer: Vec::new(),
-            jgd2wgs: Default::default(),
             params,
         };
         Ok(Box::new(sink))
@@ -121,7 +120,6 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 pub struct Cesium3DTilesWriter {
     pub(super) params: Cesium3DTilesWriterParam,
     pub(super) buffer: Vec<Feature>,
-    pub(super) jgd2wgs: Jgd2011ToWgs84,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -178,7 +176,6 @@ impl Sink for Cesium3DTilesWriter {
                     sender_sliced,
                     self.params.min_zoom,
                     self.params.max_zoom,
-                    &self.jgd2wgs,
                 );
             });
             scope.spawn(|| {
@@ -213,7 +210,6 @@ fn geometry_slicing_stage(
     sender_sliced: mpsc::SyncSender<(u64, String, Vec<u8>)>,
     min_zoom: u8,
     max_zoom: u8,
-    jgd2011_too_wgs84: &Jgd2011ToWgs84,
 ) -> crate::errors::Result<()> {
     let bincode_config = bincode::config::standard();
 
@@ -222,7 +218,6 @@ fn geometry_slicing_stage(
             feature,
             min_zoom,
             max_zoom,
-            jgd2011_too_wgs84,
             |(z, x, y, typename), feature| {
                 let bytes = bincode::serde::encode_to_vec(&feature, bincode_config).unwrap();
                 let serialized_feature =

@@ -12,14 +12,15 @@ use super::{
     dimension_filter::DimensionFilterFactory, dissolver::GeometryDissolverFactory,
     elevation_extractor::ElevationExtractorFactory, extractor::GeometryExtractorFactory,
     extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
-    hole_extractor::HoleExtractorFactory, line_on_line_overlayer::LineOnLineOverlayerFactory,
+    hole_extractor::HoleExtractorFactory, horizontal_reprojector::HorizontalReprojectorFactory,
+    line_on_line_overlayer::LineOnLineOverlayerFactory,
     orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
-    refiner::RefinerFactory, replacer::GeometryReplacerFactory, reprojector::ReprojectorFactory,
-    splitter::GeometrySplitterFactory,
+    refiner::RefinerFactory, replacer::GeometryReplacerFactory, splitter::GeometrySplitterFactory,
     three_dimension_box_replacer::ThreeDimensionBoxReplacerFactory,
     three_dimension_rotator::ThreeDimensionRotatorFactory,
     two_dimension_forcer::TwoDimensionForcerFactory, validator::GeometryValidatorFactory,
     value_filter::GeometryValueFilterFactory, vertex_remover::VertexRemoverFactory,
+    vertical_reprojector::VerticalReprojectorFactory,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -30,7 +31,8 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<GeometryFilterFactory>::default(),
         Box::<GeometrySplitterFactory>::default(),
         Box::<GeometryCoercerFactory>::default(),
-        Box::<ReprojectorFactory>::default(),
+        Box::<HorizontalReprojectorFactory>::default(),
+        Box::<VerticalReprojectorFactory>::default(),
         Box::<TwoDimensionForcerFactory>::default(),
         Box::<GeometryExtractorFactory>::default(),
         Box::<OrientationExtractorFactory>::default(),

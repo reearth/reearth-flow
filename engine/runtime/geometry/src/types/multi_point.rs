@@ -5,6 +5,7 @@ use flatgeom::{MultiPoint2 as NMultiPoint2, MultiPoint3 as NMultiPoint3};
 use geo_types::MultiPoint as GeoMultiPoint;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{create_geo_point, create_point_type, mismatch_geom_err};
@@ -217,6 +218,14 @@ impl<T: CoordNum> From<GeoMultiPoint<T>> for MultiPoint2D<T> {
 impl<T: CoordNum> From<MultiPoint2D<T>> for GeoMultiPoint<T> {
     fn from(coord: MultiPoint2D<T>) -> Self {
         GeoMultiPoint(coord.0.into_iter().map(|p| p.into()).collect())
+    }
+}
+
+impl MultiPoint3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        for point in &mut self.0 {
+            point.transform_inplace(jgd2wgs);
+        }
     }
 }
 

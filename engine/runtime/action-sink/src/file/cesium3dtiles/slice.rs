@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use flatgeom::{LineString2, MultiPolygon, Polygon, Polygon2, Polygon3};
 use indexmap::IndexSet;
 use itertools::Itertools;
-use nusamai_projection::vshift::Jgd2011ToWgs84;
 use reearth_flow_types::{AttributeValue, Feature, GeometryType};
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +28,6 @@ pub fn slice_to_tiles<E>(
     feature: &Feature,
     min_zoom: u8,
     max_zoom: u8,
-    jgd2011_too_wgs84: &Jgd2011ToWgs84,
     send_feature: impl Fn(TileZXYName, SlicedFeature) -> Result<(), E>,
 ) -> Result<(), E> {
     let Some(city_gml) = feature
@@ -95,9 +93,7 @@ pub fn slice_to_tiles<E>(
                             .iter(),
                     )
                 {
-                    let mut poly = poly.clone();
-                    poly.transform_inplace(jgd2011_too_wgs84);
-                    let poly: Polygon3 = poly.into();
+                    let poly: Polygon3 = poly.clone().into();
                     let orig_mat = poly_mat
                         .and_then(|idx| city_gml.materials.get(idx as usize))
                         .unwrap_or(&default_material)

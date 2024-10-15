@@ -1,4 +1,5 @@
 use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use super::coordinate::Coordinate;
@@ -32,5 +33,11 @@ where
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.0.iter().all(|c| c.is_elevation_zero())
+    }
+}
+
+impl Face3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        self.0.iter_mut().for_each(|c| c.transform_inplace(jgd2wgs));
     }
 }
