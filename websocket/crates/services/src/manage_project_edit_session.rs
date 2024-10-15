@@ -120,12 +120,18 @@ where
         session: &mut ProjectEditingSession,
         data: &mut ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
-        if let Some(last_snapshot_at) = data.last_snapshot_at {
-            let current_time = Utc::now();
-            if (current_time - last_snapshot_at).to_std().unwrap() > MAX_SNAPSHOT_DELTA {
-                self.create_snapshot(session, current_time).await?;
-                data.last_snapshot_at = Some(current_time);
+        let current_time = Utc::now();
+        let should_create_snapshot = match data.last_snapshot_at {
+            Some(last_snapshot_at) => {
+                (current_time - last_snapshot_at).num_milliseconds()
+                    > MAX_SNAPSHOT_DELTA.as_millis() as i64
             }
+            None => true, // Create a snapshot if there's no previous snapshot
+        };
+
+        if should_create_snapshot {
+            self.create_snapshot(session, current_time).await?;
+            data.last_snapshot_at = Some(current_time);
         }
         Ok(())
     }
