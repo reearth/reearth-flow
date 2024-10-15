@@ -68,11 +68,11 @@ where
                 .load_session(&*self.snapshot_repository, &data.session_id)
                 .await?;
 
-            self.update_client_count(&mut data).await?;
+            let client_count = self.update_client_count(&mut data).await?;
             self.merge_updates(&mut session, &mut data).await?;
             self.create_snapshot_if_required(&mut session, &mut data)
                 .await?;
-            self.end_editing_session_if_conditions_met(&mut session, &data)
+            self.end_editing_session_if_conditions_met(&mut session, &data, client_count)
                 .await?;
             self.complete_job_if_met_requirements(&session, &data)
                 .await?;
@@ -86,7 +86,7 @@ where
     async fn update_client_count(
         &self,
         data: &mut ManageProjectEditSessionTaskData,
-    ) -> Result<(), ProjectServiceError> {
+    ) -> Result<usize, ProjectServiceError> {
         let current_client_count = self.session_repository.get_client_count().await?;
         let old_client_count = data.clients_count.unwrap_or(0);
         data.clients_count = Some(current_client_count);
@@ -100,7 +100,7 @@ where
             data.clients_disconnected_at = None;
         }
 
-        Ok(())
+        Ok(current_client_count)
     }
 
     async fn merge_updates(
@@ -181,9 +181,8 @@ where
         &self,
         session: &mut ProjectEditingSession,
         data: &ManageProjectEditSessionTaskData,
+        client_count: usize,
     ) -> Result<(), ProjectServiceError> {
-        let client_count = self.session_repository.get_client_count().await?;
-
         if let Some(clients_disconnected_at) = data.clients_disconnected_at {
             let current_time = Utc::now();
             let clients_disconnection_elapsed_time = current_time - clients_disconnected_at;
@@ -289,7 +288,7 @@ mod tests {
         mocks
             .session_repo
             .expect_get_client_count()
-            .times(..=2)
+            .times(1)
             .returning(|| Ok(1));
 
         mocks
@@ -457,12 +456,6 @@ mod tests {
         session.session_setup_complete = true;
 
         mocks
-            .session_repo
-            .expect_get_client_count()
-            .times(1)
-            .returning(|| Ok(0));
-
-        mocks
             .redis_manager
             .expect_merge_updates()
             .with(eq(true))
@@ -486,7 +479,7 @@ mod tests {
         service.snapshot_repository = Arc::new(mocks.snapshot_repo);
 
         let result = service
-            .end_editing_session_if_conditions_met(&mut session, &task_data)
+            .end_editing_session_if_conditions_met(&mut session, &task_data, 0)
             .await;
         assert!(result.is_ok());
         assert!(session.session_id.is_none());
