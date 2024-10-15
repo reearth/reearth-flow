@@ -119,6 +119,11 @@ impl Processor for VerticalReprojector {
                 }
                 GeometryValue::FlowGeometry3D(mut geos) => {
                     geos.transform_inplace(&self.reprojector);
+                    let mut feature = feature.clone();
+                    feature.geometry = Some(Geometry {
+                        epsg,
+                        value: GeometryValue::FlowGeometry3D(geos),
+                    });
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
                 }
                 GeometryValue::None | GeometryValue::FlowGeometry2D(..) => {
