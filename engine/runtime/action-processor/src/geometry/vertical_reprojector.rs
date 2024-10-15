@@ -103,34 +103,29 @@ impl Processor for VerticalReprojector {
         ctx: ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
+        let mut feature = ctx.feature.clone();
         if let Some(geometry) = &feature.geometry {
             let geometry_value = geometry.value.clone();
             let epsg = geometry.epsg;
             match geometry_value {
                 GeometryValue::CityGmlGeometry(mut geos) => {
                     geos.transform_inplace(&self.reprojector);
-                    let mut feature = feature.clone();
                     feature.geometry = Some(Geometry {
                         epsg,
                         value: GeometryValue::CityGmlGeometry(geos),
                     });
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 GeometryValue::FlowGeometry3D(mut geos) => {
                     geos.transform_inplace(&self.reprojector);
-                    let mut feature = feature.clone();
                     feature.geometry = Some(Geometry {
                         epsg,
                         value: GeometryValue::FlowGeometry3D(geos),
                     });
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
                 }
-                GeometryValue::None | GeometryValue::FlowGeometry2D(..) => {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()))
-                }
+                GeometryValue::None | GeometryValue::FlowGeometry2D(..) => {}
             }
         }
+        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 
