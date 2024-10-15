@@ -61,6 +61,13 @@ graphs:
           dataset: |
             env.get("__value").cityGmlPath
 
+      - id: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        name: VerticalReprojector
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         name: AttributeMapperBldg
         type: action
@@ -106,6 +113,11 @@ graphs:
         toPort: default
       - id: fb48e9e0-fa1b-4f27-8a89-84b6d2e1c6d7
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        fromPort: default
+        toPort: default
+      - id: d4c1c8a9-00a6-49c1-9735-db62a736932b
+        from: 928e21d9-fc30-4876-ba03-41338cfa47ed
         to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         fromPort: default
         toPort: default

@@ -23,11 +23,11 @@ use super::{errors::GeometryProcessorError, types::SUPPORT_EPSG_CODE};
 const K: f64 = 0.9999;
 
 #[derive(Debug, Clone, Default)]
-pub struct ReprojectorFactory;
+pub struct HorizontalReprojectorFactory;
 
-impl ProcessorFactory for ReprojectorFactory {
+impl ProcessorFactory for HorizontalReprojectorFactory {
     fn name(&self) -> &str {
-        "Reprojector"
+        "HorizontalReprojector"
     }
 
     fn description(&self) -> &str {
@@ -35,7 +35,7 @@ impl ProcessorFactory for ReprojectorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(ReprojectorParam))
+        Some(schemars::schema_for!(HorizontalReprojectorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -56,41 +56,43 @@ impl ProcessorFactory for ReprojectorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: ReprojectorParam = if let Some(with) = with {
+        let params: HorizontalReprojectorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::ReprojectorFactory(format!(
+                GeometryProcessorError::HorizontalReprojectorFactory(format!(
                     "Failed to serialize `with` parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::ReprojectorFactory(format!(
+                GeometryProcessorError::HorizontalReprojectorFactory(format!(
                     "Failed to deserialize `with` parameter: {}",
                     e
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::ReprojectorFactory(
+            return Err(GeometryProcessorError::HorizontalReprojectorFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
         };
         let projection = if let Some(epsg_code) = params.epsg_code {
             if !SUPPORT_EPSG_CODE.contains(&epsg_code) {
-                return Err(GeometryProcessorError::ReprojectorFactory(
+                return Err(GeometryProcessorError::HorizontalReprojectorFactory(
                     "Unsupported EPSG code".to_string(),
                 )
                 .into());
             }
-            let zone =
-                JPRZone::from_epsg(epsg_code).ok_or(GeometryProcessorError::ReprojectorFactory(
-                    format!("Failed to create JPRZone from EPSG code: {}", epsg_code,),
-                ))?;
+            let zone = JPRZone::from_epsg(epsg_code).ok_or(
+                GeometryProcessorError::HorizontalReprojectorFactory(format!(
+                    "Failed to create JPRZone from EPSG code: {}",
+                    epsg_code,
+                )),
+            )?;
             Some(zone.projection())
         } else {
             None
         };
-        Ok(Box::new(Reprojector {
+        Ok(Box::new(HorizontalReprojector {
             epsg_code: params.epsg_code,
             projection,
         }))
@@ -99,17 +101,17 @@ impl ProcessorFactory for ReprojectorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ReprojectorParam {
+pub struct HorizontalReprojectorParam {
     epsg_code: Option<EpsgCode>,
 }
 
 #[derive(Debug, Clone)]
-pub struct Reprojector {
+pub struct HorizontalReprojector {
     epsg_code: Option<EpsgCode>,
     projection: Option<ExtendedTransverseMercatorProjection>,
 }
 
-impl Processor for Reprojector {
+impl Processor for HorizontalReprojector {
     fn num_threads(&self) -> usize {
         2
     }
@@ -223,6 +225,6 @@ impl Processor for Reprojector {
     }
 
     fn name(&self) -> &str {
-        "Reprojector"
+        "HorizontalReprojector"
     }
 }

@@ -3,6 +3,7 @@ use std::convert::TryFrom;
 
 use approx::{AbsDiffEq, RelativeEq};
 use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{
@@ -227,6 +228,26 @@ impl Geometry3D<f64> {
                 .map(|t| t.0.first().map(|c| c.z).unwrap_or(0.0))
                 .unwrap_or(0.0),
             Self::GeometryCollection(gc) => gc.first().map(|g| g.elevation()).unwrap_or(0.0),
+        }
+    }
+
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        match self {
+            Self::Point(p) => p.transform_inplace(jgd2wgs),
+            Self::Line(l) => l.transform_inplace(jgd2wgs),
+            Self::LineString(ls) => ls.transform_inplace(jgd2wgs),
+            Self::Polygon(poly) => poly.transform_inplace(jgd2wgs),
+            Self::MultiPoint(mpoint) => mpoint.transform_inplace(jgd2wgs),
+            Self::MultiLineString(mls) => mls.transform_inplace(jgd2wgs),
+            Self::MultiPolygon(mpoly) => mpoly.transform_inplace(jgd2wgs),
+            Self::Rect(rect) => rect.transform_inplace(jgd2wgs),
+            Self::Triangle(triangle) => triangle.transform_inplace(jgd2wgs),
+            Self::Solid(solid) => solid.transform_inplace(jgd2wgs),
+            Self::GeometryCollection(gc) => {
+                for g in gc {
+                    g.transform_inplace(jgd2wgs);
+                }
+            }
         }
     }
 }

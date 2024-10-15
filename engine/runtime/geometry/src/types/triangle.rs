@@ -1,5 +1,6 @@
 use approx::{AbsDiffEq, RelativeEq};
 use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;
@@ -135,5 +136,13 @@ where
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.0.is_elevation_zero() && self.1.is_elevation_zero() && self.2.is_elevation_zero()
+    }
+}
+
+impl Triangle3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        self.0.transform_inplace(jgd2wgs);
+        self.1.transform_inplace(jgd2wgs);
+        self.2.transform_inplace(jgd2wgs);
     }
 }

@@ -1809,6 +1809,36 @@
       ]
     },
     {
+      "name": "HorizontalReprojector",
+      "type": "processor",
+      "description": "Reprojects the geometry of a feature to a specified coordinate system",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "HorizontalReprojectorParam",
+        "type": "object",
+        "properties": {
+          "epsgCode": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "LineOnLineOverlayer",
       "type": "processor",
       "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
@@ -2195,36 +2225,6 @@
       ]
     },
     {
-      "name": "Reprojector",
-      "type": "processor",
-      "description": "Reprojects the geometry of a feature to a specified coordinate system",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ReprojectorParam",
-        "type": "object",
-        "properties": {
-          "epsgCode": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint16",
-            "minimum": 0.0
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
       "name": "RhaiCaller",
       "type": "processor",
       "description": "Calls Rhai script",
@@ -2498,6 +2498,42 @@
       "outputPorts": [
         "default",
         "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "VerticalReprojector",
+      "type": "processor",
+      "description": "Reprojects the geometry of a feature to a specified coordinate system",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "VerticalReprojectorParam",
+        "type": "object",
+        "required": [
+          "reprojectorType"
+        ],
+        "properties": {
+          "reprojectorType": {
+            "$ref": "#/definitions/VerticalReprojectorType"
+          }
+        },
+        "definitions": {
+          "VerticalReprojectorType": {
+            "type": "string",
+            "enum": [
+              "jgd2011ToWgs84"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
       ],
       "categories": [
         "Geometry"
