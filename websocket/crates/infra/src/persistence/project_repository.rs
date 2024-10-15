@@ -152,7 +152,9 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", project_id);
-        self.client.update_versioned(path, &snapshot_data).await?;
+        self.client
+            .update_versioned(path, &snapshot_data.state)
+            .await?;
         Ok(())
     }
 }
@@ -253,7 +255,9 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
-        self.client.update_versioned(path, &snapshot_data).await?;
+        self.client
+            .update_versioned(path, &snapshot_data.state)
+            .await?;
         Ok(())
     }
 }
@@ -289,7 +293,9 @@ impl SnapshotDataRepository for ProjectLocalRepository {
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
-        self.client.update_versioned(path, &snapshot_data).await?;
+        self.client
+            .update_versioned(path, &snapshot_data.state)
+            .await?;
         Ok(())
     }
 
