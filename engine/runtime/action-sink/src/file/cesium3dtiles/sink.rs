@@ -11,7 +11,7 @@ use std::{
 };
 
 use atlas_packer::{
-    export::{AtlasExporter, JpegAtlasExporter},
+    export::{AtlasExporter as _, WebpAtlasExporter},
     pack::AtlasPacker,
     place::{GuillotineTexturePlacer, TexturePlacerConfig},
     texture::{
@@ -29,7 +29,9 @@ use nusamai_plateau::models::TopLevelCityObject;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::prelude::*;
 use reearth_flow_common::{
-    gltf::calculate_normal, texture::get_texture_downsample_scale_of_polygon, uri::Uri,
+    gltf::calculate_normal,
+    texture::{apply_downsample_factor, get_texture_downsample_scale_of_polygon},
+    uri::Uri,
 };
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -310,7 +312,7 @@ fn tile_writing_stage(
 
     // Texture cache
     // use default cache size
-    let texture_cache = TextureCache::new(100_000_000);
+    let texture_cache = TextureCache::new(200_000_000);
     let texture_size_cache = TextureSizeCache::new();
 
     // Use a temporary directory for embedding in glb.
@@ -372,52 +374,6 @@ fn tile_writing_stage(
             let mut primitives: gltf::Primitives = Default::default();
 
             let mut metadata_encoder = metadata::MetadataEncoder::new(schema);
-
-            // Check the size of all the textures and calculate the power of 2 of the largest size
-            let mut max_width = 0;
-            let mut max_height = 0;
-            for serialized_feat in feats.iter() {
-                let feature = {
-                    let (feature, _): (SlicedFeature, _) =
-                        bincode::serde::decode_from_slice(serialized_feat, bincode_config)
-                            .map_err(|err| {
-                                crate::errors::SinkError::cesium3dtiles_writer(format!(
-                                    "Failed to deserialize a sliced feature: {:?}",
-                                    err
-                                ))
-                            })?;
-                    feature
-                };
-
-                for (_, orig_mat_id) in feature
-                    .polygons
-                    .iter()
-                    .zip_eq(feature.polygon_material_ids.iter())
-                {
-                    let mat = feature.materials[*orig_mat_id as usize].clone();
-                    let t = mat.base_texture.clone();
-                    if let Some(base_texture) = t {
-                        let texture_uri = base_texture.uri.to_file_path().map_err(|_| {
-                            crate::errors::SinkError::cesium3dtiles_writer(
-                                "Failed to convert texture URI to file path",
-                            )
-                        })?;
-                        let texture_size = texture_size_cache.get_or_insert(&texture_uri);
-                        max_width = max_width.max(texture_size.0);
-                        max_height = max_height.max(texture_size.1);
-                    }
-                }
-            }
-            let max_width = max_width.next_power_of_two();
-            let max_height = max_height.next_power_of_two();
-
-            // initialize texture packer
-            // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 4096
-            let config = TexturePlacerConfig {
-                width: max_width.max(2048),
-                height: max_height.max(2048),
-                padding: 0,
-            };
 
             let packer = Mutex::new(AtlasPacker::default());
 
@@ -485,6 +441,10 @@ fn tile_writing_stage(
                 format!("{}_{}_{}_{}_{}", z, x, y, feature_id, poly_count)
             };
 
+            // Check the size of all the textures and calculate the power of 2 of the largest size
+            let mut max_width = 0;
+            let mut max_height = 0;
+
             // Load all textures into the Packer
             for (feature_id, feature) in features.iter().enumerate() {
                 for (poly_count, (mat, poly)) in feature
@@ -517,12 +477,17 @@ fn tile_writing_stage(
                         })?;
                         let texture_size = texture_size_cache.get_or_insert(&texture_uri);
 
-                        let downsample_scale = get_texture_downsample_scale_of_polygon(
-                            &original_vertices,
-                            texture_size,
-                            limit_texture_resolution,
-                        );
-                        let factor = apply_downsample_factor(tile_zoom, downsample_scale as f32);
+                        let downsample_scale = if limit_texture_resolution.unwrap_or(false) {
+                            get_texture_downsample_scale_of_polygon(
+                                &original_vertices,
+                                texture_size,
+                            ) as f32
+                        } else {
+                            1.0
+                        };
+
+                        let geom_error = tiling::geometric_error(tile_zoom, tile_y);
+                        let factor = apply_downsample_factor(geom_error, downsample_scale as f32);
 
                         let downsample_factor = DownsampleFactor::new(&factor);
                         let cropped_texture = PolygonMappedTexture::new(
@@ -531,6 +496,12 @@ fn tile_writing_stage(
                             &uv_coords,
                             downsample_factor,
                         );
+
+                        let scaled_width = (texture_size.0 as f32 * factor) as u32;
+                        let scaled_height = (texture_size.1 as f32 * factor) as u32;
+
+                        max_width = max_width.max(scaled_width);
+                        max_height = max_height.max(scaled_height);
 
                         // Unique id required for placement in atlas
                         let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
@@ -548,6 +519,17 @@ fn tile_writing_stage(
                 }
             }
 
+            let max_width = max_width.next_power_of_two();
+            let max_height = max_height.next_power_of_two();
+
+            // initialize texture packer
+            // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 1024
+            let config = TexturePlacerConfig {
+                width: max_width.max(1024),
+                height: max_height.max(1024),
+                padding: 0,
+            };
+
             let placer = GuillotineTexturePlacer::new(config.clone());
             let packer = packer.into_inner().map_err(|_| {
                 crate::errors::SinkError::cesium3dtiles_writer("Failed to get the texture packer")
@@ -556,7 +538,7 @@ fn tile_writing_stage(
             // Packing the loaded textures into an atlas
             let packed = packer.pack(placer);
 
-            let exporter = JpegAtlasExporter::default();
+            let exporter = WebpAtlasExporter::default();
             let ext = exporter.clone().get_extension().to_string();
 
             // Obtain the UV coordinates placed in the atlas by specifying the ID
@@ -747,14 +729,4 @@ fn tile_writing_stage(
         .map_err(crate::errors::SinkError::file_writer)?;
 
     Ok(())
-}
-
-fn apply_downsample_factor(z: u8, downsample_scale: f32) -> f32 {
-    let f = match z {
-        0..=14 => 0.0,
-        15..=16 => 0.25,
-        17 => 0.5,
-        _ => 1.0,
-    };
-    f * downsample_scale
 }
