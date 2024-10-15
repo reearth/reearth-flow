@@ -4,7 +4,7 @@
 /// but this means that signs and other objects will not be visible, so adjustments are necessary.
 const MIN_METER_PER_PIXEL: f64 = 0.025;
 
-fn get_distance_par_pixel(vertices: &[(f64, f64, f64)], pixel_coords: &[(u32, u32)]) -> f64 {
+fn get_distance_per_pixel(vertices: &[(f64, f64, f64)], pixel_coords: &[(u32, u32)]) -> f64 {
     let mut valid_scales = Vec::new();
     let epsilon = 1e-6;
 
@@ -56,7 +56,7 @@ pub fn get_texture_downsample_scale_of_polygon(
     let uv_coords = vertices.iter().map(|v| (v.3, v.4)).collect::<Vec<_>>();
     let pixel_coords = uv_to_pixel_coords(&uv_coords, texture_size.0, texture_size.1);
     let vertices = vertices.iter().map(|v| (v.0, v.1, v.2)).collect::<Vec<_>>();
-    let pixel_per_distance = get_distance_par_pixel(&vertices, &pixel_coords);
+    let pixel_per_distance = get_distance_per_pixel(&vertices, &pixel_coords);
 
     if pixel_per_distance < MIN_METER_PER_PIXEL {
         1.0 / (MIN_METER_PER_PIXEL / pixel_per_distance)
