@@ -1,3 +1,4 @@
+# NOTE: this is copy/pasted in src/lib/gql/deployment/queries.graphql. Update there too when updating here.
 fragment Job on Job {
   id
   deploymentId
