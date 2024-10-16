@@ -183,7 +183,7 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *
 }
 
 func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (started bool, err error) {
-	if p.Meta == nil || p.Workflows == nil {
+	if p.Meta == nil || p.Workflow == nil {
 		return false, nil
 	}
 
@@ -227,7 +227,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 	// }
 
 	jobID := id.NewJobID()
-	_, err = i.batch.SubmitJob(ctx, jobID, p.Workflows.Path, p.ProjectID)
+	_, err = i.batch.SubmitJob(ctx, jobID, p.Workflow.Path, p.ProjectID)
 	if err != nil {
 		return false, fmt.Errorf("failed to submit job: %v", err)
 	}

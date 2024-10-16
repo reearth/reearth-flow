@@ -1695,7 +1695,7 @@ input CreateDeploymentInput {
   workspaceId: ID!
   projectId: ID!
   metaFile: Upload!
-  workflowsZip: Upload!
+  workflowYaml: Upload!
 }
 
 input ExecuteDeploymentInput {
@@ -1793,7 +1793,7 @@ input RunProjectInput {
   projectId: ID!
   workspaceId: ID!
   metaFile: Upload!
-  workflowsZip: Upload!
+  workflowYaml: Upload!
 }
 
 # Payload
@@ -11369,7 +11369,7 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "projectId", "metaFile", "workflowsZip"}
+	fieldsInOrder := [...]string{"workspaceId", "projectId", "metaFile", "workflowYaml"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -11397,13 +11397,13 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 				return it, err
 			}
 			it.MetaFile = data
-		case "workflowsZip":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflowsZip"))
+		case "workflowYaml":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflowYaml"))
 			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.WorkflowsZip = data
+			it.WorkflowYaml = data
 		}
 	}
 
@@ -11956,7 +11956,7 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "workspaceId", "metaFile", "workflowsZip"}
+	fieldsInOrder := [...]string{"projectId", "workspaceId", "metaFile", "workflowYaml"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -11984,13 +11984,13 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 				return it, err
 			}
 			it.MetaFile = data
-		case "workflowsZip":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflowsZip"))
+		case "workflowYaml":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflowYaml"))
 			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.WorkflowsZip = data
+			it.WorkflowYaml = data
 		}
 	}
 

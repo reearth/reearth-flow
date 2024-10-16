@@ -1,9 +1,7 @@
 package e2e
 
 import (
-	"archive/zip"
 	"bytes"
-	"encoding/json"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -16,50 +14,20 @@ import (
 )
 
 func TestCreateDeployment(t *testing.T) {
-	zipFilePath, zipBuffer, err := createZipFileWithYAML()
-	assert.NoError(t, err)
-	defer func() {
-		if err := os.Remove(zipFilePath); err != nil {
-			return
-		}
-	}()
+	yamlContent1 := `
+key1: value1
+key2: value2
+`
 
-	metaFileContent := []byte("meta file content")
-	metaFilePath, err := os.CreateTemp("", "meta-*.txt")
+	// Create a temporary YAML file
+	file, err := createTempYAML(yamlContent1)
 	assert.NoError(t, err)
 
 	defer func() {
-		if err := os.Remove(metaFilePath.Name()); err != nil {
+		if err := os.Remove(file); err != nil {
 			return
 		}
 	}()
-
-	_, err = metaFilePath.Write(metaFileContent)
-	assert.NoError(t, err)
-
-	err = metaFilePath.Close()
-	assert.NoError(t, err)
-
-	body := new(bytes.Buffer)
-	writer := multipart.NewWriter(body)
-
-	metaWriter, err := writer.CreateFormFile("metaFile", filepath.Base(metaFilePath.Name()))
-	assert.NoError(t, err)
-	metaFileData, err := os.Open(metaFilePath.Name())
-	assert.NoError(t, err)
-	_, err = io.Copy(metaWriter, metaFileData)
-	assert.NoError(t, err)
-
-	err = metaFileData.Close()
-	assert.NoError(t, err)
-
-	zipWriter, err := writer.CreateFormFile("workflowsZip", filepath.Base(zipFilePath))
-	assert.NoError(t, err)
-	_, err = io.Copy(zipWriter, zipBuffer)
-	assert.NoError(t, err)
-
-	err = writer.Close()
-	assert.NoError(t, err)
 
 	query := `mutation($input: CreateDeploymentInput!) {
 		createDeployment(input: $input) {
@@ -69,18 +37,38 @@ func TestCreateDeployment(t *testing.T) {
 			}
 		}
 	}`
-	request := GraphQLRequest{
-		Query: query,
-		Variables: map[string]interface{}{
-			"input": map[string]interface{}{
-				"workspaceId":  "workspace-id",
-				"projectId":    "project-id",
-				"metaFile":     "metaFile",
-				"workflowsZip": "workflowsZip",
-			},
-		},
-	}
-	jsonData, err := json.Marshal(request)
+
+	yamlFile, err := os.Open(file)
+	assert.NoError(t, err)
+	defer func() {
+		if err := yamlFile.Close(); err != nil {
+			return
+		}
+	}()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("workflowYaml", filepath.Base(file))
+	assert.NoError(t, err)
+
+	_, err = io.Copy(part, yamlFile)
+	assert.NoError(t, err)
+
+	err = writer.WriteField("query", query)
+	assert.NoError(t, err)
+
+	variables := `{
+		"input": {
+			"workspaceId": "workspace-id",
+			"projectId": "project-id",
+			"metaFile": "metaFile"
+		}
+	}`
+	err = writer.WriteField("variables", variables)
+	assert.NoError(t, err)
+
+	err = writer.Close()
 	assert.NoError(t, err)
 
 	e, _ := StartGQLServer(t, &config.Config{
@@ -89,59 +77,34 @@ func TestCreateDeployment(t *testing.T) {
 			Disabled: true,
 		},
 	}, true, baseSeederUser)
+
 	o := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
-		WithHeader("Content-Type", writer.FormDataContentType()). // Use the correct content type
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
-		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
+		WithHeader("Content-Type", writer.FormDataContentType()).
+		WithBytes(body.Bytes()).Expect().Status(http.StatusOK).JSON().Object()
+
 	o.Value("data").Object().Value("createDeployment").Object().Value("deployment").Object().Value("status").String().IsEqual("Created")
 }
 
 // helper
 
-func createZipFileWithYAML() (string, *bytes.Buffer, error) {
-	yaml1 := []byte("key1: value1\nkey2: value2")
-	yaml2 := []byte("keyA: valueA\nkeyB: valueB")
-
-	buffer := new(bytes.Buffer)
-	zipWriter := zip.NewWriter(buffer)
-
-	f1, err := zipWriter.Create("file1.yaml")
+func createTempYAML(content string) (string, error) {
+	tmpFile, err := os.CreateTemp("", "*.yaml")
 	if err != nil {
-		return "", nil, err
-	}
-	_, err = f1.Write(yaml1)
-	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 
-	f2, err := zipWriter.Create("file2.yaml")
-	if err != nil {
-		return "", nil, err
-	}
-	_, err = f2.Write(yaml2)
-	if err != nil {
-		return "", nil, err
-	}
-
-	if err := zipWriter.Close(); err != nil {
-		return "", nil, err
-	}
-
-	tmpFile, err := os.CreateTemp("", "test-*.zip")
-	if err != nil {
-		return "", nil, err
-	}
 	defer func() {
-		if cerr := tmpFile.Close(); cerr != nil {
-			err = cerr // This will overwrite the return error if closing fails
+		if err := tmpFile.Close(); err != nil {
+			return
 		}
 	}()
 
-	_, err = tmpFile.Write(buffer.Bytes())
+	_, err = tmpFile.Write([]byte(content))
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 
-	return tmpFile.Name(), buffer, nil
+	return tmpFile.Name(), nil
 }

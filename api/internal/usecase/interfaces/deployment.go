@@ -17,7 +17,7 @@ type CreateDeploymentParam struct {
 	Project   id.ProjectID
 	Workspace accountdomain.WorkspaceID
 	Meta      file.File
-	Workflows file.File
+	Workflow  file.File
 }
 
 type ExecuteDeploymentParam struct {

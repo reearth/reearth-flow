@@ -40,7 +40,7 @@ input RunProjectInput {
   projectId: ID!
   workspaceId: ID!
   metaFile: Upload!
-  workflowsZip: Upload!
+  workflowYaml: Upload!
 }
 
 # Payload
