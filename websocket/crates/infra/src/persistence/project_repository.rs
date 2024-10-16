@@ -8,7 +8,6 @@ use crate::persistence::local_storage::LocalClient;
 use flow_websocket_domain::project::ProjectEditingSession;
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
-    SnapshotDataRepository,
 };
 use flow_websocket_domain::snapshot::ProjectSnapshot;
 use serde_json;
@@ -127,7 +126,8 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
     }
 
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
-        let snapshot_data = self.get_latest_snapshot_data(project_id).await?;
+        let path = format!("snapshot_data/{}", project_id);
+        let snapshot_data: Option<Vec<u8>> = self.client.download_latest(&path).await?;
         Ok(snapshot_data.unwrap_or_default())
     }
 
@@ -146,7 +146,7 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
         Ok(())
     }
 
-    async fn update_latest_snapshot_data(
+    async fn update_latest_snapshot_state(
         &self,
         project_id: &str,
         snapshot_data: SnapshotData,
@@ -157,49 +157,18 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
             .await?;
         Ok(())
     }
-}
-#[async_trait]
-impl SnapshotDataRepository for ProjectGcsRepository {
-    type Error = ProjectRepositoryError;
 
-    async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
+    async fn delete_snapshot_state(&self, project_id: &str) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", project_id);
+        self.client.delete(path).await?;
+        Ok(())
+    }
+
+    async fn create_snapshot_state(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_data.project_id);
         self.client
             .upload_versioned(path, &snapshot_data.state)
             .await?;
-        Ok(())
-    }
-
-    async fn get_snapshot_data(&self, snapshot_id: &str) -> Result<Option<Vec<u8>>, Self::Error> {
-        let path = format!("snapshot_data/{}", snapshot_id);
-        let snapshot_data: Option<Vec<u8>> = self.client.download(path).await?;
-        Ok(snapshot_data)
-    }
-
-    async fn get_latest_snapshot_data(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<Vec<u8>>, Self::Error> {
-        let path_prefix = format!("snapshot_data/{}", project_id);
-        let snapshot_data: Option<Vec<u8>> = self.client.download_latest(&path_prefix).await?;
-        Ok(snapshot_data)
-    }
-
-    async fn update_latest_snapshot_data(
-        &self,
-        snapshot_id: &str,
-        snapshot_data: SnapshotData,
-    ) -> Result<(), Self::Error> {
-        let path = format!("snapshot_data/{}", snapshot_id);
-        self.client
-            .update_versioned(path, &snapshot_data.state)
-            .await?;
-        Ok(())
-    }
-
-    async fn delete_snapshot_data(&self, snapshot_id: &str) -> Result<(), Self::Error> {
-        let path = format!("snapshot_data/{}", snapshot_id);
-        self.client.delete(path).await?;
         Ok(())
     }
 }
@@ -239,8 +208,9 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
     }
 
     async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
-        let snapshot = self.get_latest_snapshot_data(project_id).await?;
-        Ok(snapshot.unwrap_or_default())
+        let path = format!("snapshot_data/{}", project_id);
+        let snapshot_data: Option<Vec<u8>> = self.client.download_latest(&path).await?;
+        Ok(snapshot_data.unwrap_or_default())
     }
 
     async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
@@ -249,7 +219,7 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
         Ok(())
     }
 
-    async fn update_latest_snapshot_data(
+    async fn update_latest_snapshot_state(
         &self,
         snapshot_id: &str,
         snapshot_data: SnapshotData,
@@ -260,48 +230,18 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
             .await?;
         Ok(())
     }
-}
 
-#[async_trait]
-impl SnapshotDataRepository for ProjectLocalRepository {
-    type Error = ProjectRepositoryError;
-
-    async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
-        let path = format!("snapshot_data/{}", snapshot_data.project_id);
-        self.client.update_versioned(path, &snapshot_data).await?;
-        Ok(())
-    }
-
-    async fn get_snapshot_data(&self, snapshot_id: &str) -> Result<Option<Vec<u8>>, Self::Error> {
-        let path = format!("snapshot_data/{}", snapshot_id);
-        let snapshot_data = self.client.download(path).await?;
-        Ok(snapshot_data)
-    }
-
-    async fn get_latest_snapshot_data(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<Vec<u8>>, Self::Error> {
+    async fn delete_snapshot_state(&self, project_id: &str) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", project_id);
-        let snapshot_data: Option<Vec<u8>> = self.client.download_latest(&path).await?;
-        Ok(snapshot_data)
-    }
-
-    async fn update_latest_snapshot_data(
-        &self,
-        snapshot_id: &str,
-        snapshot_data: SnapshotData,
-    ) -> Result<(), Self::Error> {
-        let path = format!("snapshot_data/{}", snapshot_id);
-        self.client
-            .update_versioned(path, &snapshot_data.state)
-            .await?;
+        self.client.delete(path).await?;
         Ok(())
     }
 
-    async fn delete_snapshot_data(&self, snapshot_id: &str) -> Result<(), Self::Error> {
-        let path = format!("snapshot_data/{}", snapshot_id);
-        self.client.delete(path).await?;
+    async fn create_snapshot_state(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_data.project_id);
+        self.client
+            .upload_versioned(path, &snapshot_data.state)
+            .await?;
         Ok(())
     }
 }

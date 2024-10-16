@@ -155,6 +155,13 @@ where
         Ok(self.snapshot_repository.create_snapshot(snapshot).await?)
     }
 
+    async fn create_snapshot_state(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
+        Ok(self
+            .snapshot_repository
+            .create_snapshot_state(snapshot_data)
+            .await?)
+    }
+
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
@@ -179,14 +186,21 @@ where
             .await?)
     }
 
-    async fn update_latest_snapshot_data(
+    async fn update_latest_snapshot_state(
         &self,
         project_id: &str,
         snapshot_data: SnapshotData,
     ) -> Result<(), Self::Error> {
         Ok(self
             .snapshot_repository
-            .update_latest_snapshot_data(project_id, snapshot_data)
+            .update_latest_snapshot_state(project_id, snapshot_data)
+            .await?)
+    }
+
+    async fn delete_snapshot_state(&self, project_id: &str) -> Result<(), Self::Error> {
+        Ok(self
+            .snapshot_repository
+            .delete_snapshot_state(project_id)
             .await?)
     }
 }
@@ -264,7 +278,9 @@ mod tests {
             async fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError>;
             async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, ProjectRepositoryError>;
             async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectRepositoryError>;
-            async fn update_latest_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectRepositoryError>;
+            async fn update_latest_snapshot_state(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectRepositoryError>;
+            async fn delete_snapshot_state(&self, project_id: &str) -> Result<(), ProjectRepositoryError>;
+            async fn create_snapshot_state(&self, snapshot_data: SnapshotData) -> Result<(), ProjectRepositoryError>;
         }
     }
 

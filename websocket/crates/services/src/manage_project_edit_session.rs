@@ -2,10 +2,7 @@ use chrono::{DateTime, Utc};
 use flow_websocket_domain::{
     generate_id,
     project::ProjectEditingSession,
-    repository::{
-        ProjectEditingSessionRepository, ProjectSnapshotRepository, RedisDataManager,
-        SnapshotDataRepository,
-    },
+    repository::{ProjectEditingSessionRepository, ProjectSnapshotRepository, RedisDataManager},
     snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo},
     types::{data::SnapshotData, snapshot::ProjectSnapshot},
 };
@@ -20,37 +17,32 @@ const MAX_EMPTY_SESSION_DURATION: Duration = Duration::from_secs(10);
 const MAX_SNAPSHOT_DELTA: Duration = Duration::from_secs(5 * 60);
 const JOB_COMPLETION_DELAY: Duration = Duration::from_secs(5);
 
-pub struct ManageEditSessionService<R, S, D, M>
+pub struct ManageEditSessionService<R, S, M>
 where
     R: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync,
     S: ProjectSnapshotRepository<Error = ProjectServiceError> + Send + Sync,
-    D: SnapshotDataRepository<Error = ProjectServiceError> + Send + Sync,
     M: RedisDataManager<Error = ProjectServiceError> + Send + Sync,
 {
     pub session_repository: Arc<R>,
     pub snapshot_repository: Arc<S>,
-    pub snapshot_data_repository: Arc<D>,
     pub redis_data_manager: Arc<M>,
 }
 
 #[automock]
-impl<R, S, D, M> ManageEditSessionService<R, S, D, M>
+impl<R, S, M> ManageEditSessionService<R, S, M>
 where
     R: ProjectEditingSessionRepository<Error = ProjectServiceError> + Send + Sync + 'static,
     S: ProjectSnapshotRepository<Error = ProjectServiceError> + Send + Sync + 'static,
-    D: SnapshotDataRepository<Error = ProjectServiceError> + Send + Sync + 'static,
     M: RedisDataManager<Error = ProjectServiceError> + Send + Sync + 'static,
 {
     pub fn new(
         session_repository: Arc<R>,
         snapshot_repository: Arc<S>,
-        snapshot_data_repository: Arc<D>,
         redis_data_manager: Arc<M>,
     ) -> Self {
         Self {
             session_repository,
             snapshot_repository,
-            snapshot_data_repository,
             redis_data_manager,
         }
     }
@@ -170,8 +162,8 @@ where
         let snapshot_data = SnapshotData::new(session.project_id.clone(), state, None, None);
 
         self.snapshot_repository.create_snapshot(snapshot).await?;
-        self.snapshot_data_repository
-            .create_snapshot_data(snapshot_data)
+        self.snapshot_repository
+            .create_snapshot_state(snapshot_data)
             .await?;
 
         Ok(())
@@ -233,31 +225,20 @@ mod tests {
     }
 
     mockall::mock! {
-        ProjectSnapshotRepository {}
-        #[async_trait::async_trait]
-        impl ProjectSnapshotRepository for ProjectSnapshotRepository {
-            type Error = ProjectServiceError;
+    ProjectSnapshotRepository {}
+    #[async_trait::async_trait]
+    impl ProjectSnapshotRepository for ProjectSnapshotRepository {
+        type Error = ProjectServiceError;
 
-            async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectServiceError>;
-            async fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<ProjectSnapshot>, ProjectServiceError>;
-            async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, ProjectServiceError>;
-            async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectServiceError>;
-            async fn update_latest_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
-        }
+        async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectServiceError>;
+        async fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<ProjectSnapshot>, ProjectServiceError>;
+        async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, ProjectServiceError>;
+        async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectServiceError>;
+        async fn update_latest_snapshot_state(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
+        async fn delete_snapshot_state(&self, project_id: &str) -> Result<(), ProjectServiceError>;
+        async fn create_snapshot_state(&self, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
+
     }
-
-    mockall::mock! {
-        SnapshotDataRepository {}
-        #[async_trait::async_trait]
-        impl SnapshotDataRepository for SnapshotDataRepository {
-            type Error = ProjectServiceError;
-
-            async fn create_snapshot_data(&self, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
-            async fn get_snapshot_data(&self, project_id: &str) -> Result<Option<Vec<u8>>, ProjectServiceError>;
-            async fn get_latest_snapshot_data(&self, project_id: &str) -> Result<Option<Vec<u8>>, ProjectServiceError>;
-            async fn update_latest_snapshot_data(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectServiceError>;
-            async fn delete_snapshot_data(&self, project_id: &str) -> Result<(), ProjectServiceError>;
-        }
     }
 
     mockall::mock! {
@@ -323,7 +304,6 @@ mod tests {
 
         service.session_repository = Arc::new(mocks.session_repo);
         service.snapshot_repository = Arc::new(mocks.snapshot_repo);
-        service.snapshot_data_repository = Arc::new(mocks.snapshot_data_repo);
         service.redis_data_manager = Arc::new(mocks.redis_manager);
 
         let result = service.process(task_data).await;
@@ -424,8 +404,8 @@ mod tests {
             });
 
         mocks
-            .snapshot_data_repo
-            .expect_create_snapshot_data()
+            .snapshot_repo
+            .expect_create_snapshot_state()
             .times(1)
             .returning(|snapshot_data: SnapshotData| {
                 assert_eq!(snapshot_data.project_id, "project_123");
@@ -435,7 +415,6 @@ mod tests {
 
         service.redis_data_manager = Arc::new(mocks.redis_manager);
         service.snapshot_repository = Arc::new(mocks.snapshot_repo);
-        service.snapshot_data_repository = Arc::new(mocks.snapshot_data_repo);
 
         let result = service
             .create_snapshot_if_required(&mut session, &mut task_data)
@@ -467,7 +446,7 @@ mod tests {
 
         mocks
             .snapshot_repo
-            .expect_update_latest_snapshot_data()
+            .expect_update_latest_snapshot_state()
             .times(1)
             .returning(|_, _| Ok(()));
 
@@ -515,27 +494,23 @@ mod tests {
         ManageEditSessionService<
             MockProjectEditingSessionRepository,
             MockProjectSnapshotRepository,
-            MockSnapshotDataRepository,
             MockRedisDataManager,
         >,
         MockRepositories,
     ) {
         let mock_session_repo = MockProjectEditingSessionRepository::new();
         let mock_snapshot_repo = MockProjectSnapshotRepository::new();
-        let mock_snapshot_data_repo = MockSnapshotDataRepository::new();
         let mock_redis_manager = MockRedisDataManager::new();
 
         let service = ManageEditSessionService::new(
             Arc::new(MockProjectEditingSessionRepository::new()),
             Arc::new(MockProjectSnapshotRepository::new()),
-            Arc::new(MockSnapshotDataRepository::new()),
             Arc::new(MockRedisDataManager::new()),
         );
 
         let mocks = MockRepositories {
             session_repo: mock_session_repo,
             snapshot_repo: mock_snapshot_repo,
-            snapshot_data_repo: mock_snapshot_data_repo,
             redis_manager: mock_redis_manager,
         };
 
@@ -589,7 +564,6 @@ mod tests {
     struct MockRepositories {
         session_repo: MockProjectEditingSessionRepository,
         snapshot_repo: MockProjectSnapshotRepository,
-        snapshot_data_repo: MockSnapshotDataRepository,
         redis_manager: MockRedisDataManager,
     }
 }

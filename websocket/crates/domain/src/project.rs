@@ -293,7 +293,7 @@ impl ProjectEditingSession {
         let snapshot_data = SnapshotData::new(self.project_id.clone(), state, None, None);
 
         snapshot_repo
-            .update_latest_snapshot_data(&snapshot_data.project_id, snapshot_data.clone())
+            .update_latest_snapshot_state(&snapshot_data.project_id, snapshot_data.clone())
             .await
             .map_err(ProjectEditingSessionError::snapshot)?;
 
@@ -385,6 +385,11 @@ mod tests {
                 snapshot: ProjectSnapshot,
             ) -> Result<(), ProjectEditingSessionError>;
 
+            async fn create_snapshot_state(
+                &self,
+                snapshot_data: SnapshotData,
+            ) -> Result<(), ProjectEditingSessionError>;
+
             async fn get_latest_snapshot_state(
                 &self,
                 project_id: &str,
@@ -395,16 +400,18 @@ mod tests {
                 snapshot: ProjectSnapshot,
             ) -> Result<(), ProjectEditingSessionError>;
 
-            async fn update_latest_snapshot_data(
+            async fn get_latest_snapshot(
+                &self,
+                session_id: &str,
+            ) -> Result<Option<ProjectSnapshot>, ProjectEditingSessionError>;
+
+            async fn update_latest_snapshot_state(
                 &self,
                 project_id: &str,
                 data: SnapshotData,
             ) -> Result<(), ProjectEditingSessionError>;
 
-            async fn get_latest_snapshot(
-                &self,
-                session_id: &str,
-            ) -> Result<Option<ProjectSnapshot>, ProjectEditingSessionError>;
+            async fn delete_snapshot_state(&self, project_id: &str) -> Result<(), ProjectEditingSessionError>;
         }
     }
 
