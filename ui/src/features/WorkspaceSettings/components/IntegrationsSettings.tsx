@@ -132,7 +132,7 @@ const IntegrationsSettings: React.FC = () => {
                   }
                 />
                 <p>{integration.integration?.name}</p>
-                <p className="px-4 text-sm dark:font-thin capitalize">
+                <p className="px-4 text-sm capitalize dark:font-thin">
                   {integration.integrationRole}
                 </p>
               </div>
