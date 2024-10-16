@@ -100,9 +100,7 @@ where
         session: &mut ProjectEditingSession,
         data: &mut ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
-        session
-            .merge_updates(&*self.redis_data_manager, false)
-            .await?;
+        session.merge_updates(&*self.redis_data_manager).await?;
         data.last_merged_at = Some(Utc::now());
         Ok(())
     }

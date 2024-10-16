@@ -1,5 +1,5 @@
 use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
-use crate::persistence::redis::redis_client::{RedisClient, RedisClientError};
+use crate::persistence::redis::redis_client::RedisClientError;
 use async_trait::async_trait;
 use flow_websocket_domain::project_type::Project;
 use flow_websocket_domain::types::data::SnapshotData;
@@ -275,19 +275,22 @@ mod tests {
     use flow_websocket_domain::snapshot::ObjectTenant;
     use mockall::mock;
 
+    type XReadResult = Vec<(String, Vec<(String, String)>)>;
+    type RedisResult<T> = Result<T, RedisClientError>;
+
     mock! {
         RedisClient {}
         #[async_trait]
         impl RedisClientTrait for RedisClient {
             fn redis_url(&self) -> &str;
-            async fn get<T: serde::de::DeserializeOwned + Send + Sync + 'static>(&self, key: &str) -> Result<Option<T>, RedisClientError>;
-            async fn set<T: serde::Serialize + Send + Sync + 'static>(&self, key: &str, value: &T) -> Result<(), RedisClientError>;
-            async fn get_client_count(&self) -> Result<usize, RedisClientError>;
-            async fn keys(&self, pattern: &str) -> Result<Vec<String>, RedisClientError>;
-            async fn xadd(&self, key: &str, id: &str, fields: &[(String, String)]) -> Result<String, RedisClientError>;
-            async fn xread(&self, key: &str, id: &str) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError>;
-            async fn xtrim(&self, key: &str, max_len: usize) -> Result<usize, RedisClientError>;
-            async fn xdel(&self, key: &str, ids: &[String]) -> Result<usize, RedisClientError>;
+            async fn get<T: serde::de::DeserializeOwned + Send + Sync + 'static>(&self, key: &str) -> RedisResult<Option<T>>;
+            async fn set<T: serde::Serialize + Send + Sync + 'static>(&self, key: &str, value: &T) -> RedisResult<()>;
+            async fn get_client_count(&self) -> RedisResult<usize>;
+            async fn keys(&self, pattern: &str) -> RedisResult<Vec<String>>;
+            async fn xadd(&self, key: &str, id: &str, fields: &[(String, String)]) -> RedisResult<String>;
+            async fn xread(&self, key: &str, id: &str) -> RedisResult<XReadResult>;
+            async fn xtrim(&self, key: &str, max_len: usize) -> RedisResult<usize>;
+            async fn xdel(&self, key: &str, ids: &[String]) -> RedisResult<usize>;
             fn connection(&self) -> &Arc<tokio::sync::Mutex<redis::aio::MultiplexedConnection>>;
         }
     }

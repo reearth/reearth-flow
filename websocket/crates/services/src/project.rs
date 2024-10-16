@@ -48,6 +48,8 @@ where
     pub async fn get_or_create_editing_session(
         &self,
         project_id: &str,
+        tenant_id: Option<String>,
+        tenant_name: Option<String>,
     ) -> Result<ProjectEditingSession, ProjectServiceError> {
         let mut session = match self
             .session_repository
@@ -56,10 +58,14 @@ where
         {
             Some(session) => session,
 
-            None => ProjectEditingSession::new(
-                project_id.to_string(),
-                ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
-            ),
+            None => {
+                let tenant_id = tenant_id.unwrap_or_else(|| generate_id(14, "tenant"));
+                let tenant_name = tenant_name.unwrap_or_else(|| "tenant".to_owned());
+                ProjectEditingSession::new(
+                    project_id.to_string(),
+                    ObjectTenant::new(tenant_id, tenant_name),
+                )
+            }
         };
 
         if session.session_id.is_none() {
@@ -389,7 +395,9 @@ mod tests {
             Arc::new(mock_redis_manager),
         );
 
-        let result = service.get_or_create_editing_session("project_123").await;
+        let result = service
+            .get_or_create_editing_session("project_123", None, None)
+            .await;
         assert!(result.is_ok());
     }
 

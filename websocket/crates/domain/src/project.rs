@@ -127,29 +127,17 @@ impl ProjectEditingSession {
     pub async fn merge_updates<R>(
         &self,
         redis_data_manager: &R,
-        skip_lock: bool,
     ) -> Result<(Vec<u8>, Vec<String>), ProjectEditingSessionError>
     where
         R: RedisDataManager,
     {
-        if !self.session_setup_complete {
-            return Err(ProjectEditingSessionError::SessionNotSetup);
-        }
+        self.check_session_setup()?;
 
-        let result = if skip_lock {
-            redis_data_manager
-                .merge_updates(false)
-                .await
-                .map_err(ProjectEditingSessionError::redis)?
-        } else {
-            let _lock = self.session_lock.lock().await;
-            redis_data_manager
-                .merge_updates(false)
-                .await
-                .map_err(ProjectEditingSessionError::redis)?
-        };
-
-        Ok(result)
+        let _lock = self.session_lock.lock().await;
+        redis_data_manager
+            .merge_updates(false)
+            .await
+            .map_err(ProjectEditingSessionError::redis)
     }
 
     pub async fn get_state_update<R>(
@@ -178,29 +166,17 @@ impl ProjectEditingSession {
         update: Vec<u8>,
         updated_by: String,
         redis_data_manager: &R,
-        skip_lock: bool,
     ) -> Result<(), ProjectEditingSessionError>
     where
         R: RedisDataManager,
     {
-        if !self.session_setup_complete {
-            return Err(ProjectEditingSessionError::SessionNotSetup);
-        }
+        self.check_session_setup()?;
 
-        if skip_lock {
-            redis_data_manager
-                .push_update(update, Some(updated_by))
-                .await
-                .map_err(ProjectEditingSessionError::redis)?;
-        } else {
-            let _lock = self.session_lock.lock().await;
-            redis_data_manager
-                .push_update(update, Some(updated_by))
-                .await
-                .map_err(ProjectEditingSessionError::redis)?;
-        }
-
-        Ok(())
+        let _lock = self.session_lock.lock().await;
+        redis_data_manager
+            .push_update(update, Some(updated_by))
+            .await
+            .map_err(ProjectEditingSessionError::redis)
     }
 
     pub async fn create_snapshot<R, S>(
@@ -208,23 +184,16 @@ impl ProjectEditingSession {
         snapshot_repo: &S,
         redis_data_manager: &R,
         data: SnapshotData,
-        skip_lock: bool,
     ) -> Result<(), ProjectEditingSessionError>
     where
         S: ProjectSnapshotRepository,
         R: RedisDataManager,
     {
-        if !self.session_setup_complete {
-            return Err(ProjectEditingSessionError::SessionNotSetup);
-        }
-        if skip_lock {
-            self.create_snapshot_internal(snapshot_repo, redis_data_manager, data)
-                .await
-        } else {
-            let _lock = self.session_lock.lock().await;
-            self.create_snapshot_internal(snapshot_repo, redis_data_manager, data)
-                .await
-        }
+        self.check_session_setup()?;
+
+        let _lock = self.session_lock.lock().await;
+        self.create_snapshot_internal(snapshot_repo, redis_data_manager, data)
+            .await
     }
 
     async fn create_snapshot_internal<R, S>(
@@ -237,7 +206,7 @@ impl ProjectEditingSession {
         S: ProjectSnapshotRepository,
         R: RedisDataManager,
     {
-        self.merge_updates(redis_data_manager, false).await?;
+        self.merge_updates(redis_data_manager).await?;
 
         let now = Utc::now();
 
@@ -340,6 +309,15 @@ impl ProjectEditingSession {
             Err(ProjectEditingSessionError::SessionNotSetup)
         } else {
             Ok(self.session_id.clone())
+        }
+    }
+
+    // Helper method to check if the session is set up
+    fn check_session_setup(&self) -> Result<(), ProjectEditingSessionError> {
+        if !self.session_setup_complete {
+            Err(ProjectEditingSessionError::SessionNotSetup)
+        } else {
+            Ok(())
         }
     }
 }
@@ -519,7 +497,7 @@ mod tests {
             .expect_merge_updates()
             .returning(|_| Ok((vec![1, 2, 3], vec!["test_update".to_string()])));
 
-        let result = session.merge_updates(&mock_redis_manager, false).await;
+        let result = session.merge_updates(&mock_redis_manager).await;
 
         assert!(result.is_ok());
         let (state, updates) = result.unwrap();
