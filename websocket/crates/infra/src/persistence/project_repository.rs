@@ -68,6 +68,12 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
             .ok_or(ProjectRepositoryError::SessionIdNotFound)?;
         let key = format!("session:{}", session_id);
         self.redis_client.set(&key, &session).await?;
+
+        let active_session_key = format!("project:{}:active_session", session.project_id);
+        self.redis_client
+            .set(&active_session_key, session_id)
+            .await?;
+
         Ok(())
     }
 
@@ -75,9 +81,17 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
         &self,
         project_id: &str,
     ) -> Result<Option<ProjectEditingSession>, Self::Error> {
-        let key = format!("project:{}:active_session", project_id);
-        let session = self.redis_client.get(&key).await?;
-        Ok(session)
+        let active_session_key = format!("project:{}:active_session", project_id);
+        let session_id: Option<String> = self.redis_client.get(&active_session_key).await?;
+
+        if let Some(session_id) = session_id {
+            let session_key = format!("session:{}", session_id);
+            let session: Option<ProjectEditingSession> =
+                self.redis_client.get(&session_key).await?;
+            Ok(session)
+        } else {
+            Ok(None)
+        }
     }
 
     async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
@@ -87,6 +101,12 @@ impl ProjectEditingSessionRepository for ProjectRedisRepository {
             .ok_or(ProjectRepositoryError::SessionIdNotFound)?;
         let key = format!("session:{}", session_id);
         self.redis_client.set(&key, &session).await?;
+
+        let active_session_key = format!("project:{}:active_session", session.project_id);
+        self.redis_client
+            .set(&active_session_key, session_id)
+            .await?;
+
         Ok(())
     }
 
