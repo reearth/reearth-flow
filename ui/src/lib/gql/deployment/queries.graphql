@@ -1,3 +1,5 @@
+import "../job/queries.graphql"
+
 fragment Deployment on Deployment {
   id
   projectId
