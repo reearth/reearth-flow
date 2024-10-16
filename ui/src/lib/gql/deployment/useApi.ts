@@ -23,7 +23,7 @@ export const useDeployment = () => {
   const createDeployment = async (
     workspaceId: string,
     projectId: string,
-    workflows: FormData,
+    workflow: FormData,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
 
@@ -31,7 +31,8 @@ export const useDeployment = () => {
       const deployment = await mutateAsync({
         projectId,
         workspaceId,
-        workflows,
+        metaFile: undefined, // TODO: Add meta file
+        workflowsZip: workflow,
       });
       toast({
         title: t("Deployment Created"),

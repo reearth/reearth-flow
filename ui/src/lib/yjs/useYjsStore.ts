@@ -136,10 +136,10 @@ export default ({
     await createDeployment(
       currentProject.id,
       currentProject.workspaceId,
-      workflows,
+      formData,
     );
     console.log("workflowworkflowworkflowworkflowworkflow", yamlWorkflow);
-  }, [rawWorkflows, workflows, currentProject, createDeployment]);
+  }, [rawWorkflows, currentProject, createDeployment]);
 
   const { handleNodesUpdate } = useYNode({
     currentYWorkflow,

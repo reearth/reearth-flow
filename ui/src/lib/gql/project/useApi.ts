@@ -7,15 +7,9 @@ import {
   GetWorkspaceProjects,
   RunProject,
   UpdateProject,
-  Workflow,
 } from "@flow/types";
 
-import {
-  CreateProjectInput,
-  InputWorkflow,
-  UpdateProjectInput,
-} from "../__gen__/graphql";
-import { toGQLWorkflow } from "../convert";
+import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 
@@ -101,7 +95,7 @@ export const useProject = () => {
   const runProject = async (
     projectId: string,
     workspaceId: string,
-    workflows: FormData[],
+    workflow: FormData,
   ): Promise<RunProject> => {
     const { mutateAsync, ...rest } = runProjectMutation;
 
@@ -109,7 +103,8 @@ export const useProject = () => {
       const data = await mutateAsync({
         projectId,
         workspaceId,
-        workflow,
+        metaFile: undefined, // TODO: Add meta file
+        workflowsZip: workflow,
       });
       toast({
         title: t("Successful Deletion"),
