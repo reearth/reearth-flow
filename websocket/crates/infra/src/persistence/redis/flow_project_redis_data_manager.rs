@@ -381,7 +381,7 @@ impl FlowProjectRedisDataManager {
                 .xtrim(&self.state_updates_key()?, 1)
                 .await?;
             self.redis_client
-                .xdel(&self.state_updates_key()?, &[last_update_id.as_str()])
+                .xdel(&self.state_updates_key()?, &[last_update_id.to_string()])
                 .await?;
         }
 

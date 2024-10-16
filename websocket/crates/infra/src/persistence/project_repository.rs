@@ -36,18 +36,18 @@ pub enum ProjectRepositoryError {
     SessionIdNotFound,
 }
 
-pub struct ProjectRedisRepository {
-    redis_client: Arc<RedisClient>,
+pub struct ProjectRedisRepository<R: RedisClientTrait> {
+    redis_client: Arc<R>,
 }
 
-impl ProjectRedisRepository {
-    pub fn new(redis_client: Arc<RedisClient>) -> Self {
+impl<R: RedisClientTrait + Send + Sync> ProjectRedisRepository<R> {
+    pub fn new(redis_client: Arc<R>) -> Self {
         Self { redis_client }
     }
 }
 
 #[async_trait]
-impl ProjectRepository for ProjectRedisRepository {
+impl<R: RedisClientTrait + Send + Sync> ProjectRepository for ProjectRedisRepository<R> {
     type Error = ProjectRepositoryError;
 
     async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error> {
@@ -58,7 +58,9 @@ impl ProjectRepository for ProjectRedisRepository {
 }
 
 #[async_trait]
-impl ProjectEditingSessionRepository for ProjectRedisRepository {
+impl<R: RedisClientTrait + Send + Sync> ProjectEditingSessionRepository
+    for ProjectRedisRepository<R>
+{
     type Error = ProjectRepositoryError;
 
     async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
@@ -263,5 +265,128 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
             .upload_versioned(path, &snapshot_data.state)
             .await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use flow_websocket_domain::project::ProjectEditingSession;
+    use flow_websocket_domain::snapshot::ObjectTenant;
+    use mockall::mock;
+
+    mock! {
+        RedisClient {}
+        #[async_trait]
+        impl RedisClientTrait for RedisClient {
+            fn redis_url(&self) -> &str;
+            async fn get<T: serde::de::DeserializeOwned + Send + Sync + 'static>(&self, key: &str) -> Result<Option<T>, RedisClientError>;
+            async fn set<T: serde::Serialize + Send + Sync + 'static>(&self, key: &str, value: &T) -> Result<(), RedisClientError>;
+            async fn get_client_count(&self) -> Result<usize, RedisClientError>;
+            async fn keys(&self, pattern: &str) -> Result<Vec<String>, RedisClientError>;
+            async fn xadd(&self, key: &str, id: &str, fields: &[(String, String)]) -> Result<String, RedisClientError>;
+            async fn xread(&self, key: &str, id: &str) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError>;
+            async fn xtrim(&self, key: &str, max_len: usize) -> Result<usize, RedisClientError>;
+            async fn xdel(&self, key: &str, ids: &[String]) -> Result<usize, RedisClientError>;
+            fn connection(&self) -> &Arc<tokio::sync::Mutex<redis::aio::MultiplexedConnection>>;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_session() {
+        let mut mock_redis = MockRedisClient::new();
+        mock_redis
+            .expect_set()
+            .withf(|key: &str, _value: &ProjectEditingSession| key.starts_with("session:"))
+            .times(1)
+            .returning(|_, _| Ok(()));
+        mock_redis
+            .expect_set()
+            .withf(|key: &str, _value: &String| {
+                key.starts_with("project:") && key.ends_with(":active_session")
+            })
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        let repo = ProjectRedisRepository::new(Arc::new(mock_redis));
+
+        let mut session = ProjectEditingSession::new(
+            "project_123".to_string(),
+            ObjectTenant::new("tenant_123".to_string(), "tenant_key".to_string()),
+        );
+        session.session_id = Some("session_456".to_string());
+
+        let result = repo.create_session(session).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_active_session() {
+        let mut mock_redis = MockRedisClient::new();
+        mock_redis
+            .expect_get::<String>()
+            .times(1)
+            .returning(|_| Ok(Some("session_456".to_string())));
+        mock_redis
+            .expect_get::<ProjectEditingSession>()
+            .times(1)
+            .returning(|_| {
+                Ok(Some(ProjectEditingSession::new(
+                    "project_123".to_string(),
+                    ObjectTenant::new("tenant_123".to_string(), "tenant_key".to_string()),
+                )))
+            });
+
+        let repo = ProjectRedisRepository::new(Arc::new(mock_redis));
+
+        let result = repo.get_active_session("project_123").await;
+        assert!(result.is_ok());
+        let session = result.unwrap();
+        assert!(session.is_some());
+        let session = session.unwrap();
+        assert_eq!(session.project_id, "project_123");
+    }
+
+    #[tokio::test]
+    async fn test_update_session() {
+        let mut mock_redis = MockRedisClient::new();
+        mock_redis
+            .expect_set()
+            .withf(|key: &str, _value: &ProjectEditingSession| key.starts_with("session:"))
+            .times(1)
+            .returning(|_, _| Ok(()));
+        mock_redis
+            .expect_set()
+            .withf(|key: &str, _value: &String| {
+                key.starts_with("project:") && key.ends_with(":active_session")
+            })
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        let repo = ProjectRedisRepository::new(Arc::new(mock_redis));
+
+        let mut session = ProjectEditingSession::new(
+            "project_123".to_string(),
+            ObjectTenant::new("tenant_123".to_string(), "tenant_key".to_string()),
+        );
+        session.session_id = Some("session_456".to_string());
+
+        let result = repo.update_session(session).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_client_count() {
+        let mut mock_redis = MockRedisClient::new();
+        mock_redis
+            .expect_get_client_count()
+            .times(1)
+            .returning(|| Ok(5));
+
+        let repo = ProjectRedisRepository::new(Arc::new(mock_redis));
+
+        let result = repo.get_client_count().await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 5);
     }
 }
