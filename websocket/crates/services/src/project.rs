@@ -11,28 +11,27 @@ use flow_websocket_domain::types::data::SnapshotData;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use std::sync::Arc;
 
-pub struct ProjectService<P, E, S, R> {
-    project_repository: Arc<P>,
+pub struct ProjectService<E, S, R> {
     session_repository: Arc<E>,
     snapshot_repository: Arc<S>,
     redis_data_manager: Arc<R>,
 }
 
-impl<P, E, S, R> ProjectService<P, E, S, R>
+impl<E, S, R> ProjectService<E, S, R>
 where
-    P: ProjectRepository<Error = ProjectRepositoryError> + Send + Sync,
-    E: ProjectEditingSessionRepository<Error = ProjectRepositoryError> + Send + Sync,
+    E: ProjectEditingSessionRepository<Error = ProjectRepositoryError>
+        + ProjectRepository<Error = ProjectRepositoryError>
+        + Send
+        + Sync,
     S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManager<Error = ProjectRepositoryError> + Send + Sync,
 {
     pub fn new(
-        project_repository: Arc<P>,
         session_repository: Arc<E>,
         snapshot_repository: Arc<S>,
         redis_data_manager: Arc<R>,
     ) -> Self {
         Self {
-            project_repository,
             session_repository,
             snapshot_repository,
             redis_data_manager,
@@ -43,7 +42,7 @@ where
         &self,
         project_id: &str,
     ) -> Result<Option<Project>, ProjectServiceError> {
-        Ok(self.project_repository.get_project(project_id).await?)
+        Ok(self.session_repository.get_project(project_id).await?)
     }
 
     pub async fn get_or_create_editing_session(
@@ -94,24 +93,25 @@ where
 }
 
 #[async_trait]
-impl<P, E, S, R> ProjectRepository for ProjectService<P, E, S, R>
+impl<E, S, R> ProjectRepository for ProjectService<E, S, R>
 where
-    P: ProjectRepository<Error = ProjectRepositoryError> + Send + Sync,
-    E: ProjectEditingSessionRepository<Error = ProjectRepositoryError> + Send + Sync,
+    E: ProjectEditingSessionRepository<Error = ProjectRepositoryError>
+        + ProjectRepository<Error = ProjectRepositoryError>
+        + Send
+        + Sync,
     S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManager<Error = ProjectRepositoryError> + Send + Sync,
 {
     type Error = ProjectServiceError;
 
     async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error> {
-        Ok(self.project_repository.get_project(project_id).await?)
+        Ok(self.session_repository.get_project(project_id).await?)
     }
 }
 
 #[async_trait]
-impl<P, E, S, R> ProjectEditingSessionRepository for ProjectService<P, E, S, R>
+impl<E, S, R> ProjectEditingSessionRepository for ProjectService<E, S, R>
 where
-    P: ProjectRepository<Error = ProjectRepositoryError> + Send + Sync,
     E: ProjectEditingSessionRepository<Error = ProjectRepositoryError> + Send + Sync,
     S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManager<Error = ProjectRepositoryError> + Send + Sync,
@@ -142,10 +142,12 @@ where
 }
 
 #[async_trait]
-impl<P, E, S, R> ProjectSnapshotRepository for ProjectService<P, E, S, R>
+impl<E, S, R> ProjectSnapshotRepository for ProjectService<E, S, R>
 where
-    P: ProjectRepository<Error = ProjectRepositoryError> + Send + Sync,
-    E: ProjectEditingSessionRepository<Error = ProjectRepositoryError> + Send + Sync,
+    E: ProjectEditingSessionRepository<Error = ProjectRepositoryError>
+        + ProjectRepository<Error = ProjectRepositoryError>
+        + Send
+        + Sync,
     S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManager<Error = ProjectRepositoryError> + Send + Sync,
 {
@@ -206,10 +208,12 @@ where
 }
 
 #[async_trait]
-impl<P, E, S, R> RedisDataManager for ProjectService<P, E, S, R>
+impl<E, S, R> RedisDataManager for ProjectService<E, S, R>
 where
-    P: ProjectRepository<Error = ProjectRepositoryError> + Send + Sync,
-    E: ProjectEditingSessionRepository<Error = ProjectRepositoryError> + Send + Sync,
+    E: ProjectEditingSessionRepository<Error = ProjectRepositoryError>
+        + ProjectRepository<Error = ProjectRepositoryError>
+        + Send
+        + Sync,
     S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManager<Error = ProjectRepositoryError> + Send + Sync,
 {
@@ -249,15 +253,6 @@ mod tests {
     use mockall::predicate::*;
 
     mock! {
-        ProjectRepo {}
-        #[async_trait]
-        impl ProjectRepository for ProjectRepo {
-            type Error = ProjectRepositoryError;
-            async fn get_project(&self, project_id: &str) -> Result<Option<Project>, ProjectRepositoryError>;
-        }
-    }
-
-    mock! {
         SessionRepo {}
         #[async_trait]
         impl ProjectEditingSessionRepository for SessionRepo {
@@ -266,6 +261,11 @@ mod tests {
             async fn get_active_session(&self, project_id: &str) -> Result<Option<ProjectEditingSession>, ProjectRepositoryError>;
             async fn update_session(&self, session: ProjectEditingSession) -> Result<(), ProjectRepositoryError>;
             async fn get_client_count(&self) -> Result<usize, ProjectRepositoryError>;
+        }
+        #[async_trait]
+        impl ProjectRepository for SessionRepo {
+            type Error = ProjectRepositoryError;
+            async fn get_project(&self, project_id: &str) -> Result<Option<Project>, ProjectRepositoryError>;
         }
     }
 
@@ -298,7 +298,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_merge_updates() {
-        let mock_project_repo = MockProjectRepo::new();
         let mock_session_repo = MockSessionRepo::new();
         let mock_snapshot_repo = MockSnapshotRepo::new();
         let mut mock_redis_manager = MockRedisManager::new();
@@ -311,7 +310,6 @@ mod tests {
             .returning(|_| Ok((vec![1, 2, 3], vec!["user1".to_string()])));
 
         let service = ProjectService::new(
-            Arc::new(mock_project_repo),
             Arc::new(mock_session_repo),
             Arc::new(mock_snapshot_repo),
             Arc::new(mock_redis_manager),
@@ -328,8 +326,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_project() {
-        let mut mock_project_repo = MockProjectRepo::new();
-        let mock_session_repo = MockSessionRepo::new();
+        let mut mock_session_repo = MockSessionRepo::new();
         let mock_snapshot_repo = MockSnapshotRepo::new();
         let mock_redis_manager = MockRedisManager::new();
 
@@ -338,14 +335,13 @@ mod tests {
             workspace_id: "workspace_456".to_string(),
         };
 
-        mock_project_repo
+        mock_session_repo
             .expect_get_project()
             .with(eq("project_123"))
             .times(1)
             .returning(move |_| Ok(Some(example_project.clone())));
 
         let service = ProjectService::new(
-            Arc::new(mock_project_repo),
             Arc::new(mock_session_repo),
             Arc::new(mock_snapshot_repo),
             Arc::new(mock_redis_manager),
@@ -362,7 +358,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_or_create_editing_session() {
-        let mock_project_repo = MockProjectRepo::new();
         let mut mock_session_repo = MockSessionRepo::new();
         let mut mock_snapshot_repo = MockSnapshotRepo::new();
         let mut mock_redis_manager = MockRedisManager::new();
@@ -389,7 +384,6 @@ mod tests {
             .returning(|_, _| Ok(()));
 
         let service = ProjectService::new(
-            Arc::new(mock_project_repo),
             Arc::new(mock_session_repo),
             Arc::new(mock_snapshot_repo),
             Arc::new(mock_redis_manager),
@@ -401,13 +395,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_project_allowed_actions() {
-        let mock_project_repo = MockProjectRepo::new();
         let mock_session_repo = MockSessionRepo::new();
         let mock_snapshot_repo = MockSnapshotRepo::new();
         let mock_redis_manager = MockRedisManager::new();
 
         let service = ProjectService::new(
-            Arc::new(mock_project_repo),
             Arc::new(mock_session_repo),
             Arc::new(mock_snapshot_repo),
             Arc::new(mock_redis_manager),
@@ -429,7 +421,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_snapshot() {
-        let mock_project_repo = MockProjectRepo::new();
         let mock_session_repo = MockSessionRepo::new();
         let mut mock_snapshot_repo = MockSnapshotRepo::new();
         let mock_redis_manager = MockRedisManager::new();
@@ -464,7 +455,6 @@ mod tests {
             .returning(|_| Ok(()));
 
         let service = ProjectService::new(
-            Arc::new(mock_project_repo),
             Arc::new(mock_session_repo),
             Arc::new(mock_snapshot_repo),
             Arc::new(mock_redis_manager),
@@ -476,7 +466,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_latest_snapshot() {
-        let mock_project_repo = MockProjectRepo::new();
         let mock_session_repo = MockSessionRepo::new();
         let mut mock_snapshot_repo = MockSnapshotRepo::new();
         let mock_redis_manager = MockRedisManager::new();
@@ -509,7 +498,6 @@ mod tests {
             .returning(move |_| Ok(Some(example_snapshot.clone())));
 
         let service = ProjectService::new(
-            Arc::new(mock_project_repo),
             Arc::new(mock_session_repo),
             Arc::new(mock_snapshot_repo),
             Arc::new(mock_redis_manager),
@@ -526,7 +514,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_push_update() {
-        let mock_project_repo = MockProjectRepo::new();
         let mock_session_repo = MockSessionRepo::new();
         let mock_snapshot_repo = MockSnapshotRepo::new();
         let mut mock_redis_manager = MockRedisManager::new();
@@ -538,7 +525,6 @@ mod tests {
             .returning(|_, _| Ok(()));
 
         let service = ProjectService::new(
-            Arc::new(mock_project_repo),
             Arc::new(mock_session_repo),
             Arc::new(mock_snapshot_repo),
             Arc::new(mock_redis_manager),
@@ -552,7 +538,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_current_state() {
-        let mock_project_repo = MockProjectRepo::new();
         let mock_session_repo = MockSessionRepo::new();
         let mock_snapshot_repo = MockSnapshotRepo::new();
         let mut mock_redis_manager = MockRedisManager::new();
@@ -563,7 +548,6 @@ mod tests {
             .returning(|| Ok(Some(vec![1, 2, 3])));
 
         let service = ProjectService::new(
-            Arc::new(mock_project_repo),
             Arc::new(mock_session_repo),
             Arc::new(mock_snapshot_repo),
             Arc::new(mock_redis_manager),
@@ -576,7 +560,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_clear_data() {
-        let mock_project_repo = MockProjectRepo::new();
         let mock_session_repo = MockSessionRepo::new();
         let mock_snapshot_repo = MockSnapshotRepo::new();
         let mut mock_redis_manager = MockRedisManager::new();
@@ -587,7 +570,6 @@ mod tests {
             .returning(|| Ok(()));
 
         let service = ProjectService::new(
-            Arc::new(mock_project_repo),
             Arc::new(mock_session_repo),
             Arc::new(mock_snapshot_repo),
             Arc::new(mock_redis_manager),
