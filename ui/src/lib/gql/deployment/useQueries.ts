@@ -50,7 +50,7 @@ export const useQueries = () => {
     onSuccess: (deployment) => {
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
-        queryKey: ["getDeployments", deployment?.projectId],
+        queryKey: [DeploymentQueryKeys.GetDeployments, deployment?.workspaceId],
       });
     },
   });
@@ -63,10 +63,10 @@ export const useQueries = () => {
         return createNewJobObject(data.executeDeployment.job);
       }
     },
-    onSuccess: (deployment) =>
+    onSuccess: (job) =>
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
-        queryKey: ["getJobs", deployment?.workspaceId],
+        queryKey: ["getJobs", job?.workspaceId],
       }),
   });
 

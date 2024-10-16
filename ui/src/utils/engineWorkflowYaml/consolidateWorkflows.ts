@@ -4,13 +4,13 @@ import { randomID } from "../randomID";
 
 import { createSubGraphs } from "./createSubGraphs";
 
-export const consolidateWorkflows = (workflows: Workflow[]) => {
+export const consolidateWorkflows = (name: string, workflows: Workflow[]) => {
   const entryGraphId = workflows.find((wf) => wf.id === "main")?.id;
   const subGraphs = createSubGraphs(workflows);
 
   const consolidatedWorkflow = {
     id: randomID(),
-    name: "My project's workflow", // TODO: get this from props
+    name,
     entryGraphId,
     // with // TODO: conversion of data.params to with
     graphs: subGraphs,

@@ -18,8 +18,6 @@ import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
 import { yWorkflowBuilder, type YWorkflow } from "./workflowBuilder";
 
-export type RawWorkflow = Record<string, Y.Text | Node[] | Edge[]>;
-
 export default ({
   workflowId,
   handleWorkflowIdChange,
@@ -121,19 +119,24 @@ export default ({
   const handleWorkflowDeployment = useCallback(async () => {
     const { workflowId, yamlWorkflow } =
       createWorkflowsYaml(
+        currentProject?.name,
         rawWorkflows.map((w): Workflow => {
-          const id = fromYjsText(w?.id as Y.Text);
-          const name = fromYjsText(w?.name as Y.Text);
-          const n = w?.nodes as Node[];
-          const e = w?.edges as Edge[];
+          if (!w) return { id: "", name: "", nodes: [], edges: [] };
+          const id = fromYjsText(w.id as Y.Text);
+          const name = fromYjsText(w.name as Y.Text);
+          const n = w.nodes as Node[];
+          const e = w.edges as Edge[];
           return { id, name, nodes: n, edges: e };
         }),
       ) ?? {};
+
     if (!yamlWorkflow || !currentProject) return;
+
     const formData = yamlToFormData(
       yamlWorkflow,
       `${workflowId}-workflow.yaml`,
     );
+
     await createDeployment(
       currentProject.id,
       currentProject.workspaceId,

@@ -4,9 +4,12 @@ import { Workflow } from "@flow/types";
 
 import { consolidateWorkflows } from "./consolidateWorkflows";
 
-export const createWorkflowsYaml = (workflows?: Workflow[]) => {
+export const createWorkflowsYaml = (name?: string, workflows?: Workflow[]) => {
   if (!workflows) return;
-  const yamlReadyWorkflow = consolidateWorkflows(workflows);
+  const yamlReadyWorkflow = consolidateWorkflows(
+    `${name ?? "Untitled"}-workflow`,
+    workflows,
+  );
 
   const yamlWorkflow = YAML.stringify(yamlReadyWorkflow);
 
