@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -24,8 +23,7 @@ key2: value2
 	file, err := createTempYAML(yamlContent1)
 	assert.NoError(t, err)
 
-	defer os.Remove(file) // Clean up the file when done
-	fmt.Println("Temporary YAML file created at:", file)
+	defer func() { os.Remove(file) }()
 
 	query := `mutation($input: CreateDeploymentInput!) {
 		createDeployment(input: $input) {
@@ -38,7 +36,7 @@ key2: value2
 
 	yamlFile, err := os.Open(file)
 	assert.NoError(t, err)
-	defer yamlFile.Close()
+	defer func() { yamlFile.Close() }()
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
