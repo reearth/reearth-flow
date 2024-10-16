@@ -70,7 +70,7 @@ func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentPa
 		return nil, err
 	}
 
-	url, err := i.file.UploadWorkflow(ctx, &p.Workflows)
+	url, err := i.file.UploadWorkflow(ctx, &p.Workflow)
 	if err != nil {
 		return nil, err
 	}

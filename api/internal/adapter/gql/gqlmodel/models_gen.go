@@ -66,7 +66,7 @@ type CreateDeploymentInput struct {
 	WorkspaceID  ID             `json:"workspaceId"`
 	ProjectID    ID             `json:"projectId"`
 	MetaFile     graphql.Upload `json:"metaFile"`
-	WorkflowsZip graphql.Upload `json:"workflowsZip"`
+	WorkflowYaml graphql.Upload `json:"workflowYaml"`
 }
 
 type CreateProjectInput struct {
@@ -294,7 +294,7 @@ type RunProjectInput struct {
 	ProjectID    ID             `json:"projectId"`
 	WorkspaceID  ID             `json:"workspaceId"`
 	MetaFile     graphql.Upload `json:"metaFile"`
-	WorkflowsZip graphql.Upload `json:"workflowsZip"`
+	WorkflowYaml graphql.Upload `json:"workflowYaml"`
 }
 
 type RunProjectPayload struct {

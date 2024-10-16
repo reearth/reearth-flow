@@ -36,7 +36,7 @@ input CreateDeploymentInput {
   workspaceId: ID!
   projectId: ID!
   metaFile: Upload!
-  workflowsZip: Upload!
+  workflowYaml: Upload!
 }
 
 input ExecuteDeploymentInput {

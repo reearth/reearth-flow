@@ -77,7 +77,7 @@ func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunPro
 	res, err := usecases(ctx).Project.Run(ctx, interfaces.RunProjectParam{
 		ProjectID: pid,
 		Meta:      gqlmodel.FromFile(&input.MetaFile),
-		Workflows: gqlmodel.FromFile(&input.WorkflowsZip),
+		Workflow:  gqlmodel.FromFile(&input.WorkflowYaml),
 	}, getOperator(ctx))
 	if err != nil {
 		return nil, err
