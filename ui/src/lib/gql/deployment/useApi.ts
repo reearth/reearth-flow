@@ -4,11 +4,9 @@ import type {
   CreateDeployment,
   ExecuteDeployment,
   GetDeployments,
-  Workflow,
 } from "@flow/types";
 
-import { ExecuteDeploymentInput, InputWorkflow } from "../__gen__/graphql";
-import { toGQLWorkflow } from "../convert";
+import { ExecuteDeploymentInput } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 
@@ -25,17 +23,15 @@ export const useDeployment = () => {
   const createDeployment = async (
     workspaceId: string,
     projectId: string,
-    workflows: Workflow[],
+    workflows: FormData,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
-
-    const gqlWorkflow: InputWorkflow = toGQLWorkflow({ projectId, workflows });
 
     try {
       const deployment = await mutateAsync({
         projectId,
         workspaceId,
-        workflow: gqlWorkflow,
+        workflows,
       });
       toast({
         title: t("Deployment Created"),

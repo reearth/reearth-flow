@@ -5,7 +5,7 @@ export type Deployment = {
   id: string;
   projectId: string;
   workspaceId: string;
-  workflowId: string;
+  workflowUrl: string;
   version: string;
   createdAt: string;
   updatedAt: string;

@@ -31,7 +31,7 @@ export const useQueries = () => {
       id: deployment.id,
       workspaceId: deployment.workspaceId,
       projectId: deployment.projectId,
-      workflowId: deployment.workflowId,
+      workflowUrl: deployment.workflowUrl,
       version: deployment.version,
       createdAt: deployment.createdAt,
       updatedAt: deployment.updatedAt,

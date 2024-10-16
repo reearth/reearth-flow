@@ -81,6 +81,7 @@
     "react-yjs": "2.0.0",
     "use-resize-observer": "9.1.0",
     "y-websocket": "2.0.4",
+    "yaml": "2.6.0",
     "yjs": "13.6.19"
   },
   "devDependencies": {

@@ -101,18 +101,15 @@ export const useProject = () => {
   const runProject = async (
     projectId: string,
     workspaceId: string,
-    workflows: Workflow[],
+    workflows: FormData[],
   ): Promise<RunProject> => {
     const { mutateAsync, ...rest } = runProjectMutation;
-
-    const gqlWorkflow: InputWorkflow = toGQLWorkflow({ projectId, workflows });
-    console.log("gqlWorkflow", gqlWorkflow);
 
     try {
       const data = await mutateAsync({
         projectId,
         workspaceId,
-        workflow: gqlWorkflow,
+        workflow,
       });
       toast({
         title: t("Successful Deletion"),

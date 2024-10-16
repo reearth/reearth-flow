@@ -4367,6 +4367,7 @@ __metadata:
     vite-plugin-cesium: "npm:1.2.23"
     vitest: "npm:2.1.1"
     y-websocket: "npm:2.0.4"
+    yaml: "npm:2.6.0"
     yjs: "npm:13.6.19"
   languageName: unknown
   linkType: soft
@@ -19227,6 +19228,15 @@ __metadata:
   version: 0.0.43
   resolution: "yaml-ast-parser@npm:0.0.43"
   checksum: 10c0/4d2f1e761067b2c6abdd882279a406f879258787af470a6d4a659cb79cb2ab056b870b25f1f80f46ed556e8b499d611d247806376f53edf3412f72c0a8ea2e98
+  languageName: node
+  linkType: hard
+
+"yaml@npm:2.6.0":
+  version: 2.6.0
+  resolution: "yaml@npm:2.6.0"
+  bin:
+    yaml: bin.mjs
+  checksum: 10c0/9e74cdb91cc35512a1c41f5ce509b0e93cc1d00eff0901e4ba831ee75a71ddf0845702adcd6f4ee6c811319eb9b59653248462ab94fa021ab855543a75396ceb
   languageName: node
   linkType: hard
 

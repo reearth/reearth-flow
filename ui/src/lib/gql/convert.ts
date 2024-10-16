@@ -28,20 +28,13 @@ export const toGQLWorkflow = ({
       w.nodes?.map((node): InputWorkflowNode => {
         const newNode: InputWorkflowNode = {
           id: node.id,
-          name: node.data.name ?? "undefined node",
           type: node.type,
+          name: node.data.name ?? "undefinedAction",
         };
         if (node.type === "subworkflow") {
           // newNode.subGraphId =
         }
-        return {
-          id: node.id,
-          name: node.data.name ?? "undefined node",
-          type: node.type,
-          action: node.data.name, // this might be wrong
-
-          // parameters: node.data.params,
-        };
+        return newNode;
       }) ?? [];
     const edges: InputWorkflowEdge[] =
       w.edges?.map((edge) => ({
