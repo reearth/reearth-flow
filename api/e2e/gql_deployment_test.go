@@ -23,7 +23,11 @@ key2: value2
 	file, err := createTempYAML(yamlContent1)
 	assert.NoError(t, err)
 
-	defer func() { os.Remove(file) }()
+	defer func() {
+		if err := os.Remove(file); err != nil {
+			return
+		}
+	}()
 
 	query := `mutation($input: CreateDeploymentInput!) {
 		createDeployment(input: $input) {
@@ -36,7 +40,11 @@ key2: value2
 
 	yamlFile, err := os.Open(file)
 	assert.NoError(t, err)
-	defer func() { yamlFile.Close() }()
+	defer func() {
+		if err := yamlFile.Close(); err != nil {
+			return
+		}
+	}()
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -87,7 +95,11 @@ func createTempYAML(content string) (string, error) {
 		return "", err
 	}
 
-	defer tmpFile.Close()
+	defer func() {
+		if err := tmpFile.Close(); err != nil {
+			return
+		}
+	}()
 
 	_, err = tmpFile.Write([]byte(content))
 	if err != nil {
