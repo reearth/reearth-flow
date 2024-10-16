@@ -17,6 +17,7 @@ import { useCurrentWorkspace } from "@flow/stores";
 import type { Project } from "@flow/types";
 
 import "./styles.css";
+import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 type RunType = "manual" | "trigger";
 
@@ -67,10 +68,11 @@ const NewRun: React.FC = () => {
   const handleRun = useCallback(() => {
     if (!selectedProject || !currentWorkspace) return;
     // TODO: USE DEPLOYED PROJECT's workflow
-    runProject(selectedProject.id, currentWorkspace.id, [
-      { id: "1", name: "test" },
-      { id: "2", name: "test2" },
-    ]);
+    runProject(
+      selectedProject.id,
+      currentWorkspace.id,
+      yamlToFormData('{ id: "1", name: "test" }', "workflow.yaml"), // TODO: Use actual workflow
+    );
   }, [currentWorkspace, selectedProject, runProject]);
 
   useEffect(() => {

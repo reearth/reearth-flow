@@ -104,7 +104,7 @@ export const useProject = () => {
         projectId,
         workspaceId,
         metaFile: undefined, // TODO: Add meta file
-        workflowsZip: workflow,
+        workflowYaml: workflow,
       });
       toast({
         title: t("Successful Deletion"),

@@ -32,7 +32,7 @@ export const useDeployment = () => {
         projectId,
         workspaceId,
         metaFile: undefined, // TODO: Add meta file
-        workflowsZip: workflow,
+        workflowYaml: workflow,
       });
       toast({
         title: t("Deployment Created"),

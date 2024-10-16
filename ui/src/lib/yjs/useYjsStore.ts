@@ -6,7 +6,8 @@ import * as Y from "yjs";
 import { config } from "@flow/config";
 import { useCurrentProject } from "@flow/stores";
 import type { Edge, Node, Workflow } from "@flow/types";
-import { createWorkflowsYaml } from "@flow/utils/workflowZip/workflowZip";
+import { createWorkflowsYaml } from "@flow/utils/engineWorkflowYaml/workflowYaml";
+import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 import { useDeployment } from "../gql/deployment";
 
@@ -129,16 +130,15 @@ export default ({
         }),
       ) ?? {};
     if (!yamlWorkflow || !currentProject) return;
-    const yamlBlob = new Blob([yamlWorkflow], { type: "text/yaml" });
-
-    const formData = new FormData();
-    formData.append("file", yamlBlob, `${workflowId}-workflow.yaml`);
+    const formData = yamlToFormData(
+      yamlWorkflow,
+      `${workflowId}-workflow.yaml`,
+    );
     await createDeployment(
       currentProject.id,
       currentProject.workspaceId,
       formData,
     );
-    console.log("workflowworkflowworkflowworkflowworkflow", yamlWorkflow);
   }, [rawWorkflows, currentProject, createDeployment]);
 
   const { handleNodesUpdate } = useYNode({

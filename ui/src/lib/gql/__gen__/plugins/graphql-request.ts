@@ -80,7 +80,7 @@ export type CreateAssetPayload = {
 export type CreateDeploymentInput = {
   metaFile: Scalars['Upload']['input'];
   projectId: Scalars['ID']['input'];
-  workflowsZip: Scalars['Upload']['input'];
+  workflowYaml: Scalars['Upload']['input'];
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -515,7 +515,7 @@ export enum Role {
 export type RunProjectInput = {
   metaFile: Scalars['Upload']['input'];
   projectId: Scalars['ID']['input'];
-  workflowsZip: Scalars['Upload']['input'];
+  workflowYaml: Scalars['Upload']['input'];
   workspaceId: Scalars['ID']['input'];
 };
 
