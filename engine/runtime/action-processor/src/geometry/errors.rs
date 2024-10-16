@@ -19,10 +19,14 @@ pub(super) enum GeometryProcessorError {
     GeometryFilterFactory(String),
     #[error("GeometryFilter error: {0}")]
     GeometryFilter(String),
-    #[error("Reprojector Factory error: {0}")]
-    ReprojectorFactory(String),
-    #[error("Reprojector error: {0}")]
-    Reprojector(String),
+    #[error("HorizontalReprojector Factory error: {0}")]
+    HorizontalReprojectorFactory(String),
+    #[error("HorizontalReprojector error: {0}")]
+    HorizontalReprojector(String),
+    #[error("VerticalReprojector Factory error: {0}")]
+    VerticalReprojectorFactory(String),
+    #[error("VerticalReprojector error: {0}")]
+    VerticalReprojector(String),
     #[error("TwoDimensionForcer Factory error: {0}")]
     TwoDimensionForcerFactory(String),
     #[error("TwoDimensionForcer error: {0}")]

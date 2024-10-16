@@ -197,7 +197,13 @@ fn geometry_slicing_stage(
                     geometry: mpoly,
                     properties: feature.attributes.clone(),
                 };
-                let bytes = bincode::serde::encode_to_vec(&feature, bincode_config).unwrap();
+                let bytes =
+                    bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
+                        crate::errors::SinkError::MvtWriter(format!(
+                            "Failed to serialize a sliced feature: {:?}",
+                            err
+                        ))
+                    })?;
                 let tile_id = tile_id_conv.zxy_to_id(z, x, y);
                 if sender_sliced.send((tile_id, bytes)).is_err() {
                     return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
@@ -341,7 +347,9 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> crate::errors
                     int_ring_buf2.clear();
                     int_ring_buf2.push(int_ring_buf[0]);
                     for c in int_ring_buf.windows(3) {
-                        let &[prev, curr, next] = c.try_into().unwrap();
+                        let &[prev, curr, next] = c.try_into().map_err(|_| {
+                            crate::errors::SinkError::MvtWriter("Failed to convert".to_string())
+                        })?;
 
                         // Remove duplicate points
                         if prev == curr {
@@ -361,7 +369,9 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> crate::errors
 
                         int_ring_buf2.push(curr);
                     }
-                    int_ring_buf2.push(*int_ring_buf.last().unwrap());
+                    int_ring_buf2.push(*int_ring_buf.last().ok_or(
+                        crate::errors::SinkError::MvtWriter("Failed to get last".to_string()),
+                    )?);
                 }
 
                 match ri {

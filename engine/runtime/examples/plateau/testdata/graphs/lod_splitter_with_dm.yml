@@ -14,9 +14,9 @@ nodes:
     action: GeometrySplitter
 
   - id: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
-    name: Reprojector
+    name: HorizontalReprojector
     type: action
-    action: Reprojector
+    action: HorizontalReprojector
     with:
       epsgCode: 6677
 

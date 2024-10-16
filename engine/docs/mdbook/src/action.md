@@ -454,25 +454,21 @@ Writes features to a file
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Cesium3dtilesWriterParam",
+  "title": "Cesium3DTilesWriterParam",
   "type": "object",
   "required": [
+    "maxZoom",
+    "minZoom",
     "output"
   ],
   "properties": {
     "maxZoom": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "minZoom": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
@@ -1378,24 +1374,12 @@ Writes features to a file
         },
         "output": {
           "$ref": "#/definitions/Expr"
-        }
-      }
-    },
-    {
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "gltf"
-          ]
         },
-        "output": {
-          "$ref": "#/definitions/Expr"
+        "sheetName": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     }
@@ -1811,6 +1795,36 @@ Extracts holes in a geometry and adds it as an attribute.
 ### Category
 * Geometry
 
+## HorizontalReprojector
+### Type
+* processor
+### Description
+Reprojects the geometry of a feature to a specified coordinate system
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HorizontalReprojectorParam",
+  "type": "object",
+  "properties": {
+    "epsgCode": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint16",
+      "minimum": 0.0
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## LineOnLineOverlayer
 ### Type
 * processor
@@ -2171,36 +2185,6 @@ Geometry Refiner
 ### Category
 * Geometry
 
-## Reprojector
-### Type
-* processor
-### Description
-Reprojects the geometry of a feature to a specified coordinate system
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ReprojectorParam",
-  "type": "object",
-  "properties": {
-    "epsgCode": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint16",
-      "minimum": 0.0
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-### Category
-* Geometry
-
 ## RhaiCaller
 ### Type
 * processor
@@ -2475,6 +2459,42 @@ Removes specific vertices from a feature’s geometry
 ### Output Ports
 * default
 * rejected
+### Category
+* Geometry
+
+## VerticalReprojector
+### Type
+* processor
+### Description
+Reprojects the geometry of a feature to a specified coordinate system
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VerticalReprojectorParam",
+  "type": "object",
+  "required": [
+    "reprojectorType"
+  ],
+  "properties": {
+    "reprojectorType": {
+      "$ref": "#/definitions/VerticalReprojectorType"
+    }
+  },
+  "definitions": {
+    "VerticalReprojectorType": {
+      "type": "string",
+      "enum": [
+        "jgd2011ToWgs84"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * Geometry
 

@@ -22,6 +22,10 @@ impl SinkError {
     pub fn file_writer<T: ToString>(message: T) -> Self {
         Self::FileWriter(message.to_string())
     }
+
+    pub fn cesium3dtiles_writer<T: ToString>(message: T) -> Self {
+        Self::Cesium3DTilesWriter(message.to_string())
+    }
 }
 
 pub type Result<T, E = SinkError> = std::result::Result<T, E>;

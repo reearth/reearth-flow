@@ -31,9 +31,9 @@ graphs:
     type: action
     action: GeometrySplitter
   - id: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
-    name: Reprojector
+    name: HorizontalReprojector
     type: action
-    action: Reprojector
+    action: HorizontalReprojector
     with:
       epsgCode: 6677
   - id: 7c843a02-3b1f-40c1-8214-562e72bfb9a6

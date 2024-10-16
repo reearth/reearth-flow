@@ -1,216 +1,19 @@
-extern crate nusamai_gltf;
-use super::types::material::{Image, Material, Texture};
-use super::types::metadata::MetadataEncoder;
-use crate::errors::SinkError;
-use ahash::HashSet;
+use std::io::Write;
+
+use ahash::{HashMap, HashSet};
 use byteorder::{ByteOrder, LittleEndian};
 use indexmap::IndexSet;
-use itertools::Itertools;
-use nusamai_gltf::nusamai_gltf_json;
-use nusamai_gltf::nusamai_gltf_json::extensions;
 use nusamai_gltf::nusamai_gltf_json::extensions::mesh::ext_mesh_features;
-use nusamai_gltf::nusamai_gltf_json::models::{
-    Accessor, AccessorType, Buffer, BufferView, BufferViewTarget, ComponentType, Gltf, Mesh,
-    MeshPrimitive, Node, PrimitiveMode, Scene,
-};
-use nusamai_mvt::TileZXY;
-use reearth_flow_common::gltf::{iter_x_slice, iter_y_slice, x_slice_range, y_slice_range};
-use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
-use reearth_flow_types::geometry as geomotry_types;
-use std::collections::HashMap;
-use std::io::Write;
-use std::vec;
+
+use super::{material, metadata::MetadataEncoder};
 
 #[derive(Default)]
-pub(super) struct PrimitiveInfo {
+pub struct PrimitiveInfo {
     pub indices: Vec<u32>,
     pub feature_ids: HashSet<u32>,
 }
 
-pub(super) type Primitives = HashMap<Material, PrimitiveInfo>;
-
-pub(super) fn make_gltf(
-    _city_gml: geomotry_types::CityGmlGeometry,
-) -> Result<(Gltf, Vec<u8>), SinkError> {
-    Err(SinkError::FileWriter("Unsupported input".to_string()))
-}
-
-pub(super) fn slice_polygon(
-    zoom: u8,
-    poly: &Polygon3D<f64>,
-    poly_uv: &Polygon2D<f64>,
-    mut send_polygon: impl FnMut(TileZXY, &flatgeom::Polygon<'static, [f64; 5]>),
-) {
-    if poly.exterior().is_empty() {
-        return;
-    }
-
-    let mut ring_buffer: Vec<[f64; 5]> = Vec::with_capacity(poly.exterior().len() + 1);
-
-    // Slice along Y-axis
-    let y_range = {
-        let (min_y, max_y) = poly
-            .exterior()
-            .iter()
-            .fold((f64::MAX, f64::MIN), |(min_y, max_y), c| {
-                (min_y.min(c.y), max_y.max(c.y))
-            });
-        iter_y_slice(zoom, min_y, max_y)
-    };
-
-    let mut y_sliced_polys = flatgeom::MultiPolygon::new();
-
-    for yi in y_range.clone() {
-        let (k1, k2) = y_slice_range(zoom, yi);
-
-        // todo?: check interior bbox to optimize
-
-        for (ri, (ring, uv_ring)) in poly.rings().iter().zip_eq(poly_uv.rings()).enumerate() {
-            if ring.coords().collect_vec().is_empty() {
-                continue;
-            }
-
-            ring_buffer.clear();
-            ring.iter()
-                .zip_eq(uv_ring.iter())
-                .fold(None, |a, b| {
-                    let Some((a, a_uv)) = a else { return Some(b) };
-                    let (b, b_uv) = b;
-
-                    if a.y < k1 {
-                        if b.y > k1 {
-                            let t = (k1 - a.y) / (b.y - a.y);
-                            let x = (b.x - a.x) * t + a.x;
-                            let z = (b.z - a.z) * t + a.z;
-                            let u = (b_uv.x - a_uv.x) * t + a_uv.x;
-                            let v = (b_uv.y - a_uv.y) * t + a_uv.y;
-                            ring_buffer.push([x, k1, z, u, v])
-                        }
-                    } else if a.y > k2 {
-                        if b.y < k2 {
-                            let t = (k2 - a.y) / (b.y - a.y);
-                            let x = (b.x - a.x) * t + a.x;
-                            let z = (b.z - a.z) * t + a.z;
-                            let u = (b_uv.x - a_uv.x) * t + a_uv.x;
-                            let v = (b_uv.y - a_uv.y) * t + a_uv.y;
-                            ring_buffer.push([x, k2, z, u, v])
-                        }
-                    } else {
-                        ring_buffer.push([a.x, a.y, a.z, a_uv.x, a_uv.y])
-                    }
-
-                    if b.y < k1 && a.y > k1 {
-                        let t = (k1 - a.y) / (b.y - a.y);
-                        let x = (b.x - a.x) * t + a.x;
-                        let z = (b.z - a.z) * t + a.z;
-                        let u = (b_uv.x - a_uv.x) * t + a_uv.x;
-                        let v = (b_uv.y - a_uv.y) * t + a_uv.y;
-                        ring_buffer.push([x, k1, z, u, v])
-                    } else if b.y > k2 && a.y < k2 {
-                        let t = (k2 - a.y) / (b.y - a.y);
-                        let x = (b.x - a.x) * t + a.x;
-                        let z = (b.z - a.z) * t + a.z;
-                        let u = (b_uv.x - a_uv.x) * t + a_uv.x;
-                        let v = (b_uv.y - a_uv.y) * t + a_uv.y;
-                        ring_buffer.push([x, k2, z, u, v])
-                    }
-
-                    Some((b, b_uv))
-                })
-                .unwrap();
-
-            match ri {
-                0 => y_sliced_polys.add_exterior(ring_buffer.drain(..)),
-                _ => y_sliced_polys.add_interior(ring_buffer.drain(..)),
-            }
-        }
-    }
-
-    // Slice along X-axis
-    let mut poly_buf: flatgeom::Polygon<[f64; 5]> = flatgeom::Polygon::new();
-    for (yi, y_sliced_poly) in y_range.zip_eq(y_sliced_polys.iter()) {
-        let x_iter = {
-            let (min_x, max_x) = y_sliced_poly
-                .exterior()
-                .iter()
-                .fold((f64::MAX, f64::MIN), |(min_x, max_x), c| {
-                    (min_x.min(c[0]), max_x.max(c[0]))
-                });
-
-            iter_x_slice(zoom, yi, min_x, max_x)
-        };
-
-        for (xi, xs) in x_iter {
-            let (k1, k2) = x_slice_range(zoom, xi, xs);
-
-            // todo?: check interior bbox to optimize ...
-
-            let key = (
-                zoom,
-                xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
-                yi,
-            );
-            poly_buf.clear();
-
-            for ring in y_sliced_poly.rings() {
-                if ring.raw_coords().is_empty() {
-                    continue;
-                }
-
-                ring_buffer.clear();
-                ring.iter_closed()
-                    .fold(None, |a, b| {
-                        let Some(a) = a else { return Some(b) };
-
-                        if a[0] < k1 {
-                            if b[0] > k1 {
-                                let t = (k1 - a[0]) / (b[0] - a[0]);
-                                let y = (b[1] - a[1]) * t + a[1];
-                                let z = (b[2] - a[2]) * t + a[2];
-                                let u = (b[3] - a[3]) * t + a[3];
-                                let v = (b[4] - a[4]) * t + a[4];
-                                ring_buffer.push([k1, y, z, u, v])
-                            }
-                        } else if a[0] > k2 {
-                            if b[0] < k2 {
-                                let t = (k2 - a[0]) / (b[0] - a[0]);
-                                let y = (b[1] - a[1]) * t + a[1];
-                                let z = (b[2] - a[2]) * t + a[2];
-                                let u = (b[3] - a[3]) * t + a[3];
-                                let v = (b[4] - a[4]) * t + a[4];
-                                ring_buffer.push([k2, y, z, u, v])
-                            }
-                        } else {
-                            ring_buffer.push(a)
-                        }
-
-                        if b[0] < k1 && a[0] > k1 {
-                            let t = (k1 - a[0]) / (b[0] - a[0]);
-                            let y = (b[1] - a[1]) * t + a[1];
-                            let z = (b[2] - a[2]) * t + a[2];
-                            let u = (b[3] - a[3]) * t + a[3];
-                            let v = (b[4] - a[4]) * t + a[4];
-                            ring_buffer.push([k1, y, z, u, v])
-                        } else if b[0] > k2 && a[0] < k2 {
-                            let t = (k2 - a[0]) / (b[0] - a[0]);
-                            let y = (b[1] - a[1]) * t + a[1];
-                            let z = (b[2] - a[2]) * t + a[2];
-                            let u = (b[3] - a[3]) * t + a[3];
-                            let v = (b[4] - a[4]) * t + a[4];
-                            ring_buffer.push([k2, y, z, u, v])
-                        }
-
-                        Some(b)
-                    })
-                    .unwrap();
-
-                poly_buf.add_ring(ring_buffer.drain(..))
-            }
-
-            send_polygon(key, &poly_buf);
-        }
-    }
-}
+pub type Primitives = HashMap<material::Material, PrimitiveInfo>;
 
 pub fn write_gltf_glb<W: Write>(
     writer: W,
@@ -220,6 +23,8 @@ pub fn write_gltf_glb<W: Write>(
     num_features: usize,
     metadata_encoder: MetadataEncoder,
 ) -> Result<(), crate::errors::SinkError> {
+    use nusamai_gltf::nusamai_gltf_json::*;
+
     // The buffer for the BIN part
     let mut bin_content: Vec<u8> = Vec::new();
     let mut gltf_buffer_views = vec![];
@@ -251,7 +56,7 @@ pub fn write_gltf_glb<W: Write>(
             LittleEndian::write_u32_into(&[x, y, z, nx, ny, nz, u, v, feature_id], &mut buf);
             bin_content
                 .write_all(&buf)
-                .map_err(crate::errors::SinkError::file_writer)?;
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
             vertices_count += 1;
         }
 
@@ -328,7 +133,7 @@ pub fn write_gltf_glb<W: Write>(
             for idx in &primitive.indices {
                 bin_content
                     .write_all(&idx.to_le_bytes())
-                    .map_err(crate::errors::SinkError::file_writer)?;
+                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
                 indices_count += 1;
             }
 
@@ -386,8 +191,8 @@ pub fn write_gltf_glb<W: Write>(
         }
     }
 
-    let mut image_set: IndexSet<Image, ahash::RandomState> = Default::default();
-    let mut texture_set: IndexSet<Texture, ahash::RandomState> = Default::default();
+    let mut image_set: IndexSet<material::Image, ahash::RandomState> = Default::default();
+    let mut texture_set: IndexSet<material::Texture, ahash::RandomState> = Default::default();
 
     // materials
     let gltf_materials = primitives
@@ -404,9 +209,9 @@ pub fn write_gltf_glb<W: Write>(
         .into_iter()
         .map(|img| {
             img.to_gltf(&mut gltf_buffer_views, &mut bin_content)
-                .map_err(SinkError::file_writer)
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)
         })
-        .collect::<Result<Vec<nusamai_gltf::nusamai_gltf_json::Image>, SinkError>>()?;
+        .collect::<Result<Vec<Image>, crate::errors::SinkError>>()?;
 
     let mut gltf_meshes = vec![];
     if !gltf_primitives.is_empty() {
@@ -427,6 +232,28 @@ pub fn write_gltf_glb<W: Write>(
         buffers
     };
 
+    let has_webp = gltf_textures.iter().any(|texture| {
+        texture
+            .extensions
+            .as_ref()
+            .and_then(|ext| ext.ext_texture_webp.as_ref())
+            .map_or(false, |_| true)
+    });
+
+    let extensions_used = {
+        let mut extensions_used = vec![
+            "EXT_mesh_features".to_string(),
+            "EXT_structural_metadata".to_string(),
+        ];
+
+        // Add "EXT_texture_webp" extension if WebP textures are present
+        if has_webp {
+            extensions_used.push("EXT_texture_webp".to_string());
+        }
+
+        extensions_used
+    };
+
     // Build the JSON part of glTF
     let gltf = Gltf {
         scenes: vec![Scene {
@@ -445,15 +272,12 @@ pub fn write_gltf_glb<W: Write>(
         accessors: gltf_accessors,
         buffer_views: gltf_buffer_views,
         buffers: gltf_buffers,
-        extensions: nusamai_gltf_json::extensions::gltf::Gltf {
+        extensions: nusamai_gltf::nusamai_gltf_json::extensions::gltf::Gltf {
             ext_structural_metadata: structural_metadata,
             ..Default::default()
         }
         .into(),
-        extensions_used: vec![
-            "EXT_mesh_features".to_string(),
-            "EXT_structural_metadata".to_string(),
-        ],
+        extensions_used,
         ..Default::default()
     };
 
@@ -463,7 +287,7 @@ pub fn write_gltf_glb<W: Write>(
         bin: Some(bin_content.into()),
     }
     .to_writer_with_alignment(writer, 8)
-    .map_err(SinkError::file_writer)?;
+    .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
     Ok(())
 }

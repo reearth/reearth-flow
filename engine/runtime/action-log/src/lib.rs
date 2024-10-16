@@ -1,5 +1,6 @@
 mod action;
 pub mod factory;
+pub(crate) mod json;
 mod split;
 
 pub use slog::error as slog_error;

@@ -1,4 +1,5 @@
 use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use super::coordnum::CoordNum;
@@ -50,5 +51,19 @@ where
         self.bottom.iter().all(|f| f.is_elevation_zero())
             && self.top.iter().all(|f| f.is_elevation_zero())
             && self.sides.iter().all(|f| f.is_elevation_zero())
+    }
+}
+
+impl Solid3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        self.bottom
+            .iter_mut()
+            .for_each(|f| f.transform_inplace(jgd2wgs));
+        self.top
+            .iter_mut()
+            .for_each(|f| f.transform_inplace(jgd2wgs));
+        self.sides
+            .iter_mut()
+            .for_each(|f| f.transform_inplace(jgd2wgs));
     }
 }

@@ -56,9 +56,9 @@ graphs:
                 env.get("geometryName")[3]
 
       - id: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
-        name: reprojector_01
+        name: horizontal_reprojector_01
         type: action
-        action: Reprojector
+        action: HorizontalReprojector
         with:
           epsgCode: 6677
 

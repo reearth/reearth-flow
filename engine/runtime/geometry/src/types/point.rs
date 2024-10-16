@@ -5,6 +5,7 @@ use approx::{AbsDiffEq, RelativeEq};
 use geo_types::Point as GeoPoint;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{create_geo_point, create_point_type, mismatch_geom_err};
@@ -147,7 +148,6 @@ impl<T: CoordNum> Point3D<T> {
         (self.0.x, self.0.y, self.0.z)
     }
 }
-
 impl<T: CoordNum> Point2D<T> {
     pub fn dot(self, other: Self) -> T {
         self.x() * other.x() + self.y() * other.y()
@@ -447,5 +447,11 @@ impl<T: CoordNum> From<GeoPoint<T>> for Point2D<T> {
 impl<T: CoordNum> From<Point2D<T>> for GeoPoint<T> {
     fn from(coord: Point2D<T>) -> Self {
         GeoPoint::new(coord.x(), coord.y())
+    }
+}
+
+impl Point3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        self.0.transform_inplace(jgd2wgs);
     }
 }

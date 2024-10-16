@@ -6,6 +6,7 @@ use flatgeom::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3}
 use geo_types::{MultiPolygon as GeoMultiPolygon, Polygon as GeoPolygon};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{
@@ -295,5 +296,13 @@ impl<T: CoordNum> From<GeoMultiPolygon<T>> for MultiPolygon2D<T> {
             .map(Polygon2D::from)
             .collect::<Vec<_>>();
         MultiPolygon2D::new(polygons)
+    }
+}
+
+impl MultiPolygon3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        for poly in self.0.iter_mut() {
+            poly.transform_inplace(jgd2wgs);
+        }
     }
 }

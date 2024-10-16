@@ -83,5 +83,6 @@ pub mod image;
 pub mod json;
 pub mod serde;
 pub mod str;
+pub mod texture;
 pub mod uri;
 pub mod xml;

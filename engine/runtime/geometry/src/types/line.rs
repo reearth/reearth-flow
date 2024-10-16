@@ -4,6 +4,7 @@ use std::hash::{Hash, Hasher};
 use approx::{AbsDiffEq, RelativeEq};
 use geo_types::Line as GeoLine;
 use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use crate::utils::{line_bounding_rect, point_line_euclidean_distance};
@@ -298,5 +299,12 @@ impl<T: CoordNum> From<GeoLine<T>> for Line2D<T> {
 impl<T: CoordNum> From<Line2D<T>> for GeoLine<T> {
     fn from(line: Line2D<T>) -> Self {
         GeoLine::new(line.start, line.end)
+    }
+}
+
+impl Line3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        self.start.transform_inplace(jgd2wgs);
+        self.end.transform_inplace(jgd2wgs);
     }
 }

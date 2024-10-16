@@ -296,6 +296,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "atlas-packer"
+version = "0.0.0"
+source = "git+https://github.com/MIERUNE/atlas-packer.git#02cf71dfa3be88964fdb66bcd1035d0b17def049"
+dependencies = [
+ "clap",
+ "hashbrown 0.14.5",
+ "image 0.25.2",
+ "rayon",
+ "rstar 0.12.0",
+ "stretto",
+ "sys-info",
+ "thiserror",
+ "webp",
+]
+
+[[package]]
 name = "atomic"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -575,9 +591,9 @@ dependencies = [
 
 [[package]]
 name = "bytemuck"
-version = "1.18.0"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94bbb0ad554ad961ddc5da507a12a29b14e4ae5bda06b19f575a3e6079d2e2ae"
+checksum = "8334215b81e418a0a7bdb8ef0849474f40bb10c8b71f1c4ed315cff49f32494d"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -784,9 +800,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.19"
+version = "4.5.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7be5744db7978a28d9df86a214130d106a89ce49644cbc4e3f0c22c3fba30615"
+checksum = "b97f376d85a664d5837dbae44bf546e6477a679ff6610010f17276f686d867e8"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -794,9 +810,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.19"
+version = "4.5.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5fbc17d3ef8278f55b282b2a2e75ae6f6c7d4bb70ed3d0382375104bfafdb4b"
+checksum = "19bc80abd44e4bed93ca373a0704ccbd1b710dc5749406201bb018272808dc54"
 dependencies = [
  "anstream",
  "anstyle",
@@ -2081,7 +2097,7 @@ checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 dependencies = [
  "ahash 0.8.11",
  "allocator-api2",
- "serde",
+ "rayon",
 ]
 
 [[package]]
@@ -2740,6 +2756,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libwebp-sys"
+version = "0.9.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54cd30df7c7165ce74a456e4ca9732c603e8dc5e60784558c1c6dc047f876733"
+dependencies = [
+ "cc",
+ "glob",
+]
+
+[[package]]
 name = "libxml"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2828,7 +2854,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.0#280cba9b3890306c92bb814364e0323a42dd8a3e"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3160,7 +3186,7 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.0#280cba9b3890306c92bb814364e0323a42dd8a3e"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "ahash 0.8.11",
  "chrono",
@@ -3181,7 +3207,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.0#280cba9b3890306c92bb814364e0323a42dd8a3e"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "byteorder",
  "nusamai-gltf-json",
@@ -3191,7 +3217,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.0#280cba9b3890306c92bb814364e0323a42dd8a3e"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "cesiumtiles 0.0.0 (git+https://github.com/MIERUNE/cesiumtiles-rs.git)",
  "serde",
@@ -3202,7 +3228,7 @@ dependencies = [
 [[package]]
 name = "nusamai-mvt"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.0#280cba9b3890306c92bb814364e0323a42dd8a3e"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "ahash 0.8.11",
  "indexmap 2.6.0",
@@ -3213,7 +3239,7 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.0#280cba9b3890306c92bb814364e0323a42dd8a3e"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -3231,7 +3257,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.0#280cba9b3890306c92bb814364e0323a42dd8a3e"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
 dependencies = [
  "japan-geoid",
  "thiserror",
@@ -3377,20 +3403,6 @@ dependencies = [
 
 [[package]]
 name = "opentelemetry"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "803801d3d3b71cd026851a53f974ea03df3d179cb758b260136a6c9e22e196af"
-dependencies = [
- "futures-core",
- "futures-sink",
- "js-sys",
- "once_cell",
- "pin-project-lite",
- "thiserror",
-]
-
-[[package]]
-name = "opentelemetry"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "570074cc999d1a58184080966e5bd3bf3a9a4af650c3b05047c2621e7405cd17"
@@ -3412,9 +3424,9 @@ dependencies = [
  "async-trait",
  "futures-core",
  "http 1.1.0",
- "opentelemetry 0.26.0",
+ "opentelemetry",
  "opentelemetry-proto",
- "opentelemetry_sdk 0.26.0",
+ "opentelemetry_sdk",
  "prost",
  "thiserror",
  "tokio",
@@ -3427,8 +3439,8 @@ version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abbbb5e699de56aacd607631354d0ed0315e67ed36b7398849e4f8a039eaa07e"
 dependencies = [
- "opentelemetry 0.26.0",
- "opentelemetry_sdk 0.26.0",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "prost",
  "tonic",
 ]
@@ -3448,29 +3460,11 @@ dependencies = [
  "async-trait",
  "chrono",
  "futures-util",
- "opentelemetry 0.26.0",
- "opentelemetry_sdk 0.26.0",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "ordered-float",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "opentelemetry_sdk"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0da0d6b47a3dbc6e9c9e36a0520e25cf943e046843818faaa3f87365a548c82"
-dependencies = [
- "async-trait",
- "futures-channel",
- "futures-executor",
- "futures-util",
- "glob",
- "once_cell",
- "opentelemetry 0.25.0",
- "percent-encoding",
- "rand 0.8.5",
- "thiserror",
 ]
 
 [[package]]
@@ -3485,7 +3479,7 @@ dependencies = [
  "futures-util",
  "glob",
  "once_cell",
- "opentelemetry 0.26.0",
+ "opentelemetry",
  "percent-encoding",
  "rand 0.8.5",
  "serde_json",
@@ -4393,7 +4387,9 @@ version = "0.0.2"
 dependencies = [
  "ahash 0.8.11",
  "async-trait",
+ "atlas-packer",
  "bincode",
+ "bytemuck",
  "byteorder",
  "bytes",
  "cesiumtiles 0.0.0 (git+https://github.com/reearth/cesiumtiles-rs.git)",
@@ -4405,7 +4401,7 @@ dependencies = [
  "flate2",
  "flatgeom",
  "geojson",
- "hashbrown 0.14.5",
+ "hashbrown 0.15.0",
  "image 0.25.2",
  "indexmap 2.6.0",
  "itertools",
@@ -4433,6 +4429,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",
@@ -4484,8 +4481,8 @@ dependencies = [
  "directories",
  "indoc",
  "once_cell",
- "opentelemetry 0.26.0",
- "opentelemetry_sdk 0.26.0",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "reearth-flow-action-log",
  "reearth-flow-action-plateau-processor",
  "reearth-flow-action-processor",
@@ -4712,11 +4709,11 @@ name = "reearth-flow-telemetry"
 version = "0.0.2"
 dependencies = [
  "once_cell",
- "opentelemetry 0.26.0",
+ "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
  "opentelemetry-stdout",
- "opentelemetry_sdk 0.26.0",
+ "opentelemetry_sdk",
  "serde",
  "thiserror",
 ]
@@ -4757,7 +4754,7 @@ dependencies = [
  "flatgeom",
  "futures",
  "geojson",
- "hashbrown 0.14.5",
+ "hashbrown 0.15.0",
  "image 0.25.2",
  "indexmap 2.6.0",
  "itertools",
@@ -5931,6 +5928,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sys-info"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5cfbd84f86389198ade41b439f72a5b1b3a8ba728e61cd589e1720d0df44c39"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
 name = "system-deps"
 version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6653,14 +6660,14 @@ dependencies = [
 
 [[package]]
 name = "tracing-opentelemetry"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5eabc56d23707ad55ba2a0750fc24767125d5a0f51993ba41ad2c441cc7b8dea"
+checksum = "dc58af5d3f6c5811462cabb3289aec0093f7338e367e5a33d28c0433b3c7360b"
 dependencies = [
  "js-sys",
  "once_cell",
- "opentelemetry 0.25.0",
- "opentelemetry_sdk 0.25.0",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "smallvec",
  "tracing",
  "tracing-core",
@@ -7059,6 +7066,16 @@ dependencies = [
  "pkg-config",
  "soup2-sys",
  "system-deps 6.2.2",
+]
+
+[[package]]
+name = "webp"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f53152f51fb5af0c08484c33d16cca96175881d1f3dec068c23b31a158c2d99"
+dependencies = [
+ "image 0.25.2",
+ "libwebp-sys",
 ]
 
 [[package]]

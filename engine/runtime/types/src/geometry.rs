@@ -323,6 +323,12 @@ impl CityGmlGeometry {
         }
         max_min
     }
+
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        self.gml_geometries
+            .iter_mut()
+            .for_each(|feature| feature.transform_inplace(jgd2wgs));
+    }
 }
 
 #[derive(Clone, Debug)]
