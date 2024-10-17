@@ -122,8 +122,13 @@ impl StorageClient for GcsClient {
 
         // Limit version history to last 100 versions
         if metadata.version_history.len() > 100 {
-            let oldest = *metadata.version_history.keys().next().unwrap();
-            metadata.version_history.remove(&oldest);
+            while metadata.version_history.len() > 100 {
+                if let Some(oldest) = metadata.version_history.keys().next().cloned() {
+                    metadata.version_history.remove(&oldest);
+                } else {
+                    break;
+                }
+            }
         }
 
         self.upload(metadata_path, &metadata).await?;
