@@ -187,7 +187,7 @@ impl StorageClient for LocalClient {
         Ok(versioned_path)
     }
 
-    async fn update_versioned<T: Serialize + Send + Sync + 'static>(
+    async fn update_latest_versioned<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
         data: &T,
@@ -434,7 +434,7 @@ mod tests {
 
         // Update the version
         client
-            .update_versioned("test_file".to_string(), &test_data2)
+            .update_latest_versioned("test_file".to_string(), &test_data2)
             .await?;
 
         // Download latest version

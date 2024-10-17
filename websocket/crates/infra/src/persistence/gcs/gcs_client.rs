@@ -131,7 +131,7 @@ impl StorageClient for GcsClient {
         Ok(versioned_path)
     }
 
-    async fn update_versioned<T: Serialize + Send + Sync + 'static>(
+    async fn update_latest_versioned<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
         data: &T,
@@ -239,7 +239,7 @@ mod tests {
             async fn download<T: for<'de> Deserialize<'de> + Send + 'static>(&self, path: String) -> Result<T, GcsError>;
             async fn delete(&self, path: String) -> Result<(), GcsError>;
             async fn upload_versioned<T: Serialize + Send + Sync + 'static>(&self, path: String, data: &T) -> Result<String, GcsError>;
-            async fn update_versioned<T: Serialize + Send + Sync + 'static>(&self, path: String, data: &T) -> Result<(), GcsError>;
+            async fn update_latest_versioned<T: Serialize + Send + Sync + 'static>(&self, path: String, data: &T) -> Result<(), GcsError>;
             async fn get_latest_version(&self, path_prefix: &str) -> Result<Option<String>, GcsError>;
             async fn get_version_at(&self, path_prefix: &str, timestamp: DateTime<Utc>) -> Result<Option<String>, GcsError>;
             async fn list_versions(&self, path_prefix: &str, limit: Option<usize>) -> Result<Vec<(DateTime<Utc>, String)>, GcsError>;
@@ -264,12 +264,12 @@ mod tests {
     #[tokio::test]
     async fn test_update_versioned() {
         let mut mock = MockGcsClientMock::new();
-        mock.expect_update_versioned()
+        mock.expect_update_latest_versioned()
             .with(eq("test_path".to_string()), always())
             .returning(|_: String, _: &String| Ok(()));
 
         let result = mock
-            .update_versioned("test_path".to_string(), &"updated_data".to_string())
+            .update_latest_versioned("test_path".to_string(), &"updated_data".to_string())
             .await;
         assert!(result.is_ok());
     }

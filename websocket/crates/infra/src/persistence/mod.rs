@@ -25,7 +25,7 @@ pub trait StorageClient {
         data: &T,
     ) -> Result<String, Self::Error>;
 
-    async fn update_versioned<T: Serialize + Send + Sync + 'static>(
+    async fn update_latest_versioned<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
         data: &T,

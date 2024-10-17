@@ -160,7 +160,7 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
             .await?;
         if let Some(_version) = latest_version {
             let path = format!("snapshot/{}", snapshot.metadata.project_id);
-            self.client.update_versioned(path, &snapshot).await?;
+            self.client.update_latest_versioned(path, &snapshot).await?;
         } else {
             let path = format!("snapshot/{}", snapshot.metadata.project_id);
             self.client.upload_versioned(path, &snapshot).await?;
@@ -175,7 +175,7 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", project_id);
         self.client
-            .update_versioned(path, &snapshot_data.state)
+            .update_latest_versioned(path, &snapshot_data.state)
             .await?;
         Ok(())
     }
@@ -237,7 +237,7 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
 
     async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         let path = format!("snapshots/{}", snapshot.metadata.id);
-        self.client.update_versioned(path, &snapshot).await?;
+        self.client.update_latest_versioned(path, &snapshot).await?;
         Ok(())
     }
 
@@ -248,7 +248,7 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
     ) -> Result<(), Self::Error> {
         let path = format!("snapshot_data/{}", snapshot_id);
         self.client
-            .update_versioned(path, &snapshot_data.state)
+            .update_latest_versioned(path, &snapshot_data.state)
             .await?;
         Ok(())
     }
