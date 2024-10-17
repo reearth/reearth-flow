@@ -41,11 +41,7 @@ pub(super) fn slice_cityobj_geoms(
         .gml_geometries
         .iter()
         .for_each(|entry| match entry.ty {
-            GeometryType::Solid
-            | GeometryType::Surface
-            | GeometryType::Triangle
-            | GeometryType::CompositeSurface
-            | GeometryType::MultiSurface => {
+            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
                 for flow_poly in entry.polygons.iter() {
                     let idx_poly: Polygon2 = flow_poly.clone().into();
                     let poly = idx_poly.transform(|[lng, lat]| {
@@ -72,13 +68,10 @@ pub(super) fn slice_cityobj_geoms(
                     }
                 }
             }
-            GeometryType::Curve | GeometryType::MultiCurve => {
+            GeometryType::Curve => {
                 unimplemented!()
             }
-            GeometryType::Point | GeometryType::MultiPoint => {
-                unimplemented!()
-            }
-            GeometryType::Tin => {
+            GeometryType::Point => {
                 unimplemented!()
             }
         });
