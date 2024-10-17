@@ -24,7 +24,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn-
       - name: Install
-        run: yarn install
+        run: yarn install --frozen-lockfile
       - name: type
         run: yarn run type
       - name: eslint
@@ -40,3 +40,23 @@ jobs:
       #     flags: web,web-beta,web-classic,web-utils
       - name: Check translations
         run: yarn run i18n --fail-on-update
+
+  build-docker-image-test:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: reearth/reearth-flow-ui
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v2
+        with:
+          context: ui
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          push: false

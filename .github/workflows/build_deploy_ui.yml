@@ -51,7 +51,6 @@ jobs:
 
   build-docker-image:
     name: Build and Push Docker Image
-    needs: build-ui
     runs-on: ubuntu-latest
     if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
     env:
@@ -59,11 +58,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
-
-      - name: Download UI Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: flow-ui-artifact
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -103,9 +97,6 @@ jobs:
           echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
-
-      - name: Extract UI Artifact
-        run: tar -xvf flow-ui_${{ inputs.name }}.tar.gz -C ui
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v2
