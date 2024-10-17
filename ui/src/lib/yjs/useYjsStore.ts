@@ -7,16 +7,15 @@ import { config } from "@flow/config";
 import { useCurrentProject } from "@flow/stores";
 import type { Edge, Node, Workflow } from "@flow/types";
 import { createWorkflowsYaml } from "@flow/utils/engineWorkflowYaml/workflowYaml";
-import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 import { useDeployment } from "../gql/deployment";
 
-import { fromYjsText } from "./conversions";
 import useWorkflowTabs from "./useWorkflowTabs";
 import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
-import { yWorkflowBuilder, type YWorkflow } from "./workflowBuilder";
+import { yWorkflowBuilder, type YWorkflow } from "./utils";
+import { fromYjsText } from "./utils/conversions";
 
 export default ({
   workflowId,
@@ -132,15 +131,11 @@ export default ({
 
     if (!yamlWorkflow || !currentProject) return;
 
-    const formData = yamlToFormData(
-      yamlWorkflow,
-      `${workflowId}-workflow.yaml`,
-    );
-
     await createDeployment(
-      currentProject.id,
       currentProject.workspaceId,
-      formData,
+      currentProject.id,
+      workflowId,
+      yamlWorkflow,
     );
   }, [rawWorkflows, currentProject, createDeployment]);
 
