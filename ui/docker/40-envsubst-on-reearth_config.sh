@@ -12,8 +12,6 @@ entrypoint_log() {
 auto_envsubst() {
     local template_file="/tmp/reearth_config.json.tmpl"
     local output_file="/opt/reearth-flow/reearth_config.json"
-    local filter="${NGINX_ENVSUBST_FILTER:-}"
-    local defined_envs
 
     if [ ! -f "$template_file" ]; then
         entrypoint_log "$ME: ERROR: template file $template_file does not exist"
@@ -25,10 +23,8 @@ auto_envsubst() {
         return 1
     fi
 
-    defined_envs=$(printf '${%s} ' $(env | cut -d= -f1 | awk "/${filter}/ {print}"))
-
     entrypoint_log "$ME: Running envsubst on $template_file to $output_file"
-    envsubst "$defined_envs" < "$template_file" > "$output_file"
+    envsubst < "$template_file" > "$output_file"
 
     if [ $? -ne 0 ]; then
         entrypoint_log "$ME: ERROR: envsubst failed"
