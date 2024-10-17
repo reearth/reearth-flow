@@ -12,7 +12,7 @@ use super::{material::Material, material::Texture, tiling, tiling::zxy_from_lng_
 
 pub type TileZXYName = (u8, u32, u32, String);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SlicedFeature {
     // polygons [x, y, z, u, v]
     pub polygons: MultiPolygon<'static, [f64; 5]>,
@@ -68,11 +68,7 @@ pub fn slice_to_tiles<E>(
             continue;
         };
         match entry.ty {
-            GeometryType::Solid
-            | GeometryType::Surface
-            | GeometryType::Triangle
-            | GeometryType::CompositeSurface
-            | GeometryType::MultiSurface => {
+            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
                 for (((poly, poly_uv), poly_mat), poly_tex) in entry
                     .polygons
                     .iter()
@@ -188,14 +184,10 @@ pub fn slice_to_tiles<E>(
                     }
                 }
             }
-            reearth_flow_types::geometry::GeometryType::Curve
-            | reearth_flow_types::geometry::GeometryType::MultiCurve => {
+            reearth_flow_types::geometry::GeometryType::Curve => {
                 unimplemented!()
             }
-            GeometryType::Point | GeometryType::MultiPoint => {
-                unimplemented!()
-            }
-            GeometryType::Tin => {
+            GeometryType::Point => {
                 unimplemented!()
             }
         };

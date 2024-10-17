@@ -4,7 +4,7 @@ use std::{
 };
 
 use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader};
-use nusamai_plateau::{appearance::AppearanceStore, models, Entity};
+use nusamai_plateau::{appearance::AppearanceStore, models, Entity, GeometricMergedownTransform};
 use quick_xml::NsReader;
 use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
@@ -90,12 +90,10 @@ fn parse_tree_reader<R: BufRead>(
                             geometry_store: RwLock::new(geometry_store).into(),
                             appearance_store: Default::default(),
                             bounded_by,
-                            geometry_refs: st.geometry_refs().clone(),
                         };
                         entities.push(entity);
                     }
                 }
-                st.refresh_geomrefs();
                 Ok(())
             }
             b"app:appearanceMember" => {
@@ -114,7 +112,8 @@ fn parse_tree_reader<R: BufRead>(
         }
     })
     .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
-    for entity in entities {
+    let mut transformer = GeometricMergedownTransform::new();
+    for mut entity in entities {
         {
             let geom_store = entity.geometry_store.read().unwrap();
             entity.appearance_store.write().unwrap().merge_global(
@@ -122,6 +121,17 @@ fn parse_tree_reader<R: BufRead>(
                 &geom_store.ring_ids,
                 &geom_store.surface_spans,
             );
+        }
+        {
+            let mut geom_store = entity.geometry_store.write().unwrap();
+            geom_store.vertices.iter_mut().for_each(|v| {
+                // Swap x and y (lat, lng -> lng, lat)
+                (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
+            });
+        }
+        {
+            let entity = &mut entity;
+            transformer.transform(entity);
         }
         let attributes = entity.root.to_attribute_json();
 
