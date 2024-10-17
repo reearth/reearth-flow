@@ -53,7 +53,6 @@ reearth-flow-action-source = { path = "runtime/action-source" }
 reearth-flow-common = { path = "runtime/common" }
 reearth-flow-eval-expr = { path = "runtime/eval-expr" }
 reearth-flow-geometry = { path = "runtime/geometry" }
-reearth-flow-macros = { path = "runtime/macros" }
 reearth-flow-runner = { path = "runtime/runner" }
 reearth-flow-runtime = { path = "runtime/runtime" }
 reearth-flow-state = { path = "runtime/state" }
@@ -84,7 +83,6 @@ cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs.git" }
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.20", features = ["env", "string"] }
 clipper-sys = "0.7.2"
-color-eyre = "0.6.3"
 colored = "2.1.0"
 colorsys = "0.6.7"
 crossbeam = "0.8.4"
@@ -111,7 +109,6 @@ itertools = "0.13.0"
 jsonpath_lib = "0.3.0"
 libxml = "0.3.3"
 nalgebra = "0.33.0"
-nalgebra-glm = "0.19.0"
 num-traits = "0.2.19"
 nutype = { version = "0.5.0", features = ["schemars08", "serde"] }
 object_store = "0.11.0"
@@ -124,10 +121,8 @@ opentelemetry-stdout = { version = "0.26.0", default-features = false, features 
 opentelemetry_sdk = { version = "0.26.0", default-features = false, features = ["metrics", "rt-tokio", "trace"] }
 parking_lot = "0.12.3"
 petgraph = "0.6.5"
-pretty_assertions = "1.4.1"
 prost = "0.13.3"
 quick-xml = "0.36.2"
-rand = "0.8.5"
 rayon = "1.10.0"
 regex = "1.11.0"
 reqwest = { version = "0.12.8", default-features = false, features = ["blocking", "rustls-tls"] }
@@ -139,7 +134,6 @@ rstest = "0.23.0"
 rust_xlsxwriter = "0.79.0"
 schemars = { version = "0.8.21", features = ["uuid1"] }
 serde = { version = "1.0.210", features = ["derive"] }
-serde_derive = "1.0.210"
 serde_json = { version = "1.0.128", features = ["arbitrary_precision"] }
 serde_with = "3.11.0"
 serde_yaml = "0.9.34"
@@ -148,15 +142,11 @@ slog = { version = "2.7.0", features = ["max_level_trace", "release_max_level_tr
 slog-async = "2.8.0"
 slog-term = "2.9.1"
 sloggers = { version = "2.2.0", default-features = false }
-strum = "0.26.3"
 strum_macros = "0.26.4"
 tempfile = "3.13.0"
 thiserror = "1.0.64"
 time = { version = "0.3.36", features = ["formatting"] }
 tokio = { version = "1.38.1", features = ["full", "time"] }
-tokio-stream = { version = "0.1.16", features = ["sync"] }
-tokio-util = { version = "0.7.12", features = ["full"] }
-toml = "0.8.19"
 tracing = "0.1.40"
 tracing-opentelemetry = { version = "0.27.0", default-features = false, features = ["metrics", "tracing-log"] }
 tracing-subscriber = { version = "0.3.18", features = [
