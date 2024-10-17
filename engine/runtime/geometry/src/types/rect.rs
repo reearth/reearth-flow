@@ -1,6 +1,7 @@
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;
@@ -227,6 +228,13 @@ where
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.min.is_elevation_zero() && self.max.is_elevation_zero()
+    }
+}
+
+impl Rect3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        self.min.transform_inplace(jgd2wgs);
+        self.max.transform_inplace(jgd2wgs);
     }
 }
 

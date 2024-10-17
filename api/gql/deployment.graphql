@@ -4,7 +4,7 @@ type Deployment implements Node {
   id: ID!
   projectId: ID!
   workspaceId: ID!
-  workflowId: ID!
+  workflowUrl: String!
   version: String!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -33,9 +33,10 @@ enum JobStatus {
 # Input Types
 
 input CreateDeploymentInput {
-  projectId: ID!
   workspaceId: ID!
-  workflow: InputWorkflow!
+  projectId: ID!
+  metaFile: Upload!
+  workflowYaml: Upload!
 }
 
 input ExecuteDeploymentInput {

@@ -6,9 +6,9 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
+	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
-	"github.com/reearth/reearth-flow/api/pkg/workflow"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/usecasex"
 )
@@ -16,7 +16,8 @@ import (
 type CreateDeploymentParam struct {
 	Project   id.ProjectID
 	Workspace accountdomain.WorkspaceID
-	Workflow  *workflow.Workflow
+	Meta      file.File
+	Workflow  file.File
 }
 
 type ExecuteDeploymentParam struct {

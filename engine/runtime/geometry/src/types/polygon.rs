@@ -1,11 +1,18 @@
+use std::hash::{Hash, Hasher};
+
 use approx::{AbsDiffEq, RelativeEq};
+use flatgeom::{
+    LineString2 as NLineString2, LineString3 as NLineString3, Polygon2 as NPolygon2,
+    Polygon3 as NPolygon3,
+};
+use geo_types::Polygon as GeoPolygon;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
-use nusamai_geometry::{Polygon2 as NPolygon2, Polygon3 as NPolygon3};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use crate::algorithm::contains::Contains;
+use crate::algorithm::coords_iter::CoordsIter;
 use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
 use crate::algorithm::GeoFloat;
 
@@ -377,7 +384,43 @@ impl<'a> From<NPolygon2<'a>> for Polygon2D<f64> {
     }
 }
 
-impl<'a> From<NPolygon3<'a>> for Polygon<f64> {
+impl<'a> From<Polygon2D<f64>> for NPolygon2<'a> {
+    #[inline]
+    fn from(poly: Polygon2D<f64>) -> Self {
+        let interiors: Vec<NLineString2> = poly
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        let mut npoly = NPolygon2::new();
+        let exterior: NLineString2 = poly.exterior().clone().into();
+        npoly.add_ring(&exterior);
+        for interior in interiors.iter() {
+            npoly.add_ring(interior);
+        }
+        npoly
+    }
+}
+
+impl<'a> From<Polygon3D<f64>> for NPolygon2<'a> {
+    #[inline]
+    fn from(poly: Polygon3D<f64>) -> Self {
+        let interiors: Vec<NLineString2> = poly
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        let mut npoly = NPolygon2::new();
+        let exterior: NLineString2 = poly.exterior().clone().into();
+        npoly.add_ring(&exterior);
+        for interior in interiors.iter() {
+            npoly.add_ring(interior);
+        }
+        npoly
+    }
+}
+
+impl<'a> From<NPolygon3<'a>> for Polygon3D<f64> {
     #[inline]
     fn from(poly: NPolygon3<'a>) -> Self {
         let interiors = poly.interiors().map(|interior| interior.into()).collect();
@@ -385,9 +428,25 @@ impl<'a> From<NPolygon3<'a>> for Polygon<f64> {
     }
 }
 
-pub fn from_polygon_5d(
-    polygon: &nusamai_geometry::Polygon<[f64; 5]>,
-) -> (Polygon3D<f64>, Polygon2D<f64>) {
+impl<'a> From<Polygon3D<f64>> for NPolygon3<'a> {
+    #[inline]
+    fn from(poly: Polygon3D<f64>) -> Self {
+        let interiors: Vec<NLineString3> = poly
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        let mut npoly = NPolygon3::new();
+        let exterior: NLineString3 = poly.exterior().clone().into();
+        npoly.add_ring(&exterior);
+        for interior in interiors.iter() {
+            npoly.add_ring(interior);
+        }
+        npoly
+    }
+}
+
+pub fn from_polygon_5d(polygon: &flatgeom::Polygon<[f64; 5]>) -> (Polygon3D<f64>, Polygon2D<f64>) {
     let (exterior3d, exterior2d) = from_line_string_5d(polygon.exterior());
     let mut interiors3d: Vec<LineString3D<f64>> = Default::default();
     let mut interiors2d: Vec<LineString2D<f64>> = Default::default();
@@ -512,5 +571,83 @@ where
     fn is_elevation_zero(&self) -> bool {
         self.exterior.is_elevation_zero()
             && self.interiors.iter().all(LineString::is_elevation_zero)
+    }
+}
+
+impl<Z: CoordFloat> Polygon<f64, Z> {
+    pub fn approx_eq(&self, other: &Polygon<f64, Z>, epsilon: f64) -> bool {
+        self.exterior.approx_eq(&other.exterior, epsilon)
+            && self
+                .interiors
+                .iter()
+                .zip(other.interiors.iter())
+                .all(|(lhs, rhs)| lhs.approx_eq(rhs, epsilon))
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Polygon2DFloat(pub Polygon2D<f64>);
+
+impl Eq for Polygon2DFloat {}
+
+impl PartialEq for Polygon2DFloat {
+    fn eq(&self, other: &Self) -> bool {
+        let epsilon = 0.001;
+        if self.0.interiors().len() != other.0.interiors().len() {
+            return false;
+        }
+        self.0.exterior().approx_eq(other.0.exterior(), epsilon)
+            && self
+                .0
+                .interiors()
+                .iter()
+                .zip(other.0.interiors())
+                .all(|(lhs, rhs)| lhs.approx_eq(rhs, epsilon))
+    }
+}
+
+impl Hash for Polygon2DFloat {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let precision_inverse = 1000.0; // Inverse of epsilon used in PartialEq
+        for coord in self.0.exterior_coords_iter() {
+            let hashed_coord = (
+                (coord.x * precision_inverse).round() as i64,
+                (coord.y * precision_inverse).round() as i64,
+            );
+            hashed_coord.hash(state);
+        }
+        for interior in self.0.interiors() {
+            for coord in interior.coords_iter() {
+                let hashed_coord = (
+                    (coord.x * precision_inverse).round() as i64,
+                    (coord.y * precision_inverse).round() as i64,
+                );
+                hashed_coord.hash(state);
+            }
+        }
+    }
+}
+
+impl<T: CoordNum> From<Polygon2D<T>> for GeoPolygon<T> {
+    fn from(polygon: Polygon2D<T>) -> Self {
+        let exterior = polygon.exterior().clone().into();
+        let interiors = polygon
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        GeoPolygon::new(exterior, interiors)
+    }
+}
+
+impl<T: CoordNum> From<GeoPolygon<T>> for Polygon2D<T> {
+    fn from(polygon: GeoPolygon<T>) -> Self {
+        let exterior = polygon.exterior().clone().into();
+        let interiors = polygon
+            .interiors()
+            .iter()
+            .map(|interior| interior.clone().into())
+            .collect();
+        Polygon2D::new(exterior, interiors)
     }
 }

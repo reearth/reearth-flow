@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
-use nusamai_geometry::{LineString2 as NLineString2, LineString3 as NLineString3};
+use flatgeom::{LineString2 as NLineString2, LineString3 as NLineString3};
+use geo_types::LineString as GeoLineString;
 
 use crate::utils::line_string_bounding_rect;
 
@@ -297,7 +298,7 @@ impl<T: CoordNum, Z: CoordNum> IndexMut<usize> for LineString<T, Z> {
     }
 }
 
-impl<'a> From<NLineString2<'a>> for LineString<f64, NoValue> {
+impl<'a> From<NLineString2<'a>> for LineString2D<f64> {
     #[inline]
     fn from(coords: NLineString2<'a>) -> Self {
         LineString2D::new(
@@ -309,7 +310,18 @@ impl<'a> From<NLineString2<'a>> for LineString<f64, NoValue> {
     }
 }
 
-impl<'a> From<NLineString3<'a>> for LineString<f64> {
+impl<'a> From<LineString3D<f64>> for NLineString2<'a> {
+    #[inline]
+    fn from(coords: LineString3D<f64>) -> Self {
+        let mut line_string = NLineString2::new();
+        for coord in coords.iter() {
+            line_string.push([coord.x, coord.y]);
+        }
+        line_string
+    }
+}
+
+impl<'a> From<NLineString3<'a>> for LineString3D<f64> {
     #[inline]
     fn from(coords: NLineString3<'a>) -> Self {
         LineString3D::new(
@@ -321,8 +333,30 @@ impl<'a> From<NLineString3<'a>> for LineString<f64> {
     }
 }
 
+impl<'a> From<LineString2D<f64>> for NLineString2<'a> {
+    #[inline]
+    fn from(coords: LineString2D<f64>) -> Self {
+        let mut line_string = NLineString2::new();
+        for coord in coords.iter() {
+            line_string.push([coord.x, coord.y]);
+        }
+        line_string
+    }
+}
+
+impl<'a> From<LineString3D<f64>> for NLineString3<'a> {
+    #[inline]
+    fn from(coords: LineString3D<f64>) -> Self {
+        let mut line_string = NLineString3::new();
+        for coord in coords.iter() {
+            line_string.push([coord.x, coord.y, coord.z]);
+        }
+        line_string
+    }
+}
+
 pub fn from_line_string_5d(
-    line_strings: nusamai_geometry::LineString<[f64; 5]>,
+    line_strings: flatgeom::LineString<[f64; 5]>,
 ) -> (LineString3D<f64>, LineString2D<f64>) {
     let targets = line_strings
         .iter_closed()
@@ -480,5 +514,17 @@ impl<Z: CoordFloat> LineString<f64, Z> {
             }
         }
         true
+    }
+}
+
+impl<T: CoordNum> From<LineString2D<T>> for GeoLineString<T> {
+    fn from(line_string: LineString2D<T>) -> Self {
+        GeoLineString(line_string.0.into_iter().map(|c| c.x_y().into()).collect())
+    }
+}
+
+impl<T: CoordNum> From<GeoLineString<T>> for LineString2D<T> {
+    fn from(line_string: GeoLineString<T>) -> Self {
+        LineString2D::new(line_string.0.into_iter().map(Into::into).collect())
     }
 }

@@ -6,8 +6,8 @@ use reearth_flow_runtime::node::{NodeKind, SinkFactory};
 use crate::{
     echo::EchoSinkFactory,
     file::{
-        cesium3dtiles::Cesium3DTilesSinkFactory, geojson::GeoJsonWriterFactory,
-        mvt::MVTSinkFactory, writer::FileWriterSinkFactory,
+        cesium3dtiles::sink::Cesium3DTilesSinkFactory, geojson::GeoJsonWriterFactory,
+        mvt::sink::MVTSinkFactory, writer::FileWriterSinkFactory,
     },
     noop::NoopSinkFactory,
 };

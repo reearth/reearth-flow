@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
 use reearth_flow_state::State;
@@ -37,7 +38,7 @@ impl Clone for Box<dyn FeatureWriter> {
 #[async_trait::async_trait]
 pub trait FeatureWriter: Send + Sync + Debug + FeatureWriterClone {
     fn edge_id(&self) -> EdgeId;
-    fn write(&mut self, feature: &Feature) -> Result<(), FeatureWriterError>;
+    async fn write(&mut self, feature: &Feature) -> Result<(), FeatureWriterError>;
     async fn flush(&self) -> Result<(), FeatureWriterError>;
 }
 
@@ -49,11 +50,16 @@ pub fn create_feature_writer(edge_id: EdgeId, state: Arc<State>) -> Box<dyn Feat
 pub(crate) struct PrimaryKeyLookupFeatureWriter {
     edge_id: EdgeId,
     state: Arc<State>,
+    thread_counter: Arc<AtomicU64>,
 }
 
 impl PrimaryKeyLookupFeatureWriter {
     pub(crate) fn new(edge_id: EdgeId, state: Arc<State>) -> Self {
-        Self { edge_id, state }
+        Self {
+            edge_id,
+            state,
+            thread_counter: Arc::new(AtomicU64::new(0)),
+        }
     }
 }
 
@@ -63,14 +69,28 @@ impl FeatureWriter for PrimaryKeyLookupFeatureWriter {
         self.edge_id.clone()
     }
 
-    fn write(&mut self, feature: &Feature) -> Result<(), FeatureWriterError> {
+    async fn write(&mut self, feature: &Feature) -> Result<(), FeatureWriterError> {
         let item: serde_json::Value = feature.clone().into();
-        self.state
-            .append_sync(&item, self.edge_id.to_string().as_str())
-            .map_err(|e| FeatureWriterError::Flush(e.to_string()))
+        self.thread_counter
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let result = self
+            .state
+            .append(&item, self.edge_id.to_string().as_str())
+            .await
+            .map_err(|e| FeatureWriterError::Flush(e.to_string()));
+        self.thread_counter
+            .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+        result
     }
 
     async fn flush(&self) -> Result<(), FeatureWriterError> {
+        while self
+            .thread_counter
+            .load(std::sync::atomic::Ordering::Relaxed)
+            > 0
+        {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
         Ok(())
     }
 }

@@ -5,25 +5,25 @@ import (
 )
 
 type Deployment struct {
-	id        ID
-	project   ProjectID
-	workspace WorkspaceID
-	workflow  WorkflowID
-	version   string
-	createdAt time.Time
-	updatedAt time.Time
+	id          ID
+	project     ProjectID
+	workspace   WorkspaceID
+	workflowUrl string
+	version     string
+	createdAt   time.Time
+	updatedAt   time.Time
 }
 
-func NewDeployment(id ID, project ProjectID, workspace WorkspaceID, workflow WorkflowID, version string) *Deployment {
+func NewDeployment(id ID, project ProjectID, workspace WorkspaceID, workflowUrl string, version string) *Deployment {
 	now := time.Now()
 	return &Deployment{
-		id:        id,
-		project:   project,
-		workspace: workspace,
-		workflow:  workflow,
-		version:   version,
-		createdAt: now,
-		updatedAt: now,
+		id:          id,
+		project:     project,
+		workspace:   workspace,
+		workflowUrl: workflowUrl,
+		version:     version,
+		createdAt:   now,
+		updatedAt:   now,
 	}
 }
 
@@ -39,8 +39,8 @@ func (d *Deployment) Workspace() WorkspaceID {
 	return d.workspace
 }
 
-func (d *Deployment) Workflow() WorkflowID {
-	return d.workflow
+func (d *Deployment) WorkflowUrl() string {
+	return d.workflowUrl
 }
 
 func (d *Deployment) Version() string {
@@ -69,8 +69,8 @@ func (d *Deployment) SetWorkspace(workspace WorkspaceID) {
 	d.updatedAt = time.Now()
 }
 
-func (d *Deployment) SetWorkflow(workflow WorkflowID) {
-	d.workflow = workflow
+func (d *Deployment) SetWorkflowUrl(workflowUrl string) {
+	d.workflowUrl = workflowUrl
 	d.updatedAt = time.Now()
 }
 

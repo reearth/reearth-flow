@@ -15,13 +15,13 @@ use rhai::Dynamic;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::file::excel::ExcelWriterParam;
 use reearth_flow_common::uri::Uri;
 use serde_json::Value;
 
 use crate::errors::SinkError;
 
 use super::excel::write_excel;
-use super::gltf::write_gltf;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileWriterSinkFactory;
@@ -70,7 +70,6 @@ impl SinkFactory for FileWriterSinkFactory {
                 SinkError::BuildFactory("Missing required parameter `with`".to_string()).into(),
             );
         };
-
         let sink = FileWriter {
             params,
             buffer: Vec::new(),
@@ -111,10 +110,8 @@ pub enum FileWriterParam {
     Excel {
         #[serde(flatten)]
         common_property: FileWriterCommonParam,
-    },
-    Gltf {
         #[serde(flatten)]
-        common_property: FileWriterCommonParam,
+        excel_property: ExcelWriterParam,
     },
 }
 
@@ -126,8 +123,9 @@ impl FileWriterParam {
             FileWriterParam::Json {
                 common_property, ..
             } => common_property,
-            FileWriterParam::Excel { common_property } => common_property,
-            FileWriterParam::Gltf { common_property } => common_property,
+            FileWriterParam::Excel {
+                common_property, ..
+            } => common_property,
         }
     }
 }
@@ -164,8 +162,9 @@ impl Sink for FileWriter {
             FileWriterParam::Tsv { .. } => {
                 write_csv(&output, &self.buffer, Delimiter::Tab, storage_resolver)
             }
-            FileWriterParam::Excel { .. } => write_excel(&output, &self.buffer, storage_resolver),
-            FileWriterParam::Gltf { .. } => write_gltf(&output, &self.buffer, storage_resolver),
+            FileWriterParam::Excel { excel_property, .. } => {
+                write_excel(&output, excel_property, &self.buffer, storage_resolver)
+            }
         };
         match result {
             Ok(_) => Ok(()),

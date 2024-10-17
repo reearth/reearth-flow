@@ -39,7 +39,8 @@ input DeleteProjectInput {
 input RunProjectInput {
   projectId: ID!
   workspaceId: ID!
-  workflow: InputWorkflow!
+  metaFile: Upload!
+  workflowYaml: Upload!
 }
 
 # Payload

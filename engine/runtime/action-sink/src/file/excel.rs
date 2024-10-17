@@ -10,44 +10,82 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_common::uri::Uri;
 
 use reearth_flow_types::{AttributeValue, Feature};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ExcelWriterParam {
+    pub(super) sheet_name: Option<String>,
+}
 
 pub(super) fn write_excel(
     output: &Uri,
+    params: &ExcelWriterParam,
     features: &[Feature],
     storage_resolver: Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
 
+    let sheet_name = params
+        .sheet_name
+        .clone()
+        .unwrap_or_else(|| "Sheet1".to_string());
     worksheet
-        .set_name("Sheet1")
+        .set_name(sheet_name)
         .map_err(crate::errors::SinkError::file_writer)?;
 
-    let row_index = features.len();
+    let mut title_map = std::collections::HashMap::new();
+    if let Some(first_row) = features.first() {
+        for (col_num, (key, _)) in first_row.iter().enumerate() {
+            worksheet
+                .write_string_with_format(
+                    0,
+                    col_num as u16,
+                    key.clone().into_inner(),
+                    &Default::default(),
+                )
+                .map_err(crate::errors::SinkError::file_writer)?;
+            title_map.insert(key.clone().into_inner(), col_num);
+        }
+    }
+
+    let row_index = 1;
     for (row_num, row) in features.iter().enumerate() {
-        for (col_num, (key, value)) in row.iter().enumerate() {
-            write_cell_value(worksheet, row_num + row_index, col_num, value)?;
-            write_cell_formatting(
-                worksheet,
-                row_num + row_index,
-                col_num,
-                key.clone().into_inner(),
-                &row.attributes,
-            )?;
-            write_cell_formula(
-                worksheet,
-                row_num + row_index,
-                col_num,
-                key.clone().into_inner(),
-                &row.attributes,
-            )?;
-            write_cell_hyperlink(
-                worksheet,
-                row_num + row_index,
-                col_num,
-                key.clone().into_inner(),
-                &row.attributes,
-            )?;
+        for (key, value) in row.iter() {
+            match title_map.get(&key.clone().into_inner()) {
+                Some(&col_num) => {
+                    write_cell_value(worksheet, row_num + row_index, col_num, value)?;
+                    write_cell_formatting(
+                        worksheet,
+                        row_num + row_index,
+                        col_num,
+                        key.clone().into_inner(),
+                        &row.attributes,
+                    )?;
+                    write_cell_formula(
+                        worksheet,
+                        row_num + row_index,
+                        col_num,
+                        key.clone().into_inner(),
+                        &row.attributes,
+                    )?;
+                    write_cell_hyperlink(
+                        worksheet,
+                        row_num + row_index,
+                        col_num,
+                        key.clone().into_inner(),
+                        &row.attributes,
+                    )?;
+                }
+                None => {
+                    return Err(crate::errors::SinkError::file_writer(format!(
+                        "Key '{}' not found in title_map",
+                        key.clone().into_inner()
+                    )));
+                }
+            }
         }
     }
     let buf = workbook

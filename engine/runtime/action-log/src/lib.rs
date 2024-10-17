@@ -1,5 +1,6 @@
 mod action;
 pub mod factory;
+pub(crate) mod json;
 mod split;
 
 pub use slog::error as slog_error;
@@ -25,6 +26,15 @@ macro_rules! action_error_log {
         $crate::slog_error!($logger, $($args)*);
         let parent_clone = $parent.clone();
         $crate::tracing_error!(parent: parent_clone, $($args)*); // Use the cloned parent context
+    }};
+}
+
+#[macro_export]
+macro_rules! slow_action_log {
+    (parent: $parent:expr, $logger:expr, $($args:tt)*) => {{
+        $crate::slog_info!($logger, $($args)*);
+        let parent_clone = $parent.clone();
+        $crate::tracing_info!(parent: parent_clone, $($args)*); // Use the cloned parent context
     }};
 }
 

@@ -54,8 +54,6 @@ jobs:
         settings:
           - platform: windows-latest
             args: '-- --profile release-lto'
-          - platform: macos-latest
-            args: '--target aarch64-apple-darwin -- --profile release-lto'
 
     runs-on: ${{ matrix.settings.platform }}
     steps:
@@ -92,7 +90,7 @@ jobs:
 
       - name: vcpkg integrate
         if: matrix.settings.platform == 'windows-latest'
-        working-directory: ./worker
+        working-directory: ./engine
         run: |
           vcpkg install libxml2 --triplet x64-windows-static
           vcpkg integrate install

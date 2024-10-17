@@ -27,6 +27,10 @@ impl LoggerFactory {
             action_logger(self.root_path.clone(), action),
         )
     }
+
+    pub fn slow_action_logger(&self) -> Logger {
+        action_logger(self.root_path.clone(), "slow_action")
+    }
 }
 
 pub fn create_root_logger(root_path: PathBuf) -> Logger {

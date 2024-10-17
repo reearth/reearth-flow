@@ -2,9 +2,11 @@ use std::iter::FromIterator;
 use std::ops::Range;
 
 use approx::{AbsDiffEq, RelativeEq};
+use flatgeom::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3};
+use geo_types::{MultiPolygon as GeoMultiPolygon, Polygon as GeoPolygon};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
-use nusamai_geometry::{MultiPolygon2 as NMultiPolygon2, MultiPolygon3 as NMultiPolygon3};
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{
@@ -271,5 +273,36 @@ where
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.0.iter().all(|p| p.is_elevation_zero())
+    }
+}
+
+impl<T: CoordNum> From<MultiPolygon2D<T>> for GeoMultiPolygon<T> {
+    fn from(mpolygon: MultiPolygon2D<T>) -> Self {
+        GeoMultiPolygon(
+            mpolygon
+                .0
+                .into_iter()
+                .map(GeoPolygon::from)
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+
+impl<T: CoordNum> From<GeoMultiPolygon<T>> for MultiPolygon2D<T> {
+    fn from(mpolygon: GeoMultiPolygon<T>) -> Self {
+        let polygons = mpolygon
+            .0
+            .into_iter()
+            .map(Polygon2D::from)
+            .collect::<Vec<_>>();
+        MultiPolygon2D::new(polygons)
+    }
+}
+
+impl MultiPolygon3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        for poly in self.0.iter_mut() {
+            poly.transform_inplace(jgd2wgs);
+        }
     }
 }

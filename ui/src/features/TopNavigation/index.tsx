@@ -17,11 +17,11 @@ const TopNavigation: React.FC = () => {
       <div className="relative flex h-14 items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-2">
           <div
-            className="z-10 cursor-pointer rounded bg-logo p-2"
+            className="z-10 mr-2 cursor-pointer"
             onClick={() =>
               navigate({ to: `/workspaces/${currentWorkspace?.id}` })
             }>
-            <FlowLogo className="size-5" />
+            <FlowLogo className="size-8" />
           </div>
           <h1 className="select-none dark:font-extralight">
             {brandName ?? "Re:Earth Flow"}{" "}

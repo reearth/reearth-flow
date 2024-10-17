@@ -5,9 +5,9 @@ import (
 	"errors"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
+	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearth-flow/api/pkg/workflow"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/usecasex"
 )
@@ -30,7 +30,9 @@ type UpdateProjectParam struct {
 }
 
 type RunProjectParam struct {
-	Workflow *workflow.Workflow
+	ProjectID id.ProjectID
+	Meta      *file.File
+	Workflow  *file.File
 }
 
 var (

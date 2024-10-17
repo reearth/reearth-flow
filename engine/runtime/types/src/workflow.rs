@@ -16,6 +16,13 @@ pub type Parameter = Map<String, Value>;
 
 static ENVIRONMENT_PREFIX: &str = "FLOW_VAR_";
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkflowParameter {
+    pub global: Option<Parameter>,
+    pub node: Option<NodeProperty>,
+}
+
 #[derive(Serialize, Deserialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Workflow {
@@ -26,21 +33,18 @@ pub struct Workflow {
     pub graphs: Vec<Graph>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkflowParameter {
-    pub global: Option<Parameter>,
-    pub node: Option<NodeProperty>,
+impl TryFrom<&str> for Workflow {
+    type Error = crate::error::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut workflow: Self = from_str(value).map_err(crate::error::Error::input)?;
+        workflow.load_variables_from_environment()?;
+        Ok(workflow)
+    }
 }
 
 impl Workflow {
-    pub fn try_from_str(s: &str) -> Self {
-        let mut workflow: Self = from_str(s).unwrap();
-        workflow.load_variables_from_environment();
-        workflow
-    }
-
-    fn load_variables_from_environment(&mut self) {
+    fn load_variables_from_environment(&mut self) -> Result<(), crate::error::Error> {
         let environment_vars: Vec<(String, String)> = env::vars()
             .filter(|(key, _)| key.starts_with(ENVIRONMENT_PREFIX))
             .map(|(key, value)| (key[ENVIRONMENT_PREFIX.len()..].to_string(), value))
@@ -52,26 +56,39 @@ impl Workflow {
             })
             .collect();
         if environment_vars.is_empty() {
-            return;
+            return Ok(());
         }
         let mut with = if let Some(with) = self.with.clone() {
             with
         } else {
             serde_json::Map::<String, Value>::new()
         };
-        with.extend(environment_vars.into_iter().map(|(key, value)| {
-            let value = match determine_format(value.as_str()) {
-                SerdeFormat::Json | SerdeFormat::Yaml => from_str(value.as_str()).unwrap(),
-                SerdeFormat::Unknown => serde_json::to_value(value).unwrap(),
-            };
-            (key, value)
-        }));
+        with.extend(
+            environment_vars
+                .into_iter()
+                .map(|(key, value)| {
+                    let value = match determine_format(value.as_str()) {
+                        SerdeFormat::Json | SerdeFormat::Yaml => {
+                            from_str(value.as_str()).map_err(crate::error::Error::input)?
+                        }
+                        SerdeFormat::Unknown => {
+                            serde_json::to_value(value).map_err(crate::error::Error::input)?
+                        }
+                    };
+                    Ok((key, value))
+                })
+                .collect::<Result<Vec<_>, crate::error::Error>>()?,
+        );
         self.with = Some(with);
+        Ok(())
     }
 
-    pub fn merge_with(&mut self, params: HashMap<String, String>) {
+    pub fn merge_with(
+        &mut self,
+        params: HashMap<String, String>,
+    ) -> Result<(), crate::error::Error> {
         if params.is_empty() {
-            return;
+            return Ok(());
         }
         let mut with = if let Some(with) = self.with.clone() {
             with
@@ -88,14 +105,19 @@ impl Workflow {
             })
             .map(|(key, value)| {
                 let value = match determine_format(value.as_str()) {
-                    SerdeFormat::Json | SerdeFormat::Yaml => from_str(value.as_str()).unwrap(),
-                    SerdeFormat::Unknown => serde_json::to_value(value).unwrap(),
+                    SerdeFormat::Json | SerdeFormat::Yaml => {
+                        from_str(value.as_str()).map_err(crate::error::Error::input)?
+                    }
+                    SerdeFormat::Unknown => {
+                        serde_json::to_value(value).map_err(crate::error::Error::input)?
+                    }
                 };
-                (key, value)
+                Ok((key, value))
             })
-            .collect::<serde_json::Map<String, Value>>();
+            .collect::<Result<HashMap<_, _>, crate::error::Error>>()?;
         with.extend(params);
         self.with = Some(with);
+        Ok(())
     }
 }
 

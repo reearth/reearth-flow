@@ -108,7 +108,7 @@ type ComplexityRoot struct {
 		ProjectID   func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 		Version     func(childComplexity int) int
-		WorkflowID  func(childComplexity int) int
+		WorkflowURL func(childComplexity int) int
 		Workspace   func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
 	}
@@ -544,12 +544,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Deployment.Version(childComplexity), true
 
-	case "Deployment.workflowId":
-		if e.complexity.Deployment.WorkflowID == nil {
+	case "Deployment.workflowUrl":
+		if e.complexity.Deployment.WorkflowURL == nil {
 			break
 		}
 
-		return e.complexity.Deployment.WorkflowID(childComplexity), true
+		return e.complexity.Deployment.WorkflowURL(childComplexity), true
 
 	case "Deployment.workspace":
 		if e.complexity.Deployment.Workspace == nil {
@@ -1663,7 +1663,7 @@ type Deployment implements Node {
   id: ID!
   projectId: ID!
   workspaceId: ID!
-  workflowId: ID!
+  workflowUrl: String!
   version: String!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -1692,9 +1692,10 @@ enum JobStatus {
 # Input Types
 
 input CreateDeploymentInput {
-  projectId: ID!
   workspaceId: ID!
-  workflow: InputWorkflow!
+  projectId: ID!
+  metaFile: Upload!
+  workflowYaml: Upload!
 }
 
 input ExecuteDeploymentInput {
@@ -1791,7 +1792,8 @@ input DeleteProjectInput {
 input RunProjectInput {
   projectId: ID!
   workspaceId: ID!
-  workflow: InputWorkflow!
+  metaFile: Upload!
+  workflowYaml: Upload!
 }
 
 # Payload
@@ -3839,8 +3841,8 @@ func (ec *executionContext) fieldContext_Deployment_workspaceId(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Deployment_workflowId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Deployment) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Deployment_workflowId(ctx, field)
+func (ec *executionContext) _Deployment_workflowUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Deployment) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Deployment_workflowUrl(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -3853,7 +3855,7 @@ func (ec *executionContext) _Deployment_workflowId(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.WorkflowID, nil
+		return obj.WorkflowURL, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3865,19 +3867,19 @@ func (ec *executionContext) _Deployment_workflowId(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqlmodel.ID)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Deployment_workflowId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Deployment_workflowUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Deployment",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -4232,8 +4234,8 @@ func (ec *executionContext) fieldContext_DeploymentConnection_nodes(_ context.Co
 				return ec.fieldContext_Deployment_projectId(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
-			case "workflowId":
-				return ec.fieldContext_Deployment_workflowId(ctx, field)
+			case "workflowUrl":
+				return ec.fieldContext_Deployment_workflowUrl(ctx, field)
 			case "version":
 				return ec.fieldContext_Deployment_version(ctx, field)
 			case "createdAt":
@@ -4435,8 +4437,8 @@ func (ec *executionContext) fieldContext_DeploymentEdge_node(_ context.Context, 
 				return ec.fieldContext_Deployment_projectId(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
-			case "workflowId":
-				return ec.fieldContext_Deployment_workflowId(ctx, field)
+			case "workflowUrl":
+				return ec.fieldContext_Deployment_workflowUrl(ctx, field)
 			case "version":
 				return ec.fieldContext_Deployment_version(ctx, field)
 			case "createdAt":
@@ -4499,8 +4501,8 @@ func (ec *executionContext) fieldContext_DeploymentPayload_deployment(_ context.
 				return ec.fieldContext_Deployment_projectId(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
-			case "workflowId":
-				return ec.fieldContext_Deployment_workflowId(ctx, field)
+			case "workflowUrl":
+				return ec.fieldContext_Deployment_workflowUrl(ctx, field)
 			case "version":
 				return ec.fieldContext_Deployment_version(ctx, field)
 			case "createdAt":
@@ -4821,8 +4823,8 @@ func (ec *executionContext) fieldContext_Job_deployment(_ context.Context, field
 				return ec.fieldContext_Deployment_projectId(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
-			case "workflowId":
-				return ec.fieldContext_Deployment_workflowId(ctx, field)
+			case "workflowUrl":
+				return ec.fieldContext_Deployment_workflowUrl(ctx, field)
 			case "version":
 				return ec.fieldContext_Deployment_version(ctx, field)
 			case "createdAt":
@@ -11367,20 +11369,13 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "workspaceId", "workflow"}
+	fieldsInOrder := [...]string{"workspaceId", "projectId", "metaFile", "workflowYaml"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "projectId":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ProjectID = data
 		case "workspaceId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
 			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
@@ -11388,13 +11383,27 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 				return it, err
 			}
 			it.WorkspaceID = data
-		case "workflow":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflow"))
-			data, err := ec.unmarshalNInputWorkflow2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐInputWorkflow(ctx, v)
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Workflow = data
+			it.ProjectID = data
+		case "metaFile":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metaFile"))
+			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MetaFile = data
+		case "workflowYaml":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflowYaml"))
+			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkflowYaml = data
 		}
 	}
 
@@ -11947,7 +11956,7 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "workspaceId", "workflow"}
+	fieldsInOrder := [...]string{"projectId", "workspaceId", "metaFile", "workflowYaml"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -11968,13 +11977,20 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 				return it, err
 			}
 			it.WorkspaceID = data
-		case "workflow":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflow"))
-			data, err := ec.unmarshalNInputWorkflow2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐInputWorkflow(ctx, v)
+		case "metaFile":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metaFile"))
+			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Workflow = data
+			it.MetaFile = data
+		case "workflowYaml":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflowYaml"))
+			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkflowYaml = data
 		}
 	}
 
@@ -12699,8 +12715,8 @@ func (ec *executionContext) _Deployment(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "workflowId":
-			out.Values[i] = ec._Deployment_workflowId(ctx, field, obj)
+		case "workflowUrl":
+			out.Values[i] = ec._Deployment_workflowUrl(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -15217,11 +15233,6 @@ func (ec *executionContext) unmarshalNInputGraph2ᚕᚖgithubᚗcomᚋreearthᚋ
 		}
 	}
 	return res, nil
-}
-
-func (ec *executionContext) unmarshalNInputWorkflow2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐInputWorkflow(ctx context.Context, v interface{}) (*gqlmodel.InputWorkflow, error) {
-	res, err := ec.unmarshalInputInputWorkflow(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNInputWorkflowEdge2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐInputWorkflowEdgeᚄ(ctx context.Context, v interface{}) ([]*gqlmodel.InputWorkflowEdge, error) {

@@ -1,13 +1,14 @@
 use std::iter::FromIterator;
 
 use approx::{AbsDiffEq, RelativeEq};
+use geo_types::LineString as GeoLineString;
+use geo_types::MultiLineString as GeoMultiLineString;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
+use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
-use nusamai_geometry::{
-    MultiLineString2 as NMultiLineString2, MultiLineString3 as NMultiLineString3,
-};
+use flatgeom::{MultiLineString2 as NMultiLineString2, MultiLineString3 as NMultiLineString3};
 
 use super::conversion::geojson::{
     create_geo_multi_line_string, create_multi_line_string_type, mismatch_geom_err,
@@ -217,6 +218,26 @@ where
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.iter().all(LineString::is_elevation_zero)
+    }
+}
+
+impl<T: CoordNum> From<GeoMultiLineString<T>> for MultiLineString2D<T> {
+    fn from(line: GeoMultiLineString<T>) -> Self {
+        MultiLineString2D::new(line.into_iter().map(LineString::from).collect())
+    }
+}
+
+impl<T: CoordNum> From<MultiLineString2D<T>> for GeoMultiLineString<T> {
+    fn from(line: MultiLineString2D<T>) -> Self {
+        GeoMultiLineString::new(line.0.into_iter().map(GeoLineString::from).collect())
+    }
+}
+
+impl MultiLineString3D<f64> {
+    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+        for line_string in &mut self.0 {
+            line_string.transform_inplace(jgd2wgs);
+        }
     }
 }
 

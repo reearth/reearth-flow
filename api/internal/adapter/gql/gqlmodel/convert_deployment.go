@@ -14,7 +14,7 @@ func ToDeployment(d *deployment.Deployment) *Deployment {
 		ID:          IDFrom(d.ID()),
 		ProjectID:   IDFrom(d.Project()),
 		WorkspaceID: IDFrom(d.Workspace()),
-		WorkflowID:  IDFrom(d.Workflow()),
+		WorkflowURL: d.WorkflowUrl(),
 		Version:     d.Version(),
 		CreatedAt:   d.CreatedAt(),
 		UpdatedAt:   d.UpdatedAt(),
