@@ -51,6 +51,6 @@ ENV FLOW_TOS_URL=
 ENV FLOW_VERSION=
 
 COPY --from=build /app/dist/ /usr/share/nginx/html
-COPY --chown=nginx:nginx  docker/reearth_config.json.template /tmp/reearth_config.json.template
+COPY --chown=nginx:nginx docker/reearth_config.json.template /tmp/reearth_config.json.template
 COPY --chown=nginx:nginx docker/nginx.conf.template /etc/nginx/templates/nginx.conf.template
 COPY --chown=nginx:nginx docker/40-envsubst-on-reearth_config.sh /docker-entrypoint.d/
