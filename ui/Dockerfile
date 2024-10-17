@@ -30,7 +30,7 @@ RUN --mount=type=bind,source=package.json,target=package.json \
 FROM nginx:1.27-alpine
 
 # Quite the Nginx startup logs.
-ENV NGINX_ENTRYPOINT_QUIET_LOGS=true
+# ENV NGINX_ENTRYPOINT_QUIET_LOGS=true
 
 # Default to Cloud Run port.
 # Ref: https://cloud.google.com/run/docs/reference/container-contract#port

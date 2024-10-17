@@ -1,8 +1,42 @@
 #!/bin/sh
-
 set -e
 
-TEMPLATE_FILE="/tmp/reearth_config.json.template"
-OUTPUT_FILE="/usr/share/nginx/html/reearth_config.json"
+ME=$(basename "$0")
 
-envsubst < "$TEMPLATE_FILE" > "$OUTPUT_FILE"
+entrypoint_log() {
+    if [ -z "${NGINX_ENTRYPOINT_QUIET_LOGS:-}" ]; then
+        echo "$@"
+    fi
+}
+
+auto_envsubst() {
+    local template_file="/tmp/reearth_config.json.template"
+    local output_file="/usr/share/nginx/html/reearth_config.json"
+    local filter="${NGINX_ENVSUBST_FILTER:-}"
+    local defined_envs
+
+    if [ ! -f "$template_file" ]; then
+        entrypoint_log "$ME: ERROR: template file $template_file does not exist"
+        return 1
+    fi
+
+    if [ ! -w "$(dirname "$output_file")" ]; then
+        entrypoint_log "$ME: ERROR: $(dirname "$output_file") is not writable"
+        return 1
+    fi
+
+    defined_envs=$(printf '${%s} ' $(env | cut -d= -f1 | awk "/${filter}/ {print}"))
+
+    entrypoint_log "$ME: Running envsubst on $template_file to $output_file"
+    envsubst "$defined_envs" < "$template_file" > "$output_file"
+
+    if [ $? -ne 0 ]; then
+        entrypoint_log "$ME: ERROR: envsubst failed"
+        return 1
+    fi
+
+    entrypoint_log "$ME: Successfully generated $output_file"
+}
+
+auto_envsubst
+exit 0
