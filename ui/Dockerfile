@@ -6,16 +6,16 @@ ENV YARN_VERSION=4.3.1
 
 RUN corepack enable && corepack prepare yarn@${YARN_VERSION}
 
+COPY .yarn .yarn
+
 RUN --mount=type=bind,source=package.json,target=package.json \
-    --mount=type=bind,source=yarn.lock,target=yarn.lock,readwrite \
-    --mount=type=bind,source=.yarn,target=.yarn,readwrite \
+    --mount=type=bind,source=yarn.lock,target=yarn.lock \
     --mount=type=bind,source=.yarnrc.yml,target=.yarnrc.yml \
     --mount=type=cache,target=/root/.yarn,sharing=locked \
     yarn install --immutable
 
 RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=bind,source=yarn.lock,target=yarn.lock \
-    --mount=type=bind,source=.yarn,target=.yarn \
     --mount=type=bind,source=.yarnrc.yml,target=.yarnrc.yml \
     --mount=type=bind,source=index.html,target=index.html \
     --mount=type=bind,source=tsconfig.json,target=tsconfig.json \
