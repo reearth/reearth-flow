@@ -24,10 +24,10 @@ WORKDIR /usr/local/bin
 RUN apt-get update && apt-get install -y libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copy the binary from the builder stage
-COPY --from=builder /usr/src/app/target/release/infra .
+COPY --from=builder /usr/src/app/target/release/main .
 
 # Expose the port the app runs on
 EXPOSE 8000
 
 # Run the binary
-CMD ["infra"]
+CMD ["main"]
