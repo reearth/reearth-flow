@@ -1,7 +1,11 @@
 use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
-use crate::persistence::redis::redis_client::{RedisClient, RedisClientError};
+use crate::persistence::redis::redis_client::RedisClientError;
 use async_trait::async_trait;
-use flow_websocket_domain::project::{Project, ProjectEditingSession};
+use flow_websocket_domain::project_type::Project;
+use flow_websocket_domain::types::data::SnapshotData;
+
+use crate::persistence::local_storage::LocalClient;
+use flow_websocket_domain::project::ProjectEditingSession;
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
 };
@@ -12,7 +16,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
 
-use super::local_storage::LocalClient;
+use super::local_storage::LocalStorageError;
+use super::redis::redis_client::RedisClientTrait;
+use super::StorageClient;
 
 #[derive(Error, Debug)]
 pub enum ProjectRepositoryError {
@@ -21,27 +27,30 @@ pub enum ProjectRepositoryError {
     #[error(transparent)]
     Gcs(#[from] GcsError),
     #[error(transparent)]
+    Local(#[from] LocalStorageError),
+    #[error(transparent)]
     Serialization(#[from] serde_json::Error),
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
+    #[error("Session ID not found")]
+    SessionIdNotFound,
 }
 
-pub struct ProjectRedisRepository {
-    redis_client: Arc<RedisClient>,
+pub struct ProjectRedisRepository<R: RedisClientTrait> {
+    redis_client: Arc<R>,
 }
 
-impl ProjectRedisRepository {
-    pub fn new(redis_client: Arc<RedisClient>) -> Self {
+impl<R: RedisClientTrait + Send + Sync> ProjectRedisRepository<R> {
+    pub fn new(redis_client: Arc<R>) -> Self {
         Self { redis_client }
     }
 }
 
 #[async_trait]
-impl ProjectRepository<ProjectRepositoryError> for ProjectRedisRepository {
-    async fn get_project(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<Project>, ProjectRepositoryError> {
+impl<R: RedisClientTrait + Send + Sync> ProjectRepository for ProjectRedisRepository<R> {
+    type Error = ProjectRepositoryError;
+
+    async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error> {
         let key = format!("project:{}", project_id);
         let project = self.redis_client.get(&key).await?;
         Ok(project)
@@ -49,32 +58,63 @@ impl ProjectRepository<ProjectRepositoryError> for ProjectRedisRepository {
 }
 
 #[async_trait]
-impl ProjectEditingSessionRepository<ProjectRepositoryError> for ProjectRedisRepository {
-    async fn create_session(
-        &self,
-        session: ProjectEditingSession,
-    ) -> Result<(), ProjectRepositoryError> {
-        let key = format!("session:{}", session.session_id.as_ref().unwrap());
-        self.redis_client.set(key, &session).await?;
+impl<R: RedisClientTrait + Send + Sync> ProjectEditingSessionRepository
+    for ProjectRedisRepository<R>
+{
+    type Error = ProjectRepositoryError;
+
+    async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
+        let session_id = session
+            .session_id
+            .as_ref()
+            .ok_or(ProjectRepositoryError::SessionIdNotFound)?;
+        let key = format!("session:{}", session_id);
+        self.redis_client.set(&key, &session).await?;
+
+        let active_session_key = format!("project:{}:active_session", session.project_id);
+        self.redis_client
+            .set(&active_session_key, session_id)
+            .await?;
+
         Ok(())
     }
 
     async fn get_active_session(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectEditingSession>, ProjectRepositoryError> {
-        let key = format!("project:{}:active_session", project_id);
-        let session = self.redis_client.get(&key).await?;
-        Ok(session)
+    ) -> Result<Option<ProjectEditingSession>, Self::Error> {
+        let active_session_key = format!("project:{}:active_session", project_id);
+        let session_id: Option<String> = self.redis_client.get(&active_session_key).await?;
+
+        if let Some(session_id) = session_id {
+            let session_key = format!("session:{}", session_id);
+            let session: Option<ProjectEditingSession> =
+                self.redis_client.get(&session_key).await?;
+            Ok(session)
+        } else {
+            Ok(None)
+        }
     }
 
-    async fn update_session(
-        &self,
-        session: ProjectEditingSession,
-    ) -> Result<(), ProjectRepositoryError> {
-        let key = format!("session:{}", session.session_id.as_ref().unwrap());
-        self.redis_client.set(key, &session).await?;
+    async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
+        let session_id = session
+            .session_id
+            .as_ref()
+            .ok_or(ProjectRepositoryError::SessionIdNotFound)?;
+        let key = format!("session:{}", session_id);
+        self.redis_client.set(&key, &session).await?;
+
+        let active_session_key = format!("project:{}:active_session", session.project_id);
+        self.redis_client
+            .set(&active_session_key, session_id)
+            .await?;
+
         Ok(())
+    }
+
+    async fn get_client_count(&self) -> Result<usize, Self::Error> {
+        let count = self.redis_client.get_client_count().await?;
+        Ok(count)
     }
 }
 
@@ -83,38 +123,75 @@ pub struct ProjectGcsRepository {
 }
 
 impl ProjectGcsRepository {
-    fn _new(client: GcsClient) -> Self {
+    pub fn new(client: GcsClient) -> Self {
         Self { client }
     }
 }
 
 #[async_trait]
-impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectGcsRepository {
-    async fn create_snapshot(
-        &self,
-        snapshot: ProjectSnapshot,
-    ) -> Result<(), ProjectRepositoryError> {
-        let path = format!("snapshot/{}", snapshot.metadata.id);
-        self.client.upload(path, &snapshot).await?;
+impl ProjectSnapshotRepository for ProjectGcsRepository {
+    type Error = ProjectRepositoryError;
+
+    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+        let path = format!("snapshot/{}", snapshot.metadata.project_id);
+        self.client.upload_versioned(path, &snapshot).await?;
         Ok(())
     }
 
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError> {
-        let path = format!("snapshot/{}:latest_snapshot", project_id);
-        let snapshot = self.client.download(path).await?;
+    ) -> Result<Option<ProjectSnapshot>, Self::Error> {
+        let path_prefix = format!("snapshot/{}", project_id);
+        let snapshot = self.client.download_latest(&path_prefix).await?;
         Ok(snapshot)
     }
 
-    async fn get_latest_snapshot_state(
+    async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
+        let path = format!("snapshot_data/{}", project_id);
+        let snapshot_data: Option<Vec<u8>> = self.client.download_latest(&path).await?;
+        Ok(snapshot_data.unwrap_or_default())
+    }
+
+    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+        let latest_version = self
+            .client
+            .get_latest_version(&format!("snapshot/{}", snapshot.metadata.project_id))
+            .await?;
+        if let Some(_version) = latest_version {
+            let path = format!("snapshot/{}", snapshot.metadata.project_id);
+            self.client.update_latest_versioned(path, &snapshot).await?;
+        } else {
+            let path = format!("snapshot/{}", snapshot.metadata.project_id);
+            self.client.upload_versioned(path, &snapshot).await?;
+        }
+        Ok(())
+    }
+
+    async fn update_latest_snapshot_state(
         &self,
         project_id: &str,
-    ) -> Result<Vec<u8>, ProjectRepositoryError> {
-        let path = format!("snapshot/{}:latest_snapshot_state", project_id);
-        let state = self.client.download(path).await?;
-        Ok(state)
+        snapshot_data: SnapshotData,
+    ) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", project_id);
+        self.client
+            .update_latest_versioned(path, &snapshot_data.state)
+            .await?;
+        Ok(())
+    }
+
+    async fn delete_snapshot_state(&self, project_id: &str) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", project_id);
+        self.client.delete(path).await?;
+        Ok(())
+    }
+
+    async fn create_snapshot_state(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_data.project_id);
+        self.client
+            .upload_versioned(path, &snapshot_data.state)
+            .await?;
+        Ok(())
     }
 }
 
@@ -131,152 +208,188 @@ impl ProjectLocalRepository {
 }
 
 #[async_trait]
-impl ProjectRepository<ProjectRepositoryError> for ProjectLocalRepository {
-    async fn get_project(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<Project>, ProjectRepositoryError> {
-        let path = format!("projects/{}", project_id);
-        match self.client.download::<Project>(path).await {
-            Ok(project) => Ok(Some(project)),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(ProjectRepositoryError::Io(e)),
-        }
-    }
-}
+impl ProjectSnapshotRepository for ProjectLocalRepository {
+    type Error = ProjectRepositoryError;
 
-#[async_trait]
-impl ProjectSnapshotRepository<ProjectRepositoryError> for ProjectLocalRepository {
-    async fn create_snapshot(
-        &self,
-        snapshot: ProjectSnapshot,
-    ) -> Result<(), ProjectRepositoryError> {
+    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         let path = format!("snapshots/{}", snapshot.metadata.id);
-        self.client.upload(path, &snapshot).await?;
-
-        // Update latest snapshot
-        let latest_path = format!("latest_snapshots/{}", snapshot.metadata.project_id);
-        self.client.upload(latest_path, &snapshot).await?;
-
+        self.client.upload_versioned(path, &snapshot).await?;
         Ok(())
     }
 
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError> {
-        let path = format!("latest_snapshots/{}", project_id);
-        match self.client.download::<ProjectSnapshot>(path).await {
-            Ok(snapshot) => Ok(Some(snapshot)),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(ProjectRepositoryError::Io(e)),
-        }
+    ) -> Result<Option<ProjectSnapshot>, Self::Error> {
+        let path = format!("snapshots/{}", project_id);
+        let snapshot = self
+            .client
+            .download_latest::<ProjectSnapshot>(&path)
+            .await?;
+        Ok(snapshot)
     }
 
-    async fn get_latest_snapshot_state(
+    async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
+        let path = format!("snapshot_data/{}", project_id);
+        let snapshot_data: Option<Vec<u8>> = self.client.download_latest(&path).await?;
+        Ok(snapshot_data.unwrap_or_default())
+    }
+
+    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+        let path = format!("snapshots/{}", snapshot.metadata.id);
+        self.client.update_latest_versioned(path, &snapshot).await?;
+        Ok(())
+    }
+
+    async fn update_latest_snapshot_state(
         &self,
-        project_id: &str,
-    ) -> Result<Vec<u8>, ProjectRepositoryError> {
-        let path = format!("latest_snapshots/{}", project_id);
-        match self.client.download::<ProjectSnapshot>(path).await {
-            Ok(snapshot) => Ok(serde_json::to_vec(&snapshot)?),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(vec![]),
-            Err(e) => Err(ProjectRepositoryError::Io(e)),
-        }
+        snapshot_id: &str,
+        snapshot_data: SnapshotData,
+    ) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_id);
+        self.client
+            .update_latest_versioned(path, &snapshot_data.state)
+            .await?;
+        Ok(())
+    }
+
+    async fn delete_snapshot_state(&self, project_id: &str) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", project_id);
+        self.client.delete(path).await?;
+        Ok(())
+    }
+
+    async fn create_snapshot_state(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
+        let path = format!("snapshot_data/{}", snapshot_data.project_id);
+        self.client
+            .upload_versioned(path, &snapshot_data.state)
+            .await?;
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use flow_websocket_domain::snapshot::{ObjectDelete, ObjectTenant, ProjectMetadata};
-    use tempfile::TempDir;
-    use tokio::test;
+    use flow_websocket_domain::project::ProjectEditingSession;
+    use flow_websocket_domain::snapshot::ObjectTenant;
+    use mockall::mock;
 
-    async fn setup() -> Result<(TempDir, ProjectLocalRepository), Box<dyn std::error::Error>> {
-        let temp_dir = TempDir::new()?;
-        let repo = ProjectLocalRepository::new(temp_dir.path().to_path_buf()).await?;
-        Ok((temp_dir, repo))
-    }
+    type XReadResult = Vec<(String, Vec<(String, String)>)>;
+    type RedisResult<T> = Result<T, RedisClientError>;
 
-    #[test]
-    async fn test_get_project_non_existent() -> Result<(), Box<dyn std::error::Error>> {
-        let (_temp_dir, repo) = setup().await?;
-        let project_id = "non_existent_project";
-        assert!(repo.get_project(project_id).await?.is_none());
-        Ok(())
-    }
-
-    #[test]
-    async fn test_get_project_existing() -> Result<(), Box<dyn std::error::Error>> {
-        let (_temp_dir, repo) = setup().await?;
-        let project_id = "test_project";
-        let project = Project {
-            id: project_id.to_string(),
-            workspace_id: "test_workspace".to_string(),
-        };
-
-        repo.client
-            .upload(format!("projects/{}", project_id), &project)
-            .await?;
-
-        let retrieved_project = repo.get_project(project_id).await?.unwrap();
-        assert_eq!(retrieved_project.id, project.id);
-        assert_eq!(retrieved_project.workspace_id, project.workspace_id);
-        Ok(())
-    }
-
-    #[test]
-    async fn test_create_and_get_snapshot() -> Result<(), Box<dyn std::error::Error>> {
-        let (_temp_dir, repo) = setup().await?;
-        let project_id = "test_project";
-        let snapshot = create_test_snapshot(project_id);
-
-        repo.create_snapshot(snapshot.clone()).await?;
-
-        let retrieved_snapshot = repo.get_latest_snapshot(project_id).await?.unwrap();
-        assert_eq!(retrieved_snapshot.metadata.id, snapshot.metadata.id);
-        assert_eq!(
-            retrieved_snapshot.metadata.project_id,
-            snapshot.metadata.project_id
-        );
-        Ok(())
-    }
-
-    #[test]
-    async fn test_get_latest_snapshot_state() -> Result<(), Box<dyn std::error::Error>> {
-        let (_temp_dir, repo) = setup().await?;
-        let project_id = "test_project";
-        let snapshot = create_test_snapshot(project_id);
-
-        repo.create_snapshot(snapshot).await?;
-
-        let snapshot_state = repo.get_latest_snapshot_state(project_id).await?;
-        assert!(!snapshot_state.is_empty());
-        Ok(())
-    }
-
-    fn create_test_snapshot(project_id: &str) -> ProjectSnapshot {
-        ProjectSnapshot {
-            metadata: ProjectMetadata {
-                id: "snap_123".to_string(),
-                project_id: project_id.to_string(),
-                session_id: Some("session_123".to_string()),
-                name: "Test Snapshot".to_string(),
-                path: "".to_string(),
-            },
-            created_by: Some("test_user".to_string()),
-            changes_by: vec![],
-            tenant: ObjectTenant {
-                id: "tenant_123".to_string(),
-                key: "tenant_key".to_string(),
-            },
-            delete: ObjectDelete {
-                deleted: false,
-                delete_after: None,
-            },
-            created_at: Some(chrono::Utc::now()),
-            updated_at: Some(chrono::Utc::now()),
+    mock! {
+        RedisClient {}
+        #[async_trait]
+        impl RedisClientTrait for RedisClient {
+            fn redis_url(&self) -> &str;
+            async fn get<T: serde::de::DeserializeOwned + Send + Sync + 'static>(&self, key: &str) -> RedisResult<Option<T>>;
+            async fn set<T: serde::Serialize + Send + Sync + 'static>(&self, key: &str, value: &T) -> RedisResult<()>;
+            async fn get_client_count(&self) -> RedisResult<usize>;
+            async fn keys(&self, pattern: &str) -> RedisResult<Vec<String>>;
+            async fn xadd(&self, key: &str, id: &str, fields: &[(String, String)]) -> RedisResult<String>;
+            async fn xread(&self, key: &str, id: &str) -> RedisResult<XReadResult>;
+            async fn xtrim(&self, key: &str, max_len: usize) -> RedisResult<usize>;
+            async fn xdel(&self, key: &str, ids: &[String]) -> RedisResult<usize>;
+            fn connection(&self) -> &Arc<tokio::sync::Mutex<redis::aio::MultiplexedConnection>>;
         }
+    }
+
+    #[tokio::test]
+    async fn test_create_session() {
+        let mut mock_redis = MockRedisClient::new();
+        mock_redis
+            .expect_set()
+            .withf(|key: &str, _value: &ProjectEditingSession| key.starts_with("session:"))
+            .times(1)
+            .returning(|_, _| Ok(()));
+        mock_redis
+            .expect_set()
+            .withf(|key: &str, _value: &String| {
+                key.starts_with("project:") && key.ends_with(":active_session")
+            })
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        let repo = ProjectRedisRepository::new(Arc::new(mock_redis));
+
+        let mut session = ProjectEditingSession::new(
+            "project_123".to_string(),
+            ObjectTenant::new("tenant_123".to_string(), "tenant_key".to_string()),
+        );
+        session.session_id = Some("session_456".to_string());
+
+        let result = repo.create_session(session).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_active_session() {
+        let mut mock_redis = MockRedisClient::new();
+        mock_redis
+            .expect_get::<String>()
+            .times(1)
+            .returning(|_| Ok(Some("session_456".to_string())));
+        mock_redis
+            .expect_get::<ProjectEditingSession>()
+            .times(1)
+            .returning(|_| {
+                Ok(Some(ProjectEditingSession::new(
+                    "project_123".to_string(),
+                    ObjectTenant::new("tenant_123".to_string(), "tenant_key".to_string()),
+                )))
+            });
+
+        let repo = ProjectRedisRepository::new(Arc::new(mock_redis));
+
+        let result = repo.get_active_session("project_123").await;
+        assert!(result.is_ok());
+        let session = result.unwrap();
+        assert!(session.is_some());
+        let session = session.unwrap();
+        assert_eq!(session.project_id, "project_123");
+    }
+
+    #[tokio::test]
+    async fn test_update_session() {
+        let mut mock_redis = MockRedisClient::new();
+        mock_redis
+            .expect_set()
+            .withf(|key: &str, _value: &ProjectEditingSession| key.starts_with("session:"))
+            .times(1)
+            .returning(|_, _| Ok(()));
+        mock_redis
+            .expect_set()
+            .withf(|key: &str, _value: &String| {
+                key.starts_with("project:") && key.ends_with(":active_session")
+            })
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        let repo = ProjectRedisRepository::new(Arc::new(mock_redis));
+
+        let mut session = ProjectEditingSession::new(
+            "project_123".to_string(),
+            ObjectTenant::new("tenant_123".to_string(), "tenant_key".to_string()),
+        );
+        session.session_id = Some("session_456".to_string());
+
+        let result = repo.update_session(session).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_client_count() {
+        let mut mock_redis = MockRedisClient::new();
+        mock_redis
+            .expect_get_client_count()
+            .times(1)
+            .returning(|| Ok(5));
+
+        let repo = ProjectRedisRepository::new(Arc::new(mock_redis));
+
+        let result = repo.get_client_count().await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 5);
     }
 }

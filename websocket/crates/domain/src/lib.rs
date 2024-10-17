@@ -1,4 +1,11 @@
 pub mod project;
 pub mod repository;
-pub mod snapshot;
-pub mod utils;
+pub mod types;
+pub use types::data::SnapshotData;
+pub use types::project_type;
+pub use types::snapshot;
+pub use types::user;
+mod utils;
+pub use project::ProjectEditingSession;
+pub use utils::calculate_diff;
+pub use utils::generate_id;

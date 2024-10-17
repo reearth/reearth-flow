@@ -1,15 +1,14 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{error_handling::HandleErrorLayer, routing::get, Router};
-use socket::{
-    handler::{handle_error, handle_upgrade},
-    state::AppState,
-};
 use tower::timeout::TimeoutLayer;
 use tower::ServiceBuilder;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-mod socket;
+use {
+    flow_websocket_infra::socket::handler::{handle_error, handle_upgrade},
+    flow_websocket_infra::socket::state::AppState,
+};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {

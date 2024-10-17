@@ -77,10 +77,4 @@ cargo run
 '''
 
 [tasks.ci]
-dependencies = [
-    "format",
-    "check",
-    "clippy",
-    "test",
-    "format-taplo",
-]
+dependencies = ["format", "check", "clippy", "test", "format-taplo"]
