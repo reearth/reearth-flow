@@ -21,6 +21,8 @@ pub enum LocalStorageError {
     Serialization(#[from] serde_json::Error),
     #[error("UTF-8 conversion error: {0}")]
     Utf8(#[from] std::string::FromUtf8Error),
+    #[error("Invalid timestamp")]
+    InvalidTimestamp,
 }
 
 pub struct LocalClient {
@@ -165,10 +167,13 @@ impl StorageClient for LocalClient {
             .await
         {
             Ok(existing_metadata) => existing_metadata,
-            Err(_) => VersionMetadata {
-                latest_version: versioned_path.clone(),
-                version_history: BTreeMap::new(),
-            },
+            Err(LocalStorageError::Io(e)) if e.kind() == std::io::ErrorKind::NotFound => {
+                VersionMetadata {
+                    latest_version: versioned_path.clone(),
+                    version_history: BTreeMap::new(),
+                }
+            }
+            Err(e) => return Err(e),
         };
 
         metadata.latest_version = versioned_path.clone();
@@ -238,12 +243,11 @@ impl StorageClient for LocalClient {
                     .rev()
                     .take(limit.unwrap_or(usize::MAX))
                     .map(|(&timestamp, path)| {
-                        (
-                            DateTime::<Utc>::from_timestamp_millis(timestamp).unwrap(),
-                            path.clone(),
-                        )
+                        DateTime::<Utc>::from_timestamp_millis(timestamp)
+                            .ok_or(LocalStorageError::InvalidTimestamp)
+                            .map(|dt| (dt, path.clone()))
                     })
-                    .collect();
+                    .collect::<Result<Vec<_>, _>>()?;
                 versions.sort_by_key(|&(timestamp, _)| timestamp);
                 Ok(versions)
             }
