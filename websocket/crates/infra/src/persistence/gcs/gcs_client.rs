@@ -185,18 +185,19 @@ impl StorageClient for GcsClient {
     ) -> Result<Vec<(DateTime<Utc>, String)>, GcsError> {
         let metadata_path = format!("{}_metadata", path_prefix);
         match self.download::<VersionMetadata>(metadata_path).await {
-            Ok(metadata) => Ok(metadata
-                .version_history
-                .iter()
-                .rev()
-                .take(limit.unwrap_or(usize::MAX))
-                .map(|(&timestamp, path)| {
-                    (
-                        DateTime::<Utc>::from_timestamp_millis(timestamp).unwrap(),
-                        path.clone(),
-                    )
-                })
-                .collect()),
+            Ok(metadata) => {
+                let total_versions = metadata.version_history.len();
+                let skip_count = total_versions.saturating_sub(limit.unwrap_or(total_versions));
+                Ok(metadata
+                    .version_history
+                    .iter()
+                    .skip(skip_count)
+                    .filter_map(|(&timestamp, path)| {
+                        DateTime::<Utc>::from_timestamp_millis(timestamp)
+                            .map(|dt| (dt, path.clone()))
+                    })
+                    .collect())
+            }
             Err(_) => Ok(vec![]),
         }
     }
