@@ -1,0 +1,25 @@
+[package]
+name = "app"
+authors.workspace = true
+edition.workspace = true
+exclude.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+tracing.workspace = true
+tracing-subscriber.workspace = true
+axum.workspace = true
+yrs.workspace = true
+serde.workspace = true
+tokio.workspace = true
+tower.workspace = true
+serde_json.workspace = true
+tower-http.workspace = true
+thiserror.workspace = true
+redis.workspace = true
+dotenv.workspace = true
+envy.workspace = true
