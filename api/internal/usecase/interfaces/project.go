@@ -31,7 +31,6 @@ type UpdateProjectParam struct {
 
 type RunProjectParam struct {
 	ProjectID id.ProjectID
-	Meta      *file.File
 	Workflow  *file.File
 }
 

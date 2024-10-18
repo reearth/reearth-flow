@@ -183,7 +183,7 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *
 }
 
 func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (started bool, err error) {
-	if p.Meta == nil || p.Workflow == nil {
+	if p.Workflow == nil {
 		return false, nil
 	}
 
