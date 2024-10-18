@@ -35,7 +35,7 @@ enum JobStatus {
 input CreateDeploymentInput {
   workspaceId: ID!
   projectId: ID!
-  workflowYaml: Upload!
+  file: Upload!
 }
 
 input ExecuteDeploymentInput {
