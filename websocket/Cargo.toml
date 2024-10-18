@@ -43,6 +43,8 @@ axum-extra = { version = "0.9", features = ["typed-header"] }
 axum-macros = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 dashmap = "5.4.0"
+dotenv = "0.15.0"
+envy = "0.4.2"
 google-cloud-storage = "0.18"
 lru = "0.12.4"
 mockall = { version = "0.13.0" }
@@ -64,5 +66,3 @@ uuid = { version = "1.8.0", features = [
   "v4",
 ] }
 yrs = "0.18"
-dotenv = "0.15.0"
-envy = "0.4.2"
