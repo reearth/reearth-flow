@@ -120,7 +120,7 @@ impl TryFrom<Entity> for Geometry {
                 }
                 // apply textures to polygons
                 geometry_entity.polygon_textures = poly_textures;
-                geometry_entity.polygon_uvs = poly_uvs.into();
+                geometry_entity.polygon_uvs = poly_uvs;
             }
         } else {
             // set 'null' appearance if no theme found
@@ -137,7 +137,7 @@ impl TryFrom<Entity> for Geometry {
                     }
                 }
             }
-            geometry_entity.polygon_uvs = poly_uvs.into();
+            geometry_entity.polygon_uvs = poly_uvs;
         }
         Ok(Self::new(
             epsg,

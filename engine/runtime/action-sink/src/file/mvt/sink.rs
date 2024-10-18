@@ -105,6 +105,7 @@ pub struct MVTWriterCommonParam {
 #[serde(rename_all = "camelCase")]
 pub struct MVTWriterParam {
     pub(super) output: Expr,
+    pub(super) layer_name: String,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
 }
@@ -187,6 +188,7 @@ fn geometry_slicing_stage(
         let buffer_pixels = 5;
         slice_cityobj_geoms(
             feature,
+            &mvt_options.layer_name,
             mvt_options.min_zoom,
             mvt_options.max_zoom,
             max_detail,

@@ -16,6 +16,7 @@ pub(super) struct SlicedFeature<'a> {
 
 pub(super) fn slice_cityobj_geoms(
     feature: &Feature,
+    layner_name: &str,
     min_z: u8,
     max_z: u8,
     max_detail: u32,
@@ -53,9 +54,6 @@ pub(super) fn slice_cityobj_geoms(
                         continue;
                     }
                     let area = poly.area();
-                    let Some(typename) = entry.feature_type.as_ref() else {
-                        continue;
-                    };
 
                     for zoom in min_z..=max_z {
                         // Skip if the polygon is smaller than 4 square subpixels
@@ -64,7 +62,7 @@ pub(super) fn slice_cityobj_geoms(
                         if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
                             continue;
                         }
-                        slice_polygon(zoom, extent, buffer, &poly, typename, &mut tiled_mpolys);
+                        slice_polygon(zoom, extent, buffer, &poly, layner_name, &mut tiled_mpolys);
                     }
                 }
             }

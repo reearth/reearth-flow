@@ -37,9 +37,9 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
-use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::Expr;
 use reearth_flow_types::Feature;
+use reearth_flow_types::{geometry as geometry_types, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -215,22 +215,23 @@ fn geometry_slicing_stage(
 ) -> crate::errors::Result<()> {
     let bincode_config = bincode::config::standard();
 
-    upstream.iter().par_bridge().try_for_each(|feature| {
-        slice_to_tiles(
-            feature,
-            min_zoom,
-            max_zoom,
-            |(z, x, y, typename), feature| {
-                let bytes = bincode::serde::encode_to_vec(&feature, bincode_config).unwrap();
-                let serialized_feature =
-                    (tile_id_conv.zxy_to_id(z, x, y), typename.to_string(), bytes);
-                if sender_sliced.send(serialized_feature).is_err() {
-                    return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
-                };
+    upstream.iter().par_bridge().try_for_each(|parcel| {
+        slice_to_tiles(parcel, min_zoom, max_zoom, |(z, x, y), feature| {
+            let bytes = bincode::serde::encode_to_vec(&feature, bincode_config).unwrap();
+            // TODO extract feature type from parcel
+            let Some(AttributeValue::String(feature_type)) =
+                parcel.get(&"feature_type".to_string())
+            else {
+                return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
+            };
+            let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+            let serialized_feature = (tile_id, feature_type.to_string(), bytes);
+            if sender_sliced.send(serialized_feature).is_err() {
+                return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
+            };
 
-                Ok(())
-            },
-        )
+            Ok(())
+        })
     })?;
 
     Ok(())
@@ -316,7 +317,7 @@ fn tile_writing_stage(
     let texture_size_cache = TextureSizeCache::new();
 
     // Use a temporary directory for embedding in glb.
-    let binding = tempdir().map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+    let binding = tempdir().unwrap();
     let folder_path = binding.path();
     let texture_folder_name = "textures";
     let atlas_dir = folder_path.join(texture_folder_name);
@@ -328,7 +329,6 @@ fn tile_writing_stage(
         .par_bridge()
         .try_for_each(|(tile_id, typename, feats)| {
             let (tile_zoom, tile_x, tile_y) = tile_id_conv.id_to_zxy(tile_id);
-
             // Tile information
             let (mut content, translation) = {
                 let (min_lat, max_lat) = tiling::y_slice_range(tile_zoom, tile_y);
@@ -384,12 +384,7 @@ fn tile_writing_stage(
                     let feature = {
                         let (mut feature, _): (SlicedFeature, _) =
                             bincode::serde::decode_from_slice(&serialized_feat, bincode_config)
-                                .map_err(|err| {
-                                    crate::errors::SinkError::cesium3dtiles_writer(format!(
-                                        "Failed to deserialize a sliced feature: {:?}",
-                                        err
-                                    ))
-                                })?;
+                                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
                         feature
                             .polygons
@@ -488,7 +483,6 @@ fn tile_writing_stage(
 
                         let geom_error = tiling::geometric_error(tile_zoom, tile_y);
                         let factor = apply_downsample_factor(geom_error, downsample_scale as f32);
-
                         let downsample_factor = DownsampleFactor::new(&factor);
                         let cropped_texture = PolygonMappedTexture::new(
                             &texture_uri,
@@ -592,7 +586,10 @@ fn tile_writing_stage(
                         let atlas_file_name = info.atlas_id.to_string();
 
                         let atlas_uri = atlas_dir
-                            .join(format!("{}/{}/{}/{}", z, x, y, atlas_file_name))
+                            .join(z.to_string())
+                            .join(x.to_string())
+                            .join(y.to_string())
+                            .join(atlas_file_name)
                             .with_extension(ext.clone());
 
                         // update material
