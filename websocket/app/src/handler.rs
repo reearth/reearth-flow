@@ -70,7 +70,10 @@ async fn handle_socket(
     }
 
     debug!("{:?}", state.make_room(room_id.clone()));
-    let _ = state.join(&room_id).await;
+    if let Err(e) = state.join(&room_id).await {
+        debug!("Failed to join room: {:?}", e);
+        return;
+    }
 
     while let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
@@ -80,7 +83,8 @@ async fn handle_socket(
                     continue;
                 }
                 Ok(_) => continue,
-                Err(_) => {
+                Err(e) => {
+                    debug!("Error handling message: {:?}", e);
                     debug!("client {addr} disconnected");
                     return;
                 }
@@ -99,12 +103,12 @@ async fn handle_message(
 ) -> Result<Option<Vec<u8>>> {
     match msg {
         Message::Text(t) => {
-            let msg: FlowMessage = serde_json::from_str(&t).unwrap();
+            let msg: FlowMessage = serde_json::from_str(&t)?;
 
-            let _ = match msg.event {
-                Event::Join { room_id } => state.join(&room_id).await,
-                Event::Leave => state.leave("brabra").await,
-                Event::Emit { data } => state.emit(&data).await,
+            match msg.event {
+                Event::Join { room_id } => state.join(&room_id).await?,
+                Event::Leave => state.leave(room_id).await?,
+                Event::Emit { data } => state.emit(&data).await?,
             };
             Ok(None)
         }
@@ -148,7 +152,7 @@ async fn handle_message(
             } else {
                 println!(">>> {addr} somehow sent close message without CloseFrame");
             }
-            Err(WsError::Error)
+            Err(WsError::ConnectionClosed)
         }
         // reply to ping automatically
         _ => Ok(None),
@@ -176,22 +180,24 @@ impl AppState {
     async fn _on_disconnect(&self) {
         unimplemented!()
     }
+
     async fn join(&self, room_id: &str) -> Result<()> {
-        self.rooms
-            .try_lock()
-            .map_err(|_| WsError::Error)?
+        let mut rooms = self.rooms.try_lock()?;
+        let room = rooms
             .get_mut(room_id)
-            .ok_or(WsError::Error)?
-            .join("brabrabra".to_string())
-            .await?;
+            .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
+        room.join("brabrabra".to_string()).await?;
         Ok(())
     }
+
     async fn leave(&self, _room_id: &str) -> Result<()> {
         unimplemented!()
     }
+
     async fn emit(&self, _data: &str) -> Result<()> {
         unimplemented!()
     }
+
     async fn timeout(&self) -> Result<()> {
         unimplemented!()
     }

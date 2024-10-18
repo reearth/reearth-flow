@@ -1,22 +1,19 @@
-use std::error::Error;
+use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, WsError>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Error)]
 pub enum WsError {
-    Error,
-    _RoomNotFound(String),
-    _JoinError(String),
-}
-
-impl Error for WsError {}
-
-impl std::fmt::Display for WsError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            WsError::Error => write!(f, "WebSocket error"),
-            WsError::_RoomNotFound(room_id) => write!(f, "Room not found: {}", room_id),
-            WsError::_JoinError(err) => write!(f, "Failed to join room: {}", err),
-        }
-    }
+    #[error("Room not found: {0}")]
+    RoomNotFound(String),
+    #[error("Failed to join room: {0}")]
+    JoinError(String),
+    #[error(transparent)]
+    LockError(#[from] tokio::sync::TryLockError),
+    #[error(transparent)]
+    BroadcastError(#[from] tokio::sync::broadcast::error::SendError<String>),
+    #[error("JSON parsing error: {0}")]
+    JsonError(#[from] serde_json::Error),
+    #[error("WebSocket connection closed")]
+    ConnectionClosed,
 }

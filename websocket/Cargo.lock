@@ -66,6 +66,7 @@ dependencies = [
  "axum",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
  "tower 0.4.13",
  "tower-http",
