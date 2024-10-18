@@ -16,4 +16,8 @@ pub enum WsError {
     JsonError(#[from] serde_json::Error),
     #[error(transparent)]
     Redis(#[from] redis::RedisError),
+    #[error(transparent)]
+    UpdateDecode(#[from] yrs::encoding::read::Error),
+    #[error(transparent)]
+    AwarenessUpdate(#[from] yrs::sync::awareness::Error),
 }

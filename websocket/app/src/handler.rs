@@ -124,8 +124,10 @@ async fn handle_message(
                 return Ok(None);
             };
 
-            let rooms = state.rooms.try_lock().unwrap();
-            let room = rooms.get(room_id).unwrap();
+            let rooms = state.rooms.try_lock()?;
+            let room = rooms
+                .get(room_id)
+                .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
             let doc = room.get_doc();
             match yrs::sync::Message::decode_v1(&d) {
                 Ok(yrs::sync::Message::Sync(SyncMessage::SyncStep1(sv))) => {
@@ -138,12 +140,12 @@ async fn handle_message(
                 Ok(yrs::sync::Message::Sync(SyncMessage::Update(data))) => {
                     trace!("Update");
                     let mut txn = doc.transact_mut();
-                    txn.apply_update(Update::decode_v1(&data).unwrap());
+                    txn.apply_update(Update::decode_v1(&data)?);
                     Ok(None)
                 }
                 Ok(yrs::sync::Message::Awareness(update)) => {
                     let mut awareness = Awareness::new((*doc).clone());
-                    let _ = awareness.apply_update(update);
+                    awareness.apply_update(update)?;
                     Ok(None)
                 }
                 _ => Ok(None),
