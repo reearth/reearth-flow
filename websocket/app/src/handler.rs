@@ -13,7 +13,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tower::BoxError;
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 use yrs::sync::{Awareness, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
@@ -103,7 +103,14 @@ async fn handle_message(
 ) -> Result<Option<Vec<u8>>> {
     match msg {
         Message::Text(t) => {
-            let msg: FlowMessage = serde_json::from_str(&t)?;
+            let msg: FlowMessage = match serde_json::from_str(&t) {
+                Ok(msg) => msg,
+                Err(err) => {
+                    error!("Failed to parse message: {:?}", err);
+                    // Optionally send an error message back to the client
+                    return Ok(None);
+                }
+            };
 
             match msg.event {
                 Event::Join { room_id } => state.join(&room_id).await?,
