@@ -1,5 +1,5 @@
 [workspace]
-members = [ "app","crates/*"]
+members = ["app", "crates/*"]
 
 resolver = "2"
 
@@ -64,3 +64,5 @@ uuid = { version = "1.8.0", features = [
   "v4",
 ] }
 yrs = "0.18"
+dotenv = "0.15.0"
+envy = "0.4.2"

@@ -12,11 +12,14 @@ version.workspace = true
 [dependencies]
 tracing.workspace = true
 tracing-subscriber.workspace = true
-axum.workspace  = true
-yrs.workspace  = true
+axum.workspace = true
+yrs.workspace = true
 serde.workspace = true
 tokio.workspace = true
 tower.workspace = true
 serde_json.workspace = true
 tower-http.workspace = true
 thiserror.workspace = true
+redis.workspace = true
+dotenv.workspace = true
+envy.workspace = true

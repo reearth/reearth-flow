@@ -14,6 +14,6 @@ pub enum WsError {
     BroadcastError(#[from] tokio::sync::broadcast::error::SendError<String>),
     #[error("JSON parsing error: {0}")]
     JsonError(#[from] serde_json::Error),
-    #[error("WebSocket connection closed")]
-    ConnectionClosed,
+    #[error(transparent)]
+    Redis(#[from] redis::RedisError),
 }

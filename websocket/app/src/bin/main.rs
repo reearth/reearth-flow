@@ -8,10 +8,14 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use {
     app::handler::{handle_error, handle_upgrade},
     app::state::AppState,
+    app::Config,
 };
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    // Load environment variables from .env file if it exists
+    dotenv::dotenv().ok();
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -20,7 +24,14 @@ async fn main() -> std::io::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let state = Arc::new(AppState::default());
+    // Load configuration from environment
+    let config = Config::from_env().expect("Failed to load configuration");
+
+    let state: Arc<AppState> = Arc::new(
+        AppState::new(&config.redis_url)
+            .await
+            .expect("Failed to create AppState"),
+    );
     let state_err = state.clone();
     let app = Router::new()
         .route("/:room", get(handle_upgrade))
@@ -38,9 +49,8 @@ async fn main() -> std::io::Result<()> {
         )
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8000")
-        .await
-        .unwrap();
+    let addr = format!("{}:{}", config.host, config.port);
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
     axum::serve(
         listener,

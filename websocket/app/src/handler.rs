@@ -152,7 +152,7 @@ async fn handle_message(
             } else {
                 println!(">>> {addr} somehow sent close message without CloseFrame");
             }
-            Err(WsError::ConnectionClosed)
+            Ok(None)
         }
         // reply to ping automatically
         _ => Ok(None),
