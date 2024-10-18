@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use tracing::log::{error, warn};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -23,20 +24,17 @@ fn default_redis_url() -> String {
 }
 
 impl Config {
-    pub fn from_env() -> Result<Self, envy::Error> {
+    pub fn from_env() -> Self {
         match envy::from_env::<Config>() {
-            Ok(config) => Ok(config),
+            Ok(config) => config,
             Err(error) => {
-                eprintln!(
-                    "Warning: Failed to load configuration from environment: {:?}",
-                    error
-                );
-                eprintln!("Using default configuration");
-                Ok(Config {
+                error!("Failed to load configuration from environment: {:?}", error);
+                warn!("Using default configuration");
+                Config {
                     host: default_host(),
                     port: default_port(),
                     redis_url: default_redis_url(),
-                })
+                }
             }
         }
     }

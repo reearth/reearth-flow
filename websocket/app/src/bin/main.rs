@@ -18,7 +18,7 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     // Load configuration from environment
-    let config = Config::from_env().expect("Failed to load configuration");
+    let config = Config::from_env();
 
     let state: Arc<AppState> = Arc::new(
         AppState::new(&config.redis_url)
