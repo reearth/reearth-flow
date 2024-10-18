@@ -48,3 +48,10 @@ mutation DeleteProject($input: DeleteProjectInput!) {
     projectId
   }
 }
+
+mutation RunProject($input: RunProjectInput!) {
+  runProject(input: $input) {
+    projectId
+    started
+  }
+}

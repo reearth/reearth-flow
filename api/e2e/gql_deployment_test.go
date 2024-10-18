@@ -62,7 +62,6 @@ key2: value2
 		"input": {
 			"workspaceId": "workspace-id",
 			"projectId": "project-id",
-			"metaFile": "metaFile"
 		}
 	}`
 	err = writer.WriteField("variables", variables)

@@ -1694,7 +1694,6 @@ enum JobStatus {
 input CreateDeploymentInput {
   workspaceId: ID!
   projectId: ID!
-  metaFile: Upload!
   workflowYaml: Upload!
 }
 
@@ -1792,7 +1791,6 @@ input DeleteProjectInput {
 input RunProjectInput {
   projectId: ID!
   workspaceId: ID!
-  metaFile: Upload!
   workflowYaml: Upload!
 }
 
@@ -11369,7 +11367,7 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "projectId", "metaFile", "workflowYaml"}
+	fieldsInOrder := [...]string{"workspaceId", "projectId", "workflowYaml"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -11390,13 +11388,6 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 				return it, err
 			}
 			it.ProjectID = data
-		case "metaFile":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metaFile"))
-			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.MetaFile = data
 		case "workflowYaml":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflowYaml"))
 			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
@@ -11956,7 +11947,7 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "workspaceId", "metaFile", "workflowYaml"}
+	fieldsInOrder := [...]string{"projectId", "workspaceId", "workflowYaml"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -11977,13 +11968,6 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 				return it, err
 			}
 			it.WorkspaceID = data
-		case "metaFile":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metaFile"))
-			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.MetaFile = data
 		case "workflowYaml":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflowYaml"))
 			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)

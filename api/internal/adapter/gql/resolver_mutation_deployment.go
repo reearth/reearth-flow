@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -10,6 +11,10 @@ import (
 )
 
 func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.CreateDeploymentInput) (*gqlmodel.DeploymentPayload, error) {
+	fmt.Println("ASLDKFJALKSDFJLAKSJDFLKJASDF")
+	fmt.Println("ASLDKFJALKSDFJLAKSJDFLKJASDF")
+	fmt.Println("ASLDKFJALKSDFJLAKSJDFLKJASDF")
+	fmt.Println("ASLDKFJALKSDFJLAKSJDFLKJASDF")
 	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
 	if err != nil {
 		return nil, err
@@ -23,7 +28,6 @@ func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.
 	res, err := usecases(ctx).Deployment.Create(ctx, interfaces.CreateDeploymentParam{
 		Project:   pid,
 		Workspace: wsid,
-		Meta:      *gqlmodel.FromFile(&input.MetaFile),
 		Workflow:  *gqlmodel.FromFile(&input.WorkflowYaml),
 	}, getOperator(ctx))
 	if err != nil {

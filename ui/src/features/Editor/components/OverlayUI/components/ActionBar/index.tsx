@@ -13,7 +13,11 @@ import { DeployDialog } from "./components";
 
 const tooltipOffset = 6;
 
-const ActionBar = () => {
+type Props = {
+  onWorkflowDeployment: () => void;
+};
+
+const ActionBar: React.FC<Props> = ({ onWorkflowDeployment }) => {
   const t = useT();
 
   const [showDialog, setShowDialog] = useState<"deploy" | undefined>(undefined);
@@ -54,7 +58,10 @@ const ActionBar = () => {
         </div>
       </div>
       {showDialog === "deploy" && (
-        <DeployDialog setShowDialog={setShowDialog} />
+        <DeployDialog
+          setShowDialog={setShowDialog}
+          onWorkflowDeployment={onWorkflowDeployment}
+        />
       )}
     </>
   );

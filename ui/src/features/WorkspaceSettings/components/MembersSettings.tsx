@@ -155,7 +155,7 @@ const MembersSettings: React.FC = () => {
             {members?.map((m) => (
               <div key={m.userId} className="flex gap-4 px-4 py-2">
                 <p className="flex-1">{m.user?.name}</p>
-                <p className="flex-1 px-4 text-sm dark:font-thin capitalize">
+                <p className="flex-1 px-4 text-sm capitalize dark:font-thin">
                   {m.role}
                 </p>
                 <DropdownMenu>

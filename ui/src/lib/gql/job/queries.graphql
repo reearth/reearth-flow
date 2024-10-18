@@ -1,0 +1,34 @@
+# NOTE: this is copy/pasted in src/lib/gql/deployment/queries.graphql. Update there too when updating here.
+fragment Job on Job {
+  id
+  deploymentId
+  workspaceId
+  status
+  startedAt
+  completedAt
+  # deployment{
+  #   ...Deployment
+  # }
+  # workspace{
+  #   ...Workspace
+  # }
+}
+
+query GetJobs($workspaceId: ID!, $pagination: Pagination) {
+  jobs(workspaceId: $workspaceId, pagination: $pagination) {
+    totalCount
+    nodes {
+      ...Job
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}
+
+query GetJob($id: ID!) {
+  job(id: $id) {
+    ...Job
+  }
+}

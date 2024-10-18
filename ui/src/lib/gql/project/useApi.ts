@@ -5,6 +5,7 @@ import {
   DeleteProject,
   GetProject,
   GetWorkspaceProjects,
+  RunProject,
   UpdateProject,
 } from "@flow/types";
 
@@ -18,10 +19,11 @@ export const useProject = () => {
 
   const {
     createProjectMutation,
-    useGetProjectsInfiniteQuery,
-    useGetProjectByIdQuery,
     deleteProjectMutation,
     updateProjectMutation,
+    runProjectMutation,
+    useGetProjectsInfiniteQuery,
+    useGetProjectByIdQuery,
   } = useQueries();
 
   const createProject = async (
@@ -90,11 +92,41 @@ export const useProject = () => {
     }
   };
 
+  const runProject = async (
+    projectId: string,
+    workspaceId: string,
+    workflow: FormData,
+  ): Promise<RunProject> => {
+    const { mutateAsync, ...rest } = runProjectMutation;
+
+    try {
+      const data = await mutateAsync({
+        projectId,
+        workspaceId,
+        metaFile: undefined, // TODO: Add meta file
+        workflowYaml: workflow,
+      });
+      toast({
+        title: t("Successful Deletion"),
+        description: t(
+          "Project has been successfully deleted from your workspace.",
+        ),
+        variant: "destructive",
+      });
+      console.log("data", data);
+      return { projectId: data.projectId, started: data.started, ...rest };
+    } catch (_err) {
+      console.log("Errror", _err);
+      return { projectId: undefined, ...rest };
+    }
+  };
+
   return {
     useGetWorkspaceProjectsInfinite,
     useGetProject,
     createProject,
     updateProject,
     deleteProject,
+    runProject,
   };
 };

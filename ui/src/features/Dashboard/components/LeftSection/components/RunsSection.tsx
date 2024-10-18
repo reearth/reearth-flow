@@ -64,7 +64,7 @@ const RunsSection: React.FC = () => {
           {failedRuns.length && (
             <div className="ml-3 mt-1">
               <div className="flex justify-between">
-                <p className="text-sm dark:font-thin text-green-500">
+                <p className="text-sm text-green-500 dark:font-thin">
                   {t("Successful: ")}
                 </p>
                 <p className="text-sm dark:font-thin">

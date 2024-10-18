@@ -3,7 +3,7 @@ import { useCallback } from "react";
 
 import type { Edge } from "@flow/types";
 
-import { YEdgesArray, YWorkflow } from "./workflowBuilder";
+import { YEdgesArray, YWorkflow } from "./utils";
 
 export default ({
   currentYWorkflow,
