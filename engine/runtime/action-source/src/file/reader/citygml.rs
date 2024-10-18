@@ -74,22 +74,19 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                 cityobj.parse(st)?;
                 let geometry_store = st.collect_geometries(envelope.crs_uri.clone());
                 let id = cityobj.id();
-                let description = cityobj.description();
+                let typename = cityobj.name();
                 let bounded_by = cityobj.bounded_by();
                 if let Some(root) = cityobj.into_object() {
-                    if let nusamai_citygml::object::Value::Object(obj) = &root {
-                        let entity = Entity {
-                            id,
-                            description,
-                            name: obj.typename.to_string(),
-                            root,
-                            base_url: base_url.clone(),
-                            geometry_store: RwLock::new(geometry_store).into(),
-                            appearance_store: Default::default(),
-                            bounded_by,
-                        };
-                        entities.push(entity);
-                    }
+                    let entity = Entity {
+                        id: Some(id.to_string()),
+                        typename: Some(typename.to_string()),
+                        root,
+                        base_url: base_url.clone(),
+                        geometry_store: RwLock::new(geometry_store).into(),
+                        appearance_store: Default::default(),
+                        bounded_by,
+                    };
+                    entities.push(entity);
                 }
                 Ok(())
             }
@@ -119,8 +116,16 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
             );
         }
         let attributes = entity.root.to_attribute_json();
-        let name = entity.name.clone();
-        let gml_id = entity.id.clone();
+        let gml_id = entity
+            .root
+            .id()
+            .map(|id| AttributeValue::String(id.to_string()))
+            .unwrap_or(AttributeValue::Null);
+        let name = entity
+            .root
+            .typename()
+            .map(|name| AttributeValue::String(name.to_string()))
+            .unwrap_or(AttributeValue::Null);
         let geometry: Geometry = entity
             .try_into()
             .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
@@ -129,12 +134,8 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
         feature
             .attributes
             .insert(Attribute::new("cityGmlAttributes"), attributes.into());
-        feature
-            .attributes
-            .insert(Attribute::new("gmlName"), AttributeValue::String(name));
-        feature
-            .attributes
-            .insert(Attribute::new("gmlId"), AttributeValue::String(gml_id));
+        feature.attributes.insert(Attribute::new("gmlName"), name);
+        feature.attributes.insert(Attribute::new("gmlId"), gml_id);
         feature.attributes.insert(
             Attribute::new("gmlRootId"),
             AttributeValue::String(format!("root_{}", to_hash(base_url.as_str()))),

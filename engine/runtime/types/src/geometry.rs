@@ -1,11 +1,11 @@
+use std::fmt::Display;
+use std::hash::Hasher;
+use std::{hash::Hash, path::Path};
+
 use nusamai_plateau::models::appearance::X3DMaterial;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::traits::Elevation;
-use std::fmt::Display;
-use std::hash::Hasher;
-use std::{hash::Hash, path::Path};
-use url::Url;
 
 use nusamai_citygml::Color;
 use nusamai_projection::crs::EpsgCode;
@@ -14,6 +14,7 @@ use reearth_flow_geometry::algorithm::hole::HoleCounter;
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_geometry::utils::are_points_coplanar;
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
 use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
@@ -221,7 +222,7 @@ pub struct CityGmlGeometry {
     pub textures: Vec<Texture>,
     pub polygon_materials: Vec<Option<u32>>,
     pub polygon_textures: Vec<Option<u32>>,
-    pub polygon_uvs: MultiPolygon2D<f64>,
+    pub polygon_uvs: flatgeom::MultiPolygon<'static, [f64; 2]>,
 }
 
 impl CityGmlGeometry {
@@ -236,7 +237,7 @@ impl CityGmlGeometry {
             textures,
             polygon_materials: Vec::new(),
             polygon_textures: Vec::new(),
-            polygon_uvs: MultiPolygon2D::default(),
+            polygon_uvs: flatgeom::MultiPolygon::default(),
         }
     }
 
