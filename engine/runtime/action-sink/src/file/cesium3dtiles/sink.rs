@@ -217,7 +217,8 @@ fn geometry_slicing_stage(
 
     upstream.iter().par_bridge().try_for_each(|parcel| {
         slice_to_tiles(parcel, min_zoom, max_zoom, |(z, x, y), feature| {
-            let bytes = bincode::serde::encode_to_vec(&feature, bincode_config).unwrap();
+            let bytes = bincode::serde::encode_to_vec(&feature, bincode_config)
+                .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
             // TODO extract feature type from parcel
             let Some(AttributeValue::String(feature_type)) =
                 parcel.get(&"feature_type".to_string())
@@ -317,7 +318,8 @@ fn tile_writing_stage(
     let texture_size_cache = TextureSizeCache::new();
 
     // Use a temporary directory for embedding in glb.
-    let binding = tempdir().unwrap();
+    let binding =
+        tempdir().map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
     let folder_path = binding.path();
     let texture_folder_name = "textures";
     let atlas_dir = folder_path.join(texture_folder_name);

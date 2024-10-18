@@ -381,14 +381,11 @@ fn slice_polygon(
 }
 
 fn desired_lod(geom_error: f64) -> u8 {
-    if geom_error >= 30.0 {
-        1
-    } else if geom_error >= 20.0 {
-        2
-    } else if geom_error >= 5.0 {
-        3
-    } else {
-        4
+    match geom_error {
+        ge if ge >= 30.0 => 1,
+        ge if ge >= 20.0 => 2,
+        ge if ge >= 5.0 => 3,
+        _ => 4,
     }
 }
 
