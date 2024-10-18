@@ -13,9 +13,12 @@ pub struct AppState {
 
 impl Default for AppState {
     fn default() -> Self {
+        let redis_url =
+            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string());
+
         AppState {
             rooms: Arc::new(Mutex::new(HashMap::new())),
-            redis_client: RedisClient::open("redis://localhost:6379/0").unwrap(),
+            redis_client: RedisClient::open(redis_url).unwrap(),
         }
     }
 }
