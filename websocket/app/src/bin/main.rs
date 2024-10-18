@@ -6,8 +6,8 @@ use tower::ServiceBuilder;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use {
-    flow_websocket_infra::socket::handler::{handle_error, handle_upgrade},
-    flow_websocket_infra::socket::state::AppState,
+    app::handler::{handle_error, handle_upgrade},
+    app::state::AppState,
 };
 
 #[tokio::main]
