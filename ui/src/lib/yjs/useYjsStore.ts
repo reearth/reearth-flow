@@ -129,7 +129,7 @@ export default ({
         }),
       ) ?? {};
 
-    if (!yamlWorkflow || !currentProject) return;
+    if (!yamlWorkflow || !currentProject || !workflowId) return;
 
     await createDeployment(
       currentProject.workspaceId,

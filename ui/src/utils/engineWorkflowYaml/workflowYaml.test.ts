@@ -45,7 +45,7 @@ describe("createWorkflowsYaml", () => {
     (consolidateWorkflows as any).mockReturnValue(mockConsolidatedWorkflow);
     (YAML.stringify as any).mockReturnValue(mockYamlString);
 
-    const result = createWorkflowsYaml(mockWorkflows);
+    const result = createWorkflowsYaml("somename", mockWorkflows);
 
     expect(result).toEqual({
       workflowId: "consolidated-id",
@@ -69,7 +69,7 @@ describe("createWorkflowsYaml", () => {
     (consolidateWorkflows as any).mockReturnValue(mockConsolidatedWorkflow);
     (YAML.stringify as any).mockReturnValue(mockYamlString);
 
-    const result = createWorkflowsYaml([]);
+    const result = createWorkflowsYaml("somename", []);
 
     expect(result).toEqual({
       workflowId: "consolidated-id",
@@ -97,7 +97,7 @@ describe("createWorkflowsYaml", () => {
       throw new Error("YAML stringify error");
     });
 
-    expect(() => createWorkflowsYaml(mockWorkflows)).toThrow(
+    expect(() => createWorkflowsYaml("somename", mockWorkflows)).toThrow(
       "YAML stringify error",
     );
 

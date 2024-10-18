@@ -34,7 +34,7 @@ describe("consolidateWorkflows", () => {
     (createSubGraphs as any).mockReturnValue(mockSubGraphs);
     (vi.mocked(randomID) as any).mockReturnValue("random-id-123");
 
-    const result = consolidateWorkflows(mockWorkflows);
+    const result = consolidateWorkflows("somename", mockWorkflows);
 
     expect(result).toEqual({
       id: "random-id-123",
@@ -61,7 +61,7 @@ describe("consolidateWorkflows", () => {
     (createSubGraphs as any).mockReturnValue(mockSubGraphs);
     (vi.mocked(randomID) as any).mockReturnValue("random-id-456");
 
-    const result = consolidateWorkflows(mockWorkflows);
+    const result = consolidateWorkflows("somename", mockWorkflows);
 
     expect(result).toEqual({
       id: "random-id-456",
@@ -80,7 +80,7 @@ describe("consolidateWorkflows", () => {
     (createSubGraphs as any).mockReturnValue([]);
     (vi.mocked(randomID) as any).mockReturnValue("random-id-789");
 
-    const result = consolidateWorkflows(mockWorkflows);
+    const result = consolidateWorkflows("somename", mockWorkflows);
 
     expect(result).toEqual({
       id: "random-id-789",
