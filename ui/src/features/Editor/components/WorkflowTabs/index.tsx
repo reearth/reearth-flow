@@ -59,7 +59,7 @@ const WorkflowTabs: React.FC<Props> = ({
                     onClick={() => onWorkflowChange(sw.id)}
                     onDoubleClick={() => console.log("Double Click")}>
                     <p
-                      className={`select-none truncate px-[15px] text-center text-xs dark:font-extralight group-hover:text-accent-foreground ${currentWorkflowId === sw?.id && "text-accent-foreground"}`}>
+                      className={`select-none truncate px-[15px] text-center text-xs group-hover:text-accent-foreground dark:font-extralight ${currentWorkflowId === sw?.id && "text-accent-foreground"}`}>
                       {sw.name}
                     </p>
                     <X

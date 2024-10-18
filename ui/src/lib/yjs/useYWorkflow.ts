@@ -4,7 +4,7 @@ import { Array as YArray } from "yjs";
 import type { Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
-import { YNodesArray, YWorkflow, yWorkflowBuilder } from "./workflowBuilder";
+import { YNodesArray, YWorkflow, yWorkflowBuilder } from "./utils";
 
 export default ({
   yWorkflows,
