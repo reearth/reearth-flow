@@ -12,7 +12,6 @@ use axum::{
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
-use tower::BoxError;
 use tracing::{debug, error, trace};
 use yrs::sync::{Awareness, SyncMessage};
 use yrs::updates::decoder::Decode;
@@ -167,20 +166,13 @@ async fn handle_message(
 }
 
 pub async fn handle_error(
-    _method: Method,
-    _uri: Uri,
-    err: BoxError,
-    state: Arc<AppState>,
+    method: Method,
+    uri: Uri,
+    error: Box<dyn std::error::Error + Send + Sync>,
 ) -> impl IntoResponse {
-    if err.is::<tower::timeout::error::Elapsed>() {
-        let _ = state.timeout().await;
-        (StatusCode::REQUEST_TIMEOUT, "timeout".to_string())
-    } else {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("unhandled error: {err}"),
-        )
-    }
+    let error_message = format!("Error occurred for request {} {}: {}", method, uri, error);
+    tracing::error!(error_message);
+    StatusCode::INTERNAL_SERVER_ERROR.into_response()
 }
 
 impl AppState {
@@ -205,7 +197,7 @@ impl AppState {
         unimplemented!()
     }
 
-    async fn timeout(&self) -> Result<()> {
+    async fn _timeout(&self) -> Result<()> {
         unimplemented!()
     }
 }
