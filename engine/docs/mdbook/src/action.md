@@ -1984,11 +1984,15 @@ Writes features to a file
   "title": "MVTWriterParam",
   "type": "object",
   "required": [
+    "layerName",
     "maxZoom",
     "minZoom",
     "output"
   ],
   "properties": {
+    "layerName": {
+      "type": "string"
+    },
     "maxZoom": {
       "type": "integer",
       "format": "uint8",
