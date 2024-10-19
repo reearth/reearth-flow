@@ -67,7 +67,25 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
             .into());
         };
 
-        let process = BulkAttributeRenamer { params };
+        let regex = if params.rename_action == RenameAction::StringReplace {
+            if let Some(ref find) = params.text_to_find {
+                Some(Regex::new(find).map_err(|e| {
+                    AttributeProcessorError::BulkRenamerFactory(format!(
+                        "Invalid regex pattern '{}': {}",
+                        find, e
+                    ))
+                })?)
+            } else {
+                return Err(AttributeProcessorError::BulkRenamerFactory(
+                    "Missing 'text_to_find' parameter for StringReplace action".to_string(),
+                )
+                .into());
+            }
+        } else {
+            None
+        };
+
+        let process = BulkAttributeRenamer { params, regex };
         Ok(Box::new(process))
     }
 }
@@ -75,6 +93,7 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
 #[derive(Debug, Clone)]
 pub struct BulkAttributeRenamer {
     params: BulkAttributeRenamerParam,
+    regex: Option<Regex>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -93,7 +112,7 @@ pub enum RenameType {
     Selected,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
 pub enum RenameAction {
     AddPrefix,
     AddSuffix,
@@ -214,28 +233,21 @@ impl BulkAttributeRenamer {
     }
 
     fn string_replace(&self, attr_name: &str) -> super::errors::Result<String> {
-        if let Some(ref find) = self.params.text_to_find {
-            let re = Regex::new(find).map_err(|e| {
-                AttributeProcessorError::BulkRenamer(format!(
-                    "Invalid regex pattern '{}': {}",
-                    find, e
-                ))
-            })?;
-
-            if re.is_match(attr_name) {
-                Ok(re
+        if let Some(ref regex) = self.regex {
+            if regex.is_match(attr_name) {
+                Ok(regex
                     .replace_all(attr_name, &self.params.rename_value as &str)
                     .to_string())
             } else {
                 Err(AttributeProcessorError::BulkRenamer(format!(
-                    "Attribute '{}' does not match the regex pattern '{}'",
-                    attr_name, find
+                    "Attribute '{}' does not match the regex pattern",
+                    attr_name
                 ))
                 .into())
             }
         } else {
             Err(AttributeProcessorError::BulkRenamer(
-                "Missing 'text_to_find' parameter for StringReplace action".to_string(),
+                "Regular expression is not compiled".to_string(),
             )
             .into())
         }
