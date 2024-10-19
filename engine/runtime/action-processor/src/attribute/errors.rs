@@ -19,6 +19,10 @@ pub(super) enum AttributeProcessorError {
     DuplicateFilterFactory(String),
     #[error("Attribute DuplicateFilter error: {0}")]
     DuplicateFilter(String),
+    #[error("Bulk Attribute Renamer Factory error: {0}")]
+    BulkRenamerFactory(String),
+    #[error("Bulk Attribute Renamer error: {0}")]
+    BulkRenamer(String),
     #[error("Attribute File Path Info Factory error: {0}")]
     FilePathInfoExtractorFactory(String),
     #[error("Attribute FilePathInfoExtractor error: {0}")]

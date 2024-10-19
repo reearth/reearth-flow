@@ -1,4 +1,5 @@
 pub(crate) mod aggregator;
+pub(crate) mod bulk_renamer;
 pub(crate) mod duplicate_filter;
 pub(crate) mod errors;
 pub(crate) mod file_path_info_extractor;
