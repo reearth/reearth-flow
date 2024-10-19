@@ -135,7 +135,7 @@ impl Processor for BulkAttributeRenamer {
 }
 
 impl BulkAttributeRenamer {
-    fn select_attributes(&self, feature: &Feature) -> Result<Vec<Attribute>, BoxedError> {
+    fn select_attributes(&self, feature: &Feature) -> super::errors::Result<Vec<Attribute>> {
         match self.params.rename_type {
             RenameType::All => Ok(feature.attributes.keys().cloned().collect()),
             RenameType::Selected => {
@@ -155,7 +155,7 @@ impl BulkAttributeRenamer {
         &self,
         feature: &mut Feature,
         attributes: Vec<Attribute>,
-    ) -> Result<Vec<Attribute>, BoxedError> {
+    ) -> super::errors::Result<Vec<Attribute>> {
         let mut attributes_to_remove = vec![];
 
         for attr in attributes {
@@ -173,7 +173,7 @@ impl BulkAttributeRenamer {
         Ok(attributes_to_remove)
     }
 
-    fn get_new_name(&self, attr_name: &str) -> Result<String, BoxedError> {
+    fn get_new_name(&self, attr_name: &str) -> super::errors::Result<String> {
         match self.params.rename_action {
             RenameAction::AddPrefix => Ok(format!("{}{}", self.params.rename_value, attr_name)),
             RenameAction::AddSuffix => Ok(format!("{}{}", attr_name, self.params.rename_value)),
@@ -183,7 +183,7 @@ impl BulkAttributeRenamer {
         }
     }
 
-    fn remove_prefix(&self, attr_name: &str) -> Result<String, BoxedError> {
+    fn remove_prefix(&self, attr_name: &str) -> super::errors::Result<String> {
         if attr_name.starts_with(&self.params.rename_value) {
             Ok(attr_name
                 .strip_prefix(&self.params.rename_value)
@@ -198,7 +198,7 @@ impl BulkAttributeRenamer {
         }
     }
 
-    fn remove_suffix(&self, attr_name: &str) -> Result<String, BoxedError> {
+    fn remove_suffix(&self, attr_name: &str) -> super::errors::Result<String> {
         if attr_name.ends_with(&self.params.rename_value) {
             Ok(attr_name
                 .strip_suffix(&self.params.rename_value)
@@ -213,7 +213,7 @@ impl BulkAttributeRenamer {
         }
     }
 
-    fn string_replace(&self, attr_name: &str) -> Result<String, BoxedError> {
+    fn string_replace(&self, attr_name: &str) -> super::errors::Result<String> {
         if let Some(ref find) = self.params.text_to_find {
             let re = Regex::new(find).map_err(|e| {
                 AttributeProcessorError::BulkRenamer(format!(
