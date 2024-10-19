@@ -209,7 +209,19 @@ fn write_json(
         })?;
         dynamic_to_value(&convert)
     } else {
-        features.into()
+        let attributes = features
+            .iter()
+            .map(|f| {
+                serde_json::Value::Object(
+                    f.attributes
+                        .clone()
+                        .into_iter()
+                        .map(|(k, v)| (k.into_inner().to_string(), v.into()))
+                        .collect::<serde_json::Map<_, _>>(),
+                )
+            })
+            .collect::<Vec<serde_json::Value>>();
+        serde_json::Value::Array(attributes)
     };
     let storage = storage_resolver
         .resolve(output)

@@ -2,6 +2,8 @@
 id: 00caad2a-9f7d-4189-b479-153fa9ea36dc
 name: "BulkRenamerExample"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  outputFilePath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -35,9 +37,13 @@ graphs:
           textToFind: "^\\d+$"
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: Echo
+        name: FileWriter
         type: action
-        action: EchoSink
+        action: FileWriter
+        with:
+          format: json
+          output: |
+            env.get("outputFilePath")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

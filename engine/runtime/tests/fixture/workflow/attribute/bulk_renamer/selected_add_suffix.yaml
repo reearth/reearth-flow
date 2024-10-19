@@ -2,6 +2,8 @@
 id: 00caad2a-9f7d-4189-b479-153fa9ea36dc
 name: "BulkRenamerExample"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  outputFilePath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -14,12 +16,12 @@ graphs:
           creator: |
             [
               #{
-                testAttribute1test: "test01",
-                testAttribute2test: "test02"
+                testAttribute1: "test01",
+                testAttribute2: "test02"
               },
               #{
-                testAttribute1test: "test03",
-                testAttribute2test: "test04"
+                testAttribute1: "test03",
+                testAttribute2: "test04"
               },
             ]
 
@@ -28,16 +30,20 @@ graphs:
         type: action
         action: BulkAttributeRenamer
         with:
-          renameType: All
-          renameAction: RemoveSuffix
-          renameValue: "foo"
-          selectedAttributes: null
-          text_to_find: null
+          renameType: Selected
+          renameAction: AddSuffix
+          renameValue: "new"
+          selectedAttributes: ["testAttribute1"]
+          textToFind: null
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: Echo
+        name: FileWriter
         type: action
-        action: EchoSink
+        action: FileWriter
+        with:
+          format: json
+          output: |
+            env.get("outputFilePath")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
