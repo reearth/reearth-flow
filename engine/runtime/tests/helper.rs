@@ -13,6 +13,8 @@ use reearth_flow_runner::{errors::Error, runner::Runner};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Workflow;
+use serde_json::Value;
+use tempfile::{tempdir, TempDir};
 
 pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let mut common = HashMap::new();
@@ -33,7 +35,7 @@ struct Fixtures;
 #[folder = "fixture/workflow/"]
 struct WorkflowFiles;
 
-pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<(), Error> {
+pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir, Error> {
     env::set_var("ACTION_LOG_DISABLE", "true");
     let storage_resolver = Arc::new(StorageResolver::new());
     let storage = storage_resolver
@@ -53,6 +55,9 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<(), Err
     }
     let workflow_file = WorkflowFiles::get(format!("{}.yaml", test_id).as_str()).unwrap();
     let workflow = std::str::from_utf8(workflow_file.data.as_ref()).unwrap();
+    let binding = tempdir().unwrap();
+    let folder_path = binding.path();
+    std::fs::create_dir_all(folder_path).unwrap();
     let state = Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
     let logger_factory = Arc::new(LoggerFactory::new(
         reearth_flow_action_log::ActionLogger::root(
@@ -61,7 +66,17 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<(), Err
         ),
         Uri::for_test("ram:///log/").path(),
     ));
-    let workflow = Workflow::try_from(workflow).expect("failed to parse workflow");
+    let mut workflow = Workflow::try_from(workflow).expect("failed to parse workflow");
+    workflow
+        .merge_with(HashMap::from([(
+            "outputFilePath".to_string(),
+            folder_path
+                .join("result.json")
+                .to_str()
+                .unwrap()
+                .to_string(),
+        )]))
+        .unwrap();
     Runner::run(
         workflow,
         BUILTIN_ACTION_FACTORIES.clone(),
@@ -69,4 +84,31 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<(), Err
         storage_resolver,
         state,
     )
+    .unwrap();
+    Ok(binding)
+}
+
+pub(crate) fn execute_with_test_assert(test_id: &str, assert_file: &str) {
+    let tempdir = execute(test_id, vec![]).unwrap();
+    let storage_resolver = Arc::new(StorageResolver::new());
+    let file = Fixtures::get(format!("{}/{}", test_id, assert_file).as_str())
+        .unwrap()
+        .data
+        .to_vec();
+    let expect = bytes::Bytes::from(file);
+    let expect_path = &Uri::for_test(
+        tempdir
+            .path()
+            .join("result.json")
+            .as_path()
+            .to_str()
+            .unwrap(),
+    );
+    let storage = storage_resolver.resolve(expect_path).unwrap();
+    let result = storage.get_sync(expect_path.path().as_path()).unwrap();
+    let expect: Value =
+        serde_json::from_str(String::from_utf8(expect.to_vec()).unwrap().as_str()).unwrap();
+    let result: Value =
+        serde_json::from_str(String::from_utf8(result.to_vec()).unwrap().as_str()).unwrap();
+    assert_eq!(expect, result);
 }

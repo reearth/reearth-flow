@@ -430,6 +430,76 @@ Buffers a geometry
 ### Category
 * Geometry
 
+## BulkAttributeRenamer
+### Type
+* processor
+### Description
+Renames attributes by adding/removing prefixes or suffixes, or replacing text
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkAttributeRenamerParam",
+  "type": "object",
+  "required": [
+    "renameAction",
+    "renameType",
+    "renameValue"
+  ],
+  "properties": {
+    "renameAction": {
+      "$ref": "#/definitions/RenameAction"
+    },
+    "renameType": {
+      "$ref": "#/definitions/RenameType"
+    },
+    "renameValue": {
+      "type": "string"
+    },
+    "selectedAttributes": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "textToFind": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "RenameAction": {
+      "type": "string",
+      "enum": [
+        "AddPrefix",
+        "AddSuffix",
+        "RemovePrefix",
+        "RemoveSuffix",
+        "StringReplace"
+      ]
+    },
+    "RenameType": {
+      "type": "string",
+      "enum": [
+        "All",
+        "Selected"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
+
 ## CenterPointReplacer
 ### Type
 * processor
