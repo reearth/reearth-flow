@@ -129,18 +129,18 @@ async fn handle_message(
                 .get(room_id)
                 .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
             let doc = room.get_doc();
-            match yrs::sync::Message::decode_v1(&d) {
+            match yrs::sync::Message::decode_v2(&d) {
                 Ok(yrs::sync::Message::Sync(SyncMessage::SyncStep1(sv))) => {
                     trace!("Sync");
                     let txn = doc.transact();
-                    let update = txn.encode_state_as_update_v1(&sv);
-                    let sync2 = SyncMessage::SyncStep2(update).encode_v1();
+                    let update = txn.encode_state_as_update_v2(&sv);
+                    let sync2 = SyncMessage::SyncStep2(update).encode_v2();
                     Ok(Some(sync2))
                 }
                 Ok(yrs::sync::Message::Sync(SyncMessage::Update(data))) => {
                     trace!("Update");
                     let mut txn = doc.transact_mut();
-                    txn.apply_update(Update::decode_v1(&data)?);
+                    txn.apply_update(Update::decode_v2(&data)?);
                     Ok(None)
                 }
                 Ok(yrs::sync::Message::Awareness(update)) => {
