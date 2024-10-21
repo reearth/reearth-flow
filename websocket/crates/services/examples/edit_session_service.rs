@@ -4,7 +4,6 @@ use std::time::Duration;
 use chrono::Utc;
 use flow_websocket_domain::{generate_id, snapshot::ObjectTenant, ProjectEditingSession};
 use flow_websocket_infra::persistence::{
-    local_storage::{self, LocalClient},
     project_repository::{ProjectLocalRepository, ProjectRedisRepository},
     redis::{
         flow_project_redis_data_manager::FlowProjectRedisDataManager, redis_client::RedisClient,
