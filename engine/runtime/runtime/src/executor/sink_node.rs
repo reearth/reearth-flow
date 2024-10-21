@@ -9,7 +9,9 @@ use std::{
 use crossbeam::channel::Receiver;
 use futures::Future;
 use petgraph::graph::NodeIndex;
-use reearth_flow_action_log::{action_log, ActionLogger};
+use reearth_flow_action_log::{action_log, factory::LoggerFactory, ActionLogger};
+use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
 use tracing::info_span;
 
@@ -19,6 +21,7 @@ use crate::{
     errors::ExecutionError,
     event::Event,
     executor_operation::{ExecutorContext, ExecutorOperation, NodeContext},
+    kvs::KvStore,
     node::{NodeHandle, Sink},
 };
 
@@ -46,7 +49,11 @@ pub struct SinkNode<F> {
     #[allow(dead_code)]
     runtime: Arc<Handle>,
     logger: Arc<ActionLogger>,
+    logger_factory: Arc<LoggerFactory>,
     span: tracing::Span,
+    expr_engine: Arc<Engine>,
+    storage_resolver: Arc<StorageResolver>,
+    kv_store: Arc<Box<dyn KvStore>>,
 }
 
 impl<F: Future + Unpin + Debug> SinkNode<F> {
@@ -62,7 +69,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             panic!("Must pass in a node")
         };
         let node_handle = node.handle.clone();
-        let NodeKind::Sink(mut sink) = kind else {
+        let NodeKind::Sink(sink) = kind else {
             panic!("Must pass in a sink node");
         };
 
@@ -79,7 +86,6 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             "workflow.id" = dag.id.to_string().as_str(),
             "node.id" = node_handle.id.to_string().as_str(),
         );
-        sink.initialize(ctx);
         Self {
             node_handle,
             node_handles,
@@ -91,6 +97,10 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             runtime,
             logger: Arc::new(logger),
             span,
+            logger_factory: ctx.logger.clone(),
+            expr_engine: ctx.expr_engine.clone(),
+            storage_resolver: ctx.storage_resolver.clone(),
+            kv_store: ctx.kv_store.clone(),
         }
     }
 
@@ -118,6 +128,14 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         let span = self.span.clone();
         let logger = self.logger.clone();
         let mut sel = init_select(&receivers);
+        self.sink
+            .initialize(NodeContext {
+                logger: self.logger_factory.clone(),
+                expr_engine: self.expr_engine.clone(),
+                kv_store: self.kv_store.clone(),
+                storage_resolver: self.storage_resolver.clone(),
+            })
+            .map_err(ExecutionError::Sink)?;
         action_log!(
             parent: span, logger, "{:?} process start...", self.sink.name(),
         );

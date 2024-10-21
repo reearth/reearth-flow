@@ -4,7 +4,6 @@ use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::thread;
 use std::vec;
 
 use flate2::{write::ZlibEncoder, Compression};
@@ -83,7 +82,7 @@ impl SinkFactory for MVTSinkFactory {
         };
 
         let sink = MVTWriter {
-            sender: None,
+            buffer: Vec::new(),
             params,
         };
         Ok(Box::new(sink))
@@ -93,7 +92,7 @@ impl SinkFactory for MVTSinkFactory {
 #[derive(Debug, Clone)]
 pub struct MVTWriter {
     pub(super) params: MVTWriterParam,
-    pub(super) sender: Option<std::sync::mpsc::SyncSender<Feature>>,
+    pub(super) buffer: Vec<Feature>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -116,55 +115,16 @@ impl Sink for MVTWriter {
         "MVTWriter"
     }
 
-    fn initialize(&mut self, ctx: NodeContext) {
-        let tile_id_conv = TileIdMethod::Hilbert;
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = self.params.output.clone();
-        let scope = expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let output = Uri::from_str(path.as_str()).expect("Failed to parse output path");
-
-        let (sender_upstream, receiver_upstream) = std::sync::mpsc::sync_channel(2000);
-        let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
-        let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
-        self.sender = Some(sender_upstream);
-        let params = self.params.clone();
-        thread::spawn(move || {
-            let _ = geometry_slicing_stage(receiver_upstream, tile_id_conv, sender_sliced, &params);
-        });
-        thread::spawn(move || {
-            let _ = feature_sorting_stage(receiver_sliced, sender_sorted);
-        });
-        thread::spawn(move || {
-            let pool = rayon::ThreadPoolBuilder::new()
-                .use_current_thread()
-                .build()
-                .unwrap();
-            pool.install(|| {
-                let _ =
-                    tile_writing_stage(ctx.as_context(), &output, receiver_sorted, tile_id_conv);
-            })
-        });
-    }
-
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let Some(geometry) = ctx.feature.geometry.as_ref() else {
-            return Err(Box::new(SinkError::FileWriter(
+        let feature = ctx.feature;
+        let Some(geometry) = feature.geometry.as_ref() else {
+            return Err(Box::new(SinkError::MvtWriter(
                 "Unsupported input".to_string(),
             )));
         };
-        let sender = self
-            .sender
-            .as_ref()
-            .ok_or_else(|| SinkError::FileWriter("Failed to get sender".to_string()))?;
-        let geometry_value = geometry.value.clone();
-        match geometry_value {
+        match geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_) => {
-                sender.send(ctx.feature.clone()).map_err(|e| {
-                    SinkError::FileWriter(format!("Failed to send feature: {:?}", e))
-                })?;
+                self.buffer.push(feature);
             }
             _ => {
                 return Err(Box::new(SinkError::MvtWriter(
@@ -175,20 +135,47 @@ impl Sink for MVTWriter {
 
         Ok(())
     }
+    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        let upstream = &self.buffer;
+        let tile_id_conv = TileIdMethod::Hilbert;
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let output = self.params.output.clone();
+        let scope = expr_engine.new_scope();
+        let path = scope
+            .eval::<String>(output.as_ref())
+            .unwrap_or_else(|_| output.as_ref().to_string());
+        let output = Uri::from_str(path.as_str())?;
 
-    #[allow(dropping_references)]
-    fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
-        let sender = self
-            .sender
-            .as_ref()
-            .ok_or_else(|| SinkError::FileWriter("Failed to get sender".to_string()))?;
-        drop(sender);
+        std::thread::scope(|scope| {
+            let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
+            let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
+            scope.spawn(|| {
+                let _ = geometry_slicing_stage(upstream, tile_id_conv, sender_sliced, &self.params);
+            });
+            scope.spawn(|| {
+                let _ = feature_sorting_stage(receiver_sliced, sender_sorted);
+            });
+            scope.spawn(|| {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .use_current_thread()
+                    .build()
+                    .unwrap();
+                pool.install(|| {
+                    let _ = tile_writing_stage(
+                        ctx.as_context(),
+                        &output,
+                        receiver_sorted,
+                        tile_id_conv,
+                    );
+                })
+            });
+        });
         Ok(())
     }
 }
 
 fn geometry_slicing_stage(
-    upstream: std::sync::mpsc::Receiver<Feature>,
+    upstream: &[Feature],
     tile_id_conv: TileIdMethod,
     sender_sliced: std::sync::mpsc::SyncSender<(u64, Vec<u8>)>,
     mvt_options: &MVTWriterParam,
@@ -196,11 +183,11 @@ fn geometry_slicing_stage(
     let bincode_config = bincode::config::standard();
 
     // Convert CityObjects to sliced features
-    upstream.into_iter().par_bridge().try_for_each(|feature| {
+    upstream.iter().par_bridge().try_for_each(|feature| {
         let max_detail = 12; // 4096
         let buffer_pixels = 5;
         slice_cityobj_geoms(
-            &feature,
+            feature,
             &mvt_options.layer_name,
             mvt_options.min_zoom,
             mvt_options.max_zoom,
