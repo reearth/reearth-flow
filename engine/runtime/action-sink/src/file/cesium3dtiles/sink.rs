@@ -139,9 +139,7 @@ impl Sink for Cesium3DTilesWriter {
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let Some(geometry) = ctx.feature.geometry.as_ref() else {
-            return Err(SinkError::Cesium3DTilesWriter(
-                "Unsupported input".to_string(),
-            ).into());
+            return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
         };
         let geometry_value = geometry.value.clone();
         let feature = ctx.feature;
@@ -150,9 +148,7 @@ impl Sink for Cesium3DTilesWriter {
                 self.buffer.push(feature);
             }
             _ => {
-                return Err(SinkError::Cesium3DTilesWriter(
-                    "Unsupported input".to_string(),
-                ).into());
+                return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
             }
         }
 
