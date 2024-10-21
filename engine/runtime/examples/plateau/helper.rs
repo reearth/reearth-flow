@@ -54,9 +54,6 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
             reearth_flow_runtime::event::Event::ProcessorFinished { .. } => {
                 // TODO: Implement this
             }
-            reearth_flow_runtime::event::Event::SinkFlushed { .. } => {
-                // TODO: Implement this
-            }
             reearth_flow_runtime::event::Event::SinkFinished { .. } => {
                 // TODO: Implement this
             }

@@ -362,30 +362,14 @@ pub trait Sink: Send + Debug + SinkClone {
 
     fn name(&self) -> &str;
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError>;
-
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError>;
+
     fn set_source_state(&mut self, _source_state: &[u8]) -> Result<(), BoxedError> {
         Ok(())
     }
 
     fn get_source_state(&mut self) -> Result<Option<Vec<u8>>, BoxedError> {
         Ok(None)
-    }
-
-    fn preferred_batch_size(&self) -> Option<u64> {
-        None
-    }
-
-    fn max_batch_duration_ms(&self) -> Option<u64> {
-        None
-    }
-
-    fn flush_batch(&mut self) -> Result<(), BoxedError> {
-        Ok(())
-    }
-
-    fn supports_batching(&self) -> bool {
-        false
     }
 }
 

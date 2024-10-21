@@ -36,8 +36,8 @@
     const viewer = new Cesium.Viewer("cesiumContainer", {});
 
     const yourMvt = new CesiumMVTImageryProvider.CesiumMVTImageryProvider({
-      urlTemplate: "http://localhost:8004/dist/{z}/{x}/{y}.pbf",
-      layerName: "luse:LandUse",
+      urlTemplate: "/dist/{z}/{x}/{y}.pbf",
+      layerName: "luse",
       style: feature => {
         return {
           fillStyle: "white" // 白で塗りつぶす
@@ -47,7 +47,7 @@
     viewer.scene.imageryLayers.addImageryProvider(yourMvt);
 
     viewer.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(138.2922289,36.0921473, 5000.0)
+      destination: Cesium.Cartesian3.fromDegrees(139.81163232,35.82450314, 5000.0)
     });
   </script>
 </body>

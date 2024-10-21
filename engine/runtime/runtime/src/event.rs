@@ -14,10 +14,6 @@ pub enum Event {
         node: NodeHandle,
         name: String,
     },
-    SinkFlushed {
-        node: NodeHandle,
-        name: String,
-    },
     SinkFinished {
         node: NodeHandle,
         name: String,
