@@ -1,6 +1,7 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use super::errors::{Result, WsError};
+use super::services::YjsService;
 use super::state::AppState;
 use axum::extract::{Path, Query};
 use axum::http::{Method, StatusCode, Uri};
@@ -13,10 +14,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, trace};
-use yrs::sync::{Awareness, SyncMessage};
-use yrs::updates::decoder::Decode;
-use yrs::updates::encoder::Encode;
-use yrs::{ReadTxn, Transact, Update};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "tag", content = "content")]
@@ -128,27 +125,14 @@ async fn handle_message(
             let room = rooms
                 .get(room_id)
                 .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
-            let doc = room.get_doc();
-            match yrs::sync::Message::decode_v2(&d) {
-                Ok(yrs::sync::Message::Sync(SyncMessage::SyncStep1(sv))) => {
-                    trace!("Sync");
-                    let txn = doc.transact();
-                    let update = txn.encode_state_as_update_v2(&sv);
-                    let sync2 = SyncMessage::SyncStep2(update).encode_v2();
-                    Ok(Some(sync2))
-                }
-                Ok(yrs::sync::Message::Sync(SyncMessage::Update(data))) => {
-                    trace!("Update");
-                    let mut txn = doc.transact_mut();
-                    txn.apply_update(Update::decode_v2(&data)?);
+
+            let yjs_service = YjsService::new(room.get_doc());
+            match yjs_service.handle_message(&d) {
+                Ok(response) => Ok(response),
+                Err(e) => {
+                    debug!("Error handling Yjs message: {:?}", e);
                     Ok(None)
                 }
-                Ok(yrs::sync::Message::Awareness(update)) => {
-                    let mut awareness = Awareness::new((*doc).clone());
-                    awareness.apply_update(update)?;
-                    Ok(None)
-                }
-                _ => Ok(None),
             }
         }
         Message::Close(c) => {
