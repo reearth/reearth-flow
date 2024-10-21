@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -48,8 +49,9 @@ func (i *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 	return i.deploymentRepo.FindByWorkspace(ctx, id, p)
 }
 
-func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentParam, operator *usecase.Operator) (_ *deployment.Deployment, err error) {
+func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentParam, operator *usecase.Operator) (result *deployment.Deployment, err error) {
 	if err := i.CanWriteWorkspace(p.Workspace, operator); err != nil {
+		fmt.Println("HERE0", err.Error())
 		return nil, err
 	}
 
@@ -70,7 +72,7 @@ func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentPa
 		return nil, err
 	}
 
-	url, err := i.file.UploadWorkflow(ctx, &p.Workflow)
+	url, err := i.file.UploadWorkflow(ctx, p.Workflow)
 	if err != nil {
 		return nil, err
 	}

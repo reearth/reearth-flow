@@ -78,3 +78,11 @@ func (d *Deployment) SetVersion(version string) {
 	d.version = version
 	d.updatedAt = time.Now()
 }
+
+func (d *Deployment) SetCreatedAt(createdAt time.Time) {
+	d.createdAt = createdAt
+}
+
+func (d *Deployment) SetUpdatedAt(updatedAt time.Time) {
+	d.updatedAt = updatedAt
+}

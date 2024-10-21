@@ -30,6 +30,10 @@ func (r *workspaceResolver) Projects(ctx context.Context, obj *gqlmodel.Workspac
 	return loaders(ctx).Project.FindByWorkspace(ctx, obj.ID, first, last, before, after)
 }
 
+func (r *workspaceResolver) Deployments(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.DeploymentConnection, error) {
+	return loaders(ctx).Deployment.FindByWorkspace(ctx, obj.ID, pagination)
+}
+
 type workspaceMemberResolver struct{ *Resolver }
 
 func (r *workspaceMemberResolver) User(ctx context.Context, obj *gqlmodel.WorkspaceMember) (*gqlmodel.User, error) {
