@@ -86,6 +86,8 @@ pub enum ExecutionError {
     RestoreRecordWriter(#[source] DeserializationError),
     #[error("Source error: {0}")]
     Source(#[source] BoxedError),
+    #[error("Processor error: {0}")]
+    Processor(#[source] BoxedError),
     #[error("Sink error: {0}")]
     Sink(#[source] BoxedError),
     #[error("ChannelManager error: {0}")]
