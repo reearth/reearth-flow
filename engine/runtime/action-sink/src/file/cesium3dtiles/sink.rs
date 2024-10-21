@@ -144,9 +144,10 @@ impl Sink for Cesium3DTilesWriter {
             )));
         };
         let geometry_value = geometry.value.clone();
+        let feature = ctx.feature;
         match geometry_value {
             geometry_types::GeometryValue::CityGmlGeometry(_) => {
-                self.buffer.push(ctx.feature.clone());
+                self.buffer.push(feature);
             }
             _ => {
                 return Err(Box::new(SinkError::Cesium3DTilesWriter(
