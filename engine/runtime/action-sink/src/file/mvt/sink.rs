@@ -118,7 +118,7 @@ impl Sink for MVTWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = ctx.feature;
         let Some(geometry) = feature.geometry.as_ref() else {
-            return Err(Box::new(SinkError::FileWriter(
+            return Err(Box::new(SinkError::MvtWriter(
                 "Unsupported input".to_string(),
             )));
         };
