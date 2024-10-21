@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use yrs::Doc;
 
-use super::errors::{Result, WsError};
+use super::errors::Result;
 use tokio::sync::{broadcast, Mutex};
 
 pub struct Room {
@@ -37,7 +37,7 @@ impl Room {
     }
 
     pub fn _broadcast(&self, msg: String) -> Result<()> {
-        self._tx.send(msg).map_err(|_| WsError::Error)?;
+        self._tx.send(msg)?;
         Ok(())
     }
 
