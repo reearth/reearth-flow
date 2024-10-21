@@ -43,6 +43,7 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		Asset:       c.Asset.Filtered(workspace),
 		AuthRequest: c.AuthRequest,
 		Config:      c.Config,
+		Deployment:  c.Deployment.Filtered(workspace),
 		Lock:        c.Lock,
 		Workflow:    c.Workflow.Filtered(workspace),
 		Project:     c.Project.Filtered(workspace),

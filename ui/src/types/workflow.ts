@@ -13,3 +13,35 @@ export type Workflow = {
   // status??
   // params?: any;
 };
+
+export type EngineReadyWorkflow = {
+  id: string;
+  name: string;
+  entryGraphId: string;
+  with?: any; // TODO: better type this (if possible)
+  graphs: EngineReadyGraph[];
+};
+
+export type EngineReadyGraph = {
+  id: string;
+  name: string;
+  nodes: EngineReadyNode[];
+  edges: EngineReadyEdge[];
+};
+
+export type EngineReadyNode = {
+  id: string;
+  name: string;
+  type: string;
+  subGraphId?: string;
+  action?: string;
+  with?: any; // TODO: better type this (if possible)
+};
+
+export type EngineReadyEdge = {
+  id: string;
+  from: string;
+  to: string;
+  fromPort: string;
+  toPort: string;
+};

@@ -37,6 +37,8 @@ export const actionNodeTypes = ["reader", "writer", "transformer"] as const;
 
 export type ActionNodeType = (typeof actionNodeTypes)[number];
 
+export const deployableNodeTypes = [...actionNodeTypes, "subworkflow"];
+
 export const nodeTypes = [
   ...actionNodeTypes,
   "batch",

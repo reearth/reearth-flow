@@ -3,7 +3,7 @@ import { useCallback } from "react";
 
 import type { Node } from "@flow/types";
 
-import { YNodesArray, YWorkflow } from "./workflowBuilder";
+import { YNodesArray, YWorkflow } from "./utils";
 
 export default ({
   currentYWorkflow,

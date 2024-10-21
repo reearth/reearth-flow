@@ -3,7 +3,7 @@ import { Text as YText } from "yjs";
 
 import { Edge, Node } from "@flow/types";
 
-import { fromYjsText } from "./conversions";
+import { fromYjsText } from "./utils/conversions";
 
 export default ({
   workflowId,
