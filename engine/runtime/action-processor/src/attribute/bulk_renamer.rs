@@ -163,8 +163,7 @@ impl BulkAttributeRenamer {
                 } else {
                     Err(AttributeProcessorError::BulkRenamer(
                         "No attributes selected for renaming".to_string(),
-                    )
-                    .into())
+                    ))
                 }
             }
         }
@@ -212,8 +211,7 @@ impl BulkAttributeRenamer {
             Err(AttributeProcessorError::BulkRenamer(format!(
                 "Attribute '{}' does not start with prefix '{}'",
                 attr_name, self.params.rename_value
-            ))
-            .into())
+            )))
         }
     }
 
@@ -227,8 +225,7 @@ impl BulkAttributeRenamer {
             Err(AttributeProcessorError::BulkRenamer(format!(
                 "Attribute '{}' does not end with suffix '{}'",
                 attr_name, self.params.rename_value
-            ))
-            .into())
+            )))
         }
     }
 
@@ -242,14 +239,12 @@ impl BulkAttributeRenamer {
                 Err(AttributeProcessorError::BulkRenamer(format!(
                     "Attribute '{}' does not match the regex pattern",
                     attr_name
-                ))
-                .into())
+                )))
             }
         } else {
             Err(AttributeProcessorError::BulkRenamer(
                 "Regular expression is not compiled".to_string(),
-            )
-            .into())
+            ))
         }
     }
 }

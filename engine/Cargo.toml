@@ -17,7 +17,7 @@ exclude = ["benches/", "test-data/", "testdata/"]
 homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
-rust-version = "1.81" # Remember to update clippy.toml as well
+rust-version = "1.82" # Remember to update clippy.toml as well
 version = "0.0.2"
 
 [profile.dev]
