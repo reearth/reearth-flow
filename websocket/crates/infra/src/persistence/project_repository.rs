@@ -77,20 +77,20 @@ where
         &self,
         mut session: ProjectEditingSession,
     ) -> Result<String, Self::Error> {
-        let new_session_id: String = generate_id(14, "editor-session");
-        if session.session_id.is_none() {
-            session.session_id = Some(new_session_id.clone());
-        }
+        let session_id = session
+            .session_id
+            .get_or_insert_with(|| generate_id(14, "editor-session"))
+            .clone();
 
-        let key = format!("session:{}", new_session_id.clone());
-        self.redis_client.set(&key, &session).await?;
-
+        let session_key = format!("session:{}", session_id);
         let active_session_key = format!("project:{}:active_session", session.project_id);
+
+        self.redis_client.set(&session_key, &session).await?;
         self.redis_client
-            .set(&active_session_key, &new_session_id)
+            .set(&active_session_key, &session_id)
             .await?;
 
-        Ok(new_session_id)
+        Ok(session_id)
     }
 
     async fn get_active_session(
