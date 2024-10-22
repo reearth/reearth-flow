@@ -1004,6 +1004,12 @@
               "dataset": {
                 "$ref": "#/definitions/Expr"
               },
+              "flatten": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
               "format": {
                 "type": "string",
                 "enum": [
@@ -1338,6 +1344,12 @@
             "properties": {
               "dataset": {
                 "$ref": "#/definitions/Expr"
+              },
+              "flatten": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "format": {
                 "type": "string",

@@ -8,18 +8,18 @@ use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::CompiledCommonPropertySchema;
+use super::CompiledCommonReaderParam;
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CsvPropertySchema {
+pub struct CsvReaderParam {
     pub(super) offset: Option<usize>,
 }
 
 pub(crate) fn read_csv(
     delimiter: Delimiter,
-    params: &CompiledCommonPropertySchema,
-    csv_params: &CsvPropertySchema,
+    params: &CompiledCommonReaderParam,
+    csv_params: &CsvReaderParam,
     ctx: ExecutorContext,
     fw: &mut dyn ProcessorChannelForwarder,
 ) -> Result<(), super::errors::FeatureProcessorError> {

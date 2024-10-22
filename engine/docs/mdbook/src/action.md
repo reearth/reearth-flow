@@ -996,6 +996,12 @@ Filters features based on conditions
         "dataset": {
           "$ref": "#/definitions/Expr"
         },
+        "flatten": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "format": {
           "type": "string",
           "enum": [
@@ -1331,6 +1337,12 @@ Reads features from a file
       "properties": {
         "dataset": {
           "$ref": "#/definitions/Expr"
+        },
+        "flatten": {
+          "type": [
+            "boolean",
+            "null"
+          ]
         },
         "format": {
           "type": "string",

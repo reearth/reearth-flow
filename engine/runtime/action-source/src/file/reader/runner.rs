@@ -41,6 +41,8 @@ pub enum FileReader {
     Citygml {
         #[serde(flatten)]
         common_property: FileReaderCommonParam,
+        #[serde(flatten)]
+        property: citygml::CityGmlReaderParam,
     },
 }
 
@@ -107,9 +109,12 @@ impl Source for FileReader {
                     Err(e) => Err(Box::new(e)),
                 }
             }
-            Self::Citygml { common_property } => {
+            Self::Citygml {
+                common_property,
+                property,
+            } => {
                 let input_path = get_input_path(&ctx, common_property)?;
-                let result = citygml::read_citygml(input_path, ctx, sender).await;
+                let result = citygml::read_citygml(input_path, property, ctx, sender).await;
                 match result {
                     Ok(_) => Ok(()),
                     Err(e) => Err(Box::new(e)),
