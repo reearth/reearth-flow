@@ -10,10 +10,8 @@ use nusamai_plateau::{
 };
 use quick_xml::NsReader;
 use reearth_flow_common::{str::to_hash, uri::Uri};
-use reearth_flow_runtime::{
-    executor_operation::NodeContext,
-    node::{IngestionMessage, Port, DEFAULT_PORT},
-};
+use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
+use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{geometry::Geometry, Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -29,11 +27,10 @@ pub struct CityGmlReaderParam {
 pub(crate) async fn read_citygml(
     input_path: Uri,
     params: &CityGmlReaderParam,
-    ctx: NodeContext,
+    storage_resolver: Arc<StorageResolver>,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
-    let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let storage = storage_resolver
         .resolve(&input_path)
         .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
@@ -120,7 +117,7 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
     })
     .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
     let mut transformer = GeometricMergedownTransform::new();
-    for mut entity in entities {
+    for entity in entities {
         {
             let geom_store = entity.geometry_store.read().unwrap();
             entity.appearance_store.write().unwrap().merge_global(
@@ -157,25 +154,15 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
             ),
         ]);
 
-        if flatten {
-            for mut child in FlattenTreeTransform::transform(entity) {
-                transformer.transform(&mut child);
-                let geometry: Geometry = child
-                    .try_into()
-                    .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-                let mut feature: Feature = geometry.into();
-                feature.extend(attributes.clone());
-                sender
-                    .send((
-                        DEFAULT_PORT.clone(),
-                        IngestionMessage::OperationEvent { feature },
-                    ))
-                    .await
-                    .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-            }
+        let entities = if flatten {
+            FlattenTreeTransform::transform(entity)
         } else {
-            transformer.transform(&mut entity);
-            let geometry: Geometry = entity
+            vec![entity]
+        };
+
+        for mut ent in entities {
+            transformer.transform(&mut ent);
+            let geometry: Geometry = ent
                 .try_into()
                 .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
             let mut feature: Feature = geometry.into();

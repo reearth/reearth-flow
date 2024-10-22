@@ -114,7 +114,8 @@ impl Source for FileReader {
                 property,
             } => {
                 let input_path = get_input_path(&ctx, common_property)?;
-                let result = citygml::read_citygml(input_path, property, ctx, sender).await;
+                let result =
+                    citygml::read_citygml(input_path, property, storage_resolver, sender).await;
                 match result {
                     Ok(_) => Ok(()),
                     Err(e) => Err(Box::new(e)),

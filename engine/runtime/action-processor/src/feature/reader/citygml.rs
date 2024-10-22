@@ -129,9 +129,11 @@ fn parse_tree_reader<R: BufRead>(
     })
     .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
     let mut transformer = GeometricMergedownTransform::new();
-    for mut entity in entities {
+    for entity in entities {
         {
-            let geom_store = entity.geometry_store.read().unwrap();
+            let geom_store = entity.geometry_store.read().map_err(|e| {
+                super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
+            })?;
             entity.appearance_store.write().unwrap().merge_global(
                 &mut global_appearances,
                 &geom_store.ring_ids,
@@ -167,19 +169,14 @@ fn parse_tree_reader<R: BufRead>(
             ),
         ]);
         attributes.extend(ctx.feature.attributes.clone());
-        if flatten {
-            for mut child in FlattenTreeTransform::transform(entity) {
-                transformer.transform(&mut child);
-                let geometry: Geometry = child.try_into().map_err(|e| {
-                    super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
-                })?;
-                let mut feature: Feature = geometry.into();
-                feature.extend(attributes.clone());
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-            }
+        let entities = if flatten {
+            FlattenTreeTransform::transform(entity)
         } else {
-            transformer.transform(&mut entity);
-            let geometry: Geometry = entity.try_into().map_err(|e| {
+            vec![entity]
+        };
+        for mut ent in entities {
+            transformer.transform(&mut ent);
+            let geometry: Geometry = ent.try_into().map_err(|e| {
                 super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
             })?;
             let mut feature: Feature = geometry.into();
