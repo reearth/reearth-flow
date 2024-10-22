@@ -382,9 +382,6 @@ impl FlowProjectRedisDataManager {
 
         if let Some(last_update_id) = last_update_id {
             self.redis_client
-                .xtrim(&self.state_updates_key().await?, 1)
-                .await?;
-            self.redis_client
                 .xdel(
                     &self.state_updates_key().await?,
                     &[last_update_id.to_string()],
