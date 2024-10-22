@@ -34,9 +34,14 @@ pub enum ProjectRepositoryError {
     Io(#[from] io::Error),
     #[error("Session ID not found")]
     SessionIdNotFound,
+    #[error("{0}")]
+    Custom(String),
 }
 
-pub struct ProjectRedisRepository<R: RedisClientTrait> {
+pub struct ProjectRedisRepository<R>
+where
+    R: RedisClientTrait + Send + Sync,
+{
     redis_client: Arc<R>,
 }
 
@@ -47,7 +52,10 @@ impl<R: RedisClientTrait + Send + Sync> ProjectRedisRepository<R> {
 }
 
 #[async_trait]
-impl<R: RedisClientTrait + Send + Sync> ProjectRepository for ProjectRedisRepository<R> {
+impl<R> ProjectRepository for ProjectRedisRepository<R>
+where
+    R: RedisClientTrait + Send + Sync,
+{
     type Error = ProjectRepositoryError;
 
     async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error> {
@@ -58,8 +66,9 @@ impl<R: RedisClientTrait + Send + Sync> ProjectRepository for ProjectRedisReposi
 }
 
 #[async_trait]
-impl<R: RedisClientTrait + Send + Sync> ProjectEditingSessionRepository
-    for ProjectRedisRepository<R>
+impl<R> ProjectEditingSessionRepository for ProjectRedisRepository<R>
+where
+    R: RedisClientTrait + Send + Sync,
 {
     type Error = ProjectRepositoryError;
 
