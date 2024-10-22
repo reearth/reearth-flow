@@ -6,7 +6,7 @@ use flow_websocket_domain::project_type::Project;
 use flow_websocket_domain::types::data::SnapshotData;
 
 use crate::persistence::local_storage::LocalClient;
-use flow_websocket_domain::project::ProjectEditingSession;
+use flow_websocket_domain::editing_session::ProjectEditingSession;
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
 };
@@ -285,7 +285,7 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use flow_websocket_domain::project::ProjectEditingSession;
+    use flow_websocket_domain::editing_session::ProjectEditingSession;
     use flow_websocket_domain::snapshot::ObjectTenant;
     use mockall::mock;
 

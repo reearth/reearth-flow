@@ -19,5 +19,5 @@ redis.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-uuid.workspace = true
 tracing.workspace = true
+uuid.workspace = true

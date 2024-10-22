@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::Utc;
-use flow_websocket_domain::{generate_id, snapshot::ObjectTenant, ProjectEditingSession};
+use flow_websocket_domain::generate_id;
 use flow_websocket_infra::persistence::{
     project_repository::{ProjectLocalRepository, ProjectRedisRepository},
     redis::{
@@ -12,7 +12,6 @@ use flow_websocket_infra::persistence::{
 use flow_websocket_services::{
     manage_project_edit_session::ManageEditSessionService, types::ManageProjectEditSessionTaskData,
 };
-use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::{debug, error, info, instrument, trace, warn};
 
@@ -59,13 +58,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     trace!("Session repository created");
 
     let project_id = "project_123".to_string();
-    let tenant = ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned());
-    let session = ProjectEditingSession::new(project_id.clone(), tenant);
-    debug!(?project_id, "Project session created");
+    //let tenant = ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned());
+    let session_id = generate_id(14, "session"); // Generate a session ID
+    debug!(?project_id, ?session_id, "Project session created");
 
     let redis_data_manager = FlowProjectRedisDataManager::new(
         project_id.clone(),
-        Arc::new(Mutex::new(session)),
+        Some(session_id),
         Arc::new(redis_client.clone()),
     );
     trace!("Redis data manager initialized");

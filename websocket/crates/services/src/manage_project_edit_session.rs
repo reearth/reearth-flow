@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use flow_websocket_domain::{
+    editing_session::ProjectEditingSession,
     generate_id,
-    project::ProjectEditingSession,
     repository::{ProjectEditingSessionRepository, ProjectSnapshotRepository, RedisDataManager},
     snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo},
     types::{data::SnapshotData, snapshot::ProjectSnapshot},
@@ -240,7 +240,7 @@ where
                 } else {
                     debug!("Session not setup, cannot end");
                     return Err(ProjectServiceError::EditingSession(
-                        flow_websocket_domain::project::ProjectEditingSessionError::SessionNotSetup,
+                        flow_websocket_domain::editing_session::ProjectEditingSessionError::SessionNotSetup,
                     ));
                 }
             }

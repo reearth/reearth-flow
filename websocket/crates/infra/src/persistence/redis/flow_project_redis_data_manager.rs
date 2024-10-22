@@ -7,8 +7,6 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
-use flow_websocket_domain::project::ProjectEditingSession;
-
 use crate::persistence::redis::flow_project_lock::{FlowProjectLock, GlobalLockError};
 use crate::persistence::redis::redis_client::{RedisClient, RedisClientTrait};
 
@@ -28,7 +26,7 @@ pub struct FlowEncodedUpdate {
 pub struct FlowProjectRedisDataManager {
     redis_client: Arc<RedisClient>,
     project_id: String,
-    editing_session: Arc<Mutex<ProjectEditingSession>>,
+    session_id: Arc<Mutex<Option<String>>>,
     global_lock: FlowProjectLock,
 }
 
@@ -65,7 +63,7 @@ pub enum FlowProjectRedisDataManagerError {
 impl FlowProjectRedisDataManager {
     pub fn new(
         project_id: String,
-        editing_session: Arc<Mutex<ProjectEditingSession>>,
+        session_id: Option<String>,
         redis_client: Arc<RedisClient>,
     ) -> Self {
         let redis_url = redis_client.redis_url();
@@ -73,7 +71,7 @@ impl FlowProjectRedisDataManager {
         Self {
             redis_client,
             project_id,
-            editing_session,
+            session_id: Arc::new(Mutex::new(session_id)),
             global_lock,
         }
     }
@@ -87,11 +85,13 @@ impl FlowProjectRedisDataManager {
     }
 
     async fn session_prefix(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-        let editing_session = self.editing_session.lock().await;
-        let session_id = editing_session
+        let session_id = self
             .session_id
+            .lock()
+            .await
             .as_ref()
-            .ok_or(FlowProjectRedisDataManagerError::SessionNotSet)?;
+            .ok_or(FlowProjectRedisDataManagerError::SessionNotSet)?
+            .clone();
         Ok(format!("{}:{}", self.project_prefix(), session_id))
     }
 
@@ -240,10 +240,9 @@ impl FlowProjectRedisDataManager {
         let active_editing_session_id = self.active_editing_session_id().await?;
 
         let current_session_id = self
-            .editing_session
+            .session_id
             .lock()
             .await
-            .session_id
             .as_ref()
             .ok_or(FlowProjectRedisDataManagerError::SessionNotSet)?
             .clone();
@@ -476,8 +475,8 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         let _: () = connection_guard.del(&keys_to_delete).await?;
 
         if let Some(active_session_id) = self.active_editing_session_id().await? {
-            let editing_session = self.editing_session.lock().await;
-            if let Some(current_session_id) = editing_session.session_id.as_ref() {
+            let editing_session = self.session_id.lock().await;
+            if let Some(current_session_id) = editing_session.as_ref() {
                 if active_session_id == *current_session_id {
                     let _: () = connection_guard
                         .del(&[self.active_editing_session_id_key()])
@@ -514,6 +513,7 @@ mod tests {
         pub current_state: Arc<Mutex<Option<Vec<u8>>>>,
         pub push_update_result: Arc<Mutex<Result<(), FlowProjectRedisDataManagerError>>>,
         pub merge_updates_result: Arc<Mutex<MergeUpdatesResult>>,
+        pub session_id: Arc<Mutex<Option<String>>>,
     }
 
     impl MockFlowProjectRedisDataManager {
@@ -525,6 +525,7 @@ mod tests {
                     vec![1, 2, 3],
                     vec!["user1".to_string()],
                 )))),
+                session_id: Arc::new(Mutex::new(Some("test_session".to_string()))),
             }
         }
 
@@ -544,6 +545,11 @@ mod tests {
         ) {
             let mut merge_updates_result = self.merge_updates_result.lock().unwrap();
             *merge_updates_result = result;
+        }
+
+        pub fn set_session_id(&self, session_id: Option<String>) {
+            let mut current_session_id = self.session_id.lock().unwrap();
+            *current_session_id = session_id;
         }
     }
 
@@ -589,6 +595,7 @@ mod tests {
             Ok(result)
         }
     }
+
     #[tokio::test]
     async fn test_get_current_state() {
         let mock_manager = MockFlowProjectRedisDataManager::new();
@@ -629,5 +636,26 @@ mod tests {
 
         let result = mock_manager.get_current_state().await;
         assert!(result.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_session_id() {
+        let mock_manager = MockFlowProjectRedisDataManager::new();
+
+        assert_eq!(
+            *mock_manager.session_id.lock().unwrap(),
+            Some("test_session".to_string())
+        );
+
+        mock_manager.set_session_id(Some("new_session".to_string()));
+
+        assert_eq!(
+            *mock_manager.session_id.lock().unwrap(),
+            Some("new_session".to_string())
+        );
+
+        mock_manager.set_session_id(None);
+
+        assert_eq!(*mock_manager.session_id.lock().unwrap(), None);
     }
 }

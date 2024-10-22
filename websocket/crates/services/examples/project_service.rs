@@ -1,5 +1,5 @@
+use flow_websocket_domain::generate_id;
 use flow_websocket_domain::repository::RedisDataManager;
-use flow_websocket_domain::{generate_id, snapshot::ObjectTenant, ProjectEditingSession};
 use flow_websocket_infra::persistence::{
     project_repository::{ProjectLocalRepository, ProjectRedisRepository},
     redis::{
@@ -55,12 +55,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let project_id = generate_id(14, "project");
     debug!(?project_id, "Project ID generated");
 
+    let session_id = generate_id(14, "session");
+    debug!(?session_id, "Session ID generated");
+
     let redis_data_manager = FlowProjectRedisDataManager::new(
         project_id.clone(),
-        Arc::new(tokio::sync::Mutex::new(ProjectEditingSession::new(
-            project_id.clone(),
-            ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
-        ))),
+        Some(session_id),
         Arc::new(redis_client.clone()),
     );
     trace!("Redis data manager initialized");
@@ -102,7 +102,7 @@ async fn simulate_project_operations(
     >,
     project_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Get project details (assuming the project already exists)
+    // Get project details (
     match service.get_project(project_id).await {
         Ok(retrieved_project) => info!(?retrieved_project, "Retrieved project details"),
         Err(e) => {
