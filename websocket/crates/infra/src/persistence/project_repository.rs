@@ -1,6 +1,7 @@
 use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
 use crate::persistence::redis::redis_client::RedisClientError;
 use async_trait::async_trait;
+use flow_websocket_domain::generate_id;
 use flow_websocket_domain::project_type::Project;
 use flow_websocket_domain::types::data::SnapshotData;
 
@@ -72,11 +73,12 @@ where
 {
     type Error = ProjectRepositoryError;
 
-    async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
-        let session_id = session
-            .session_id
-            .as_ref()
-            .ok_or(ProjectRepositoryError::SessionIdNotFound)?;
+    async fn create_session(&self, mut session: ProjectEditingSession) -> Result<(), Self::Error> {
+        if session.session_id.is_none() {
+            session.session_id = Some(generate_id(14, "editor-session"));
+        }
+
+        let session_id = session.session_id.as_ref().unwrap();
         let key = format!("session:{}", session_id);
         self.redis_client.set(&key, &session).await?;
 
