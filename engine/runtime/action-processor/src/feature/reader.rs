@@ -75,47 +75,53 @@ impl ProcessorFactory for FeatureReaderFactory {
 
         let expr_engine = Arc::clone(&ctx.expr_engine);
         match params {
-            FeatureReaderParam::CityGML { common_property } => {
-                let common_property = CompiledCommonPropertySchema {
+            FeatureReaderParam::CityGML {
+                common_param,
+                param,
+            } => {
+                let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
-                        .compile(common_property.dataset.as_ref())
+                        .compile(common_param.dataset.as_ref())
                         .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
                 };
                 let process = FeatureReader {
-                    params: CompiledFeatureReaderParam::CityGML { common_property },
+                    params: CompiledFeatureReaderParam::CityGML {
+                        common_param,
+                        param,
+                    },
                 };
                 Ok(Box::new(process))
             }
             FeatureReaderParam::Csv {
-                common_property,
-                property,
+                common_param,
+                param,
             } => {
-                let common_property = CompiledCommonPropertySchema {
+                let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
-                        .compile(common_property.dataset.as_ref())
+                        .compile(common_param.dataset.as_ref())
                         .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
                 };
                 let process = FeatureReader {
                     params: CompiledFeatureReaderParam::Csv {
-                        common_property,
-                        property,
+                        common_param,
+                        param,
                     },
                 };
                 Ok(Box::new(process))
             }
             FeatureReaderParam::Tsv {
-                common_property,
-                property,
+                common_param,
+                param,
             } => {
-                let common_property = CompiledCommonPropertySchema {
+                let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
-                        .compile(common_property.dataset.as_ref())
+                        .compile(common_param.dataset.as_ref())
                         .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
                 };
                 let process = FeatureReader {
                     params: CompiledFeatureReaderParam::Tsv {
-                        common_property,
-                        property,
+                        common_param,
+                        param,
                     },
                 };
                 Ok(Box::new(process))
@@ -131,7 +137,7 @@ pub struct FeatureReader {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CommonPropertySchema {
+pub struct CommonReaderParam {
     pub(super) dataset: Expr,
 }
 
@@ -141,41 +147,44 @@ pub enum FeatureReaderParam {
     #[serde(rename = "citygml")]
     CityGML {
         #[serde(flatten)]
-        common_property: CommonPropertySchema,
+        common_param: CommonReaderParam,
+        #[serde(flatten)]
+        param: citygml::CityGmlReaderParam,
     },
     #[serde(rename = "csv")]
     Csv {
         #[serde(flatten)]
-        common_property: CommonPropertySchema,
+        common_param: CommonReaderParam,
         #[serde(flatten)]
-        property: csv::CsvPropertySchema,
+        param: csv::CsvReaderParam,
     },
     #[serde(rename = "tsv")]
     Tsv {
         #[serde(flatten)]
-        common_property: CommonPropertySchema,
+        common_param: CommonReaderParam,
         #[serde(flatten)]
-        property: csv::CsvPropertySchema,
+        param: csv::CsvReaderParam,
     },
 }
 
 #[derive(Debug, Clone)]
 enum CompiledFeatureReaderParam {
     CityGML {
-        common_property: CompiledCommonPropertySchema,
+        common_param: CompiledCommonReaderParam,
+        param: citygml::CityGmlReaderParam,
     },
     Csv {
-        common_property: CompiledCommonPropertySchema,
-        property: csv::CsvPropertySchema,
+        common_param: CompiledCommonReaderParam,
+        param: csv::CsvReaderParam,
     },
     Tsv {
-        common_property: CompiledCommonPropertySchema,
-        property: csv::CsvPropertySchema,
+        common_param: CompiledCommonReaderParam,
+        param: csv::CsvReaderParam,
     },
 }
 
 #[derive(Debug, Clone)]
-struct CompiledCommonPropertySchema {
+struct CompiledCommonReaderParam {
     expr: rhai::AST,
 }
 
@@ -191,18 +200,22 @@ impl Processor for FeatureReader {
     ) -> Result<(), BoxedError> {
         match self {
             FeatureReader {
-                params: CompiledFeatureReaderParam::CityGML { common_property },
-            } => citygml::read_citygml(common_property, ctx, fw).map_err(|e| e.into()),
+                params:
+                    CompiledFeatureReaderParam::CityGML {
+                        common_param,
+                        param,
+                    },
+            } => citygml::read_citygml(common_param, param, ctx, fw).map_err(|e| e.into()),
             FeatureReader {
                 params:
                     CompiledFeatureReaderParam::Csv {
-                        common_property,
-                        property,
+                        common_param,
+                        param,
                     },
             } => csv::read_csv(
                 reearth_flow_common::csv::Delimiter::Comma,
-                common_property,
-                property,
+                common_param,
+                param,
                 ctx,
                 fw,
             )
@@ -210,13 +223,13 @@ impl Processor for FeatureReader {
             FeatureReader {
                 params:
                     CompiledFeatureReaderParam::Tsv {
-                        common_property,
-                        property,
+                        common_param,
+                        param,
                     },
             } => csv::read_csv(
                 reearth_flow_common::csv::Delimiter::Tab,
-                common_property,
-                property,
+                common_param,
+                param,
                 ctx,
                 fw,
             )
