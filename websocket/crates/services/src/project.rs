@@ -9,6 +9,7 @@ use flow_websocket_domain::repository::{
 use flow_websocket_domain::snapshot::{ObjectTenant, ProjectSnapshot};
 use flow_websocket_domain::types::data::SnapshotData;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
+use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManagerError;
 use std::sync::Arc;
 
 pub struct ProjectService<E, S, R> {
@@ -24,7 +25,7 @@ where
         + Send
         + Sync,
     S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
-    R: RedisDataManager<Error = ProjectRepositoryError> + Send + Sync,
+    R: RedisDataManager<Error = FlowProjectRedisDataManagerError> + Send + Sync,
 {
     pub fn new(
         session_repository: Arc<E>,
@@ -108,7 +109,7 @@ where
     S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManager<Error = ProjectRepositoryError> + Send + Sync,
 {
-    type Error = ProjectServiceError;
+    type Error = ProjectRepositoryError;
 
     async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error> {
         Ok(self.session_repository.get_project(project_id).await?)
@@ -122,7 +123,7 @@ where
     S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManager<Error = ProjectRepositoryError> + Send + Sync,
 {
-    type Error = ProjectServiceError;
+    type Error = ProjectRepositoryError;
 
     async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
         Ok(self.session_repository.create_session(session).await?)
@@ -157,7 +158,7 @@ where
     S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManager<Error = ProjectRepositoryError> + Send + Sync,
 {
-    type Error = ProjectServiceError;
+    type Error = ProjectRepositoryError;
 
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         Ok(self.snapshot_repository.create_snapshot(snapshot).await?)
@@ -221,9 +222,9 @@ where
         + Send
         + Sync,
     S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
-    R: RedisDataManager<Error = ProjectRepositoryError> + Send + Sync,
+    R: RedisDataManager<Error = FlowProjectRedisDataManagerError> + Send + Sync,
 {
-    type Error = ProjectServiceError;
+    type Error = FlowProjectRedisDataManagerError;
 
     async fn push_update(
         &self,
@@ -294,11 +295,11 @@ mod tests {
         RedisManager {}
         #[async_trait]
         impl RedisDataManager for RedisManager {
-            type Error = ProjectRepositoryError;
-            async fn push_update(&self, update: Vec<u8>, updated_by: Option<String>) -> Result<(), ProjectRepositoryError>;
-            async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), ProjectRepositoryError>;
-            async fn get_current_state(&self) -> Result<Option<Vec<u8>>, ProjectRepositoryError>;
-            async fn clear_data(&self) -> Result<(), ProjectRepositoryError>;
+            type Error = FlowProjectRedisDataManagerError;
+            async fn push_update(&self, update: Vec<u8>, updated_by: Option<String>) -> Result<(), FlowProjectRedisDataManagerError>;
+            async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError>;
+            async fn get_current_state(&self) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError>;
+            async fn clear_data(&self) -> Result<(), FlowProjectRedisDataManagerError>;
         }
     }
 
@@ -585,5 +586,77 @@ mod tests {
 
         let result = service.clear_data().await;
         assert!(result.is_ok());
+    }
+
+    #[async_trait]
+    impl ProjectSnapshotRepository
+        for ProjectService<MockSessionRepo, MockSnapshotRepo, MockRedisManager>
+    {
+        type Error = ProjectServiceError;
+
+        async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+            let _ = self.snapshot_repository.create_snapshot(snapshot).await?;
+            Ok(())
+        }
+
+        async fn create_snapshot_state(
+            &self,
+            snapshot_data: SnapshotData,
+        ) -> Result<(), Self::Error> {
+            self.snapshot_repository
+                .create_snapshot_state(snapshot_data)
+                .await?;
+            Ok(())
+        }
+
+        async fn get_latest_snapshot(
+            &self,
+            project_id: &str,
+        ) -> Result<Option<ProjectSnapshot>, Self::Error> {
+            let snapshot = self
+                .snapshot_repository
+                .get_latest_snapshot(project_id)
+                .await?;
+            Ok(snapshot)
+        }
+
+        async fn get_latest_snapshot_state(
+            &self,
+            project_id: &str,
+        ) -> Result<Vec<u8>, Self::Error> {
+            let state = self
+                .snapshot_repository
+                .get_latest_snapshot_state(project_id)
+                .await?;
+            Ok(state)
+        }
+
+        async fn update_latest_snapshot(
+            &self,
+            snapshot: ProjectSnapshot,
+        ) -> Result<(), Self::Error> {
+            self.snapshot_repository
+                .update_latest_snapshot(snapshot)
+                .await?;
+            Ok(())
+        }
+
+        async fn update_latest_snapshot_state(
+            &self,
+            project_id: &str,
+            snapshot_data: SnapshotData,
+        ) -> Result<(), Self::Error> {
+            self.snapshot_repository
+                .update_latest_snapshot_state(project_id, snapshot_data)
+                .await?;
+            Ok(())
+        }
+
+        async fn delete_snapshot_state(&self, project_id: &str) -> Result<(), Self::Error> {
+            self.snapshot_repository
+                .delete_snapshot_state(project_id)
+                .await?;
+            Ok(())
+        }
     }
 }
