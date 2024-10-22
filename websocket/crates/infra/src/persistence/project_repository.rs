@@ -74,17 +74,17 @@ where
     type Error = ProjectRepositoryError;
 
     async fn create_session(&self, mut session: ProjectEditingSession) -> Result<(), Self::Error> {
+        let new_session_id: String = generate_id(14, "editor-session");
         if session.session_id.is_none() {
-            session.session_id = Some(generate_id(14, "editor-session"));
+            session.session_id = Some(new_session_id.clone());
         }
 
-        let session_id = session.session_id.as_ref().unwrap();
-        let key = format!("session:{}", session_id);
+        let key = format!("session:{}", new_session_id.clone());
         self.redis_client.set(&key, &session).await?;
 
         let active_session_key = format!("project:{}:active_session", session.project_id);
         self.redis_client
-            .set(&active_session_key, session_id)
+            .set(&active_session_key, &new_session_id)
             .await?;
 
         Ok(())
