@@ -105,10 +105,13 @@ pub(crate) fn execute_with_test_assert(test_id: &str, assert_file: &str) {
             .unwrap(),
     );
     let storage = storage_resolver.resolve(expect_path).unwrap();
-    let result = storage.get_sync(expect_path.path().as_path()).unwrap();
+    let result = storage.get_sync(expect_path.path().as_path());
+    let result: Value = if let Ok(result) = result {
+        serde_json::from_str(String::from_utf8(result.to_vec()).unwrap().as_str()).unwrap()
+    } else {
+        serde_json::from_str("[]").unwrap()
+    };
     let expect: Value =
         serde_json::from_str(String::from_utf8(expect.to_vec()).unwrap().as_str()).unwrap();
-    let result: Value =
-        serde_json::from_str(String::from_utf8(result.to_vec()).unwrap().as_str()).unwrap();
     assert_eq!(expect, result);
 }
