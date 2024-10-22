@@ -273,7 +273,7 @@ mod tests {
         impl ProjectEditingSessionRepository for ProjectEditingSessionRepository {
             type Error = ProjectRepositoryError;
 
-            async fn create_session(&self, session: ProjectEditingSession) -> Result<(), ProjectRepositoryError >;
+            async fn create_session(&self, session: ProjectEditingSession) -> Result<String, ProjectRepositoryError >;
             async fn get_active_session(&self, project_id: &str) -> Result<Option<ProjectEditingSession>, ProjectRepositoryError>;
             async fn update_session(&self, session: ProjectEditingSession) -> Result<(), ProjectRepositoryError>;
             async fn get_client_count(&self) -> Result<usize, ProjectRepositoryError>;

@@ -15,7 +15,7 @@ pub trait ProjectRepository {
 pub trait ProjectEditingSessionRepository {
     type Error: Error + Send + Sync + 'static;
 
-    async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error>;
+    async fn create_session(&self, session: ProjectEditingSession) -> Result<String, Self::Error>;
     async fn get_active_session(
         &self,
         project_id: &str,

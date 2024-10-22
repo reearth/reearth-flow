@@ -73,7 +73,10 @@ where
 {
     type Error = ProjectRepositoryError;
 
-    async fn create_session(&self, mut session: ProjectEditingSession) -> Result<(), Self::Error> {
+    async fn create_session(
+        &self,
+        mut session: ProjectEditingSession,
+    ) -> Result<String, Self::Error> {
         let new_session_id: String = generate_id(14, "editor-session");
         if session.session_id.is_none() {
             session.session_id = Some(new_session_id.clone());
@@ -87,7 +90,7 @@ where
             .set(&active_session_key, &new_session_id)
             .await?;
 
-        Ok(())
+        Ok(new_session_id)
     }
 
     async fn get_active_session(

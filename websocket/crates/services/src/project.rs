@@ -11,6 +11,7 @@ use flow_websocket_domain::types::data::SnapshotData;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManagerError;
 use std::sync::Arc;
+use tracing::debug;
 
 pub struct ProjectService<E, S, R> {
     session_repository: Arc<E>,
@@ -60,6 +61,7 @@ where
             Some(session) => session,
 
             None => {
+                debug!("create new session");
                 let tenant_id = tenant_id.unwrap_or_else(|| generate_id(14, "tenant"));
                 let tenant_name = tenant_name.unwrap_or_else(|| "tenant".to_owned());
                 ProjectEditingSession::new(
@@ -125,7 +127,7 @@ where
 {
     type Error = ProjectRepositoryError;
 
-    async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
+    async fn create_session(&self, session: ProjectEditingSession) -> Result<String, Self::Error> {
         Ok(self.session_repository.create_session(session).await?)
     }
 
@@ -264,7 +266,7 @@ mod tests {
         #[async_trait]
         impl ProjectEditingSessionRepository for SessionRepo {
             type Error = ProjectRepositoryError;
-            async fn create_session(&self, session: ProjectEditingSession) -> Result<(), ProjectRepositoryError>;
+            async fn create_session(&self, session: ProjectEditingSession) -> Result<String, ProjectRepositoryError>;
             async fn get_active_session(&self, project_id: &str) -> Result<Option<ProjectEditingSession>, ProjectRepositoryError>;
             async fn update_session(&self, session: ProjectEditingSession) -> Result<(), ProjectRepositoryError>;
             async fn get_client_count(&self) -> Result<usize, ProjectRepositoryError>;
@@ -378,7 +380,7 @@ mod tests {
         mock_session_repo
             .expect_create_session()
             .times(1)
-            .returning(|_| Ok(()));
+            .returning(|_| Ok("session_123".to_string()));
 
         mock_snapshot_repo
             .expect_get_latest_snapshot_state()
