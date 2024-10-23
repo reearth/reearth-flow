@@ -29,7 +29,7 @@ const DeployDialog: React.FC<Props> = ({
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(undefined)}>
       <DialogContent size="sm">
-        <DialogTitle>{t("Deploy project workflow")}</DialogTitle>
+        <DialogTitle>{t("Deploy project's workflow")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex flex-col">
             <Label>{t("Project to deploy: ")}</Label>
