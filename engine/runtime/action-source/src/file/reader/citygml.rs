@@ -1,27 +1,36 @@
 use std::{
+    collections::HashMap,
     io::{BufRead, BufReader, Cursor},
     sync::{Arc, RwLock},
 };
 
 use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader};
-use nusamai_plateau::{appearance::AppearanceStore, models, Entity};
+use nusamai_plateau::{
+    appearance::AppearanceStore, models, Entity, FlattenTreeTransform, GeometricMergedownTransform,
+};
 use quick_xml::NsReader;
 use reearth_flow_common::{str::to_hash, uri::Uri};
-use reearth_flow_runtime::{
-    executor_operation::NodeContext,
-    node::{IngestionMessage, Port, DEFAULT_PORT},
-};
+use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
+use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{geometry::Geometry, Attribute, AttributeValue, Feature};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CityGmlReaderParam {
+    pub(super) flatten: Option<bool>,
+}
+
 pub(crate) async fn read_citygml(
     input_path: Uri,
-    ctx: NodeContext,
+    params: &CityGmlReaderParam,
+    storage_resolver: Arc<StorageResolver>,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
-    let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let storage = storage_resolver
         .resolve(&input_path)
         .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
@@ -43,7 +52,7 @@ pub(crate) async fn read_citygml(
     let mut st = citygml_reader
         .start_root(&mut xml_reader)
         .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-    parse_tree_reader(&mut st, base_url, sender)
+    parse_tree_reader(&mut st, base_url, params.flatten.unwrap_or(false), sender)
         .await
         .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
     Ok(())
@@ -52,6 +61,7 @@ pub(crate) async fn read_citygml(
 async fn parse_tree_reader<'a, 'b, R: BufRead>(
     st: &mut SubTreeReader<'a, 'b, R>,
     base_url: Url,
+    flatten: bool,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
     let mut entities = Vec::new();
@@ -74,25 +84,20 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                 cityobj.parse(st)?;
                 let geometry_store = st.collect_geometries(envelope.crs_uri.clone());
                 let id = cityobj.id();
-                let description = cityobj.description();
+                let typename = cityobj.name();
                 let bounded_by = cityobj.bounded_by();
                 if let Some(root) = cityobj.into_object() {
-                    if let nusamai_citygml::object::Value::Object(obj) = &root {
-                        let entity = Entity {
-                            id,
-                            description,
-                            name: obj.typename.to_string(),
-                            root,
-                            base_url: base_url.clone(),
-                            geometry_store: RwLock::new(geometry_store).into(),
-                            appearance_store: Default::default(),
-                            bounded_by,
-                            geometry_refs: st.geometry_refs().clone(),
-                        };
-                        entities.push(entity);
-                    }
+                    let entity = Entity {
+                        id: Some(id.to_string()),
+                        typename: Some(typename.to_string()),
+                        root,
+                        base_url: base_url.clone(),
+                        geometry_store: RwLock::new(geometry_store).into(),
+                        appearance_store: Default::default(),
+                        bounded_by,
+                    };
+                    entities.push(entity);
                 }
-                st.refresh_geomrefs();
                 Ok(())
             }
             b"app:appearanceMember" => {
@@ -111,6 +116,7 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
         }
     })
     .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+    let mut transformer = GeometricMergedownTransform::new();
     for entity in entities {
         {
             let geom_store = entity.geometry_store.read().unwrap();
@@ -120,34 +126,55 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                 &geom_store.surface_spans,
             );
         }
+        {
+            let mut geom_store = entity.geometry_store.write().unwrap();
+            geom_store.vertices.iter_mut().for_each(|v| {
+                // Swap x and y (lat, lng -> lng, lat)
+                (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
+            });
+        }
         let attributes = entity.root.to_attribute_json();
-        let name = entity.name.clone();
-        let gml_id = entity.id.clone();
-        let geometry: Geometry = entity
-            .try_into()
-            .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+        let gml_id = entity
+            .root
+            .id()
+            .map(|id| AttributeValue::String(id.to_string()))
+            .unwrap_or(AttributeValue::Null);
+        let name = entity
+            .root
+            .typename()
+            .map(|name| AttributeValue::String(name.to_string()))
+            .unwrap_or(AttributeValue::Null);
+        let attributes = HashMap::<Attribute, AttributeValue>::from([
+            (Attribute::new("cityGmlAttributes"), attributes.into()),
+            (Attribute::new("gmlName"), name),
+            (Attribute::new("gmlId"), gml_id),
+            (
+                Attribute::new("gmlRootId"),
+                AttributeValue::String(format!("root_{}", to_hash(base_url.as_str()))),
+            ),
+        ]);
 
-        let mut feature: Feature = geometry.into();
-        feature
-            .attributes
-            .insert(Attribute::new("cityGmlAttributes"), attributes.into());
-        feature
-            .attributes
-            .insert(Attribute::new("gmlName"), AttributeValue::String(name));
-        feature
-            .attributes
-            .insert(Attribute::new("gmlId"), AttributeValue::String(gml_id));
-        feature.attributes.insert(
-            Attribute::new("gmlRootId"),
-            AttributeValue::String(format!("root_{}", to_hash(base_url.as_str()))),
-        );
-        sender
-            .send((
-                DEFAULT_PORT.clone(),
-                IngestionMessage::OperationEvent { feature },
-            ))
-            .await
-            .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+        let entities = if flatten {
+            FlattenTreeTransform::transform(entity)
+        } else {
+            vec![entity]
+        };
+
+        for mut ent in entities {
+            transformer.transform(&mut ent);
+            let geometry: Geometry = ent
+                .try_into()
+                .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+            let mut feature: Feature = geometry.into();
+            feature.extend(attributes.clone());
+            sender
+                .send((
+                    DEFAULT_PORT.clone(),
+                    IngestionMessage::OperationEvent { feature },
+                ))
+                .await
+                .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+        }
     }
     Ok(())
 }

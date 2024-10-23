@@ -23,7 +23,7 @@ pub(super) fn write_excel(
     output: &Uri,
     params: &ExcelWriterParam,
     features: &[Feature],
-    storage_resolver: Arc<StorageResolver>,
+    storage_resolver: &Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();

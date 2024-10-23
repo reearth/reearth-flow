@@ -304,7 +304,7 @@ impl<'a> From<NLineString2<'a>> for LineString2D<f64> {
         LineString2D::new(
             coords
                 .iter_closed()
-                .map(|a| coordinate::Coordinate2D::new_(a[1], a[0]))
+                .map(|a| coordinate::Coordinate2D::new_(a[0], a[1]))
                 .collect::<Vec<_>>(),
         )
     }
@@ -327,7 +327,7 @@ impl<'a> From<NLineString3<'a>> for LineString3D<f64> {
         LineString3D::new(
             coords
                 .iter_closed()
-                .map(|a| coordinate::Coordinate3D::new__(a[1], a[0], a[2]))
+                .map(|a| coordinate::Coordinate3D::new__(a[0], a[1], a[2]))
                 .collect::<Vec<_>>(),
         )
     }

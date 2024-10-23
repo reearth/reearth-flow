@@ -716,16 +716,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cesiumtiles"
-version = "0.0.0"
-source = "git+https://github.com/reearth/cesiumtiles-rs.git#ff090532c77f5e995612dacf4ee318725d49e109"
-dependencies = [
- "serde",
- "serde_json",
- "serde_repr",
-]
-
-[[package]]
 name = "cesu8"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2854,7 +2844,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.3.1#cb203a47920fc6059eea1a71cac8e080a30befde"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3186,7 +3176,7 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.3.1#cb203a47920fc6059eea1a71cac8e080a30befde"
 dependencies = [
  "ahash 0.8.11",
  "chrono",
@@ -3207,7 +3197,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.3.1#cb203a47920fc6059eea1a71cac8e080a30befde"
 dependencies = [
  "byteorder",
  "nusamai-gltf-json",
@@ -3217,9 +3207,9 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.3.1#cb203a47920fc6059eea1a71cac8e080a30befde"
 dependencies = [
- "cesiumtiles 0.0.0 (git+https://github.com/MIERUNE/cesiumtiles-rs.git)",
+ "cesiumtiles",
  "serde",
  "serde_json",
  "serde_repr",
@@ -3228,7 +3218,7 @@ dependencies = [
 [[package]]
 name = "nusamai-mvt"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.3.1#cb203a47920fc6059eea1a71cac8e080a30befde"
 dependencies = [
  "ahash 0.8.11",
  "indexmap 2.6.0",
@@ -3239,7 +3229,7 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.3.1#cb203a47920fc6059eea1a71cac8e080a30befde"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -3257,7 +3247,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.1.1#a20b3695f68f8c95986476f34419a9ea572c9374"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.3.1#cb203a47920fc6059eea1a71cac8e080a30befde"
 dependencies = [
  "japan-geoid",
  "thiserror",
@@ -4392,7 +4382,7 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "bytes",
- "cesiumtiles 0.0.0 (git+https://github.com/reearth/cesiumtiles-rs.git)",
+ "cesiumtiles",
  "crossbeam",
  "crossbeam-channel",
  "crossbeam-utils",
@@ -4737,6 +4727,9 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-types",
  "rust-embed",
+ "serde",
+ "serde_json",
+ "tempfile",
  "time",
  "tokio",
  "tracing",

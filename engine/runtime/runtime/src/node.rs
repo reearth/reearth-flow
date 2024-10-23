@@ -299,7 +299,9 @@ impl Clone for Box<dyn ProcessorFactory> {
 }
 
 pub trait Processor: Send + Sync + Debug + ProcessorClone {
-    fn initialize(&mut self, _ctx: NodeContext) {}
+    fn initialize(&mut self, _ctx: NodeContext) -> Result<(), BoxedError> {
+        Ok(())
+    }
     fn num_threads(&self) -> usize {
         1
     }
@@ -358,34 +360,20 @@ impl Clone for Box<dyn SinkFactory> {
 }
 
 pub trait Sink: Send + Debug + SinkClone {
-    fn initialize(&mut self, _ctx: NodeContext) {}
+    fn initialize(&mut self, _ctx: NodeContext) -> Result<(), BoxedError> {
+        Ok(())
+    }
 
     fn name(&self) -> &str;
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError>;
-
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError>;
+
     fn set_source_state(&mut self, _source_state: &[u8]) -> Result<(), BoxedError> {
         Ok(())
     }
 
     fn get_source_state(&mut self) -> Result<Option<Vec<u8>>, BoxedError> {
         Ok(None)
-    }
-
-    fn preferred_batch_size(&self) -> Option<u64> {
-        None
-    }
-
-    fn max_batch_duration_ms(&self) -> Option<u64> {
-        None
-    }
-
-    fn flush_batch(&mut self) -> Result<(), BoxedError> {
-        Ok(())
-    }
-
-    fn supports_batching(&self) -> bool {
-        false
     }
 }
 
@@ -437,8 +425,6 @@ pub struct Router {
 }
 
 impl Processor for Router {
-    fn initialize(&mut self, _ctx: NodeContext) {}
-
     fn process(
         &mut self,
         ctx: ExecutorContext,

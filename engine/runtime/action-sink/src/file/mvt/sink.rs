@@ -105,6 +105,7 @@ pub struct MVTWriterCommonParam {
 #[serde(rename_all = "camelCase")]
 pub struct MVTWriterParam {
     pub(super) output: Expr,
+    pub(super) layer_name: String,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
 }
@@ -115,15 +116,15 @@ impl Sink for MVTWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let Some(geometry) = ctx.feature.geometry.as_ref() else {
-            return Err(Box::new(SinkError::FileWriter(
+        let feature = ctx.feature;
+        let Some(geometry) = feature.geometry.as_ref() else {
+            return Err(Box::new(SinkError::MvtWriter(
                 "Unsupported input".to_string(),
             )));
         };
-        let geometry_value = geometry.value.clone();
-        match geometry_value {
+        match geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_) => {
-                self.buffer.push(ctx.feature.clone());
+                self.buffer.push(feature);
             }
             _ => {
                 return Err(Box::new(SinkError::MvtWriter(
@@ -187,6 +188,7 @@ fn geometry_slicing_stage(
         let buffer_pixels = 5;
         slice_cityobj_geoms(
             feature,
+            &mvt_options.layer_name,
             mvt_options.min_zoom,
             mvt_options.max_zoom,
             max_detail,

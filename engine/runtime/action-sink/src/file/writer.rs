@@ -11,7 +11,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{AttributeValue, Expr, Feature};
-use rhai::Dynamic;
+use rhai::{Dynamic, AST};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -53,12 +53,12 @@ impl SinkFactory for FileWriterSinkFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: FileWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::BuildFactory(format!("Failed to serialize `with` parameter: {}", e))
             })?;
@@ -70,9 +70,28 @@ impl SinkFactory for FileWriterSinkFactory {
                 SinkError::BuildFactory("Missing required parameter `with`".to_string()).into(),
             );
         };
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let common_param = params.as_common_param();
+        let output = expr_engine
+            .compile(common_param.output.as_ref())
+            .map_err(|e| SinkError::BuildFactory(e.to_string()))?;
+
+        let common_params = FileWriterCommonCompiledParam { output };
+        let params = match params {
+            FileWriterParam::Csv { .. } => FileWriterCompiledParam::Csv { common_params },
+            FileWriterParam::Tsv { .. } => FileWriterCompiledParam::Tsv { common_params },
+            FileWriterParam::Json { json_params, .. } => FileWriterCompiledParam::Json {
+                common_params,
+                json_params,
+            },
+            FileWriterParam::Excel { excel_params, .. } => FileWriterCompiledParam::Excel {
+                common_params,
+                excel_params,
+            },
+        };
         let sink = FileWriter {
             params,
-            buffer: Vec::new(),
+            buffer: HashMap::new(),
         };
         Ok(Box::new(sink))
     }
@@ -80,8 +99,8 @@ impl SinkFactory for FileWriterSinkFactory {
 
 #[derive(Debug, Clone)]
 pub struct FileWriter {
-    pub(super) params: FileWriterParam,
-    pub(super) buffer: Vec<Feature>,
+    pub(super) params: FileWriterCompiledParam,
+    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -90,42 +109,72 @@ pub struct FileWriterCommonParam {
     pub(super) output: Expr,
 }
 
+#[derive(Debug, Clone)]
+pub struct FileWriterCommonCompiledParam {
+    pub(super) output: AST,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "format")]
 pub enum FileWriterParam {
     Csv {
         #[serde(flatten)]
-        common_property: FileWriterCommonParam,
+        common_params: FileWriterCommonParam,
     },
     Tsv {
         #[serde(flatten)]
-        common_property: FileWriterCommonParam,
+        common_params: FileWriterCommonParam,
     },
     Json {
         #[serde(flatten)]
-        common_property: FileWriterCommonParam,
+        common_params: FileWriterCommonParam,
         #[serde(flatten)]
-        json_property: JsonWriterParam,
+        json_params: JsonWriterParam,
     },
     Excel {
         #[serde(flatten)]
-        common_property: FileWriterCommonParam,
+        common_params: FileWriterCommonParam,
         #[serde(flatten)]
-        excel_property: ExcelWriterParam,
+        excel_params: ExcelWriterParam,
     },
 }
 
 impl FileWriterParam {
-    pub fn to_common_param(&self) -> &FileWriterCommonParam {
+    pub fn as_common_param(&self) -> &FileWriterCommonParam {
         match self {
-            FileWriterParam::Csv { common_property } => common_property,
-            FileWriterParam::Tsv { common_property } => common_property,
-            FileWriterParam::Json {
-                common_property, ..
-            } => common_property,
-            FileWriterParam::Excel {
-                common_property, ..
-            } => common_property,
+            Self::Csv { common_params } => common_params,
+            Self::Tsv { common_params } => common_params,
+            Self::Json { common_params, .. } => common_params,
+            Self::Excel { common_params, .. } => common_params,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum FileWriterCompiledParam {
+    Csv {
+        common_params: FileWriterCommonCompiledParam,
+    },
+    Tsv {
+        common_params: FileWriterCommonCompiledParam,
+    },
+    Json {
+        common_params: FileWriterCommonCompiledParam,
+        json_params: JsonWriterParam,
+    },
+    Excel {
+        common_params: FileWriterCommonCompiledParam,
+        excel_params: ExcelWriterParam,
+    },
+}
+
+impl FileWriterCompiledParam {
+    pub fn as_common_param(&self) -> &FileWriterCommonCompiledParam {
+        match self {
+            Self::Csv { common_params } => common_params,
+            Self::Tsv { common_params } => common_params,
+            Self::Json { common_params, .. } => common_params,
+            Self::Excel { common_params, .. } => common_params,
         }
     }
 }
@@ -136,40 +185,41 @@ impl Sink for FileWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        self.buffer.push(ctx.feature);
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let common_param = self.params.as_common_param();
+        let feature = &ctx.feature;
+        let scope = feature.new_scope(expr_engine);
+        let path = scope
+            .eval_ast::<String>(&common_param.output)
+            .map_err(|e| SinkError::FileWriter(e.to_string()))?;
+        let output = Uri::from_str(path.as_str())?;
+        self.buffer.entry(output).or_default().push(ctx.feature);
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let common_param = self.params.to_common_param();
-        let scope = expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(common_param.output.as_ref())
-            .unwrap_or_else(|_| common_param.output.as_ref().to_string());
-        let output = Uri::from_str(path.as_str())?;
-        let result = match &self.params {
-            FileWriterParam::Json { json_property, .. } => write_json(
-                &output,
-                json_property,
-                &self.buffer,
-                expr_engine,
-                storage_resolver,
-            ),
-            FileWriterParam::Csv { .. } => {
-                write_csv(&output, &self.buffer, Delimiter::Comma, storage_resolver)
-            }
-            FileWriterParam::Tsv { .. } => {
-                write_csv(&output, &self.buffer, Delimiter::Tab, storage_resolver)
-            }
-            FileWriterParam::Excel { excel_property, .. } => {
-                write_excel(&output, excel_property, &self.buffer, storage_resolver)
-            }
-        };
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e.into()),
+        for (output, features) in &self.buffer {
+            match &self.params {
+                FileWriterCompiledParam::Json { json_params, .. } => write_json(
+                    output,
+                    json_params,
+                    features,
+                    &expr_engine,
+                    &storage_resolver,
+                ),
+                FileWriterCompiledParam::Csv { .. } => {
+                    write_csv(output, features, Delimiter::Comma, &storage_resolver)
+                }
+                FileWriterCompiledParam::Tsv { .. } => {
+                    write_csv(output, features, Delimiter::Tab, &storage_resolver)
+                }
+                FileWriterCompiledParam::Excel { excel_params, .. } => {
+                    write_excel(output, excel_params, features, &storage_resolver)
+                }
+            }?;
         }
+        Ok(())
     }
 }
 
@@ -183,8 +233,8 @@ fn write_json(
     output: &Uri,
     params: &JsonWriterParam,
     features: &[Feature],
-    expr_engine: Arc<Engine>,
-    storage_resolver: Arc<StorageResolver>,
+    expr_engine: &Arc<Engine>,
+    storage_resolver: &Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     let json_value: serde_json::Value = if let Some(converter) = &params.converter {
         let scope = expr_engine.new_scope();
@@ -209,7 +259,19 @@ fn write_json(
         })?;
         dynamic_to_value(&convert)
     } else {
-        features.into()
+        let attributes = features
+            .iter()
+            .map(|f| {
+                serde_json::Value::Object(
+                    f.attributes
+                        .clone()
+                        .into_iter()
+                        .map(|(k, v)| (k.into_inner().to_string(), v.into()))
+                        .collect::<serde_json::Map<_, _>>(),
+                )
+            })
+            .collect::<Vec<serde_json::Value>>();
+        serde_json::Value::Array(attributes)
     };
     let storage = storage_resolver
         .resolve(output)
@@ -224,7 +286,7 @@ fn write_csv(
     output: &Uri,
     features: &[Feature],
     delimiter: Delimiter,
-    storage_resolver: Arc<StorageResolver>,
+    storage_resolver: &Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     if features.is_empty() {
         return Ok(());

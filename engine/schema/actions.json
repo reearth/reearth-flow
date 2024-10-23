@@ -433,6 +433,76 @@
       ]
     },
     {
+      "name": "BulkAttributeRenamer",
+      "type": "processor",
+      "description": "Renames attributes by adding/removing prefixes or suffixes, or replacing text",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BulkAttributeRenamerParam",
+        "type": "object",
+        "required": [
+          "renameAction",
+          "renameType",
+          "renameValue"
+        ],
+        "properties": {
+          "renameAction": {
+            "$ref": "#/definitions/RenameAction"
+          },
+          "renameType": {
+            "$ref": "#/definitions/RenameType"
+          },
+          "renameValue": {
+            "type": "string"
+          },
+          "selectedAttributes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "textToFind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "RenameAction": {
+            "type": "string",
+            "enum": [
+              "AddPrefix",
+              "AddSuffix",
+              "RemovePrefix",
+              "RemoveSuffix",
+              "StringReplace"
+            ]
+          },
+          "RenameType": {
+            "type": "string",
+            "enum": [
+              "All",
+              "Selected"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "CenterPointReplacer",
       "type": "processor",
       "description": "Replaces the geometry of the feature with a point that is either in the center of the feature's bounding box, at the center of mass of the feature, or somewhere guaranteed to be inside the feature's area.",
@@ -463,6 +533,12 @@
           "output"
         ],
         "properties": {
+          "attachTexture": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "maxZoom": {
             "type": "integer",
             "format": "uint8",
@@ -934,6 +1010,12 @@
               "dataset": {
                 "$ref": "#/definitions/Expr"
               },
+              "flatten": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
               "format": {
                 "type": "string",
                 "enum": [
@@ -1268,6 +1350,12 @@
             "properties": {
               "dataset": {
                 "$ref": "#/definitions/Expr"
+              },
+              "flatten": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "format": {
                 "type": "string",
@@ -1924,11 +2012,15 @@
         "title": "MVTWriterParam",
         "type": "object",
         "required": [
+          "layerName",
           "maxZoom",
           "minZoom",
           "output"
         ],
         "properties": {
+          "layerName": {
+            "type": "string"
+          },
           "maxZoom": {
             "type": "integer",
             "format": "uint8",

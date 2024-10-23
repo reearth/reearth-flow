@@ -1,8 +1,8 @@
 //! Polygon slicing algorithm based on [geojson-vt](https://github.com/mapbox/geojson-vt).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use flatgeom::{LineString2, MultiPolygon, Polygon, Polygon2, Polygon3};
+use flatgeom::{MultiPolygon, Polygon, Polygon2, Polygon3};
 use indexmap::IndexSet;
 use itertools::Itertools;
 use reearth_flow_types::{AttributeValue, Feature, GeometryType};
@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 
 use super::{material::Material, material::Texture, tiling, tiling::zxy_from_lng_lat};
 
-pub type TileZXYName = (u8, u32, u32, String);
+pub type TileZXYName = (u8, u32, u32);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SlicedFeature {
     // polygons [x, y, z, u, v]
     pub polygons: MultiPolygon<'static, [f64; 5]>,
@@ -28,6 +28,7 @@ pub fn slice_to_tiles<E>(
     feature: &Feature,
     min_zoom: u8,
     max_zoom: u8,
+    attach_texture: bool,
     send_feature: impl Fn(TileZXYName, SlicedFeature) -> Result<(), E>,
 ) -> Result<(), E> {
     let Some(city_gml) = feature
@@ -37,11 +38,12 @@ pub fn slice_to_tiles<E>(
     else {
         return Ok(());
     };
+
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
 
     let slicing_enabled = true;
 
-    let mut sliced_tiles: HashMap<(u8, u32, u32, String), SlicedFeature> = HashMap::new();
+    let mut sliced_tiles: HashMap<(u8, u32, u32), SlicedFeature> = HashMap::new();
     let mut materials: IndexSet<Material> = IndexSet::new();
     let default_material = reearth_flow_types::Material::default();
 
@@ -63,24 +65,25 @@ pub fn slice_to_tiles<E>(
     };
     let mut ring_buffer: Vec<[f64; 5]> = Vec::new();
 
+    let available_lods: HashSet<u8> = city_gml
+        .gml_geometries
+        .iter()
+        .flat_map(|entry| entry.lod)
+        .sorted()
+        .dedup()
+        .collect();
+
     for entry in city_gml.gml_geometries.iter() {
-        let Some(feature_type) = entry.feature_type.clone() else {
-            continue;
-        };
         match entry.ty {
-            GeometryType::Solid
-            | GeometryType::Surface
-            | GeometryType::Triangle
-            | GeometryType::CompositeSurface
-            | GeometryType::MultiSurface => {
+            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
+                // for each polygon
                 for (((poly, poly_uv), poly_mat), poly_tex) in entry
                     .polygons
                     .iter()
                     .zip_eq(
                         city_gml
                             .polygon_uvs
-                            .range(entry.pos as usize..(entry.pos + entry.len) as usize)
-                            .iter(),
+                            .iter_range(entry.pos as usize..(entry.pos + entry.len) as usize),
                     )
                     .zip_eq(
                         city_gml.polygon_materials
@@ -94,29 +97,41 @@ pub fn slice_to_tiles<E>(
                     )
                 {
                     let poly: Polygon3 = poly.clone().into();
-                    let orig_mat = poly_mat
-                        .and_then(|idx| city_gml.materials.get(idx as usize))
-                        .unwrap_or(&default_material)
-                        .clone();
-                    let orig_tex = poly_tex.and_then(|idx| city_gml.textures.get(idx as usize));
-                    let mat = Material {
-                        base_color: orig_mat.diffuse_color.into(),
-                        base_texture: orig_tex.map(|tex| Texture {
-                            uri: tex.uri.clone().into(),
-                        }),
+                    let mat = if attach_texture {
+                        let orig_mat = poly_mat
+                            .and_then(|idx| city_gml.materials.get(idx as usize))
+                            .unwrap_or(&default_material)
+                            .clone();
+                        let orig_tex = poly_tex.and_then(|idx| city_gml.textures.get(idx as usize));
+                        Material {
+                            base_color: orig_mat.diffuse_color.into(),
+                            base_texture: orig_tex.map(|tex| Texture {
+                                uri: tex.uri.clone().into(),
+                            }),
+                        }
+                    } else {
+                        Material {
+                            base_color: default_material.diffuse_color.into(),
+                            base_texture: None,
+                        }
                     };
                     let (mat_idx, _) = materials.insert_full(mat);
                     // Slice polygon for each zoom level
                     for zoom in min_zoom..=max_zoom {
-                        // Skip the feature if the size is small for geometricError.
-                        // TODO: better method ? (bounding sphere, etc.)
-                        if zoom < max_zoom {
+                        if zoom <= max_zoom {
                             let geom_error = {
                                 let (_, _, y) =
                                     tiling::scheme::zxy_from_lng_lat(zoom, lng_center, lat_center);
                                 tiling::scheme::geometric_error(zoom, y)
                             };
-                            let threshold = geom_error / 0.9; // TODO: adjustable
+                            if let Some(lod) = entry.lod {
+                                if !should_process_entry(lod, geom_error, &available_lods) {
+                                    continue;
+                                }
+                            }
+
+                            // Skip the feature if the size is small for geometricError.
+                            let threshold = geom_error * 0.5;
                             if approx_dx < threshold
                                 && approx_dy < threshold
                                 && approx_dh < threshold
@@ -126,51 +141,43 @@ pub fn slice_to_tiles<E>(
                         }
 
                         if slicing_enabled {
-                            // slicing enabled
-                            slice_polygon(
-                                zoom,
-                                &poly,
-                                &poly_uv.clone().into(),
-                                feature_type.clone(),
-                                |(z, x, y, typename), poly| {
-                                    let sliced_feature = sliced_tiles
-                                        .entry((z, x, y, typename))
-                                        .or_insert_with(|| {
-                                            SlicedFeature {
-                                                polygons: MultiPolygon::new(),
-                                                attributes: feature
-                                                    .attributes
-                                                    .clone()
-                                                    .into_iter()
-                                                    .map(|(k, v)| (k.to_string(), v.clone()))
-                                                    .collect(),
-                                                polygon_material_ids: Default::default(),
-                                                materials: Default::default(), // set later
-                                            }
-                                        });
-                                    sliced_feature.polygons.push(poly);
-                                    sliced_feature.polygon_material_ids.push(mat_idx as u32);
-                                },
-                            );
+                            slice_polygon(zoom, &poly, &poly_uv, |(z, x, y), poly| {
+                                let sliced_feature =
+                                    sliced_tiles.entry((z, x, y)).or_insert_with(|| {
+                                        SlicedFeature {
+                                            polygons: MultiPolygon::new(),
+                                            attributes: feature
+                                                .attributes
+                                                .clone()
+                                                .into_iter()
+                                                .map(|(k, v)| (k.to_string(), v.clone()))
+                                                .collect(),
+                                            polygon_material_ids: Default::default(),
+                                            materials: Default::default(), // set later
+                                        }
+                                    });
+                                sliced_feature.polygons.push(poly);
+                                sliced_feature.polygon_material_ids.push(mat_idx as u32);
+                            });
                         } else {
                             // slicing disabled
                             let (z, x, y) = zxy_from_lng_lat(zoom, lng_center, lat_center);
-                            let sliced_feature = sliced_tiles
-                                .entry((z, x, y, feature_type.clone()))
-                                .or_insert_with(|| SlicedFeature {
-                                    polygons: MultiPolygon::new(),
-                                    attributes: feature
-                                        .attributes
-                                        .clone()
-                                        .into_iter()
-                                        .map(|(k, v)| (k.to_string(), v.clone()))
-                                        .collect(),
-                                    polygon_material_ids: Default::default(),
-                                    materials: Default::default(), // set later
-                                });
+                            let sliced_feature =
+                                sliced_tiles
+                                    .entry((z, x, y))
+                                    .or_insert_with(|| SlicedFeature {
+                                        polygons: MultiPolygon::new(),
+                                        attributes: feature
+                                            .attributes
+                                            .clone()
+                                            .into_iter()
+                                            .map(|(k, v)| (k.to_string(), v.clone()))
+                                            .collect(),
+                                        polygon_material_ids: Default::default(),
+                                        materials: Default::default(), // set later
+                                    });
                             poly.rings().zip_eq(poly_uv.rings()).enumerate().for_each(
                                 |(ri, (ring, uv_ring))| {
-                                    let uv_ring: LineString2 = uv_ring.into();
                                     ring.iter_closed().zip_eq(uv_ring.iter_closed()).for_each(
                                         |(c, uv)| {
                                             ring_buffer.push([c[0], c[1], c[2], uv[0], uv[1]]);
@@ -188,23 +195,19 @@ pub fn slice_to_tiles<E>(
                     }
                 }
             }
-            reearth_flow_types::geometry::GeometryType::Curve
-            | reearth_flow_types::geometry::GeometryType::MultiCurve => {
+            GeometryType::Curve => {
                 unimplemented!()
             }
-            GeometryType::Point | GeometryType::MultiPoint => {
+            GeometryType::Point => {
                 unimplemented!()
             }
-            GeometryType::Tin => {
-                unimplemented!()
-            }
-        };
+        }
     }
 
     // Send tiled features
-    for ((z, x, y, typename), mut sliced_feature) in sliced_tiles {
+    for ((z, x, y), mut sliced_feature) in sliced_tiles {
         sliced_feature.materials.clone_from(&materials);
-        send_feature((z, x, y, typename), sliced_feature)?;
+        send_feature((z, x, y), sliced_feature)?;
     }
     Ok(())
 
@@ -216,7 +219,6 @@ fn slice_polygon(
     zoom: u8,
     poly: &Polygon3,
     poly_uv: &Polygon2,
-    typename: String,
     mut send_polygon: impl FnMut(TileZXYName, &Polygon<'static, [f64; 5]>),
 ) {
     if poly.exterior().is_empty() {
@@ -247,7 +249,6 @@ fn slice_polygon(
             if ring.raw_coords().is_empty() {
                 continue;
             }
-
             ring_buffer.clear();
             ring.iter_closed()
                 .zip_eq(uv_ring.iter_closed())
@@ -314,7 +315,6 @@ fn slice_polygon(
                 .fold((f64::MAX, f64::MIN), |(min_x, max_x), c| {
                     (min_x.min(c[0]), max_x.max(c[0]))
                 });
-
             tiling::iter_x_slice(zoom, yi, min_x, max_x)
         };
 
@@ -322,15 +322,12 @@ fn slice_polygon(
             let (k1, k2) = tiling::x_slice_range(zoom, xi, xs);
 
             // todo?: check interior bbox to optimize ...
-
+            let x = xi.rem_euclid(1 << zoom) as u32;
             let key = (
-                zoom,
-                xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
+                zoom, x, // handling geometry crossing the antimeridian
                 yi,
-                typename.clone(),
             );
             poly_buf.clear();
-
             for ring in y_sliced_poly.rings() {
                 if ring.raw_coords().is_empty() {
                     continue;
@@ -385,8 +382,34 @@ fn slice_polygon(
 
                 poly_buf.add_ring(ring_buffer.drain(..))
             }
-
             send_polygon(key, &poly_buf);
         }
+    }
+}
+
+fn desired_lod(geom_error: f64) -> u8 {
+    match geom_error {
+        ge if ge >= 30.0 => 1,
+        ge if ge >= 20.0 => 2,
+        ge if ge >= 5.0 => 3,
+        _ => 4,
+    }
+}
+
+fn should_process_entry(entry_lod: u8, geom_error: f64, available_lods: &HashSet<u8>) -> bool {
+    let desired_lod = desired_lod(geom_error);
+
+    let possible_lods: Vec<u8> = available_lods
+        .iter()
+        .cloned()
+        .filter(|&lod| lod >= desired_lod)
+        .collect();
+
+    if !possible_lods.is_empty() {
+        let selected_lod = *possible_lods.iter().min().unwrap();
+        entry_lod == selected_lod
+    } else {
+        let selected_lod = *available_lods.iter().max().unwrap();
+        entry_lod == selected_lod
     }
 }

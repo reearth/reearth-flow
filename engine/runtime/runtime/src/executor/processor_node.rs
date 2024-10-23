@@ -85,7 +85,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             panic!("Must pass in a node")
         };
         let node_handle = node.handle.clone();
-        let NodeKind::Processor(mut processor) = kind else {
+        let NodeKind::Processor(processor) = kind else {
             panic!("Must pass in a processor node");
         };
         let (node_handles, receivers) = dag.collect_receivers(node_index);
@@ -117,7 +117,6 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let kv_store = Arc::clone(&ctx.kv_store);
-        processor.initialize(ctx);
         let num_threads = processor.num_threads();
         Self {
             node_handle,
@@ -167,6 +166,16 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let span = self.span.clone();
         let logger = self.logger.clone();
         let now = time::Instant::now();
+        let processor = Arc::clone(&self.processor);
+        processor
+            .write()
+            .initialize(NodeContext::new(
+                self.expr_engine.clone(),
+                self.storage_resolver.clone(),
+                self.logger_factory.clone(),
+                self.kv_store.clone(),
+            ))
+            .map_err(ExecutionError::Processor)?;
         action_log!(
             parent: span, logger, "{:?} process start...", self.processor.read().name(),
         );

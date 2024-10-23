@@ -10,8 +10,8 @@ entrypoint_log() {
 }
 
 auto_envsubst() {
-    local template_file="/tmp/reearth_config.json.tmpl"
-    local output_file="/opt/reearth-flow/reearth_config.json"
+    local template_file="/tmp/reearth_config.json.template"
+    local output_file="/usr/share/nginx/html/reearth_config.json"
     local filter="${NGINX_ENVSUBST_FILTER:-}"
     local defined_envs
 

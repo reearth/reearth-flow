@@ -115,10 +115,19 @@ const ActionsList: React.FC<Props> = ({
   const getFilteredActions = useCallback(
     (filter: string, actions?: Action[]): Action[] | undefined =>
       actions?.filter((action) =>
-        Object.values(action)
-          .filter((v) => typeof v === "string")
-          .join("")
-          .includes(filter.toLowerCase()),
+        (
+          Object.values(action).reduce(
+            (result, value) =>
+              (result += (
+                Array.isArray(value)
+                  ? value.join()
+                  : typeof value === "string"
+                    ? value
+                    : ""
+              ).toLowerCase()),
+            "",
+          ) as string
+        ).includes(filter.toLowerCase()),
       ),
     [],
   );

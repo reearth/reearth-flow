@@ -16,6 +16,7 @@ pub(super) struct SlicedFeature<'a> {
 
 pub(super) fn slice_cityobj_geoms(
     feature: &Feature,
+    layer_name: &str,
     min_z: u8,
     max_z: u8,
     max_detail: u32,
@@ -41,11 +42,7 @@ pub(super) fn slice_cityobj_geoms(
         .gml_geometries
         .iter()
         .for_each(|entry| match entry.ty {
-            GeometryType::Solid
-            | GeometryType::Surface
-            | GeometryType::Triangle
-            | GeometryType::CompositeSurface
-            | GeometryType::MultiSurface => {
+            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
                 for flow_poly in entry.polygons.iter() {
                     let idx_poly: Polygon2 = flow_poly.clone().into();
                     let poly = idx_poly.transform(|[lng, lat]| {
@@ -57,9 +54,6 @@ pub(super) fn slice_cityobj_geoms(
                         continue;
                     }
                     let area = poly.area();
-                    let Some(typename) = entry.feature_type.as_ref() else {
-                        continue;
-                    };
 
                     for zoom in min_z..=max_z {
                         // Skip if the polygon is smaller than 4 square subpixels
@@ -68,17 +62,14 @@ pub(super) fn slice_cityobj_geoms(
                         if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
                             continue;
                         }
-                        slice_polygon(zoom, extent, buffer, &poly, typename, &mut tiled_mpolys);
+                        slice_polygon(zoom, extent, buffer, &poly, layer_name, &mut tiled_mpolys);
                     }
                 }
             }
-            GeometryType::Curve | GeometryType::MultiCurve => {
+            GeometryType::Curve => {
                 unimplemented!()
             }
-            GeometryType::Point | GeometryType::MultiPoint => {
-                unimplemented!()
-            }
-            GeometryType::Tin => {
+            GeometryType::Point => {
                 unimplemented!()
             }
         });

@@ -1,11 +1,11 @@
+use std::fmt::Display;
+use std::hash::Hasher;
+use std::{hash::Hash, path::Path};
+
 use nusamai_plateau::models::appearance::X3DMaterial;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::traits::Elevation;
-use std::fmt::Display;
-use std::hash::Hasher;
-use std::{hash::Hash, path::Path};
-use url::Url;
 
 use nusamai_citygml::Color;
 use nusamai_projection::crs::EpsgCode;
@@ -14,6 +14,7 @@ use reearth_flow_geometry::algorithm::hole::HoleCounter;
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_geometry::utils::are_points_coplanar;
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
 use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
@@ -221,7 +222,7 @@ pub struct CityGmlGeometry {
     pub textures: Vec<Texture>,
     pub polygon_materials: Vec<Option<u32>>,
     pub polygon_textures: Vec<Option<u32>>,
-    pub polygon_uvs: MultiPolygon2D<f64>,
+    pub polygon_uvs: flatgeom::MultiPolygon<'static, [f64; 2]>,
 }
 
 impl CityGmlGeometry {
@@ -236,7 +237,7 @@ impl CityGmlGeometry {
             textures,
             polygon_materials: Vec::new(),
             polygon_textures: Vec::new(),
-            polygon_uvs: MultiPolygon2D::default(),
+            polygon_uvs: flatgeom::MultiPolygon::default(),
         }
     }
 
@@ -407,35 +408,23 @@ pub enum GeometryType {
     /// Polygons (solids)
     Solid,
     /// Polygons (surfaces)
-    MultiSurface,
-    /// Composite surface
-    CompositeSurface,
     Surface,
     /// Polygons (triangles)
     Triangle,
     /// Line-strings
-    MultiCurve,
     Curve,
     /// Points
-    MultiPoint,
     Point,
-    /// Tin
-    Tin,
 }
 
 impl From<nusamai_citygml::geometry::GeometryType> for GeometryType {
     fn from(ty: nusamai_citygml::geometry::GeometryType) -> Self {
         match ty {
             nusamai_citygml::geometry::GeometryType::Solid => Self::Solid,
-            nusamai_citygml::geometry::GeometryType::MultiSurface => Self::MultiSurface,
-            nusamai_citygml::geometry::GeometryType::CompositeSurface => Self::CompositeSurface,
             nusamai_citygml::geometry::GeometryType::Surface => Self::Surface,
             nusamai_citygml::geometry::GeometryType::Triangle => Self::Triangle,
-            nusamai_citygml::geometry::GeometryType::MultiCurve => Self::MultiCurve,
             nusamai_citygml::geometry::GeometryType::Curve => Self::Curve,
-            nusamai_citygml::geometry::GeometryType::MultiPoint => Self::MultiPoint,
             nusamai_citygml::geometry::GeometryType::Point => Self::Point,
-            nusamai_citygml::geometry::GeometryType::Tin => Self::Tin,
         }
     }
 }
@@ -447,15 +436,13 @@ impl<T: CoordNum, Z: CoordNum> From<&reearth_flow_geometry::types::geometry::Geo
         match geometry {
             reearth_flow_geometry::types::geometry::Geometry::Solid(_) => Self::Solid,
             reearth_flow_geometry::types::geometry::Geometry::Triangle(_) => Self::Triangle,
-            reearth_flow_geometry::types::geometry::Geometry::MultiPoint(_) => Self::MultiPoint,
+            reearth_flow_geometry::types::geometry::Geometry::MultiPoint(_) => Self::Point,
             reearth_flow_geometry::types::geometry::Geometry::Point(_) => Self::Point,
             reearth_flow_geometry::types::geometry::Geometry::Line(_) => Self::Curve,
-            reearth_flow_geometry::types::geometry::Geometry::LineString(_) => Self::MultiCurve,
+            reearth_flow_geometry::types::geometry::Geometry::LineString(_) => Self::Curve,
             reearth_flow_geometry::types::geometry::Geometry::Polygon(_) => Self::Surface,
-            reearth_flow_geometry::types::geometry::Geometry::MultiLineString(_) => {
-                Self::MultiCurve
-            }
-            reearth_flow_geometry::types::geometry::Geometry::MultiPolygon(_) => Self::MultiSurface,
+            reearth_flow_geometry::types::geometry::Geometry::MultiLineString(_) => Self::Curve,
+            reearth_flow_geometry::types::geometry::Geometry::MultiPolygon(_) => Self::Surface,
             reearth_flow_geometry::types::geometry::Geometry::Rect(_) => Self::Surface,
             _ => unreachable!(),
         }
@@ -484,15 +471,10 @@ impl GeometryType {
     pub fn name(&self) -> &str {
         match self {
             Self::Solid => "Solid",
-            Self::MultiSurface => "MultiSurface",
-            Self::CompositeSurface => "CompositeSurface",
             Self::Surface => "Surface",
             Self::Triangle => "Triangle",
-            Self::MultiCurve => "MultiCurve",
             Self::Curve => "Curve",
-            Self::MultiPoint => "MultiPoint",
             Self::Point => "Point",
-            Self::Tin => "Tin",
         }
     }
 }

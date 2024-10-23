@@ -1,6 +1,6 @@
 [package]
-description = "Re:Earth Flow Websocket Domain library"
-name = "infra"
+description = "Re:Earth Flow Websocket infra library"
+name = "flow-websocket-infra"
 
 authors.workspace = true
 edition.workspace = true
@@ -20,6 +20,7 @@ axum-macros.workspace = true
 chrono.workspace = true
 google-cloud-storage.workspace = true
 lru.workspace = true
+mockall.workspace = true
 redis.workspace = true
 rslock.workspace = true
 serde.workspace = true

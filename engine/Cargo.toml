@@ -17,7 +17,7 @@ exclude = ["benches/", "test-data/", "testdata/"]
 homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
-rust-version = "1.81" # Remember to update clippy.toml as well
+rust-version = "1.82" # Remember to update clippy.toml as well
 version = "0.0.2"
 
 [profile.dev]
@@ -61,11 +61,11 @@ reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.1.1", features = ["serde", "serde_json"] }
-nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.1.1" }
-nusamai-mvt = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.1.1" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.1.1", features = ["serde"] }
-nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.1.1" }
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.3.1", features = ["serde", "serde_json"] }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.3.1" }
+nusamai-mvt = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.3.1" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.3.1", features = ["serde"] }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.3.1" }
 
 Inflector = "0.11.4"
 ahash = "0.8.11"
@@ -80,7 +80,7 @@ bincode = { version = "2.0.0-rc.3", default-features = false, features = ["serde
 bytemuck = { version = "1.19.0", features = ["derive"] }
 byteorder = "1.5.0"
 bytes = { version = "1.7.2", features = ["serde"] }
-cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs.git" }
+cesiumtiles = { git = "https://github.com/MIERUNE/cesiumtiles-rs.git" }
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.20", features = ["env", "string"] }
 clipper-sys = "0.7.2"

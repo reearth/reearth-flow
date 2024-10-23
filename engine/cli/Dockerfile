@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM rust:1.81-slim-bookworm AS builder
+FROM rust:1.82-slim-bookworm AS builder
 
 ARG NAME=reearth-flow
 WORKDIR /usr/src/${NAME}
