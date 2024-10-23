@@ -16,6 +16,10 @@ func (b *DeploymentBuilder) Build() (*Deployment, error) {
 	if b.d.id.IsNil() {
 		return nil, ErrInvalidID
 	}
+
+	if b.d.updatedAt.IsZero() {
+		b.d.updatedAt = b.d.CreatedAt()
+	}
 	return b.d, nil
 }
 
@@ -54,11 +58,6 @@ func (b *DeploymentBuilder) WorkflowURL(workflowUrl string) *DeploymentBuilder {
 
 func (b *DeploymentBuilder) Version(version string) *DeploymentBuilder {
 	b.d.version = version
-	return b
-}
-
-func (b *DeploymentBuilder) CreatedAt(createdAt time.Time) *DeploymentBuilder {
-	b.d.createdAt = createdAt
 	return b
 }
 

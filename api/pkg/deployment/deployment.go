@@ -10,21 +10,7 @@ type Deployment struct {
 	workspace   WorkspaceID
 	workflowUrl string
 	version     string
-	createdAt   time.Time
 	updatedAt   time.Time
-}
-
-func NewDeployment(id ID, project ProjectID, workspace WorkspaceID, workflowUrl string, version string) *Deployment {
-	now := time.Now()
-	return &Deployment{
-		id:          id,
-		project:     project,
-		workspace:   workspace,
-		workflowUrl: workflowUrl,
-		version:     version,
-		createdAt:   now,
-		updatedAt:   now,
-	}
 }
 
 func (d *Deployment) ID() ID {
@@ -48,7 +34,7 @@ func (d *Deployment) Version() string {
 }
 
 func (d *Deployment) CreatedAt() time.Time {
-	return d.createdAt
+	return d.id.Timestamp()
 }
 
 func (d *Deployment) UpdatedAt() time.Time {
@@ -77,10 +63,6 @@ func (d *Deployment) SetWorkflowUrl(workflowUrl string) {
 func (d *Deployment) SetVersion(version string) {
 	d.version = version
 	d.updatedAt = time.Now()
-}
-
-func (d *Deployment) SetCreatedAt(createdAt time.Time) {
-	d.createdAt = createdAt
 }
 
 func (d *Deployment) SetUpdatedAt(updatedAt time.Time) {

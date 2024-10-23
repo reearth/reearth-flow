@@ -63,7 +63,7 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, workspace accountdomai
 		return nil, usecasex.EmptyPageInfo(), nil
 	}
 	return r.paginate(ctx, bson.M{
-		"workspace": workspace.String(),
+		"workspaceid": workspace.String(),
 	}, pagination)
 }
 
