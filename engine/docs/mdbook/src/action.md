@@ -532,6 +532,12 @@ Writes features to a file
     "output"
   ],
   "properties": {
+    "attachTexture": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "maxZoom": {
       "type": "integer",
       "format": "uint8",

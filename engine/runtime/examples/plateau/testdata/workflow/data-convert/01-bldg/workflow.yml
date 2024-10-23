@@ -92,6 +92,7 @@ graphs:
         with:
           minZoom: 15
           maxZoom: 18
+          attachTexture: true
           output: |
             env.get("outputPath")
 
