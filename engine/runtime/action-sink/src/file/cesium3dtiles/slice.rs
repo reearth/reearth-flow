@@ -28,6 +28,7 @@ pub fn slice_to_tiles<E>(
     feature: &Feature,
     min_zoom: u8,
     max_zoom: u8,
+    attach_texture: bool,
     send_feature: impl Fn(TileZXYName, SlicedFeature) -> Result<(), E>,
 ) -> Result<(), E> {
     let Some(city_gml) = feature
@@ -96,17 +97,23 @@ pub fn slice_to_tiles<E>(
                     )
                 {
                     let poly: Polygon3 = poly.clone().into();
-                    let orig_mat = poly_mat
-                        .and_then(|idx| city_gml.materials.get(idx as usize))
-                        .unwrap_or(&default_material)
-                        .clone();
-                    let orig_tex = poly_tex.and_then(|idx| city_gml.textures.get(idx as usize));
-
-                    let mat = Material {
-                        base_color: orig_mat.diffuse_color.into(),
-                        base_texture: orig_tex.map(|tex| Texture {
-                            uri: tex.uri.clone().into(),
-                        }),
+                    let mat = if attach_texture {
+                        let orig_mat = poly_mat
+                            .and_then(|idx| city_gml.materials.get(idx as usize))
+                            .unwrap_or(&default_material)
+                            .clone();
+                        let orig_tex = poly_tex.and_then(|idx| city_gml.textures.get(idx as usize));
+                        Material {
+                            base_color: orig_mat.diffuse_color.into(),
+                            base_texture: orig_tex.map(|tex| Texture {
+                                uri: tex.uri.clone().into(),
+                            }),
+                        }
+                    } else {
+                        Material {
+                            base_color: default_material.diffuse_color.into(),
+                            base_texture: None,
+                        }
                     };
                     let (mat_idx, _) = materials.insert_full(mat);
                     // Slice polygon for each zoom level

@@ -130,6 +130,7 @@ pub struct Cesium3DTilesWriterParam {
     pub(super) output: Expr,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
+    pub(super) attach_texture: Option<bool>,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -164,6 +165,7 @@ impl Sink for Cesium3DTilesWriter {
             .eval::<String>(output.as_ref())
             .unwrap_or_else(|_| output.as_ref().to_string());
         let output = Uri::from_str(path.as_str())?;
+        let attach_texture = self.params.attach_texture.unwrap_or(false);
 
         std::thread::scope(|scope| {
             let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
@@ -175,6 +177,7 @@ impl Sink for Cesium3DTilesWriter {
                     sender_sliced,
                     self.params.min_zoom,
                     self.params.max_zoom,
+                    attach_texture,
                 );
             });
             scope.spawn(|| {
@@ -209,27 +212,34 @@ fn geometry_slicing_stage(
     sender_sliced: mpsc::SyncSender<(u64, String, Vec<u8>)>,
     min_zoom: u8,
     max_zoom: u8,
+    attach_texture: bool,
 ) -> crate::errors::Result<()> {
     let bincode_config = bincode::config::standard();
 
     upstream.iter().par_bridge().try_for_each(|parcel| {
-        slice_to_tiles(parcel, min_zoom, max_zoom, |(z, x, y), feature| {
-            let bytes = bincode::serde::encode_to_vec(&feature, bincode_config)
-                .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
-            // TODO extract feature type from parcel
-            let Some(AttributeValue::String(feature_type)) =
-                parcel.get(&"feature_type".to_string())
-            else {
-                return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
-            };
-            let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-            let serialized_feature = (tile_id, feature_type.to_string(), bytes);
-            if sender_sliced.send(serialized_feature).is_err() {
-                return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
-            };
+        slice_to_tiles(
+            parcel,
+            min_zoom,
+            max_zoom,
+            attach_texture,
+            |(z, x, y), feature| {
+                let bytes = bincode::serde::encode_to_vec(&feature, bincode_config)
+                    .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
+                // TODO extract feature type from parcel
+                let Some(AttributeValue::String(feature_type)) =
+                    parcel.get(&"feature_type".to_string())
+                else {
+                    return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
+                };
+                let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+                let serialized_feature = (tile_id, feature_type.to_string(), bytes);
+                if sender_sliced.send(serialized_feature).is_err() {
+                    return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
+                };
 
-            Ok(())
-        })
+                Ok(())
+            },
+        )
     })?;
 
     Ok(())
