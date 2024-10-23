@@ -27,3 +27,4 @@ thiserror.workspace = true
 redis.workspace = true
 dotenv.workspace = true
 envy.workspace = true
+chrono.workspace = true
