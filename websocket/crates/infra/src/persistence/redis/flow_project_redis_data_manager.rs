@@ -84,31 +84,33 @@ impl FlowProjectRedisDataManager {
         format!("{}:activeEditingSessionId", self.project_prefix())
     }
 
-    async fn session_prefix(&self) -> Result<String, FlowProjectRedisDataManagerError> {
+    fn session_prefix(&self) -> Result<String, FlowProjectRedisDataManagerError> {
         let session_id = self
             .session_id
-            .lock()
-            .await
+            .try_lock()
+            .map_err(|_| {
+                FlowProjectRedisDataManagerError::Unknown("Failed to acquire lock".to_string())
+            })?
             .as_ref()
             .ok_or(FlowProjectRedisDataManagerError::SessionNotSet)?
             .clone();
         Ok(format!("{}:{}", self.project_prefix(), session_id))
     }
 
-    async fn state_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-        Ok(format!("{}:state", self.session_prefix().await?))
+    fn state_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
+        Ok(format!("{}:state", self.session_prefix()?))
     }
 
-    async fn state_updated_by_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-        Ok(format!("{}:stateUpdatedBy", self.session_prefix().await?))
+    fn state_updated_by_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
+        Ok(format!("{}:stateUpdatedBy", self.session_prefix()?))
     }
 
-    async fn state_updates_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-        Ok(format!("{}:stateUpdates", self.session_prefix().await?))
+    fn state_updates_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
+        Ok(format!("{}:stateUpdates", self.session_prefix()?))
     }
 
-    async fn last_updated_at_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-        Ok(format!("{}:lastUpdatedAt", self.session_prefix().await?))
+    fn last_updated_at_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
+        Ok(format!("{}:lastUpdatedAt", self.session_prefix()?))
     }
 
     fn encode_state_data(data: Vec<u8>) -> Result<String, FlowProjectRedisDataManagerError> {
@@ -123,7 +125,7 @@ impl FlowProjectRedisDataManager {
         &self,
     ) -> Result<Vec<(String, Vec<(String, String)>)>, FlowProjectRedisDataManagerError> {
         self.redis_client
-            .xread_map(&self.state_updates_key().await?, "0-0")
+            .xread_map(&self.state_updates_key()?, "0-0")
             .await
             .map_err(FlowProjectRedisDataManagerError::from)
     }
@@ -226,8 +228,7 @@ impl FlowProjectRedisDataManager {
     async fn get_state_update_in_redis(
         &self,
     ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
-        let state_update_string: Option<String> =
-            self.redis_client.get(&self.state_key().await?).await?;
+        let state_update_string: Option<String> = self.redis_client.get(&self.state_key()?).await?;
         if let Some(state_update_string) = state_update_string {
             Ok(Some(Self::decode_state_data(state_update_string)?))
         } else {
@@ -247,10 +248,8 @@ impl FlowProjectRedisDataManager {
     pub async fn get_current_state_updated_by(
         &self,
     ) -> Result<Vec<String>, FlowProjectRedisDataManagerError> {
-        let state_updated_by: Option<String> = self
-            .redis_client
-            .get(&self.state_updated_by_key().await?)
-            .await?;
+        let state_updated_by: Option<String> =
+            self.redis_client.get(&self.state_updated_by_key()?).await?;
         if let Some(state_updated_by) = state_updated_by {
             Ok(serde_json::from_str(&state_updated_by)?)
         } else {
@@ -298,10 +297,10 @@ impl FlowProjectRedisDataManager {
         let connection = self.redis_client.connection();
         let mut connection_guard = connection.lock().await;
         let _: () = connection_guard
-            .set(self.state_key().await?, encoded_state_update)
+            .set(self.state_key()?, encoded_state_update)
             .await?;
         let _: () = connection_guard
-            .set(self.state_updated_by_key().await?, updated_by_json)
+            .set(self.state_updated_by_key()?, updated_by_json)
             .await?;
         Ok(())
     }
@@ -336,10 +335,8 @@ impl FlowProjectRedisDataManager {
     }
 
     pub async fn last_updated_at(&self) -> Result<i64, FlowProjectRedisDataManagerError> {
-        let last_updated_at: Option<String> = self
-            .redis_client
-            .get(&self.last_updated_at_key().await?)
-            .await?;
+        let last_updated_at: Option<String> =
+            self.redis_client.get(&self.last_updated_at_key()?).await?;
         if let Some(last_updated_at) = last_updated_at {
             Ok(last_updated_at.parse::<i64>()?)
         } else {
@@ -409,15 +406,12 @@ impl FlowProjectRedisDataManager {
 
         if let Some(last_update_id) = last_update_id {
             self.redis_client
-                .xdel(
-                    &self.state_updates_key().await?,
-                    &[last_update_id.to_string()],
-                )
+                .xdel(&self.state_updates_key()?, &[last_update_id.to_string()])
                 .await?;
         }
 
         self.redis_client
-            .xtrim(&self.state_updates_key().await?, 0)
+            .xtrim(&self.state_updates_key()?, 0)
             .await?;
 
         Ok((optimized_merged_state, merged_state_updated_by))
@@ -474,12 +468,12 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         let mut connection_guard = connection.lock().await;
 
         let _: () = connection_guard
-            .xadd(self.state_updates_key().await?, "*", fields)
+            .xadd(self.state_updates_key()?, "*", fields)
             .await?;
 
         let timestamp = chrono::Utc::now().timestamp().to_string();
         let _: () = connection_guard
-            .set(self.last_updated_at_key().await?, &timestamp)
+            .set(self.last_updated_at_key()?, &timestamp)
             .await?;
 
         Ok(())
@@ -490,10 +484,10 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         let mut connection_guard = connection.lock().await;
 
         let keys_to_delete = vec![
-            self.state_key().await?,
-            self.state_updated_by_key().await?,
-            self.state_updates_key().await?,
-            self.last_updated_at_key().await?,
+            self.state_key()?,
+            self.state_updated_by_key()?,
+            self.state_updates_key()?,
+            self.last_updated_at_key()?,
         ];
 
         let _: () = connection_guard.del(&keys_to_delete).await?;
