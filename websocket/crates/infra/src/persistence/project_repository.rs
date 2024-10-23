@@ -306,6 +306,7 @@ mod tests {
             async fn xtrim(&self, key: &str, max_len: usize) -> RedisResult<usize>;
             async fn xdel(&self, key: &str, ids: &[String]) -> RedisResult<usize>;
             fn connection(&self) -> &Arc<tokio::sync::Mutex<redis::aio::MultiplexedConnection>>;
+            async fn xread_map(&self, key: &str, id: &str) -> RedisResult<XReadResult>;
         }
     }
 

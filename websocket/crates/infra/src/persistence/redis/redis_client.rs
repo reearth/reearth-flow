@@ -47,6 +47,11 @@ pub trait RedisClientTrait: Send + Sync {
     async fn xdel(&self, key: &str, ids: &[String]) -> Result<usize, RedisClientError>;
     fn connection(&self) -> &Arc<Mutex<MultiplexedConnection>>;
     async fn get_client_count(&self) -> Result<usize, RedisClientError>;
+    async fn xread_map(
+        &self,
+        key: &str,
+        id: &str,
+    ) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError>;
 }
 
 #[async_trait]
@@ -132,6 +137,67 @@ impl RedisClientTrait for RedisClient {
             .query_async(&mut *connection)
             .await?;
         Ok(client_list.lines().count())
+    }
+
+    async fn xread_map(
+        &self,
+        key: &str,
+        id: &str,
+    ) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError> {
+        let mut connection = self.connection.lock().await;
+        let result: redis::Value = connection.xread(&[key], &[id]).await?;
+
+        match result {
+            redis::Value::Bulk(outer) => {
+                let mut mapped_results = Vec::new();
+
+                for stream in outer {
+                    if let redis::Value::Bulk(stream_data) = stream {
+                        if stream_data.len() >= 2 {
+                            if let redis::Value::Bulk(entries) = &stream_data[1] {
+                                for entry in entries {
+                                    if let redis::Value::Bulk(entry_fields) = entry {
+                                        if entry_fields.len() >= 2 {
+                                            let entry_id = match &entry_fields[0] {
+                                                redis::Value::Data(bytes) => {
+                                                    String::from_utf8_lossy(bytes).to_string()
+                                                }
+                                                _ => continue,
+                                            };
+
+                                            if let redis::Value::Bulk(fields) = &entry_fields[1] {
+                                                let mut field_pairs = Vec::new();
+                                                for chunk in fields.chunks(2) {
+                                                    if chunk.len() == 2 {
+                                                        if let (
+                                                            redis::Value::Data(key_bytes),
+                                                            redis::Value::Data(value_bytes),
+                                                        ) = (&chunk[0], &chunk[1])
+                                                        {
+                                                            field_pairs.push((
+                                                                String::from_utf8_lossy(key_bytes)
+                                                                    .to_string(),
+                                                                String::from_utf8_lossy(
+                                                                    value_bytes,
+                                                                )
+                                                                .to_string(),
+                                                            ));
+                                                        }
+                                                    }
+                                                }
+                                                mapped_results.push((entry_id, field_pairs));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(mapped_results)
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 
@@ -242,6 +308,23 @@ mod tests {
 
         async fn get_client_count(&self) -> Result<usize, RedisClientError> {
             Ok(1)
+        }
+
+        async fn xread_map(
+            &self,
+            _key: &str,
+            _id: &str,
+        ) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError> {
+            Ok(vec![(
+                "1234-0".to_string(),
+                vec![
+                    (
+                        "value".to_string(),
+                        "{\"update\":\"[]\",\"updated_by\":null}".to_string(),
+                    ),
+                    ("format".to_string(), "json".to_string()),
+                ],
+            )])
         }
     }
 

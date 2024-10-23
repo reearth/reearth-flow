@@ -122,10 +122,10 @@ impl FlowProjectRedisDataManager {
     async fn get_update_stream_items(
         &self,
     ) -> Result<Vec<(String, Vec<(String, String)>)>, FlowProjectRedisDataManagerError> {
-        Ok(self
-            .redis_client
-            .xread(&self.state_updates_key().await?, "0-0")
-            .await?)
+        self.redis_client
+            .xread_map(&self.state_updates_key().await?, "0-0")
+            .await
+            .map_err(FlowProjectRedisDataManagerError::from)
     }
 
     async fn get_flow_updates_from_stream(

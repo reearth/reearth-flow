@@ -155,8 +155,26 @@ async fn simulate_project_operations(
 
     // Get current project state
     match service.get_current_state().await {
-        Ok(current_state) => info!(?current_state, "Retrieved current project state"),
-        Err(e) => warn!("Failed to get current state: {:?}", e),
+        Ok(current_state) => {
+            info!(?current_state, "Retrieved current project state");
+            debug!("Current state structure: {:#?}", current_state);
+        }
+        Err(e) => {
+            error!("Failed to get current state: {:?}", e);
+
+            if let Some(response_start) = e.to_string().find("response was [") {
+                let response_str = &e.to_string()[response_start..];
+                debug!(
+                    "Redis response structure: {}",
+                    response_str.trim_matches(|c| c == '[' || c == ']')
+                );
+
+                warn!("Redis response contains a nested structure with state updates");
+                debug!("Expected format should match: [key, [[timestamp, [field, value, field, value]], ...]]");
+            }
+
+            return Err(Box::new(e));
+        }
     }
 
     Ok(())
