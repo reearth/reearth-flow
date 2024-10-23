@@ -30,7 +30,7 @@ func TestAsset_Create(t *testing.T) {
 	ws := workspace.New().NewID().MustBuild()
 
 	mfs := afero.NewMemMapFs()
-	f, _ := fs.NewFile(mfs, "")
+	f, _ := fs.NewFile(mfs, "", "")
 	uc := &Asset{
 		repos: &repo.Container{
 			Asset:     memory.NewAsset(),

@@ -39,6 +39,7 @@ type (
 		Tracer           string            `pp:",omitempty"`
 		TracerSample     float64           `pp:",omitempty"`
 		AssetBaseURL     string            `default:"http://localhost:8080/assets"`
+		WorkflowBaseURL  string            `default:"http://localhost:8080/workflows"`
 		Origins          []string          `pp:",omitempty"`
 		Web_Disabled     bool              `pp:",omitempty"`
 		Web_App_Disabled bool              `pp:",omitempty"`

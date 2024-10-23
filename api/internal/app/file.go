@@ -43,4 +43,13 @@ func serveFiles(
 			return r, filename, err
 		}),
 	)
+
+	ec.GET(
+		"/workflows/:filename",
+		fileHandler(func(ctx echo.Context) (io.Reader, string, error) {
+			filename := ctx.Param("filename")
+			r, err := repo.ReadWorkflow(ctx.Request().Context(), filename)
+			return r, filename, err
+		}),
+	)
 }

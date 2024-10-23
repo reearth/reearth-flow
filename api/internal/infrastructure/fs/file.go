@@ -18,21 +18,26 @@ import (
 )
 
 type fileRepo struct {
-	fs      afero.Fs
-	urlBase *url.URL
+	fs              afero.Fs
+	assetUrlBase    *url.URL
+	workflowUrlBase *url.URL
 }
 
-func NewFile(fs afero.Fs, urlBase string) (gateway.File, error) {
-	var b *url.URL
+func NewFile(fs afero.Fs, assetUrlBase string, workflowUrlBase string) (gateway.File, error) {
 	var err error
-	b, err = url.Parse(urlBase)
+	aurlb, err := url.Parse(assetUrlBase)
+	if err != nil {
+		return nil, errors.New("invalid base URL")
+	}
+	wurlb, err := url.Parse(workflowUrlBase)
 	if err != nil {
 		return nil, errors.New("invalid base URL")
 	}
 
 	return &fileRepo{
-		fs:      fs,
-		urlBase: b,
+		fs:              fs,
+		assetUrlBase:    aurlb,
+		workflowUrlBase: wurlb,
 	}, nil
 }
 
@@ -46,7 +51,7 @@ func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, 
 	if err != nil {
 		return nil, 0, err
 	}
-	return getFileURL(f.urlBase, filename), size, nil
+	return getFileURL(f.assetUrlBase, filename), size, nil
 }
 
 func (f *fileRepo) RemoveAsset(ctx context.Context, u *url.URL) error {
@@ -54,7 +59,7 @@ func (f *fileRepo) RemoveAsset(ctx context.Context, u *url.URL) error {
 		return nil
 	}
 	p := sanitize.Path(u.Path)
-	if p == "" || f.urlBase == nil || u.Scheme != f.urlBase.Scheme || u.Host != f.urlBase.Host || path.Dir(p) != f.urlBase.Path {
+	if p == "" || f.assetUrlBase == nil || u.Scheme != f.assetUrlBase.Scheme || u.Host != f.assetUrlBase.Host || path.Dir(p) != f.assetUrlBase.Path {
 		return gateway.ErrInvalidFile
 	}
 	return f.delete(ctx, filepath.Join(assetDir, filepath.Base(p)))
@@ -70,7 +75,7 @@ func (f *fileRepo) UploadWorkflow(ctx context.Context, file *file.File) (*url.UR
 	if err != nil {
 		return nil, err
 	}
-	return getFileURL(f.urlBase, filename), nil
+	return getFileURL(f.workflowUrlBase, filename), nil
 }
 
 func (f *fileRepo) RemoveWorkflow(ctx context.Context, u *url.URL) error {
@@ -78,7 +83,7 @@ func (f *fileRepo) RemoveWorkflow(ctx context.Context, u *url.URL) error {
 		return nil
 	}
 	p := sanitize.Path(u.Path)
-	if p == "" || f.urlBase == nil || u.Scheme != f.urlBase.Scheme || u.Host != f.urlBase.Host || path.Dir(p) != f.urlBase.Path {
+	if p == "" || f.workflowUrlBase == nil || u.Scheme != f.workflowUrlBase.Scheme || u.Host != f.workflowUrlBase.Host || path.Dir(p) != f.workflowUrlBase.Path {
 		return gateway.ErrInvalidFile
 	}
 	return f.delete(ctx, filepath.Join(workflowsDir, filepath.Base(p)))

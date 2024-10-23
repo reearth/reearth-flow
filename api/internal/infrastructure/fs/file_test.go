@@ -17,13 +17,13 @@ import (
 )
 
 func TestNewFile(t *testing.T) {
-	f, err := NewFile(mockFs(), "")
+	f, err := NewFile(mockFs(), "", "")
 	assert.NoError(t, err)
 	assert.NotNil(t, f)
 }
 
 func TestFile_ReadAsset(t *testing.T) {
-	f, _ := NewFile(mockFs(), "")
+	f, _ := NewFile(mockFs(), "", "")
 
 	r, err := f.ReadAsset(context.Background(), "xxx.txt")
 	assert.NoError(t, err)
@@ -43,7 +43,7 @@ func TestFile_ReadAsset(t *testing.T) {
 
 func TestFile_UploadAsset(t *testing.T) {
 	fs := mockFs()
-	f, _ := NewFile(fs, "https://example.com/assets")
+	f, _ := NewFile(fs, "https://example.com/assets", "https://example.com/workflows")
 
 	u, s, err := f.UploadAsset(context.Background(), &file.File{
 		Path:    "aaa.txt",
@@ -91,7 +91,7 @@ func TestFile_RemoveAsset(t *testing.T) {
 			t.Parallel()
 
 			fs := mockFs()
-			f, _ := NewFile(fs, "https://example.com/assets")
+			f, _ := NewFile(fs, "https://example.com/assets", "https://example.com/workflows")
 
 			u, _ := url.Parse(tc.URL)
 			err := f.RemoveAsset(context.Background(), u)
@@ -121,7 +121,7 @@ func TestGetAssetFileURL(t *testing.T) {
 }
 
 func TestFile_ReadWorkflow(t *testing.T) {
-	f, _ := NewFile(mockFs(), "")
+	f, _ := NewFile(mockFs(), "", "")
 
 	r, err := f.ReadWorkflow(context.Background(), "xxx.txt")
 	assert.NoError(t, err)
@@ -137,7 +137,7 @@ func TestFile_ReadWorkflow(t *testing.T) {
 
 func TestFile_UploadWorkflow(t *testing.T) {
 	fs := mockFs()
-	f, _ := NewFile(fs, "https://example.com/workflows")
+	f, _ := NewFile(fs, "https://example.com/assets", "https://example.com/workflows")
 
 	u, err := f.UploadWorkflow(context.Background(), &file.File{
 		Path:    "aaa.txt",
@@ -184,7 +184,7 @@ func TestFile_RemoveWorkflow(t *testing.T) {
 			t.Parallel()
 
 			fs := mockFs()
-			f, _ := NewFile(fs, "https://example.com/workflows")
+			f, _ := NewFile(fs, "https://example.com/assets", "https://example.com/workflows")
 
 			u, _ := url.Parse(tc.URL)
 			err := f.RemoveWorkflow(context.Background(), u)
