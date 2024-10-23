@@ -144,52 +144,25 @@ impl RedisClientTrait for RedisClient {
         key: &str,
         id: &str,
     ) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError> {
-        let mut connection = self.connection.lock().await;
-        let result: redis::Value = connection.xread(&[key], &[id]).await?;
+        let result: redis::Value = {
+            let mut connection = self.connection.lock().await;
+            connection.xread(&[key], &[id]).await?
+        };
 
         match result {
             redis::Value::Bulk(outer) => {
                 let mut mapped_results = Vec::new();
-
                 for stream in outer {
                     if let redis::Value::Bulk(stream_data) = stream {
                         if stream_data.len() >= 2 {
                             if let redis::Value::Bulk(entries) = &stream_data[1] {
-                                for entry in entries {
+                                mapped_results.extend(entries.iter().filter_map(|entry| {
                                     if let redis::Value::Bulk(entry_fields) = entry {
-                                        if entry_fields.len() >= 2 {
-                                            let entry_id = match &entry_fields[0] {
-                                                redis::Value::Data(bytes) => {
-                                                    String::from_utf8_lossy(bytes).to_string()
-                                                }
-                                                _ => continue,
-                                            };
-
-                                            if let redis::Value::Bulk(fields) = &entry_fields[1] {
-                                                let mut field_pairs = Vec::new();
-                                                for chunk in fields.chunks(2) {
-                                                    if chunk.len() == 2 {
-                                                        if let (
-                                                            redis::Value::Data(key_bytes),
-                                                            redis::Value::Data(value_bytes),
-                                                        ) = (&chunk[0], &chunk[1])
-                                                        {
-                                                            field_pairs.push((
-                                                                String::from_utf8_lossy(key_bytes)
-                                                                    .to_string(),
-                                                                String::from_utf8_lossy(
-                                                                    value_bytes,
-                                                                )
-                                                                .to_string(),
-                                                            ));
-                                                        }
-                                                    }
-                                                }
-                                                mapped_results.push((entry_id, field_pairs));
-                                            }
-                                        }
+                                        Self::parse_stream_entry(entry_fields)
+                                    } else {
+                                        None
                                     }
-                                }
+                                }));
                             }
                         }
                     }
@@ -202,6 +175,39 @@ impl RedisClientTrait for RedisClient {
 }
 
 impl RedisClient {
+    fn parse_entry_fields(fields: &[redis::Value]) -> Option<Vec<(String, String)>> {
+        fields
+            .chunks(2)
+            .filter(|chunk| chunk.len() == 2)
+            .filter_map(|chunk| match (&chunk[0], &chunk[1]) {
+                (redis::Value::Data(key), redis::Value::Data(val)) => Some((
+                    String::from_utf8_lossy(key).into_owned(),
+                    String::from_utf8_lossy(val).into_owned(),
+                )),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .into()
+    }
+
+    fn parse_stream_entry(
+        entry_fields: &[redis::Value],
+    ) -> Option<(String, Vec<(String, String)>)> {
+        if entry_fields.len() < 2 {
+            return None;
+        }
+
+        let entry_id = match &entry_fields[0] {
+            redis::Value::Data(bytes) => String::from_utf8_lossy(bytes).into_owned(),
+            _ => return None,
+        };
+
+        match &entry_fields[1] {
+            redis::Value::Bulk(fields) => Some((entry_id, Self::parse_entry_fields(fields)?)),
+            _ => None,
+        }
+    }
+
     pub async fn new(redis_url: &str) -> Result<Self, RedisClientError> {
         let client = Client::open(redis_url)?;
         let connection = client.get_multiplexed_async_connection().await?;
