@@ -1,6 +1,11 @@
 use super::errors::Result;
 use super::room::Room;
-use redis::Client as RedisClient;
+use flow_websocket_infra::persistence::project_repository::{
+    ProjectLocalRepository, ProjectRedisRepository,
+};
+use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManager;
+use flow_websocket_infra::persistence::redis::redis_client::RedisClient as FlowRedisClient;
+use flow_websocket_services::manage_project_edit_session::ManageEditSessionService;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -8,28 +13,49 @@ use tokio::sync::Mutex;
 #[derive()]
 pub struct AppState {
     pub rooms: Arc<Mutex<HashMap<String, Room>>>,
-    pub redis_client: RedisClient,
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        let redis_url =
-            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string());
-
-        AppState {
-            rooms: Arc::new(Mutex::new(HashMap::new())),
-            redis_client: RedisClient::open(redis_url).unwrap(),
-        }
-    }
+    pub redis_client: FlowRedisClient,
+    pub edit_session_service: Arc<
+        ManageEditSessionService<
+            ProjectRedisRepository<FlowRedisClient>,
+            ProjectLocalRepository,
+            FlowProjectRedisDataManager,
+        >,
+    >,
 }
 
 impl AppState {
-    pub async fn new(redis_url: &str) -> Result<Self> {
-        let redis_client = RedisClient::open(redis_url)?;
+    pub async fn new(redis_url: Option<String>) -> Result<Self> {
+        let redis_url = redis_url.unwrap_or_else(|| {
+            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string())
+        });
+
+        let redis_client = FlowRedisClient::new(&redis_url).await.unwrap();
+        let redis_client = Arc::new(redis_client);
+
+        let local_storage = Arc::new(
+            ProjectLocalRepository::new("./local_storage".into())
+                .await
+                .unwrap(),
+        );
+        let session_repo = Arc::new(ProjectRedisRepository::new(redis_client.clone()));
+
+        // 创建一个临时的 session_id 用于初始化
+        let session_id = String::new();
+
+        let redis_data_manager = Arc::new(FlowProjectRedisDataManager::new(
+            "default".to_string(), // 默认 project_id
+            Some(session_id.clone()),
+            redis_client.clone(),
+        ));
 
         Ok(AppState {
             rooms: Arc::new(Mutex::new(HashMap::new())),
-            redis_client,
+            redis_client: Arc::try_unwrap(redis_client).unwrap_or_else(|arc| (*arc).clone()),
+            edit_session_service: Arc::new(ManageEditSessionService::new(
+                session_repo,
+                local_storage,
+                redis_data_manager,
+            )),
         })
     }
 

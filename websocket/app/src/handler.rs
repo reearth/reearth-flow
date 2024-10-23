@@ -1,7 +1,6 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use super::errors::{Result, WsError};
-use super::services::YjsService;
 use super::state::AppState;
 use axum::extract::{Path, Query};
 use axum::http::{Method, StatusCode, Uri};
@@ -20,7 +19,8 @@ use tracing::{debug, error, trace};
 enum Event {
     Join { room_id: String },
     Leave,
-    Emit { data: String },
+    UpdateClientCount { count: usize },
+    ClientDisconnected,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -103,7 +103,6 @@ async fn handle_message(
                 Ok(msg) => msg,
                 Err(err) => {
                     error!("Failed to parse message: {:?}", err);
-                    // Optionally send an error message back to the client
                     return Ok(None);
                 }
             };
@@ -111,29 +110,17 @@ async fn handle_message(
             match msg.event {
                 Event::Join { room_id } => state.join(&room_id).await?,
                 Event::Leave => state.leave(room_id).await?,
-                Event::Emit { data } => state.emit(&data).await?,
+                Event::UpdateClientCount { count } => {
+                    state.update_client_count(room_id, count).await?
+                }
+                Event::ClientDisconnected => state.handle_client_disconnected(room_id).await?,
             };
             Ok(None)
         }
         Message::Binary(d) => {
             trace!("{} sent {} bytes: {:?}", addr, d.len(), d);
-            if d.len() < 3 {
-                return Ok(None);
-            };
-
-            let rooms = state.rooms.try_lock()?;
-            let room = rooms
-                .get(room_id)
-                .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
-
-            let yjs_service = YjsService::new(room.get_doc());
-            match yjs_service.handle_message(&d) {
-                Ok(response) => Ok(response),
-                Err(e) => {
-                    debug!("Error handling Yjs message: {:?}", e);
-                    Ok(None)
-                }
-            }
+            // Handle binary messages if needed
+            Ok(None)
         }
         Message::Close(c) => {
             if let Some(cf) = c {
@@ -185,5 +172,34 @@ impl AppState {
 
     async fn _timeout(&self) -> Result<()> {
         unimplemented!()
+    }
+
+    async fn update_client_count(&self, room_id: &str, count: usize) -> Result<()> {
+        let edit_session_service = self.edit_session_service.clone();
+        // Create and process task data
+        let task_data = ManageProjectEditSessionTaskData {
+            project_id: room_id.to_string(),
+            session_id: self.session_id.clone(),
+            clients_count: Some(count),
+            clients_disconnected_at: None,
+            last_merged_at: None,
+            last_snapshot_at: None,
+        };
+        edit_session_service.process(task_data).await?;
+        Ok(())
+    }
+
+    async fn handle_client_disconnected(&self, room_id: &str) -> Result<()> {
+        let edit_session_service = self.edit_session_service.clone();
+        let task_data = ManageProjectEditSessionTaskData {
+            project_id: room_id.to_string(),
+            session_id: self.session_id.clone(),
+            clients_count: Some(0),
+            clients_disconnected_at: Some(chrono::Utc::now()),
+            last_merged_at: None,
+            last_snapshot_at: None,
+        };
+        edit_session_service.process(task_data).await?;
+        Ok(())
     }
 }

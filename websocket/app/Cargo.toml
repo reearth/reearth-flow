@@ -10,6 +10,10 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+flow-websocket-services.workspace = true
+flow-websocket-infra.workspace = true
+flow-websocket-domain.workspace = true
+
 tracing.workspace = true
 tracing-subscriber.workspace = true
 axum.workspace = true
