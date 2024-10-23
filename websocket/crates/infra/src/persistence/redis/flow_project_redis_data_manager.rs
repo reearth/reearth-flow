@@ -132,26 +132,50 @@ impl FlowProjectRedisDataManager {
         &self,
     ) -> Result<Vec<FlowUpdate>, FlowProjectRedisDataManagerError> {
         let stream_items = self.get_update_stream_items().await?;
-        stream_items
-            .into_iter()
-            .map(|(update_id, item)| {
-                let value = &item[1].1;
-                let format = &item[3].1;
-                let encoded_update: FlowEncodedUpdate = if format == "json" {
-                    serde_json::from_str(value)?
-                } else {
-                    FlowEncodedUpdate {
-                        update: String::new(),
-                        updated_by: None,
-                    }
-                };
-                Ok(FlowUpdate {
-                    stream_id: Some(update_id),
-                    update: Self::decode_state_data(encoded_update.update)?,
-                    updated_by: encoded_update.updated_by,
-                })
-            })
-            .collect()
+        let mut updates = Vec::new();
+
+        for (update_id, items) in stream_items {
+            let value = items
+                .iter()
+                .find(|(key, _)| key == "value")
+                .map(|(_, v)| v)
+                .ok_or_else(|| {
+                    FlowProjectRedisDataManagerError::Unknown("Missing value field".to_string())
+                })?;
+
+            let format = items
+                .iter()
+                .find(|(key, _)| key == "format")
+                .map(|(_, v)| v)
+                .ok_or_else(|| {
+                    FlowProjectRedisDataManagerError::Unknown("Missing format field".to_string())
+                })?;
+
+            let encoded_update: FlowEncodedUpdate = if format == "json" {
+                serde_json::from_str(value)?
+            } else {
+                continue; // Skip non-JSON updates
+            };
+
+            // Skip empty updates
+            if encoded_update.update.is_empty() || encoded_update.update == "[]" {
+                continue;
+            }
+
+            let decoded_update = Self::decode_state_data(encoded_update.update)?;
+            // Skip if decoded update is empty
+            if decoded_update.is_empty() {
+                continue;
+            }
+
+            updates.push(FlowUpdate {
+                stream_id: Some(update_id),
+                update: decoded_update,
+                updated_by: encoded_update.updated_by,
+            });
+        }
+
+        Ok(updates)
     }
 
     async fn get_merged_update_from_stream(
@@ -162,13 +186,16 @@ impl FlowProjectRedisDataManager {
             return Ok(None);
         }
 
-        // Create an iterator over the cloned updates
-        let mut updates_iter = updates.iter().map(|x| x.update.clone());
+        // Create an iterator over the non-empty updates
+        let valid_updates: Vec<_> = updates.iter().filter(|x| !x.update.is_empty()).collect();
 
-        // Use the first update as the initial accumulator
-        let first_update = updates_iter
-            .next()
-            .ok_or(FlowProjectRedisDataManagerError::MergeUpdates)?;
+        if valid_updates.is_empty() {
+            return Ok(None);
+        }
+
+        // Use the first valid update as the initial accumulator
+        let first_update = valid_updates[0].update.clone();
+        let mut updates_iter = valid_updates[1..].iter().map(|x| x.update.clone());
 
         // Fold over the remaining updates
         let merged_update = updates_iter
@@ -187,7 +214,7 @@ impl FlowProjectRedisDataManager {
             .filter_map(|x| x.updated_by.clone())
             .collect::<Vec<_>>();
 
-        // Get the last update ID, returning an error if it's not available
+        // Get the last update ID
         let last_update_id = updates
             .last()
             .and_then(|x| x.stream_id.clone())
