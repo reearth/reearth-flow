@@ -283,4 +283,5 @@ pub struct ExecutorOptions {
     pub event_hub_capacity: usize,
     pub error_threshold: Option<u32>,
     pub thread_pool_size: usize,
+    pub feature_flush_threshold: usize,
 }

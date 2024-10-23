@@ -59,6 +59,7 @@ impl ExecutionDag {
         builder_dag: BuilderDag,
         channel_buffer_sz: usize,
         error_threshold: Option<u32>,
+        feature_flush_threshold: usize,
         state: Arc<State>,
     ) -> Result<Self, ExecutionError> {
         let graph_id = builder_dag.id;
@@ -83,16 +84,19 @@ impl ExecutionDag {
             let edge_kind = edge.edge_kind.clone();
 
             // Create or get feature writer.
-            let feature_writer = match all_feature_writers[source_node_index.index()]
-                .entry(input_port.clone())
-            {
-                Entry::Vacant(entry) => {
-                    let feature_writer = Some(create_feature_writer(edge_id, Arc::clone(&state)));
-                    let feature_writer = Arc::new(Mutex::new(feature_writer));
-                    entry.insert(feature_writer).clone()
-                }
-                Entry::Occupied(entry) => Arc::clone(entry.get()),
-            };
+            let feature_writer =
+                match all_feature_writers[source_node_index.index()].entry(input_port.clone()) {
+                    Entry::Vacant(entry) => {
+                        let feature_writer = Some(create_feature_writer(
+                            edge_id,
+                            Arc::clone(&state),
+                            feature_flush_threshold,
+                        ));
+                        let feature_writer = Arc::new(Mutex::new(feature_writer));
+                        entry.insert(feature_writer).clone()
+                    }
+                    Entry::Occupied(entry) => Arc::clone(entry.get()),
+                };
 
             // Create or get channel.
             let (sender, receiver) = match channels.entry((source_node_index, target_node_index)) {

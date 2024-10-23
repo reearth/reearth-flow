@@ -72,6 +72,7 @@ impl DagExecutor {
             self.builder_dag,
             self.options.channel_buffer_sz,
             self.options.error_threshold,
+            self.options.feature_flush_threshold,
             Arc::clone(&state),
         )?;
         let node_indexes = execution_dag.graph().node_indices().collect::<Vec<_>>();
