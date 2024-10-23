@@ -7,12 +7,10 @@ import { useCallback } from "react";
 
 import { Deployment } from "@flow/types";
 import { isDefined } from "@flow/utils";
+import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
-import {
-  CreateDeploymentInput,
-  DeploymentFragment,
-  ExecuteDeploymentInput,
-} from "../__gen__/graphql";
+import { DeploymentFragment, ExecuteDeploymentInput } from "../__gen__/graphql";
+import { DeleteDeploymentInput } from "../__gen__/plugins/graphql-request";
 import { createNewJobObject } from "../job/useQueries";
 import { useGraphQLContext } from "../provider";
 
@@ -31,6 +29,7 @@ export const useQueries = () => {
       id: deployment.id,
       workspaceId: deployment.workspaceId,
       projectId: deployment.projectId,
+      projectName: deployment.project?.name,
       workflowUrl: deployment.workflowUrl,
       version: deployment.version,
       createdAt: deployment.createdAt,
@@ -40,9 +39,24 @@ export const useQueries = () => {
   );
 
   const createDeploymentMutation = useMutation({
-    mutationFn: async (input: CreateDeploymentInput) => {
-      const data = await graphQLContext?.CreateDeployment({ input });
+    mutationFn: async ({
+      projectId,
+      workspaceId,
+      file,
+    }: {
+      workspaceId: string;
+      projectId: string;
+      file: FormData;
+    }) => {
+      const data = await graphQLContext?.CreateDeployment({
+        input: {
+          workspaceId,
+          projectId,
+          file: file.get("file"),
+        },
+      });
 
+      console.log("Data", data);
       if (data?.createDeployment?.deployment) {
         return createNewDeploymentObject(data.createDeployment.deployment);
       }
@@ -53,6 +67,52 @@ export const useQueries = () => {
         queryKey: [DeploymentQueryKeys.GetDeployments, deployment?.workspaceId],
       });
     },
+  });
+
+  const updateDeploymentMutation = useMutation({
+    mutationFn: async ({
+      deploymentId,
+      workflowYaml,
+      workflowId,
+    }: {
+      deploymentId: string;
+      workflowId: string;
+      workflowYaml: string;
+    }) => {
+      const formData = yamlToFormData(workflowYaml, workflowId);
+
+      const data = await graphQLContext?.UpdateDeployment({
+        input: { deploymentId, file: formData.get("file") },
+      });
+
+      if (data?.updateDeployment?.deployment) {
+        return data?.updateDeployment?.deployment;
+      }
+    },
+    onSuccess: (deployment) =>
+      // TODO: Maybe update cache and not refetch? What happens after pagination?
+      queryClient.invalidateQueries({
+        queryKey: [DeploymentQueryKeys.GetDeployments, deployment?.workspaceId],
+      }),
+  });
+
+  const deleteDeploymentMutation = useMutation({
+    mutationFn: async ({
+      deploymentId,
+      workspaceId,
+    }: DeleteDeploymentInput & { workspaceId: string }) => {
+      const data = await graphQLContext?.DeleteDeployment({
+        input: { deploymentId },
+      });
+      return {
+        deploymentId: data?.deleteDeployment?.deploymentId,
+        workspaceId,
+      };
+    },
+    onSuccess: ({ workspaceId }) =>
+      queryClient.invalidateQueries({
+        queryKey: [DeploymentQueryKeys.GetDeployments, workspaceId],
+      }),
   });
 
   const executeDeploymentMutation = useMutation({
@@ -104,6 +164,8 @@ export const useQueries = () => {
 
   return {
     createDeploymentMutation,
+    updateDeploymentMutation,
+    deleteDeploymentMutation,
     executeDeploymentMutation,
     useGetDeploymentsInfiniteQuery,
   };

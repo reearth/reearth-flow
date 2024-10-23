@@ -95,7 +95,7 @@ export const useProject = () => {
   const runProject = async (
     projectId: string,
     workspaceId: string,
-    workflow: FormData,
+    workflow: string,
   ): Promise<RunProject> => {
     const { mutateAsync, ...rest } = runProjectMutation;
 
@@ -103,8 +103,7 @@ export const useProject = () => {
       const data = await mutateAsync({
         projectId,
         workspaceId,
-        metaFile: undefined, // TODO: Add meta file
-        workflowYaml: workflow,
+        file: workflow,
       });
       toast({
         title: t("Successful Deletion"),

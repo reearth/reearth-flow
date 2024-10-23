@@ -1,6 +1,8 @@
 export const yamlToFormData = (yaml: string, fileName?: string) => {
-  const yamlBlob = new Blob([yaml], { type: "text/yaml" });
+  const yamlFile = new File([yaml], `${fileName || "untitled"}.yaml`, {
+    type: "text/yaml",
+  });
   const formData = new FormData();
-  formData.append("file", yamlBlob, fileName || "untitled.yaml");
+  formData.append("file", yamlFile);
   return formData;
 };

@@ -11,13 +11,12 @@ import {
   SelectValue,
 } from "@flow/components";
 import DateTimePicker from "@flow/components/DateTimePicker";
-import { useProject } from "@flow/lib/gql";
+import { useProject, useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Project } from "@flow/types";
+import type { Deployment } from "@flow/types";
 
 import "./styles.css";
-import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 type RunType = "manual" | "trigger";
 
@@ -25,9 +24,12 @@ const NewRun: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
-  const { useGetWorkspaceProjectsInfinite, runProject } = useProject();
+  const { useGetDeploymentsInfinite } = useDeployment();
+
   const { pages, isFetching, fetchNextPage, hasNextPage } =
-    useGetWorkspaceProjectsInfinite(currentWorkspace?.id);
+    useGetDeploymentsInfinite(currentWorkspace?.id);
+
+  const { runProject } = useProject();
 
   const [runType, setRunType] = useState<RunType | undefined>(undefined);
   const [trigger, setTrigger] = useState<string | undefined>(undefined);
@@ -35,7 +37,7 @@ const NewRun: React.FC = () => {
   const [selectDropDown, setSelectDropDown] = useState<
     HTMLElement | undefined | null
   >();
-  const [selectedProject, selectProject] = useState<Project>();
+  const [selectedDeployment, selectDeployment] = useState<Deployment>();
 
   const runTypes = useMemo(
     () => [
@@ -54,26 +56,25 @@ const NewRun: React.FC = () => {
     [t],
   );
 
-  const projects: Project[] | undefined = useMemo(
+  const deployments: Deployment[] | undefined = useMemo(
     () =>
-      pages?.reduce((projects, page) => {
-        if (page?.projects) {
-          projects.push(...page.projects);
+      pages?.reduce((deployments, page) => {
+        if (page?.deployments) {
+          deployments.push(...page.deployments);
         }
-        return projects;
-      }, [] as Project[]),
+        return deployments;
+      }, [] as Deployment[]),
     [pages],
   );
 
   const handleRun = useCallback(() => {
-    if (!selectedProject || !currentWorkspace) return;
-    // TODO: USE DEPLOYED PROJECT's workflow
+    if (!selectedDeployment || !currentWorkspace) return;
     runProject(
-      selectedProject.id,
+      selectedDeployment.projectId,
       currentWorkspace.id,
-      yamlToFormData('{ id: "1", name: "test" }', "workflow.yaml"), // TODO: Use actual workflow
+      '{ id: "1", name: "test" }', // TODO: Use actual workflow
     );
-  }, [currentWorkspace, selectedProject, runProject]);
+  }, [currentWorkspace, selectedDeployment, runProject]);
 
   useEffect(() => {
     if (
@@ -164,10 +165,10 @@ const NewRun: React.FC = () => {
             </>
           )}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="manual-run-project">{t("Project")}</Label>
+            <Label htmlFor="manual-run-deployment">{t("Deployment")}</Label>
             <Select
               onValueChange={(pid) =>
-                selectProject(projects?.find((p) => p.id === pid))
+                selectDeployment(deployments?.find((p) => p.id === pid))
               }>
               <SelectTrigger>
                 <SelectValue
@@ -176,16 +177,16 @@ const NewRun: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <div ref={(el) => setSelectDropDown(el?.parentElement)}>
-                  {projects?.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
+                  {deployments?.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.projectName ?? t("Unnamed project")}
                     </SelectItem>
                   ))}
                 </div>
               </SelectContent>
             </Select>
           </div>
-          {selectedProject && (
+          {selectedDeployment && (
             <>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="manual-run-version">{t("Version")}</Label>

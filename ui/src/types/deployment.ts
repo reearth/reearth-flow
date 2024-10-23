@@ -4,12 +4,12 @@ import { Job } from "./job";
 export type Deployment = {
   id: string;
   projectId: string;
+  projectName?: string;
   workspaceId: string;
   workflowUrl: string;
   version: string;
   createdAt: string;
   updatedAt: string;
-  // project: Project;
   // workspace: Workspace;
 };
 
@@ -23,6 +23,14 @@ export type GetDeployments = {
 
 export type CreateDeployment = {
   deployment?: Deployment;
+} & ApiResponse;
+
+export type UpdateDeployment = {
+  deployment?: Deployment;
+} & ApiResponse;
+
+export type DeleteDeployment = {
+  deploymentId?: string;
 } & ApiResponse;
 
 export type ExecuteDeployment = {

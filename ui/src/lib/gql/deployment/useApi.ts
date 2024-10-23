@@ -2,9 +2,12 @@ import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 import type {
   CreateDeployment,
+  DeleteDeployment,
   ExecuteDeployment,
   GetDeployments,
+  UpdateDeployment,
 } from "@flow/types";
+import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
 
@@ -16,6 +19,8 @@ export const useDeployment = () => {
 
   const {
     createDeploymentMutation,
+    updateDeploymentMutation,
+    deleteDeploymentMutation,
     executeDeploymentMutation,
     useGetDeploymentsInfiniteQuery,
   } = useQueries();
@@ -23,16 +28,18 @@ export const useDeployment = () => {
   const createDeployment = async (
     workspaceId: string,
     projectId: string,
-    workflow: FormData,
+    workflowId: string,
+    workflow: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
 
     try {
+      const formData = yamlToFormData(workflow, workflowId);
+
       const deployment = await mutateAsync({
-        projectId,
         workspaceId,
-        metaFile: undefined, // TODO: Add meta file
-        workflowYaml: workflow,
+        projectId,
+        file: formData,
       });
       toast({
         title: t("Deployment Created"),
@@ -41,6 +48,58 @@ export const useDeployment = () => {
       return { deployment, ...rest };
     } catch (_err) {
       return { deployment: undefined, ...rest };
+    }
+  };
+
+  const useUpdateDeployment = async (
+    deploymentId: string,
+    workflowId: string,
+    workflowYaml: string,
+  ): Promise<UpdateDeployment> => {
+    const { mutateAsync, ...rest } = updateDeploymentMutation;
+    try {
+      const deployment = await mutateAsync({
+        deploymentId,
+        workflowId,
+        workflowYaml,
+      });
+      return deployment
+        ? {
+            deployment: {
+              id: deployment?.id,
+              projectId: deployment.projectId,
+              projectName: deployment.project?.name,
+              workspaceId: deployment.workspaceId,
+              workflowUrl: deployment.workflowUrl,
+              version: deployment.version,
+              createdAt: deployment.createdAt,
+              updatedAt: deployment.updatedAt,
+            },
+            ...rest,
+          }
+        : { deployment: undefined, ...rest };
+    } catch (_err) {
+      return { deployment: undefined, ...rest };
+    }
+  };
+
+  const useDeleteDeployment = async (
+    deploymentId: string,
+    workspaceId: string,
+  ): Promise<DeleteDeployment> => {
+    const { mutateAsync, ...rest } = deleteDeploymentMutation;
+    try {
+      const data = await mutateAsync({ deploymentId, workspaceId });
+      toast({
+        title: t("Successful Deletion"),
+        description: t(
+          "Deployment has been successfully deleted from your workspace.",
+        ),
+        variant: "destructive",
+      });
+      return { deploymentId: data.deploymentId, ...rest };
+    } catch (_err) {
+      return { deploymentId: undefined, ...rest };
     }
   };
 
@@ -71,6 +130,8 @@ export const useDeployment = () => {
   return {
     createDeployment,
     useGetDeploymentsInfinite,
+    useUpdateDeployment,
+    useDeleteDeployment,
     executeDeployment,
   };
 };

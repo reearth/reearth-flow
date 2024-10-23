@@ -120,17 +120,12 @@ export const useQueries = () => {
   });
 
   const runProjectMutation = useMutation({
-    mutationFn: async ({
-      projectId,
-      workspaceId,
-      workflowYaml: workflow,
-    }: RunProjectInput) => {
+    mutationFn: async ({ projectId, workspaceId, file }: RunProjectInput) => {
       const data = await graphQLContext?.RunProject({
         input: {
           projectId,
           workspaceId,
-          metaFile: undefined, // TODO: Add meta file
-          workflowYaml: workflow,
+          file,
         },
       });
       return {
