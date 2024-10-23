@@ -39,11 +39,7 @@ impl AppState {
         );
         let session_repo = Arc::new(ProjectRedisRepository::new(redis_client.clone()));
 
-        // 创建一个临时的 session_id 用于初始化
-        let session_id = String::new();
-
-        let redis_data_manager = Arc::new(FlowProjectRedisDataManager::new(
-            "default".to_string(), // 默认 project_id
+        let session_id = String::new();            "default".to_string(),
             Some(session_id.clone()),
             redis_client.clone(),
         ));
