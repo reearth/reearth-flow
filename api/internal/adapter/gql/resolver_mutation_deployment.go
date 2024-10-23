@@ -32,6 +32,36 @@ func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.
 	return &gqlmodel.DeploymentPayload{Deployment: gqlmodel.ToDeployment(res)}, nil
 }
 
+func (r *mutationResolver) UpdateDeployment(ctx context.Context, input gqlmodel.UpdateDeploymentInput) (*gqlmodel.DeploymentPayload, error) {
+	did, err := gqlmodel.ToID[id.Deployment](input.DeploymentID)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := usecases(ctx).Deployment.Update(ctx, interfaces.UpdateDeploymentParam{
+		ID:       did,
+		Workflow: gqlmodel.FromFile(&input.File),
+	}, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	return &gqlmodel.DeploymentPayload{Deployment: gqlmodel.ToDeployment(res)}, nil
+}
+
+func (r *mutationResolver) DeleteDeployment(ctx context.Context, input gqlmodel.DeleteDeploymentInput) (*gqlmodel.DeleteDeploymentPayload, error) {
+	did, err := gqlmodel.ToID[id.Deployment](input.DeploymentID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := usecases(ctx).Deployment.Delete(ctx, did, getOperator(ctx)); err != nil {
+		return nil, err
+	}
+
+	return &gqlmodel.DeleteDeploymentPayload{DeploymentID: input.DeploymentID}, nil
+}
+
 func (r *mutationResolver) ExecuteDeployment(ctx context.Context, input gqlmodel.ExecuteDeploymentInput) (*gqlmodel.JobPayload, error) {
 	did, err := gqlmodel.ToID[id.Deployment](input.DeploymentID)
 	if err != nil {

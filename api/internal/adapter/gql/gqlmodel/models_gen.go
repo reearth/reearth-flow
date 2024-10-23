@@ -83,6 +83,14 @@ type CreateWorkspacePayload struct {
 	Workspace *Workspace `json:"workspace"`
 }
 
+type DeleteDeploymentInput struct {
+	DeploymentID ID `json:"deploymentId"`
+}
+
+type DeleteDeploymentPayload struct {
+	DeploymentID ID `json:"deploymentId"`
+}
+
 type DeleteMeInput struct {
 	UserID ID `json:"userId"`
 }
@@ -309,6 +317,11 @@ type SignupInput struct {
 type SignupPayload struct {
 	User      *User      `json:"user"`
 	Workspace *Workspace `json:"workspace"`
+}
+
+type UpdateDeploymentInput struct {
+	DeploymentID ID             `json:"deploymentId"`
+	File         graphql.Upload `json:"file"`
 }
 
 type UpdateMeInput struct {

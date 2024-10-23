@@ -38,6 +38,15 @@ input CreateDeploymentInput {
   file: Upload!
 }
 
+input UpdateDeploymentInput {
+  deploymentId: ID!
+  file: Upload!
+}
+
+input DeleteDeploymentInput {
+  deploymentId: ID!
+}
+
 input ExecuteDeploymentInput {
   deploymentId: ID!
 }
@@ -46,6 +55,10 @@ input ExecuteDeploymentInput {
 
 type DeploymentPayload {
   deployment: Deployment!
+}
+
+type DeleteDeploymentPayload {
+  deploymentId: ID!
 }
 
 type JobPayload {
@@ -88,5 +101,7 @@ extend type Query {
 
 extend type Mutation {
   createDeployment(input: CreateDeploymentInput!): DeploymentPayload
+  updateDeployment(input: UpdateDeploymentInput!): DeploymentPayload
+  deleteDeployment(input: DeleteDeploymentInput!): DeleteDeploymentPayload
   executeDeployment(input: ExecuteDeploymentInput!): JobPayload
 }
