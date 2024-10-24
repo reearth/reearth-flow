@@ -42,6 +42,13 @@ static THREAD_POOL_SIZE: Lazy<usize> = Lazy::new(|| {
         .unwrap_or(30)
 });
 
+static FEATURE_FLUSH_THRESHOLD: Lazy<usize> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(256)
+});
+
 #[derive(Clone)]
 pub struct Orchestrator {
     pub runtime: Arc<Handle>,
@@ -69,6 +76,7 @@ impl Orchestrator {
             event_hub_capacity: *EVENT_HUB_CAPACITY,
             error_threshold: None,
             thread_pool_size: *THREAD_POOL_SIZE,
+            feature_flush_threshold: *FEATURE_FLUSH_THRESHOLD,
         };
         let expr_engine = Engine::new();
         if let Some(with) = &workflow.with {
