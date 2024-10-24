@@ -6,7 +6,7 @@ import { isDefined } from "@flow/utils";
 import { JobFragment, JobStatus as GraphqlJobStatus } from "../__gen__/graphql";
 import { useGraphQLContext } from "../provider";
 
-enum JobQueryKeys {
+export enum JobQueryKeys {
   GetJobs = "getJobs",
   GetJob = "getJob",
 }

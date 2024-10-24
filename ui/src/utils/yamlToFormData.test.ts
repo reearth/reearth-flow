@@ -4,51 +4,61 @@ import { yamlToFormData } from "./yamlToFormData";
 
 describe("yamlToFormData", () => {
   it("should create FormData with a yaml file", () => {
-    const yaml = "key: value";
-    const formData = yamlToFormData(yaml);
-
-    const file = formData.get("file") as File;
-    expect(file).toBeInstanceOf(File);
-    expect(file.name).toBe("untitled.yaml");
-    expect(file.type).toBe("application/x-yaml");
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      expect(reader.result).toBe(yaml);
-    };
-    reader.readAsText(file);
+    return new Promise<void>((resolve, reject) => {
+      const yaml = "key: value";
+      const formData = yamlToFormData(yaml);
+      const file = formData.get("file") as File;
+      expect(file).toBeInstanceOf(File);
+      expect(file.name).toBe("untitled.yaml");
+      expect(file.type).toBe("application/x-yaml");
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error);
+      reader.onload = () => {
+        expect(reader.result).toBe(yaml);
+        resolve();
+      };
+      reader.readAsText(file);
+    });
   });
 
   it("should use the provided fileName", () => {
-    const yaml = "key: value";
-    const fileName = "test";
-    const formData = yamlToFormData(yaml, fileName);
+    return new Promise<void>((resolve, reject) => {
+      const yaml = "key: value";
+      const fileName = "test";
+      const formData = yamlToFormData(yaml, fileName);
 
-    const file = formData.get("file") as File;
-    expect(file).toBeInstanceOf(File);
-    expect(file.name).toBe(`${fileName}.yaml`);
-    expect(file.type).toBe("application/x-yaml");
+      const file = formData.get("file") as File;
+      expect(file).toBeInstanceOf(File);
+      expect(file.name).toBe(`${fileName}.yaml`);
+      expect(file.type).toBe("application/x-yaml");
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      expect(reader.result).toBe(yaml);
-    };
-    reader.readAsText(file);
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error);
+      reader.onload = () => {
+        expect(reader.result).toBe(yaml);
+        resolve();
+      };
+      reader.readAsText(file);
+    });
   });
 
   it("should handle empty yaml string", () => {
-    const yaml = "";
-    const formData = yamlToFormData(yaml);
+    return new Promise<void>((resolve, reject) => {
+      const yaml = "";
+      const formData = yamlToFormData(yaml);
 
-    const file = formData.get("file") as File;
-    expect(file).toBeInstanceOf(File);
-    expect(file.name).toBe("untitled.yaml");
-    expect(file.type).toBe("application/x-yaml");
+      const file = formData.get("file") as File;
+      expect(file).toBeInstanceOf(File);
+      expect(file.name).toBe("untitled.yaml");
+      expect(file.type).toBe("application/x-yaml");
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      expect(reader.result).toBe(yaml);
-    };
-    reader.readAsText(file);
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error);
+      reader.onload = () => {
+        expect(reader.result).toBe(yaml);
+        resolve();
+      };
+      reader.readAsText(file);
+    });
   });
 });

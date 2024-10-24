@@ -108,9 +108,9 @@ export const useProject = () => {
         file: formData,
       });
       toast({
-        title: t("Successful Deletion"),
+        title: t("Debug run started"),
         description: t(
-          "Project has been successfully deleted from your workspace.",
+          "Debug run has been successfully started for the project.",
         ),
         variant: "destructive",
       });

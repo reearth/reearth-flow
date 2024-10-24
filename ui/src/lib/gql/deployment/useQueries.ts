@@ -11,7 +11,7 @@ import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 import { DeploymentFragment, ExecuteDeploymentInput } from "../__gen__/graphql";
 import { DeleteDeploymentInput } from "../__gen__/plugins/graphql-request";
-import { createNewJobObject } from "../job/useQueries";
+import { createNewJobObject, JobQueryKeys } from "../job/useQueries";
 import { useGraphQLContext } from "../provider";
 
 enum DeploymentQueryKeys {
@@ -125,7 +125,7 @@ export const useQueries = () => {
     onSuccess: (job) =>
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
-        queryKey: ["getJobs", job?.workspaceId],
+        queryKey: [JobQueryKeys.GetJobs, job?.workspaceId],
       }),
   });
 
