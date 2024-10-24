@@ -7,8 +7,6 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
-use flow_websocket_domain::project::ProjectEditingSession;
-
 use crate::persistence::redis::flow_project_lock::{FlowProjectLock, GlobalLockError};
 use crate::persistence::redis::redis_client::{RedisClient, RedisClientTrait};
 
@@ -28,7 +26,7 @@ pub struct FlowEncodedUpdate {
 pub struct FlowProjectRedisDataManager {
     redis_client: Arc<RedisClient>,
     project_id: String,
-    editing_session: Arc<Mutex<ProjectEditingSession>>,
+    session_id: Arc<Mutex<Option<String>>>,
     global_lock: FlowProjectLock,
 }
 
@@ -65,7 +63,7 @@ pub enum FlowProjectRedisDataManagerError {
 impl FlowProjectRedisDataManager {
     pub fn new(
         project_id: String,
-        editing_session: Arc<Mutex<ProjectEditingSession>>,
+        session_id: Option<String>,
         redis_client: Arc<RedisClient>,
     ) -> Self {
         let redis_url = redis_client.redis_url();
@@ -73,7 +71,7 @@ impl FlowProjectRedisDataManager {
         Self {
             redis_client,
             project_id,
-            editing_session,
+            session_id: Arc::new(Mutex::new(session_id)),
             global_lock,
         }
     }
@@ -87,11 +85,15 @@ impl FlowProjectRedisDataManager {
     }
 
     fn session_prefix(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-        let editing_session = self.editing_session.blocking_lock();
-        let session_id = editing_session
+        let session_id = self
             .session_id
+            .try_lock()
+            .map_err(|_| {
+                FlowProjectRedisDataManagerError::Unknown("Failed to acquire lock".to_string())
+            })?
             .as_ref()
-            .ok_or(FlowProjectRedisDataManagerError::SessionNotSet)?;
+            .ok_or(FlowProjectRedisDataManagerError::SessionNotSet)?
+            .clone();
         Ok(format!("{}:{}", self.project_prefix(), session_id))
     }
 
@@ -122,36 +124,60 @@ impl FlowProjectRedisDataManager {
     async fn get_update_stream_items(
         &self,
     ) -> Result<Vec<(String, Vec<(String, String)>)>, FlowProjectRedisDataManagerError> {
-        Ok(self
-            .redis_client
-            .xread(&self.state_updates_key()?, "0-0")
-            .await?)
+        self.redis_client
+            .xread_map(&self.state_updates_key()?, "0-0")
+            .await
+            .map_err(FlowProjectRedisDataManagerError::from)
     }
 
     async fn get_flow_updates_from_stream(
         &self,
     ) -> Result<Vec<FlowUpdate>, FlowProjectRedisDataManagerError> {
         let stream_items = self.get_update_stream_items().await?;
-        stream_items
-            .into_iter()
-            .map(|(update_id, item)| {
-                let value = &item[1].1;
-                let format = &item[3].1;
-                let encoded_update: FlowEncodedUpdate = if format == "json" {
-                    serde_json::from_str(value)?
-                } else {
-                    FlowEncodedUpdate {
-                        update: String::new(),
-                        updated_by: None,
-                    }
-                };
-                Ok(FlowUpdate {
-                    stream_id: Some(update_id),
-                    update: Self::decode_state_data(encoded_update.update)?,
-                    updated_by: encoded_update.updated_by,
-                })
-            })
-            .collect()
+        let mut updates = Vec::new();
+
+        for (update_id, items) in stream_items {
+            let value = items
+                .iter()
+                .find(|(key, _)| key == "value")
+                .map(|(_, v)| v)
+                .ok_or_else(|| {
+                    FlowProjectRedisDataManagerError::Unknown("Missing value field".to_string())
+                })?;
+
+            let format = items
+                .iter()
+                .find(|(key, _)| key == "format")
+                .map(|(_, v)| v)
+                .ok_or_else(|| {
+                    FlowProjectRedisDataManagerError::Unknown("Missing format field".to_string())
+                })?;
+
+            let encoded_update: FlowEncodedUpdate = if format == "json" {
+                serde_json::from_str(value)?
+            } else {
+                continue; // Skip non-JSON updates
+            };
+
+            // Skip empty updates
+            if encoded_update.update.is_empty() || encoded_update.update == "[]" {
+                continue;
+            }
+
+            let decoded_update = Self::decode_state_data(encoded_update.update)?;
+            // Skip if decoded update is empty
+            if decoded_update.is_empty() {
+                continue;
+            }
+
+            updates.push(FlowUpdate {
+                stream_id: Some(update_id),
+                update: decoded_update,
+                updated_by: encoded_update.updated_by,
+            });
+        }
+
+        Ok(updates)
     }
 
     async fn get_merged_update_from_stream(
@@ -162,13 +188,16 @@ impl FlowProjectRedisDataManager {
             return Ok(None);
         }
 
-        // Create an iterator over the cloned updates
-        let mut updates_iter = updates.iter().map(|x| x.update.clone());
+        // Create an iterator over the non-empty updates
+        let valid_updates: Vec<_> = updates.iter().filter(|x| !x.update.is_empty()).collect();
 
-        // Use the first update as the initial accumulator
-        let first_update = updates_iter
-            .next()
-            .ok_or(FlowProjectRedisDataManagerError::MergeUpdates)?;
+        if valid_updates.is_empty() {
+            return Ok(None);
+        }
+
+        // Use the first valid update as the initial accumulator
+        let first_update = valid_updates[0].update.clone();
+        let mut updates_iter = valid_updates[1..].iter().map(|x| x.update.clone());
 
         // Fold over the remaining updates
         let merged_update = updates_iter
@@ -187,7 +216,7 @@ impl FlowProjectRedisDataManager {
             .filter_map(|x| x.updated_by.clone())
             .collect::<Vec<_>>();
 
-        // Get the last update ID, returning an error if it's not available
+        // Get the last update ID
         let last_update_id = updates
             .last()
             .and_then(|x| x.stream_id.clone())
@@ -237,10 +266,9 @@ impl FlowProjectRedisDataManager {
         let active_editing_session_id = self.active_editing_session_id().await?;
 
         let current_session_id = self
-            .editing_session
+            .session_id
             .lock()
             .await
-            .session_id
             .as_ref()
             .ok_or(FlowProjectRedisDataManagerError::SessionNotSet)?
             .clone();
@@ -378,9 +406,6 @@ impl FlowProjectRedisDataManager {
 
         if let Some(last_update_id) = last_update_id {
             self.redis_client
-                .xtrim(&self.state_updates_key()?, 1)
-                .await?;
-            self.redis_client
                 .xdel(&self.state_updates_key()?, &[last_update_id.to_string()])
                 .await?;
         }
@@ -468,8 +493,8 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         let _: () = connection_guard.del(&keys_to_delete).await?;
 
         if let Some(active_session_id) = self.active_editing_session_id().await? {
-            let editing_session = self.editing_session.lock().await;
-            if let Some(current_session_id) = editing_session.session_id.as_ref() {
+            let editing_session = self.session_id.lock().await;
+            if let Some(current_session_id) = editing_session.as_ref() {
                 if active_session_id == *current_session_id {
                     let _: () = connection_guard
                         .del(&[self.active_editing_session_id_key()])
@@ -506,6 +531,7 @@ mod tests {
         pub current_state: Arc<Mutex<Option<Vec<u8>>>>,
         pub push_update_result: Arc<Mutex<Result<(), FlowProjectRedisDataManagerError>>>,
         pub merge_updates_result: Arc<Mutex<MergeUpdatesResult>>,
+        pub session_id: Arc<Mutex<Option<String>>>,
     }
 
     impl MockFlowProjectRedisDataManager {
@@ -517,6 +543,7 @@ mod tests {
                     vec![1, 2, 3],
                     vec!["user1".to_string()],
                 )))),
+                session_id: Arc::new(Mutex::new(Some("test_session".to_string()))),
             }
         }
 
@@ -536,6 +563,11 @@ mod tests {
         ) {
             let mut merge_updates_result = self.merge_updates_result.lock().unwrap();
             *merge_updates_result = result;
+        }
+
+        pub fn set_session_id(&self, session_id: Option<String>) {
+            let mut current_session_id = self.session_id.lock().unwrap();
+            *current_session_id = session_id;
         }
     }
 
@@ -581,6 +613,7 @@ mod tests {
             Ok(result)
         }
     }
+
     #[tokio::test]
     async fn test_get_current_state() {
         let mock_manager = MockFlowProjectRedisDataManager::new();
@@ -621,5 +654,26 @@ mod tests {
 
         let result = mock_manager.get_current_state().await;
         assert!(result.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_session_id() {
+        let mock_manager = MockFlowProjectRedisDataManager::new();
+
+        assert_eq!(
+            *mock_manager.session_id.lock().unwrap(),
+            Some("test_session".to_string())
+        );
+
+        mock_manager.set_session_id(Some("new_session".to_string()));
+
+        assert_eq!(
+            *mock_manager.session_id.lock().unwrap(),
+            Some("new_session".to_string())
+        );
+
+        mock_manager.set_session_id(None);
+
+        assert_eq!(*mock_manager.session_id.lock().unwrap(), None);
     }
 }

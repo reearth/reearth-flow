@@ -1,11 +1,12 @@
 use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
 use crate::persistence::redis::redis_client::RedisClientError;
 use async_trait::async_trait;
+use flow_websocket_domain::generate_id;
 use flow_websocket_domain::project_type::Project;
 use flow_websocket_domain::types::data::SnapshotData;
 
 use crate::persistence::local_storage::LocalClient;
-use flow_websocket_domain::project::ProjectEditingSession;
+use flow_websocket_domain::editing_session::ProjectEditingSession;
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
 };
@@ -72,20 +73,24 @@ where
 {
     type Error = ProjectRepositoryError;
 
-    async fn create_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
+    async fn create_session(
+        &self,
+        mut session: ProjectEditingSession,
+    ) -> Result<String, Self::Error> {
         let session_id = session
             .session_id
-            .as_ref()
-            .ok_or(ProjectRepositoryError::SessionIdNotFound)?;
-        let key = format!("session:{}", session_id);
-        self.redis_client.set(&key, &session).await?;
+            .get_or_insert_with(|| generate_id(14, "editor-session"))
+            .clone();
 
+        let session_key = format!("session:{}", session_id);
         let active_session_key = format!("project:{}:active_session", session.project_id);
+
+        self.redis_client.set(&session_key, &session).await?;
         self.redis_client
-            .set(&active_session_key, session_id)
+            .set(&active_session_key, &session_id)
             .await?;
 
-        Ok(())
+        Ok(session_id)
     }
 
     async fn get_active_session(
@@ -280,7 +285,7 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use flow_websocket_domain::project::ProjectEditingSession;
+    use flow_websocket_domain::editing_session::ProjectEditingSession;
     use flow_websocket_domain::snapshot::ObjectTenant;
     use mockall::mock;
 
@@ -301,6 +306,7 @@ mod tests {
             async fn xtrim(&self, key: &str, max_len: usize) -> RedisResult<usize>;
             async fn xdel(&self, key: &str, ids: &[String]) -> RedisResult<usize>;
             fn connection(&self) -> &Arc<tokio::sync::Mutex<redis::aio::MultiplexedConnection>>;
+            async fn xread_map(&self, key: &str, id: &str) -> RedisResult<XReadResult>;
         }
     }
 

@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use flow_websocket_domain::{
+    editing_session::ProjectEditingSession,
     generate_id,
-    project::ProjectEditingSession,
     repository::{ProjectEditingSessionRepository, ProjectSnapshotRepository, RedisDataManager},
     snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo},
     types::{data::SnapshotData, snapshot::ProjectSnapshot},
@@ -101,7 +101,7 @@ where
         Ok(())
     }
 
-    async fn update_client_count(
+    pub async fn update_client_count(
         &self,
         data: &mut ManageProjectEditSessionTaskData,
     ) -> Result<usize, ProjectServiceError> {
@@ -121,7 +121,7 @@ where
         Ok(current_client_count)
     }
 
-    async fn merge_updates(
+    pub async fn merge_updates(
         &self,
         session: &mut ProjectEditingSession,
         data: &mut ManageProjectEditSessionTaskData,
@@ -131,7 +131,7 @@ where
         Ok(())
     }
 
-    async fn create_snapshot_if_required(
+    pub async fn create_snapshot_if_required(
         &self,
         session: &mut ProjectEditingSession,
         data: &mut ManageProjectEditSessionTaskData,
@@ -152,7 +152,7 @@ where
         Ok(())
     }
 
-    async fn create_snapshot(
+    pub async fn create_snapshot(
         &self,
         session: &mut ProjectEditingSession,
         current_time: DateTime<Utc>,
@@ -193,7 +193,7 @@ where
         Ok(())
     }
 
-    async fn end_editing_session_if_conditions_met(
+    pub async fn end_editing_session_if_conditions_met(
         &self,
         session: &mut ProjectEditingSession,
         data: &ManageProjectEditSessionTaskData,
@@ -240,7 +240,7 @@ where
                 } else {
                     debug!("Session not setup, cannot end");
                     return Err(ProjectServiceError::EditingSession(
-                        flow_websocket_domain::project::ProjectEditingSessionError::SessionNotSetup,
+                        flow_websocket_domain::editing_session::ProjectEditingSessionError::SessionNotSetup,
                     ));
                 }
             }
@@ -249,7 +249,7 @@ where
         Ok(false)
     }
 
-    async fn complete_job_if_met_requirements(
+    pub async fn complete_job_if_met_requirements(
         &self,
         session: &ProjectEditingSession,
         data: &ManageProjectEditSessionTaskData,
@@ -258,6 +258,10 @@ where
             sleep(JOB_COMPLETION_DELAY).await;
         }
         Ok(())
+    }
+
+    pub fn get_session_repository(&self) -> &R {
+        &self.session_repository
     }
 }
 
@@ -273,7 +277,7 @@ mod tests {
         impl ProjectEditingSessionRepository for ProjectEditingSessionRepository {
             type Error = ProjectRepositoryError;
 
-            async fn create_session(&self, session: ProjectEditingSession) -> Result<(), ProjectRepositoryError >;
+            async fn create_session(&self, session: ProjectEditingSession) -> Result<String, ProjectRepositoryError >;
             async fn get_active_session(&self, project_id: &str) -> Result<Option<ProjectEditingSession>, ProjectRepositoryError>;
             async fn update_session(&self, session: ProjectEditingSession) -> Result<(), ProjectRepositoryError>;
             async fn get_client_count(&self) -> Result<usize, ProjectRepositoryError>;

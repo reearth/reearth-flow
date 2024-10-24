@@ -47,6 +47,11 @@ pub trait RedisClientTrait: Send + Sync {
     async fn xdel(&self, key: &str, ids: &[String]) -> Result<usize, RedisClientError>;
     fn connection(&self) -> &Arc<Mutex<MultiplexedConnection>>;
     async fn get_client_count(&self) -> Result<usize, RedisClientError>;
+    async fn xread_map(
+        &self,
+        key: &str,
+        id: &str,
+    ) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError>;
 }
 
 #[async_trait]
@@ -133,9 +138,76 @@ impl RedisClientTrait for RedisClient {
             .await?;
         Ok(client_list.lines().count())
     }
+
+    async fn xread_map(
+        &self,
+        key: &str,
+        id: &str,
+    ) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError> {
+        let result: redis::Value = {
+            let mut connection = self.connection.lock().await;
+            connection.xread(&[key], &[id]).await?
+        };
+
+        match result {
+            redis::Value::Bulk(outer) => {
+                let mut mapped_results = Vec::new();
+                for stream in outer {
+                    if let redis::Value::Bulk(stream_data) = stream {
+                        if stream_data.len() >= 2 {
+                            if let redis::Value::Bulk(entries) = &stream_data[1] {
+                                mapped_results.extend(entries.iter().filter_map(|entry| {
+                                    if let redis::Value::Bulk(entry_fields) = entry {
+                                        Self::parse_stream_entry(entry_fields)
+                                    } else {
+                                        None
+                                    }
+                                }));
+                            }
+                        }
+                    }
+                }
+                Ok(mapped_results)
+            }
+            _ => Ok(vec![]),
+        }
+    }
 }
 
 impl RedisClient {
+    fn parse_entry_fields(fields: &[redis::Value]) -> Option<Vec<(String, String)>> {
+        fields
+            .chunks(2)
+            .filter(|chunk| chunk.len() == 2)
+            .filter_map(|chunk| match (&chunk[0], &chunk[1]) {
+                (redis::Value::Data(key), redis::Value::Data(val)) => Some((
+                    String::from_utf8_lossy(key).into_owned(),
+                    String::from_utf8_lossy(val).into_owned(),
+                )),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .into()
+    }
+
+    fn parse_stream_entry(
+        entry_fields: &[redis::Value],
+    ) -> Option<(String, Vec<(String, String)>)> {
+        if entry_fields.len() < 2 {
+            return None;
+        }
+
+        let entry_id = match &entry_fields[0] {
+            redis::Value::Data(bytes) => String::from_utf8_lossy(bytes).into_owned(),
+            _ => return None,
+        };
+
+        match &entry_fields[1] {
+            redis::Value::Bulk(fields) => Some((entry_id, Self::parse_entry_fields(fields)?)),
+            _ => None,
+        }
+    }
+
     pub async fn new(redis_url: &str) -> Result<Self, RedisClientError> {
         let client = Client::open(redis_url)?;
         let connection = client.get_multiplexed_async_connection().await?;
@@ -242,6 +314,23 @@ mod tests {
 
         async fn get_client_count(&self) -> Result<usize, RedisClientError> {
             Ok(1)
+        }
+
+        async fn xread_map(
+            &self,
+            _key: &str,
+            _id: &str,
+        ) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError> {
+            Ok(vec![(
+                "1234-0".to_string(),
+                vec![
+                    (
+                        "value".to_string(),
+                        "{\"update\":\"[]\",\"updated_by\":null}".to_string(),
+                    ),
+                    ("format".to_string(), "json".to_string()),
+                ],
+            )])
         }
     }
 

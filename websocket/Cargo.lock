@@ -649,6 +649,7 @@ dependencies = [
  "serde",
  "thiserror",
  "tokio",
+ "tracing",
  "uuid",
 ]
 
