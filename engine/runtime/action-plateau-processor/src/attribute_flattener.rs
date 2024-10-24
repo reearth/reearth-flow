@@ -512,7 +512,7 @@ impl Processor for AttributeFlattener {
                 flattened.insert(Attribute::new(name), value.clone());
             }
 
-            if ftype == "bldg::BuildingPart" {
+            if ftype == "bldg:BuildingPart" {
                 flattened.extend(
                     self.flattener
                         .extract_fld_risk_attribute(&root_city_gml_attribute),
