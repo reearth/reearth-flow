@@ -10,6 +10,8 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_storage::storage::Storage;
 
+const CHUNK_SIZE: usize = 1000;
+
 #[derive(Debug, Clone)]
 pub struct State {
     storage: Arc<Storage>,
@@ -68,6 +70,21 @@ impl State {
             .map_err(|e| Error::new(ErrorKind::Other, e))
     }
 
+    pub async fn append_strings(&self, all: &[String], id: &str) -> Result<()> {
+        if all.is_empty() {
+            return Ok(());
+        }
+        let p = self.id_to_location(id, "jsonl");
+        for chunk in all.chunks(CHUNK_SIZE) {
+            let content = bytes::Bytes::from(chunk.join("\n") + "\n");
+            self.storage
+                .append(p.as_path(), content)
+                .await
+                .map_err(|e| Error::new(ErrorKind::Other, e))?
+        }
+        Ok(())
+    }
+
     pub fn append_sync<T>(&self, obj: &T, id: &str) -> Result<()>
     where
         for<'de> T: Serialize + Deserialize<'de>,
@@ -101,20 +118,20 @@ impl State {
             .map_err(|e| Error::new(ErrorKind::Other, e))
     }
 
-    fn string_to_object<T>(&self, s: &str) -> Result<T>
+    pub fn id_to_location(&self, id: &str, ext: &str) -> PathBuf {
+        PathBuf::new()
+            .join(self.root.clone())
+            .join(format!("{}.{}", id, ext))
+    }
+
+    pub fn string_to_object<T>(&self, s: &str) -> Result<T>
     where
         for<'de> T: Deserialize<'de>,
     {
         serde_json::from_str(s).map_err(|err| Error::new(ErrorKind::Other, err))
     }
 
-    fn id_to_location(&self, id: &str, ext: &str) -> PathBuf {
-        PathBuf::new()
-            .join(self.root.clone())
-            .join(format!("{}.{}", id, ext))
-    }
-
-    fn object_to_string<T: Serialize>(&self, obj: &T) -> Result<String> {
+    pub fn object_to_string<T: Serialize>(&self, obj: &T) -> Result<String> {
         serde_json::to_string(obj).map_err(|err| Error::new(ErrorKind::Other, err))
     }
 }
