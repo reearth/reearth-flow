@@ -1,14 +1,14 @@
-import { createLazyFileRoute } from '@tanstack/react-router'
+import { createLazyFileRoute } from "@tanstack/react-router";
 
-import { WorkspaceIdWrapper } from '@flow/features/PageWrapper'
-import { WorkspaceSettings as Settings } from '@flow/features/WorkspaceSettings'
+import { WorkspaceIdWrapper } from "@flow/features/PageWrapper";
+import { WorkspaceSettings as Settings } from "@flow/features/WorkspaceSettings";
 
 export const Route = createLazyFileRoute(
-  '/workspaces_/$workspaceId_/settings/$tab',
+  "/workspaces_/$workspaceId_/settings/$tab",
 )({
   component: () => (
     <WorkspaceIdWrapper>
       <Settings />
     </WorkspaceIdWrapper>
   ),
-})
+});
