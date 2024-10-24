@@ -121,8 +121,8 @@ export default ({
         currentProject?.name,
         rawWorkflows.map((w): Workflow => {
           if (!w) return { id: "", name: "", nodes: [], edges: [] };
-          const id = fromYjsText(w.id as Y.Text);
-          const name = fromYjsText(w.name as Y.Text);
+          const id = w.id instanceof Y.Text ? fromYjsText(w.id) : "";
+          const name = w.name instanceof Y.Text ? fromYjsText(w.name) : "";
           const n = w.nodes as Node[];
           const e = w.edges as Edge[];
           return { id, name, nodes: n, edges: e };

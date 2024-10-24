@@ -59,7 +59,7 @@ func (f *fileRepo) RemoveAsset(ctx context.Context, u *url.URL) error {
 		return nil
 	}
 	p := sanitize.Path(u.Path)
-	if p == "" || f.assetUrlBase == nil || u.Scheme != f.assetUrlBase.Scheme || u.Host != f.assetUrlBase.Host || path.Dir(p) != f.assetUrlBase.Path {
+	if p == "" || !f.validateURL(u, f.assetUrlBase) {
 		return gateway.ErrInvalidFile
 	}
 	return f.delete(ctx, filepath.Join(assetDir, filepath.Base(p)))
@@ -83,7 +83,7 @@ func (f *fileRepo) RemoveWorkflow(ctx context.Context, u *url.URL) error {
 		return nil
 	}
 	p := sanitize.Path(u.Path)
-	if p == "" || f.workflowUrlBase == nil || u.Scheme != f.workflowUrlBase.Scheme || u.Host != f.workflowUrlBase.Host || path.Dir(p) != f.workflowUrlBase.Path {
+	if p == "" || !f.validateURL(u, f.workflowUrlBase) {
 		return gateway.ErrInvalidFile
 	}
 	return f.delete(ctx, filepath.Join(workflowsDir, filepath.Base(p)))
@@ -164,4 +164,13 @@ func newAssetID() string {
 
 func newWorkflowID() string {
 	return id.NewWorkflowID().String()
+}
+
+func (f *fileRepo) validateURL(u *url.URL, base *url.URL) bool {
+	if u == nil || base == nil {
+		return false
+	}
+	return u.Scheme == base.Scheme &&
+		u.Host == base.Host &&
+		path.Dir(u.Path) == base.Path
 }

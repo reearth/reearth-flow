@@ -57,7 +57,7 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 	}
 
 	return result, usecasex.NewPageInfo(
-		int64(len(r.data)),
+		int64(len(result)),
 		startCursor,
 		endCursor,
 		true,
@@ -107,7 +107,7 @@ func (r *Deployment) Remove(ctx context.Context, id id.DeploymentID) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if d, ok := r.data[id]; ok && r.f.CanRead(d.Workspace()) {
+	if d, ok := r.data[id]; ok && r.f.CanWrite(d.Workspace()) {
 		delete(r.data, id)
 	}
 	return nil

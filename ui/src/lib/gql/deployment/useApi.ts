@@ -116,6 +116,7 @@ export const useDeployment = () => {
   ): Promise<ExecuteDeployment> => {
     const { mutateAsync, ...rest } = executeDeploymentMutation;
     try {
+      console.log("input", input);
       const job = await mutateAsync(input);
       toast({
         title: t("Deployment Executed"),

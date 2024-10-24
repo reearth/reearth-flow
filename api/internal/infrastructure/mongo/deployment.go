@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	deploymentIndexes       = []string{"workspace"}
+	deploymentIndexes       = []string{"workspaceid"}
 	deploymentUniqueIndexes = []string{"id"}
 )
 

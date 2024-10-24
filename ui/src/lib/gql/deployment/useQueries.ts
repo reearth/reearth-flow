@@ -56,7 +56,6 @@ export const useQueries = () => {
         },
       });
 
-      console.log("Data", data);
       if (data?.createDeployment?.deployment) {
         return createNewDeploymentObject(data.createDeployment.deployment);
       }
