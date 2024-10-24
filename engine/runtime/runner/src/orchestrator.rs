@@ -46,7 +46,7 @@ static FEATURE_FLUSH_THRESHOLD: Lazy<usize> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(256)
+        .unwrap_or(512)
 });
 
 #[derive(Clone)]

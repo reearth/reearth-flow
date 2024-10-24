@@ -147,7 +147,6 @@ fn parse_tree_reader<R: BufRead>(
                 (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
             });
         }
-
         let attributes = entity.root.to_attribute_json();
         let gml_id = entity
             .root
@@ -176,6 +175,12 @@ fn parse_tree_reader<R: BufRead>(
         };
         for mut ent in entities {
             transformer.transform(&mut ent);
+            let nusamai_citygml::Value::Object(obj) = &ent.root else {
+                continue;
+            };
+            let nusamai_citygml::object::ObjectStereotype::Feature { .. } = &obj.stereotype else {
+                continue;
+            };
             let geometry: Geometry = ent.try_into().map_err(|e| {
                 super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
             })?;
