@@ -125,7 +125,7 @@ export const useQueries = () => {
         input: {
           projectId,
           workspaceId,
-          file,
+          file: file.get("file"),
         },
       });
       return {

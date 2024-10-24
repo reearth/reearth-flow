@@ -8,6 +8,7 @@ import {
   RunProject,
   UpdateProject,
 } from "@flow/types";
+import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
 
@@ -100,10 +101,11 @@ export const useProject = () => {
     const { mutateAsync, ...rest } = runProjectMutation;
 
     try {
+      const formData = yamlToFormData(workflow, "debug-run-workflow");
       const data = await mutateAsync({
         projectId,
         workspaceId,
-        file: workflow,
+        file: formData,
       });
       toast({
         title: t("Successful Deletion"),
@@ -112,10 +114,8 @@ export const useProject = () => {
         ),
         variant: "destructive",
       });
-      console.log("data", data);
       return { projectId: data.projectId, started: data.started, ...rest };
     } catch (_err) {
-      console.log("Errror", _err);
       return { projectId: undefined, ...rest };
     }
   };
