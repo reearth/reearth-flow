@@ -259,6 +259,10 @@ where
         }
         Ok(())
     }
+
+    pub fn get_session_repository(&self) -> &R {
+        &self.session_repository
+    }
 }
 
 #[cfg(test)]

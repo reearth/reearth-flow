@@ -1,7 +1,5 @@
-use std::sync::Arc;
-use std::time::Duration;
-
 use chrono::Utc;
+use flow_websocket_domain::repository::ProjectEditingSessionRepository;
 use flow_websocket_domain::{generate_id, snapshot::ObjectTenant, ProjectEditingSession};
 use flow_websocket_infra::persistence::{
     project_repository::{ProjectLocalRepository, ProjectRedisRepository},
@@ -12,8 +10,7 @@ use flow_websocket_infra::persistence::{
 use flow_websocket_services::{
     manage_project_edit_session::ManageEditSessionService, types::ManageProjectEditSessionTaskData,
 };
-use tokio::sync::Mutex;
-use tokio::time::sleep;
+use std::sync::Arc;
 use tracing::{debug, error, info, instrument, trace, warn};
 
 /// # Edit Session Service Example
@@ -59,13 +56,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     trace!("Session repository created");
 
     let project_id = "project_123".to_string();
+    let session_id = "session_123".to_string();
     let tenant = ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned());
-    let session = ProjectEditingSession::new(project_id.clone(), tenant);
+    let mut session = ProjectEditingSession::new(project_id.clone(), tenant);
+    session.session_setup_complete = true;
+    session.session_id = Some(session_id.clone());
     debug!(?project_id, "Project session created");
+
+    // Create the session in Redis before initializing the data manager
+    session_repo.create_session(session.clone()).await?;
+    debug!("Session created in Redis");
 
     let redis_data_manager = FlowProjectRedisDataManager::new(
         project_id.clone(),
-        session.session_id.clone(),
+        Some(session_id), // Pass the session_id here
         Arc::new(redis_client.clone()),
     );
     trace!("Redis data manager initialized");
@@ -107,9 +111,22 @@ async fn simulate_multiple_tasks(
     >,
     project_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // ... existing task simulation code ...
+    // Initialize the session first
+    let mut session = ProjectEditingSession::new(
+        project_id.to_string(),
+        ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+    );
+    session.session_setup_complete = true;
+    session.session_id = Some("session_123".to_string());
 
-    // Add demonstrations of individual functionalities
+    // Save the session to Redis using the repository
+    service
+        .get_session_repository()
+        .create_session(session)
+        .await?;
+    debug!("Initial session saved to Redis");
+
+    // Now proceed with demonstrations
     demonstrate_update_client_count(service, project_id).await?;
     demonstrate_merge_updates(service, project_id).await?;
     demonstrate_snapshot_creation(service, project_id).await?;
@@ -161,6 +178,7 @@ async fn demonstrate_merge_updates(
 ) -> Result<(), Box<dyn std::error::Error>> {
     info!("Demonstrating merge_updates functionality");
 
+    // Create and initialize the session
     let mut session = ProjectEditingSession::new(
         project_id.to_string(),
         ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
@@ -168,8 +186,14 @@ async fn demonstrate_merge_updates(
     session.session_setup_complete = true;
     session.session_id = Some("session_123".to_string());
 
-    let mut task_data = create_task_data(project_id, "session_123", None, None);
+    // Save the session to Redis first
+    service
+        .get_session_repository()
+        .create_session(session.clone())
+        .await?;
 
+    // Now perform the merge updates
+    let mut task_data = create_task_data(project_id, "session_123", None, None);
     service.merge_updates(&mut session, &mut task_data).await?;
     debug!(last_merged_at = ?task_data.last_merged_at, "Updates merged");
 
@@ -188,12 +212,19 @@ async fn demonstrate_snapshot_creation(
 ) -> Result<(), Box<dyn std::error::Error>> {
     info!("Demonstrating snapshot creation functionality");
 
+    // Create and initialize the session
     let mut session = ProjectEditingSession::new(
         project_id.to_string(),
         ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
     );
     session.session_setup_complete = true;
     session.session_id = Some("session_123".to_string());
+
+    // Save the session to Redis first
+    service
+        .get_session_repository()
+        .create_session(session.clone())
+        .await?;
 
     // Test create_snapshot_if_required
     let mut task_data = create_task_data(project_id, "session_123", None, None);
@@ -223,12 +254,19 @@ async fn demonstrate_session_ending(
 ) -> Result<(), Box<dyn std::error::Error>> {
     info!("Demonstrating session ending functionality");
 
+    // Create and initialize the session
     let mut session = ProjectEditingSession::new(
         project_id.to_string(),
         ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
     );
     session.session_setup_complete = true;
     session.session_id = Some("session_123".to_string());
+
+    // Save the session to Redis first
+    service
+        .get_session_repository()
+        .create_session(session.clone())
+        .await?;
 
     let task_data = create_task_data(
         project_id,
