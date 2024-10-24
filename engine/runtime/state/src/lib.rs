@@ -74,9 +74,9 @@ impl State {
         if all.is_empty() {
             return Ok(());
         }
+        let p = self.id_to_location(id, "jsonl");
         for chunk in all.chunks(CHUNK_SIZE) {
             let content = bytes::Bytes::from(chunk.join("\n") + "\n");
-            let p = self.id_to_location(id, "jsonl");
             self.storage
                 .append(p.as_path(), content)
                 .await
