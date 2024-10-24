@@ -176,7 +176,7 @@ graphs:
         with:
           format: tsv
           output: |
-            file::join_path(file::join_path(env.get("outputPath"), env.get("__value").destDataset), "不正な面の向きエラー.tsv")
+            file::join_path(env.get("outputPath"), "不正な面の向きエラー.tsv")
 
       - id: 0c30b482-b241-4d47-9a88-175c5f98ff8d
         name: AttributeMapperInvalidSurface
@@ -185,16 +185,20 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              valueAttribute: fileIndex
+              expr: |
+                env.get("__value").fileIndex
             - attribute: Folder
-              valueAttribute: udxDirs
+              expr: |
+                env.get("__value").udxDirs
             - attribute: Filename
               expr: |
                 file::extract_filename(env.get("__value").cityGmlPath)
             - attribute: featureType
-              valueAttribute: featureType
+              expr: |
+                env.get("__value").featureType
             - attribute: "gml:id"
-              valueAttribute: gmlId
+              expr: |
+                env.get("__value").gmlId
             - attribute: "エラー数"
               expr: |
                 1
@@ -209,7 +213,7 @@ graphs:
         with:
           format: tsv
           output: |
-            file::join_path(file::join_path(env.get("outputPath"), env.get("__value").destDataset), "不正な面エラー.tsv")
+            file::join_path(env.get("outputPath"), "不正な面エラー.tsv")
 
       - id: e51e64b4-6cc0-4698-b677-e5f7f667f24f
         name: FeatureMerger

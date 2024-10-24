@@ -61,6 +61,11 @@ graphs:
           dataset: |
             env.get("__value").cityGmlPath
 
+      - id: 1bd42875-4b8c-4439-82dc-9554d9946b07
+        name: AttributeFlattener
+        type: action
+        action: PLATEAU.AttributeFlattener
+
       - id: 928e21d9-fc30-4876-ba03-41338cfa47ed
         name: VerticalReprojector
         type: action
@@ -114,6 +119,11 @@ graphs:
         toPort: default
       - id: fb48e9e0-fa1b-4f27-8a89-84b6d2e1c6d7
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 1bd42875-4b8c-4439-82dc-9554d9946b07
+        fromPort: default
+        toPort: default
+      - id: 7aaeca77-6dce-427c-a84d-374f42c6c2ea
+        from: 1bd42875-4b8c-4439-82dc-9554d9946b07
         to: 928e21d9-fc30-4876-ba03-41338cfa47ed
         fromPort: default
         toPort: default
