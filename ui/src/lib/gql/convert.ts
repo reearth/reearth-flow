@@ -1,3 +1,4 @@
+import { DEFAULT_EDGE_PORT } from "@flow/global-constants";
 import type { Workflow } from "@flow/types";
 
 import {
@@ -5,8 +6,6 @@ import {
   InputWorkflowEdge,
   InputWorkflowNode,
 } from "./__gen__/graphql";
-
-const DEFAULT_PORT = "default";
 
 export const toGQLWorkflow = ({
   projectId,
@@ -41,8 +40,8 @@ export const toGQLWorkflow = ({
         id: edge.id,
         from: edge.source,
         to: edge.target,
-        fromPort: edge.sourceHandle ?? DEFAULT_PORT,
-        toPort: edge.targetHandle ?? DEFAULT_PORT,
+        fromPort: edge.sourceHandle ?? DEFAULT_EDGE_PORT,
+        toPort: edge.targetHandle ?? DEFAULT_EDGE_PORT,
       })) ?? [];
     gqlWorkflow.graphs.push({
       id: w.id,
