@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::Utc;
-use flow_websocket_domain::generate_id;
+use flow_websocket_domain::{generate_id, snapshot::ObjectTenant, ProjectEditingSession};
 use flow_websocket_infra::persistence::{
     project_repository::{ProjectLocalRepository, ProjectRedisRepository},
     redis::{
@@ -12,6 +12,7 @@ use flow_websocket_infra::persistence::{
 use flow_websocket_services::{
     manage_project_edit_session::ManageEditSessionService, types::ManageProjectEditSessionTaskData,
 };
+use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::{debug, error, info, instrument, trace, warn};
 
@@ -58,13 +59,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     trace!("Session repository created");
 
     let project_id = "project_123".to_string();
-    //let tenant = ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned());
-    let session_id = generate_id(14, "session"); // Generate a session ID
-    debug!(?project_id, ?session_id, "Project session created");
+    let tenant = ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned());
+    let session = ProjectEditingSession::new(project_id.clone(), tenant);
+    debug!(?project_id, "Project session created");
 
     let redis_data_manager = FlowProjectRedisDataManager::new(
         project_id.clone(),
-        Some(session_id),
+        session.session_id.clone(),
         Arc::new(redis_client.clone()),
     );
     trace!("Redis data manager initialized");
@@ -106,41 +107,169 @@ async fn simulate_multiple_tasks(
     >,
     project_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let session_id = generate_id(14, "session");
-    debug!(?session_id, "Generated new session ID");
+    // ... existing task simulation code ...
 
-    // Task 1: Initialize session
-    let task_data = create_task_data(project_id, &session_id, Some(1), None);
-    process_task(service, task_data, "Initialize session").await?;
+    // Add demonstrations of individual functionalities
+    demonstrate_update_client_count(service, project_id).await?;
+    demonstrate_merge_updates(service, project_id).await?;
+    demonstrate_snapshot_creation(service, project_id).await?;
+    demonstrate_session_ending(service, project_id).await?;
+    demonstrate_job_completion(service, project_id).await?;
 
-    // Simulate some time passing
-    warn!("Simulating time passage (1 second)");
-    sleep(Duration::from_secs(1)).await;
+    Ok(())
+}
 
-    // Task 2: Update session with client count
-    let task_data = create_task_data(project_id, &session_id, Some(2), None);
-    process_task(service, task_data, "Update client count").await?;
+/// Demonstrates the update_client_count functionality
+#[instrument(skip(service))]
+async fn demonstrate_update_client_count(
+    service: &ManageEditSessionService<
+        ProjectRedisRepository<RedisClient>,
+        ProjectLocalRepository,
+        FlowProjectRedisDataManager,
+    >,
+    project_id: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    info!("Demonstrating update_client_count functionality");
 
-    // Simulate more time passing
-    warn!("Simulating time passage (2 seconds)");
-    sleep(Duration::from_secs(2)).await;
+    let mut task_data = create_task_data(project_id, "session_123", Some(1), None);
 
-    // Task 3: Simulate clients disconnecting
-    let task_data = create_task_data(project_id, &session_id, Some(0), Some(Utc::now()));
-    process_task(service, task_data, "Simulate clients disconnecting").await?;
+    // Initial client count update
+    let count = service.update_client_count(&mut task_data).await?;
+    debug!(client_count = count, "Initial client count");
 
-    // Simulate time passing to trigger session end
-    warn!("Simulating time passage (11 seconds)");
-    sleep(Duration::from_secs(11)).await;
+    // Simulate clients disconnecting
+    task_data.clients_count = Some(0);
+    let count = service.update_client_count(&mut task_data).await?;
+    debug!(
+        client_count = count,
+        disconnected_at = ?task_data.clients_disconnected_at,
+        "Clients disconnected"
+    );
 
-    // Task 4: End session
+    Ok(())
+}
+
+/// Demonstrates the merge_updates functionality
+#[instrument(skip(service))]
+async fn demonstrate_merge_updates(
+    service: &ManageEditSessionService<
+        ProjectRedisRepository<RedisClient>,
+        ProjectLocalRepository,
+        FlowProjectRedisDataManager,
+    >,
+    project_id: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    info!("Demonstrating merge_updates functionality");
+
+    let mut session = ProjectEditingSession::new(
+        project_id.to_string(),
+        ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+    );
+    session.session_setup_complete = true;
+    session.session_id = Some("session_123".to_string());
+
+    let mut task_data = create_task_data(project_id, "session_123", None, None);
+
+    service.merge_updates(&mut session, &mut task_data).await?;
+    debug!(last_merged_at = ?task_data.last_merged_at, "Updates merged");
+
+    Ok(())
+}
+
+/// Demonstrates the snapshot creation functionality
+#[instrument(skip(service))]
+async fn demonstrate_snapshot_creation(
+    service: &ManageEditSessionService<
+        ProjectRedisRepository<RedisClient>,
+        ProjectLocalRepository,
+        FlowProjectRedisDataManager,
+    >,
+    project_id: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    info!("Demonstrating snapshot creation functionality");
+
+    let mut session = ProjectEditingSession::new(
+        project_id.to_string(),
+        ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+    );
+    session.session_setup_complete = true;
+    session.session_id = Some("session_123".to_string());
+
+    // Test create_snapshot_if_required
+    let mut task_data = create_task_data(project_id, "session_123", None, None);
+    task_data.last_snapshot_at = Some(Utc::now() - chrono::Duration::minutes(6));
+
+    service
+        .create_snapshot_if_required(&mut session, &mut task_data)
+        .await?;
+    debug!(last_snapshot_at = ?task_data.last_snapshot_at, "Snapshot created if required");
+
+    // Test direct snapshot creation
+    service.create_snapshot(&mut session, Utc::now()).await?;
+    debug!("Direct snapshot created");
+
+    Ok(())
+}
+
+/// Demonstrates the session ending functionality
+#[instrument(skip(service))]
+async fn demonstrate_session_ending(
+    service: &ManageEditSessionService<
+        ProjectRedisRepository<RedisClient>,
+        ProjectLocalRepository,
+        FlowProjectRedisDataManager,
+    >,
+    project_id: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    info!("Demonstrating session ending functionality");
+
+    let mut session = ProjectEditingSession::new(
+        project_id.to_string(),
+        ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+    );
+    session.session_setup_complete = true;
+    session.session_id = Some("session_123".to_string());
+
     let task_data = create_task_data(
         project_id,
-        &session_id,
+        "session_123",
         Some(0),
         Some(Utc::now() - chrono::Duration::seconds(11)),
     );
-    process_task(service, task_data, "End session").await?;
+
+    let ended = service
+        .end_editing_session_if_conditions_met(&mut session, &task_data, 0)
+        .await?;
+    debug!(session_ended = ended, "Session end check completed");
+
+    Ok(())
+}
+
+/// Demonstrates the job completion functionality
+#[instrument(skip(service))]
+async fn demonstrate_job_completion(
+    service: &ManageEditSessionService<
+        ProjectRedisRepository<RedisClient>,
+        ProjectLocalRepository,
+        FlowProjectRedisDataManager,
+    >,
+    project_id: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    info!("Demonstrating job completion functionality");
+
+    let mut session = ProjectEditingSession::new(
+        project_id.to_string(),
+        ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+    );
+    session.session_setup_complete = true;
+    session.session_id = Some("session_123".to_string());
+
+    let task_data = create_task_data(project_id, "session_123", None, None);
+
+    service
+        .complete_job_if_met_requirements(&session, &task_data)
+        .await?;
+    debug!("Job completion check completed");
 
     Ok(())
 }
