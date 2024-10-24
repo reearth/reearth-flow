@@ -9,7 +9,6 @@ export type Project = {
   description: string;
   workspaceId: string;
   workflows?: Workflow[];
-  // workspace: Workspace;
 };
 
 export type GetWorkspaceProjects = {
@@ -35,4 +34,9 @@ export type UpdateProject = {
 
 export type DeleteProject = {
   projectId?: string;
+} & ApiResponse;
+
+export type RunProject = {
+  projectId?: string;
+  started?: boolean;
 } & ApiResponse;

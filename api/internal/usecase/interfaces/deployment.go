@@ -16,8 +16,12 @@ import (
 type CreateDeploymentParam struct {
 	Project   id.ProjectID
 	Workspace accountdomain.WorkspaceID
-	Meta      file.File
-	Workflow  file.File
+	Workflow  *file.File
+}
+
+type UpdateDeploymentParam struct {
+	ID       id.DeploymentID
+	Workflow *file.File
 }
 
 type ExecuteDeploymentParam struct {
@@ -33,5 +37,7 @@ type Deployment interface {
 	Fetch(context.Context, []id.DeploymentID, *usecase.Operator) ([]*deployment.Deployment, error)
 	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination, *usecase.Operator) ([]*deployment.Deployment, *usecasex.PageInfo, error)
 	Create(context.Context, CreateDeploymentParam, *usecase.Operator) (*deployment.Deployment, error)
+	Update(context.Context, UpdateDeploymentParam, *usecase.Operator) (*deployment.Deployment, error)
+	Delete(context.Context, id.DeploymentID, *usecase.Operator) error
 	Execute(context.Context, ExecuteDeploymentParam, *usecase.Operator) (*job.Job, error)
 }

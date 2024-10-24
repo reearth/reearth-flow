@@ -4,13 +4,18 @@ import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
-import type { Edge, Node } from "@flow/types";
+import { useCurrentProject } from "@flow/stores";
+import type { Edge, Node, Workflow } from "@flow/types";
+import { createWorkflowsYaml } from "@flow/utils/engineWorkflowYaml/workflowYaml";
+
+import { useDeployment } from "../gql/deployment";
 
 import useWorkflowTabs from "./useWorkflowTabs";
 import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
-import { yWorkflowBuilder, type YWorkflow } from "./workflowBuilder";
+import { yWorkflowBuilder, type YWorkflow } from "./utils";
+import { fromYjsText } from "./utils/conversions";
 
 export default ({
   workflowId,
@@ -19,6 +24,9 @@ export default ({
   workflowId?: string;
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
+  const [currentProject] = useCurrentProject();
+  const { createDeployment } = useDeployment();
+
   const yWebSocketRef = useRef<WebsocketProvider | null>(null);
   useEffect(() => () => yWebSocketRef.current?.destroy(), []);
 
@@ -107,6 +115,30 @@ export default ({
     currentYWorkflow?.get("edges") ?? new Y.Array<Edge>(),
   ) as Edge[];
 
+  const handleWorkflowDeployment = useCallback(async () => {
+    const { workflowId, yamlWorkflow } =
+      createWorkflowsYaml(
+        currentProject?.name,
+        rawWorkflows.map((w): Workflow => {
+          if (!w) return { id: "", name: "", nodes: [], edges: [] };
+          const id = w.id instanceof Y.Text ? fromYjsText(w.id) : "";
+          const name = w.name instanceof Y.Text ? fromYjsText(w.name) : "";
+          const n = w.nodes as Node[];
+          const e = w.edges as Edge[];
+          return { id, name, nodes: n, edges: e };
+        }),
+      ) ?? {};
+
+    if (!yamlWorkflow || !currentProject || !workflowId) return;
+
+    await createDeployment(
+      currentProject.workspaceId,
+      currentProject.id,
+      workflowId,
+      yamlWorkflow,
+    );
+  }, [rawWorkflows, currentProject, createDeployment]);
+
   const { handleNodesUpdate } = useYNode({
     currentYWorkflow,
     undoTrackerActionWrapper,
@@ -122,6 +154,7 @@ export default ({
     nodes,
     edges,
     openWorkflows,
+    handleWorkflowDeployment,
     handleWorkflowClose,
     handleWorkflowAdd,
     handleNodesUpdate,

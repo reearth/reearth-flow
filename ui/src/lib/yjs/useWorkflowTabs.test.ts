@@ -3,7 +3,7 @@ import { useY } from "react-yjs";
 import * as Y from "yjs";
 
 import useWorkflowTabs from "./useWorkflowTabs";
-import { YWorkflow, yWorkflowBuilder } from "./workflowBuilder";
+import { YWorkflow, yWorkflowBuilder } from "./utils";
 
 describe("useWorkflowTabs", () => {
   it("should initialize with the first workflow as active", () => {

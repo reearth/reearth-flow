@@ -14,13 +14,22 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+var (
+	deploymentIndexes       = []string{"workspaceid"}
+	deploymentUniqueIndexes = []string{"id"}
+)
+
 type Deployment struct {
 	client *mongox.ClientCollection
 	f      repo.WorkspaceFilter
 }
 
-func NewDeployment(client *mongox.Client) repo.Deployment {
+func NewDeployment(client *mongox.Client) *Deployment {
 	return &Deployment{client: client.WithCollection("deployment")}
+}
+
+func (r *Deployment) Init(ctx context.Context) error {
+	return createIndexes(ctx, r.client, deploymentIndexes, deploymentUniqueIndexes)
 }
 
 func (r *Deployment) Filtered(f repo.WorkspaceFilter) repo.Deployment {
@@ -28,6 +37,12 @@ func (r *Deployment) Filtered(f repo.WorkspaceFilter) repo.Deployment {
 		client: r.client,
 		f:      r.f.Merge(f),
 	}
+}
+
+func (r *Deployment) FindByID(ctx context.Context, id id.DeploymentID) (*deployment.Deployment, error) {
+	return r.findOne(ctx, bson.M{
+		"id": id.String(),
+	}, true)
 }
 
 func (r *Deployment) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]*deployment.Deployment, error) {
@@ -41,10 +56,6 @@ func (r *Deployment) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]
 		return nil, err
 	}
 	return filterDeployments(ids, res), nil
-}
-
-func (r *Deployment) FindByID(ctx context.Context, id id.DeploymentID) (*deployment.Deployment, error) {
-	return r.findOne(ctx, bson.M{"id": id.String()})
 }
 
 func (r *Deployment) FindByWorkspace(ctx context.Context, workspace accountdomain.WorkspaceID, pagination *usecasex.Pagination) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
@@ -76,8 +87,12 @@ func (r *Deployment) find(ctx context.Context, filter interface{}) ([]*deploymen
 	return c.Result, nil
 }
 
-func (r *Deployment) findOne(ctx context.Context, filter interface{}) (*deployment.Deployment, error) {
-	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
+func (r *Deployment) findOne(ctx context.Context, filter any, filterByWorkspaces bool) (*deployment.Deployment, error) {
+	var f []accountdomain.WorkspaceID
+	if filterByWorkspaces {
+		f = r.f.Readable
+	}
+	c := mongodoc.NewDeploymentConsumer(f)
 	if err := r.client.FindOne(ctx, filter, c); err != nil {
 		return nil, err
 	}

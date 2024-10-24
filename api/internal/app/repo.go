@@ -95,7 +95,7 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 
 	log.Infof("file: local storage is used")
 	afs := afero.NewBasePathFs(afero.NewOsFs(), "data")
-	fileRepo, err = fs.NewFile(afs, conf.AssetBaseURL)
+	fileRepo, err = fs.NewFile(afs, conf.AssetBaseURL, conf.WorkflowBaseURL)
 	if err != nil {
 		log.Fatalf("file: init error: %+v", err)
 	}

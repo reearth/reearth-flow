@@ -5,8 +5,10 @@ import {
   DeleteProject,
   GetProject,
   GetWorkspaceProjects,
+  RunProject,
   UpdateProject,
 } from "@flow/types";
+import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
 
@@ -18,10 +20,11 @@ export const useProject = () => {
 
   const {
     createProjectMutation,
-    useGetProjectsInfiniteQuery,
-    useGetProjectByIdQuery,
     deleteProjectMutation,
     updateProjectMutation,
+    runProjectMutation,
+    useGetProjectsInfiniteQuery,
+    useGetProjectByIdQuery,
   } = useQueries();
 
   const createProject = async (
@@ -90,11 +93,39 @@ export const useProject = () => {
     }
   };
 
+  const runProject = async (
+    projectId: string,
+    workspaceId: string,
+    workflow: string,
+  ): Promise<RunProject> => {
+    const { mutateAsync, ...rest } = runProjectMutation;
+
+    try {
+      const formData = yamlToFormData(workflow, "debug-run-workflow");
+      const data = await mutateAsync({
+        projectId,
+        workspaceId,
+        file: formData,
+      });
+      toast({
+        title: t("Debug run started"),
+        description: t(
+          "Debug run has been successfully started for the project.",
+        ),
+        variant: "destructive",
+      });
+      return { projectId: data.projectId, started: data.started, ...rest };
+    } catch (_err) {
+      return { projectId: undefined, ...rest };
+    }
+  };
+
   return {
     useGetWorkspaceProjectsInfinite,
     useGetProject,
     createProject,
     updateProject,
     deleteProject,
+    runProject,
   };
 };

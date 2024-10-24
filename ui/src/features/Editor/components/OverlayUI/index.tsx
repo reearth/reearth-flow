@@ -19,6 +19,7 @@ type OverlayUIProps = {
     nodeType: ActionNodeType;
   };
   nodes: Node[];
+  onWorkflowDeployment: () => void;
   onNodesChange: (nodes: Node[]) => void;
   onNodeLocking: (nodeId: string) => void;
   onNodePickerClose: () => void;
@@ -31,6 +32,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   hoveredDetails,
   nodePickerOpen,
   nodes,
+  onWorkflowDeployment,
   onNodesChange,
   onNodeLocking,
   onNodePickerClose,
@@ -46,7 +48,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {canvas}
         <Breadcrumb />
         <Toolbox onRedo={onWorkflowRedo} onUndo={onWorkflowUndo} />
-        <ActionBar />
+        <ActionBar onWorkflowDeployment={onWorkflowDeployment} />
         <CanvasActionBar />
         <Infobar hoveredDetails={hoveredDetails} />
       </div>

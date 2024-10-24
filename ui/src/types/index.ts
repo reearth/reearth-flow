@@ -10,3 +10,5 @@ export * from "./api";
 export * from "./log";
 export * from "./action";
 export * from "./shortcuts";
+export * from "./deployment";
+export * from "./job";

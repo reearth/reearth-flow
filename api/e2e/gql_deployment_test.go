@@ -49,7 +49,7 @@ key2: value2
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	part, err := writer.CreateFormFile("workflowYaml", filepath.Base(file))
+	part, err := writer.CreateFormFile("file", filepath.Base(file))
 	assert.NoError(t, err)
 
 	_, err = io.Copy(part, yamlFile)
@@ -62,7 +62,6 @@ key2: value2
 		"input": {
 			"workspaceId": "workspace-id",
 			"projectId": "project-id",
-			"metaFile": "metaFile"
 		}
 	}`
 	err = writer.WriteField("variables", variables)

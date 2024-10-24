@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Button,
@@ -11,10 +11,10 @@ import {
   SelectValue,
 } from "@flow/components";
 import DateTimePicker from "@flow/components/DateTimePicker";
-import { useProject } from "@flow/lib/gql";
+import { useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Project } from "@flow/types";
+import type { Deployment } from "@flow/types";
 
 import "./styles.css";
 
@@ -24,9 +24,10 @@ const NewRun: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
-  const { useGetWorkspaceProjectsInfinite } = useProject();
+  const { useGetDeploymentsInfinite, executeDeployment } = useDeployment();
+
   const { pages, isFetching, fetchNextPage, hasNextPage } =
-    useGetWorkspaceProjectsInfinite(currentWorkspace?.id);
+    useGetDeploymentsInfinite(currentWorkspace?.id);
 
   const [runType, setRunType] = useState<RunType | undefined>(undefined);
   const [trigger, setTrigger] = useState<string | undefined>(undefined);
@@ -34,7 +35,7 @@ const NewRun: React.FC = () => {
   const [selectDropDown, setSelectDropDown] = useState<
     HTMLElement | undefined | null
   >();
-  const [selectedProject, selectProject] = useState<Project>();
+  const [selectedDeployment, selectDeployment] = useState<Deployment>();
 
   const runTypes = useMemo(
     () => [
@@ -53,16 +54,21 @@ const NewRun: React.FC = () => {
     [t],
   );
 
-  const projects: Project[] | undefined = useMemo(
+  const deployments: Deployment[] | undefined = useMemo(
     () =>
-      pages?.reduce((projects, page) => {
-        if (page?.projects) {
-          projects.push(...page.projects);
+      pages?.reduce((deployments, page) => {
+        if (page?.deployments) {
+          deployments.push(...page.deployments);
         }
-        return projects;
-      }, [] as Project[]),
+        return deployments;
+      }, [] as Deployment[]),
     [pages],
   );
+
+  const handleRun = useCallback(() => {
+    if (!selectedDeployment || !currentWorkspace) return;
+    executeDeployment({ deploymentId: selectedDeployment.id });
+  }, [currentWorkspace, selectedDeployment, executeDeployment]);
 
   useEffect(() => {
     if (
@@ -91,7 +97,7 @@ const NewRun: React.FC = () => {
     <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-6">
       <div className="flex items-center justify-between gap-4">
         <p className="text-xl dark:font-extralight">{t("New run")}</p>
-        <Button className="self-end" variant="outline">
+        <Button className="self-end" variant="outline" onClick={handleRun}>
           {t("Run")}
         </Button>
       </div>
@@ -153,12 +159,10 @@ const NewRun: React.FC = () => {
             </>
           )}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="manual-run-project">{t("Project")}</Label>
+            <Label htmlFor="manual-run-deployment">{t("Deployment")}</Label>
             <Select
               onValueChange={(pid) =>
-                selectProject(
-                  currentWorkspace?.projects?.find((p) => p.id === pid),
-                )
+                selectDeployment(deployments?.find((p) => p.id === pid))
               }>
               <SelectTrigger>
                 <SelectValue
@@ -167,16 +171,16 @@ const NewRun: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <div ref={(el) => setSelectDropDown(el?.parentElement)}>
-                  {projects?.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
+                  {deployments?.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.projectName ?? t("Unnamed project")}
                     </SelectItem>
                   ))}
                 </div>
               </SelectContent>
             </Select>
           </div>
-          {selectedProject && (
+          {selectedDeployment && (
             <>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="manual-run-version">{t("Version")}</Label>

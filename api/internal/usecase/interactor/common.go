@@ -27,10 +27,11 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	config ContainerConfig,
 ) interfaces.Container {
 	return interfaces.Container{
-		Asset:     NewAsset(r, g),
-		Project:   NewProject(r, g),
-		Workspace: accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
-		User:      accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
+		Asset:      NewAsset(r, g),
+		Deployment: NewDeployment(r, g),
+		Project:    NewProject(r, g),
+		Workspace:  accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
+		User:       accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
 	}
 }
 

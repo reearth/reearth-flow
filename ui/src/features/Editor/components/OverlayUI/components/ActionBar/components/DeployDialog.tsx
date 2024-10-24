@@ -15,18 +15,21 @@ import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 
 type Props = {
+  onWorkflowDeployment: () => void;
   setShowDialog: Dispatch<SetStateAction<"deploy" | undefined>>;
 };
 
-const DeployDialog: React.FC<Props> = ({ setShowDialog }) => {
+const DeployDialog: React.FC<Props> = ({
+  onWorkflowDeployment,
+  setShowDialog,
+}) => {
   const t = useT();
-
   const [currentProject] = useCurrentProject();
 
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(undefined)}>
       <DialogContent size="sm">
-        <DialogTitle>{t("Deploy project workflow")}</DialogTitle>
+        <DialogTitle>{t("Deploy project's workflow")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex flex-col">
             <Label>{t("Project to deploy: ")}</Label>
@@ -50,9 +53,8 @@ const DeployDialog: React.FC<Props> = ({ setShowDialog }) => {
         </DialogContentWrapper>
         <DialogFooter>
           <Button
-          // disabled={buttonDisabled || !editProject?.name}
-          // onClick={onUpdateProject}
-          >
+            // disabled={buttonDisabled || !editProject?.name}
+            onClick={onWorkflowDeployment}>
             {t("Deploy")}
           </Button>
         </DialogFooter>

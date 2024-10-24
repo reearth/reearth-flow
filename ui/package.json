@@ -61,7 +61,7 @@
     "@tanstack/react-router": "1.58.7",
     "@tanstack/react-table": "8.20.5",
     "@xyflow/react": "12.3.0",
-    "cesium": "1.121.1",
+    "cesium": "1.122.0",
     "class-variance-authority": "0.7.0",
     "clsx": "2.1.1",
     "cmdk": "1.0.0",
@@ -81,6 +81,7 @@
     "react-yjs": "2.0.0",
     "use-resize-observer": "9.1.0",
     "y-websocket": "2.0.4",
+    "yaml": "2.6.0",
     "yjs": "13.6.19"
   },
   "devDependencies": {

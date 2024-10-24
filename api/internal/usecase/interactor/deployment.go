@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -48,8 +49,8 @@ func (i *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 	return i.deploymentRepo.FindByWorkspace(ctx, id, p)
 }
 
-func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentParam, operator *usecase.Operator) (_ *deployment.Deployment, err error) {
-	if err := i.CanWriteWorkspace(p.Workspace, operator); err != nil {
+func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentParam, operator *usecase.Operator) (result *deployment.Deployment, err error) {
+	if err := i.CanWriteWorkspace(dp.Workspace, operator); err != nil {
 		return nil, err
 	}
 
@@ -65,20 +66,20 @@ func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentPa
 		}
 	}()
 
-	_, err = i.projectRepo.FindByID(ctx, p.Project)
+	_, err = i.projectRepo.FindByID(ctx, dp.Project)
 	if err != nil {
 		return nil, err
 	}
 
-	url, err := i.file.UploadWorkflow(ctx, &p.Workflow)
+	url, err := i.file.UploadWorkflow(ctx, dp.Workflow)
 	if err != nil {
 		return nil, err
 	}
 
 	d, err := deployment.New().
 		NewID().
-		Project(p.Project).
-		Workspace(p.Workspace).
+		Project(dp.Project).
+		Workspace(dp.Workspace).
 		WorkflowURL(url.String()).
 		Version("v0.1"). //version is hardcoded for now @pyshx
 		Build()
@@ -92,6 +93,86 @@ func (i *Deployment) Create(ctx context.Context, p interfaces.CreateDeploymentPa
 
 	tx.Commit()
 	return d, nil
+}
+
+func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentParam, operator *usecase.Operator) (_ *deployment.Deployment, err error) {
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return
+	}
+
+	ctx = tx.Context()
+	defer func() {
+		if err2 := tx.End(ctx); err == nil && err2 != nil {
+			err = err2
+		}
+	}()
+
+	d, err := i.deploymentRepo.FindByID(ctx, dp.ID)
+	if err != nil {
+		return nil, err
+	}
+	if err := i.CanWriteWorkspace(d.Workspace(), operator); err != nil {
+		return nil, err
+	}
+
+	if dp.Workflow != nil {
+		if url, _ := url.Parse(d.WorkflowUrl()); url != nil {
+			if err := i.file.RemoveWorkflow(ctx, url); err != nil {
+				return nil, err
+			}
+		}
+
+		url, err := i.file.UploadWorkflow(ctx, dp.Workflow)
+		if err != nil {
+			return nil, err
+		}
+		d.SetWorkflowUrl(url.String())
+	}
+
+	// d.SetVersion() // version is hardcoded for now but will need to be incremented here eventually
+
+	if err := i.deploymentRepo.Save(ctx, d); err != nil {
+		return nil, err
+	}
+
+	tx.Commit()
+	return d, nil
+}
+
+func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID, operator *usecase.Operator) (err error) {
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return
+	}
+
+	ctx = tx.Context()
+	defer func() {
+		if err2 := tx.End(ctx); err == nil && err2 != nil {
+			err = err2
+		}
+	}()
+
+	dep, err := i.deploymentRepo.FindByID(ctx, deploymentID)
+	if err != nil {
+		return err
+	}
+	if err := i.CanWriteWorkspace(dep.Workspace(), operator); err != nil {
+		return err
+	}
+
+	if url, _ := url.Parse(dep.WorkflowUrl()); url != nil {
+		if err := i.file.RemoveWorkflow(ctx, url); err != nil {
+			return err
+		}
+	}
+
+	if err := i.deploymentRepo.Remove(ctx, deploymentID); err != nil {
+		return err
+	}
+
+	tx.Commit()
+	return nil
 }
 
 func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeploymentParam, operator *usecase.Operator) (_ *job.Job, err error) {

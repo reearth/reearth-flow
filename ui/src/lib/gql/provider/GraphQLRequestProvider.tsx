@@ -12,6 +12,8 @@ import { useAuth } from "@flow/lib/auth";
 
 import { Sdk, getSdk } from "../__gen__/plugins/graphql-request";
 
+import { requestMiddleware } from "./GraphQLRequestMiddleware";
+
 const GraphQLContext = createContext<Sdk | undefined>(undefined);
 
 export const useGraphQLContext = () => useContext(GraphQLContext);
@@ -34,6 +36,7 @@ export const GraphQLRequestProvider = ({
         headers: {
           authorization: `Bearer ${token}`,
         },
+        requestMiddleware: requestMiddleware,
       });
       const sdk = getSdk(graphQLClient);
       setGraphQLSdk(sdk);
