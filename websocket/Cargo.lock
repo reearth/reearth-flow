@@ -64,8 +64,12 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "chrono",
  "dotenv",
  "envy",
+ "flow-websocket-domain",
+ "flow-websocket-infra",
+ "flow-websocket-services",
  "redis 0.25.4",
  "serde",
  "serde_json",
