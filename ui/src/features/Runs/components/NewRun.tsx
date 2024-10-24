@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@flow/components";
 import DateTimePicker from "@flow/components/DateTimePicker";
-import { useProject, useDeployment } from "@flow/lib/gql";
+import { useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { Deployment } from "@flow/types";
@@ -24,12 +24,10 @@ const NewRun: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
-  const { useGetDeploymentsInfinite } = useDeployment();
+  const { useGetDeploymentsInfinite, executeDeployment } = useDeployment();
 
   const { pages, isFetching, fetchNextPage, hasNextPage } =
     useGetDeploymentsInfinite(currentWorkspace?.id);
-
-  const { runProject } = useProject();
 
   const [runType, setRunType] = useState<RunType | undefined>(undefined);
   const [trigger, setTrigger] = useState<string | undefined>(undefined);
@@ -69,12 +67,8 @@ const NewRun: React.FC = () => {
 
   const handleRun = useCallback(() => {
     if (!selectedDeployment || !currentWorkspace) return;
-    runProject(
-      selectedDeployment.projectId,
-      currentWorkspace.id,
-      '{ id: "1", name: "test" }', // TODO: Use actual workflow
-    );
-  }, [currentWorkspace, selectedDeployment, runProject]);
+    executeDeployment({ deploymentId: selectedDeployment.id });
+  }, [currentWorkspace, selectedDeployment, executeDeployment]);
 
   useEffect(() => {
     if (
