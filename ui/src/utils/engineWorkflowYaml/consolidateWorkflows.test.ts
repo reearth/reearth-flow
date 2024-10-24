@@ -38,7 +38,7 @@ describe("consolidateWorkflows", () => {
 
     expect(result).toEqual({
       id: "random-id-123",
-      name: "My project's workflow",
+      name: "somename",
       entryGraphId: "main",
       graphs: mockSubGraphs,
     });
@@ -63,18 +63,13 @@ describe("consolidateWorkflows", () => {
 
     const result = consolidateWorkflows("somename", mockWorkflows);
 
-    expect(result).toEqual({
-      id: "random-id-456",
-      name: "My project's workflow",
-      entryGraphId: undefined,
-      graphs: mockSubGraphs,
-    });
+    expect(result).toEqual(undefined);
 
-    expect(createSubGraphs).toHaveBeenCalledWith(mockWorkflows);
-    expect(randomID).toHaveBeenCalled();
+    expect(createSubGraphs).not.toHaveBeenCalledWith(mockWorkflows);
+    expect(randomID).not.toHaveBeenCalled();
   });
 
-  it("should return correct structure when workflows array is empty", () => {
+  it("should return undefined when workflows array is empty (since there is no main/entry point)", () => {
     const mockWorkflows: Workflow[] = [];
 
     (createSubGraphs as any).mockReturnValue([]);
@@ -82,14 +77,8 @@ describe("consolidateWorkflows", () => {
 
     const result = consolidateWorkflows("somename", mockWorkflows);
 
-    expect(result).toEqual({
-      id: "random-id-789",
-      name: "My project's workflow",
-      entryGraphId: undefined,
-      graphs: [],
-    });
-
-    expect(createSubGraphs).toHaveBeenCalledWith(mockWorkflows);
-    expect(randomID).toHaveBeenCalled();
+    expect(result).toEqual(undefined);
+    expect(createSubGraphs).not.toHaveBeenCalledWith(mockWorkflows);
+    expect(randomID).not.toHaveBeenCalled();
   });
 });

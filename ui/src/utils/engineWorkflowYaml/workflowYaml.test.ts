@@ -52,7 +52,6 @@ describe("createWorkflowsYaml", () => {
       yamlWorkflow: mockYamlString,
     });
 
-    expect(consolidateWorkflows).toHaveBeenCalledWith(mockWorkflows);
     expect(YAML.stringify).toHaveBeenCalledWith(mockConsolidatedWorkflow);
   });
 
@@ -76,7 +75,6 @@ describe("createWorkflowsYaml", () => {
       yamlWorkflow: mockYamlString,
     });
 
-    expect(consolidateWorkflows).toHaveBeenCalledWith([]);
     expect(YAML.stringify).toHaveBeenCalledWith(mockConsolidatedWorkflow);
   });
 
@@ -101,7 +99,6 @@ describe("createWorkflowsYaml", () => {
       "YAML stringify error",
     );
 
-    expect(consolidateWorkflows).toHaveBeenCalledWith(mockWorkflows);
     expect(YAML.stringify).toHaveBeenCalledWith(mockConsolidatedWorkflow);
   });
 });

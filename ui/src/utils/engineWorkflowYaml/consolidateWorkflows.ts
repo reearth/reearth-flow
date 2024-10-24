@@ -1,14 +1,19 @@
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import type { Workflow } from "@flow/types";
+import type { EngineReadyWorkflow, Workflow } from "@flow/types";
 
 import { randomID } from "../randomID";
 
 import { createSubGraphs } from "./createSubGraphs";
 
-export const consolidateWorkflows = (name: string, workflows: Workflow[]) => {
-  const entryGraphId =
-    workflows.find((wf) => wf.id === DEFAULT_ENTRY_GRAPH_ID)?.id ??
-    DEFAULT_ENTRY_GRAPH_ID;
+export const consolidateWorkflows = (
+  name: string,
+  workflows: Workflow[],
+): EngineReadyWorkflow | undefined => {
+  const entryGraphId = workflows.find(
+    (wf) => wf.id === DEFAULT_ENTRY_GRAPH_ID,
+  )?.id;
+  if (!entryGraphId) return undefined;
+
   const subGraphs = createSubGraphs(workflows);
 
   const consolidatedWorkflow = {
