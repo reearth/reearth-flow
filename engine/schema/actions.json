@@ -2116,7 +2116,7 @@
     {
       "name": "PLATEAU.AttributeFlattener",
       "type": "processor",
-      "description": "AttributeFlattener",
+      "description": "Flatten attributes for building feature",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
