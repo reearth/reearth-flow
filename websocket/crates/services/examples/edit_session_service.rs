@@ -116,63 +116,7 @@ async fn simulate_multiple_tasks(
     let session_id = generate_id(14, "session");
     debug!(?session_id, "Generated new session ID");
 
-    // Create initial snapshot before starting session
-    let initial_snapshot = ProjectSnapshot::new(
-        Metadata::new(
-            generate_id(14, "snap"),
-            project_id.to_string(),
-            Some(session_id.clone()),
-            "Initial Snapshot".to_string(),
-            String::new(),
-        ),
-        SnapshotInfo::new(
-            Some("system".to_string()),
-            vec!["system".to_string()],
-            ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
-            ObjectDelete {
-                deleted: false,
-                delete_after: None,
-            },
-            Some(Utc::now()),
-            Some(Utc::now()),
-        ),
-    );
-
-    // Create initial snapshot state
-    let initial_state = SnapshotData::new(
-        project_id.to_string(),
-        vec![], // Empty initial state
-        Some("Initial State".to_string()),
-        Some("system".to_string()),
-    );
-
-    // Store initial snapshot for both project and session
-    service
-        .snapshot_repository
-        .create_snapshot(initial_snapshot.clone())
-        .await?;
-    service
-        .snapshot_repository
-        .create_snapshot_state(initial_state.clone())
-        .await?;
-
-    // Store as latest project snapshot
-    service
-        .snapshot_repository
-        .update_latest_snapshot(initial_snapshot.clone())
-        .await?;
-
-    // Store snapshot for session
-    service
-        .snapshot_repository
-        .create_snapshot(initial_snapshot.clone())
-        .await?;
-    service
-        .snapshot_repository
-        .create_snapshot_state(initial_state)
-        .await?;
-
-    // Task 1: Initialize session with the same session_id
+    // Task 1: First initialize the session
     let task_data = create_task_data(project_id, &session_id, Some(1), None);
     process_task(service, task_data, "Initialize session").await?;
 

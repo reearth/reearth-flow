@@ -55,7 +55,7 @@ where
     pub async fn process(
         &self,
         mut data: ManageProjectEditSessionTaskData,
-        created_by: Option<String>, //
+        created_by: Option<String>,
     ) -> Result<(), ProjectServiceError> {
         if let Some(mut session) = self
             .session_repository
@@ -64,9 +64,19 @@ where
         {
             debug!(session = ?session, "Active session found");
 
-            session
-                .load_session(&*self.snapshot_repository, &data.session_id)
-                .await?;
+            if !session.session_setup_complete {
+                session
+                    .start_or_join_session(&*self.snapshot_repository, &*self.redis_data_manager)
+                    .await?;
+                debug!("Session initialized");
+            }
+
+            let session_id = session.session_id.clone();
+            if let Some(id) = session_id {
+                session
+                    .load_session(&*self.snapshot_repository, &id)
+                    .await?;
+            }
 
             debug!(session = ?session, "Session after load_session");
 
