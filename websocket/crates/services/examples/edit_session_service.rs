@@ -66,15 +66,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let project_id = "project_123".to_string();
     let tenant = ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned());
-    let session = ProjectEditingSession::new(project_id.clone(), tenant);
-    debug!(?project_id, "Project session created");
+    let mut session = ProjectEditingSession::new(project_id.clone(), tenant);
+    session.session_id = Some(generate_id(14, "session"));
 
     let redis_data_manager = FlowProjectRedisDataManager::new(
         project_id.clone(),
         session.session_id.clone(),
         Arc::new(redis_client.clone()),
     );
-    trace!("Redis data manager initialized");
+
+    redis_data_manager
+        .start_editing_session(Vec::new(), vec![], false)
+        .await?;
 
     let service = ManageEditSessionService::new(
         Arc::new(session_repo),
@@ -116,6 +119,7 @@ async fn simulate_multiple_tasks(
     // Task 1: First initialize the session
     let task_data = create_task_data(project_id, Some(1), None);
     process_task(service, task_data, "Initialize session").await?;
+    debug!("Session initialized");
 
     // Simulate some time passing
     warn!("Simulating time passage (1 second)");
@@ -124,6 +128,7 @@ async fn simulate_multiple_tasks(
     // Task 2: Update session with client count
     let task_data = create_task_data(project_id, Some(2), None);
     process_task(service, task_data, "Update client count").await?;
+    debug!("Client count updated");
 
     // Simulate more time passing
     warn!("Simulating time passage (2 seconds)");
@@ -132,7 +137,7 @@ async fn simulate_multiple_tasks(
     // Task 3: Simulate clients disconnecting
     let task_data = create_task_data(project_id, Some(0), Some(Utc::now()));
     process_task(service, task_data, "Simulate clients disconnecting").await?;
-
+    debug!("Clients disconnected");
     // Simulate time passing to trigger session end
     warn!("Simulating time passage (11 seconds)");
     sleep(Duration::from_secs(11)).await;
@@ -144,6 +149,7 @@ async fn simulate_multiple_tasks(
         Some(Utc::now() - chrono::Duration::seconds(11)),
     );
     process_task(service, task_data, "End session").await?;
+    debug!("Session ended");
 
     Ok(())
 }
