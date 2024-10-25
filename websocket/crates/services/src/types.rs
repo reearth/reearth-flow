@@ -14,7 +14,6 @@ pub struct CreateSnapshotData {
 
 #[derive(Clone, Debug)]
 pub struct ManageProjectEditSessionTaskData {
-    pub session_id: String,
     pub project_id: String,
     pub clients_count: Option<usize>,
     pub last_merged_at: Option<DateTime<Utc>>,

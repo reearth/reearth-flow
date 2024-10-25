@@ -64,21 +64,17 @@ where
         {
             debug!(session = ?session, "Active session found");
 
-            if !session.session_setup_complete {
-                session
+            if session.session_id.is_none() {
+                let session_id = session
                     .start_or_join_session(&*self.snapshot_repository, &*self.redis_data_manager)
                     .await?;
-                debug!("Session initialized");
-            }
+                debug!("Session initialized with ID: {}", session_id);
 
-            let session_id = session.session_id.clone();
-            if let Some(id) = session_id {
-                session
-                    .load_session(&*self.snapshot_repository, &id)
+                self.session_repository
+                    .update_session(session.clone())
                     .await?;
+                debug!("Session updated after initialization");
             }
-
-            debug!(session = ?session, "Session after load_session");
 
             let client_count = self.update_client_count(&mut data).await?;
             debug!(client_count = client_count, "Updated client count");
@@ -96,12 +92,11 @@ where
             debug!(session_ended = session_ended, "Session end check completed");
 
             if !session_ended {
-                self.complete_job_if_met_requirements(&session, &data)
-                    .await?;
+                self.complete_job_if_met_requirements(&session).await?;
                 debug!("Job completion check completed");
 
                 self.session_repository.update_session(session).await?;
-                debug!("Session updated");
+                debug!("Final session update completed");
             } else {
                 debug!("Session ended, skipping further processing");
             }
@@ -299,7 +294,8 @@ where
                 && client_count == 0
             {
                 debug!("Conditions met for ending session");
-                if session.session_setup_complete {
+                // Check if the session has been initialized
+                if session.session_id.is_some() {
                     match session
                         .end_session(&*self.redis_data_manager, &*self.snapshot_repository)
                         .await
@@ -328,11 +324,33 @@ where
     pub async fn complete_job_if_met_requirements(
         &self,
         session: &ProjectEditingSession,
-        data: &ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
-        if session.active_editing_session().await?.as_ref() == Some(&data.session_id) {
+        if let Some(_) = session.active_editing_session().await? {
+            let (final_state, _) = session.merge_updates(&*self.redis_data_manager).await?;
+
+            if let Some(snapshot) = self
+                .snapshot_repository
+                .get_latest_snapshot(&session.project_id)
+                .await?
+            {
+                let snapshot_data =
+                    SnapshotData::new(session.project_id.clone(), final_state, None, None);
+
+                self.snapshot_repository
+                    .update_latest_snapshot(snapshot)
+                    .await?;
+                self.snapshot_repository
+                    .update_latest_snapshot_state(&session.project_id, snapshot_data)
+                    .await?;
+            }
+
             sleep(JOB_COMPLETION_DELAY).await;
+
+            debug!("Task completed successfully");
+        } else {
+            debug!("Task skipped - no active session");
         }
+
         Ok(())
     }
 
@@ -345,7 +363,7 @@ where
 mod tests {
     use super::*;
     use chrono::{Duration, Utc};
-    use mockall::predicate::*;
+    use mockall::predicate::{self, *};
 
     mockall::mock! {
         ProjectEditingSessionRepository {}
@@ -396,7 +414,6 @@ mod tests {
         let task_data = create_task_data();
 
         let mut session = create_session("project_123");
-        session.session_id = Some("session_456".to_string());
 
         mocks
             .session_repo
@@ -411,32 +428,41 @@ mod tests {
             .times(1)
             .returning(|| Ok(1));
 
+        // merge_updates will be called twice
         mocks
             .redis_manager
             .expect_merge_updates()
             .with(eq(false))
-            .times(1)
+            .times(2)
             .returning(|_| Ok((vec![], vec![])));
 
-        mocks
-            .session_repo
-            .expect_update_session()
-            .times(1)
-            .returning(|_| Ok(()));
-
-        mocks
-            .snapshot_repo
-            .expect_get_latest_snapshot()
-            .with(eq("session_456"))
-            .times(1)
-            .returning(|_| Ok(Some(create_project_snapshot())));
-
+        // Add get_latest_snapshot expectation
         mocks
             .snapshot_repo
             .expect_get_latest_snapshot()
             .with(eq("project_123"))
-            .times(..=1)
+            .times(1)
             .returning(|_| Ok(Some(create_project_snapshot())));
+
+        // Add update_latest_snapshot expectation
+        mocks
+            .snapshot_repo
+            .expect_update_latest_snapshot()
+            .times(1)
+            .returning(|_| Ok(()));
+
+        // Add update_latest_snapshot_state expectation
+        mocks
+            .snapshot_repo
+            .expect_update_latest_snapshot_state()
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        mocks
+            .session_repo
+            .expect_update_session()
+            .times(1) // Changed to 1 time
+            .returning(|_| Ok(()));
 
         service.session_repository = Arc::new(mocks.session_repo);
         service.snapshot_repository = Arc::new(mocks.snapshot_repo);
@@ -489,7 +515,6 @@ mod tests {
         let mut task_data = create_task_data();
         let mut session = create_session("project_123");
 
-        session.session_setup_complete = true;
         session.session_id = Some("session_456".to_string());
 
         mocks
@@ -520,7 +545,6 @@ mod tests {
             task_data.last_snapshot_at = Some(Utc::now() - Duration::minutes(6));
             let mut session = create_session("project_123");
             session.session_id = Some("session_456".to_string());
-            session.session_setup_complete = true;
 
             // Set up sequence for get_latest_snapshot calls
             let context = mocks
@@ -582,7 +606,6 @@ mod tests {
             task_data.last_snapshot_at = Some(Utc::now() - Duration::minutes(6));
             let mut session = create_session("project_123");
             session.session_id = Some("session_456".to_string());
-            session.session_setup_complete = true;
 
             // Set up sequence for get_latest_snapshot calls
             let _context = mocks
@@ -639,7 +662,6 @@ mod tests {
         task_data.clients_disconnected_at = Some(Utc::now() - Duration::seconds(11));
         let mut session = create_session("project_123");
         session.session_id = Some("session_456".to_string());
-        session.session_setup_complete = true;
 
         mocks
             .redis_manager
@@ -669,26 +691,48 @@ mod tests {
             .await;
         assert!(result.is_ok());
         assert!(session.session_id.is_none());
-        assert!(!session.session_setup_complete);
     }
 
     #[tokio::test]
     async fn test_complete_job_if_met_requirements() {
-        let (service, _mocks) = setup_service();
-        let task_data = create_task_data();
+        let (mut service, mut mocks) = setup_service(); // Add mut
         let mut session = create_session("project_123");
 
-        session.session_setup_complete = true;
-        session.session_id = Some("session_456".to_string());
+        mocks
+            .redis_manager
+            .expect_merge_updates()
+            .with(eq(false))
+            .times(1)
+            .returning(|_| Ok((vec![1, 2, 3], vec![])));
 
-        let result = service
-            .complete_job_if_met_requirements(&session, &task_data)
-            .await;
+        // Add expectation for active_editing_session
+        session.session_id = Some("session_123".to_string());
 
-        if let Err(ref e) = result {
-            println!("Error: {:?}", e);
-        }
+        // Add expectation for get_latest_snapshot
+        mocks
+            .snapshot_repo
+            .expect_get_latest_snapshot()
+            .with(eq("project_123"))
+            .times(1)
+            .returning(|_| Ok(Some(create_project_snapshot())));
 
+        // Add expectations for update_latest_snapshot and update_latest_snapshot_state
+        mocks
+            .snapshot_repo
+            .expect_update_latest_snapshot()
+            .times(1)
+            .returning(|_| Ok(()));
+
+        mocks
+            .snapshot_repo
+            .expect_update_latest_snapshot_state()
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        service.redis_data_manager = Arc::new(mocks.redis_manager);
+        service.snapshot_repository = Arc::new(mocks.snapshot_repo);
+
+        let result = service.complete_job_if_met_requirements(&session).await;
         assert!(result.is_ok());
     }
 
@@ -699,22 +743,13 @@ mod tests {
         task_data.last_snapshot_at = Some(Utc::now() - Duration::minutes(10));
 
         let mut session = create_session("project_123");
-        session.session_id = Some("session_456".to_string());
+        session.session_id = Some("session_456".to_string()); // Ensure session_id is set
 
         mocks
             .session_repo
             .expect_get_active_session()
-            .with(eq("project_123"))
             .times(1)
             .returning(move |_| Ok(Some(session.clone())));
-
-        // Add expectation for load_session
-        mocks
-            .snapshot_repo
-            .expect_get_latest_snapshot()
-            .with(eq("session_456"))
-            .times(1)
-            .returning(|_| Ok(Some(create_project_snapshot())));
 
         mocks
             .session_repo
@@ -722,38 +757,43 @@ mod tests {
             .times(1)
             .returning(|| Ok(1));
 
+        // merge_updates call
         mocks
             .redis_manager
             .expect_merge_updates()
             .with(eq(false))
-            .times(1)
+            .times(2)
             .returning(|_| Ok((vec![], vec![])));
 
-        // Expect get_latest_snapshot for checking existing snapshot
-        mocks
-            .snapshot_repo
-            .expect_get_latest_snapshot()
-            .with(eq("project_123"))
-            .times(1)
-            .returning(|_| Ok(None));
-
+        // get_current_state expectation
         mocks
             .redis_manager
             .expect_get_current_state()
             .times(1)
             .returning(|| Ok(Some(vec![1, 2, 3])));
 
+        // get_latest_snapshot expectation
         mocks
             .snapshot_repo
-            .expect_create_snapshot()
-            .times(1)
+            .expect_get_latest_snapshot()
+            .with(eq("project_123"))
+            .times(2)
+            .returning(|_| Ok(Some(create_project_snapshot())));
+
+        // update_latest_snapshot expectation
+        mocks
+            .snapshot_repo
+            .expect_update_latest_snapshot()
+            .times(2)
             .returning(|_| Ok(()));
 
+        // update_latest_snapshot_state expectation
         mocks
             .snapshot_repo
-            .expect_create_snapshot_state()
-            .times(1)
-            .returning(|_| Ok(()));
+            .expect_update_latest_snapshot_state()
+            .times(2) // Allow two calls
+            .with(eq("project_123"), predicate::always())
+            .returning(|_, _| Ok(()));
 
         mocks
             .session_repo
@@ -775,17 +815,14 @@ mod tests {
     async fn test_process_with_session_end() {
         let (mut service, mut mocks) = setup_service();
         let mut task_data = create_task_data();
-        task_data.clients_count = Some(0);
-        task_data.clients_disconnected_at = Some(Utc::now() - Duration::seconds(15));
+        task_data.clients_disconnected_at = Some(Utc::now() - Duration::seconds(11));
 
         let mut session = create_session("project_123");
-        session.session_id = Some("session_456".to_string());
-        session.session_setup_complete = true;
+        session.session_id = Some("session_456".to_string()); // Ensure session_id is set
 
         mocks
             .session_repo
             .expect_get_active_session()
-            .with(eq("project_123"))
             .times(1)
             .returning(move |_| Ok(Some(session.clone())));
 
@@ -795,6 +832,7 @@ mod tests {
             .times(1)
             .returning(|| Ok(0));
 
+        // Regular merge_updates call
         mocks
             .redis_manager
             .expect_merge_updates()
@@ -813,6 +851,7 @@ mod tests {
             .snapshot_repo
             .expect_update_latest_snapshot_state()
             .times(1)
+            .with(eq("project_123"), predicate::always())
             .returning(|_, _| Ok(()));
 
         mocks
@@ -821,23 +860,9 @@ mod tests {
             .times(1)
             .returning(|| Ok(()));
 
-        mocks
-            .snapshot_repo
-            .expect_get_latest_snapshot()
-            .with(eq("session_456"))
-            .times(1)
-            .returning(|_| Ok(Some(create_project_snapshot())));
-
-        mocks
-            .snapshot_repo
-            .expect_get_latest_snapshot()
-            .with(eq("project_123"))
-            .times(..=1)
-            .returning(|_| Ok(Some(create_project_snapshot())));
-
         service.session_repository = Arc::new(mocks.session_repo);
-        service.snapshot_repository = Arc::new(mocks.snapshot_repo);
         service.redis_data_manager = Arc::new(mocks.redis_manager);
+        service.snapshot_repository = Arc::new(mocks.snapshot_repo);
 
         let result = service.process(task_data, None).await;
         assert!(result.is_ok());
@@ -893,7 +918,6 @@ mod tests {
     fn create_task_data() -> ManageProjectEditSessionTaskData {
         ManageProjectEditSessionTaskData {
             project_id: "project_123".to_string(),
-            session_id: "session_456".to_string(),
             clients_count: Some(1),
             clients_disconnected_at: None,
             last_merged_at: None,
@@ -906,7 +930,6 @@ mod tests {
             project_id.to_string(),
             ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
         );
-        session.session_setup_complete = true;
         session.session_id = Some(generate_id(14, "session"));
         session
     }

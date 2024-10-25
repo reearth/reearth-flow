@@ -14,7 +14,6 @@ use tokio::sync::Mutex;
 pub struct ProjectEditingSession {
     pub project_id: String,
     pub session_id: Option<String>,
-    pub session_setup_complete: bool,
     pub tenant: ObjectTenant,
     #[serde(skip)]
     session_lock: Arc<Mutex<()>>,
@@ -51,7 +50,6 @@ impl Default for ProjectEditingSession {
         Self {
             project_id: "".to_string(),
             session_id: None,
-            session_setup_complete: false,
             session_lock: Arc::new(Mutex::new(())),
             tenant: ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
         }
@@ -64,7 +62,6 @@ impl ProjectEditingSession {
             project_id,
             session_id: None,
             tenant,
-            session_setup_complete: false,
             session_lock: Arc::new(Mutex::new(())),
         }
     }
@@ -79,8 +76,8 @@ impl ProjectEditingSession {
         R: RedisDataManager,
     {
         let session_id = generate_id(14, "editor-session");
-        self.session_id = Some(session_id.clone());
-        if !self.session_setup_complete {
+
+        if self.session_id.is_none() {
             let latest_snapshot_state = snapshot_repo
                 .get_latest_snapshot_state(&self.project_id)
                 .await
@@ -90,7 +87,8 @@ impl ProjectEditingSession {
                 .await
                 .map_err(ProjectEditingSessionError::redis)?;
         }
-        self.session_setup_complete = true;
+
+        self.session_id = Some(session_id.clone());
         Ok(session_id)
     }
 
@@ -102,9 +100,7 @@ impl ProjectEditingSession {
     where
         R: RedisDataManager,
     {
-        if !self.session_setup_complete {
-            return Err(ProjectEditingSessionError::SessionNotSetup);
-        }
+        self.check_session_setup()?;
 
         let current_state = redis_data_manager
             .get_current_state()
@@ -147,9 +143,8 @@ impl ProjectEditingSession {
     where
         R: RedisDataManager,
     {
-        if !self.session_setup_complete {
-            return Err(ProjectEditingSessionError::SessionNotSetup);
-        }
+        self.check_session_setup()?;
+
         let current_state = redis_data_manager
             .get_current_state()
             .await
@@ -248,10 +243,7 @@ impl ProjectEditingSession {
         R: RedisDataManager,
         S: ProjectSnapshotRepository,
     {
-        if !self.session_setup_complete {
-            return Err(ProjectEditingSessionError::SessionNotSetup);
-        }
-
+        self.check_session_setup()?;
         let _lock = self.session_lock.lock().await;
 
         let (state, _) = redis_data_manager
@@ -272,8 +264,6 @@ impl ProjectEditingSession {
             .map_err(ProjectEditingSessionError::redis)?;
 
         self.session_id = None;
-        self.session_setup_complete = false;
-
         Ok(())
     }
 
@@ -297,7 +287,6 @@ impl ProjectEditingSession {
                 }
                 self.project_id = snapshot.metadata.project_id;
                 self.session_id = Some(session_id.to_string());
-                self.session_setup_complete = true;
                 Ok(())
             }
             None => Err(ProjectEditingSessionError::SnapshotNotFound(
@@ -309,19 +298,15 @@ impl ProjectEditingSession {
     pub async fn active_editing_session(
         &self,
     ) -> Result<Option<String>, ProjectEditingSessionError> {
-        if !self.session_setup_complete {
-            Err(ProjectEditingSessionError::SessionNotSetup)
-        } else {
-            Ok(self.session_id.clone())
-        }
+        self.check_session_setup()?;
+        Ok(self.session_id.clone())
     }
 
     // Helper method to check if the session is set up
     fn check_session_setup(&self) -> Result<(), ProjectEditingSessionError> {
-        if !self.session_setup_complete {
-            Err(ProjectEditingSessionError::SessionNotSetup)
-        } else {
-            Ok(())
+        match &self.session_id {
+            Some(_) => Ok(()),
+            None => Err(ProjectEditingSessionError::SessionNotSetup),
         }
     }
 }
@@ -330,7 +315,7 @@ impl ProjectEditingSession {
 mod tests {
     use super::*;
     use async_trait::async_trait;
-    use mockall::mock;
+    use mockall::{mock, predicate::eq};
 
     // Mock RedisDataManager
     mock! {
@@ -424,7 +409,6 @@ mod tests {
         // Assert success and that session ID is set
         assert!(session_id.is_ok());
         assert!(session.session_id.is_some());
-        assert!(session.session_setup_complete);
     }
 
     #[tokio::test]
@@ -433,7 +417,7 @@ mod tests {
             "test_project".to_string(),
             ObjectTenant::new("tenant_id".to_string(), "tenant_name".to_string()),
         );
-        session.session_setup_complete = true;
+        session.session_id = Some("test_session".to_string());
 
         // Test case 1: Current state matches input state
         {
@@ -491,21 +475,22 @@ mod tests {
     async fn test_merge_updates() {
         let mut session = ProjectEditingSession::new(
             "test_project".to_string(),
-            ObjectTenant::new("tenant_id".to_string(), "tenant_name".to_string()),
+            ObjectTenant::new("tenant_id".to_string(), "tenant_key".to_string()),
         );
-        session.session_setup_complete = true; // Set this to true
+        session.session_id = Some("test_session".to_string());
 
-        let mut mock_redis_manager = MockRedisDataManager::new();
-
-        mock_redis_manager
+        let mut mock_redis = MockRedisDataManager::new();
+        mock_redis
             .expect_merge_updates()
-            .returning(|_| Ok((vec![1, 2, 3], vec!["test_update".to_string()])));
+            .with(eq(false))
+            .times(1)
+            .returning(|_| Ok((vec![1, 2, 3], vec!["user1".to_string()])));
 
-        let result = session.merge_updates(&mock_redis_manager).await;
-
+        let result = session.merge_updates(&mock_redis).await;
         assert!(result.is_ok());
-        let (state, updates) = result.unwrap();
-        assert_eq!(state, vec![1, 2, 3]);
-        assert_eq!(updates, vec!["test_update"]);
+
+        if let Ok((state, _)) = result {
+            assert_eq!(state, vec![1, 2, 3]);
+        }
     }
 }

@@ -113,11 +113,8 @@ async fn simulate_multiple_tasks(
     >,
     project_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let session_id = generate_id(14, "session");
-    debug!(?session_id, "Generated new session ID");
-
     // Task 1: First initialize the session
-    let task_data = create_task_data(project_id, &session_id, Some(1), None);
+    let task_data = create_task_data(project_id, Some(1), None);
     process_task(service, task_data, "Initialize session").await?;
 
     // Simulate some time passing
@@ -125,7 +122,7 @@ async fn simulate_multiple_tasks(
     sleep(Duration::from_secs(1)).await;
 
     // Task 2: Update session with client count
-    let task_data = create_task_data(project_id, &session_id, Some(2), None);
+    let task_data = create_task_data(project_id, Some(2), None);
     process_task(service, task_data, "Update client count").await?;
 
     // Simulate more time passing
@@ -133,7 +130,7 @@ async fn simulate_multiple_tasks(
     sleep(Duration::from_secs(2)).await;
 
     // Task 3: Simulate clients disconnecting
-    let task_data = create_task_data(project_id, &session_id, Some(0), Some(Utc::now()));
+    let task_data = create_task_data(project_id, Some(0), Some(Utc::now()));
     process_task(service, task_data, "Simulate clients disconnecting").await?;
 
     // Simulate time passing to trigger session end
@@ -143,7 +140,6 @@ async fn simulate_multiple_tasks(
     // Task 4: End session
     let task_data = create_task_data(
         project_id,
-        &session_id,
         Some(0),
         Some(Utc::now() - chrono::Duration::seconds(11)),
     );
@@ -200,7 +196,6 @@ async fn process_task(
 /// ## Parameters
 ///
 /// - `project_id`: The ID of the project
-/// - `session_id`: The ID of the editing session
 /// - `clients_count`: The number of connected clients (optional)
 /// - `clients_disconnected_at`: The timestamp when clients disconnected (optional)
 ///
@@ -209,13 +204,11 @@ async fn process_task(
 /// Returns a `ManageProjectEditSessionTaskData` instance with the specified parameters.
 fn create_task_data(
     project_id: &str,
-    session_id: &str,
     clients_count: Option<usize>,
     clients_disconnected_at: Option<chrono::DateTime<Utc>>,
 ) -> ManageProjectEditSessionTaskData {
     ManageProjectEditSessionTaskData {
         project_id: project_id.to_string(),
-        session_id: session_id.to_string(),
         clients_count,
         clients_disconnected_at,
         last_merged_at: None,
