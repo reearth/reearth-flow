@@ -2,7 +2,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::Utc;
-use flow_websocket_domain::{generate_id, snapshot::ObjectTenant, ProjectEditingSession};
+use flow_websocket_domain::repository::ProjectSnapshotRepository;
+use flow_websocket_domain::snapshot::ProjectSnapshot;
+use flow_websocket_domain::{
+    generate_id,
+    snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo},
+    ProjectEditingSession, SnapshotData,
+};
+
 use flow_websocket_infra::persistence::{
     project_repository::{ProjectLocalRepository, ProjectRedisRepository},
     redis::{
@@ -12,7 +19,6 @@ use flow_websocket_infra::persistence::{
 use flow_websocket_services::{
     manage_project_edit_session::ManageEditSessionService, types::ManageProjectEditSessionTaskData,
 };
-use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::{debug, error, info, instrument, trace, warn};
 
@@ -110,6 +116,46 @@ async fn simulate_multiple_tasks(
     let session_id = generate_id(14, "session");
     debug!(?session_id, "Generated new session ID");
 
+    // Create initial snapshot before starting session
+    let initial_snapshot = ProjectSnapshot::new(
+        Metadata::new(
+            generate_id(14, "snap"),
+            project_id.to_string(),
+            Some(session_id.clone()),
+            "Initial Snapshot".to_string(),
+            String::new(),
+        ),
+        SnapshotInfo::new(
+            Some("system".to_string()),
+            vec!["system".to_string()],
+            ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+            ObjectDelete {
+                deleted: false,
+                delete_after: None,
+            },
+            Some(Utc::now()),
+            Some(Utc::now()),
+        ),
+    );
+
+    // Create initial snapshot state
+    let initial_state = SnapshotData::new(
+        project_id.to_string(),
+        vec![], // Empty initial state
+        Some("Initial State".to_string()),
+        Some("system".to_string()),
+    );
+
+    // Store initial snapshot and state
+    service
+        .snapshot_repository
+        .create_snapshot(initial_snapshot)
+        .await?;
+    service
+        .snapshot_repository
+        .create_snapshot_state(initial_state)
+        .await?;
+
     // Task 1: Initialize session
     let task_data = create_task_data(project_id, &session_id, Some(1), None);
     process_task(service, task_data, "Initialize session").await?;
@@ -174,7 +220,7 @@ async fn process_task(
     info!(?task_description, "Processing task");
     debug!(task = ?task_data, "Task details");
 
-    match service.process(task_data).await {
+    match service.process(task_data, None).await {
         Ok(_) => {
             info!(?task_description, "Task processed successfully");
             Ok(())
