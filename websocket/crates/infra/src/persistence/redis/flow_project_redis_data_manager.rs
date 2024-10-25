@@ -44,8 +44,8 @@ pub enum FlowProjectRedisDataManagerError {
     MergeUpdates,
     #[error("Failed to get last update id")]
     LastUpdateId,
-    #[error("Missing state update")]
-    MissingStateUpdate,
+    #[error("Missing state update - Key: {key}, Context: {context}")]
+    MissingStateUpdate { key: String, context: String },
     #[error("Session not set")]
     SessionNotSet,
     #[error(transparent)]
@@ -228,11 +228,22 @@ impl FlowProjectRedisDataManager {
     async fn get_state_update_in_redis(
         &self,
     ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
-        let state_update_string: Option<String> = self.redis_client.get(&self.state_key()?).await?;
+        let state_key = self.state_key()?;
+        let state_update_string: Option<String> = self.redis_client.get(&state_key).await?;
+
         if let Some(state_update_string) = state_update_string {
             Ok(Some(Self::decode_state_data(state_update_string)?))
         } else {
-            Ok(None)
+            let session_id = self.session_id.lock().await;
+
+            Err(FlowProjectRedisDataManagerError::MissingStateUpdate {
+                key: state_key,
+                context: format!(
+                    "Project: {}, Session: {:?}",
+                    self.project_id,
+                    session_id.as_ref()
+                ),
+            })
         }
     }
 
@@ -348,7 +359,6 @@ impl FlowProjectRedisDataManager {
         &self,
     ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
         let doc = Arc::new(Doc::new());
-
         let merged_stream_update = self.get_merged_update_from_stream().await?;
         let state_update = self.get_state_update_in_redis().await?;
         let state_updated_by = self.get_current_state_updated_by().await?;
@@ -360,6 +370,11 @@ impl FlowProjectRedisDataManager {
                 (None, None, None)
             };
 
+        let session_id = self.session_id.lock().await;
+        let state_key = self.state_key()?;
+        let project_id = self.project_id.clone();
+        let session_id_str = session_id.as_ref().map(|s| s.to_string());
+
         let merged_update = if let Some(merged_update) = merged_update {
             let doc_clone = Arc::clone(&doc);
             tokio::task::spawn_blocking(move || {
@@ -368,7 +383,15 @@ impl FlowProjectRedisDataManager {
                     Some(ref state_update) => {
                         txn.apply_update(Update::decode_v2(state_update)?);
                     }
-                    None => return Err(FlowProjectRedisDataManagerError::MissingStateUpdate),
+                    None => {
+                        return Err(FlowProjectRedisDataManagerError::MissingStateUpdate {
+                            key: state_key,
+                            context: format!(
+                                "Project: {}, Session: {:?}",
+                                project_id, session_id_str
+                            ),
+                        })
+                    }
                 }
                 txn.apply_update(Update::decode_v2(&merged_update)?);
                 Ok::<_, FlowProjectRedisDataManagerError>(txn.encode_update_v2())
@@ -377,7 +400,12 @@ impl FlowProjectRedisDataManager {
         } else {
             match state_update {
                 Some(state_update) => state_update,
-                None => return Err(FlowProjectRedisDataManagerError::MissingStateUpdate),
+                None => {
+                    return Err(FlowProjectRedisDataManagerError::MissingStateUpdate {
+                        key: state_key,
+                        context: format!("Project: {}, Session: {:?}", project_id, session_id_str),
+                    })
+                }
             }
         };
 

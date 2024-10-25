@@ -75,10 +75,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Arc::new(redis_client.clone()),
     );
 
-    redis_data_manager
-        .start_editing_session(Vec::new(), vec![], false)
-        .await?;
-
     let service = ManageEditSessionService::new(
         Arc::new(session_repo),
         Arc::new(local_storage),
