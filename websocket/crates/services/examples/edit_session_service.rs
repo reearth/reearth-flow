@@ -146,17 +146,33 @@ async fn simulate_multiple_tasks(
         Some("system".to_string()),
     );
 
-    // Store initial snapshot and state
+    // Store initial snapshot for both project and session
     service
         .snapshot_repository
-        .create_snapshot(initial_snapshot)
+        .create_snapshot(initial_snapshot.clone())
+        .await?;
+    service
+        .snapshot_repository
+        .create_snapshot_state(initial_state.clone())
+        .await?;
+
+    // Store as latest project snapshot
+    service
+        .snapshot_repository
+        .update_latest_snapshot(initial_snapshot.clone())
+        .await?;
+
+    // Store snapshot for session
+    service
+        .snapshot_repository
+        .create_snapshot(initial_snapshot.clone())
         .await?;
     service
         .snapshot_repository
         .create_snapshot_state(initial_state)
         .await?;
 
-    // Task 1: Initialize session
+    // Task 1: Initialize session with the same session_id
     let task_data = create_task_data(project_id, &session_id, Some(1), None);
     process_task(service, task_data, "Initialize session").await?;
 

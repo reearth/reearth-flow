@@ -24,8 +24,8 @@ pub struct ProjectEditingSession {
 pub enum ProjectEditingSessionError {
     #[error("Session not setup")]
     SessionNotSetup,
-    #[error("Snapshot not found")]
-    SnapshotNotFound,
+    #[error("Snapshot not found for session ID: {0}")]
+    SnapshotNotFound(String),
     #[error("Snapshot project ID does not match current project")]
     SnapshotProjectIdMismatch,
     #[error("Snapshot error: {0}")]
@@ -289,17 +289,21 @@ impl ProjectEditingSession {
             .get_latest_snapshot(session_id)
             .await
             .map_err(ProjectEditingSessionError::snapshot)?;
-        if let Some(snapshot) = snapshot {
-            if snapshot.metadata.project_id != self.project_id {
-                return Err(ProjectEditingSessionError::SnapshotProjectIdMismatch);
+
+        match snapshot {
+            Some(snapshot) => {
+                if snapshot.metadata.project_id != self.project_id {
+                    return Err(ProjectEditingSessionError::SnapshotProjectIdMismatch);
+                }
+                self.project_id = snapshot.metadata.project_id;
+                self.session_id = Some(session_id.to_string());
+                self.session_setup_complete = true;
+                Ok(())
             }
-            self.project_id = snapshot.metadata.project_id;
-            self.session_id = Some(session_id.to_string());
-            self.session_setup_complete = true;
-        } else {
-            return Err(ProjectEditingSessionError::SnapshotNotFound);
+            None => Err(ProjectEditingSessionError::SnapshotNotFound(
+                session_id.to_string(),
+            )),
         }
-        Ok(())
     }
 
     pub async fn active_editing_session(
