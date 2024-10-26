@@ -5,6 +5,7 @@ use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::Mutex;
+use tracing::debug;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
 use crate::persistence::redis::flow_project_lock::{FlowProjectLock, GlobalLockError};
@@ -511,6 +512,11 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         let connection = self.redis_client.connection();
         let mut connection_guard = connection.lock().await;
 
+        debug!(
+            "Starting to clear Redis data for project: {}",
+            self.project_id
+        );
+
         let keys_to_delete = vec![
             self.state_key()?,
             self.state_updated_by_key()?,
@@ -518,12 +524,15 @@ impl RedisDataManager for FlowProjectRedisDataManager {
             self.last_updated_at_key()?,
         ];
 
+        debug!("Deleting keys: {:?}", keys_to_delete);
+
         let _: () = connection_guard.del(&keys_to_delete).await?;
 
         if let Some(active_session_id) = self.active_editing_session_id().await? {
             let editing_session = self.session_id.lock().await;
             if let Some(current_session_id) = editing_session.as_ref() {
                 if active_session_id == *current_session_id {
+                    debug!("Clearing active session ID: {}", active_session_id);
                     let _: () = connection_guard
                         .del(&[self.active_editing_session_id_key()])
                         .await?;
@@ -531,6 +540,10 @@ impl RedisDataManager for FlowProjectRedisDataManager {
             }
         }
 
+        debug!(
+            "Successfully cleared all Redis data for project: {}",
+            self.project_id
+        );
         Ok(())
     }
 
@@ -543,6 +556,29 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         } else {
             self.lock_and_execute_merge_updates().await
         }
+    }
+
+    async fn get_active_session_id(
+        &self,
+    ) -> Result<Option<String>, FlowProjectRedisDataManagerError> {
+        let connection = self.redis_client.connection();
+        let mut connection_guard = connection.lock().await;
+        let key = self.active_editing_session_id_key();
+
+        let session_id: Option<String> = connection_guard.get(&key).await?;
+        Ok(session_id)
+    }
+
+    async fn set_active_session_id(
+        &self,
+        session_id: &str,
+    ) -> Result<(), FlowProjectRedisDataManagerError> {
+        let connection = self.redis_client.connection();
+        let mut connection_guard = connection.lock().await;
+        let key = self.active_editing_session_id_key();
+
+        connection_guard.set(&key, session_id).await?;
+        Ok(())
     }
 }
 
@@ -639,6 +675,15 @@ mod tests {
                 .unwrap()
                 .to_owned();
             Ok(result)
+        }
+
+        async fn get_active_session_id(&self) -> Result<Option<String>, Self::Error> {
+            Ok(self.session_id.lock().unwrap().clone())
+        }
+
+        async fn set_active_session_id(&self, session_id: &str) -> Result<(), Self::Error> {
+            self.set_session_id(Some(session_id.to_string()));
+            Ok(())
         }
     }
 

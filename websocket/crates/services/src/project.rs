@@ -250,11 +250,23 @@ where
     async fn clear_data(&self) -> Result<(), Self::Error> {
         Ok(self.redis_data_manager.clear_data().await?)
     }
+
+    async fn get_active_session_id(&self) -> Result<Option<String>, Self::Error> {
+        Ok(self.redis_data_manager.get_active_session_id().await?)
+    }
+
+    async fn set_active_session_id(&self, session_id: &str) -> Result<(), Self::Error> {
+        Ok(self
+            .redis_data_manager
+            .set_active_session_id(session_id)
+            .await?)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Utc;
     use flow_websocket_domain::snapshot::Metadata;
     use flow_websocket_domain::snapshot::ObjectDelete;
     use flow_websocket_domain::snapshot::SnapshotInfo;
@@ -302,6 +314,8 @@ mod tests {
             async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError>;
             async fn get_current_state(&self) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError>;
             async fn clear_data(&self) -> Result<(), FlowProjectRedisDataManagerError>;
+            async fn get_active_session_id(&self) -> Result<Option<String>, FlowProjectRedisDataManagerError>;
+            async fn set_active_session_id(&self, session_id: &str) -> Result<(), FlowProjectRedisDataManagerError>;
         }
     }
 
@@ -377,13 +391,30 @@ mod tests {
             .times(1)
             .returning(|_| Ok(None));
 
-        mock_session_repo
-            .expect_create_session()
+        mock_redis_manager
+            .expect_get_active_session_id()
             .times(1)
-            .returning(|_| Ok("session_123".to_string()));
+            .returning(|| Ok(None));
+
+        mock_redis_manager
+            .expect_clear_data()
+            .times(1)
+            .returning(|| Ok(()));
+
+        mock_redis_manager
+            .expect_set_active_session_id()
+            .times(1)
+            .returning(|_| Ok(()));
+
+        mock_snapshot_repo
+            .expect_get_latest_snapshot()
+            .with(eq("project_123"))
+            .times(1)
+            .returning(|_| Ok(Some(create_test_snapshot())));
 
         mock_snapshot_repo
             .expect_get_latest_snapshot_state()
+            .with(eq("project_123"))
             .times(1)
             .returning(|_| Ok(vec![1, 2, 3]));
 
@@ -391,6 +422,11 @@ mod tests {
             .expect_push_update()
             .times(1)
             .returning(|_, _| Ok(()));
+
+        mock_session_repo
+            .expect_create_session()
+            .times(1)
+            .returning(|session| Ok(session.session_id.unwrap()));
 
         let service = ProjectService::new(
             Arc::new(mock_session_repo),
@@ -402,6 +438,8 @@ mod tests {
             .get_or_create_editing_session("project_123", None, None)
             .await;
         assert!(result.is_ok());
+        let session = result.unwrap();
+        assert!(session.session_id.is_some());
     }
 
     #[tokio::test]
@@ -660,5 +698,28 @@ mod tests {
                 .await?;
             Ok(())
         }
+    }
+
+    fn create_test_snapshot() -> ProjectSnapshot {
+        ProjectSnapshot::new(
+            Metadata::new(
+                generate_id(14, "snap"),
+                "project_123".to_string(),
+                Some("session_456".to_string()),
+                "Test Snapshot".to_string(),
+                "".to_string(),
+            ),
+            SnapshotInfo::new(
+                Some("test_user".to_string()),
+                vec![],
+                ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+                ObjectDelete {
+                    deleted: false,
+                    delete_after: None,
+                },
+                Some(Utc::now()),
+                None,
+            ),
+        )
     }
 }

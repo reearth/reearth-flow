@@ -2,13 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::Utc;
-use flow_websocket_domain::repository::ProjectSnapshotRepository;
-use flow_websocket_domain::snapshot::ProjectSnapshot;
-use flow_websocket_domain::{
-    generate_id,
-    snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo},
-    ProjectEditingSession, SnapshotData,
-};
+use flow_websocket_domain::{generate_id, snapshot::ObjectTenant, ProjectEditingSession};
 
 use flow_websocket_infra::persistence::{
     project_repository::{ProjectLocalRepository, ProjectRedisRepository},

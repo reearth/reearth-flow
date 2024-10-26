@@ -9,6 +9,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::Mutex;
+use tracing::debug;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectEditingSession {
@@ -66,29 +67,63 @@ impl ProjectEditingSession {
         }
     }
 
-    pub async fn start_or_join_session<S, R>(
+    pub async fn start_or_join_session<R, S>(
         &mut self,
         snapshot_repo: &S,
-        redis_data_manager: &R,
+        redis_manager: &R,
     ) -> Result<String, ProjectEditingSessionError>
     where
-        S: ProjectSnapshotRepository + ?Sized,
         R: RedisDataManager,
+        S: ProjectSnapshotRepository,
     {
-        let session_id = generate_id(14, "editor-session");
+        debug!(
+            "Starting or joining session for project: {}",
+            self.project_id
+        );
 
-        if self.session_id.is_none() {
-            let latest_snapshot_state = snapshot_repo
+        if let Some(active_session_id) = redis_manager
+            .get_active_session_id()
+            .await
+            .map_err(ProjectEditingSessionError::redis)?
+        {
+            debug!("Found active session: {}", active_session_id);
+            self.session_id = Some(active_session_id.clone());
+            return Ok(active_session_id);
+        }
+
+        let session_id = format!("session{}", generate_id(14, ""));
+        debug!("Creating new session: {}", session_id);
+        self.session_id = Some(session_id.clone());
+
+        redis_manager
+            .clear_data()
+            .await
+            .map_err(ProjectEditingSessionError::redis)?;
+        debug!("Cleared Redis data for new session");
+
+        redis_manager
+            .set_active_session_id(&session_id)
+            .await
+            .map_err(ProjectEditingSessionError::redis)?;
+        debug!("Set active session ID");
+
+        if let Some(snapshot) = snapshot_repo
+            .get_latest_snapshot(&self.project_id)
+            .await
+            .map_err(ProjectEditingSessionError::snapshot)?
+        {
+            debug!("Found latest snapshot, initializing session state");
+            let state = snapshot_repo
                 .get_latest_snapshot_state(&self.project_id)
                 .await
                 .map_err(ProjectEditingSessionError::snapshot)?;
-            redis_data_manager
-                .push_update(latest_snapshot_state, None)
+
+            redis_manager
+                .push_update(state, None)
                 .await
                 .map_err(ProjectEditingSessionError::redis)?;
         }
 
-        self.session_id = Some(session_id.clone());
         Ok(session_id)
     }
 
@@ -336,6 +371,8 @@ mod tests {
             async fn merge_updates(&self, final_merge: bool) -> Result<(Vec<u8>, Vec<String>), ProjectEditingSessionError>;
 
             async fn clear_data(&self) -> Result<(), ProjectEditingSessionError>;
+            async fn get_active_session_id(&self) -> Result<Option<String>, ProjectEditingSessionError>;
+            async fn set_active_session_id(&self, session_id: &str) -> Result<(), ProjectEditingSessionError>;
         }
     }
 
@@ -384,31 +421,76 @@ mod tests {
 
     #[tokio::test]
     async fn test_start_or_join_session() {
-        let mut session = ProjectEditingSession::new(
-            "test_project".to_string(),
-            ObjectTenant::new("tenant_id".to_string(), "tenant_name".to_string()),
-        );
-
+        let mut session = create_test_session();
         let mut mock_snapshot_repo = MockProjectSnapshotRepository::new();
         let mut mock_redis_manager = MockRedisDataManager::new();
 
-        // Mock behavior for the latest snapshot state and Redis push_update
+        mock_redis_manager
+            .expect_get_active_session_id()
+            .times(1)
+            .returning(|| Ok(None));
+
+        mock_redis_manager
+            .expect_clear_data()
+            .times(1)
+            .returning(|| Ok(()));
+
+        mock_redis_manager
+            .expect_set_active_session_id()
+            .times(1)
+            .returning(|_| Ok(()));
+
+        mock_snapshot_repo
+            .expect_get_latest_snapshot()
+            .times(1)
+            .returning(|_| Ok(Some(create_test_snapshot())));
+
         mock_snapshot_repo
             .expect_get_latest_snapshot_state()
+            .times(1)
             .returning(|_| Ok(vec![1, 2, 3]));
 
         mock_redis_manager
             .expect_push_update()
+            .times(1)
             .returning(|_, _| Ok(()));
 
-        // Call the method
-        let session_id = session
+        let result = session
             .start_or_join_session(&mock_snapshot_repo, &mock_redis_manager)
             .await;
 
-        // Assert success and that session ID is set
-        assert!(session_id.is_ok());
+        assert!(result.is_ok());
         assert!(session.session_id.is_some());
+    }
+
+    fn create_test_session() -> ProjectEditingSession {
+        ProjectEditingSession::new(
+            "test_project".to_string(),
+            ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+        )
+    }
+
+    fn create_test_snapshot() -> ProjectSnapshot {
+        ProjectSnapshot::new(
+            Metadata::new(
+                generate_id(14, "snap"),
+                "test_project".to_string(),
+                Some("session_456".to_string()),
+                "Test Snapshot".to_string(),
+                "".to_string(),
+            ),
+            SnapshotInfo::new(
+                Some("test_user".to_string()),
+                vec![],
+                ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+                ObjectDelete {
+                    deleted: false,
+                    delete_after: None,
+                },
+                Some(Utc::now()),
+                None,
+            ),
+        )
     }
 
     #[tokio::test]

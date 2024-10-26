@@ -56,4 +56,6 @@ pub trait RedisDataManager {
         updated_by: Option<String>,
     ) -> Result<(), Self::Error>;
     async fn clear_data(&self) -> Result<(), Self::Error>;
+    async fn get_active_session_id(&self) -> Result<Option<String>, Self::Error>;
+    async fn set_active_session_id(&self, session_id: &str) -> Result<(), Self::Error>;
 }
