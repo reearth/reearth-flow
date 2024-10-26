@@ -397,11 +397,6 @@ mod tests {
             .returning(|| Ok(None));
 
         mock_redis_manager
-            .expect_clear_data()
-            .times(1)
-            .returning(|| Ok(()));
-
-        mock_redis_manager
             .expect_set_active_session_id()
             .times(1)
             .returning(|_| Ok(()));

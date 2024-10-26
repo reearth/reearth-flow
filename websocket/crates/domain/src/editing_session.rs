@@ -71,48 +71,33 @@ impl ProjectEditingSession {
         &mut self,
         snapshot_repo: &S,
         redis_manager: &R,
-    ) -> Result<String, ProjectEditingSessionError>
+    ) -> Result<(), ProjectEditingSessionError>
     where
         R: RedisDataManager,
         S: ProjectSnapshotRepository,
     {
-        debug!(
-            "Starting or joining session for project: {}",
-            self.project_id
-        );
-
         if let Some(active_session_id) = redis_manager
             .get_active_session_id()
             .await
             .map_err(ProjectEditingSessionError::redis)?
         {
-            debug!("Found active session: {}", active_session_id);
             self.session_id = Some(active_session_id.clone());
-            return Ok(active_session_id);
+            return Ok(());
         }
 
-        let session_id = format!("session{}", generate_id(14, ""));
-        debug!("Creating new session: {}", session_id);
+        let session_id: String = format!("session{}", generate_id(14, ""));
         self.session_id = Some(session_id.clone());
-
-        redis_manager
-            .clear_data()
-            .await
-            .map_err(ProjectEditingSessionError::redis)?;
-        debug!("Cleared Redis data for new session");
-
         redis_manager
             .set_active_session_id(&session_id)
             .await
             .map_err(ProjectEditingSessionError::redis)?;
-        debug!("Set active session ID");
 
-        if let Some(snapshot) = snapshot_repo
+        if (snapshot_repo
             .get_latest_snapshot(&self.project_id)
             .await
-            .map_err(ProjectEditingSessionError::snapshot)?
+            .map_err(ProjectEditingSessionError::snapshot)?)
+        .is_some()
         {
-            debug!("Found latest snapshot, initializing session state");
             let state = snapshot_repo
                 .get_latest_snapshot_state(&self.project_id)
                 .await
@@ -124,7 +109,7 @@ impl ProjectEditingSession {
                 .map_err(ProjectEditingSessionError::redis)?;
         }
 
-        Ok(session_id)
+        Ok(())
     }
 
     pub async fn get_diff_update<R>(
@@ -429,11 +414,6 @@ mod tests {
             .expect_get_active_session_id()
             .times(1)
             .returning(|| Ok(None));
-
-        mock_redis_manager
-            .expect_clear_data()
-            .times(1)
-            .returning(|| Ok(()));
 
         mock_redis_manager
             .expect_set_active_session_id()

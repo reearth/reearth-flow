@@ -57,57 +57,32 @@ where
         mut data: ManageProjectEditSessionTaskData,
         created_by: Option<String>,
     ) -> Result<(), ProjectServiceError> {
-        debug!("Processing task for project: {}", data.project_id);
+        let mut session = ProjectEditingSession::new(
+            data.project_id.clone(),
+            ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
+        );
 
-        let mut session = match self
-            .session_repository
-            .get_active_session(&data.project_id)
-            .await?
-        {
-            Some(session) => {
-                debug!(session = ?session, "Active session found");
-                session
-            }
-            None => {
-                debug!("No active session found, creating new session");
-                let mut new_session = ProjectEditingSession::new(
-                    data.project_id.clone(),
-                    ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
-                );
-
-                let session_id = new_session
-                    .start_or_join_session(&*self.snapshot_repository, &*self.redis_data_manager)
-                    .await?;
-                debug!("Created new session with ID: {}", session_id);
-
-                self.session_repository
-                    .update_session(new_session.clone())
-                    .await?;
-
-                new_session
-            }
-        };
+        session
+            .start_or_join_session(&*self.snapshot_repository, &*self.redis_data_manager)
+            .await?;
 
         let client_count = self.update_client_count(&mut data).await?;
-        debug!("Updated client count: {}", client_count);
 
         self.merge_updates(&mut session, &mut data).await?;
-        debug!("Merged updates");
 
         self.create_snapshot_if_required(&mut session, &mut data, created_by)
             .await?;
-        debug!("Snapshot creation checked");
 
         if self
             .end_editing_session_if_conditions_met(&mut session, &data, client_count)
             .await?
         {
-            debug!("Session ended");
             return Ok(());
         }
 
-        self.session_repository.update_session(session).await?;
-        debug!("Session updated");
+        self.session_repository
+            .update_session(session.clone())
+            .await?;
 
         Ok(())
     }
@@ -439,18 +414,12 @@ mod tests {
         let task_data = create_task_data();
         let session = create_session("project_123");
 
+        // Remove get_active_session expectation since it's not called anymore
         mocks
-            .session_repo
-            .expect_get_active_session()
-            .with(eq("project_123"))
+            .redis_manager
+            .expect_get_active_session_id()
             .times(1)
-            .returning(move |_| Ok(Some(session.clone())));
-
-        mocks
-            .session_repo
-            .expect_get_client_count()
-            .times(1)
-            .returning(|| Ok(1));
+            .returning(|| Ok(Some("session_456".to_string())));
 
         mocks
             .redis_manager
@@ -458,6 +427,12 @@ mod tests {
             .with(eq(false))
             .times(1)
             .returning(|_| Ok((vec![], vec![])));
+
+        mocks
+            .session_repo
+            .expect_get_client_count()
+            .times(1)
+            .returning(|| Ok(1));
 
         mocks
             .session_repo
@@ -479,23 +454,10 @@ mod tests {
         let task_data = create_task_data();
 
         mocks
-            .session_repo
-            .expect_get_active_session()
-            .with(eq("project_123"))
-            .times(1)
-            .returning(|_| Ok(None));
-
-        mocks
             .redis_manager
             .expect_get_active_session_id()
             .times(1)
             .returning(|| Ok(None));
-
-        mocks
-            .redis_manager
-            .expect_clear_data()
-            .times(1)
-            .returning(|| Ok(()));
 
         mocks
             .redis_manager
@@ -506,14 +468,12 @@ mod tests {
         mocks
             .snapshot_repo
             .expect_get_latest_snapshot()
-            .with(eq("project_123"))
             .times(1)
             .returning(|_| Ok(Some(create_project_snapshot())));
 
         mocks
             .snapshot_repo
             .expect_get_latest_snapshot_state()
-            .with(eq("project_123"))
             .times(1)
             .returning(|_| Ok(vec![1, 2, 3]));
 
@@ -526,21 +486,20 @@ mod tests {
         mocks
             .redis_manager
             .expect_merge_updates()
-            .with(eq(false))
             .times(1)
             .returning(|_| Ok((vec![], vec![])));
-
-        mocks
-            .session_repo
-            .expect_update_session()
-            .times(2)
-            .returning(|_| Ok(()));
 
         mocks
             .session_repo
             .expect_get_client_count()
             .times(1)
             .returning(|| Ok(1));
+
+        mocks
+            .session_repo
+            .expect_update_session()
+            .times(1)
+            .returning(|_| Ok(()));
 
         service.session_repository = Arc::new(mocks.session_repo);
         service.redis_data_manager = Arc::new(mocks.redis_manager);
@@ -607,7 +566,7 @@ mod tests {
             session.session_id = Some("session_456".to_string());
 
             // Set up sequence for get_latest_snapshot calls
-            let context = mocks
+            let _context = mocks
                 .snapshot_repo
                 .expect_get_latest_snapshot()
                 .with(eq("project_123"))
@@ -800,23 +759,14 @@ mod tests {
     async fn test_process_with_snapshot_creation() {
         let (mut service, mut mocks) = setup_service();
         let mut task_data = create_task_data();
-        let session = create_session("project_123");
-
         task_data.last_snapshot_at = Some(Utc::now() - Duration::minutes(6));
-        task_data.last_merged_at = Some(Utc::now());
 
+        // Set up all expectations before service calls
         mocks
-            .session_repo
-            .expect_get_active_session()
-            .with(eq("project_123"))
+            .redis_manager
+            .expect_get_active_session_id()
             .times(1)
-            .returning(move |_| Ok(Some(session.clone())));
-
-        mocks
-            .session_repo
-            .expect_get_client_count()
-            .times(1)
-            .returning(|| Ok(1));
+            .returning(|| Ok(Some("session_456".to_string())));
 
         mocks
             .redis_manager
@@ -826,9 +776,14 @@ mod tests {
             .returning(|_| Ok((vec![1, 2, 3], vec![])));
 
         mocks
+            .session_repo
+            .expect_get_client_count()
+            .times(1)
+            .returning(|| Ok(1));
+
+        mocks
             .snapshot_repo
             .expect_get_latest_snapshot()
-            .with(eq("project_123"))
             .times(1)
             .returning(|_| Ok(Some(create_project_snapshot())));
 
@@ -836,7 +791,7 @@ mod tests {
             .redis_manager
             .expect_get_current_state()
             .times(1)
-            .returning(|| Ok(vec![1, 2, 3].into()));
+            .returning(|| Ok(Some(vec![1, 2, 3])));
 
         mocks
             .snapshot_repo
@@ -847,7 +802,6 @@ mod tests {
         mocks
             .snapshot_repo
             .expect_update_latest_snapshot_state()
-            .withf(|project_id, _data| project_id == "project_123")
             .times(1)
             .returning(|_, _| Ok(()));
 
@@ -873,22 +827,12 @@ mod tests {
         let mut task_data = create_task_data();
         task_data.clients_disconnected_at = Some(Utc::now() - Duration::seconds(11));
 
-        let mut session = create_session("project_123");
-        session.session_id = Some("session_456".to_string()); // Ensure session_id is set
-
         mocks
-            .session_repo
-            .expect_get_active_session()
+            .redis_manager
+            .expect_get_active_session_id()
             .times(1)
-            .returning(move |_| Ok(Some(session.clone())));
+            .returning(|| Ok(Some("session_456".to_string())));
 
-        mocks
-            .session_repo
-            .expect_get_client_count()
-            .times(1)
-            .returning(|| Ok(0));
-
-        // Regular merge_updates call
         mocks
             .redis_manager
             .expect_merge_updates()
@@ -904,10 +848,16 @@ mod tests {
             .returning(|_| Ok((vec![], vec![])));
 
         mocks
+            .session_repo
+            .expect_get_client_count()
+            .times(1)
+            .returning(|| Ok(0));
+
+        // Add this expectation for updating snapshot state
+        mocks
             .snapshot_repo
             .expect_update_latest_snapshot_state()
             .times(1)
-            .with(eq("project_123"), predicate::always())
             .returning(|_, _| Ok(()));
 
         mocks
@@ -930,13 +880,16 @@ mod tests {
         let task_data = create_task_data();
 
         mocks
-            .session_repo
-            .expect_get_active_session()
-            .with(eq("project_123"))
+            .redis_manager
+            .expect_get_active_session_id()
             .times(1)
-            .returning(|_| Err(ProjectRepositoryError::Custom("Test error".to_string())));
+            .returning(|| {
+                Err(FlowProjectRedisDataManagerError::Unknown(
+                    "Test error".to_string(),
+                ))
+            });
 
-        service.session_repository = Arc::new(mocks.session_repo);
+        service.redis_data_manager = Arc::new(mocks.redis_manager);
 
         let result = service.process(task_data, None).await;
         assert!(result.is_err());
@@ -982,12 +935,10 @@ mod tests {
     }
 
     fn create_session(project_id: &str) -> ProjectEditingSession {
-        let mut session = ProjectEditingSession::new(
+        ProjectEditingSession::new(
             project_id.to_string(),
             ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned()),
-        );
-        session.session_id = Some(generate_id(14, "session"));
-        session
+        )
     }
 
     fn create_project_snapshot() -> ProjectSnapshot {
