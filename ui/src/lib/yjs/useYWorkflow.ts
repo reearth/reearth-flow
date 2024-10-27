@@ -139,41 +139,13 @@ export default ({
   const handleWorkflowRename = useCallback(
     (name: string) =>
       undoTrackerActionWrapper(() => {
-        // Update YWorkflow with the new name
-        // Update the workflows state with the new name
-        // const currentWorkflow = yWorkflows.get(currentWorkflowIndex);
-        // if (currentWorkflow) {
-        //   currentWorkflow.set("name", name);
-        // }
-
         setWorkflows((w) =>
           w.map((workflow, index) =>
             index === currentWorkflowIndex ? { ...workflow, name } : workflow,
           ),
         );
-
-        // workflowIds.forEach((wid) => {
-        //   if (wid === "main") return;
-        //   const index = workflows.findIndex((w) => w.id === wid);
-        //   if (index === -1) return;
-        //   if (index === currentWorkflowIndex) {
-        //     handleWorkflowIdChange("main");
-        //   }
-        //   yWorkflows.delete(index);
-        // });
-
-        // setWorkflows((w) => w.filter((w) => !workflowIds.includes(w.id)));
-        // setOpenWorkflowIds((ids) =>
-        //   ids.filter((id) => !workflowIds.includes(id)),
-        // );
       }),
-    [
-      // workflows,
-      // yWorkflows,
-      currentWorkflowIndex,
-      undoTrackerActionWrapper,
-      setWorkflows,
-    ],
+    [currentWorkflowIndex, undoTrackerActionWrapper, setWorkflows],
   );
   return {
     currentYWorkflow,
