@@ -1,0 +1,22 @@
+services:
+  gcs:
+    image: fsouza/fake-gcs-server
+    ports:
+      - 4443:4443
+    volumes:
+      - .data:/data/main # :/data/{bucket-name}
+    command: --scheme http # Allow http
+  pubsub:
+    build:
+      context: .
+      dockerfile: PubSub.Dockerfile
+    container_name: worker_pubsub_container
+    platform: linux/amd64
+    restart: always
+    environment:
+      - PROJECT_ID=local
+      - TOPIC_IDS=flow-edge-pass-through-topic,flow-log-stream-topic # Corresponding pull-type subscriptions({TOPIC}-sub) will be created automatically
+    extra_hosts: # For other docker-compose services
+      - "host.docker.internal:host-gateway"
+    ports:
+      - 8085:8085
