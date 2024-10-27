@@ -1,8 +1,8 @@
 import { Plus, X } from "@phosphor-icons/react";
 import { TooltipTrigger } from "@radix-ui/react-tooltip";
-import { memo } from "react";
+import { memo, useState } from "react";
 
-import { IconButton, Tooltip, TooltipContent } from "@flow/components";
+import { IconButton, Input, Tooltip, TooltipContent } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { Workflow } from "@flow/types";
 
@@ -15,6 +15,7 @@ type Props = {
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
   onWorkflowAdd: () => void;
+  onWorkflowRename: (name: string) => void;
 };
 
 const WorkflowTabs: React.FC<Props> = ({
@@ -23,8 +24,12 @@ const WorkflowTabs: React.FC<Props> = ({
   onWorkflowClose,
   onWorkflowAdd,
   onWorkflowChange,
+  onWorkflowRename,
 }) => {
   const t = useT();
+
+  const [name, setName] = useState<string | undefined>();
+  const [editId, setEditId] = useState<string | undefined>();
 
   const mainWorkflow = openWorkflows?.[0];
 
@@ -36,6 +41,19 @@ const WorkflowTabs: React.FC<Props> = ({
       e.stopPropagation();
       onWorkflowClose(workflowId);
     };
+
+  const handleDoubleClick = (workflowId: string, name: string | undefined) => {
+    setEditId(workflowId);
+    setName(name);
+  };
+
+  const handleSubmit = () => {
+    if (!name) return;
+
+    onWorkflowRename(name);
+    setEditId(undefined);
+    setName(undefined);
+  };
 
   return (
     <div className="w-[75vw]">
@@ -57,11 +75,25 @@ const WorkflowTabs: React.FC<Props> = ({
                   <div
                     className={`relative flex w-[135px] items-center justify-center rounded py-[2px] ${currentWorkflowId === sw?.id ? "bg-node-entrance/70 text-accent-foreground" : "hover:bg-node-entrance/30"} group cursor-pointer`}
                     onClick={() => onWorkflowChange(sw.id)}
-                    onDoubleClick={() => console.log("Double Click")}>
-                    <p
-                      className={`select-none truncate px-[15px] text-center text-xs group-hover:text-accent-foreground dark:font-extralight ${currentWorkflowId === sw?.id && "text-accent-foreground"}`}>
-                      {sw.name}
-                    </p>
+                    onDoubleClick={() => handleDoubleClick(sw.id, sw.name)}>
+                    {sw.id === editId ? (
+                      <Input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        onKeyDownCapture={(e) =>
+                          e.key === "Enter" && handleSubmit()
+                        }
+                        placeholder={t("Set Workflow name")}
+                        defaultValue={"Sub Workflow"}
+                        className="h-4 text-xs"
+                      />
+                    ) : (
+                      <p
+                        className={`select-none truncate px-[15px] text-center text-xs group-hover:text-accent-foreground dark:font-extralight ${currentWorkflowId === sw?.id && "text-accent-foreground"}`}>
+                        {sw.name}
+                      </p>
+                    )}
+
                     <X
                       className="absolute right-[4px] hidden size-[12px] hover:bg-accent group-hover:block"
                       weight="bold"

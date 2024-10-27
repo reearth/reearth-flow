@@ -20,6 +20,7 @@ type Props = {
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowAdd: () => void;
   onWorkflowChange: (workflowId?: string) => void;
+  onWorkflowRename: (name: string) => void;
 };
 
 type PanelContent = {
@@ -39,6 +40,7 @@ const BottomPanel: React.FC<Props> = ({
   onWorkflowClose,
   onWorkflowAdd,
   onWorkflowChange,
+  onWorkflowRename,
 }) => {
   const t = useT();
   const [windowSize, setWindowSize] = useState<WindowSize>("min");
@@ -164,6 +166,7 @@ const BottomPanel: React.FC<Props> = ({
           onWorkflowClose={onWorkflowClose}
           onWorkflowAdd={onWorkflowAdd}
           onWorkflowChange={onWorkflowChange}
+          onWorkflowRename={onWorkflowRename}
         />
         <div className="h-full border-r" />
         <div className="mx-4 flex h-full flex-1 items-center justify-end gap-1">
