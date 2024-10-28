@@ -2102,7 +2102,7 @@ Extracts the orientation of a geometry from a feature and adds it as an attribut
 ### Type
 * processor
 ### Description
-AttributeFlattener
+Flatten attributes for building feature
 ### Parameters
 * No parameters
 ### Input Ports
