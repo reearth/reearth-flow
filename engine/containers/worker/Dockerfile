@@ -39,17 +39,15 @@ RUN \
     --mount=type=bind,source=cli,target=cli \
     --mount=type=bind,source=plateau-gis-quality-checker,target=plateau-gis-quality-checker \
     --mount=type=bind,source=worker,target=worker \
-    cargo build --package reearth-flow-cli --bin reearth-flow --release && mv target/release/reearth-flow /tmp/reearth-flow
+    cargo build --package reearth-flow-worker --bin reearth-flow-worker --release && mv target/release/reearth-flow-worker /tmp/reearth-flow-worker
 
-FROM debian:bookworm-slim AS final
+FROM debian:bookworm-slim
 
 RUN \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    apt-get update && apt-get install -y openssl \
-    libxml2 \
-    ca-certificates
+    apt-get update && apt-get install -y libxml2 ca-certificates
 
-COPY --chmod=0755 --from=builder /tmp/reearth-flow /bin
+COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker /bin
 
-CMD [ "/bin/reearth-flow" ]
+CMD [ "/bin/reearth-flow-worker" ]
