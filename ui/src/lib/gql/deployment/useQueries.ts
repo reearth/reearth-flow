@@ -5,6 +5,8 @@ import {
 } from "@tanstack/react-query";
 import { useCallback } from "react";
 
+import { DEFAULT_PROJECT_NAME } from "@flow/global-constants";
+import { useT } from "@flow/lib/i18n";
 import { Deployment } from "@flow/types";
 import { isDefined } from "@flow/utils";
 import { yamlToFormData } from "@flow/utils/yamlToFormData";
@@ -23,19 +25,21 @@ const DEPLOYMENT_FETCH_RATE = 10;
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
+  const t = useT();
 
   const createNewDeploymentObject = useCallback(
     (deployment: DeploymentFragment): Deployment => ({
       id: deployment.id,
       workspaceId: deployment.workspaceId,
       projectId: deployment.projectId,
-      projectName: deployment.project?.name,
+      projectName: deployment.project?.name ?? t(DEFAULT_PROJECT_NAME),
       workflowUrl: deployment.workflowUrl,
+      description: deployment.description ?? undefined,
       version: deployment.version,
       createdAt: deployment.createdAt,
       updatedAt: deployment.updatedAt,
     }),
-    [],
+    [t],
   );
 
   const createDeploymentMutation = useMutation({
@@ -43,16 +47,19 @@ export const useQueries = () => {
       projectId,
       workspaceId,
       file,
+      description,
     }: {
       workspaceId: string;
       projectId: string;
       file: FormData;
+      description?: string;
     }) => {
       const data = await graphQLContext?.CreateDeployment({
         input: {
           workspaceId,
           projectId,
           file: file.get("file"),
+          description,
         },
       });
 
@@ -73,15 +80,17 @@ export const useQueries = () => {
       deploymentId,
       workflowYaml,
       workflowId,
+      description,
     }: {
       deploymentId: string;
       workflowId: string;
       workflowYaml: string;
+      description?: string;
     }) => {
       const formData = yamlToFormData(workflowYaml, workflowId);
 
       const data = await graphQLContext?.UpdateDeployment({
-        input: { deploymentId, file: formData.get("file") },
+        input: { deploymentId, file: formData.get("file"), description },
       });
 
       if (data?.updateDeployment?.deployment) {

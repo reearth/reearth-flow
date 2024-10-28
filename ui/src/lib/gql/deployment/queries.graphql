@@ -3,6 +3,7 @@ fragment Deployment on Deployment {
   projectId
   workspaceId
   workflowUrl
+  description
   version
   createdAt
   updatedAt

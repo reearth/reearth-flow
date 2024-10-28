@@ -78,6 +78,7 @@ export type CreateAssetPayload = {
 };
 
 export type CreateDeploymentInput = {
+  description?: InputMaybe<Scalars['String']['input']>;
   file: Scalars['Upload']['input'];
   projectId: Scalars['ID']['input'];
   workspaceId: Scalars['ID']['input'];
@@ -138,6 +139,7 @@ export type DeleteWorkspacePayload = {
 export type Deployment = Node & {
   __typename?: 'Deployment';
   createdAt: Scalars['DateTime']['output'];
+  description: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   project?: Maybe<Project>;
   projectId: Scalars['ID']['output'];
@@ -558,7 +560,8 @@ export type SignupPayload = {
 
 export type UpdateDeploymentInput = {
   deploymentId: Scalars['ID']['input'];
-  file: Scalars['Upload']['input'];
+  description?: InputMaybe<Scalars['String']['input']>;
+  file?: InputMaybe<Scalars['Upload']['input']>;
 };
 
 export type UpdateMeInput = {
@@ -646,7 +649,7 @@ export type WorkspaceMember = {
   userId: Scalars['ID']['output'];
 };
 
-export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
+export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string };
 
@@ -657,14 +660,14 @@ export type CreateDeploymentMutationVariables = Exact<{
 }>;
 
 
-export type CreateDeploymentMutation = { __typename?: 'Mutation', createDeployment?: { __typename?: 'DeploymentPayload', deployment: { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } | null };
+export type CreateDeploymentMutation = { __typename?: 'Mutation', createDeployment?: { __typename?: 'DeploymentPayload', deployment: { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } | null };
 
 export type UpdateDeploymentMutationVariables = Exact<{
   input: UpdateDeploymentInput;
 }>;
 
 
-export type UpdateDeploymentMutation = { __typename?: 'Mutation', updateDeployment?: { __typename?: 'DeploymentPayload', deployment: { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } | null };
+export type UpdateDeploymentMutation = { __typename?: 'Mutation', updateDeployment?: { __typename?: 'DeploymentPayload', deployment: { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } | null };
 
 export type DeleteDeploymentMutationVariables = Exact<{
   input: DeleteDeploymentInput;
@@ -686,7 +689,7 @@ export type GetDeploymentsQueryVariables = Exact<{
 }>;
 
 
-export type GetDeploymentsQuery = { __typename?: 'Query', deployments: { __typename?: 'DeploymentConnection', totalCount: number, nodes: Array<{ __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null>, pageInfo: { __typename?: 'PageInfo', endCursor?: any | null, hasNextPage: boolean } } };
+export type GetDeploymentsQuery = { __typename?: 'Query', deployments: { __typename?: 'DeploymentConnection', totalCount: number, nodes: Array<{ __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null>, pageInfo: { __typename?: 'PageInfo', endCursor?: any | null, hasNextPage: boolean } } };
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -828,6 +831,7 @@ export const DeploymentFragmentDoc = gql`
   projectId
   workspaceId
   workflowUrl
+  description
   version
   createdAt
   updatedAt
