@@ -95,7 +95,3 @@ func (p *Project) UpdateDescription(description string) {
 func (p *Project) UpdateWorkspace(workspace WorkspaceID) {
 	p.workspace = workspace
 }
-
-func (p *Project) UpdateWorkflow(workflow WorkflowID) {
-	p.workflow = workflow
-}

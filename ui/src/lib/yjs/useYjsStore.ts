@@ -6,6 +6,7 @@ import * as Y from "yjs";
 import { config } from "@flow/config";
 import { useCurrentProject } from "@flow/stores";
 import type { Edge, Node, Workflow } from "@flow/types";
+import { isDefined } from "@flow/utils";
 import { createWorkflowsYaml } from "@flow/utils/engineWorkflowYaml/workflowYaml";
 
 import { useDeployment } from "../gql/deployment";
@@ -115,29 +116,48 @@ export default ({
     currentYWorkflow?.get("edges") ?? new Y.Array<Edge>(),
   ) as Edge[];
 
-  const handleWorkflowDeployment = useCallback(async () => {
-    const { workflowId, yamlWorkflow } =
-      createWorkflowsYaml(
-        currentProject?.name,
+  const handleWorkflowDeployment = useCallback(
+    async (description?: string) => {
+      console.log(
+        "ABCD: ",
+        currentProject,
         rawWorkflows.map((w): Workflow => {
           if (!w) return { id: "", name: "", nodes: [], edges: [] };
-          const id = w.id instanceof Y.Text ? fromYjsText(w.id) : "";
-          const name = w.name instanceof Y.Text ? fromYjsText(w.name) : "";
+          const id = fromYjsText(w.id as Y.Text);
+          const name = fromYjsText(w.name as Y.Text);
           const n = w.nodes as Node[];
           const e = w.edges as Edge[];
           return { id, name, nodes: n, edges: e };
         }),
-      ) ?? {};
+      );
+      const { workflowId, yamlWorkflow } =
+        createWorkflowsYaml(
+          currentProject?.name,
+          rawWorkflows
+            .map((w): Workflow | undefined => {
+              if (!w || w.nodes.length < 1) return undefined;
+              const id = fromYjsText(w.id as Y.Text);
+              const name = fromYjsText(w.name as Y.Text);
+              const n = w.nodes as Node[];
+              const e = w.edges as Edge[];
+              return { id, name, nodes: n, edges: e };
+            })
+            .filter(isDefined),
+        ) ?? {};
 
-    if (!yamlWorkflow || !currentProject || !workflowId) return;
+      console.log("1234", yamlWorkflow, currentProject, workflowId);
+      if (!currentProject?.id || !currentProject.workspaceId) return;
 
-    await createDeployment(
-      currentProject.workspaceId,
-      currentProject.id,
-      workflowId,
-      yamlWorkflow,
-    );
-  }, [rawWorkflows, currentProject, createDeployment]);
+      await createDeployment(
+        currentProject.workspaceId,
+        currentProject.id,
+        workflowId,
+        yamlWorkflow,
+        description,
+      );
+    },
+    [rawWorkflows, currentProject, createDeployment],
+  );
 
   const { handleNodesUpdate } = useYNode({
     currentYWorkflow,

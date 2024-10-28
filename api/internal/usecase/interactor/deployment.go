@@ -50,9 +50,9 @@ func (i *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 }
 
 func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentParam, operator *usecase.Operator) (result *deployment.Deployment, err error) {
-	if err := i.CanWriteWorkspace(dp.Workspace, operator); err != nil {
-		return nil, err
-	}
+	// if err := i.CanWriteWorkspace(dp.Workspace, operator); err != nil {
+	// 	return nil, err
+	// }
 
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
@@ -76,23 +76,27 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		return nil, err
 	}
 
-	d, err := deployment.New().
+	d := deployment.New().
 		NewID().
 		Project(dp.Project).
 		Workspace(dp.Workspace).
 		WorkflowURL(url.String()).
-		Version("v0.1"). //version is hardcoded for now @pyshx
-		Build()
+		Version("v0.1") //version is hardcoded for now @pyshx
+	if dp.Description != nil {
+		d = d.Description(*dp.Description)
+	}
+
+	dep, err := d.Build()
 	if err != nil {
 		return nil, err
 	}
 
-	if err := i.deploymentRepo.Save(ctx, d); err != nil {
+	if err := i.deploymentRepo.Save(ctx, dep); err != nil {
 		return nil, err
 	}
 
 	tx.Commit()
-	return d, nil
+	return dep, nil
 }
 
 func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentParam, operator *usecase.Operator) (_ *deployment.Deployment, err error) {
@@ -128,6 +132,10 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 			return nil, err
 		}
 		d.SetWorkflowUrl(url.String())
+	}
+
+	if dp.Description != nil {
+		d.SetDescription(*dp.Description)
 	}
 
 	// d.SetVersion() // version is hardcoded for now but will need to be incremented here eventually
