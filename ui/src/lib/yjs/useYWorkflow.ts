@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction, useCallback } from "react";
-import { Array as YArray } from "yjs";
+import { Array as YArray, Text as YText } from "yjs";
 
 import type { Node } from "@flow/types";
 import { randomID } from "@flow/utils";
@@ -137,16 +137,45 @@ export default ({
   );
 
   const handleWorkflowRename = useCallback(
-    (name: string) =>
+    (id: string, name: string) =>
       undoTrackerActionWrapper(() => {
-        setWorkflows((w) =>
-          w.map((workflow, index) =>
-            index === currentWorkflowIndex ? { ...workflow, name } : workflow,
-          ),
-        );
+        if (!name.trim()) {
+          throw new Error("Workflow name cannot be empty");
+        }
+
+        // Update local state
+        setWorkflows((w) => w.map((w) => (w.id === id ? { ...w, name } : w)));
+
+        const workflowIndex = workflows.findIndex((w) => w.id === id);
+
+        // Update Yjs shared data
+        const workflow = yWorkflows.get(workflowIndex);
+        if (!workflow) {
+          throw new Error("Workflow not found");
+        }
+        workflow.set("name", new YText(name));
+
+        // Update subworkflow node in main workflow if this is a subworkflow
+        if (workflowIndex > 0) {
+          const mainWorkflow = yWorkflows.get(0);
+          const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray;
+          const workflowId = workflows[workflowIndex].id;
+
+          mainWorkflowNodes?.forEach((node, index) => {
+            if (node.id === workflowId) {
+              const updatedNode = {
+                ...node,
+                data: { ...node.data, name },
+              };
+              mainWorkflowNodes.delete(index);
+              mainWorkflowNodes.insert(index, [updatedNode]);
+            }
+          });
+        }
       }),
-    [currentWorkflowIndex, undoTrackerActionWrapper, setWorkflows],
+    [undoTrackerActionWrapper, setWorkflows, yWorkflows, workflows],
   );
+
   return {
     currentYWorkflow,
     handleWorkflowAdd,

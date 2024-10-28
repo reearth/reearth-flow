@@ -20,7 +20,7 @@ type Props = {
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowAdd: () => void;
   onWorkflowChange: (workflowId?: string) => void;
-  onWorkflowRename: (name: string) => void;
+  onWorkflowRename: (id: string, name: string) => void;
 };
 
 type PanelContent = {

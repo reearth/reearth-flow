@@ -3,6 +3,7 @@ import { TooltipTrigger } from "@radix-ui/react-tooltip";
 import { memo, useState } from "react";
 
 import { IconButton, Input, Tooltip, TooltipContent } from "@flow/components";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 import { Workflow } from "@flow/types";
 
@@ -15,7 +16,7 @@ type Props = {
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
   onWorkflowAdd: () => void;
-  onWorkflowRename: (name: string) => void;
+  onWorkflowRename: (id: string, name: string) => void;
 };
 
 const WorkflowTabs: React.FC<Props> = ({
@@ -27,6 +28,7 @@ const WorkflowTabs: React.FC<Props> = ({
   onWorkflowRename,
 }) => {
   const t = useT();
+  const { toast } = useToast();
 
   const [name, setName] = useState<string | undefined>();
   const [editId, setEditId] = useState<string | undefined>();
@@ -48,11 +50,21 @@ const WorkflowTabs: React.FC<Props> = ({
   };
 
   const handleSubmit = () => {
-    if (!name) return;
+    if (!name || !editId) return;
+    const trimmedName = name?.trim();
+    if (!trimmedName || trimmedName.length < 1) return;
 
-    onWorkflowRename(name);
-    setEditId(undefined);
-    setName(undefined);
+    try {
+      onWorkflowRename(editId, trimmedName);
+      setEditId(undefined);
+      setName(undefined);
+    } catch {
+      toast({
+        title: t("Unable to rename workflow"),
+        description: t("Renaming workflow failed. Please try again later."),
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -84,8 +96,8 @@ const WorkflowTabs: React.FC<Props> = ({
                           e.key === "Enter" && handleSubmit()
                         }
                         placeholder={t("Set Workflow name")}
-                        defaultValue={"Sub Workflow"}
                         className="h-4 text-xs"
+                        onBlur={handleSubmit}
                       />
                     ) : (
                       <p
