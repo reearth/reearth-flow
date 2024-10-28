@@ -73,6 +73,8 @@
   "Redo action": "",
   "Parameters": "",
   "Node data": "",
+  "Unable to rename workflow": "Unable to rename workflow",
+  "Renaming workflow failed. Please try again later.": "Renaming workflow failed. Please try again later.",
   "Main Workflow": "",
   "Set Workflow name": "Set Workflow name",
   "Create new sub workflow": "",

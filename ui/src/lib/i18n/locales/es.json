@@ -73,6 +73,8 @@
   "Redo action": "Rehacer acción",
   "Parameters": "Parámetros",
   "Node data": "Datos del nodo",
+  "Unable to rename workflow": "",
+  "Renaming workflow failed. Please try again later.": "",
   "Main Workflow": "Flujo de trabajo principal",
   "Set Workflow name": "",
   "Create new sub workflow": "Crear nuevo subflujo de trabajo",
