@@ -50,9 +50,9 @@ func (i *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 }
 
 func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentParam, operator *usecase.Operator) (result *deployment.Deployment, err error) {
-	if err := i.CanWriteWorkspace(dp.Workspace, operator); err != nil {
-		return nil, err
-	}
+	// if err := i.CanWriteWorkspace(dp.Workspace, operator); err != nil {
+	// 	return nil, err
+	// }
 
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
