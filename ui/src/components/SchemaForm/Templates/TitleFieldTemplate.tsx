@@ -23,7 +23,7 @@ const TitleFieldTemplate = <
   return (
     <Label id={id} className="my-1 first-letter:uppercase">
       <div className="mb-1">
-        {title} {required && <div className="text-destructive"> * </div>}
+        {title} {required && <span className="text-destructive"> * </span>}
       </div>
       <div className="border-b" />
     </Label>
