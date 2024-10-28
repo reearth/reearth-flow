@@ -1,5 +1,5 @@
 import { CaretRight } from "@phosphor-icons/react";
-import { Dispatch, SetStateAction } from "react";
+import { Dispatch, SetStateAction, useCallback, useState } from "react";
 
 import {
   Button,
@@ -10,12 +10,13 @@ import {
   DialogTitle,
   Label,
   DialogFooter,
+  Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 
 type Props = {
-  onWorkflowDeployment: () => void;
+  onWorkflowDeployment: (description?: string) => Promise<void>;
   setShowDialog: Dispatch<SetStateAction<"deploy" | undefined>>;
 };
 
@@ -25,11 +26,17 @@ const DeployDialog: React.FC<Props> = ({
 }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
+  const [description, setDescription] = useState<string>("");
+
+  const handleWorkflowDeployment = useCallback(
+    () => onWorkflowDeployment(description),
+    [description, onWorkflowDeployment],
+  );
 
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(undefined)}>
       <DialogContent size="sm">
-        <DialogTitle>{t("Deploy project's workflow")}</DialogTitle>
+        <DialogTitle>{t("Deploy project")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex flex-col">
             <Label>{t("Project to deploy: ")}</Label>
@@ -45,6 +52,17 @@ const DeployDialog: React.FC<Props> = ({
               <p className="font-semibold">2.0</p>
             </div>
           </DialogContentSection>
+          <div className="border-t border-primary" />
+          <DialogContentSection className="flex flex-col">
+            <Label>{t("Description (optional): ")}</Label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t(
+                "Give your deployment a meaningful description...",
+              )}
+            />
+          </DialogContentSection>
           <DialogContentSection>
             <p className="dark:font-light">
               {t("Are you sure you want to proceed?")}
@@ -54,7 +72,7 @@ const DeployDialog: React.FC<Props> = ({
         <DialogFooter>
           <Button
             // disabled={buttonDisabled || !editProject?.name}
-            onClick={onWorkflowDeployment}>
+            onClick={handleWorkflowDeployment}>
             {t("Deploy")}
           </Button>
         </DialogFooter>
