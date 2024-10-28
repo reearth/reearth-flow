@@ -109,7 +109,7 @@ const NewRun: React.FC = () => {
             <Select
               onValueChange={(rt) => setRunType(rt as RunType | undefined)}>
               <SelectTrigger>
-                <SelectValue placeholder={t("Select run type")} />
+                <SelectValue placeholder={t("Select desired run type")} />
               </SelectTrigger>
               <SelectContent>
                 <div ref={(el) => setSelectDropDown(el?.parentElement)}>
@@ -166,7 +166,9 @@ const NewRun: React.FC = () => {
               }>
               <SelectTrigger>
                 <SelectValue
-                  placeholder={t("Select from published projects")}
+                  placeholder={t(
+                    "Select from the selected workspace's deployments",
+                  )}
                 />
               </SelectTrigger>
               <SelectContent>
