@@ -173,7 +173,11 @@ const NewRun: React.FC = () => {
                 <div ref={(el) => setSelectDropDown(el?.parentElement)}>
                   {deployments?.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
-                      {d.projectName ?? t("Unnamed project")}
+                      {deploymentDisplay(
+                        d.projectName,
+                        d.version,
+                        d.description,
+                      )}
                     </SelectItem>
                   ))}
                 </div>
@@ -199,3 +203,13 @@ const NewRun: React.FC = () => {
 };
 
 export { NewRun };
+
+const deploymentDisplay = (
+  projectName: string,
+  version: string,
+  description?: string,
+) => {
+  return description
+    ? `${projectName} [${description}] @${version}`
+    : `${projectName}@${version}`;
+};
