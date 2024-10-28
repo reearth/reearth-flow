@@ -8,24 +8,24 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LC_CTYPE=ja_JP.utf8 \
     LANG=ja_JP.utf8
 
-RUN \
+RUN  \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    apt-get update && apt-get install -y git \
+    apt-get update && apt-get install -y \
     ca-certificates \
     locales \
     git \
     build-essential \
-    libssl-dev \
-    libxml2-dev \
     gcc \
     g++ \
     cmake \
     make \
     libc-dev \
+    # Required libraries
+    libssl-dev \
+    libxml2-dev \
     pkg-config \
     clang \
-    strace  \
     libdbus-1-dev
 
 RUN echo "ja_JP UTF-8" > /etc/locale.gen && locale-gen
@@ -46,7 +46,11 @@ FROM debian:bookworm-slim
 RUN \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    apt-get update && apt-get install -y libxml2 ca-certificates
+    apt-get update && \
+    apt-get install -y \
+    ca-certificates \
+    libxml2 && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker /bin
 
