@@ -14,14 +14,16 @@ import (
 )
 
 type CreateDeploymentParam struct {
-	Project   id.ProjectID
-	Workspace accountdomain.WorkspaceID
-	Workflow  *file.File
+	Project     id.ProjectID
+	Workspace   accountdomain.WorkspaceID
+	Workflow    *file.File
+	Description *string
 }
 
 type UpdateDeploymentParam struct {
-	ID       id.DeploymentID
-	Workflow *file.File
+	ID          id.DeploymentID
+	Workflow    *file.File
+	Description *string
 }
 
 type ExecuteDeploymentParam struct {

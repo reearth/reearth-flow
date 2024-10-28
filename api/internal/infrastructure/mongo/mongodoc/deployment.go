@@ -14,6 +14,7 @@ type DeploymentDocument struct {
 	ProjectID   string    `bson:"projectid"`
 	WorkspaceID string    `bson:"workspaceid"`
 	WorkflowURL string    `bson:"workflowurl"`
+	Description string    `bson:"description"`
 	Version     string    `bson:"version"`
 	UpdatedAt   time.Time `bson:"updatedat"`
 }
@@ -34,6 +35,7 @@ func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, string) {
 		ProjectID:   d.Project().String(),
 		WorkspaceID: d.Workspace().String(),
 		WorkflowURL: d.WorkflowUrl(),
+		Description: d.Description(),
 		Version:     d.Version(),
 		UpdatedAt:   d.UpdatedAt(),
 	}, did
@@ -58,6 +60,7 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 		Project(pid).
 		Workspace(wid).
 		WorkflowURL(d.WorkflowURL).
+		Description(d.Description).
 		Version(d.Version).
 		UpdatedAt(d.UpdatedAt).
 		Build()

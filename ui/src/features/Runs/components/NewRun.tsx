@@ -109,7 +109,7 @@ const NewRun: React.FC = () => {
             <Select
               onValueChange={(rt) => setRunType(rt as RunType | undefined)}>
               <SelectTrigger>
-                <SelectValue placeholder={t("Select run type")} />
+                <SelectValue placeholder={t("Select desired run type")} />
               </SelectTrigger>
               <SelectContent>
                 <div ref={(el) => setSelectDropDown(el?.parentElement)}>
@@ -166,14 +166,20 @@ const NewRun: React.FC = () => {
               }>
               <SelectTrigger>
                 <SelectValue
-                  placeholder={t("Select from published projects")}
+                  placeholder={t(
+                    "Select from the selected workspace's deployments",
+                  )}
                 />
               </SelectTrigger>
               <SelectContent>
                 <div ref={(el) => setSelectDropDown(el?.parentElement)}>
                   {deployments?.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
-                      {d.projectName ?? t("Unnamed project")}
+                      {deploymentDisplay(
+                        d.projectName,
+                        d.version,
+                        d.description,
+                      )}
                     </SelectItem>
                   ))}
                 </div>
@@ -199,3 +205,13 @@ const NewRun: React.FC = () => {
 };
 
 export { NewRun };
+
+const deploymentDisplay = (
+  projectName: string,
+  version: string,
+  description?: string,
+) => {
+  return description
+    ? `${projectName} [${description}] @${version}`
+    : `${projectName}@${version}`;
+};

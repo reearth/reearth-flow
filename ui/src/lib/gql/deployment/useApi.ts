@@ -1,4 +1,5 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { DEFAULT_PROJECT_NAME } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import type {
   CreateDeployment,
@@ -28,10 +29,18 @@ export const useDeployment = () => {
   const createDeployment = async (
     workspaceId: string,
     projectId: string,
-    workflowId: string,
-    workflow: string,
+    workflowId?: string,
+    workflow?: string,
+    workflowDescription?: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
+    if (!workflowId || !workflow) {
+      toast({
+        title: t("Empty workflow detected"),
+        description: t("You cannot create a deployment without a workflow."),
+      });
+      return { deployment: undefined, ...rest };
+    }
 
     try {
       const formData = yamlToFormData(workflow, workflowId);
@@ -40,6 +49,7 @@ export const useDeployment = () => {
         workspaceId,
         projectId,
         file: formData,
+        description: workflowDescription,
       });
       toast({
         title: t("Deployment Created"),
@@ -55,6 +65,7 @@ export const useDeployment = () => {
     deploymentId: string,
     workflowId: string,
     workflowYaml: string,
+    description?: string,
   ): Promise<UpdateDeployment> => {
     const { mutateAsync, ...rest } = updateDeploymentMutation;
     try {
@@ -62,15 +73,17 @@ export const useDeployment = () => {
         deploymentId,
         workflowId,
         workflowYaml,
+        description,
       });
       return deployment
         ? {
             deployment: {
               id: deployment?.id,
               projectId: deployment.projectId,
-              projectName: deployment.project?.name,
+              projectName: deployment.project?.name ?? t(DEFAULT_PROJECT_NAME),
               workspaceId: deployment.workspaceId,
               workflowUrl: deployment.workflowUrl,
+              description: deployment.description ?? undefined,
               version: deployment.version,
               createdAt: deployment.createdAt,
               updatedAt: deployment.updatedAt,
