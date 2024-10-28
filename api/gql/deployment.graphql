@@ -5,6 +5,7 @@ type Deployment implements Node {
   projectId: ID!
   workspaceId: ID!
   workflowUrl: String!
+  description: String!
   version: String!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -36,11 +37,13 @@ input CreateDeploymentInput {
   workspaceId: ID!
   projectId: ID!
   file: Upload!
+  description: String
 }
 
 input UpdateDeploymentInput {
   deploymentId: ID!
-  file: Upload!
+  file: Upload
+  description: String
 }
 
 input DeleteDeploymentInput {

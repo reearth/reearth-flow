@@ -21,9 +21,10 @@ func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.
 	}
 
 	res, err := usecases(ctx).Deployment.Create(ctx, interfaces.CreateDeploymentParam{
-		Project:   pid,
-		Workspace: wsid,
-		Workflow:  gqlmodel.FromFile(&input.File),
+		Project:     pid,
+		Workspace:   wsid,
+		Workflow:    gqlmodel.FromFile(&input.File),
+		Description: input.Description,
 	}, getOperator(ctx))
 	if err != nil {
 		return nil, err
@@ -39,8 +40,9 @@ func (r *mutationResolver) UpdateDeployment(ctx context.Context, input gqlmodel.
 	}
 
 	res, err := usecases(ctx).Deployment.Update(ctx, interfaces.UpdateDeploymentParam{
-		ID:       did,
-		Workflow: gqlmodel.FromFile(&input.File),
+		ID:          did,
+		Workflow:    gqlmodel.FromFile(input.File),
+		Description: input.Description,
 	}, getOperator(ctx))
 	if err != nil {
 		return nil, err

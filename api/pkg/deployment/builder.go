@@ -56,6 +56,11 @@ func (b *DeploymentBuilder) WorkflowURL(workflowUrl string) *DeploymentBuilder {
 	return b
 }
 
+func (b *DeploymentBuilder) Description(description string) *DeploymentBuilder {
+	b.d.description = description
+	return b
+}
+
 func (b *DeploymentBuilder) Version(version string) *DeploymentBuilder {
 	b.d.version = version
 	return b
