@@ -16,7 +16,7 @@ const MoveUpButton = <
   props: IconButtonProps<T, S, F>,
 ) => {
   return (
-    <Button {...props}>
+    <Button size={"icon"} {...props}>
       <ArrowUpIcon />
     </Button>
   );
