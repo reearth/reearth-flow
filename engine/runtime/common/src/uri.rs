@@ -160,6 +160,10 @@ impl Uri {
             .unwrap_or_default()
     }
 
+    pub fn as_path(&self) -> PathBuf {
+        self.path()
+    }
+
     pub fn path(&self) -> PathBuf {
         let p = &self.uri[self.protocol.as_str().len() + PROTOCOL_SEPARATOR.len()..];
         match self.protocol {

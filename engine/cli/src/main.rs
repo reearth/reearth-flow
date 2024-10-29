@@ -23,7 +23,9 @@ const RED_COLOR: Color = Color::TrueColor {
 
 fn main() -> Result<()> {
     let about_text = about_text();
-    let app = build_cli().about(about_text).version("0.1.0");
+    let app = build_cli()
+        .about(about_text)
+        .version(env!("CARGO_PKG_VERSION"));
     let matches = app.get_matches();
     let command = CliCommand::parse_cli_args(matches)?;
     logger::setup_logging_and_tracing(command.default_log_level(), true);
