@@ -18,22 +18,22 @@ pub struct Metadata {
 #[derive(Serialize, Deserialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Asset {
-    pub(crate) base_url: String,
-    pub(crate) files: Vec<String>,
+    pub base_url: String,
+    pub files: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetFile {
-    name: String,
-    path: String,
-    checksum: Option<String>,
-    metadata: Option<HashMap<String, String>>,
+    pub name: String,
+    pub path: String,
+    pub checksum: Option<String>,
+    pub metadata: Option<HashMap<String, String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Timestamp {
-    created: chrono::DateTime<Utc>,
-    updated: Option<chrono::DateTime<Utc>>,
+    pub created: chrono::DateTime<Utc>,
+    pub updated: Option<chrono::DateTime<Utc>>,
 }

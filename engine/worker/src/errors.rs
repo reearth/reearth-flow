@@ -38,7 +38,7 @@ impl WorkerError {
         Self::Run(message.to_string())
     }
 
-    pub(crate) fn failed_to_donwload_asset_files<T: ToString>(message: T) -> Self {
+    pub(crate) fn failed_to_download_asset_files<T: ToString>(message: T) -> Self {
         Self::FailedToDownloadAssetFiles(message.to_string())
     }
 }

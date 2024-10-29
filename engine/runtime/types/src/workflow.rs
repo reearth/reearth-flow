@@ -58,10 +58,11 @@ impl Workflow {
         if environment_vars.is_empty() {
             return Ok(());
         }
-        let mut with = if let Some(with) = self.with.clone() {
+        let mut with = if let Some(ref mut with) = self.with {
             with
         } else {
-            serde_json::Map::<String, Value>::new()
+            self.with = Some(Map::new());
+            self.with.as_mut().unwrap()
         };
         with.extend(
             environment_vars
@@ -83,19 +84,11 @@ impl Workflow {
         Ok(())
     }
 
-    pub fn extend_with(
-        &mut self,
+    fn process_params(
+        &self,
         params: HashMap<String, String>,
-    ) -> Result<(), crate::error::Error> {
-        if params.is_empty() {
-            return Ok(());
-        }
-        let mut with = if let Some(with) = self.with.clone() {
-            with
-        } else {
-            serde_json::Map::<String, Value>::new()
-        };
-        let params = params
+    ) -> Result<HashMap<String, Value>, crate::error::Error> {
+        params
             .into_iter()
             .map(|(key, value)| {
                 let value = match determine_format(value.as_str()) {
@@ -108,9 +101,19 @@ impl Workflow {
                 };
                 Ok((key, value))
             })
-            .collect::<Result<HashMap<_, _>, crate::error::Error>>()?;
-        with.extend(params);
-        self.with = Some(with);
+            .collect()
+    }
+
+    pub fn extend_with(
+        &mut self,
+        params: HashMap<String, String>,
+    ) -> Result<(), crate::error::Error> {
+        if params.is_empty() {
+            return Ok(());
+        }
+        let processed_params = self.process_params(params)?;
+        let with = self.with.get_or_insert_with(Map::new);
+        with.extend(processed_params);
         Ok(())
     }
 
@@ -121,33 +124,13 @@ impl Workflow {
         if params.is_empty() {
             return Ok(());
         }
-        let mut with = if let Some(with) = self.with.clone() {
-            with
-        } else {
-            serde_json::Map::<String, Value>::new()
-        };
-        let params = params
+        let filtered_params: HashMap<_, _> = params
             .into_iter()
-            .filter(|(key, _)| {
-                self.with
-                    .as_ref()
-                    .unwrap_or(&serde_json::Map::new())
-                    .contains_key(key)
-            })
-            .map(|(key, value)| {
-                let value = match determine_format(value.as_str()) {
-                    SerdeFormat::Json | SerdeFormat::Yaml => {
-                        from_str(value.as_str()).map_err(crate::error::Error::input)?
-                    }
-                    SerdeFormat::Unknown => {
-                        serde_json::to_value(value).map_err(crate::error::Error::input)?
-                    }
-                };
-                Ok((key, value))
-            })
-            .collect::<Result<HashMap<_, _>, crate::error::Error>>()?;
-        with.extend(params);
-        self.with = Some(with);
+            .filter(|(key, _)| self.with.as_ref().unwrap_or(&Map::new()).contains_key(key))
+            .collect();
+        let processed_params = self.process_params(filtered_params)?;
+        let with = self.with.get_or_insert_with(Map::new);
+        with.extend(processed_params);
         Ok(())
     }
 }

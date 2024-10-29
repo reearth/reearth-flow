@@ -1,13 +1,12 @@
 use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use reearth_flow_runner::runner::AsyncRunner;
-use reearth_flow_state::State;
-use reearth_flow_types::Workflow;
-
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
 use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
+use reearth_flow_runner::runner::AsyncRunner;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve::{self, StorageResolver};
+use reearth_flow_types::Workflow;
 use tokio::runtime::Runtime;
 
 use crate::{asset::download_asset, factory::ALL_ACTION_FACTORIES, types::metadata::Metadata};
@@ -51,7 +50,7 @@ fn vars_arg() -> Arg {
         .display_order(3)
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RunWorkerCommand {
     workflow: String,
     metadata_path: Uri,
