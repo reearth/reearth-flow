@@ -58,11 +58,10 @@ impl Workflow {
         if environment_vars.is_empty() {
             return Ok(());
         }
-        let mut with = if let Some(ref mut with) = self.with {
+        let mut with = if let Some(with) = self.with.clone() {
             with
         } else {
-            self.with = Some(Map::new());
-            self.with.as_mut().unwrap()
+            serde_json::Map::<String, Value>::new()
         };
         with.extend(
             environment_vars
