@@ -18,7 +18,6 @@ pub enum WorkerError {
     #[error("Failed to initialize cli: {0}")]
     Init(String),
 
-    #[allow(dead_code)]
     #[error("Failed to run cli: {0}")]
     Run(String),
 }
