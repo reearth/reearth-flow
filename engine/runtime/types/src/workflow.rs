@@ -83,6 +83,37 @@ impl Workflow {
         Ok(())
     }
 
+    pub fn extend_with(
+        &mut self,
+        params: HashMap<String, String>,
+    ) -> Result<(), crate::error::Error> {
+        if params.is_empty() {
+            return Ok(());
+        }
+        let mut with = if let Some(with) = self.with.clone() {
+            with
+        } else {
+            serde_json::Map::<String, Value>::new()
+        };
+        let params = params
+            .into_iter()
+            .map(|(key, value)| {
+                let value = match determine_format(value.as_str()) {
+                    SerdeFormat::Json | SerdeFormat::Yaml => {
+                        from_str(value.as_str()).map_err(crate::error::Error::input)?
+                    }
+                    SerdeFormat::Unknown => {
+                        serde_json::to_value(value).map_err(crate::error::Error::input)?
+                    }
+                };
+                Ok((key, value))
+            })
+            .collect::<Result<HashMap<_, _>, crate::error::Error>>()?;
+        with.extend(params);
+        self.with = Some(with);
+        Ok(())
+    }
+
     pub fn merge_with(
         &mut self,
         params: HashMap<String, String>,

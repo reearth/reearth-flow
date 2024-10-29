@@ -256,7 +256,7 @@ where
                     .ok()
             }),
             "level" => FnValue(move |rinfo : &Record| {
-                rinfo.level().as_short_str()
+                rinfo.level().as_str()
             }),
             "msg" => PushFnValue(move |record : &Record, ser| {
                 ser.emit(record.msg())
