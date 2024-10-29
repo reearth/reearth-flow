@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     trace!("Session repository created");
 
     let project_id = "project_123".to_string();
-    let tenant = ObjectTenant::new(generate_id(14, "tenant"), "tenant".to_owned());
+    let tenant = ObjectTenant::new(generate_id!("tenant"), "tenant".to_owned());
     let mut session = ProjectEditingSession::new(project_id.clone(), tenant);
     session.session_id = Some(generate_id(14, "session"));
 
