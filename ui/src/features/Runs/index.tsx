@@ -1,6 +1,6 @@
 import { Play } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 import { Button } from "@flow/components";
 import { TopNavigation } from "@flow/features/TopNavigation";
@@ -21,7 +21,10 @@ const Runs: React.FC = () => {
   const navigate = useNavigate();
   const [currentWorkspace] = useCurrentWorkspace();
 
-  const [selectedRun, selectRun] = useState<Run>();
+  const selectedRun = useMemo(
+    () => mockRuns.find((run) => run.id === tab),
+    [tab],
+  );
 
   const handleRunSelect = useCallback(
     (run: Run) =>
@@ -31,18 +34,9 @@ const Runs: React.FC = () => {
     [currentWorkspace, navigate],
   );
 
-  useEffect(() => {
-    if (!isList(tab)) {
-      const run = mockRuns.find((run) => run.id === tab);
-      selectRun((prev) => (prev?.id !== run?.id ? run : prev));
-    }
-  }, [selectedRun, currentWorkspace, tab, navigate]);
-
   const handleTabChange = useCallback(
-    (tab: Tab) => {
-      selectRun(undefined);
-      navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/${tab}` });
-    },
+    (tab: Tab) =>
+      navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/${tab}` }),
     [currentWorkspace, navigate],
   );
 
@@ -91,29 +85,31 @@ const Runs: React.FC = () => {
     <div className="flex h-screen flex-col">
       <TopNavigation />
       <div className="flex flex-1">
-        <div className="flex w-[250px] flex-col gap-3 border-r bg-secondary px-2 py-4">
-          <div className="flex p-2">
-            <p className="flex-1 text-lg dark:font-light">{t("Runs")}</p>
+        <div className="flex w-[250px] flex-col gap-3 border-r bg-secondary">
+          <div className="flex items-center justify-between gap-2 p-2">
+            <p className="text-lg dark:font-extralight">{t("Runs")}</p>
             <Button
-              className="gap-1"
-              size="sm"
+              className="flex h-[30px] gap-2"
+              variant="outline"
               onClick={() => handleTabChange("new")}>
-              <Play />
-              <p className="dark:font-extralight">{t("New Run")}</p>
+              <Play weight="thin" />
+              <p className="text-xs dark:font-light">{t("New Run")}</p>
             </Button>
           </div>
           <div className="flex-1">
-            <div
-              className={`mb-1 rounded-md border-transparent px-2 py-[2px] hover:cursor-pointer hover:bg-accent ${tab === "all" ? "bg-accent text-secondary-foreground" : undefined}`}
-              onClick={() => handleTabChange("all")}>
-              <p className="dark:font-thin">{t("All")}</p>
+            <div className="px-2">
+              <div
+                className={`mb-1 rounded-md border-transparent px-2 py-[2px] hover:cursor-pointer hover:bg-accent ${tab === "all" ? "bg-accent text-secondary-foreground" : undefined}`}
+                onClick={() => handleTabChange("all")}>
+                <p className="dark:font-thin">{t("All")}</p>
+              </div>
             </div>
-            <div className="-mx-2 border-b" />
+            <div className="border-b" />
             <div className="flex flex-col gap-1 p-2">
               {statuses.map(({ id, name }) => (
                 <div
                   key={id}
-                  className={`-mx-2 rounded-md border-l-2 border-transparent px-2 py-[2px] hover:cursor-pointer hover:bg-accent ${tab === id ? "bg-accent text-secondary-foreground" : undefined}`}
+                  className={`rounded-md border-l-2 border-transparent px-2 py-[2px] hover:cursor-pointer hover:bg-accent ${tab === id ? "bg-accent text-secondary-foreground" : undefined}`}
                   onClick={() => handleTabChange(id)}>
                   <p className="text-sm dark:font-thin">{name}</p>
                 </div>
@@ -129,7 +125,6 @@ const Runs: React.FC = () => {
               <StatusContent
                 label={statusLabels[tab as Status]}
                 runs={runs}
-                selectedRun={selectedRun}
                 onRunSelect={handleRunSelect}
               />
             ) : (

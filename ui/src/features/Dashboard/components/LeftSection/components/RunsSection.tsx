@@ -18,7 +18,7 @@ const RunsSection: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-2 border-b  p-2">
+      <div className="flex items-center justify-between gap-2 p-2">
         <p className="text-lg dark:font-extralight">{t("Runs")}</p>
         <Button
           className="flex h-[30px] gap-2"
@@ -30,7 +30,7 @@ const RunsSection: React.FC = () => {
           <p className="text-xs dark:font-light">{t("New Run")}</p>
         </Button>
       </div>
-      <div className="flex flex-col gap-1 p-4">
+      <div className="m-1 flex flex-col gap-1 rounded border bg-zinc-600/20 p-2">
         <div
           className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent"
           onClick={() =>

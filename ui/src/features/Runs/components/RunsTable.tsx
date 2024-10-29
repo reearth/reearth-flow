@@ -9,7 +9,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import {
   DropdownMenu,
@@ -33,16 +33,16 @@ import { Run } from "@flow/types";
 type Props = {
   runs: Run[];
   rowSelection?: RowSelectionState;
-  selectedRun?: Run;
   onRunSelect?: (run: Run) => void;
 };
 
-const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
+const RunsTable: React.FC<Props> = ({ runs, onRunSelect }) => {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([
     { id: "completedAt", desc: true },
     { id: "startedAt", desc: true },
   ]);
+
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
@@ -104,17 +104,6 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
       globalFilter,
     },
   });
-
-  useEffect(() => {
-    if (rowSelection) {
-      const selected = table
-        ?.getRowModel()
-        .rows.filter((r) => r.getIsSelected().valueOf())[0]?.original;
-      if (selected !== selectedRun) {
-        onRunSelect?.(selected);
-      }
-    }
-  }, [rowSelection, selectedRun, table, onRunSelect]);
 
   return (
     <div className="flex flex-col gap-4 py-4">
@@ -178,7 +167,10 @@ const RunsTable: React.FC<Props> = ({ runs, selectedRun, onRunSelect }) => {
                   key={row.id}
                   className="h-10 cursor-pointer transition-all hover:bg-primary"
                   data-state={row.getIsSelected() && "selected"}
-                  onClick={() => row.toggleSelected()}
+                  onClick={() => {
+                    row.toggleSelected();
+                    onRunSelect?.(row.original);
+                  }}
                   onSelect={(s) => console.log("S", s)}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
