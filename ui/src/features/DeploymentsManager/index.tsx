@@ -1,7 +1,6 @@
-import { Plus } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { Button, FlowLogo, DataTable as Table } from "@flow/components";
+import { FlowLogo, DataTable as Table } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment, Workspace } from "@flow/types";
 
@@ -45,16 +44,16 @@ const DeploymentManager: React.FC<Props> = ({ workspace }) => {
   return (
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-6">
-        <div className="flex items-center justify-between gap-2 border-b pb-4">
+        <div className="flex h-[53px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Deployments")}</p>
-          <Button
+          {/* <Button
             className="flex gap-2"
             variant="outline"
             // onClick={() => setOpenProjectAddDialog(true)}>
           >
             <Plus weight="thin" />
             <p className="text-xs dark:font-light">{t("New Deployment")}</p>
-          </Button>
+          </Button> */}
         </div>
         <div className="flex flex-1">
           {deployments && deployments.length > 0 ? (
