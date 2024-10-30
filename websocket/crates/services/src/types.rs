@@ -18,6 +18,7 @@ pub struct ManageProjectEditSessionTaskData {
     pub last_merged_at: Option<DateTime<Utc>>,
     pub last_snapshot_at: Option<DateTime<Utc>>,
     pub clients_disconnected_at: Option<DateTime<Utc>>,
+    client_count: Option<usize>,
 }
 
 impl ManageProjectEditSessionTaskData {
@@ -32,6 +33,7 @@ impl ManageProjectEditSessionTaskData {
             last_merged_at,
             last_snapshot_at,
             clients_disconnected_at,
+            client_count: None,
         }
     }
 }

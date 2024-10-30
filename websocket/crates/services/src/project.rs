@@ -6,6 +6,7 @@ use flow_websocket_domain::project::{Action, Project, ProjectAllowedActions};
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository, RedisDataManager,
 };
+use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManagerError;
 use std::sync::Arc;
 use tracing::debug;
@@ -57,20 +58,12 @@ where
         {
             Some(session) => session,
 
-            None => {
-                debug!("create new session");
-                let tenant_id = tenant_id.unwrap_or_else(|| generate_id!("tenant"));
-                let tenant_name = tenant_name.unwrap_or_else(|| "tenant".to_owned());
-                ProjectEditingSession::new(
-                    project_id.to_string(),
-                    ObjectTenant::new(tenant_id, tenant_name),
-                )
-            }
+            None => ProjectEditingSession::new(project_id.to_string()),
         };
 
         if session.session_id.is_none() {
             session
-                .start_or_join_session(&*self.snapshot_repository, &*self.redis_data_manager)
+                .start_or_join_session(&*self.snapshot_repository, &*self.redis_data_manager, user)
                 .await?;
             self.session_repository
                 .create_session(session.clone())
