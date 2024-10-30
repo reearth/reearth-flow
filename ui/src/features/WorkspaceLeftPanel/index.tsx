@@ -22,7 +22,22 @@ const LeftPanel: React.FC = () => {
     location: { pathname },
   } = useRouterState();
 
-  const route: RouteOption = pathname.includes("deployments")
+  const route: RouteOption = getRoute(pathname);
+
+  return (
+    <div className="flex w-[250px] flex-col justify-between gap-[8px] border-r bg-secondary">
+      <div className="flex flex-1 flex-col">
+        <RunsSection route={route} />
+        <EndSection route={route} />
+      </div>
+    </div>
+  );
+};
+
+export default LeftPanel;
+
+const getRoute = (pathname: string): RouteOption => {
+  return pathname.includes("deployments")
     ? "deployments"
     : pathname.includes("general")
       ? "general"
@@ -41,15 +56,4 @@ const LeftPanel: React.FC = () => {
                   : pathname.includes("new")
                     ? "new"
                     : "projects";
-
-  return (
-    <div className="flex w-[250px] flex-col justify-between gap-[8px] border-r bg-secondary">
-      <div className="flex flex-1 flex-col">
-        <RunsSection route={route} />
-        <EndSection route={route} />
-      </div>
-    </div>
-  );
 };
-
-export default LeftPanel;

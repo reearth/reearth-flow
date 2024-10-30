@@ -1,9 +1,9 @@
-import { createLazyFileRoute } from '@tanstack/react-router'
+import { createLazyFileRoute } from "@tanstack/react-router";
 
-import { Runs } from '@flow/features/Runs'
+import { Runs } from "@flow/features/Runs";
 
-export const Route = createLazyFileRoute('/workspaces/$workspaceId_/runs/$tab')(
+export const Route = createLazyFileRoute("/workspaces/$workspaceId_/runs/$tab")(
   {
     component: () => <Runs />,
   },
-)
+);
