@@ -2,11 +2,16 @@ import { Play } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@flow/components";
+import type { RouteOption } from "@flow/features/WorkspaceLeftPanel";
 import { useT } from "@flow/lib/i18n";
 import { runs } from "@flow/mock_data/runsData";
 import { useCurrentWorkspace } from "@flow/stores";
 
-const RunsSection: React.FC = () => {
+type Props = {
+  route?: RouteOption;
+};
+
+const RunsSection: React.FC<Props> = ({ route }) => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
   const navigate = useNavigate();
@@ -19,7 +24,13 @@ const RunsSection: React.FC = () => {
   return (
     <div>
       <div className="flex items-center justify-between gap-2 p-2">
-        <p className="text-lg dark:font-extralight">{t("Runs")}</p>
+        <p
+          className="-m-1 cursor-pointer rounded p-1 text-lg hover:bg-accent dark:font-extralight"
+          onClick={() =>
+            navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/all` })
+          }>
+          {t("Runs")}
+        </p>
         <Button
           className="flex h-[30px] gap-2"
           variant="outline"
@@ -32,7 +43,7 @@ const RunsSection: React.FC = () => {
       </div>
       <div className="m-1 flex flex-col gap-1 rounded border bg-zinc-600/20 p-2">
         <div
-          className="-m-1 flex justify-between rounded-md p-1 hover:cursor-pointer hover:bg-accent"
+          className={`-m-1 flex justify-between rounded-md p-1 hover:cursor-pointer ${route === "running" && "bg-accent"} hover:bg-accent`}
           onClick={() =>
             navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/running` })
           }>
@@ -40,7 +51,7 @@ const RunsSection: React.FC = () => {
           <p className="dark:font-thin">{runningRuns.length}</p>
         </div>
         <div
-          className="-m-1 flex justify-between rounded-md p-1 hover:cursor-pointer hover:bg-accent"
+          className={`-m-1 flex justify-between rounded-md p-1 hover:cursor-pointer ${route === "queued" && "bg-accent"} hover:bg-accent`}
           onClick={() =>
             navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/queued` })
           }>
@@ -50,7 +61,7 @@ const RunsSection: React.FC = () => {
         <div className="my-1 border-t" />
         <div className="flex flex-col">
           <div
-            className="-m-1 flex justify-between rounded-md p-1 hover:cursor-pointer hover:bg-accent"
+            className={`-m-1 flex justify-between rounded-md p-1 hover:cursor-pointer ${route === "completed" && "bg-accent"} hover:bg-accent`}
             onClick={() =>
               navigate({
                 to: `/workspaces/${currentWorkspace?.id}/runs/completed`,

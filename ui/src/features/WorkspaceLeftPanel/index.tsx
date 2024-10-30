@@ -8,6 +8,11 @@ export const routeOptions = [
   "general",
   "integrations",
   "members",
+  "runnning",
+  "queued",
+  "completed",
+  "new",
+  "all",
 ];
 
 export type RouteOption = (typeof routeOptions)[number];
@@ -25,12 +30,22 @@ const LeftPanel: React.FC = () => {
         ? "integrations"
         : pathname.includes("members")
           ? "members"
-          : "projects";
+          : pathname.includes("completed")
+            ? "completed"
+            : pathname.includes("running")
+              ? "running"
+              : pathname.includes("queued")
+                ? "queued"
+                : pathname.includes("all")
+                  ? "all"
+                  : pathname.includes("new")
+                    ? "new"
+                    : "projects";
 
   return (
     <div className="flex w-[250px] flex-col justify-between gap-[8px] border-r bg-secondary">
       <div className="flex flex-1 flex-col">
-        <RunsSection />
+        <RunsSection route={route} />
         <EndSection route={route} />
       </div>
     </div>

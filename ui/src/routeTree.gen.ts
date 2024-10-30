@@ -21,14 +21,14 @@ const WorkspacesLazyImport = createFileRoute('/workspaces')()
 const WorkspacesWorkspaceIdLazyImport = createFileRoute(
   '/workspaces/$workspaceId',
 )()
-const WorkspacesWorkspaceIdRunsTabLazyImport = createFileRoute(
-  '/workspaces_/$workspaceId_/runs/$tab',
-)()
 const WorkspacesWorkspaceIdProjectsProjectIdLazyImport = createFileRoute(
   '/workspaces_/$workspaceId_/projects_/$projectId',
 )()
 const WorkspacesWorkspaceIdSettingsTabLazyImport = createFileRoute(
   '/workspaces/$workspaceId_/settings/$tab',
+)()
+const WorkspacesWorkspaceIdRunsTabLazyImport = createFileRoute(
+  '/workspaces/$workspaceId_/runs/$tab',
 )()
 const WorkspacesWorkspaceIdDeploymentsTabLazyImport = createFileRoute(
   '/workspaces/$workspaceId_/deployments/$tab',
@@ -56,17 +56,6 @@ const WorkspacesWorkspaceIdLazyRoute = WorkspacesWorkspaceIdLazyImport.update({
   import('./routes/workspaces.$workspaceId.lazy').then((d) => d.Route),
 )
 
-const WorkspacesWorkspaceIdRunsTabLazyRoute =
-  WorkspacesWorkspaceIdRunsTabLazyImport.update({
-    id: '/workspaces_/$workspaceId_/runs/$tab',
-    path: '/workspaces/$workspaceId/runs/$tab',
-    getParentRoute: () => rootRoute,
-  } as any).lazy(() =>
-    import('./routes/workspaces_.$workspaceId_.runs.$tab.lazy').then(
-      (d) => d.Route,
-    ),
-  )
-
 const WorkspacesWorkspaceIdProjectsProjectIdLazyRoute =
   WorkspacesWorkspaceIdProjectsProjectIdLazyImport.update({
     id: '/workspaces_/$workspaceId_/projects_/$projectId',
@@ -85,6 +74,17 @@ const WorkspacesWorkspaceIdSettingsTabLazyRoute =
     getParentRoute: () => WorkspacesLazyRoute,
   } as any).lazy(() =>
     import('./routes/workspaces.$workspaceId_.settings.$tab.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+
+const WorkspacesWorkspaceIdRunsTabLazyRoute =
+  WorkspacesWorkspaceIdRunsTabLazyImport.update({
+    id: '/$workspaceId_/runs/$tab',
+    path: '/$workspaceId/runs/$tab',
+    getParentRoute: () => WorkspacesLazyRoute,
+  } as any).lazy(() =>
+    import('./routes/workspaces.$workspaceId_.runs.$tab.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -132,6 +132,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesWorkspaceIdDeploymentsTabLazyImport
       parentRoute: typeof WorkspacesLazyImport
     }
+    '/workspaces/$workspaceId_/runs/$tab': {
+      id: '/workspaces/$workspaceId_/runs/$tab'
+      path: '/$workspaceId/runs/$tab'
+      fullPath: '/workspaces/$workspaceId/runs/$tab'
+      preLoaderRoute: typeof WorkspacesWorkspaceIdRunsTabLazyImport
+      parentRoute: typeof WorkspacesLazyImport
+    }
     '/workspaces/$workspaceId_/settings/$tab': {
       id: '/workspaces/$workspaceId_/settings/$tab'
       path: '/$workspaceId/settings/$tab'
@@ -146,13 +153,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdLazyImport
       parentRoute: typeof rootRoute
     }
-    '/workspaces_/$workspaceId_/runs/$tab': {
-      id: '/workspaces_/$workspaceId_/runs/$tab'
-      path: '/workspaces/$workspaceId/runs/$tab'
-      fullPath: '/workspaces/$workspaceId/runs/$tab'
-      preLoaderRoute: typeof WorkspacesWorkspaceIdRunsTabLazyImport
-      parentRoute: typeof rootRoute
-    }
   }
 }
 
@@ -161,6 +161,7 @@ declare module '@tanstack/react-router' {
 interface WorkspacesLazyRouteChildren {
   WorkspacesWorkspaceIdLazyRoute: typeof WorkspacesWorkspaceIdLazyRoute
   WorkspacesWorkspaceIdDeploymentsTabLazyRoute: typeof WorkspacesWorkspaceIdDeploymentsTabLazyRoute
+  WorkspacesWorkspaceIdRunsTabLazyRoute: typeof WorkspacesWorkspaceIdRunsTabLazyRoute
   WorkspacesWorkspaceIdSettingsTabLazyRoute: typeof WorkspacesWorkspaceIdSettingsTabLazyRoute
 }
 
@@ -168,6 +169,7 @@ const WorkspacesLazyRouteChildren: WorkspacesLazyRouteChildren = {
   WorkspacesWorkspaceIdLazyRoute: WorkspacesWorkspaceIdLazyRoute,
   WorkspacesWorkspaceIdDeploymentsTabLazyRoute:
     WorkspacesWorkspaceIdDeploymentsTabLazyRoute,
+  WorkspacesWorkspaceIdRunsTabLazyRoute: WorkspacesWorkspaceIdRunsTabLazyRoute,
   WorkspacesWorkspaceIdSettingsTabLazyRoute:
     WorkspacesWorkspaceIdSettingsTabLazyRoute,
 }
@@ -181,9 +183,9 @@ export interface FileRoutesByFullPath {
   '/workspaces': typeof WorkspacesLazyRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdLazyRoute
   '/workspaces/$workspaceId/deployments/$tab': typeof WorkspacesWorkspaceIdDeploymentsTabLazyRoute
+  '/workspaces/$workspaceId/runs/$tab': typeof WorkspacesWorkspaceIdRunsTabLazyRoute
   '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabLazyRoute
   '/workspaces/$workspaceId/projects/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
-  '/workspaces/$workspaceId/runs/$tab': typeof WorkspacesWorkspaceIdRunsTabLazyRoute
 }
 
 export interface FileRoutesByTo {
@@ -191,9 +193,9 @@ export interface FileRoutesByTo {
   '/workspaces': typeof WorkspacesLazyRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdLazyRoute
   '/workspaces/$workspaceId/deployments/$tab': typeof WorkspacesWorkspaceIdDeploymentsTabLazyRoute
+  '/workspaces/$workspaceId/runs/$tab': typeof WorkspacesWorkspaceIdRunsTabLazyRoute
   '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabLazyRoute
   '/workspaces/$workspaceId/projects/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
-  '/workspaces/$workspaceId/runs/$tab': typeof WorkspacesWorkspaceIdRunsTabLazyRoute
 }
 
 export interface FileRoutesById {
@@ -202,9 +204,9 @@ export interface FileRoutesById {
   '/workspaces': typeof WorkspacesLazyRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdLazyRoute
   '/workspaces/$workspaceId_/deployments/$tab': typeof WorkspacesWorkspaceIdDeploymentsTabLazyRoute
+  '/workspaces/$workspaceId_/runs/$tab': typeof WorkspacesWorkspaceIdRunsTabLazyRoute
   '/workspaces/$workspaceId_/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabLazyRoute
   '/workspaces_/$workspaceId_/projects_/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
-  '/workspaces_/$workspaceId_/runs/$tab': typeof WorkspacesWorkspaceIdRunsTabLazyRoute
 }
 
 export interface FileRouteTypes {
@@ -214,27 +216,27 @@ export interface FileRouteTypes {
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/workspaces/$workspaceId/deployments/$tab'
+    | '/workspaces/$workspaceId/runs/$tab'
     | '/workspaces/$workspaceId/settings/$tab'
     | '/workspaces/$workspaceId/projects/$projectId'
-    | '/workspaces/$workspaceId/runs/$tab'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/workspaces/$workspaceId/deployments/$tab'
+    | '/workspaces/$workspaceId/runs/$tab'
     | '/workspaces/$workspaceId/settings/$tab'
     | '/workspaces/$workspaceId/projects/$projectId'
-    | '/workspaces/$workspaceId/runs/$tab'
   id:
     | '__root__'
     | '/'
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/workspaces/$workspaceId_/deployments/$tab'
+    | '/workspaces/$workspaceId_/runs/$tab'
     | '/workspaces/$workspaceId_/settings/$tab'
     | '/workspaces_/$workspaceId_/projects_/$projectId'
-    | '/workspaces_/$workspaceId_/runs/$tab'
   fileRoutesById: FileRoutesById
 }
 
@@ -242,7 +244,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   WorkspacesLazyRoute: typeof WorkspacesLazyRouteWithChildren
   WorkspacesWorkspaceIdProjectsProjectIdLazyRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
-  WorkspacesWorkspaceIdRunsTabLazyRoute: typeof WorkspacesWorkspaceIdRunsTabLazyRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -250,7 +251,6 @@ const rootRouteChildren: RootRouteChildren = {
   WorkspacesLazyRoute: WorkspacesLazyRouteWithChildren,
   WorkspacesWorkspaceIdProjectsProjectIdLazyRoute:
     WorkspacesWorkspaceIdProjectsProjectIdLazyRoute,
-  WorkspacesWorkspaceIdRunsTabLazyRoute: WorkspacesWorkspaceIdRunsTabLazyRoute,
 }
 
 export const routeTree = rootRoute
@@ -267,8 +267,7 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/workspaces",
-        "/workspaces_/$workspaceId_/projects_/$projectId",
-        "/workspaces_/$workspaceId_/runs/$tab"
+        "/workspaces_/$workspaceId_/projects_/$projectId"
       ]
     },
     "/": {
@@ -279,6 +278,7 @@ export const routeTree = rootRoute
       "children": [
         "/workspaces/$workspaceId",
         "/workspaces/$workspaceId_/deployments/$tab",
+        "/workspaces/$workspaceId_/runs/$tab",
         "/workspaces/$workspaceId_/settings/$tab"
       ]
     },
@@ -290,15 +290,16 @@ export const routeTree = rootRoute
       "filePath": "workspaces.$workspaceId_.deployments.$tab.lazy.tsx",
       "parent": "/workspaces"
     },
+    "/workspaces/$workspaceId_/runs/$tab": {
+      "filePath": "workspaces.$workspaceId_.runs.$tab.lazy.tsx",
+      "parent": "/workspaces"
+    },
     "/workspaces/$workspaceId_/settings/$tab": {
       "filePath": "workspaces.$workspaceId_.settings.$tab.lazy.tsx",
       "parent": "/workspaces"
     },
     "/workspaces_/$workspaceId_/projects_/$projectId": {
       "filePath": "workspaces_.$workspaceId_.projects_.$projectId.lazy.tsx"
-    },
-    "/workspaces_/$workspaceId_/runs/$tab": {
-      "filePath": "workspaces_.$workspaceId_.runs.$tab.lazy.tsx"
     }
   }
 }
