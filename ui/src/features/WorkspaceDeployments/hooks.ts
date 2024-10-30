@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import { useDeployment } from "@flow/lib/gql";
-import { Deployment, Workspace } from "@flow/types";
+import { useCurrentWorkspace } from "@flow/stores";
+import { Deployment } from "@flow/types";
 
-export default ({ workspace }: { workspace: Workspace }) => {
+export default () => {
   const ref = useRef<HTMLDivElement>(null);
+  const [workspace] = useCurrentWorkspace();
 
   const { useGetDeploymentsInfinite } = useDeployment();
 
   const { pages, hasNextPage, isFetching, fetchNextPage } =
-    useGetDeploymentsInfinite(workspace.id);
+    useGetDeploymentsInfinite(workspace?.id);
 
   const deployments: Deployment[] | undefined = useMemo(
     () =>

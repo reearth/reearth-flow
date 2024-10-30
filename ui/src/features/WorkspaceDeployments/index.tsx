@@ -2,17 +2,13 @@ import { ColumnDef } from "@tanstack/react-table";
 
 import { FlowLogo, DataTable as Table } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { Deployment, Workspace } from "@flow/types";
+import type { Deployment } from "@flow/types";
 
 import useHooks from "./hooks";
 
-type Props = {
-  workspace: Workspace;
-};
-
-const DeploymentManager: React.FC<Props> = ({ workspace }) => {
+const DeploymentManager: React.FC = () => {
   const t = useT();
-  const { deployments } = useHooks({ workspace });
+  const { deployments } = useHooks();
 
   const columns: ColumnDef<Deployment>[] = [
     {

@@ -10,7 +10,7 @@ import { useFullscreen, useShortcuts } from "@flow/hooks";
 // import { useShortcut } from "@flow/hooks/useShortcut";
 
 export const Route = createLazyFileRoute(
-  "/workspaces_/$workspaceId_/projects/$projectId",
+  "/workspaces_/$workspaceId_/projects_/$projectId",
 )({
   component: () => (
     <WorkspaceIdWrapper>

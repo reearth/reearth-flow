@@ -2,11 +2,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useProject } from "@flow/lib/gql";
-import { useCurrentProject } from "@flow/stores";
-import { Project, Workspace } from "@flow/types";
+import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
+import { Project } from "@flow/types";
 
-export default ({ workspace }: { workspace: Workspace }) => {
+export default () => {
   const ref = useRef<HTMLDivElement>(null);
+
+  const [workspace] = useCurrentWorkspace();
 
   const [currentProject, setCurrentProject] = useCurrentProject();
 
@@ -14,7 +16,7 @@ export default ({ workspace }: { workspace: Workspace }) => {
   const { useGetWorkspaceProjectsInfinite, deleteProject, updateProject } =
     useProject();
   const { pages, hasNextPage, isFetching, fetchNextPage } =
-    useGetWorkspaceProjectsInfinite(workspace.id);
+    useGetWorkspaceProjectsInfinite(workspace?.id);
 
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
   const [showError, setShowError] = useState(false);
@@ -28,10 +30,11 @@ export default ({ workspace }: { workspace: Workspace }) => {
 
   const handleProjectSelect = (p: Project) => {
     setCurrentProject(p);
-    navigate({ to: `/workspaces/${workspace.id}/projects/${p.id}` });
+    navigate({ to: `/workspaces/${workspace?.id}/projects/${p.id}` });
   };
 
   const handleDeleteProject = async (id: string) => {
+    if (!workspace) return;
     setProjectToBeDeleted(undefined);
     await deleteProject(id, workspace.id);
   };

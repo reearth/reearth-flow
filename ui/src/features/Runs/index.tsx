@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
 import { Button } from "@flow/components";
-import { TopNavigation } from "@flow/features/TopNavigation";
+import { TopNavigation } from "@flow/features/WorkspaceTopNavigation";
 import { useT } from "@flow/lib/i18n";
 import { runs as mockRuns } from "@flow/mock_data/runsData";
 import { useCurrentWorkspace } from "@flow/stores";

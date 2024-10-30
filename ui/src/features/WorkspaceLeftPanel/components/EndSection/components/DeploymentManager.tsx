@@ -2,6 +2,7 @@ import { RocketLaunch } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { useT } from "@flow/lib/i18n";
+import { useCurrentWorkspace } from "@flow/stores";
 
 type Props = {
   selected?: boolean;
@@ -10,10 +11,11 @@ type Props = {
 const DeploymentManager: React.FC<Props> = ({ selected }) => {
   const t = useT();
   const navigate = useNavigate();
+  const [currentWorkspace] = useCurrentWorkspace();
 
   const handleNavigation = () => {
     if (selected) return;
-    navigate({ to: `deployments/all` });
+    navigate({ to: `/workspaces/${currentWorkspace?.id}/deployments/all` });
   };
 
   return (

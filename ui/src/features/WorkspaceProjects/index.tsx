@@ -2,7 +2,6 @@ import { Plus } from "@phosphor-icons/react";
 
 import { Button } from "@flow/components/";
 import { useT } from "@flow/lib/i18n";
-import type { Workspace } from "@flow/types";
 
 import {
   ProjectAddDialog,
@@ -12,11 +11,7 @@ import {
 } from "./components";
 import useHooks from "./hooks";
 
-type Props = {
-  workspace: Workspace;
-};
-
-const MainSection: React.FC<Props> = ({ workspace }) => {
+const ProjectsManager: React.FC = () => {
   const t = useT();
 
   const {
@@ -35,7 +30,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
-  } = useHooks({ workspace });
+  } = useHooks();
 
   return (
     <div className="flex h-full flex-1 flex-col">
@@ -86,4 +81,4 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   );
 };
 
-export { MainSection };
+export default ProjectsManager;
