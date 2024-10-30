@@ -4,88 +4,50 @@ import (
 	"github.com/reearth/reearthx/cerbos/generator"
 )
 
-const (
-	serviceName = "flow"
-)
+func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDefinition {
+	const (
+		resourceProject  = "project"
+		resourceWorkflow = "workflow"
+	)
 
-const (
-	resourceProject  = "project"
-	resourceWorkflow = "workflow"
-)
+	const (
+		actionRead = "read"
+		actionEdit = "edit"
+	)
 
-const (
-	actionRead = "read"
-	actionEdit = "edit"
-)
+	const (
+		roleOwner      = "owner"
+		roleMaintainer = "maintainer"
+		roleWriter     = "writer"
+		roleReader     = "reader"
+	)
 
-const (
-	roleOwner      = "owner"
-	roleMaintainer = "maintainer"
-	roleWriter     = "writer"
-	roleReader     = "reader"
-)
-
-type ResourceDefinition struct {
-	Resource string
-	Actions  []ActionDefinition
-}
-
-type ActionDefinition struct {
-	Action string
-	Roles  []string
-}
-
-func makeResourceName(resource string) string {
-	return serviceName + ":" + resource
-}
-
-func DefineResources() []ResourceDefinition {
-	return []ResourceDefinition{
-		{
-			Resource: makeResourceName(resourceProject),
-			Actions: []ActionDefinition{
-				{
-					Action: actionRead,
-					Roles:  []string{roleOwner, roleMaintainer, roleWriter, roleReader},
-				},
-				{
-					Action: actionEdit,
-					Roles:  []string{roleOwner, roleMaintainer, roleWriter},
-				},
-			},
-		},
-		{
-			Resource: makeResourceName(resourceWorkflow),
-			Actions: []ActionDefinition{
-				{
-					Action: actionRead,
-					Roles:  []string{roleOwner, roleMaintainer, roleWriter, roleReader},
-				},
-				{
-					Action: actionEdit,
-					Roles:  []string{roleOwner, roleMaintainer, roleWriter},
-				},
-			},
-		},
-	}
-}
-
-func (r ResourceDefinition) GetResource() string {
-	return r.Resource
-}
-
-func (r ResourceDefinition) GetActions() []generator.ActionDefinition {
-	actions := make([]generator.ActionDefinition, len(r.Actions))
-	for i, a := range r.Actions {
-		actions[i] = a
-	}
-	return actions
-}
-
-func (a ActionDefinition) GetAction() string {
-	return a.Action
-}
-
-func (a ActionDefinition) GetRoles() []string {
-	return a.Roles
+	return builder.
+		AddResource(resourceProject, []generator.ActionDefinition{
+			generator.NewActionDefinition(actionRead, []string{
+				roleOwner,
+				roleMaintainer,
+				roleWriter,
+				roleReader,
+			}),
+			generator.NewActionDefinition(actionEdit, []string{
+				roleOwner,
+				roleMaintainer,
+				roleWriter,
+			}),
+		}).
+		AddResource(resourceWorkflow, []generator.ActionDefinition{
+			generator.NewActionDefinition(actionRead, []string{
+				roleOwner,
+				roleMaintainer,
+				roleWriter,
+				roleReader,
+			}),
+			generator.NewActionDefinition(actionEdit, []string{
+				roleOwner,
+				roleMaintainer,
+				roleWriter,
+			}),
+		}).
+		Build()
 }
