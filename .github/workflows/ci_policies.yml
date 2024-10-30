@@ -1,0 +1,28 @@
+name: ci-policies
+on:
+  workflow_call:
+env:
+  GO_VERSION: '1.22'
+
+jobs:
+  cerbosCheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: set up
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - name: Generate policies
+        run: make generate-policies
+        working-directory: api
+      - name: Setup Cerbos
+        uses: cerbos/cerbos-setup-action@v1
+        with:
+          version: latest
+      - name: Compile and test policies
+        uses: cerbos/cerbos-compile-action@v1
+        with:
+          policyDir: api/policies
