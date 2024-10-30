@@ -1,18 +1,27 @@
 import { Loading } from "@flow/components";
+import { DeploymentManager } from "@flow/features/DeploymentsManager";
 import { TopNavigation } from "@flow/features/TopNavigation";
 import { useCurrentWorkspace } from "@flow/stores";
 
 import { LeftSection, MainSection } from "./components";
 
-const Dashboard: React.FC = () => {
+type Props = {
+  baseRoute?: "deployments" | "projects";
+};
+
+const Dashboard: React.FC<Props> = ({ baseRoute }) => {
   const [currentWorkspace] = useCurrentWorkspace();
 
   return currentWorkspace ? (
     <div className="flex h-screen flex-col">
       <TopNavigation />
       <div className="flex h-[calc(100vh-57px)] flex-1">
-        <LeftSection />
-        <MainSection workspace={currentWorkspace} />
+        <LeftSection baseRoute={baseRoute} />
+        {baseRoute === "deployments" ? (
+          <DeploymentManager workspace={currentWorkspace} />
+        ) : (
+          <MainSection workspace={currentWorkspace} />
+        )}
       </div>
     </div>
   ) : (

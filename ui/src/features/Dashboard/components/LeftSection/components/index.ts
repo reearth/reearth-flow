@@ -1,2 +1,2 @@
 export * from "./RunsSection";
-export * from "./SettingsSection";
+export * from "./EndSection";

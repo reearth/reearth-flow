@@ -32,7 +32,7 @@ const RunsSection: React.FC = () => {
       </div>
       <div className="m-1 flex flex-col gap-1 rounded border bg-zinc-600/20 p-2">
         <div
-          className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent"
+          className="-m-1 flex justify-between rounded-md p-1 hover:cursor-pointer hover:bg-accent"
           onClick={() =>
             navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/running` })
           }>
@@ -40,7 +40,7 @@ const RunsSection: React.FC = () => {
           <p className="dark:font-thin">{runningRuns.length}</p>
         </div>
         <div
-          className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent"
+          className="-m-1 flex justify-between rounded-md p-1 hover:cursor-pointer hover:bg-accent"
           onClick={() =>
             navigate({ to: `/workspaces/${currentWorkspace?.id}/runs/queued` })
           }>
@@ -50,7 +50,7 @@ const RunsSection: React.FC = () => {
         <div className="my-1 border-t" />
         <div className="flex flex-col">
           <div
-            className="-mx-2 -my-1 flex justify-between rounded-md px-2 py-1 hover:cursor-pointer hover:bg-accent"
+            className="-m-1 flex justify-between rounded-md p-1 hover:cursor-pointer hover:bg-accent"
             onClick={() =>
               navigate({
                 to: `/workspaces/${currentWorkspace?.id}/runs/completed`,

@@ -133,7 +133,7 @@ const RunsTable: React.FC<Props> = ({ runs, onRunSelect }) => {
                     onCheckedChange={(value) =>
                       column.toggleVisibility(!!value)
                     }>
-                    {column.id}
+                    {column.columnDef.header?.toString()}
                   </DropdownMenuCheckboxItem>
                 );
               })}

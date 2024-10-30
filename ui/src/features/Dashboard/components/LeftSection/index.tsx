@@ -1,11 +1,15 @@
-import { RunsSection, SettingsSection } from "./components";
+import { RunsSection, EndSection } from "./components";
 
-const LeftSection: React.FC = () => {
+type Props = {
+  baseRoute?: "deployments" | "projects";
+};
+
+const LeftSection: React.FC<Props> = ({ baseRoute }) => {
   return (
     <div className="flex w-[250px] flex-col justify-between gap-[8px] border-r bg-secondary">
       <div className="flex flex-1 flex-col">
         <RunsSection />
-        <SettingsSection />
+        <EndSection baseRoute={baseRoute} />
       </div>
     </div>
   );

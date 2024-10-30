@@ -14,8 +14,8 @@ const StatusContent: React.FC<Props> = ({ label, runs, onRunSelect }) => (
       <p className="text-xl dark:font-extralight">{label}</p>
     </div>
     <div className="w-full border-b" />
-    <div className="ml-8 mt-4 flex max-w-[1200px] flex-col gap-6">
-      <div className="min-h-[50vh] overflow-auto rounded-md px-2">
+    <div className="mt-4 flex max-w-[1200px] flex-col gap-6">
+      <div className="min-h-[50vh] overflow-auto rounded-md">
         <RunsTable runs={runs} onRunSelect={onRunSelect} />
       </div>
     </div>

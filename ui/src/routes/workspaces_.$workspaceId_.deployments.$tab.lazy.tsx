@@ -1,14 +1,14 @@
-import { createLazyFileRoute } from '@tanstack/react-router'
+import { createLazyFileRoute } from "@tanstack/react-router";
 
-import { WorkspaceIdWrapper } from '@flow/features/PageWrapper'
-import { Runs } from '@flow/features/Runs'
+import { Dashboard } from "@flow/features/Dashboard";
+import { WorkspaceIdWrapper } from "@flow/features/PageWrapper";
 
 export const Route = createLazyFileRoute(
-  '/workspaces_/$workspaceId_/deployments/$tab',
+  "/workspaces_/$workspaceId_/deployments/$tab",
 )({
   component: () => (
     <WorkspaceIdWrapper>
-      <Runs />
+      <Dashboard baseRoute="deployments" />
     </WorkspaceIdWrapper>
   ),
-})
+});

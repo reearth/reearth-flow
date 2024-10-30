@@ -6,7 +6,7 @@ import { WorkspaceIdWrapper } from "@flow/features/PageWrapper";
 export const Route = createLazyFileRoute("/workspaces_/$workspaceId")({
   component: () => (
     <WorkspaceIdWrapper>
-      <Dashboard />
+      <Dashboard baseRoute="projects" />
     </WorkspaceIdWrapper>
   ),
 });
