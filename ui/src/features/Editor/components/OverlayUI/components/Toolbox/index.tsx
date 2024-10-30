@@ -117,7 +117,7 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo, onWorkflowAdd }) => {
 
   };
 
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState({ x: 85, y: 15 });
   const [isDragging, setIsDragging] = useState(false);
 
   const transparentImage = new Image();
