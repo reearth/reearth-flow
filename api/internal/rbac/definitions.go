@@ -75,7 +75,11 @@ func (r ResourceDefinition) GetResource() string {
 }
 
 func (r ResourceDefinition) GetActions() []generator.ActionDefinition {
-	return r.Actions
+	actions := make([]generator.ActionDefinition, len(r.Actions))
+	for i, a := range r.Actions {
+		actions[i] = a
+	}
+	return actions
 }
 
 func (a ActionDefinition) GetAction() string {
