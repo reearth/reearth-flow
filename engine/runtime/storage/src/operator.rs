@@ -1,3 +1,4 @@
+use std::env;
 use std::io::Result;
 use std::time::Duration;
 
@@ -54,7 +55,19 @@ fn init_fs_operator(uri: &Uri) -> impl Builder {
 
 /// init_gcs_operator will init a opendal gcs operator.
 fn init_gcs_operator(uri: &Uri) -> impl Builder {
+    if let Ok(host) = env::var("STORAGE_EMULATOR_HOST") {
+        let builder = services::Gcs::default().endpoint(host.as_str());
+        let builder = builder.disable_vm_metadata();
+        let builder = builder.disable_config_load();
+        let builder = builder.allow_anonymous();
+        return builder.bucket(uri.root());
+    }
     let builder = services::Gcs::default();
+    let builder = if env::var("GOOGLE_APPLICATION_CREDENTIALS").is_ok() {
+        builder.disable_vm_metadata()
+    } else {
+        builder
+    };
     builder.bucket(uri.root())
 }
 

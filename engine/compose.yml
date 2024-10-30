@@ -4,7 +4,7 @@ services:
     ports:
       - 4443:4443
     volumes:
-      - gcs:/data/main # :/data/{bucket-name}
+      - ./tmp/gcs/data:/data # :/data/{bucket-name}
     command: --scheme http # Allow http
   pubsub:
     build:
@@ -18,6 +18,3 @@ services:
       - ${DOCKER_HOST_INTERNAL:-host.docker.internal}:${DOCKER_HOST_GATEWAY:-host-gateway}
     ports:
       - 8085:8085
-
-volumes:
-  gcs:

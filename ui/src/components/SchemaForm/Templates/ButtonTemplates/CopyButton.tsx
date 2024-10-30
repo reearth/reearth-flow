@@ -16,7 +16,7 @@ const CopyButton = <
   props: IconButtonProps<T, S, F>,
 ) => {
   return (
-    <Button {...props}>
+    <Button size="icon" {...props}>
       <CopyIcon />
     </Button>
   );
