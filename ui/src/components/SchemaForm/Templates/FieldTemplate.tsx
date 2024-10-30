@@ -70,8 +70,9 @@ const FieldTemplate = <
       <div className="my-4 w-full">
         {displayLabel && (
           <Label htmlFor={id}>
-            <div className="my-1 flex">
-              {label} {required && <p className="text-destructive"> * </p>}
+            <div className="my-1">
+              {label}{" "}
+              {required && <span className="text-destructive"> * </span>}
             </div>
           </Label>
         )}

@@ -74,14 +74,13 @@ const ArrayFieldTemplate = <
           ),
         )}
         {canAdd && (
-          <div className="mt-2 py-4">
-            <AddButton
-              onClick={onAddClick}
-              disabled={disabled || readonly}
-              uiSchema={uiSchema}
-              registry={registry}
-            />
-          </div>
+          <AddButton
+            onClick={onAddClick}
+            disabled={disabled || readonly}
+            uiSchema={uiSchema}
+            registry={registry}
+            className="mx-0 my-2"
+          />
         )}
       </div>
     </div>

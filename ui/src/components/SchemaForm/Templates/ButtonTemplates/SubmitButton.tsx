@@ -27,9 +27,11 @@ const SubmitButton = <
     return null;
   }
   return (
-    <Button type="submit" {...submitButtonProps}>
-      {submitText ? submitText : t("Submit")}
-    </Button>
+    <div className="flex w-full justify-end">
+      <Button type="submit" {...submitButtonProps}>
+        {submitText ? submitText : t("Submit")}
+      </Button>
+    </div>
   );
 };
 
