@@ -4,7 +4,7 @@ import { Array as YArray } from "yjs";
 import type { Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
-import { YNodesArray, YWorkflow, yWorkflowBuilder } from "./utils";
+import { YNodesArray, YWorkflow, yWorkflowBuilder } from "./workflowBuilder";
 
 export default ({
   yWorkflows,
@@ -38,7 +38,7 @@ export default ({
   const currentYWorkflow = yWorkflows.get(currentWorkflowIndex);
 
   const handleWorkflowAdd = useCallback(
-    () =>
+    (position = { x:600, y: 200 }) =>
       undoTrackerActionWrapper(() => {
         const workflowId = yWorkflows.length.toString() + "-workflow";
         const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
@@ -78,7 +78,7 @@ export default ({
         const newSubworkflowNode: Node = {
           id: workflowId,
           type: "subworkflow",
-          position: { x: 600, y: 200 },
+          position,
           data: {
             name: workflowName,
             status: "idle",
