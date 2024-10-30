@@ -27,3 +27,4 @@ export * from "./AlertDialog";
 export * from "./TextArea";
 export * from "./RadioGroup";
 export * from "./SchemaForm";
+export * from "./BasicBoiler";

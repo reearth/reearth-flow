@@ -1,6 +1,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 
 import { FlowLogo, DataTable as Table } from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
 
@@ -62,12 +63,10 @@ const DeploymentManager: React.FC = () => {
               rowHeight={14}
             />
           ) : (
-            <div className="flex w-full items-center justify-center">
-              <div className="flex flex-col items-center gap-6">
-                <FlowLogo className="size-16 text-accent" />
-                <p className="text-xl font-thin">{t("No deployments.")}</p>
-              </div>
-            </div>
+            <BasicBoiler
+              text={t("No Deployments")}
+              icon={<FlowLogo className="size-16 text-accent" />}
+            />
           )}
         </div>
       </div>

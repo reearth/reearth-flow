@@ -1,6 +1,7 @@
 import { Plus } from "@phosphor-icons/react";
 
-import { Button } from "@flow/components/";
+import { Button, FlowLogo } from "@flow/components/";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
 
 import {
@@ -45,20 +46,27 @@ const ProjectsManager: React.FC = () => {
             <p className="text-xs dark:font-light">{t("New Project")}</p>
           </Button>
         </div>
-        <div
-          className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-          ref={ref}>
-          {projects?.map((p) => (
-            <ProjectCard
-              key={p.id}
-              project={p}
-              currentProject={currentProject}
-              setEditProject={setEditProject}
-              setProjectToBeDeleted={setProjectToBeDeleted}
-              onProjectSelect={handleProjectSelect}
-            />
-          ))}
-        </div>
+        {projects && projects?.length > 0 ? (
+          <div
+            className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+            ref={ref}>
+            {projects?.map((p) => (
+              <ProjectCard
+                key={p.id}
+                project={p}
+                currentProject={currentProject}
+                setEditProject={setEditProject}
+                setProjectToBeDeleted={setProjectToBeDeleted}
+                onProjectSelect={handleProjectSelect}
+              />
+            ))}
+          </div>
+        ) : (
+          <BasicBoiler
+            text={t("No Projects")}
+            icon={<FlowLogo className="size-16 text-accent" />}
+          />
+        )}
       </div>
       <ProjectAddDialog
         isOpen={openProjectAddDialog}
