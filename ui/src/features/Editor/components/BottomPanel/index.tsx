@@ -18,7 +18,7 @@ type Props = {
   isOpen: boolean;
   onOpen: (panel?: "left" | "right" | "bottom") => void;
   onWorkflowClose: (workflowId: string) => void;
-  onWorkflowAdd: () => void;
+  //onWorkflowAdd: () => void;
   onWorkflowChange: (workflowId?: string) => void;
 };
 
@@ -37,7 +37,7 @@ const BottomPanel: React.FC<Props> = ({
   isOpen,
   onOpen,
   onWorkflowClose,
-  onWorkflowAdd,
+  //onWorkflowAdd,
   onWorkflowChange,
 }) => {
   const t = useT();
@@ -162,7 +162,7 @@ const BottomPanel: React.FC<Props> = ({
           currentWorkflowId={currentWorkflowId}
           openWorkflows={openWorkflows}
           onWorkflowClose={onWorkflowClose}
-          onWorkflowAdd={onWorkflowAdd}
+          //onWorkflowAdd={onWorkflowAdd}
           onWorkflowChange={onWorkflowChange}
         />
         <div className="h-full border-r" />
