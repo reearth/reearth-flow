@@ -1,5 +1,5 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
-import { DragEvent, useCallback } from "react";
+import { DragEvent, useCallback, useState } from "react";
 
 import { config } from "@flow/config";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
@@ -51,6 +51,7 @@ export default ({
 
       // check if the dropped element is valid
       if (typeof d === "undefined" || !d) return;
+      if (d === "subworkflow") return;
 
       let newNode: Node = {
         id: randomID(),
@@ -112,6 +113,7 @@ export default ({
       onNodePickerOpen,
     ],
   );
+
 
   return { handleNodeDragOver, handleNodeDrop };
 };
