@@ -1,8 +1,8 @@
-import { Plus, X } from "@phosphor-icons/react";
+import { X } from "@phosphor-icons/react";
 import { TooltipTrigger } from "@radix-ui/react-tooltip";
 import { memo } from "react";
 
-import { IconButton, Tooltip, TooltipContent } from "@flow/components";
+import { Tooltip, TooltipContent } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { Workflow } from "@flow/types";
 
@@ -14,14 +14,12 @@ type Props = {
   }[];
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
-  onWorkflowAdd: () => void;
 };
 
 const WorkflowTabs: React.FC<Props> = ({
   currentWorkflowId,
   openWorkflows,
   onWorkflowClose,
-  onWorkflowAdd,
   onWorkflowChange,
 }) => {
   const t = useT();
@@ -59,7 +57,7 @@ const WorkflowTabs: React.FC<Props> = ({
                     onClick={() => onWorkflowChange(sw.id)}
                     onDoubleClick={() => console.log("Double Click")}>
                     <p
-                      className={`select-none truncate px-[15px] text-center text-xs group-hover:text-accent-foreground dark:font-extralight ${currentWorkflowId === sw?.id && "text-accent-foreground"}`}>
+                      className={`select-none truncate px-[15px] text-center text-xs dark:font-extralight group-hover:text-accent-foreground ${currentWorkflowId === sw?.id && "text-accent-foreground"}`}>
                       {sw.name}
                     </p>
                     <X
@@ -74,14 +72,6 @@ const WorkflowTabs: React.FC<Props> = ({
                 </TooltipContent>
               </Tooltip>
             ))}
-        </div>
-        <div className="flex items-center">
-          <IconButton
-            className="h-[25px]"
-            icon={<Plus weight="light" />}
-            tooltipText={t("Create new sub workflow")}
-            onClick={() => onWorkflowAdd()}
-          />
         </div>
       </div>
     </div>
