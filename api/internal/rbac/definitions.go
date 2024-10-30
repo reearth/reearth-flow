@@ -1,73 +1,87 @@
 package rbac
 
+import (
+	"github.com/reearth/reearthx/cerbos/generator"
+)
+
 const (
 	serviceName = "flow"
 )
 
-type resourceType string
-
 const (
-	resourceProject  resourceType = "project"
-	resourceWorkflow resourceType = "workflow"
+	resourceProject  = "project"
+	resourceWorkflow = "workflow"
 )
 
-type actionType string
-
 const (
-	actionRead actionType = "read"
-	actionEdit actionType = "edit"
+	actionRead = "read"
+	actionEdit = "edit"
 )
 
-type roleType string
-
 const (
-	roleOwner      roleType = "owner"
-	roleMaintainer roleType = "maintainer"
-	roleWriter     roleType = "writer"
-	roleReader     roleType = "reader"
+	roleOwner      = "owner"
+	roleMaintainer = "maintainer"
+	roleWriter     = "writer"
+	roleReader     = "reader"
 )
 
-type resourceDefinition struct {
-	resource string
-	actions  []actionDefinition
+type ResourceDefinition struct {
+	Resource string
+	Actions  []ActionDefinition
 }
 
-type actionDefinition struct {
-	action actionType
-	roles  []roleType
+type ActionDefinition struct {
+	Action string
+	Roles  []string
 }
 
-func makeResourceName(resource resourceType) string {
-	return serviceName + ":" + string(resource)
+func makeResourceName(resource string) string {
+	return serviceName + ":" + resource
 }
 
-func DefineResources() []resourceDefinition {
-	return []resourceDefinition{
+func DefineResources() []ResourceDefinition {
+	return []ResourceDefinition{
 		{
-			resource: makeResourceName(resourceProject),
-			actions: []actionDefinition{
+			Resource: makeResourceName(resourceProject),
+			Actions: []ActionDefinition{
 				{
-					action: actionRead,
-					roles:  []roleType{roleOwner, roleMaintainer, roleWriter, roleReader},
+					Action: actionRead,
+					Roles:  []string{roleOwner, roleMaintainer, roleWriter, roleReader},
 				},
 				{
-					action: actionEdit,
-					roles:  []roleType{roleOwner, roleMaintainer, roleWriter},
+					Action: actionEdit,
+					Roles:  []string{roleOwner, roleMaintainer, roleWriter},
 				},
 			},
 		},
 		{
-			resource: makeResourceName(resourceWorkflow),
-			actions: []actionDefinition{
+			Resource: makeResourceName(resourceWorkflow),
+			Actions: []ActionDefinition{
 				{
-					action: actionRead,
-					roles:  []roleType{roleOwner, roleMaintainer, roleWriter, roleReader},
+					Action: actionRead,
+					Roles:  []string{roleOwner, roleMaintainer, roleWriter, roleReader},
 				},
 				{
-					action: actionEdit,
-					roles:  []roleType{roleOwner, roleMaintainer, roleWriter},
+					Action: actionEdit,
+					Roles:  []string{roleOwner, roleMaintainer, roleWriter},
 				},
 			},
 		},
 	}
+}
+
+func (r ResourceDefinition) GetResource() string {
+	return r.Resource
+}
+
+func (r ResourceDefinition) GetActions() []generator.ActionDefinition {
+	return r.Actions
+}
+
+func (a ActionDefinition) GetAction() string {
+	return a.Action
+}
+
+func (a ActionDefinition) GetRoles() []string {
+	return a.Roles
 }
