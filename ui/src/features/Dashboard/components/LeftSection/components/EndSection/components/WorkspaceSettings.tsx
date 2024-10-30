@@ -3,7 +3,11 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { useT } from "@flow/lib/i18n";
 
-const WorkspaceSettings: React.FC = () => {
+type Props = {
+  workspaceId: string;
+};
+
+const WorkspaceSettings: React.FC<Props> = ({ workspaceId }) => {
   const t = useT();
   const navigate = useNavigate();
   return (
@@ -11,19 +15,25 @@ const WorkspaceSettings: React.FC = () => {
       <p className="text-sm dark:font-thin">{t("Workspace")}</p>
       <div
         className="-mx-2 flex flex-1 cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-accent"
-        onClick={() => navigate({ to: `settings/general` })}>
+        onClick={() =>
+          navigate({ to: `/workspaces/${workspaceId}/settings/general` })
+        }>
         <Toolbox weight="light" />
         <p className="dark:font-extralight">{t("General Settings")}</p>
       </div>
       <div
         className="-mx-2 flex flex-1 cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-accent"
-        onClick={() => navigate({ to: `settings/members` })}>
+        onClick={() =>
+          navigate({ to: `/workspaces/${workspaceId}/settings/members` })
+        }>
         <UsersThree weight="light" />
         <p className="dark:font-extralight">{t("Member Settings")}</p>
       </div>
       <div
         className="-mx-2 flex flex-1 cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-accent"
-        onClick={() => navigate({ to: `settings/integrations` })}>
+        onClick={() =>
+          navigate({ to: `/workspaces/${workspaceId}/settings/integrations` })
+        }>
         <PlugsConnected weight="light" />
         <p className="dark:font-extralight">{t("Integration Settings")}</p>
       </div>

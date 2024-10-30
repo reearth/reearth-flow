@@ -121,7 +121,7 @@ function DataTable<TData, TValue>({
                         onCheckedChange={(value) =>
                           column.toggleVisibility(!!value)
                         }>
-                        {column.id}
+                        {column.columnDef.header?.toString()}
                       </DropdownMenuCheckboxItem>
                     );
                   })}
