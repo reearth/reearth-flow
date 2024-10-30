@@ -1,4 +1,10 @@
 import {
+  CaretDoubleLeft,
+  CaretDoubleRight,
+  CaretLeft,
+  CaretRight,
+} from "@phosphor-icons/react";
+import {
   ColumnDef,
   PaginationState,
   SortingState,
@@ -184,34 +190,34 @@ function DataTable<TData, TValue>({
           <div className="flex gap-1">
             <IconButton
               variant="outline"
-              icon={"<<"}
+              icon={<CaretDoubleLeft />}
               onClick={() => table.firstPage()}
               disabled={!table.getCanPreviousPage()}
             />
             <IconButton
               variant="outline"
-              icon="<"
+              icon={<CaretLeft />}
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             />
             <div className="flex min-w-10 items-center justify-center gap-1">
-              <p className="font-light">
+              <p className="text-sm font-light">
                 {table.getState().pagination.pageIndex + 1}
               </p>
-              <p>/</p>
-              <p className="font-light">
+              <p className="text-xs font-light">/</p>
+              <p className="text-sm font-light">
                 {table.getPageCount().toLocaleString()}
               </p>
             </div>
             <IconButton
               className="rounded border p-1"
-              icon=">"
+              icon={<CaretRight />}
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             />
             <IconButton
               className="rounded border p-1"
-              icon=">>"
+              icon={<CaretDoubleRight />}
               onClick={() => table.lastPage()}
               disabled={!table.getCanNextPage()}
             />
