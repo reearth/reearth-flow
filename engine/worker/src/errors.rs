@@ -1,5 +1,5 @@
 #[derive(thiserror::Error, Debug)]
-pub enum WorkerError {
+pub enum Error {
     #[error("Failed to create tokio runtime: {0}")]
     FailedToCreateTokioRuntime(#[source] std::io::Error),
 
@@ -15,6 +15,9 @@ pub enum WorkerError {
     #[error("Failed to create workflow: {0}")]
     FailedToCreateWorkflow(String),
 
+    #[error("Failed to encode: {0}")]
+    FailedToEncode(#[source] serde_json::Error),
+
     #[error("Failed to initialize cli: {0}")]
     Init(String),
 
@@ -22,9 +25,9 @@ pub enum WorkerError {
     Run(String),
 }
 
-pub type Result<T, E = WorkerError> = std::result::Result<T, E>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-impl WorkerError {
+impl Error {
     pub(crate) fn init<T: ToString>(message: T) -> Self {
         Self::Init(message.to_string())
     }
