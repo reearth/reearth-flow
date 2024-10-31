@@ -2,12 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Workflow",
   "type": "object",
-  "required": [
-    "entryGraphId",
-    "graphs",
-    "id",
-    "name"
-  ],
+  "required": ["entryGraphId", "graphs", "id", "name"],
   "properties": {
     "entryGraphId": {
       "type": "string",
@@ -27,23 +22,14 @@
       "type": "string"
     },
     "with": {
-      "type": [
-        "object",
-        "null"
-      ],
+      "type": ["object", "null"],
       "additionalProperties": true
     }
   },
   "definitions": {
     "Edge": {
       "type": "object",
-      "required": [
-        "from",
-        "fromPort",
-        "id",
-        "to",
-        "toPort"
-      ],
+      "required": ["from", "fromPort", "id", "to", "toPort"],
       "properties": {
         "from": {
           "type": "string",
@@ -67,12 +53,7 @@
     },
     "Graph": {
       "type": "object",
-      "required": [
-        "edges",
-        "id",
-        "name",
-        "nodes"
-      ],
+      "required": ["edges", "id", "name", "nodes"],
       "properties": {
         "edges": {
           "type": "array",
@@ -99,12 +80,7 @@
       "oneOf": [
         {
           "type": "object",
-          "required": [
-            "action",
-            "id",
-            "name",
-            "type"
-          ],
+          "required": ["action", "id", "name", "type"],
           "properties": {
             "action": {
               "type": "string"
@@ -118,27 +94,17 @@
             },
             "type": {
               "type": "string",
-              "enum": [
-                "action"
-              ]
+              "enum": ["action"]
             },
             "with": {
-              "type": [
-                "object",
-                "null"
-              ],
+              "type": ["object", "null"],
               "additionalProperties": true
             }
           }
         },
         {
           "type": "object",
-          "required": [
-            "id",
-            "name",
-            "subGraphId",
-            "type"
-          ],
+          "required": ["id", "name", "subGraphId", "type"],
           "properties": {
             "id": {
               "type": "string",
@@ -153,15 +119,10 @@
             },
             "type": {
               "type": "string",
-              "enum": [
-                "subGraph"
-              ]
+              "enum": ["subGraph"]
             },
             "with": {
-              "type": [
-                "object",
-                "null"
-              ],
+              "type": ["object", "null"],
               "additionalProperties": true
             }
           }

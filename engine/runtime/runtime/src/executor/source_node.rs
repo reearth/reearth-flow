@@ -43,7 +43,7 @@ pub struct SourceNode<F> {
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     logger_factory: Arc<LoggerFactory>,
-    kv_store: Arc<Box<dyn KvStore>>,
+    kv_store: Arc<dyn KvStore>,
     span: tracing::Span,
     #[allow(dead_code)]
     event_sender: tokio::sync::broadcast::Sender<Event>,
