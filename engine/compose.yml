@@ -13,7 +13,7 @@ services:
     restart: always
     environment:
       - PROJECT_ID=local-project
-      - TOPIC_IDS=flow-edge-pass-through-topic,flow-log-stream-topic # Corresponding pull-type subscriptions({TOPIC}-sub) will be created automatically
+      - TOPIC_IDS=flow-edge-pass-through-topic,flow-log-stream-topic,flow-workflow-complete-topic # Corresponding pull-type subscriptions({TOPIC}-sub) will be created automatically
     extra_hosts: # For other docker-compose services
       - ${DOCKER_HOST_INTERNAL:-host.docker.internal}:${DOCKER_HOST_GATEWAY:-host-gateway}
     ports:

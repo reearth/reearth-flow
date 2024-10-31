@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EdgePassThroughEvent",
+  "type": "object",
+  "required": ["jobId", "status", "timestamp", "updatedEdges", "workflowId"],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "status": {
+      "$ref": "#/definitions/EventStatus"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedEdges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/UpdatedEdge"
+      }
+    },
+    "workflowId": {
+      "type": "string",
+      "format": "uuid"
+    }
+  },
+  "definitions": {
+    "EventStatus": {
+      "type": "string",
+      "enum": ["inProgress", "completed"]
+    },
+    "UpdatedEdge": {
+      "type": "object",
+      "required": ["id", "status"],
+      "properties": {
+        "featureId": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/EventStatus"
+        }
+      }
+    }
+  }
+}
