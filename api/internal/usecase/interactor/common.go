@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 
+	infraPermission "github.com/reearth/reearth-flow/api/internal/infrastructure/permission"
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -24,12 +25,13 @@ type ContainerConfig struct {
 
 func NewContainer(r *repo.Container, g *gateway.Container,
 	ar *accountrepo.Container, ag *accountgateway.Container,
+	permissionChecker *infraPermission.PermissionChecker,
 	config ContainerConfig,
 ) interfaces.Container {
 	return interfaces.Container{
 		Asset:      NewAsset(r, g),
 		Deployment: NewDeployment(r, g),
-		Project:    NewProject(r, g),
+		Project:    NewProject(r, g, permissionChecker),
 		Workspace:  accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
 		User:       accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
 	}
@@ -87,4 +89,25 @@ func workspaceMemberCountEnforcer(_ *repo.Container) accountinteractor.Workspace
 	return func(ctx context.Context, ws *workspace.Workspace, _ user.List, op *accountusecase.Operator) error {
 		return nil
 	}
+}
+
+func checkPermissionClient(client any) (*infraPermission.PermissionChecker, bool) {
+	if client == nil {
+		return nil, false
+	}
+
+	adapter, ok := client.(*infraPermission.PermissionChecker)
+	if !ok || adapter == nil {
+		return nil, false
+	}
+	return adapter, true
+}
+
+func checkPermission(ctx context.Context, client any, resource string, action string) (bool, error) {
+	checkPermissionAdapter, ok := checkPermissionClient(client)
+	if !ok {
+		return false, interfaces.ErrOperationDenied
+	}
+
+	return checkPermissionAdapter.CheckPermission(ctx, resource, action)
 }
