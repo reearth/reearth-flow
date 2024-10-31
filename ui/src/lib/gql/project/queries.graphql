@@ -5,6 +5,9 @@ fragment Project on Project {
   createdAt
   updatedAt
   workspaceId
+  deployment {
+    ...Deployment
+  }
 }
 
 mutation CreateProject($input: CreateProjectInput!) {

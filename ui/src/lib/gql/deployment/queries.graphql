@@ -12,16 +12,6 @@ fragment Deployment on Deployment {
   }
 }
 
-# NOTE: this is copy/pasted here from src/lib/gql/project/queries.graphql
-fragment Project on Project {
-  id
-  name
-  description
-  createdAt
-  updatedAt
-  workspaceId
-}
-
 # NOTE: this is copy/pasted here from src/lib/gql/job/queries.graphql
 fragment Job on Job {
   id
