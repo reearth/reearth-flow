@@ -17,25 +17,27 @@ import (
 
 type Project struct {
 	common
-	assetRepo     repo.Asset
-	workflowRepo  repo.Workflow
-	projectRepo   repo.Project
-	userRepo      accountrepo.User
-	workspaceRepo accountrepo.Workspace
-	transaction   usecasex.Transaction
-	file          gateway.File
-	batch         gateway.Batch
+	assetRepo         repo.Asset
+	workflowRepo      repo.Workflow
+	projectRepo       repo.Project
+	userRepo          accountrepo.User
+	workspaceRepo     accountrepo.Workspace
+	transaction       usecasex.Transaction
+	file              gateway.File
+	batch             gateway.Batch
+	permissionChecker gateway.PermissionChecker
 }
 
-func NewProject(r *repo.Container, gr *gateway.Container) interfaces.Project {
+func NewProject(r *repo.Container, gr *gateway.Container, permissionChecker gateway.PermissionChecker) interfaces.Project {
 	return &Project{
-		assetRepo:     r.Asset,
-		workflowRepo:  r.Workflow,
-		projectRepo:   r.Project,
-		userRepo:      r.User,
-		workspaceRepo: r.Workspace,
-		transaction:   r.Transaction,
-		file:          gr.File,
+		assetRepo:         r.Asset,
+		workflowRepo:      r.Workflow,
+		projectRepo:       r.Project,
+		userRepo:          r.User,
+		workspaceRepo:     r.Workspace,
+		transaction:       r.Transaction,
+		file:              gr.File,
+		permissionChecker: permissionChecker,
 	}
 }
 
@@ -48,9 +50,34 @@ func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
-	if err := i.CanWriteWorkspace(p.WorkspaceID, operator); err != nil {
-		return nil, err
+	hasPermission, err := i.permissionChecker.CheckPermission(ctx, "project", "edit")
+	if !hasPermission {
+		return nil, fmt.Errorf("permission denied")
 	}
+	// authInfo := adapter.GetAuthInfo(ctx)
+	// if authInfo == nil {
+	// 	log.Fatalf("Failed to get auth info")
+	// }
+
+	// input := cerbosClient.CheckPermissionInput{
+	// 	Service:  "flow",
+	// 	Resource: "project",
+	// 	Action:   "edit",
+	// }
+	// allowed, err := cerbosClient.CheckPermission(ctx, "http://localhost:8090", authInfo, input)
+	// if err != nil {
+	// 	log.Fatalf("Failed to check permission: %v", err)
+	// }
+
+	// if allowed {
+	// 	fmt.Println("Permission granted")
+	// } else {
+	// 	fmt.Println("Permission denied")
+	// }
+
+	// if err := i.CanWriteWorkspace(p.WorkspaceID, operator); err != nil {
+	// 	return nil, err
+	// }
 
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
