@@ -23,7 +23,7 @@ pub struct Context {
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
     pub logger: Arc<LoggerFactory>,
-    pub kv_store: Arc<Box<dyn KvStore>>,
+    pub kv_store: Arc<dyn KvStore>,
 }
 
 impl From<ExecutorContext> for Context {
@@ -53,7 +53,7 @@ impl Context {
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
         logger: Arc<LoggerFactory>,
-        kv_store: Arc<Box<dyn KvStore>>,
+        kv_store: Arc<dyn KvStore>,
     ) -> Self {
         Self {
             expr_engine,
@@ -82,7 +82,7 @@ pub struct ExecutorContext {
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
     pub logger: Arc<LoggerFactory>,
-    pub kv_store: Arc<Box<dyn KvStore>>,
+    pub kv_store: Arc<dyn KvStore>,
 }
 
 impl From<Context> for ExecutorContext {
@@ -124,7 +124,7 @@ impl ExecutorContext {
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
         logger: Arc<LoggerFactory>,
-        kv_store: Arc<Box<dyn KvStore>>,
+        kv_store: Arc<dyn KvStore>,
     ) -> Self {
         Self {
             feature,
@@ -187,7 +187,7 @@ impl ExecutorContext {
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
         logger: Arc<LoggerFactory>,
-        kv_store: Arc<Box<dyn KvStore>>,
+        kv_store: Arc<dyn KvStore>,
     ) -> Self {
         Self {
             feature,
@@ -213,7 +213,7 @@ pub struct NodeContext {
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
     pub logger: Arc<LoggerFactory>,
-    pub kv_store: Arc<Box<dyn KvStore>>,
+    pub kv_store: Arc<dyn KvStore>,
 }
 
 impl From<Context> for NodeContext {
@@ -249,7 +249,7 @@ impl NodeContext {
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
         logger: Arc<LoggerFactory>,
-        kv_store: Arc<Box<dyn KvStore>>,
+        kv_store: Arc<dyn KvStore>,
     ) -> Self {
         Self {
             expr_engine,

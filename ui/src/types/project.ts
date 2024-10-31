@@ -4,8 +4,8 @@ import { Workflow } from "./workflow";
 export type Project = {
   id: string;
   name: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
   description: string;
   workspaceId: string;
   workflows?: Workflow[];

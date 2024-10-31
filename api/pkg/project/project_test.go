@@ -2,7 +2,6 @@ package project
 
 import (
 	"testing"
-	"time"
 
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/stretchr/testify/assert"
@@ -14,27 +13,21 @@ func TestProject_SetArchived(t *testing.T) {
 	assert.Equal(t, true, p.IsArchived())
 }
 
-func TestProject_SetUpdatedAt(t *testing.T) {
+func TestProject_SetUpdateName(t *testing.T) {
 	p := &Project{}
-	p.SetUpdatedAt(time.Date(1900, 1, 1, 00, 00, 1, 1, time.UTC))
-	assert.Equal(t, time.Date(1900, 1, 1, 00, 00, 1, 1, time.UTC), p.UpdatedAt())
-}
-
-func TestProject_UpdateName(t *testing.T) {
-	p := &Project{}
-	p.UpdateName("foo")
+	p.SetUpdateName("foo")
 	assert.Equal(t, "foo", p.Name())
 }
 
-func TestProject_UpdateDescription(t *testing.T) {
+func TestProject_SetUpdateDescription(t *testing.T) {
 	p := &Project{}
-	p.UpdateDescription("aaa")
+	p.SetUpdateDescription("aaa")
 	assert.Equal(t, "aaa", p.Description())
 }
 
-func TestProject_UpdateWorkspace(t *testing.T) {
+func TestProject_SetUpdateWorkspace(t *testing.T) {
 	p := &Project{}
-	p.UpdateWorkspace(accountdomain.NewWorkspaceID())
+	p.SetUpdateWorkspace(accountdomain.NewWorkspaceID())
 	assert.NotNil(t, p.Workspace())
 }
 

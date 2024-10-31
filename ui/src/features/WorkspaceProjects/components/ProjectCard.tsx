@@ -15,7 +15,6 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
-import { formatDate } from "@flow/utils";
 
 type Props = {
   project: Project;
@@ -52,7 +51,7 @@ const ProjectCard: React.FC<Props> = ({
       </CardHeader>
       <CardFooter className="flex px-2 pb-1">
         <p className="text-xs text-zinc-400 dark:font-thin">
-          {t("Last modified:")} {formatDate(updatedAt)}
+          {t("Last modified:")} {updatedAt}
         </p>
       </CardFooter>
       <div

@@ -53,7 +53,7 @@ pub struct SinkNode<F> {
     span: tracing::Span,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
-    kv_store: Arc<Box<dyn KvStore>>,
+    kv_store: Arc<dyn KvStore>,
 }
 
 impl<F: Future + Unpin + Debug> SinkNode<F> {

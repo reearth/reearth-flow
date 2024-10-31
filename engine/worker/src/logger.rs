@@ -30,5 +30,5 @@ pub fn setup_logging_and_tracing() -> crate::errors::Result<()> {
                 .with_ansi(true),
         )
         .try_init()
-        .map_err(crate::errors::WorkerError::init)
+        .map_err(crate::errors::Error::init)
 }

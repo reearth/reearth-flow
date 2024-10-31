@@ -118,11 +118,11 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, o
 	}
 
 	if p.Name != nil {
-		prj.UpdateName(*p.Name)
+		prj.SetUpdateName(*p.Name)
 	}
 
 	if p.Description != nil {
-		prj.UpdateDescription(*p.Description)
+		prj.SetUpdateDescription(*p.Description)
 	}
 
 	if p.Archived != nil {

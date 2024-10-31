@@ -67,7 +67,7 @@ pub struct ProcessorNode<F> {
     thread_counter: Arc<AtomicU32>,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
-    kv_store: Arc<Box<dyn KvStore>>,
+    kv_store: Arc<dyn KvStore>,
     #[allow(dead_code)]
     event_sender: tokio::sync::broadcast::Sender<Event>,
 }

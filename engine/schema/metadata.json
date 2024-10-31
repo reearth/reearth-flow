@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metadata",
+  "type": "object",
+  "required": ["assets", "jobId", "timestamps"],
+  "properties": {
+    "assets": {
+      "$ref": "#/definitions/Asset"
+    },
+    "jobId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tags": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "string"
+      }
+    },
+    "timestamps": {
+      "$ref": "#/definitions/Timestamp"
+    },
+    "version": {
+      "type": ["string", "null"]
+    }
+  },
+  "definitions": {
+    "Asset": {
+      "type": "object",
+      "required": ["baseUrl", "files"],
+      "properties": {
+        "baseUrl": {
+          "type": "string"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Timestamp": {
+      "type": "object",
+      "required": ["created"],
+      "properties": {
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

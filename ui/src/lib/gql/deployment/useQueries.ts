@@ -8,7 +8,7 @@ import { useCallback } from "react";
 import { DEFAULT_PROJECT_NAME } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import { Deployment } from "@flow/types";
-import { isDefined } from "@flow/utils";
+import { formatDate, isDefined } from "@flow/utils";
 import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 import { DeploymentFragment, ExecuteDeploymentInput } from "../__gen__/graphql";
@@ -36,8 +36,8 @@ export const useQueries = () => {
       workflowUrl: deployment.workflowUrl,
       description: deployment.description ?? undefined,
       version: deployment.version,
-      createdAt: deployment.createdAt,
-      updatedAt: deployment.updatedAt,
+      createdAt: formatDate(deployment.createdAt),
+      updatedAt: formatDate(deployment.updatedAt),
     }),
     [t],
   );
