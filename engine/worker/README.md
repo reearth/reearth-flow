@@ -73,4 +73,4 @@ graphs:
 #### Topics
 * flow-edge-pass-through-topic
 * flow-log-stream-topic
-* flow-workflow-complete-topic
+* flow-job-complete-topic
