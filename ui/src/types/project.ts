@@ -1,4 +1,5 @@
 import { ApiResponse } from "./api";
+import { Deployment } from "./deployment";
 import { Workflow } from "./workflow";
 
 export type Project = {
@@ -9,6 +10,7 @@ export type Project = {
   description: string;
   workspaceId: string;
   workflows?: Workflow[];
+  deployment?: Deployment;
 };
 
 export type GetWorkspaceProjects = {

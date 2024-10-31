@@ -3,16 +3,14 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useCallback } from "react";
 
-import { DEFAULT_PROJECT_NAME } from "@flow/global-constants";
-import { useT } from "@flow/lib/i18n";
 import { Deployment } from "@flow/types";
-import { formatDate, isDefined } from "@flow/utils";
+import { isDefined } from "@flow/utils";
 import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
-import { DeploymentFragment, ExecuteDeploymentInput } from "../__gen__/graphql";
+import { ExecuteDeploymentInput } from "../__gen__/graphql";
 import { DeleteDeploymentInput } from "../__gen__/plugins/graphql-request";
+import { toDeployment } from "../convert";
 import { createNewJobObject, JobQueryKeys } from "../job/useQueries";
 import { useGraphQLContext } from "../provider";
 
@@ -25,22 +23,6 @@ const DEPLOYMENT_FETCH_RATE = 10;
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
-  const t = useT();
-
-  const createNewDeploymentObject = useCallback(
-    (deployment: DeploymentFragment): Deployment => ({
-      id: deployment.id,
-      workspaceId: deployment.workspaceId,
-      projectId: deployment.projectId,
-      projectName: deployment.project?.name ?? t(DEFAULT_PROJECT_NAME),
-      workflowUrl: deployment.workflowUrl,
-      description: deployment.description ?? undefined,
-      version: deployment.version,
-      createdAt: formatDate(deployment.createdAt),
-      updatedAt: formatDate(deployment.updatedAt),
-    }),
-    [t],
-  );
 
   const createDeploymentMutation = useMutation({
     mutationFn: async ({
@@ -64,7 +46,7 @@ export const useQueries = () => {
       });
 
       if (data?.createDeployment?.deployment) {
-        return createNewDeploymentObject(data.createDeployment.deployment);
+        return toDeployment(data.createDeployment.deployment);
       }
     },
     onSuccess: (deployment) => {
@@ -94,7 +76,7 @@ export const useQueries = () => {
       });
 
       if (data?.updateDeployment?.deployment) {
-        return data?.updateDeployment?.deployment;
+        return toDeployment(data?.updateDeployment?.deployment);
       }
     },
     onSuccess: (deployment) =>
@@ -159,7 +141,7 @@ export const useQueries = () => {
         } = data;
         const deployments: Deployment[] = nodes
           .filter(isDefined)
-          .map((deployment) => createNewDeploymentObject(deployment));
+          .map((deployment) => toDeployment(deployment));
         return { deployments, endCursor, hasNextPage };
       },
       enabled: !!workspaceId,
