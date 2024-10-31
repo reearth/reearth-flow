@@ -13,11 +13,11 @@ export default function Editor() {
     openWorkflows,
     nodes,
     edges,
-    // lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,
     nodePickerOpen,
     openPanel,
+    handleWorkflowDeployment,
     handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
@@ -48,6 +48,7 @@ export default function Editor() {
             hoveredDetails={hoveredDetails}
             nodePickerOpen={nodePickerOpen}
             nodes={nodes}
+            onWorkflowDeployment={handleWorkflowDeployment}
             onWorkflowUndo={handleWorkflowUndo}
             onWorkflowRedo={handleWorkflowRedo}
             onWorkflowAdd={handleWorkflowAdd}
