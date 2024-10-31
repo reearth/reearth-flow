@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -50,34 +51,13 @@ func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
-	hasPermission, err := i.permissionChecker.CheckPermission(ctx, "project", "edit")
+	hasPermission, err := checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, rbac.ActionEdit)
+	if err != nil {
+		return nil, err
+	}
 	if !hasPermission {
 		return nil, fmt.Errorf("permission denied")
 	}
-	// authInfo := adapter.GetAuthInfo(ctx)
-	// if authInfo == nil {
-	// 	log.Fatalf("Failed to get auth info")
-	// }
-
-	// input := cerbosClient.CheckPermissionInput{
-	// 	Service:  "flow",
-	// 	Resource: "project",
-	// 	Action:   "edit",
-	// }
-	// allowed, err := cerbosClient.CheckPermission(ctx, "http://localhost:8090", authInfo, input)
-	// if err != nil {
-	// 	log.Fatalf("Failed to check permission: %v", err)
-	// }
-
-	// if allowed {
-	// 	fmt.Println("Permission granted")
-	// } else {
-	// 	fmt.Println("Permission denied")
-	// }
-
-	// if err := i.CanWriteWorkspace(p.WorkspaceID, operator); err != nil {
-	// 	return nil, err
-	// }
 
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
