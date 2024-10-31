@@ -72,7 +72,6 @@ export default function Editor() {
             isOpen={openPanel === "bottom" && !locallyLockedNode}
             onOpen={handlePanelOpen}
             onWorkflowClose={handleWorkflowClose}
-            //onWorkflowAdd={handleWorkflowAdd}
             onWorkflowChange={handleWorkflowChange}
           />
         </div>
