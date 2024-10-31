@@ -1,12 +1,14 @@
 use chrono::{DateTime, Utc};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(Clone, Debug)]
 pub struct ManageProjectEditSessionTaskData {
     pub project_id: String,
-    pub last_merged_at: Option<DateTime<Utc>>,
-    pub last_snapshot_at: Option<DateTime<Utc>>,
-    pub clients_disconnected_at: Option<DateTime<Utc>>,
-    client_count: Option<usize>,
+    pub last_merged_at: Arc<RwLock<Option<DateTime<Utc>>>>,
+    pub last_snapshot_at: Arc<RwLock<Option<DateTime<Utc>>>>,
+    pub clients_disconnected_at: Arc<RwLock<Option<DateTime<Utc>>>>,
+    pub client_count: Arc<RwLock<Option<usize>>>,
 }
 
 impl ManageProjectEditSessionTaskData {
@@ -18,10 +20,10 @@ impl ManageProjectEditSessionTaskData {
     ) -> Self {
         Self {
             project_id,
-            last_merged_at,
-            last_snapshot_at,
-            clients_disconnected_at,
-            client_count: None,
+            last_merged_at: Arc::new(RwLock::new(last_merged_at)),
+            last_snapshot_at: Arc::new(RwLock::new(last_snapshot_at)),
+            clients_disconnected_at: Arc::new(RwLock::new(clients_disconnected_at)),
+            client_count: Arc::new(RwLock::new(None)),
         }
     }
 }

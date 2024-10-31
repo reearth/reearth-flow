@@ -1,10 +1,7 @@
 use chrono::Utc;
 use flow_websocket_domain::{
     editing_session::ProjectEditingSession,
-    generate_id,
     repository::{ProjectEditingSessionRepository, ProjectSnapshotRepository, RedisDataManager},
-    snapshot::{Metadata, ObjectDelete, ObjectTenant, SnapshotInfo},
-    types::snapshot::ProjectSnapshot,
     user::User,
 };
 use flow_websocket_infra::persistence::{
@@ -96,18 +93,41 @@ where
                         SessionCommand::Start { project_id, user } => {
                             if let Some(mut session) = self.get_latest_session(&project_id).await? {
                                 debug!("Session already exists for project: {}", project_id);
+                                if let Some(task_data) = self.get_task_data(&project_id).await {
+                                    let mut count = task_data.client_count.write().await;
+                                    *count = Some(count.unwrap_or(0) + 1);
+                                    debug!("Client count increased to: {:?}", *count);
+                                }
                             } else {
                                 let mut new_session = ProjectEditingSession::new(project_id.clone());
                                 new_session
                                     .start_or_join_session(&*snapshot_repository, &*redis_data_manager, &user)
                                     .await?;
                                 debug!("Session started by user: {} for project: {}", user.name, project_id);
+                                if let Some(task_data) = self.get_task_data(&project_id).await {
+                                    let mut count = task_data.client_count.write().await;
+                                    *count = Some(1);
+                                    debug!("Initial client count set to: 1");
+                                }
                             }
                         },
                         SessionCommand::End { project_id, user } => {
-                            if let Some(data) = self.get_task_data(&project_id).await {
+                            if let Some(task_data) = self.get_task_data(&project_id).await {
+                                {
+                                    let mut count = task_data.client_count.write().await;
+                                    if let Some(current_count) = *count {
+                                        *count = Some(current_count.saturating_sub(1));
+                                        debug!("Client count decreased to: {:?}", *count);
+                                        if *count == Some(0) {
+                                            let mut disconnected_at = task_data.clients_disconnected_at.write().await;
+                                            *disconnected_at = Some(Utc::now());
+                                            debug!("All clients disconnected at: {:?}", *disconnected_at);
+                                        }
+                                    }
+                                }
+
                                 if let Some(mut session) = self.get_latest_session(&project_id).await? {
-                                    if let Ok(()) = self.end_editing_session_if_conditions_met(&mut session, &data).await {
+                                    if let Ok(()) = self.end_editing_session_if_conditions_met(&mut session, &task_data).await {
                                         debug!("Session ended by user: {} for project: {}", user.name, project_id);
                                         break;
                                     }
@@ -126,11 +146,9 @@ where
                             debug!("Checking session status for project: {}", project_id);
                         },
                         SessionCommand::AddTask { task_data } => {
-                            if let Some(project_id) = &task_data.project_id {
-                                let mut tasks = self.tasks.lock().await;
-                                tasks.insert(project_id.clone(), task_data.clone());
-                                debug!("Added task for project: {}", project_id);
-                            }
+                            let mut tasks = self.tasks.lock().await;
+                            tasks.insert(task_data.project_id.clone(), task_data.clone());
+                            debug!("Added task for project: {}", task_data.project_id);
                         },
                         SessionCommand::RemoveTask { project_id } => {
                             let mut tasks = self.tasks.lock().await;
@@ -182,36 +200,26 @@ where
         session: &mut ProjectEditingSession,
         data: &ManageProjectEditSessionTaskData,
     ) -> Result<(), ProjectServiceError> {
-        let client_count_future = async {
-            loop {
-                let count = self.session_repository.get_client_count().await?;
-                if count == 0 {
-                    return Ok::<_, ProjectServiceError>(0);
-                }
-                sleep(Duration::from_secs(1)).await;
-            }
-        };
+        if let Some(client_count) = *data.client_count.read().await {
+            if client_count == 0 {
+                if let Some(clients_disconnected_at) = *data.clients_disconnected_at.read().await {
+                    let current_time = Utc::now();
+                    let clients_disconnection_elapsed_time = current_time - clients_disconnected_at;
 
-        if let Some(clients_disconnected_at) = data.clients_disconnected_at {
-            let current_time = Utc::now();
-            let clients_disconnection_elapsed_time = current_time - clients_disconnected_at;
-
-            if clients_disconnection_elapsed_time
-                .to_std()
-                .map_err(ProjectServiceError::ChronoDurationConversionError)?
-                > MAX_EMPTY_SESSION_DURATION
-            {
-                if let Ok(Ok(0)) =
-                    tokio::time::timeout(MAX_EMPTY_SESSION_DURATION, client_count_future).await
-                {
-                    session
-                        .end_session(
-                            &*self.redis_data_manager,
-                            &*self.snapshot_repository,
-                            "system".to_string(),
-                            true,
-                        )
-                        .await?;
+                    if clients_disconnection_elapsed_time
+                        .to_std()
+                        .map_err(ProjectServiceError::ChronoDurationConversionError)?
+                        > MAX_EMPTY_SESSION_DURATION
+                    {
+                        session
+                            .end_session(
+                                &*self.redis_data_manager,
+                                &*self.snapshot_repository,
+                                "system".to_string(),
+                                true,
+                            )
+                            .await?;
+                    }
                 }
             }
         }
