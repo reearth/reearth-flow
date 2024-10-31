@@ -1,8 +1,8 @@
 import { Plus } from "@phosphor-icons/react";
 
-import { Button } from "@flow/components/";
+import { Button, FlowLogo } from "@flow/components/";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
-import type { Workspace } from "@flow/types";
 
 import {
   ProjectAddDialog,
@@ -12,11 +12,7 @@ import {
 } from "./components";
 import useHooks from "./hooks";
 
-type Props = {
-  workspace: Workspace;
-};
-
-const MainSection: React.FC<Props> = ({ workspace }) => {
+const ProjectsManager: React.FC = () => {
   const t = useT();
 
   const {
@@ -35,7 +31,7 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
-  } = useHooks({ workspace });
+  } = useHooks();
 
   return (
     <div className="flex h-full flex-1 flex-col">
@@ -50,20 +46,27 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
             <p className="text-xs dark:font-light">{t("New Project")}</p>
           </Button>
         </div>
-        <div
-          className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-          ref={ref}>
-          {projects?.map((p) => (
-            <ProjectCard
-              key={p.id}
-              project={p}
-              currentProject={currentProject}
-              setEditProject={setEditProject}
-              setProjectToBeDeleted={setProjectToBeDeleted}
-              onProjectSelect={handleProjectSelect}
-            />
-          ))}
-        </div>
+        {projects && projects?.length > 0 ? (
+          <div
+            className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+            ref={ref}>
+            {projects?.map((p) => (
+              <ProjectCard
+                key={p.id}
+                project={p}
+                currentProject={currentProject}
+                setEditProject={setEditProject}
+                setProjectToBeDeleted={setProjectToBeDeleted}
+                onProjectSelect={handleProjectSelect}
+              />
+            ))}
+          </div>
+        ) : (
+          <BasicBoiler
+            text={t("No Projects")}
+            icon={<FlowLogo className="size-16 text-accent" />}
+          />
+        )}
       </div>
       <ProjectAddDialog
         isOpen={openProjectAddDialog}
@@ -86,4 +89,4 @@ const MainSection: React.FC<Props> = ({ workspace }) => {
   );
 };
 
-export { MainSection };
+export default ProjectsManager;

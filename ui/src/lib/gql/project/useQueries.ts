@@ -7,7 +7,7 @@ import {
 
 import { useGraphQLContext } from "@flow/lib/gql";
 import { Project } from "@flow/types";
-import { isDefined } from "@flow/utils";
+import { formatDate, isDefined } from "@flow/utils";
 
 import {
   CreateProjectInput,
@@ -154,8 +154,8 @@ function createNewProjectObject(project: ProjectFragment): Project {
   return {
     id: project.id,
     name: project.name,
-    createdAt: project.createdAt,
-    updatedAt: project.updatedAt,
+    createdAt: formatDate(project.createdAt),
+    updatedAt: formatDate(project.updatedAt),
     description: project.description,
     workspaceId: project.workspaceId,
   };

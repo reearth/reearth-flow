@@ -13,9 +13,9 @@ type Props = {
 
 const RunDetails: React.FC<Props> = ({ selectedRun }) => {
   const t = useT();
-  const router = useRouter();
+  const { history } = useRouter();
 
-  const handleBack = useCallback(() => router.history.back(), [router]);
+  const handleBack = useCallback(() => history.go(-1), [history]);
 
   return (
     selectedRun && (

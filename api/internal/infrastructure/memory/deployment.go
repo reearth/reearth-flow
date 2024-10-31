@@ -3,7 +3,6 @@ package memory
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
@@ -98,7 +97,6 @@ func (r *Deployment) Save(ctx context.Context, d *deployment.Deployment) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	d.SetUpdatedAt(time.Now())
 	r.data[d.ID()] = d
 	return nil
 }
