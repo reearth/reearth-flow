@@ -23,6 +23,7 @@ import (
 )
 
 const databaseName = "reearth-flow"
+const accountDatabaseName = "reearth-account"
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, debug bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
 	gateways := &gateway.Container{}
@@ -43,7 +44,7 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, debug bool) 
 	accountDatabase := conf.DB_Account
 	accountRepoCompat := false
 	if accountDatabase == "" {
-		accountDatabase = databaseName
+		accountDatabase = accountDatabaseName
 		accountRepoCompat = true
 	}
 

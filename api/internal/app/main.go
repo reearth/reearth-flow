@@ -9,6 +9,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	infraPermission "github.com/reearth/reearth-flow/api/internal/infrastructure/permission"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
@@ -16,6 +17,8 @@ import (
 	"github.com/reearth/reearthx/log"
 	"golang.org/x/net/http2"
 )
+
+const serviceName = "flow"
 
 func Start(debug bool, version string) {
 	log.Infof("reerath-flow %s", version)
@@ -45,14 +48,18 @@ func Start(debug bool, version string) {
 	// Init repositories
 	repos, gateways, acRepos, acGateways := initReposAndGateways(ctx, conf, debug)
 
+	// PermissionChecker
+	permissionChecker := infraPermission.NewPermissionChecker(serviceName, conf.DashboardHost)
+
 	// Start web server
 	NewServer(ctx, &ServerConfig{
-		Config:          conf,
-		Debug:           debug,
-		Repos:           repos,
-		AccountRepos:    acRepos,
-		Gateways:        gateways,
-		AccountGateways: acGateways,
+		Config:            conf,
+		Debug:             debug,
+		Repos:             repos,
+		AccountRepos:      acRepos,
+		Gateways:          gateways,
+		AccountGateways:   acGateways,
+		PermissionChecker: permissionChecker,
 	}).Run()
 }
 
@@ -62,12 +69,13 @@ type WebServer struct {
 }
 
 type ServerConfig struct {
-	Config          *config.Config
-	Debug           bool
-	Repos           *repo.Container
-	AccountRepos    *accountrepo.Container
-	Gateways        *gateway.Container
-	AccountGateways *accountgateway.Container
+	Config            *config.Config
+	Debug             bool
+	Repos             *repo.Container
+	AccountRepos      *accountrepo.Container
+	Gateways          *gateway.Container
+	AccountGateways   *accountgateway.Container
+	PermissionChecker *infraPermission.PermissionChecker
 }
 
 func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {
