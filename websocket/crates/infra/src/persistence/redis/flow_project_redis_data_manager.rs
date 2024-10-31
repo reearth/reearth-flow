@@ -11,24 +11,14 @@ use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 use crate::persistence::redis::flow_project_lock::{FlowProjectLock, GlobalLockError};
 use crate::persistence::redis::redis_client::{RedisClient, RedisClientTrait};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct FlowUpdate {
-    stream_id: Option<String>,
-    update: Vec<u8>,
-    updated_by: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct FlowEncodedUpdate {
-    update: String,
-    updated_by: Option<String>,
-}
-
-pub struct FlowProjectRedisDataManager {
-    redis_client: Arc<RedisClient>,
-    project_id: String,
-    session_id: Arc<Mutex<Option<String>>>,
-    global_lock: FlowProjectLock,
+macro_rules! define_key_methods {
+    ($($method:ident => $suffix:expr),* $(,)?) => {
+        $(
+            fn $method(&self) -> Result<String, FlowProjectRedisDataManagerError> {
+                Ok(format!("{}:{}", self.session_prefix()?, $suffix))
+            }
+        )*
+    };
 }
 
 #[derive(Error, Debug)]
@@ -59,6 +49,28 @@ pub enum FlowProjectRedisDataManagerError {
     Join(#[from] tokio::task::JoinError),
     #[error("Unknown error: {0}")]
     Unknown(String),
+    #[error("Failed to acquire lock")]
+    LockError,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FlowUpdate {
+    stream_id: Option<String>,
+    update: Vec<u8>,
+    updated_by: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FlowEncodedUpdate {
+    update: String,
+    updated_by: Option<String>,
+}
+
+pub struct FlowProjectRedisDataManager {
+    redis_client: Arc<RedisClient>,
+    project_id: String,
+    session_id: Arc<Mutex<Option<String>>>,
+    global_lock: FlowProjectLock,
 }
 
 impl FlowProjectRedisDataManager {
@@ -86,32 +98,19 @@ impl FlowProjectRedisDataManager {
     }
 
     fn session_prefix(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-        let session_id = self
-            .session_id
+        self.session_id
             .try_lock()
-            .map_err(|_| {
-                FlowProjectRedisDataManagerError::Unknown("Failed to acquire lock".to_string())
-            })?
+            .map_err(|_| FlowProjectRedisDataManagerError::LockError)?
             .as_ref()
-            .ok_or(FlowProjectRedisDataManagerError::SessionNotSet)?
-            .clone();
-        Ok(format!("{}:{}", self.project_prefix(), session_id))
+            .ok_or(FlowProjectRedisDataManagerError::SessionNotSet)
+            .map(|session_id| format!("{}:{}", self.project_prefix(), session_id))
     }
 
-    fn state_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-        Ok(format!("{}:state", self.session_prefix()?))
-    }
-
-    fn state_updated_by_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-        Ok(format!("{}:stateUpdatedBy", self.session_prefix()?))
-    }
-
-    fn state_updates_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-        Ok(format!("{}:stateUpdates", self.session_prefix()?))
-    }
-
-    fn last_updated_at_key(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-        Ok(format!("{}:lastUpdatedAt", self.session_prefix()?))
+    define_key_methods! {
+        state_key => "state",
+        state_updated_by_key => "stateUpdatedBy",
+        state_updates_key => "stateUpdates",
+        last_updated_at_key => "lastUpdatedAt",
     }
 
     fn encode_state_data(data: Vec<u8>) -> Result<String, FlowProjectRedisDataManagerError> {
@@ -584,7 +583,6 @@ impl RedisDataManager for FlowProjectRedisDataManager {
             .map_err(FlowProjectRedisDataManagerError::from)
     }
 }
-
 // #[cfg(test)]
 // mod tests {
 //     use super::*;

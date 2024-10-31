@@ -138,14 +138,14 @@ impl RedisClientTrait for RedisClient {
         };
 
         match result {
-            redis::Value::Bulk(outer) => {
+            redis::Value::Array(outer) => {
                 let mut mapped_results = Vec::new();
                 for stream in outer {
-                    if let redis::Value::Bulk(stream_data) = stream {
+                    if let redis::Value::Array(stream_data) = stream {
                         if stream_data.len() >= 2 {
-                            if let redis::Value::Bulk(entries) = &stream_data[1] {
+                            if let redis::Value::Array(entries) = &stream_data[1] {
                                 mapped_results.extend(entries.iter().filter_map(|entry| {
-                                    if let redis::Value::Bulk(entry_fields) = entry {
+                                    if let redis::Value::Array(entry_fields) = entry {
                                         Self::parse_stream_entry(entry_fields)
                                     } else {
                                         None
@@ -168,7 +168,7 @@ impl RedisClient {
             .chunks(2)
             .filter(|chunk| chunk.len() == 2)
             .filter_map(|chunk| match (&chunk[0], &chunk[1]) {
-                (redis::Value::Data(key), redis::Value::Data(val)) => Some((
+                (redis::Value::BulkString(key), redis::Value::BulkString(val)) => Some((
                     String::from_utf8_lossy(key).into_owned(),
                     String::from_utf8_lossy(val).into_owned(),
                 )),
@@ -186,12 +186,12 @@ impl RedisClient {
         }
 
         let entry_id = match &entry_fields[0] {
-            redis::Value::Data(bytes) => String::from_utf8_lossy(bytes).into_owned(),
+            redis::Value::BulkString(bytes) => String::from_utf8_lossy(bytes).into_owned(),
             _ => return None,
         };
 
         match &entry_fields[1] {
-            redis::Value::Bulk(fields) => Some((entry_id, Self::parse_entry_fields(fields)?)),
+            redis::Value::Array(fields) => Some((entry_id, Self::parse_entry_fields(fields)?)),
             _ => None,
         }
     }
