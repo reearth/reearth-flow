@@ -3,11 +3,11 @@
 @tailwind utilities;
 
 :root {
-  font-family: Inter,'Noto Sans JP', sans-serif;
+  font-family: Inter, "Noto Sans JP", sans-serif;
   font-feature-settings:
     "liga" 1,
     "calt" 1; /* fix for Chrome */
-  }
+}
 
 @layer base {
   /* TODO: Fix light mode colors and enable light mode */
