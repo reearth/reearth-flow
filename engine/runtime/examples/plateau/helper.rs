@@ -62,7 +62,6 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
             }
         }
     }
-    async fn on_shutdown(&self) {}
 }
 
 #[allow(dead_code)]
@@ -81,8 +80,8 @@ pub(crate) fn execute(workflow: &str) {
         create_root_logger(action_log_uri.path()),
         action_log_uri.path(),
     ));
-    let handlers: Vec<Arc<Box<dyn reearth_flow_runtime::event::EventHandler>>> =
-        vec![Arc::new(Box::new(EventHandler))];
+    let handlers: Vec<Arc<dyn reearth_flow_runtime::event::EventHandler>> =
+        vec![Arc::new(EventHandler)];
     Runner::run_with_event_handler(
         workflow,
         ALL_ACTION_FACTORIES.clone(),

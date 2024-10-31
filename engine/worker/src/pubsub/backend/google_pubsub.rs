@@ -5,6 +5,24 @@ use google_cloud_pubsub::{client::Client, publisher::Publisher};
 
 use crate::pubsub::{message::EncodableMessage, topic::Topic};
 
+#[derive(thiserror::Error, Debug)]
+pub enum CloudPubSubError {
+    #[error("Failed to encode : {0}")]
+    Encode(String),
+    #[error("Failed to publish message: {0}")]
+    Publish(String),
+}
+
+impl CloudPubSubError {
+    pub(crate) fn encode<T: ToString>(message: T) -> Self {
+        Self::Encode(message.to_string())
+    }
+
+    pub(crate) fn publish<T: ToString>(message: T) -> Self {
+        Self::Publish(message.to_string())
+    }
+}
+
 pub struct CloudPubSub {
     pub(crate) client: Client,
     pub(crate) publishers: Arc<parking_lot::RwLock<HashMap<Topic, Arc<Publisher>>>>,
@@ -21,10 +39,9 @@ impl CloudPubSub {
 
 #[async_trait::async_trait]
 impl crate::pubsub::publisher::Publisher for CloudPubSub {
-    async fn publish<M: EncodableMessage>(
-        &self,
-        message: M,
-    ) -> Result<(), crate::pubsub::errors::Error> {
+    type Error = CloudPubSubError;
+
+    async fn publish<M: EncodableMessage>(&self, message: M) -> Result<(), CloudPubSubError> {
         let topic = message.topic();
         let publisher = {
             let mut publishers = self.publishers.write();
@@ -37,18 +54,13 @@ impl crate::pubsub::publisher::Publisher for CloudPubSub {
                 publisher
             }
         };
-        let data = message
-            .encode()
-            .map_err(crate::pubsub::errors::Error::encode)?;
+        let data = message.encode().map_err(CloudPubSubError::encode)?;
         let pubsub_msg = PubsubMessage {
             data: data.data.into(),
             ..Default::default()
         };
         let awaiter = publisher.publish(pubsub_msg).await;
-        awaiter
-            .get()
-            .await
-            .map_err(crate::pubsub::errors::Error::publish)?;
+        awaiter.get().await.map_err(CloudPubSubError::publish)?;
         Ok(())
     }
 

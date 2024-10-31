@@ -103,8 +103,7 @@ impl RunWorkerCommand {
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
         let (workflow, state, logger_factory, event_handler) =
             self.prepare(&storage_resolver).await?;
-        let handler: Arc<Box<dyn reearth_flow_runtime::event::EventHandler>> =
-            Arc::new(Box::new(event_handler));
+        let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = Arc::new(event_handler);
         AsyncRunner::run_with_event_handler(
             workflow,
             ALL_ACTION_FACTORIES.clone(),

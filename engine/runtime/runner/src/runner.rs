@@ -35,7 +35,7 @@ impl Runner {
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
-        event_handlers: Vec<Arc<Box<dyn EventHandler>>>,
+        event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), crate::errors::Error> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(30)
@@ -105,7 +105,7 @@ impl AsyncRunner {
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
-        event_handlers: Vec<Arc<Box<dyn EventHandler>>>,
+        event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), crate::errors::Error> {
         let start = Instant::now();
         let span = info_span!(

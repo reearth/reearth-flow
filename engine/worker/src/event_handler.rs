@@ -37,7 +37,7 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                 status: EventStatus::InProgress,
                 timestamp: chrono::Utc::now(),
                 updated_edges: vec![UpdatedEdge {
-                    id: edge_id.clone().to_string(),
+                    id: edge_id.to_string(),
                     status: EventStatus::InProgress,
                     feature_id: Some(*feature_id),
                 }],
