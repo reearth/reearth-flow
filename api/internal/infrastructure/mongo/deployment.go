@@ -67,6 +67,12 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, workspace accountdomai
 	}, pagination)
 }
 
+func (r *Deployment) FindByProject(ctx context.Context, project id.ProjectID) (*deployment.Deployment, error) {
+	return r.findOne(ctx, bson.M{
+		"projectid": project.String(),
+	}, true)
+}
+
 func (r *Deployment) Save(ctx context.Context, deployment *deployment.Deployment) error {
 	if !r.f.CanWrite(deployment.Workspace()) {
 		return repo.ErrOperationDenied

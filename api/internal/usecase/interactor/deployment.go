@@ -49,6 +49,10 @@ func (i *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 	return i.deploymentRepo.FindByWorkspace(ctx, id, p)
 }
 
+func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID, operator *usecase.Operator) (*deployment.Deployment, error) {
+	return i.deploymentRepo.FindByProject(ctx, id)
+}
+
 func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentParam, operator *usecase.Operator) (result *deployment.Deployment, err error) {
 	// if err := i.CanWriteWorkspace(dp.Workspace, operator); err != nil {
 	// 	return nil, err

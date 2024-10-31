@@ -152,38 +152,6 @@ type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
 
-type InputGraph struct {
-	ID    ID                   `json:"id"`
-	Name  string               `json:"name"`
-	Nodes []*InputWorkflowNode `json:"nodes"`
-	Edges []*InputWorkflowEdge `json:"edges"`
-}
-
-type InputWorkflow struct {
-	ID           ID            `json:"id"`
-	Name         string        `json:"name"`
-	EntryGraphID ID            `json:"entryGraphId"`
-	With         interface{}   `json:"with,omitempty"`
-	Graphs       []*InputGraph `json:"graphs"`
-}
-
-type InputWorkflowEdge struct {
-	ID       ID     `json:"id"`
-	To       ID     `json:"to"`
-	From     ID     `json:"from"`
-	FromPort string `json:"fromPort"`
-	ToPort   string `json:"toPort"`
-}
-
-type InputWorkflowNode struct {
-	ID         ID          `json:"id"`
-	Name       string      `json:"name"`
-	Type       *string     `json:"type,omitempty"`
-	Action     *string     `json:"action,omitempty"`
-	SubGraphID *ID         `json:"subGraphId,omitempty"`
-	With       interface{} `json:"with,omitempty"`
-}
-
 type Job struct {
 	ID           ID          `json:"id"`
 	DeploymentID ID          `json:"deploymentId"`
@@ -242,18 +210,19 @@ type Pagination struct {
 }
 
 type Project struct {
-	ID                ID         `json:"id"`
-	IsArchived        bool       `json:"isArchived"`
-	IsBasicAuthActive bool       `json:"isBasicAuthActive"`
-	BasicAuthUsername string     `json:"basicAuthUsername"`
-	BasicAuthPassword string     `json:"basicAuthPassword"`
-	CreatedAt         time.Time  `json:"createdAt"`
-	UpdatedAt         time.Time  `json:"updatedAt"`
-	Version           int        `json:"version"`
-	Name              string     `json:"name"`
-	Description       string     `json:"description"`
-	WorkspaceID       ID         `json:"workspaceId"`
-	Workspace         *Workspace `json:"workspace,omitempty"`
+	ID                ID          `json:"id"`
+	IsArchived        bool        `json:"isArchived"`
+	IsBasicAuthActive bool        `json:"isBasicAuthActive"`
+	BasicAuthUsername string      `json:"basicAuthUsername"`
+	BasicAuthPassword string      `json:"basicAuthPassword"`
+	CreatedAt         time.Time   `json:"createdAt"`
+	UpdatedAt         time.Time   `json:"updatedAt"`
+	Version           int         `json:"version"`
+	Name              string      `json:"name"`
+	Description       string      `json:"description"`
+	WorkspaceID       ID          `json:"workspaceId"`
+	Workspace         *Workspace  `json:"workspace,omitempty"`
+	Deployment        *Deployment `json:"deployment,omitempty"`
 }
 
 func (Project) IsNode()        {}

@@ -42,7 +42,7 @@ models:
         resolver: true
   Job:
     fields:
-      workspaces:
+      workspace:
         resolver: true
       deployment:
         resolver: true
@@ -50,11 +50,15 @@ models:
     fields:
       workspace:
         resolver: true
+      deployment:
+        resolver: true
   Workspace:
     fields:
       assets:
         resolver: true
       projects:
+        resolver: true
+      deployments:
         resolver: true
   WorkspaceMember:
     fields:
