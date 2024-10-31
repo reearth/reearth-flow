@@ -133,10 +133,6 @@ where
     async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
         Ok(self.session_repository.update_session(session).await?)
     }
-
-    async fn get_client_count(&self) -> Result<usize, Self::Error> {
-        Ok(self.session_repository.get_client_count().await?)
-    }
 }
 
 #[async_trait]

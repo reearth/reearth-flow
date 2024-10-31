@@ -124,11 +124,6 @@ where
 
         Ok(())
     }
-
-    async fn get_client_count(&self) -> Result<usize, Self::Error> {
-        let count = self.redis_client.get_client_count().await?;
-        Ok(count)
-    }
 }
 
 pub struct ProjectGcsRepository {

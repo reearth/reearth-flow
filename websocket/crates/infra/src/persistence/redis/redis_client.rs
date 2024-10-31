@@ -46,7 +46,6 @@ pub trait RedisClientTrait: Send + Sync {
     async fn xtrim(&self, key: &str, max_len: usize) -> Result<usize, RedisClientError>;
     async fn xdel(&self, key: &str, ids: &[String]) -> Result<usize, RedisClientError>;
     fn connection(&self) -> &Arc<Mutex<MultiplexedConnection>>;
-    async fn get_client_count(&self) -> Result<usize, RedisClientError>;
     async fn xread_map(
         &self,
         key: &str,
@@ -126,17 +125,6 @@ impl RedisClientTrait for RedisClient {
 
     fn connection(&self) -> &Arc<Mutex<MultiplexedConnection>> {
         &self.connection
-    }
-
-    async fn get_client_count(&self) -> Result<usize, RedisClientError> {
-        let mut connection = self.connection.lock().await;
-        let client_list: String = redis::cmd("CLIENT")
-            .arg("LIST")
-            .arg("TYPE")
-            .arg("normal")
-            .query_async(&mut *connection)
-            .await?;
-        Ok(client_list.lines().count())
     }
 
     async fn xread_map(
