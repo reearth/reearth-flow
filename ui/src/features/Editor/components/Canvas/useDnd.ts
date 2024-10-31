@@ -1,5 +1,5 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
-import { DragEvent, useCallback, useState } from "react";
+import { DragEvent, useCallback } from "react";
 
 import { config } from "@flow/config";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
