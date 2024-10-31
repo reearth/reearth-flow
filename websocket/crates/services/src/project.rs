@@ -1,15 +1,15 @@
 use crate::error::ProjectServiceError;
 use async_trait::async_trait;
 use flow_websocket_domain::editing_session::ProjectEditingSession;
-use flow_websocket_domain::generate_id;
 use flow_websocket_domain::project::{Action, Project, ProjectAllowedActions};
 use flow_websocket_domain::repository::{
     ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository, RedisDataManager,
 };
+use flow_websocket_domain::snapshot::ProjectSnapshot;
+use flow_websocket_domain::user::{self, User};
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManagerError;
 use std::sync::Arc;
-use tracing::debug;
 
 pub struct ProjectService<E, S, R> {
     session_repository: Arc<E>,
@@ -48,8 +48,7 @@ where
     pub async fn get_or_create_editing_session(
         &self,
         project_id: &str,
-        tenant_id: Option<String>,
-        tenant_name: Option<String>,
+        user: User,
     ) -> Result<ProjectEditingSession, ProjectServiceError> {
         let mut session = match self
             .session_repository
@@ -63,7 +62,7 @@ where
 
         if session.session_id.is_none() {
             session
-                .start_or_join_session(&*self.snapshot_repository, &*self.redis_data_manager, user)
+                .start_or_join_session(&*self.snapshot_repository, &*self.redis_data_manager, &user)
                 .await?;
             self.session_repository
                 .create_session(session.clone())
@@ -156,13 +155,6 @@ where
         Ok(self.snapshot_repository.create_snapshot(snapshot).await?)
     }
 
-    async fn create_snapshot_state(&self, snapshot_data: SnapshotData) -> Result<(), Self::Error> {
-        Ok(self
-            .snapshot_repository
-            .create_snapshot_state(snapshot_data)
-            .await?)
-    }
-
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
@@ -173,13 +165,6 @@ where
             .await?)
     }
 
-    async fn get_latest_snapshot_state(&self, project_id: &str) -> Result<Vec<u8>, Self::Error> {
-        Ok(self
-            .snapshot_repository
-            .get_latest_snapshot_state(project_id)
-            .await?)
-    }
-
     async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         Ok(self
             .snapshot_repository
@@ -187,22 +172,8 @@ where
             .await?)
     }
 
-    async fn update_latest_snapshot_state(
-        &self,
-        project_id: &str,
-        snapshot_data: SnapshotData,
-    ) -> Result<(), Self::Error> {
-        Ok(self
-            .snapshot_repository
-            .update_latest_snapshot_state(project_id, snapshot_data)
-            .await?)
-    }
-
-    async fn delete_snapshot_state(&self, project_id: &str) -> Result<(), Self::Error> {
-        Ok(self
-            .snapshot_repository
-            .delete_snapshot_state(project_id)
-            .await?)
+    async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
+        Ok(self.snapshot_repository.delete_snapshot(project_id).await?)
     }
 }
 
@@ -217,6 +188,10 @@ where
     R: RedisDataManager<Error = FlowProjectRedisDataManagerError> + Send + Sync,
 {
     type Error = FlowProjectRedisDataManagerError;
+
+    async fn create_session(&self, project_id: &str) -> Result<(), Self::Error> {
+        Ok(self.redis_data_manager.create_session(project_id).await?)
+    }
 
     async fn push_update(
         &self,
@@ -245,7 +220,7 @@ where
         Ok(self.redis_data_manager.get_active_session_id().await?)
     }
 
-    async fn set_active_session_id(&self, session_id: &str) -> Result<(), Self::Error> {
+    async fn set_active_session_id(&self, session_id: String) -> Result<(), Self::Error> {
         Ok(self
             .redis_data_manager
             .set_active_session_id(session_id)
