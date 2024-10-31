@@ -684,6 +684,8 @@ dependencies = [
  "axum",
  "axum-extra",
  "axum-macros",
+ "bb8",
+ "bb8-redis",
  "chrono",
  "flow-websocket-domain",
  "google-cloud-storage",

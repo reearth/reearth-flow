@@ -9,7 +9,9 @@ use tracing::debug;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
 use crate::persistence::redis::flow_project_lock::{FlowProjectLock, GlobalLockError};
-use crate::persistence::redis::redis_client::{RedisClient, RedisClientTrait};
+use bb8::{Pool, PooledConnection};
+use bb8_redis::RedisConnectionManager;
+use redis::streams::StreamMaxlen;
 
 macro_rules! define_key_methods {
     ($($method:ident => $suffix:expr),* $(,)?) => {
@@ -51,6 +53,8 @@ pub enum FlowProjectRedisDataManagerError {
     Unknown(String),
     #[error("Failed to acquire lock")]
     LockError,
+    #[error("Pool run error: {0}")]
+    PoolRunError(#[from] bb8::RunError<redis::RedisError>),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -67,26 +71,43 @@ pub struct FlowEncodedUpdate {
 }
 
 pub struct FlowProjectRedisDataManager {
-    redis_client: Arc<RedisClient>,
+    redis_pool: Pool<RedisConnectionManager>,
     project_id: String,
     session_id: Arc<Mutex<Option<String>>>,
     global_lock: FlowProjectLock,
 }
 
+type StreamEntry = (String, String);
+type StreamEntries = Vec<StreamEntry>;
+type StreamItem = (String, StreamEntries);
+type StreamItems = Vec<StreamItem>;
+
 impl FlowProjectRedisDataManager {
-    pub fn new(
+    pub async fn new(
         project_id: String,
         session_id: Option<String>,
-        redis_client: Arc<RedisClient>,
-    ) -> Self {
-        let redis_url = redis_client.redis_url();
+        redis_url: &str,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let manager = RedisConnectionManager::new(redis_url)?;
+        let redis_pool = Pool::builder().build(manager).await?;
         let global_lock = FlowProjectLock::new(redis_url);
-        Self {
-            redis_client,
+
+        Ok(Self {
+            redis_pool,
             project_id,
             session_id: Arc::new(Mutex::new(session_id)),
             global_lock,
-        }
+        })
+    }
+
+    async fn get_connection(
+        &self,
+    ) -> Result<PooledConnection<'_, RedisConnectionManager>, FlowProjectRedisDataManagerError>
+    {
+        self.redis_pool
+            .get()
+            .await
+            .map_err(FlowProjectRedisDataManagerError::PoolRunError)
     }
 
     fn project_prefix(&self) -> String {
@@ -123,11 +144,21 @@ impl FlowProjectRedisDataManager {
 
     async fn get_update_stream_items(
         &self,
-    ) -> Result<Vec<(String, Vec<(String, String)>)>, FlowProjectRedisDataManagerError> {
-        self.redis_client
-            .xread_map(&self.state_updates_key()?, "0-0")
-            .await
-            .map_err(FlowProjectRedisDataManagerError::from)
+    ) -> Result<StreamItems, FlowProjectRedisDataManagerError> {
+        let mut conn = self.get_connection().await?;
+        let key = self.state_updates_key()?;
+
+        let result: Vec<(String, Vec<(String, StreamEntries)>)> = redis::cmd("XREAD")
+            .arg("STREAMS")
+            .arg(&key)
+            .arg("0-0")
+            .query_async(&mut *conn)
+            .await?;
+
+        Ok(result
+            .into_iter()
+            .flat_map(|(_, entries)| entries)
+            .collect())
     }
 
     async fn get_flow_updates_from_stream(
@@ -229,7 +260,8 @@ impl FlowProjectRedisDataManager {
         &self,
     ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
         let state_key = self.state_key()?;
-        let state_update_string: Option<String> = self.redis_client.get(&state_key).await?;
+        let state_update_string: Option<String> =
+            self.get_connection().await?.get(&state_key).await?;
 
         if let Some(state_update_string) = state_update_string {
             Ok(Some(Self::decode_state_data(state_update_string)?))
@@ -250,17 +282,19 @@ impl FlowProjectRedisDataManager {
     pub async fn active_editing_session_id(
         &self,
     ) -> Result<Option<String>, FlowProjectRedisDataManagerError> {
-        self.redis_client
-            .get(&self.active_editing_session_id_key())
-            .await
-            .map_err(FlowProjectRedisDataManagerError::from)
+        let mut conn = self.get_connection().await?;
+        let result: Option<String> = conn.get(self.active_editing_session_id_key()).await?;
+        Ok(result)
     }
 
     pub async fn get_current_state_updated_by(
         &self,
     ) -> Result<Vec<String>, FlowProjectRedisDataManagerError> {
-        let state_updated_by: Option<String> =
-            self.redis_client.get(&self.state_updated_by_key()?).await?;
+        let state_updated_by: Option<String> = self
+            .get_connection()
+            .await?
+            .get(&self.state_updated_by_key()?)
+            .await?;
         if let Some(state_updated_by) = state_updated_by {
             Ok(serde_json::from_str(&state_updated_by)?)
         } else {
@@ -293,8 +327,10 @@ impl FlowProjectRedisDataManager {
         self.set_state_data(state_update, state_updated_by, skip_lock)
             .await?;
 
-        self.redis_client
-            .set(&self.active_editing_session_id_key(), &current_session_id)
+        let _: () = self
+            .get_connection()
+            .await?
+            .set(self.active_editing_session_id_key(), &current_session_id)
             .await?;
 
         Ok(())
@@ -305,12 +341,9 @@ impl FlowProjectRedisDataManager {
         encoded_state_update: &str,
         updated_by_json: &str,
     ) -> Result<(), FlowProjectRedisDataManagerError> {
-        let connection = self.redis_client.connection();
-        let mut connection_guard = connection.lock().await;
-        let _: () = connection_guard
-            .set(self.state_key()?, encoded_state_update)
-            .await?;
-        let _: () = connection_guard
+        let mut conn = self.get_connection().await?;
+        let _: () = conn.set(self.state_key()?, encoded_state_update).await?;
+        let _: () = conn
             .set(self.state_updated_by_key()?, updated_by_json)
             .await?;
         Ok(())
@@ -346,8 +379,11 @@ impl FlowProjectRedisDataManager {
     }
 
     pub async fn last_updated_at(&self) -> Result<i64, FlowProjectRedisDataManagerError> {
-        let last_updated_at: Option<String> =
-            self.redis_client.get(&self.last_updated_at_key()?).await?;
+        let last_updated_at: Option<String> = self
+            .get_connection()
+            .await?
+            .get(&self.last_updated_at_key()?)
+            .await?;
         if let Some(last_updated_at) = last_updated_at {
             Ok(last_updated_at.parse::<i64>()?)
         } else {
@@ -433,13 +469,16 @@ impl FlowProjectRedisDataManager {
         .await?;
 
         if let Some(last_update_id) = last_update_id {
-            self.redis_client
+            let _: () = self
+                .get_connection()
+                .await?
                 .xdel(&self.state_updates_key()?, &[last_update_id.to_string()])
                 .await?;
         }
 
-        self.redis_client
-            .xtrim(&self.state_updates_key()?, 0)
+        let mut conn = self.get_connection().await?;
+        let _: () = conn
+            .xtrim(&self.state_updates_key()?, StreamMaxlen::Equals(0))
             .await?;
 
         Ok((optimized_merged_state, merged_state_updated_by))
@@ -480,10 +519,9 @@ impl RedisDataManager for FlowProjectRedisDataManager {
     }
 
     async fn create_session(&self, session_id: &str) -> Result<(), Self::Error> {
-        let connection = self.redis_client.connection();
-        let mut connection_guard = connection.lock().await;
-
-        let _: () = connection_guard
+        let _: () = self
+            .get_connection()
+            .await?
             .set(self.active_editing_session_id_key(), session_id)
             .await?;
         Ok(())
@@ -494,7 +532,7 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         update_data: Vec<u8>,
         updated_by: Option<String>,
     ) -> Result<(), Self::Error> {
-        let update_data: FlowEncodedUpdate = FlowEncodedUpdate {
+        let update_data = FlowEncodedUpdate {
             update: Self::encode_state_data(update_data)?,
             updated_by,
         };
@@ -502,24 +540,17 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         let value = serde_json::to_string(&update_data)?;
         let fields = &[("value", value.as_str()), ("format", "json")];
 
-        let connection = self.redis_client.connection();
-        let mut connection_guard = connection.lock().await;
-
-        let _: () = connection_guard
-            .xadd(self.state_updates_key()?, "*", fields)
-            .await?;
+        let mut conn = self.get_connection().await?;
+        let _: () = conn.xadd(self.state_updates_key()?, "*", fields).await?;
 
         let timestamp = chrono::Utc::now().timestamp().to_string();
-        let _: () = connection_guard
-            .set(self.last_updated_at_key()?, &timestamp)
-            .await?;
+        let _: () = conn.set(self.last_updated_at_key()?, &timestamp).await?;
 
         Ok(())
     }
 
     async fn clear_data(&self) -> Result<(), Self::Error> {
-        let connection = self.redis_client.connection();
-        let mut connection_guard = connection.lock().await;
+        let mut connection = self.get_connection().await?;
 
         debug!(
             "Starting to clear Redis data for project: {}",
@@ -535,14 +566,14 @@ impl RedisDataManager for FlowProjectRedisDataManager {
 
         debug!("Deleting keys: {:?}", keys_to_delete);
 
-        let _: () = connection_guard.del(&keys_to_delete).await?;
+        let _: () = connection.del(&keys_to_delete).await?;
 
         if let Some(active_session_id) = self.active_editing_session_id().await? {
             let editing_session = self.session_id.lock().await;
             if let Some(current_session_id) = editing_session.as_ref() {
                 if active_session_id == *current_session_id {
                     debug!("Clearing active session ID: {}", active_session_id);
-                    let _: () = connection_guard
+                    let _: () = connection
                         .del(&[self.active_editing_session_id_key()])
                         .await?;
                 }
@@ -577,10 +608,12 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         &self,
         session_id: String,
     ) -> Result<(), FlowProjectRedisDataManagerError> {
-        self.redis_client
-            .set(&self.active_editing_session_id_key(), &session_id)
-            .await
-            .map_err(FlowProjectRedisDataManagerError::from)
+        let _: () = self
+            .get_connection()
+            .await?
+            .set(self.active_editing_session_id_key(), &session_id)
+            .await?;
+        Ok(())
     }
 }
 // #[cfg(test)]
@@ -594,7 +627,7 @@ impl RedisDataManager for FlowProjectRedisDataManager {
 //     #[derive(Clone)]
 //     pub struct MockFlowProjectRedisDataManager {
 //         pub current_state: Arc<Mutex<Option<Vec<u8>>>>,
-//         pub push_update_result: Arc<Mutex<Result<(), FlowProjectRedisDataManagerError>>>,
+//         pub push_update_result: Arc<Mutex<Result<(), FlowProjectRedisDataManagerError>>,
 //         pub merge_updates_result: Arc<Mutex<MergeUpdatesResult>>,
 //         pub session_id: Arc<Mutex<Option<String>>>,
 //     }
