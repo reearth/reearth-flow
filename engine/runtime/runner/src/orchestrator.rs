@@ -68,7 +68,7 @@ impl Orchestrator {
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
-        event_handlers: Vec<Box<dyn EventHandler>>,
+        event_handlers: Vec<Arc<Box<dyn EventHandler>>>,
     ) -> Result<(), Error> {
         let executor = Executor {};
         let options = ExecutorOptions {
@@ -122,7 +122,7 @@ impl Orchestrator {
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
-        event_handlers: Vec<Box<dyn EventHandler>>,
+        event_handlers: Vec<Arc<Box<dyn EventHandler>>>,
     ) -> Result<(), Error> {
         let pipeline_shutdown = shutdown.clone();
         self.run_apps(

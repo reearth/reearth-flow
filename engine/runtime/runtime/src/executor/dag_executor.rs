@@ -65,7 +65,7 @@ impl DagExecutor {
         logger: Arc<LoggerFactory>,
         kv_store: Arc<Box<dyn crate::kvs::KvStore>>,
         state: Arc<State>,
-        event_handlers: Vec<Box<dyn EventHandler>>,
+        event_handlers: Vec<Arc<Box<dyn EventHandler>>>,
     ) -> Result<DagExecutorJoinHandle, ExecutionError> {
         // Construct execution dag.
         let mut execution_dag = ExecutionDag::new(
@@ -152,7 +152,7 @@ impl DagExecutor {
 async fn subscribe_event(
     receiver: &mut Receiver<Event>,
     notify: Arc<Notify>,
-    event_handlers: &[Box<dyn EventHandler>],
+    event_handlers: &[Arc<Box<dyn EventHandler>>],
 ) {
     crate::event::subscribe_event(receiver, notify, event_handlers).await;
 }

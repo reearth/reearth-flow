@@ -48,7 +48,7 @@ pub fn run_dag_executor(
     dag_executor: DagExecutor,
     shutdown: ShutdownReceiver,
     state: Arc<State>,
-    event_handlers: Vec<Box<dyn EventHandler>>,
+    event_handlers: Vec<Arc<Box<dyn EventHandler>>>,
 ) -> Result<(), Error> {
     let shutdown_future = shutdown.create_shutdown_future();
 

@@ -49,16 +49,20 @@ impl Clone for EventHub {
 #[async_trait::async_trait]
 pub trait EventHandler: Send + Sync {
     async fn on_event(&self, event: &Event);
+    async fn on_shutdown(&self);
 }
 
 pub async fn subscribe_event(
     receiver: &mut Receiver<Event>,
     notify: Arc<Notify>,
-    event_handlers: &[Box<dyn EventHandler>],
+    event_handlers: &[Arc<Box<dyn EventHandler>>],
 ) {
     loop {
         tokio::select! {
             _ = notify.notified() => {
+                for handler in event_handlers.iter() {
+                    handler.on_shutdown().await;
+                }
                 return;
             },
             Ok(ev) = receiver.recv() => {
