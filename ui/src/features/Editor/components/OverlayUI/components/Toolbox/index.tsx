@@ -31,10 +31,7 @@ type Props = {
   undoDisabled?: boolean;
   onRedo?: () => void;
   onUndo?: () => void;
-  onWorkflowAdd?: (position?: {
-    x: number,
-    y: number
-  }) => void;
+  onWorkflowAdd?: (position?: { x: number; y: number }) => void;
 };
 const Toolbox: React.FC<Props> = ({ onRedo, onUndo, onWorkflowAdd }) => {
   const t = useT();
@@ -113,14 +110,13 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo, onWorkflowAdd }) => {
       root.unmount();
       document.body.removeChild(dragPreviewContainer);
     }, 0);
-
   };
 
   return (
-    <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto" >
+    <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
       <div className="self-start rounded-md bg-secondary">
         <div className="flex flex-col flex-wrap rounded-md border transition-all">
-        <div className="my-2 w-full border-t" />
+          <div className="my-2 w-full border-t" />
           {availableTools.map((tool) => (
             <IconButton
               key={tool.id}
@@ -131,13 +127,11 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo, onWorkflowAdd }) => {
               onDragStart={(event) => onDragStart(event, tool.id)}
               onDragEnd={(event) =>
                 tool.id === "subworkflow"
-                ? onWorkflowAdd?.({ x: event.clientX-50, y: event.clientY})
-                :undefined
+                  ? onWorkflowAdd?.({ x: event.clientX - 50, y: event.clientY })
+                  : undefined
               }
               onClick={() =>
-                tool.id === "subworkflow"
-                  ? onWorkflowAdd?.()
-                  :undefined
+                tool.id === "subworkflow" ? onWorkflowAdd?.() : undefined
               }
               draggable
             />
@@ -166,4 +160,3 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo, onWorkflowAdd }) => {
 };
 
 export default memo(Toolbox);
-
