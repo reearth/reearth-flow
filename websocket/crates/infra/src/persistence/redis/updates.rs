@@ -8,6 +8,8 @@ use bb8_redis::RedisConnectionManager;
 use std::sync::Arc;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
+type RedisStreamResult = Vec<(String, Vec<(String, Vec<(String, String)>)>)>;
+
 pub struct UpdateManager {
     redis_pool: Pool<RedisConnectionManager>,
     key_manager: Arc<dyn RedisKeyManager>,
@@ -82,7 +84,7 @@ impl UpdateManager {
             .map_err(FlowProjectRedisDataManagerError::PoolRunError)?;
         let key = self.key_manager.state_updates_key()?;
 
-        let result: Vec<(String, Vec<(String, Vec<(String, String)>)>)> = redis::cmd("XREAD")
+        let result: RedisStreamResult = redis::cmd("XREAD")
             .arg("STREAMS")
             .arg(&key)
             .arg("0-0")
