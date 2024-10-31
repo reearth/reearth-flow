@@ -8,7 +8,7 @@ use flow_websocket_domain::repository::{
 use flow_websocket_domain::snapshot::ProjectSnapshot;
 use flow_websocket_domain::user::{self, User};
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
-use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManagerError;
+use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
 use std::sync::Arc;
 
 pub struct ProjectService<E, S, R> {

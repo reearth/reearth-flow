@@ -5,8 +5,7 @@ use flow_websocket_domain::{
     user::User,
 };
 use flow_websocket_infra::persistence::{
-    project_repository::ProjectRepositoryError,
-    redis::flow_project_redis_data_manager::FlowProjectRedisDataManagerError,
+    project_repository::ProjectRepositoryError, redis::errors::FlowProjectRedisDataManagerError,
 };
 use mockall::automock;
 use std::time::Duration;

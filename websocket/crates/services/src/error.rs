@@ -1,8 +1,7 @@
 use chrono::OutOfRangeError;
 use flow_websocket_domain::editing_session::ProjectEditingSessionError;
 use flow_websocket_infra::persistence::{
-    project_repository::ProjectRepositoryError,
-    redis::flow_project_redis_data_manager::FlowProjectRedisDataManagerError,
+    project_repository::ProjectRepositoryError, redis::errors::FlowProjectRedisDataManagerError,
 };
 use thiserror::Error;
 
