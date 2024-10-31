@@ -3,12 +3,11 @@ import {
   ArrowArcRight,
   Database,
   Disc,
-  DotsSix,
   Lightning,
   Note,
   RectangleDashed,
 } from "@phosphor-icons/react";
-import { memo, type DragEvent, useState } from "react";
+import { memo, type DragEvent } from "react";
 import { createRoot } from "react-dom/client";
 
 import { IconButton } from "@flow/components";
