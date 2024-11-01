@@ -1,5 +1,11 @@
 import { CaretRight } from "@phosphor-icons/react";
-import { Dispatch, SetStateAction, useCallback, useState } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   Button,
@@ -16,7 +22,10 @@ import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 
 type Props = {
-  onWorkflowDeployment: (description?: string) => Promise<void>;
+  onWorkflowDeployment: (
+    deploymentId?: string,
+    description?: string,
+  ) => Promise<void>;
   setShowDialog: Dispatch<SetStateAction<"deploy" | undefined>>;
 };
 
@@ -26,11 +35,19 @@ const DeployDialog: React.FC<Props> = ({
 }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
-  const [description, setDescription] = useState<string>("");
+
+  const [description, setDescription] = useState<string>(
+    currentProject?.description ?? "",
+  );
+
+  const deployment = useMemo(
+    () => currentProject?.deployment,
+    [currentProject?.deployment],
+  );
 
   const handleWorkflowDeployment = useCallback(
-    () => onWorkflowDeployment(description),
-    [description, onWorkflowDeployment],
+    () => onWorkflowDeployment(deployment?.id, description),
+    [description, deployment?.id, onWorkflowDeployment],
   );
 
   return (
@@ -47,7 +64,7 @@ const DeployDialog: React.FC<Props> = ({
           <DialogContentSection>
             <Label>{t("Deploy version: ")}</Label>
             <div className="flex items-center">
-              <p className="dark:font-thin">1.0</p>
+              <p className="dark:font-thin">{deployment?.version || 1.0}</p>
               <CaretRight />
               <p className="font-semibold">2.0</p>
             </div>
@@ -70,10 +87,8 @@ const DeployDialog: React.FC<Props> = ({
           </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>
-          <Button
-            // disabled={buttonDisabled || !editProject?.name}
-            onClick={handleWorkflowDeployment}>
-            {t("Deploy")}
+          <Button onClick={handleWorkflowDeployment}>
+            {deployment ? t("Update") : t("Deploy")}
           </Button>
         </DialogFooter>
       </DialogContent>

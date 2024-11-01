@@ -1,0 +1,40 @@
+fragment Deployment on Deployment {
+  id
+  projectId
+  workspaceId
+  workflowUrl
+  description
+  version
+  createdAt
+  updatedAt
+  project {
+    name
+  }
+}
+
+fragment Job on Job {
+  id
+  deploymentId
+  workspaceId
+  status
+  startedAt
+  completedAt
+  # deployment{
+  #   ...Deployment
+  # }
+  # workspace{
+  #   ...Workspace
+  # }
+}
+
+fragment Project on Project {
+  id
+  name
+  description
+  createdAt
+  updatedAt
+  workspaceId
+  deployment {
+    ...Deployment
+  }
+}

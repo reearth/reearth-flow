@@ -176,7 +176,7 @@ const NewRun: React.FC = () => {
                   {deployments?.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
                       {deploymentDisplay(
-                        d.projectName,
+                        d.projectName ?? t("Unknown project"),
                         d.version,
                         d.description,
                       )}
