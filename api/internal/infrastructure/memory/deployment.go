@@ -64,6 +64,19 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 	), nil
 }
 
+func (r *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deployment.Deployment, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	for _, d := range r.data {
+		if d.Project() == id && r.f.CanRead(d.Workspace()) {
+			return d, nil
+		}
+	}
+
+	return nil, rerror.ErrNotFound
+}
+
 func (r *Deployment) FindByID(ctx context.Context, id id.DeploymentID) (*deployment.Deployment, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
