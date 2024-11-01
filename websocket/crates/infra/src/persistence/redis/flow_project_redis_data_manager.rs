@@ -1,7 +1,7 @@
 use super::{
-    connection::RedisConnection, errors::FlowProjectRedisDataManagerError,
-    flow_project_lock::FlowProjectLock, keys::RedisKeyManager, types::FlowEncodedUpdate,
-    updates::UpdateManager,
+    connection::RedisConnection, decode_state_data, default_key_manager, encode_state_data,
+    errors::FlowProjectRedisDataManagerError, flow_project_lock::FlowProjectLock,
+    keys::RedisKeyManager, types::FlowEncodedUpdate, updates::UpdateManager,
 };
 use crate::define_key_methods;
 use bb8::Pool;
@@ -38,7 +38,7 @@ impl FlowProjectRedisDataManager {
             global_lock,
             update_manager: Arc::new(UpdateManager::new(
                 redis_pool.clone(),
-                Arc::new(Self::default_key_manager()),
+                Arc::new(default_key_manager()),
             )),
         };
 
@@ -46,28 +46,6 @@ impl FlowProjectRedisDataManager {
             Arc::new(UpdateManager::new(redis_pool, Arc::new(instance.clone())));
 
         Ok(instance)
-    }
-
-    fn default_key_manager() -> impl RedisKeyManager {
-        struct DefaultKeyManager;
-        impl RedisKeyManager for DefaultKeyManager {
-            fn project_prefix(&self) -> String {
-                String::new()
-            }
-            fn session_prefix(&self) -> Result<String, FlowProjectRedisDataManagerError> {
-                Ok(String::new())
-            }
-            fn active_editing_session_id_key(&self) -> String {
-                String::new()
-            }
-            define_key_methods! {
-                state_key => "state",
-                state_updated_by_key => "stateUpdatedBy",
-                state_updates_key => "stateUpdates",
-                last_updated_at_key => "lastUpdatedAt",
-            }
-        }
-        DefaultKeyManager
     }
 
     async fn get_state_update_in_redis(
@@ -78,7 +56,7 @@ impl FlowProjectRedisDataManager {
             self.get_connection().await?.get(&state_key).await?;
 
         if let Some(state_update_string) = state_update_string {
-            Ok(Some(Self::decode_state_data(state_update_string)?))
+            Ok(Some(decode_state_data(state_update_string)?))
         } else {
             let session_id = self.session_id.lock().await;
             Err(FlowProjectRedisDataManagerError::MissingStateUpdate {
@@ -90,14 +68,6 @@ impl FlowProjectRedisDataManager {
                 ),
             })
         }
-    }
-
-    fn encode_state_data(data: Vec<u8>) -> Result<String, FlowProjectRedisDataManagerError> {
-        Ok(serde_json::to_string(&data)?)
-    }
-
-    fn decode_state_data(data_string: String) -> Result<Vec<u8>, FlowProjectRedisDataManagerError> {
-        Ok(serde_json::from_str(&data_string)?)
     }
 
     async fn set_state_data_internal(
@@ -119,7 +89,7 @@ impl FlowProjectRedisDataManager {
         state_updated_by: Vec<String>,
         skip_lock: bool,
     ) -> Result<(), FlowProjectRedisDataManagerError> {
-        let encoded_state_update = Self::encode_state_data(state_update)?;
+        let encoded_state_update = encode_state_data(state_update)?;
         let updated_by_json = serde_json::to_string(&state_updated_by)?;
 
         if skip_lock {
@@ -248,7 +218,7 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         updated_by: Option<String>,
     ) -> Result<(), Self::Error> {
         let update_data = FlowEncodedUpdate {
-            update: Self::encode_state_data(update_data)?,
+            update: encode_state_data(update_data)?,
             updated_by,
         };
 
