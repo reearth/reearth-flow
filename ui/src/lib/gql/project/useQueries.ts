@@ -17,7 +17,7 @@ import {
 } from "../__gen__/graphql";
 import { toProject } from "../convert";
 
-enum ProjectQueryKeys {
+export enum ProjectQueryKeys {
   GetWorkspaceProjects = "getWorkspaceProjects",
   GetProject = "getProject",
 }

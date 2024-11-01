@@ -1,4 +1,5 @@
 import { useParams } from "@tanstack/react-router";
+import { isEqual } from "lodash-es";
 import { useEffect } from "react";
 
 import { Loading } from "@flow/components";
@@ -23,12 +24,7 @@ const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
   const { project, isLoading } = useGetProject(projectId);
 
   useEffect(() => {
-    if (
-      !project ||
-      project.workspaceId !== currentWorkspace?.id ||
-      currentProject?.id === project.id
-    )
-      return;
+    if (isEqual(currentProject, project)) return;
 
     setCurrentProject(project);
   }, [project, setCurrentProject, currentProject, currentWorkspace]);

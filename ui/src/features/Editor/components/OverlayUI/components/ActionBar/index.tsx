@@ -14,7 +14,10 @@ import { DeployDialog } from "./components";
 const tooltipOffset = 6;
 
 type Props = {
-  onWorkflowDeployment: (description?: string) => Promise<void>;
+  onWorkflowDeployment: (
+    deploymentId?: string,
+    description?: string,
+  ) => Promise<void>;
 };
 
 const ActionBar: React.FC<Props> = ({ onWorkflowDeployment }) => {

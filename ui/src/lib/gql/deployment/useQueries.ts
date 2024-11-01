@@ -12,9 +12,10 @@ import { ExecuteDeploymentInput } from "../__gen__/graphql";
 import { DeleteDeploymentInput } from "../__gen__/plugins/graphql-request";
 import { toDeployment, toJob } from "../convert";
 import { JobQueryKeys } from "../job/useQueries";
+import { ProjectQueryKeys } from "../project/useQueries";
 import { useGraphQLContext } from "../provider";
 
-enum DeploymentQueryKeys {
+export enum DeploymentQueryKeys {
   GetDeployments = "getDeployments",
 }
 
@@ -46,13 +47,28 @@ export const useQueries = () => {
       });
 
       if (data?.createDeployment?.deployment) {
-        return toDeployment(data.createDeployment.deployment);
+        return {
+          deployment: toDeployment(data.createDeployment.deployment),
+          projectId,
+        };
       }
     },
-    onSuccess: (deployment) => {
+    onSuccess: (result) => {
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
-        queryKey: [DeploymentQueryKeys.GetDeployments, deployment?.workspaceId],
+        queryKey: [
+          DeploymentQueryKeys.GetDeployments,
+          result?.deployment?.workspaceId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          ProjectQueryKeys.GetWorkspaceProjects,
+          result?.deployment?.workspaceId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProject, result?.projectId],
       });
     },
   });
@@ -79,11 +95,21 @@ export const useQueries = () => {
         return toDeployment(data.updateDeployment.deployment);
       }
     },
-    onSuccess: (deployment) =>
+    onSuccess: (deployment) => {
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
         queryKey: [DeploymentQueryKeys.GetDeployments, deployment?.workspaceId],
-      }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          ProjectQueryKeys.GetWorkspaceProjects,
+          deployment?.workspaceId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProject],
+      });
+    },
   });
 
   const deleteDeploymentMutation = useMutation({
@@ -99,10 +125,17 @@ export const useQueries = () => {
         workspaceId,
       };
     },
-    onSuccess: ({ workspaceId }) =>
+    onSuccess: ({ workspaceId }) => {
       queryClient.invalidateQueries({
         queryKey: [DeploymentQueryKeys.GetDeployments, workspaceId],
-      }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProject],
+      });
+    },
   });
 
   const executeDeploymentMutation = useMutation({

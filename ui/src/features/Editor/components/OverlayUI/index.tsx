@@ -19,7 +19,10 @@ type OverlayUIProps = {
     nodeType: ActionNodeType;
   };
   nodes: Node[];
-  onWorkflowDeployment: (description?: string) => Promise<void>;
+  onWorkflowDeployment: (
+    deploymentId?: string,
+    description?: string,
+  ) => Promise<void>;
   onNodesChange: (nodes: Node[]) => void;
   onNodeLocking: (nodeId: string) => void;
   onNodePickerClose: () => void;

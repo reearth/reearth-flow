@@ -31,22 +31,24 @@ export const useDeployment = () => {
     projectId: string,
     workflowId: string,
     workflow: string,
+    description?: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
 
     try {
       const formData = yamlToFormData(workflow, workflowId);
 
-      const deployment: Deployment | undefined = await mutateAsync({
+      const data = await mutateAsync({
         workspaceId,
         projectId,
         file: formData,
+        description,
       });
       toast({
         title: t("Deployment Created"),
         description: t("Deployment has been successfully created."),
       });
-      return { deployment, ...rest };
+      return { deployment: data?.deployment, ...rest };
     } catch (_err) {
       return { deployment: undefined, ...rest };
     }
@@ -56,6 +58,7 @@ export const useDeployment = () => {
     deploymentId: string,
     workflowId: string,
     workflowYaml: string,
+    description?: string,
   ): Promise<UpdateDeployment> => {
     const { mutateAsync, ...rest } = updateDeploymentMutation;
     try {
@@ -63,6 +66,7 @@ export const useDeployment = () => {
         deploymentId,
         workflowId,
         workflowYaml,
+        description,
       });
       return { deployment, ...rest };
     } catch (_err) {
