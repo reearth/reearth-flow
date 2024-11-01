@@ -10,8 +10,8 @@ import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
 import { DeleteDeploymentInput } from "../__gen__/plugins/graphql-request";
-import { toDeployment } from "../convert";
-import { createNewJobObject, JobQueryKeys } from "../job/useQueries";
+import { toDeployment, toJob } from "../convert";
+import { JobQueryKeys } from "../job/useQueries";
 import { useGraphQLContext } from "../provider";
 
 enum DeploymentQueryKeys {
@@ -76,7 +76,7 @@ export const useQueries = () => {
       });
 
       if (data?.updateDeployment?.deployment) {
-        return toDeployment(data?.updateDeployment?.deployment);
+        return toDeployment(data.updateDeployment.deployment);
       }
     },
     onSuccess: (deployment) =>
@@ -110,7 +110,7 @@ export const useQueries = () => {
       const data = await graphQLContext?.ExecuteDeployment({ input });
 
       if (data?.executeDeployment?.job) {
-        return createNewJobObject(data.executeDeployment.job);
+        return toJob(data.executeDeployment.job);
       }
     },
     onSuccess: (job) =>

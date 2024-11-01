@@ -5,6 +5,7 @@ import {
   DeleteProject,
   GetProject,
   GetWorkspaceProjects,
+  Project,
   RunProject,
   UpdateProject,
 } from "@flow/types";
@@ -32,7 +33,7 @@ export const useProject = () => {
   ): Promise<CreateProject> => {
     const { mutateAsync, ...rest } = createProjectMutation;
     try {
-      const project = await mutateAsync(input);
+      const project: Project | undefined = await mutateAsync(input);
       toast({
         title: t("Project Created"),
         description: t("Project has been successfully created."),
