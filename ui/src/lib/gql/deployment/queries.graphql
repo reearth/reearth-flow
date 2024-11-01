@@ -1,33 +1,3 @@
-fragment Deployment on Deployment {
-  id
-  projectId
-  workspaceId
-  workflowUrl
-  description
-  version
-  createdAt
-  updatedAt
-  project {
-    name
-  }
-}
-
-# NOTE: this is copy/pasted here from src/lib/gql/job/queries.graphql
-fragment Job on Job {
-  id
-  deploymentId
-  workspaceId
-  status
-  startedAt
-  completedAt
-  # deployment{
-  #   ...Deployment
-  # }
-  # workspace{
-  #   ...Workspace
-  # }
-}
-
 mutation CreateDeployment($input: CreateDeploymentInput!) {
   createDeployment(input: $input) {
     deployment {

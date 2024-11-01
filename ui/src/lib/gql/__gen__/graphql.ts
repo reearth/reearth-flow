@@ -617,10 +617,6 @@ export type WorkspaceMember = {
   userId: Scalars['ID']['output'];
 };
 
-export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } & { ' $fragmentName'?: 'DeploymentFragment' };
-
-export type JobFragment = { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null } & { ' $fragmentName'?: 'JobFragment' };
-
 export type CreateDeploymentMutationVariables = Exact<{
   input: CreateDeploymentInput;
 }>;
@@ -689,6 +685,10 @@ export type GetJobQuery = { __typename?: 'Query', job?: (
     { __typename?: 'Job' }
     & { ' $fragmentRefs'?: { 'JobFragment': JobFragment } }
   ) | null };
+
+export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } & { ' $fragmentName'?: 'DeploymentFragment' };
+
+export type JobFragment = { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null } & { ' $fragmentName'?: 'JobFragment' };
 
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, deployment?: (
     { __typename?: 'Deployment' }

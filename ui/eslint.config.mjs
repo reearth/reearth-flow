@@ -46,6 +46,9 @@ const graphqlConfig = {
     "@graphql-eslint/unique-fragment-name": "off",
     "@graphql-eslint/unique-operation-name": "off",
     "@graphql-eslint/selection-set-depth": "off",
+    "@graphql-eslint/known-fragment-names": "off",
+    "@graphql-eslint/no-undefined-variables": "off",
+    "@graphql-eslint/no-unused-variables": "off",
     "@graphql-eslint/naming-convention": [
       "error",
       {
