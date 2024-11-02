@@ -13,6 +13,7 @@ use tokio::sync::Mutex;
 use tracing::debug;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
+#[derive(Clone)]
 pub struct FlowProjectRedisDataManager {
     redis_pool: Pool<RedisConnectionManager>,
     project_id: String,
@@ -144,18 +145,6 @@ impl FlowProjectRedisDataManager {
     }
 }
 
-impl Clone for FlowProjectRedisDataManager {
-    fn clone(&self) -> Self {
-        Self {
-            redis_pool: self.redis_pool.clone(),
-            project_id: self.project_id.clone(),
-            session_id: self.session_id.clone(),
-            global_lock: self.global_lock.clone(),
-            update_manager: self.update_manager.clone(),
-        }
-    }
-}
-
 #[async_trait::async_trait]
 impl RedisKeyManager for FlowProjectRedisDataManager {
     fn project_prefix(&self) -> String {
@@ -172,7 +161,7 @@ impl RedisKeyManager for FlowProjectRedisDataManager {
     }
 
     fn active_editing_session_id_key(&self) -> String {
-        format!("{}:activeEditingSessionId", self.project_prefix())
+        format!("project:{}:active_session", self.project_prefix())
     }
 
     define_key_methods! {
@@ -212,6 +201,7 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         Ok(())
     }
 
+    /// push update to stream
     async fn push_update(
         &self,
         update_data: Vec<u8>,
@@ -289,18 +279,6 @@ impl RedisDataManager for FlowProjectRedisDataManager {
         let mut conn = self.get_connection().await?;
         let result: Option<String> = conn.get(self.active_editing_session_id_key()).await?;
         Ok(result)
-    }
-
-    async fn set_active_session_id(
-        &self,
-        session_id: String,
-    ) -> Result<(), FlowProjectRedisDataManagerError> {
-        let _: () = self
-            .get_connection()
-            .await?
-            .set(self.active_editing_session_id_key(), &session_id)
-            .await?;
-        Ok(())
     }
 }
 

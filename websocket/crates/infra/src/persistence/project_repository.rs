@@ -38,6 +38,7 @@ pub enum ProjectRepositoryError {
     Custom(String),
 }
 
+#[derive(Clone)]
 pub struct ProjectRedisRepository<R>
 where
     R: RedisClientTrait + Send + Sync,
@@ -72,6 +73,7 @@ where
 {
     type Error = ProjectRepositoryError;
 
+    /// crate session and set active session
     async fn create_session(
         &self,
         mut session: ProjectEditingSession,
@@ -124,8 +126,15 @@ where
 
         Ok(())
     }
+
+    async fn delete_session(&self, project_id: &str) -> Result<(), Self::Error> {
+        let active_session_key = format!("project:{}:active_session", project_id);
+        self.redis_client.delete_key(&active_session_key).await?;
+        Ok(())
+    }
 }
 
+#[derive(Clone)]
 pub struct ProjectGcsRepository {
     client: GcsClient,
 }
@@ -177,6 +186,7 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
     }
 }
 
+#[derive(Clone)]
 pub struct ProjectLocalRepository {
     client: Arc<LocalClient>,
 }

@@ -51,6 +51,7 @@ pub trait RedisClientTrait: Send + Sync {
         key: &str,
         id: &str,
     ) -> Result<Vec<(String, Vec<(String, String)>)>, RedisClientError>;
+    async fn delete_key(&self, key: &str) -> Result<(), RedisClientError>;
 }
 
 #[async_trait]
@@ -159,6 +160,11 @@ impl RedisClientTrait for RedisClient {
             }
             _ => Ok(vec![]),
         }
+    }
+
+    async fn delete_key(&self, key: &str) -> Result<(), RedisClientError> {
+        let mut connection = self.connection.lock().await;
+        connection.del(key).await.map_err(Into::into)
     }
 }
 

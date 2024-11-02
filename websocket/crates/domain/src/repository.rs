@@ -20,6 +20,7 @@ pub trait ProjectEditingSessionRepository {
         project_id: &str,
     ) -> Result<Option<ProjectEditingSession>, Self::Error>;
     async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error>;
+    async fn delete_session(&self, project_id: &str) -> Result<(), Self::Error>;
 }
 
 #[async_trait::async_trait]
@@ -49,5 +50,4 @@ pub trait RedisDataManager {
     ) -> Result<(), Self::Error>;
     async fn clear_data(&self) -> Result<(), Self::Error>;
     async fn get_active_session_id(&self) -> Result<Option<String>, Self::Error>;
-    async fn set_active_session_id(&self, session_id: String) -> Result<(), Self::Error>;
 }

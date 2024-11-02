@@ -1,7 +1,11 @@
+use axum_extra::headers::Error;
 use chrono::Utc;
 use flow_websocket_domain::{
     editing_session::ProjectEditingSession,
-    repository::{ProjectEditingSessionRepository, ProjectSnapshotRepository, RedisDataManager},
+    repository::{
+        ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
+        RedisDataManager,
+    },
     user::User,
 };
 use flow_websocket_infra::persistence::{
@@ -14,6 +18,7 @@ use tokio::sync::{mpsc, Mutex};
 use tokio::time::sleep;
 use tracing::debug;
 
+use crate::project::ProjectService;
 use crate::{types::ManageProjectEditSessionTaskData, ProjectServiceError};
 
 const MAX_EMPTY_SESSION_DURATION: Duration = Duration::from_secs(10);
@@ -22,13 +27,15 @@ const JOB_COMPLETION_DELAY: Duration = Duration::from_secs(5);
 
 pub struct ManageEditSessionService<R, S, M>
 where
-    R: ProjectEditingSessionRepository<Error = ProjectRepositoryError> + Send + Sync + 'static,
-    S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync + 'static,
-    M: RedisDataManager<Error = FlowProjectRedisDataManagerError> + Send + Sync + 'static,
+    R: ProjectEditingSessionRepository<Error = ProjectRepositoryError>
+        + Send
+        + Sync
+        + Clone
+        + 'static,
+    S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
+    M: RedisDataManager<Error = FlowProjectRedisDataManagerError> + Send + Sync + Clone + 'static,
 {
-    pub session_repository: Arc<R>,
-    pub snapshot_repository: Arc<S>,
-    pub redis_data_manager: Arc<M>,
+    pub project_service: ProjectService<R, S, M>,
     tasks: Arc<Mutex<HashMap<String, ManageProjectEditSessionTaskData>>>,
 }
 
@@ -60,9 +67,15 @@ pub enum SessionCommand {
 #[automock]
 impl<R, S, M> ManageEditSessionService<R, S, M>
 where
-    R: ProjectEditingSessionRepository<Error = ProjectRepositoryError> + Send + Sync + 'static,
-    S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync + 'static,
-    M: RedisDataManager<Error = FlowProjectRedisDataManagerError> + Send + Sync + 'static,
+    R: ProjectEditingSessionRepository<Error = ProjectRepositoryError>
+        + ProjectSnapshotRepository<Error = ProjectRepositoryError>
+        + ProjectRepository<Error = ProjectRepositoryError>
+        + Send
+        + Sync
+        + Clone
+        + 'static,
+    S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
+    M: RedisDataManager<Error = FlowProjectRedisDataManagerError> + Send + Sync + Clone + 'static,
 {
     pub fn new(
         session_repository: Arc<R>,
@@ -70,9 +83,11 @@ where
         redis_data_manager: Arc<M>,
     ) -> Self {
         Self {
-            session_repository,
-            snapshot_repository,
-            redis_data_manager,
+            project_service: ProjectService::new(
+                session_repository,
+                snapshot_repository,
+                redis_data_manager,
+            ),
             tasks: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -81,9 +96,7 @@ where
         &self,
         mut command_rx: mpsc::Receiver<SessionCommand>,
     ) -> Result<(), ProjectServiceError> {
-        let session_repository = Arc::clone(&self.session_repository);
-        let snapshot_repository = Arc::clone(&self.snapshot_repository);
-        let redis_data_manager = Arc::clone(&self.redis_data_manager);
+        let project_service = self.project_service.clone();
 
         loop {
             tokio::select! {
@@ -100,7 +113,12 @@ where
                             } else {
                                 let mut new_session = ProjectEditingSession::new(project_id.clone());
                                 new_session
-                                    .start_or_join_session(&*snapshot_repository, &*redis_data_manager, &user)
+                                    .start_or_join_session(
+                                        &*project_service.session_repository,
+                                        &*project_service.snapshot_repository,
+                                        &*project_service.redis_data_manager,
+                                        &user,
+                                    )
                                     .await?;
                                 debug!("Session started by user: {} for project: {}", user.name, project_id);
                                 if let Some(task_data) = self.get_task_data(&project_id).await {
@@ -181,17 +199,7 @@ where
         &self,
         project_id: &str,
     ) -> Result<Option<ProjectEditingSession>, ProjectServiceError> {
-        Ok(self
-            .session_repository
-            .get_active_session(project_id)
-            .await?)
-    }
-
-    pub async fn update_session(
-        &self,
-        session: &mut ProjectEditingSession,
-    ) -> Result<(), ProjectServiceError> {
-        unimplemented!()
+        self.project_service.get_active_session(project_id).await
     }
 
     pub async fn end_editing_session_if_conditions_met(
@@ -210,13 +218,8 @@ where
                         .map_err(ProjectServiceError::ChronoDurationConversionError)?
                         > MAX_EMPTY_SESSION_DURATION
                     {
-                        session
-                            .end_session(
-                                &*self.redis_data_manager,
-                                &*self.snapshot_repository,
-                                "system".to_string(),
-                                true,
-                            )
+                        self.project_service
+                            .end_session("system".to_string(), session.clone())
                             .await?;
                     }
                 }
@@ -230,22 +233,13 @@ where
         &self,
         session: &mut ProjectEditingSession,
     ) -> Result<(), ProjectServiceError> {
-        session
-            .end_session(
-                &*self.redis_data_manager,
-                &*self.snapshot_repository,
-                "system".to_string(),
-                true,
-            )
+        self.project_service
+            .end_session("system".to_string(), session.clone())
             .await?;
 
         sleep(JOB_COMPLETION_DELAY).await;
 
         Ok(())
-    }
-
-    pub fn get_session_repository(&self) -> &R {
-        &self.session_repository
     }
 }
 

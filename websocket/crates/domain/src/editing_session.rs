@@ -2,7 +2,9 @@ use super::utils::calculate_diff;
 use std::sync::Arc;
 
 use crate::generate_id;
-use crate::repository::{ProjectSnapshotRepository, RedisDataManager};
+use crate::repository::{
+    ProjectEditingSessionRepository, ProjectSnapshotRepository, RedisDataManager,
+};
 use crate::snapshot::ObjectTenant;
 use crate::types::snapshot::{Metadata, ObjectDelete, ProjectSnapshot, SnapshotInfo};
 use crate::user::User;
@@ -31,6 +33,8 @@ pub enum ProjectEditingSessionError {
     Snapshot(String),
     #[error("Redis error: {0}")]
     Redis(String),
+    #[error("Project editing session repository error: {0}")]
+    ProjectEditingSessionRepository(String),
     #[error("{0}")]
     Custom(String),
 }
@@ -42,6 +46,10 @@ impl ProjectEditingSessionError {
 
     pub fn redis<E: std::fmt::Display>(err: E) -> Self {
         Self::Redis(err.to_string())
+    }
+
+    pub fn project_editing_session_repository<E: std::fmt::Display>(err: E) -> Self {
+        Self::ProjectEditingSessionRepository(err.to_string())
     }
 }
 
@@ -64,30 +72,37 @@ impl ProjectEditingSession {
         }
     }
 
-    pub async fn start_or_join_session<R, S>(
+    /// Start or join a session for a project
+    /// If the session already exists, it will join the session
+    /// If the session does not exist, it will create a new session
+    /// The session will be created in the database and in redis
+    pub async fn start_or_join_session<S, E, R>(
         &mut self,
         snapshot_repo: &S,
+        project_editing_session_repository: &E,
         redis_manager: &R,
         user: &User,
     ) -> Result<(), ProjectEditingSessionError>
     where
-        R: RedisDataManager,
+        E: ProjectEditingSessionRepository,
         S: ProjectSnapshotRepository,
+        R: RedisDataManager,
     {
-        if let Some(active_session_id) = redis_manager
-            .get_active_session_id()
+        if let Some(project_editing_session) = project_editing_session_repository
+            .get_active_session(&self.project_id)
             .await
-            .map_err(ProjectEditingSessionError::redis)?
+            .map_err(ProjectEditingSessionError::project_editing_session_repository)?
         {
-            self.session_id = Some(active_session_id.clone());
+            self.session_id = project_editing_session.session_id.clone();
             return Ok(());
         }
 
-        let session_id = generate_id!("session");
-        redis_manager
-            .set_active_session_id(session_id)
+        let project_editing_session = ProjectEditingSession::new(self.project_id.clone());
+
+        project_editing_session_repository
+            .create_session(project_editing_session)
             .await
-            .map_err(ProjectEditingSessionError::redis)?;
+            .map_err(ProjectEditingSessionError::project_editing_session_repository)?;
 
         self.load_session(snapshot_repo, redis_manager, user).await
     }
