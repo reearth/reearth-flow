@@ -1,4 +1,3 @@
-use axum_extra::headers::Error;
 use chrono::Utc;
 use flow_websocket_domain::{
     editing_session::ProjectEditingSession,
@@ -114,8 +113,8 @@ where
                                 let mut new_session = ProjectEditingSession::new(project_id.clone());
                                 new_session
                                     .start_or_join_session(
-                                        &*project_service.session_repository,
                                         &*project_service.snapshot_repository,
+                                        &*project_service.session_repository,
                                         &*project_service.redis_data_manager,
                                         &user,
                                     )
@@ -199,7 +198,12 @@ where
         &self,
         project_id: &str,
     ) -> Result<Option<ProjectEditingSession>, ProjectServiceError> {
-        self.project_service.get_active_session(project_id).await
+        let ret = self
+            .project_service
+            .session_repository
+            .get_active_session(project_id)
+            .await?;
+        Ok(ret)
     }
 
     pub async fn end_editing_session_if_conditions_met(
