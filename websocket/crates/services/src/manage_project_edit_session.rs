@@ -102,28 +102,16 @@ where
                 Some(command) = command_rx.recv() => {
                     match command {
                         SessionCommand::Start { project_id, user } => {
-                            if let Some(mut session) = self.get_latest_session(&project_id).await? {
-                                debug!("Session already exists for project: {}", project_id);
+                            let session = self.project_service
+                                .get_or_create_editing_session(&project_id, user.clone())
+                                .await?;
+
+                            if session.session_id.is_some() {
+                                debug!("Session exists/created for project: {}", project_id);
                                 if let Some(task_data) = self.get_task_data(&project_id).await {
                                     let mut count = task_data.client_count.write().await;
                                     *count = Some(count.unwrap_or(0) + 1);
                                     debug!("Client count increased to: {:?}", *count);
-                                }
-                            } else {
-                                let mut new_session = ProjectEditingSession::new(project_id.clone());
-                                new_session
-                                    .start_or_join_session(
-                                        &*project_service.snapshot_repository,
-                                        &*project_service.session_repository,
-                                        &*project_service.redis_data_manager,
-                                        &user,
-                                    )
-                                    .await?;
-                                debug!("Session started by user: {} for project: {}", user.name, project_id);
-                                if let Some(task_data) = self.get_task_data(&project_id).await {
-                                    let mut count = task_data.client_count.write().await;
-                                    *count = Some(1);
-                                    debug!("Initial client count set to: 1");
                                 }
                             }
                         },
