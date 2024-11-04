@@ -1,38 +1,96 @@
 use super::errors::Result;
 use super::room::Room;
-use redis::Client as RedisClient;
+use flow_websocket_domain::ProjectEditingSession;
+use flow_websocket_infra::persistence::project_repository::{
+    ProjectLocalRepository, ProjectRedisRepository,
+};
+use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManager;
+use flow_websocket_infra::persistence::redis::redis_client::RedisClient as FlowRedisClient;
+use flow_websocket_services::manage_project_edit_session::ManageEditSessionService;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+type SessionService = ManageEditSessionService<
+    ProjectRedisRepository<FlowRedisClient>,
+    ProjectLocalRepository,
+    FlowProjectRedisDataManager,
+>;
+
 #[derive()]
 pub struct AppState {
     pub rooms: Arc<Mutex<HashMap<String, Room>>>,
-    pub redis_client: RedisClient,
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        let redis_url =
-            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string());
-
-        AppState {
-            rooms: Arc::new(Mutex::new(HashMap::new())),
-            redis_client: RedisClient::open(redis_url).unwrap(),
-        }
-    }
+    pub redis_client: FlowRedisClient,
+    pub local_storage: Arc<ProjectLocalRepository>,
+    pub session_repo: Arc<ProjectRedisRepository<FlowRedisClient>>,
+    pub sessions: Arc<Mutex<HashMap<String, Arc<SessionService>>>>,
+    pub redis_url: String,
 }
 
 impl AppState {
-    pub async fn new(redis_url: &str) -> Result<Self> {
-        let redis_client = RedisClient::open(redis_url)?;
+    pub async fn new(redis_url: Option<String>) -> Result<Self> {
+        let redis_url = redis_url.unwrap_or_else(|| {
+            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string())
+        });
+
+        let redis_client = FlowRedisClient::new(&redis_url).await.unwrap();
+        let redis_client = Arc::new(redis_client);
+
+        let local_storage = Arc::new(
+            ProjectLocalRepository::new("./local_storage".into())
+                .await
+                .unwrap(),
+        );
+        let session_repo = Arc::new(ProjectRedisRepository::new(redis_client.clone()));
 
         Ok(AppState {
             rooms: Arc::new(Mutex::new(HashMap::new())),
-            redis_client,
+            redis_client: Arc::try_unwrap(redis_client).unwrap_or_else(|arc| (*arc).clone()),
+            local_storage,
+            session_repo,
+            sessions: Arc::new(Mutex::new(HashMap::new())),
+            redis_url,
         })
     }
 
+    pub async fn get_or_create_session_service(
+        &self,
+        project_id: &str,
+    ) -> Result<Arc<SessionService>> {
+        let mut sessions = self.sessions.lock().await;
+
+        if let Some(service) = sessions.get(project_id) {
+            return Ok(service.clone());
+        }
+
+        // Create new session service
+        let session = ProjectEditingSession::new(project_id.to_string());
+
+        let redis_data_manager = FlowProjectRedisDataManager::new(
+            project_id.to_string(),
+            session.session_id,
+            &self.redis_url,
+        )
+        .await
+        .unwrap();
+
+        let service = Arc::new(ManageEditSessionService::new(
+            self.session_repo.clone(),
+            self.local_storage.clone(),
+            Arc::new(redis_data_manager),
+        ));
+
+        sessions.insert(project_id.to_string(), service.clone());
+        Ok(service)
+    }
+
+    pub async fn remove_session_service(&self, project_id: &str) -> Result<()> {
+        let mut sessions = self.sessions.lock().await;
+        sessions.remove(project_id);
+        Ok(())
+    }
+
+    // Room related methods
     pub fn make_room(&self, room_id: String) -> Result<()> {
         let mut rooms = self.rooms.try_lock()?;
         rooms.insert(room_id, Room::new());

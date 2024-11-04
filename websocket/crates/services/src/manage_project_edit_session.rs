@@ -70,7 +70,6 @@ pub enum SessionCommand {
 impl<R, S, M> ManageEditSessionService<R, S, M>
 where
     R: ProjectEditingSessionRepository<Error = ProjectRepositoryError>
-        + ProjectSnapshotRepository<Error = ProjectRepositoryError>
         + ProjectRepository<Error = ProjectRepositoryError>
         + Send
         + Sync

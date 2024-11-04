@@ -20,7 +20,6 @@ pub struct ProjectService<E, S, R> {
 impl<E, S, R> ProjectService<E, S, R>
 where
     E: ProjectEditingSessionRepository<Error = ProjectRepositoryError>
-        + ProjectSnapshotRepository<Error = ProjectRepositoryError>
         + ProjectRepository<Error = ProjectRepositoryError>
         + Send
         + Sync,
