@@ -79,7 +79,10 @@ where
         &self,
         project_id: &str,
     ) -> Result<Vec<String>, ProjectServiceError> {
-        unimplemented!()
+        Ok(self
+            .snapshot_repository
+            .list_all_snapshots_versions(project_id)
+            .await?)
     }
 
     pub async fn get_project_allowed_actions(

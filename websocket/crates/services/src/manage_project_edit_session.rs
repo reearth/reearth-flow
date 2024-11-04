@@ -21,7 +21,7 @@ use crate::project::ProjectService;
 use crate::{types::ManageProjectEditSessionTaskData, ProjectServiceError};
 
 const MAX_EMPTY_SESSION_DURATION: Duration = Duration::from_secs(10);
-const MAX_SNAPSHOT_DELTA: Duration = Duration::from_secs(5 * 60);
+//const MAX_SNAPSHOT_DELTA: Duration = Duration::from_secs(5 * 60);
 const JOB_COMPLETION_DELAY: Duration = Duration::from_secs(5);
 
 pub struct ManageEditSessionService<R, S, M>
@@ -61,6 +61,9 @@ pub enum SessionCommand {
     RemoveTask {
         project_id: String,
     },
+    ListAllSnapshotsVersions {
+        project_id: String,
+    },
 }
 
 #[automock]
@@ -95,8 +98,6 @@ where
         &self,
         mut command_rx: mpsc::Receiver<SessionCommand>,
     ) -> Result<(), ProjectServiceError> {
-        let project_service = self.project_service.clone();
-
         loop {
             tokio::select! {
                 Some(command) = command_rx.recv() => {
@@ -137,6 +138,11 @@ where
                                     }
                                 }
                             }
+                        },
+                        SessionCommand::ListAllSnapshotsVersions { project_id } => {
+                            let versions = self.project_service.list_all_snapshots_versions(&project_id).await?;
+                            debug!("List of all snapshots versions for project: {}", project_id);
+                            debug!("{:?}", versions);
                         },
                         SessionCommand::Complete { project_id, user } => {
                             if let Some(mut session) = self.get_latest_session(&project_id).await? {

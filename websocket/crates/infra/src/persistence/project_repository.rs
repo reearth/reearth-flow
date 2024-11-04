@@ -184,6 +184,15 @@ impl ProjectSnapshotRepository for ProjectGcsRepository {
         self.client.delete(path).await?;
         Ok(())
     }
+
+    async fn list_all_snapshots_versions(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<String>, Self::Error> {
+        let path = format!("snapshot/{}", project_id);
+        let versions = self.client.list_versions(&path, None).await?;
+        Ok(versions.iter().map(|(_, v)| v.clone()).collect())
+    }
 }
 
 #[derive(Clone)]
@@ -231,6 +240,15 @@ impl ProjectSnapshotRepository for ProjectLocalRepository {
         let path = format!("snapshots/{}", project_id);
         self.client.delete(path).await?;
         Ok(())
+    }
+
+    async fn list_all_snapshots_versions(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<String>, Self::Error> {
+        let path = format!("snapshots/{}", project_id);
+        let versions = self.client.list_versions(&path, None).await?;
+        Ok(versions.iter().map(|(_, v)| v.clone()).collect())
     }
 }
 

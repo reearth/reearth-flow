@@ -1,5 +1,5 @@
 use crate::editing_session::ProjectEditingSession;
-use crate::project::{self, Project};
+use crate::project::Project;
 use crate::types::snapshot::ProjectSnapshot;
 use std::error::Error;
 
@@ -32,6 +32,10 @@ pub trait ProjectSnapshotRepository {
         &self,
         project_id: &str,
     ) -> Result<Option<ProjectSnapshot>, Self::Error>;
+    async fn list_all_snapshots_versions(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<String>, Self::Error>;
     async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error>;
     async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error>;
 }
