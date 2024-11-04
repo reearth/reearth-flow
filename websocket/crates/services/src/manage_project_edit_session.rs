@@ -2,8 +2,7 @@ use chrono::Utc;
 use flow_websocket_domain::{
     editing_session::ProjectEditingSession,
     repository::{
-        ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
-        RedisDataManager,
+        ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
     },
     user::User,
 };
@@ -26,13 +25,13 @@ const JOB_COMPLETION_DELAY: Duration = Duration::from_secs(5);
 
 pub struct ManageEditSessionService<R, S, M>
 where
-    R: ProjectEditingSessionRepository<Error = ProjectRepositoryError>
+    R: ProjectEditingSessionImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
+    S: ProjectSnapshotImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
+    M: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError>
         + Send
         + Sync
         + Clone
         + 'static,
-    S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
-    M: RedisDataManager<Error = FlowProjectRedisDataManagerError> + Send + Sync + Clone + 'static,
 {
     pub project_service: ProjectService<R, S, M>,
     tasks: Arc<Mutex<HashMap<String, ManageProjectEditSessionTaskData>>>,
@@ -69,14 +68,18 @@ pub enum SessionCommand {
 #[automock]
 impl<R, S, M> ManageEditSessionService<R, S, M>
 where
-    R: ProjectEditingSessionRepository<Error = ProjectRepositoryError>
-        + ProjectRepository<Error = ProjectRepositoryError>
+    R: ProjectEditingSessionImpl<Error = ProjectRepositoryError>
+        + ProjectImpl<Error = ProjectRepositoryError>
         + Send
         + Sync
         + Clone
         + 'static,
-    S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
-    M: RedisDataManager<Error = FlowProjectRedisDataManagerError> + Send + Sync + Clone + 'static,
+    S: ProjectSnapshotImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
+    M: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError>
+        + Send
+        + Sync
+        + Clone
+        + 'static,
 {
     pub fn new(
         session_repository: Arc<R>,
@@ -247,9 +250,9 @@ where
 //     use mockall::predicate::{self, *};
 
 //     mockall::mock! {
-//         ProjectEditingSessionRepository {}
+//         ProjectEditingSessionImpl {}
 //         #[async_trait::async_trait]
-//         impl ProjectEditingSessionRepository for ProjectEditingSessionRepository {
+//         impl ProjectEditingSessionImpl for ProjectEditingSessionImpl {
 //             type Error = ProjectRepositoryError;
 
 //             async fn create_session(&self, session: ProjectEditingSession) -> Result<String, ProjectRepositoryError >;
@@ -260,9 +263,9 @@ where
 //     }
 
 //     mockall::mock! {
-//     ProjectSnapshotRepository {}
+//     ProjectSnapshotImpl {}
 //     #[async_trait::async_trait]
-//     impl ProjectSnapshotRepository for ProjectSnapshotRepository {
+//     impl ProjectSnapshotImpl for ProjectSnapshotImpl {
 //         type Error = ProjectRepositoryError;
 
 //         async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectRepositoryError>;
@@ -277,9 +280,9 @@ where
 //     }
 
 //     mockall::mock! {
-//         RedisDataManager {}
+//         RedisDataManagerImpl {}
 //         #[async_trait::async_trait]
-//         impl RedisDataManager for RedisDataManager {
+//         impl RedisDataManagerImpl for RedisDataManagerImpl {
 //             type Error = FlowProjectRedisDataManagerError;
 
 //             async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError>;

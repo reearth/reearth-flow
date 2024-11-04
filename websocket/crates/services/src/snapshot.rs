@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use flow_websocket_domain::repository::ProjectSnapshotRepository;
+use flow_websocket_domain::repository::ProjectSnapshotImpl;
 use flow_websocket_domain::types::snapshot::ProjectSnapshot;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use std::sync::Arc;
@@ -10,7 +10,7 @@ pub struct SnapshotService<R> {
 
 impl<R> SnapshotService<R>
 where
-    R: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
+    R: ProjectSnapshotImpl<Error = ProjectRepositoryError> + Send + Sync,
 {
     pub fn new(snapshot_repository: Arc<R>) -> Self {
         Self {
@@ -20,9 +20,9 @@ where
 }
 
 #[async_trait]
-impl<R> ProjectSnapshotRepository for SnapshotService<R>
+impl<R> ProjectSnapshotImpl for SnapshotService<R>
 where
-    R: ProjectSnapshotRepository + Send + Sync,
+    R: ProjectSnapshotImpl + Send + Sync,
 {
     type Error = R::Error;
 
@@ -59,7 +59,7 @@ where
 //     mock! {
 //         SnapshotRepo {}
 //         #[async_trait]
-//         impl ProjectSnapshotRepository for SnapshotRepo {
+//         impl ProjectSnapshotImpl for SnapshotRepo {
 //             type Error = ProjectRepositoryError;
 
 //             async fn update_latest_snapshot_state(&self, project_id: &str, snapshot_data: SnapshotData) -> Result<(), ProjectRepositoryError>;

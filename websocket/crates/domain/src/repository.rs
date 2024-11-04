@@ -4,14 +4,14 @@ use crate::types::snapshot::ProjectSnapshot;
 use std::error::Error;
 
 #[async_trait::async_trait]
-pub trait ProjectRepository {
+pub trait ProjectImpl {
     type Error: Error + Send + Sync + 'static;
 
     async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error>;
 }
 
 #[async_trait::async_trait]
-pub trait ProjectEditingSessionRepository {
+pub trait ProjectEditingSessionImpl {
     type Error: Error + Send + Sync + 'static;
 
     async fn create_session(&self, session: ProjectEditingSession) -> Result<String, Self::Error>;
@@ -24,7 +24,7 @@ pub trait ProjectEditingSessionRepository {
 }
 
 #[async_trait::async_trait]
-pub trait ProjectSnapshotRepository {
+pub trait ProjectSnapshotImpl {
     type Error: Error + Send + Sync + 'static;
 
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error>;
@@ -41,7 +41,7 @@ pub trait ProjectSnapshotRepository {
 }
 
 #[async_trait::async_trait]
-pub trait RedisDataManager {
+pub trait RedisDataManagerImpl {
     type Error: Error + Send + Sync + 'static;
 
     async fn create_session(&self, session_id: &str) -> Result<(), Self::Error>;

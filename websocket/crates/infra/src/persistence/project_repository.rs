@@ -7,7 +7,7 @@ use flow_websocket_domain::project::Project;
 use crate::persistence::local_storage::LocalClient;
 use flow_websocket_domain::editing_session::ProjectEditingSession;
 use flow_websocket_domain::repository::{
-    ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository,
+    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl,
 };
 use flow_websocket_domain::snapshot::ProjectSnapshot;
 use serde_json;
@@ -53,7 +53,7 @@ impl<R: RedisClientTrait + Send + Sync> ProjectRedisRepository<R> {
 }
 
 #[async_trait]
-impl<R> ProjectRepository for ProjectRedisRepository<R>
+impl<R> ProjectImpl for ProjectRedisRepository<R>
 where
     R: RedisClientTrait + Send + Sync,
 {
@@ -67,7 +67,7 @@ where
 }
 
 #[async_trait]
-impl<R> ProjectEditingSessionRepository for ProjectRedisRepository<R>
+impl<R> ProjectEditingSessionImpl for ProjectRedisRepository<R>
 where
     R: RedisClientTrait + Send + Sync,
 {
@@ -146,7 +146,7 @@ impl ProjectGcsRepository {
 }
 
 #[async_trait]
-impl ProjectSnapshotRepository for ProjectGcsRepository {
+impl ProjectSnapshotImpl for ProjectGcsRepository {
     type Error = ProjectRepositoryError;
 
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
@@ -209,7 +209,7 @@ impl ProjectLocalRepository {
 }
 
 #[async_trait]
-impl ProjectSnapshotRepository for ProjectLocalRepository {
+impl ProjectSnapshotImpl for ProjectLocalRepository {
     type Error = ProjectRepositoryError;
 
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {

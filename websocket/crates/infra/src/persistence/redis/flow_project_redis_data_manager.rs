@@ -6,7 +6,7 @@ use super::{
 use crate::define_key_methods;
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
-use flow_websocket_domain::repository::RedisDataManager;
+use flow_websocket_domain::repository::RedisDataManagerImpl;
 use redis::{streams::StreamMaxlen, AsyncCommands};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -173,7 +173,7 @@ impl RedisKeyManager for FlowProjectRedisDataManager {
 }
 
 #[async_trait::async_trait]
-impl RedisDataManager for FlowProjectRedisDataManager {
+impl RedisDataManagerImpl for FlowProjectRedisDataManager {
     type Error = FlowProjectRedisDataManagerError;
 
     async fn get_current_state(&self) -> Result<Option<Vec<u8>>, Self::Error> {

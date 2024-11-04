@@ -2,7 +2,7 @@ use crate::error::ProjectServiceError;
 use flow_websocket_domain::editing_session::ProjectEditingSession;
 use flow_websocket_domain::project::{Action, Project, ProjectAllowedActions};
 use flow_websocket_domain::repository::{
-    ProjectEditingSessionRepository, ProjectRepository, ProjectSnapshotRepository, RedisDataManager,
+    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
 };
 use flow_websocket_domain::snapshot::ProjectSnapshot;
 use flow_websocket_domain::user::User;
@@ -19,12 +19,12 @@ pub struct ProjectService<E, S, R> {
 
 impl<E, S, R> ProjectService<E, S, R>
 where
-    E: ProjectEditingSessionRepository<Error = ProjectRepositoryError>
-        + ProjectRepository<Error = ProjectRepositoryError>
+    E: ProjectEditingSessionImpl<Error = ProjectRepositoryError>
+        + ProjectImpl<Error = ProjectRepositoryError>
         + Send
         + Sync,
-    S: ProjectSnapshotRepository<Error = ProjectRepositoryError> + Send + Sync,
-    R: RedisDataManager<Error = FlowProjectRedisDataManagerError> + Send + Sync,
+    S: ProjectSnapshotImpl<Error = ProjectRepositoryError> + Send + Sync,
+    R: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError> + Send + Sync,
 {
     pub fn new(
         session_repository: Arc<E>,
@@ -164,7 +164,7 @@ where
 //     mock! {
 //         SessionRepo {}
 //         #[async_trait]
-//         impl ProjectEditingSessionRepository for SessionRepo {
+//         impl ProjectEditingSessionImpl for SessionRepo {
 //             type Error = ProjectRepositoryError;
 //             async fn create_session(&self, session: ProjectEditingSession) -> Result<String, ProjectRepositoryError>;
 //             async fn get_active_session(&self, project_id: &str) -> Result<Option<ProjectEditingSession>, ProjectRepositoryError>;
@@ -172,7 +172,7 @@ where
 //             async fn get_client_count(&self) -> Result<usize, ProjectRepositoryError>;
 //         }
 //         #[async_trait]
-//         impl ProjectRepository for SessionRepo {
+//         impl ProjectImpl for SessionRepo {
 //             type Error = ProjectRepositoryError;
 //             async fn get_project(&self, project_id: &str) -> Result<Option<Project>, ProjectRepositoryError>;
 //         }
@@ -181,7 +181,7 @@ where
 //     mock! {
 //         SnapshotRepo {}
 //         #[async_trait]
-//         impl ProjectSnapshotRepository for SnapshotRepo {
+//         impl ProjectSnapshotImpl for SnapshotRepo {
 //             type Error = ProjectRepositoryError;
 //             async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), ProjectRepositoryError>;
 //             async fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<ProjectSnapshot>, ProjectRepositoryError>;
@@ -196,7 +196,7 @@ where
 //     mock! {
 //         RedisManager {}
 //         #[async_trait]
-//         impl RedisDataManager for RedisManager {
+//         impl RedisDataManagerImpl for RedisManager {
 //             type Error = FlowProjectRedisDataManagerError;
 //             async fn push_update(&self, update: Vec<u8>, updated_by: Option<String>) -> Result<(), FlowProjectRedisDataManagerError>;
 //             async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError>;
@@ -512,7 +512,7 @@ where
 //     }
 
 //     #[async_trait]
-//     impl ProjectSnapshotRepository
+//     impl ProjectSnapshotImpl
 //         for ProjectService<MockSessionRepo, MockSnapshotRepo, MockRedisManager>
 //     {
 //         type Error = ProjectServiceError;

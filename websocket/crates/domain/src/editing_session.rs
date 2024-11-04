@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::generate_id;
 use crate::repository::{
-    ProjectEditingSessionRepository, ProjectSnapshotRepository, RedisDataManager,
+    ProjectEditingSessionImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
 };
 use crate::snapshot::ObjectTenant;
 use crate::types::snapshot::{Metadata, ObjectDelete, ProjectSnapshot, SnapshotInfo};
@@ -34,7 +34,7 @@ pub enum ProjectEditingSessionError {
     #[error("Redis error: {0}")]
     Redis(String),
     #[error("Project editing session repository error: {0}")]
-    ProjectEditingSessionRepository(String),
+    ProjectEditingSessionImpl(String),
     #[error("{0}")]
     Custom(String),
 }
@@ -49,7 +49,7 @@ impl ProjectEditingSessionError {
     }
 
     pub fn project_editing_session_repository<E: std::fmt::Display>(err: E) -> Self {
-        Self::ProjectEditingSessionRepository(err.to_string())
+        Self::ProjectEditingSessionImpl(err.to_string())
     }
 }
 
@@ -84,9 +84,9 @@ impl ProjectEditingSession {
         user: &User,
     ) -> Result<(), ProjectEditingSessionError>
     where
-        E: ProjectEditingSessionRepository,
-        S: ProjectSnapshotRepository,
-        R: RedisDataManager,
+        E: ProjectEditingSessionImpl,
+        S: ProjectSnapshotImpl,
+        R: RedisDataManagerImpl,
     {
         if let Some(project_editing_session) = project_editing_session_repository
             .get_active_session(&self.project_id)
@@ -114,8 +114,8 @@ impl ProjectEditingSession {
         user: &User,
     ) -> Result<(), ProjectEditingSessionError>
     where
-        R: RedisDataManager,
-        S: ProjectSnapshotRepository,
+        R: RedisDataManagerImpl,
+        S: ProjectSnapshotImpl,
     {
         if self.check_snapshot_exists(snapshot_repo).await.is_ok() {
             let snapshot = snapshot_repo
@@ -142,7 +142,7 @@ impl ProjectEditingSession {
         snapshot_repo: &S,
     ) -> Result<(), ProjectEditingSessionError>
     where
-        S: ProjectSnapshotRepository,
+        S: ProjectSnapshotImpl,
     {
         snapshot_repo
             .get_latest_snapshot(&self.project_id)
@@ -157,7 +157,7 @@ impl ProjectEditingSession {
         redis_data_manager: &R,
     ) -> Result<(Vec<u8>, Vec<u8>), ProjectEditingSessionError>
     where
-        R: RedisDataManager,
+        R: RedisDataManagerImpl,
     {
         self.check_session_setup()?;
 
@@ -184,7 +184,7 @@ impl ProjectEditingSession {
         redis_data_manager: &R,
     ) -> Result<(Vec<u8>, Vec<String>), ProjectEditingSessionError>
     where
-        R: RedisDataManager,
+        R: RedisDataManagerImpl,
     {
         self.check_session_setup()?;
 
@@ -200,7 +200,7 @@ impl ProjectEditingSession {
         redis_data_manager: &R,
     ) -> Result<Vec<u8>, ProjectEditingSessionError>
     where
-        R: RedisDataManager,
+        R: RedisDataManagerImpl,
     {
         self.check_session_setup()?;
 
@@ -222,7 +222,7 @@ impl ProjectEditingSession {
         redis_data_manager: &R,
     ) -> Result<(), ProjectEditingSessionError>
     where
-        R: RedisDataManager,
+        R: RedisDataManagerImpl,
     {
         self.check_session_setup()?;
 
@@ -241,7 +241,7 @@ impl ProjectEditingSession {
         snapshot_name: Option<String>,
     ) -> Result<(), ProjectEditingSessionError>
     where
-        S: ProjectSnapshotRepository,
+        S: ProjectSnapshotImpl,
     {
         self.check_session_setup()?;
 
@@ -258,7 +258,7 @@ impl ProjectEditingSession {
         snapshot_name: Option<String>,
     ) -> Result<(), ProjectEditingSessionError>
     where
-        S: ProjectSnapshotRepository,
+        S: ProjectSnapshotImpl,
     {
         let now = Utc::now();
         let user_name = user.name.clone();
@@ -298,8 +298,8 @@ impl ProjectEditingSession {
         save_changes: bool,
     ) -> Result<(), ProjectEditingSessionError>
     where
-        R: RedisDataManager,
-        S: ProjectSnapshotRepository,
+        R: RedisDataManagerImpl,
+        S: ProjectSnapshotImpl,
     {
         self.check_session_setup()?;
         let _lock = self.session_lock.lock().await;
@@ -360,12 +360,12 @@ impl ProjectEditingSession {
 //     use async_trait::async_trait;
 //     use mockall::{mock, predicate::eq};
 
-//     // Mock RedisDataManager
+//     // Mock RedisDataManagerImpl
 //     mock! {
-//         pub RedisDataManager {}
+//         pub RedisDataManagerImpl {}
 
 //         #[async_trait]
-//         impl RedisDataManager for RedisDataManager {
+//         impl RedisDataManagerImpl for RedisDataManagerImpl {
 
 //             type Error = ProjectEditingSessionError;
 //             async fn push_update(
@@ -384,12 +384,12 @@ impl ProjectEditingSession {
 //         }
 //     }
 
-//     // Mock ProjectSnapshotRepository
+//     // Mock ProjectSnapshotImpl
 //     mock! {
-//         pub ProjectSnapshotRepository {}
+//         pub ProjectSnapshotImpl {}
 
 //         #[async_trait]
-//         impl ProjectSnapshotRepository for ProjectSnapshotRepository {
+//         impl ProjectSnapshotImpl for ProjectSnapshotImpl {
 //             type Error = ProjectEditingSessionError;
 
 //             async fn update_latest_snapshot(
