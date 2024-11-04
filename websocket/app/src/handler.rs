@@ -12,6 +12,7 @@ use axum::{
     },
     response::IntoResponse,
 };
+use flow_websocket_services::manage_project_edit_session::ManageEditSessionService;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, trace};
 
@@ -126,13 +127,34 @@ async fn handle_message(
                 .get(room_id)
                 .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
 
-            let yjs_service = YjsService::new(room.get_doc());
-            match yjs_service.handle_message(&d) {
-                Ok(response) => Ok(response),
-                Err(e) => {
-                    debug!("Error handling Yjs message: {:?}", e);
-                    Ok(None)
-                }
+            // Create ManageEditSessionService instance
+            let session_service = ManageEditSessionService::new(
+                state.session_repository.clone(),
+                state.snapshot_repository.clone(),
+                state.redis_data_manager.clone(),
+            );
+
+            // Create and send command to process the binary update
+            let (tx, mut rx) = mpsc::channel(32);
+            tx.send(SessionCommand::Start {
+                project_id: room_id.to_string(),
+                user: state.current_user.clone(), // Assuming you have current_user in AppState
+            })
+            .await?;
+
+            // Push the binary update to Redis stream
+            session_service
+                .project_service
+                .push_update_to_redis_stream(d, Some(state.current_user.id.clone()))
+                .await?;
+
+            // Process the session commands
+            session_service.process(rx).await?;
+
+            // Get the current state as response
+            match session_service.project_service.get_current_state().await? {
+                Some(response) => Ok(Some(response)),
+                None => Ok(None),
             }
         }
         Message::Close(c) => {

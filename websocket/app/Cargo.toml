@@ -23,3 +23,6 @@ thiserror.workspace = true
 redis.workspace = true
 dotenv.workspace = true
 envy.workspace = true
+flow-websocket-services.workspace = true
+flow-websocket-infra.workspace = true
+flow-websocket-domain.workspace = true
