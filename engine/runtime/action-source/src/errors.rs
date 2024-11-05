@@ -17,3 +17,9 @@ pub enum SourceError {
 }
 
 pub type Result<T, E = SourceError> = std::result::Result<T, E>;
+
+impl SourceError {
+    pub(crate) fn file_path_extractor<T: ToString>(message: T) -> Self {
+        Self::FilePathExtractor(message.to_string())
+    }
+}

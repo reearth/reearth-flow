@@ -4810,6 +4810,7 @@ version = "0.0.2"
 dependencies = [
  "approx",
  "async-recursion",
+ "async_zip",
  "base64 0.22.1",
  "bytes",
  "colorsys",
