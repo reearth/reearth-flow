@@ -10,6 +10,7 @@ use uuid::Uuid;
 pub struct Metadata {
     pub job_id: Uuid,
     pub assets: Asset,
+    pub artifact_root_url: String,
     pub timestamps: Timestamp,
     pub tags: Option<Vec<String>>,
     pub version: Option<String>,
