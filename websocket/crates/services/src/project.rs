@@ -10,7 +10,7 @@ use flow_websocket_infra::persistence::project_repository::ProjectRepositoryErro
 use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
 use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ProjectService<E, S, R> {
     pub session_repository: Arc<E>,
     pub snapshot_repository: Arc<S>,

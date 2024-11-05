@@ -1,216 +1,123 @@
-// use std::sync::Arc;
-// use std::time::Duration;
+use flow_websocket_domain::{generate_id, user::User};
+use flow_websocket_infra::persistence::{
+    project_repository::{ProjectLocalRepository, ProjectRedisRepository},
+    redis::{
+        flow_project_redis_data_manager::FlowProjectRedisDataManager, redis_client::RedisClient,
+    },
+};
+use flow_websocket_services::{
+    manage_project_edit_session::{ManageEditSessionService, SessionCommand},
+    types::ManageProjectEditSessionTaskData,
+};
+use std::sync::Arc;
+use tokio::sync::mpsc;
+use tracing::{debug, error, info};
 
-// use chrono::Utc;
-// use flow_websocket_domain::{generate_id, snapshot::ObjectTenant, ProjectEditingSession};
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
 
-// use flow_websocket_infra::persistence::{
-//     project_repository::{ProjectLocalRepository, ProjectRedisRepository},
-//     redis::{
-//         flow_project_redis_data_manager::FlowProjectRedisDataManager, redis_client::RedisClient,
-//     },
-// };
-// use flow_websocket_services::{
-//     manage_project_edit_session::ManageEditSessionService, types::ManageProjectEditSessionTaskData,
-// };
-// use tokio::time::sleep;
-// use tracing::{debug, error, info, instrument, trace, warn};
+    info!("Starting edit session service example");
 
-// /// # Edit Session Service Example
-// ///
-// /// This example demonstrates the usage of `ManageEditSessionService` to handle
-// /// project editing sessions.
-// ///
-// /// ## Overview
-// ///
-// /// The example performs the following steps:
-// ///
-// /// 1. Initializes the necessary components (Redis client, local storage, etc.)
-// /// 2. Creates a `ManageEditSessionService` instance
-// /// 3. Simulates multiple tasks in a project editing session lifecycle
-// ///
-// /// ## Usage
-// ///
-// /// To run this example with different log levels, use:
-// ///
-// /// ```shell
-// /// RUST_LOG=info cargo run --example edit_session_service
-// /// RUST_LOG=debug,websocket=trace cargo run --example edit_session_service
-// /// RUST_LOG=trace cargo run --example edit_session_service
-// /// ```
-// #[tokio::main]
-// #[instrument]
-// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//     // Initialize tracing
-//     tracing_subscriber::fmt()
-//         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-//         .init();
+    let redis_url =
+        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string());
 
-//     info!("Starting edit session service example");
-//     debug!("Initializing components...");
+    // Initialize components
+    let redis_client = RedisClient::new("redis://localhost:6379").await?;
+    let local_storage = ProjectLocalRepository::new("./local_storage".into()).await?;
+    let session_repo = ProjectRedisRepository::<RedisClient>::new(Arc::new(redis_client.clone()));
 
-//     let redis_client = RedisClient::new("redis://localhost:6379").await?;
-//     trace!("Redis client created");
+    let project_id = "project_123".to_string();
+    let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
-//     let local_storage = ProjectLocalRepository::new("./local_storage".into()).await?;
-//     trace!("Local storage initialized");
+    // Create service
+    let service = ManageEditSessionService::new(
+        Arc::new(session_repo),
+        Arc::new(local_storage),
+        Arc::new(redis_data_manager),
+    );
 
-//     let session_repo = ProjectRedisRepository::<RedisClient>::new(Arc::new(redis_client.clone()));
-//     trace!("Session repository created");
+    // Create channel for commands
+    let (tx, rx) = mpsc::channel(32);
+    let service_clone = service.clone();
 
-//     let project_id = "project_123".to_string();
-//     let tenant = ObjectTenant::new(generate_id!("tenant"), "tenant".to_owned());
-//     let mut session = ProjectEditingSession::new(project_id.clone(), tenant);
-//     session.session_id = Some(generate_id(14, "session"));
+    // Spawn service processing task
+    let process_handle = tokio::spawn(async move {
+        if let Err(e) = service_clone.process(rx).await {
+            error!("Service processing error: {:?}", e);
+        }
+    });
 
-//     let redis_data_manager = FlowProjectRedisDataManager::new(
-//         project_id.clone(),
-//         session.session_id.clone(),
-//         Arc::new(redis_client.clone()),
-//     );
+    // Create test user
+    let test_user = User {
+        id: generate_id!("user"),
+        email: "test.user@example.com".to_string(),
+        name: "Test User".to_string(),
+        tenant_id: generate_id!("tenant"),
+    };
 
-//     let service = ManageEditSessionService::new(
-//         Arc::new(session_repo),
-//         Arc::new(local_storage),
-//         Arc::new(redis_data_manager),
-//     );
-//     debug!("ManageEditSessionService created");
+    // Simulate session lifecycle
+    debug!("Starting session simulation");
 
-//     // Simulate multiple task processing
-//     match simulate_multiple_tasks(&service, &project_id).await {
-//         Ok(_) => info!("Multiple tasks simulation completed successfully"),
-//         Err(e) => error!("Error during multiple tasks simulation: {:?}", e),
-//     }
+    // Add task data
+    let task_data = ManageProjectEditSessionTaskData {
+        project_id: project_id.clone(),
+        last_merged_at: Arc::new(tokio::sync::RwLock::new(None)),
+        last_snapshot_at: Arc::new(tokio::sync::RwLock::new(None)),
+        clients_disconnected_at: Arc::new(tokio::sync::RwLock::new(None)),
+        client_count: Arc::new(tokio::sync::RwLock::new(Some(0))),
+    };
 
-//     info!("Edit session service example completed");
-//     Ok(())
-// }
+    tx.send(SessionCommand::AddTask { task_data }).await?;
 
-// /// Simulates multiple tasks in a project editing session lifecycle
-// ///
-// /// This function demonstrates the following steps:
-// ///
-// /// 1. Initializing a session
-// /// 2. Updating client count
-// /// 3. Simulating clients disconnecting
-// /// 4. Ending the session
-// ///
-// /// Each step is separated by a simulated time passage to demonstrate
-// /// time-dependent behaviors.
-// #[instrument(skip(service))]
-// async fn simulate_multiple_tasks(
-//     service: &ManageEditSessionService<
-//         ProjectRedisRepository<RedisClient>,
-//         ProjectLocalRepository,
-//         FlowProjectRedisDataManager,
-//     >,
-//     project_id: &str,
-// ) -> Result<(), Box<dyn std::error::Error>> {
-//     // Task 1: First initialize the session
-//     let task_data = create_task_data(project_id, Some(1), None);
-//     process_task(service, task_data, "Initialize session").await?;
-//     debug!("Session initialized");
+    // Start session
+    tx.send(SessionCommand::Start {
+        project_id: project_id.clone(),
+        user: test_user.clone(),
+    })
+    .await?;
 
-//     // Simulate some time passing
-//     warn!("Simulating time passage (1 second)");
-//     sleep(Duration::from_secs(1)).await;
+    // Check status
+    tx.send(SessionCommand::CheckStatus {
+        project_id: project_id.clone(),
+    })
+    .await?;
 
-//     // Task 2: Update session with client count
-//     let task_data = create_task_data(project_id, Some(2), None);
-//     process_task(service, task_data, "Update client count").await?;
-//     debug!("Client count updated");
+    // List snapshots
+    tx.send(SessionCommand::ListAllSnapshotsVersions {
+        project_id: project_id.clone(),
+    })
+    .await?;
 
-//     // Simulate more time passing
-//     warn!("Simulating time passage (2 seconds)");
-//     sleep(Duration::from_secs(2)).await;
+    // End session
+    tx.send(SessionCommand::End {
+        project_id: project_id.clone(),
+        user: test_user.clone(),
+    })
+    .await?;
 
-//     // Task 3: Simulate clients disconnecting
-//     let task_data = create_task_data(project_id, Some(0), Some(Utc::now()));
-//     process_task(service, task_data, "Simulate clients disconnecting").await?;
-//     debug!("Clients disconnected");
-//     // Simulate time passing to trigger session end
-//     warn!("Simulating time passage (11 seconds)");
-//     sleep(Duration::from_secs(11)).await;
+    // Remove task
+    tx.send(SessionCommand::RemoveTask {
+        project_id: project_id.clone(),
+    })
+    .await?;
 
-//     // Task 4: End session
-//     let task_data = create_task_data(
-//         project_id,
-//         Some(0),
-//         Some(Utc::now() - chrono::Duration::seconds(11)),
-//     );
-//     process_task(service, task_data, "End session").await?;
-//     debug!("Session ended");
+    // Complete session
+    tx.send(SessionCommand::Complete {
+        project_id,
+        user: test_user,
+    })
+    .await?;
 
-//     Ok(())
-// }
+    // Drop sender to terminate service
+    drop(tx);
 
-// /// Processes a single task using the ManageEditSessionService
-// ///
-// /// This function wraps the `process` method of `ManageEditSessionService`
-// /// with additional logging and error handling.
-// ///
-// /// ## Parameters
-// ///
-// /// - `service`: The `ManageEditSessionService` instance
-// /// - `task_data`: The task data to be processed
-// /// - `task_description`: A human-readable description of the task
-// ///
-// /// ## Returns
-// ///
-// /// Returns `Ok(())` if the task was processed successfully, or an error if
-// /// the task processing failed.
-// #[instrument(skip(service))]
-// async fn process_task(
-//     service: &ManageEditSessionService<
-//         ProjectRedisRepository<RedisClient>,
-//         ProjectLocalRepository,
-//         FlowProjectRedisDataManager,
-//     >,
-//     task_data: ManageProjectEditSessionTaskData,
-//     task_description: &str,
-// ) -> Result<(), Box<dyn std::error::Error>> {
-//     info!(?task_description, "Processing task");
-//     debug!(task = ?task_data, "Task details");
+    // Wait for service to complete
+    process_handle.await?;
 
-//     match service.process(task_data, None).await {
-//         Ok(_) => {
-//             info!(?task_description, "Task processed successfully");
-//             Ok(())
-//         }
-//         Err(e) => {
-//             error!(?task_description, error = ?e, "Error processing task");
-//             Err(Box::new(e))
-//         }
-//     }
-// }
-
-// /// Creates a ManageProjectEditSessionTaskData instance
-// ///
-// /// This helper function simplifies the creation of task data for the
-// /// ManageEditSessionService.
-// ///
-// /// ## Parameters
-// ///
-// /// - `project_id`: The ID of the project
-// /// - `clients_count`: The number of connected clients (optional)
-// /// - `clients_disconnected_at`: The timestamp when clients disconnected (optional)
-// ///
-// /// ## Returns
-// ///
-// /// Returns a `ManageProjectEditSessionTaskData` instance with the specified parameters.
-// fn create_task_data(
-//     project_id: &str,
-//     clients_count: Option<usize>,
-//     clients_disconnected_at: Option<chrono::DateTime<Utc>>,
-// ) -> ManageProjectEditSessionTaskData {
-//     ManageProjectEditSessionTaskData {
-//         project_id: project_id.to_string(),
-//         clients_count,
-//         clients_disconnected_at,
-//         last_merged_at: None,
-//         last_snapshot_at: None,
-//     }
-// }
-fn main() {
-    todo!()
+    info!("Edit session service example completed");
+    Ok(())
 }

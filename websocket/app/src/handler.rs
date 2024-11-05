@@ -160,23 +160,21 @@ async fn handle_message(
                     addr, cf.code, cf.reason
                 );
 
-                if let Ok(session_service) = state.get_or_create_session_service(room_id).await {
-                    let (tx, rx) = mpsc::channel(32);
-                    tx.send(SessionCommand::End {
-                        project_id: room_id.to_string(),
-                        user,
-                    })
-                    .await
-                    .unwrap();
-                    tokio::spawn({
-                        let service = session_service.clone();
-                        async move {
-                            if let Err(e) = service.process(rx).await {
-                                error!("Error processing session end: {:?}", e);
-                            }
+                let (tx, rx) = mpsc::channel(32);
+                tx.send(SessionCommand::End {
+                    project_id: room_id.to_string(),
+                    user,
+                })
+                .await
+                .unwrap();
+                tokio::spawn({
+                    let service = state.service.clone();
+                    async move {
+                        if let Err(e) = service.process(rx).await {
+                            error!("Error processing session end: {:?}", e);
                         }
-                    });
-                }
+                    }
+                });
             }
             Ok(None)
         }
