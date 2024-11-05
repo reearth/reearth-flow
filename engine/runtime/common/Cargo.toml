@@ -16,6 +16,7 @@ async-recursion.workspace = true
 async_zip.workspace = true
 base64.workspace = true
 bytes.workspace = true
+chrono.workspace = true
 colorsys.workspace = true
 directories.workspace = true
 futures.workspace = true
