@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
 
-use async_zip::{tokio::write::ZipFileWriter, Compression, ZipEntryBuilder};
+use async_zip::{tokio::write::ZipFileWriter, Compression, ZipDateTime, ZipEntryBuilder};
 use tokio::{self, fs::File, io::AsyncReadExt};
 
 pub struct Metadata {
@@ -104,7 +104,14 @@ async fn list_tree_inner(root: PathBuf) -> std::io::Result<Vec<(PathBuf, tokio::
             let children = list_tree_inner(entry_path).await?;
             result.extend(children);
         } else {
-            let entry_file = tokio::fs::File::create(entry_path.clone()).await?;
+            let entry_file = tokio::fs::File::options()
+                .read(true)
+                .write(false)
+                .create(false)
+                .create_new(false)
+                .truncate(false)
+                .open(entry_path.clone())
+                .await?;
             result.push((entry_path, entry_file));
         }
     }
@@ -121,7 +128,12 @@ where
         .as_ref()
         .to_str()
         .ok_or(std::io::Error::from(std::io::ErrorKind::InvalidData))?;
-    let mut output = File::create(output_path).await?;
+    let mut output = File::options()
+        .create_new(true)
+        .write(true)
+        .read(true)
+        .open(output_path)
+        .await?;
     let mut output_writer = ZipFileWriter::with_tokio(&mut output);
     for (p, entry) in entries.iter_mut() {
         let entry_path = p.as_path();
@@ -138,7 +150,9 @@ where
             splits[splits.len() - 1],
             &entry_str[input_dir_str.len()..]
         );
-        let builder = ZipEntryBuilder::new(filename.into(), Compression::Deflate);
+        let builder = ZipEntryBuilder::new(filename.into(), Compression::Deflate)
+            .unix_permissions(0o644)
+            .last_modification_date(ZipDateTime::from_chrono(&chrono::Utc::now()));
         output_writer
             .write_entry_whole(builder, &buffer)
             .await
@@ -173,9 +187,8 @@ pub fn get_dir_size(path: &Path) -> std::io::Result<u64> {
 }
 
 pub async fn read_file(file: &mut File) -> std::io::Result<Vec<u8>> {
-    let file_size = file.metadata().await?.len() as usize;
-    let mut buffer = Vec::<u8>::with_capacity(file_size);
-    file.read_exact(&mut buffer).await?;
+    let mut buffer = Vec::<u8>::new();
+    file.read_to_end(&mut buffer).await?;
     Ok(buffer)
 }
 
