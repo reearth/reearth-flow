@@ -1,5 +1,6 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
+use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 
@@ -46,7 +47,7 @@ pub(crate) async fn download_asset(
                 .resolve(&location)
                 .map_err(crate::errors::Error::failed_to_download_asset_files)?;
             root_storage
-                .put(location.path().as_path(), bytes)
+                .put(location.path().as_path(), Bytes::from(bytes.to_vec()))
                 .await
                 .map_err(crate::errors::Error::failed_to_download_asset_files)?;
             Ok(())

@@ -1,6 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
 
-use tokio;
+use async_zip::{tokio::write::ZipFileWriter, Compression, ZipEntryBuilder};
+use tokio::{self, fs::File, io::AsyncReadExt};
 
 pub struct Metadata {
     pub size: i64,
@@ -85,6 +86,78 @@ where
     copy_tree_inner(src.as_ref().to_path_buf(), dest.as_ref().to_path_buf()).await
 }
 
+pub async fn list_tree<P>(root: &P) -> std::io::Result<Vec<(PathBuf, tokio::fs::File)>>
+where
+    P: AsRef<Path>,
+{
+    list_tree_inner(root.as_ref().to_path_buf()).await
+}
+
+#[async_recursion::async_recursion]
+async fn list_tree_inner(root: PathBuf) -> std::io::Result<Vec<(PathBuf, tokio::fs::File)>> {
+    let mut result = Vec::new();
+    let mut entries = tokio::fs::read_dir(root).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let entry_path = entry.path();
+
+        if is_dir(&entry).await? {
+            let children = list_tree_inner(entry_path).await?;
+            result.extend(children);
+        } else {
+            let entry_file = tokio::fs::File::create(entry_path.clone()).await?;
+            result.push((entry_path, entry_file));
+        }
+    }
+    Ok(result)
+}
+
+pub async fn create_zip_file<P, Q>(input_root_path: P, output_path: Q) -> std::io::Result<()>
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
+    let mut entries = list_tree(&input_root_path).await?;
+    let input_dir_str = input_root_path
+        .as_ref()
+        .to_str()
+        .ok_or(std::io::Error::from(std::io::ErrorKind::InvalidData))?;
+    let mut output = File::create(output_path).await?;
+    let mut output_writer = ZipFileWriter::with_tokio(&mut output);
+    for (p, entry) in entries.iter_mut() {
+        let entry_path = p.as_path();
+        let entry_str = entry_path
+            .as_os_str()
+            .to_str()
+            .ok_or(std::io::Error::from(std::io::ErrorKind::InvalidData))?;
+        let buffer = read_file(entry).await?;
+        let splits = input_dir_str
+            .split(MAIN_SEPARATOR_STR)
+            .collect::<Vec<&str>>();
+        let filename = format!(
+            "{}{}",
+            splits[splits.len() - 1],
+            &entry_str[input_dir_str.len()..]
+        );
+        let builder = ZipEntryBuilder::new(filename.into(), Compression::Deflate);
+        output_writer
+            .write_entry_whole(builder, &buffer)
+            .await
+            .map_err(|e| {
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to write zip entry: {}", e),
+                )
+            })?;
+    }
+    output_writer.close().await.map_err(|e| {
+        std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Failed to close zip file: {}", e),
+        )
+    })?;
+    Ok(())
+}
+
 pub fn get_dir_size(path: &Path) -> std::io::Result<u64> {
     let mut total = 0;
     for entry in std::fs::read_dir(path)? {
@@ -97,6 +170,13 @@ pub fn get_dir_size(path: &Path) -> std::io::Result<u64> {
         }
     }
     Ok(total)
+}
+
+pub async fn read_file(file: &mut File) -> std::io::Result<Vec<u8>> {
+    let file_size = file.metadata().await?.len() as usize;
+    let mut buffer = Vec::<u8>::with_capacity(file_size);
+    file.read_exact(&mut buffer).await?;
+    Ok(buffer)
 }
 
 #[cfg(test)]
