@@ -1,3 +1,4 @@
+use std::fs;
 use std::ops::Range;
 use std::path::Path;
 use std::time::Duration;
@@ -107,10 +108,10 @@ impl Storage {
                 path: format!("{:?}", location).into(),
             },
         })?;
-        self.inner
-            .blocking()
-            .is_exist(p)
-            .map_err(|err| format_object_store_error(err, p))
+        fs::exists(p).map_err(|err| object_store::Error::Generic {
+            store: "FileError",
+            source: Box::new(err),
+        })
     }
 
     pub fn get_range_sync(&self, location: &Path, range: Range<usize>) -> Result<Bytes> {
