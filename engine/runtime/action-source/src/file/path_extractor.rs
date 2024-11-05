@@ -246,7 +246,7 @@ impl Source for FilePathExtractor {
         let source_dataset = get_expr_path(&self.source_dataset, ctx.expr_engine.clone())?;
         if self.is_extractable_archive(&source_dataset) {
             let root_output_path =
-                dir::project_output_dir(uuid::Uuid::new_v4().to_string().as_str())?;
+                dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
             let root_output_path = Uri::for_test(&root_output_path);
             let source_dataset_storage = ctx
                 .storage_resolver
