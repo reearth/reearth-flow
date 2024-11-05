@@ -36,4 +36,3 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
 yrs.workspace = true
-base64.workspace = true
