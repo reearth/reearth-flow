@@ -17,7 +17,7 @@ require (
 	github.com/kennygrant/sanitize v1.2.4
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/ravilushqa/otelgqlgen v0.15.0
-	github.com/reearth/reearthx v0.0.0-20241031045232-e97753a33555
+	github.com/reearth/reearthx v0.0.0-20241105115111-8e1c65d63c57
 	github.com/samber/lo v1.39.0
 	github.com/spf13/afero v1.11.0
 	github.com/square/mongo-lock v0.0.0-20230808145049-cfcf499f6bf0
