@@ -32,5 +32,6 @@ func (p *PermissionChecker) CheckPermission(ctx context.Context, resource string
 		Action:   action,
 	}
 
-	return cerbosClient.CheckPermission(ctx, p.DashboardURL, authInfo, input)
+	client := cerbosClient.NewClient(p.DashboardURL)
+	return client.CheckPermission(ctx, authInfo, input)
 }
