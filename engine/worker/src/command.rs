@@ -238,7 +238,7 @@ impl RunWorkerCommand {
         let remote_artifact_path =
             Uri::from_str(format!("{}/{}.zip", &meta.artifact_root_url, meta.job_id).as_str())
                 .map_err(crate::errors::Error::cleanup)?;
-        let job_root_dir = dir::get_job_root_dir_path("worker", meta.job_id)
+        let job_root_dir = dir::get_job_root_dir_path("workers", meta.job_id)
             .map_err(crate::errors::Error::cleanup)?;
         let zip_temp_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())
             .map_err(crate::errors::Error::cleanup)?;
