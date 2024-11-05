@@ -4,30 +4,18 @@ import { useCallback, useMemo } from "react";
 import { useT } from "@flow/lib/i18n";
 import { runs as mockRuns } from "@flow/mock_data/runsData";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Run } from "@flow/types";
+import { Run } from "@flow/types";
 
 import { RouteOption } from "../WorkspaceLeftPanel";
 
-import { NewRun, StatusContent, RunDetails } from "./components";
-
-type Status = "running" | "queued" | "completed";
-
-const Runs: React.FC = () => {
+export default () => {
   const t = useT();
 
   const {
     location: { pathname },
   } = useRouterState();
 
-  const tab: RouteOption = pathname.includes("running")
-    ? "running"
-    : pathname.includes("new")
-      ? "new"
-      : pathname.includes("queued")
-        ? "queued"
-        : pathname.includes("completed")
-          ? "completed"
-          : "all";
+  const tab = getTab(pathname);
 
   const navigate = useNavigate();
   const [currentWorkspace] = useCurrentWorkspace();
@@ -67,30 +55,29 @@ const Runs: React.FC = () => {
     [t],
   );
 
-  return (
-    <div className="flex-1">
-      {tab === "new" ? (
-        <NewRun />
-      ) : isList(tab) ? (
-        <StatusContent
-          label={statusLabels[tab as Status]}
-          runs={runs}
-          onRunSelect={handleRunSelect}
-        />
-      ) : (
-        <RunDetails selectedRun={selectedRun} />
-      )}
-    </div>
-  );
+  return {
+    tab,
+    statusLabels,
+    selectedRun,
+    runs,
+    handleRunSelect,
+  };
 };
 
-export { Runs };
+const getTab = (pathname: string): RouteOption =>
+  pathname.includes("running")
+    ? "running"
+    : pathname.includes("new")
+      ? "new"
+      : pathname.includes("queued")
+        ? "queued"
+        : pathname.includes("completed")
+          ? "completed"
+          : pathname.includes("all")
+            ? "all"
+            : getRunId(pathname);
 
-function isList(value: string) {
-  return !!(
-    value === "running" ||
-    value === "queued" ||
-    value === "completed" ||
-    value === "all"
-  );
-}
+const getRunId = (url: string) => {
+  const parts = url.split("/");
+  return parts[parts.length - 1];
+};
