@@ -103,12 +103,13 @@ where
 
     pub async fn push_update_to_redis_stream(
         &self,
+        project_id: &str,
         update: Vec<u8>,
         updated_by: Option<String>,
     ) -> Result<(), ProjectServiceError> {
         Ok(self
             .redis_data_manager
-            .push_update(update, updated_by)
+            .push_update(project_id, update, updated_by)
             .await?)
     }
 
@@ -128,8 +129,15 @@ where
         Ok(())
     }
 
-    pub async fn get_current_state(&self) -> Result<Option<Vec<u8>>, ProjectServiceError> {
-        Ok(self.redis_data_manager.get_current_state().await?)
+    pub async fn get_current_state(
+        &self,
+        project_id: &str,
+        session_id: Option<&str>,
+    ) -> Result<Option<Vec<u8>>, ProjectServiceError> {
+        Ok(self
+            .redis_data_manager
+            .get_current_state(project_id, session_id)
+            .await?)
     }
 
     pub async fn get_latest_snapshot(
@@ -198,12 +206,12 @@ where
 //         #[async_trait]
 //         impl RedisDataManagerImpl for RedisManager {
 //             type Error = FlowProjectRedisDataManagerError;
-//             async fn push_update(&self, update: Vec<u8>, updated_by: Option<String>) -> Result<(), FlowProjectRedisDataManagerError>;
-//             async fn merge_updates(&self, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError>;
-//             async fn get_current_state(&self) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError>;
-//             async fn clear_data(&self) -> Result<(), FlowProjectRedisDataManagerError>;
-//             async fn get_active_session_id(&self) -> Result<Option<String>, FlowProjectRedisDataManagerError>;
-//             async fn set_active_session_id(&self, session_id: &str) -> Result<(), FlowProjectRedisDataManagerError>;
+//             async fn push_update(&self, project_id: &str, update: Vec<u8>, updated_by: Option<String>) -> Result<(), FlowProjectRedisDataManagerError>;
+//             async fn merge_updates(&self, project_id: &str, skip_lock: bool) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError>;
+//             async fn get_current_state(&self, project_id: &str, session_id: Option<&str>) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError>;
+//             async fn clear_data(&self, project_id: &str, session_id: Option<&str>) -> Result<(), FlowProjectRedisDataManagerError>;
+//             async fn get_active_session_id(&self, project_id: &str) -> Result<Option<String>, FlowProjectRedisDataManagerError>;
+//             async fn set_active_session_id(&self, project_id: &str, session_id: &str) -> Result<(), FlowProjectRedisDataManagerError>;
 //         }
 //     }
 
@@ -452,9 +460,9 @@ where
 
 //         mock_redis_manager
 //             .expect_push_update()
-//             .with(eq(vec![1, 2, 3]), eq(Some("user1".to_string())))
+//             .with(eq("project_123"), eq(vec![1, 2, 3]), eq(Some("user1".to_string())))
 //             .times(1)
-//             .returning(|_, _| Ok(()));
+//             .returning(|_, _, _| Ok(()));
 
 //         let service = ProjectService::new(
 //             Arc::new(mock_session_repo),
@@ -463,7 +471,7 @@ where
 //         );
 
 //         let result = service
-//             .push_update(vec![1, 2, 3], Some("user1".to_string()))
+//             .push_update_to_redis_stream("project_123", vec![1, 2, 3], Some("user1".to_string()))
 //             .await;
 //         assert!(result.is_ok());
 //     }
@@ -476,8 +484,9 @@ where
 
 //         mock_redis_manager
 //             .expect_get_current_state()
+//             .with(eq("project_123"), eq(None))
 //             .times(1)
-//             .returning(|| Ok(Some(vec![1, 2, 3])));
+//             .returning(|_, _| Ok(Some(vec![1, 2, 3])));
 
 //         let service = ProjectService::new(
 //             Arc::new(mock_session_repo),
@@ -485,7 +494,7 @@ where
 //             Arc::new(mock_redis_manager),
 //         );
 
-//         let result = service.get_current_state().await;
+//         let result = service.get_current_state("project_123", None).await;
 //         assert!(result.is_ok());
 //         assert_eq!(result.unwrap(), Some(vec![1, 2, 3]));
 //     }

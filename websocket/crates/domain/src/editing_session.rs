@@ -2,9 +2,7 @@ use super::utils::calculate_diff;
 use std::sync::Arc;
 
 use crate::generate_id;
-use crate::repository::{
-    ProjectEditingSessionImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
-};
+use crate::repository::{ProjectEditingSessionImpl, ProjectSnapshotImpl, RedisDataManagerImpl};
 use crate::snapshot::ObjectTenant;
 use crate::types::snapshot::{Metadata, ObjectDelete, ProjectSnapshot, SnapshotInfo};
 use crate::user::User;
@@ -125,7 +123,7 @@ impl ProjectEditingSession {
 
             if let Some(snapshot) = snapshot {
                 redis_manager
-                    .push_update(snapshot.data, Some(user.name.clone()))
+                    .push_update(&self.project_id, snapshot.data, Some(user.name.clone()))
                     .await
                     .map_err(ProjectEditingSessionError::redis)?;
             }
@@ -162,7 +160,7 @@ impl ProjectEditingSession {
         self.check_session_setup()?;
 
         let current_state = redis_data_manager
-            .get_current_state()
+            .get_current_state(&self.project_id, self.session_id.as_deref())
             .await
             .map_err(ProjectEditingSessionError::redis)?;
 
@@ -190,7 +188,7 @@ impl ProjectEditingSession {
 
         let _lock = self.session_lock.lock().await;
         redis_data_manager
-            .merge_updates(false)
+            .merge_updates(&self.project_id, false)
             .await
             .map_err(ProjectEditingSessionError::redis)
     }
@@ -205,7 +203,7 @@ impl ProjectEditingSession {
         self.check_session_setup()?;
 
         let current_state = redis_data_manager
-            .get_current_state()
+            .get_current_state(&self.project_id, self.session_id.as_deref())
             .await
             .map_err(ProjectEditingSessionError::redis)?;
 
@@ -228,7 +226,7 @@ impl ProjectEditingSession {
 
         let _lock = self.session_lock.lock().await;
         redis_data_manager
-            .push_update(update, Some(updated_by))
+            .push_update(&self.project_id, update, Some(updated_by))
             .await
             .map_err(ProjectEditingSessionError::redis)
     }
@@ -305,7 +303,7 @@ impl ProjectEditingSession {
         let _lock = self.session_lock.lock().await;
 
         let (state, edits) = redis_data_manager
-            .merge_updates(true)
+            .merge_updates(&self.project_id, true)
             .await
             .map_err(ProjectEditingSessionError::redis)?;
 
@@ -316,11 +314,8 @@ impl ProjectEditingSession {
                 .map_err(ProjectEditingSessionError::snapshot)?;
 
             if let Some(mut snapshot) = snapshot {
-                //update snapshot data
                 snapshot.data = state;
-                //update snapshot change log
                 snapshot.info.changes_by = edits;
-                //update snapshot name
                 snapshot.metadata.name = Some(snapshot_name);
                 snapshot_repo
                     .update_latest_snapshot(snapshot)
@@ -330,7 +325,7 @@ impl ProjectEditingSession {
         }
 
         redis_data_manager
-            .clear_data()
+            .clear_data(&self.project_id, self.session_id.as_deref())
             .await
             .map_err(ProjectEditingSessionError::redis)?;
 

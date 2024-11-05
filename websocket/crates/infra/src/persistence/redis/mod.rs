@@ -9,3 +9,5 @@ pub mod types;
 pub mod updates;
 mod utils;
 pub use utils::*;
+mod default_key_manager;
+pub use default_key_manager::*;

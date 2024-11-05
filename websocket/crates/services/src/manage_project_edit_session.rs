@@ -141,11 +141,13 @@ where
                                 }
                             }
                         },
+
                         SessionCommand::ListAllSnapshotsVersions { project_id } => {
                             let versions = self.project_service.list_all_snapshots_versions(&project_id).await?;
                             debug!("List of all snapshots versions for project: {}", project_id);
                             debug!("{:?}", versions);
                         },
+
                         SessionCommand::Complete { project_id, user } => {
                             if let Some(mut session) = self.get_latest_session(&project_id).await? {
                                 if let Ok(()) = self.complete_job_if_met_requirements(&mut session).await {
@@ -154,6 +156,7 @@ where
                                 }
                             }
                         },
+
                         SessionCommand::CheckStatus { project_id } => {
                             debug!("Checking session status for project: {}", project_id);
                         },

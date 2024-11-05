@@ -32,8 +32,9 @@ impl UpdateManager {
 
     pub async fn get_merged_update(
         &self,
+        project_id: &str,
     ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
-        let updates = self.get_flow_updates_from_stream().await?;
+        let updates = self.get_flow_updates_from_stream(project_id).await?;
         if updates.is_empty() {
             return Ok(None);
         }
@@ -50,8 +51,9 @@ impl UpdateManager {
 
     pub async fn get_merged_update_from_stream(
         &self,
+        project_id: &str,
     ) -> Result<Option<(Vec<u8>, String, Vec<String>)>, FlowProjectRedisDataManagerError> {
-        let updates = self.get_flow_updates_from_stream().await?;
+        let updates = self.get_flow_updates_from_stream(project_id).await?;
         if updates.is_empty() {
             return Ok(None);
         }
@@ -76,13 +78,14 @@ impl UpdateManager {
 
     pub async fn get_update_stream_items(
         &self,
+        project_id: &str,
     ) -> Result<StreamItems, FlowProjectRedisDataManagerError> {
         let mut conn = self
             .redis_pool
             .get()
             .await
             .map_err(FlowProjectRedisDataManagerError::PoolRunError)?;
-        let key = self.key_manager.state_updates_key()?;
+        let key = self.key_manager.state_updates_key(project_id)?;
 
         let result: RedisStreamResult = redis::cmd("XREAD")
             .arg("STREAMS")
@@ -101,8 +104,9 @@ impl UpdateManager {
 
     pub async fn get_flow_updates_from_stream(
         &self,
+        project_id: &str,
     ) -> Result<Vec<FlowUpdate>, FlowProjectRedisDataManagerError> {
-        let stream_items = self.get_update_stream_items().await?;
+        let stream_items = self.get_update_stream_items(project_id).await?;
         let mut updates = Vec::new();
 
         for (update_id, items) in stream_items {
@@ -149,25 +153,27 @@ impl UpdateManager {
 
     pub async fn merge_updates(
         &self,
+        project_id: &str,
         state_update: Option<Vec<u8>>,
     ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
         let doc = Arc::new(Doc::new());
-        let merged_stream_update = self.get_merged_update_from_stream().await?;
+        let merged_stream_update = self.get_merged_update_from_stream(project_id).await?;
 
-        let (merged_update, updates_by) =
-            if let Some((merged_update, _, updates_by)) = merged_stream_update {
-                (merged_update, updates_by)
-            } else {
-                match state_update {
-                    Some(update) => (update, vec![]),
-                    None => {
-                        return Err(FlowProjectRedisDataManagerError::MissingStateUpdate {
-                            key: self.key_manager.state_key()?,
-                            context: "No state update available".to_string(),
-                        })
-                    }
+        let (merged_update, updates_by) = if let Some((merged_update, _, updates_by)) =
+            merged_stream_update
+        {
+            (merged_update, updates_by)
+        } else {
+            match state_update {
+                Some(update) => (update, vec![]),
+                None => {
+                    return Err(FlowProjectRedisDataManagerError::MissingStateUpdate {
+                        key: self.key_manager.state_key(project_id)?,
+                        context: format!("No state update available for project: {}", project_id),
+                    })
                 }
-            };
+            }
+        };
 
         let doc_clone = Arc::clone(&doc);
         let optimized_merged_state = tokio::task::spawn_blocking(move || {

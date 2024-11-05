@@ -63,16 +63,9 @@ impl AppState {
             return Ok(service.clone());
         }
 
-        // Create new session service
-        let session = ProjectEditingSession::new(project_id.to_string());
-
-        let redis_data_manager = FlowProjectRedisDataManager::new(
-            project_id.to_string(),
-            session.session_id,
-            &self.redis_url,
-        )
-        .await
-        .unwrap();
+        let redis_data_manager = FlowProjectRedisDataManager::new(&self.redis_url)
+            .await
+            .unwrap();
 
         let service = Arc::new(ManageEditSessionService::new(
             self.session_repo.clone(),
