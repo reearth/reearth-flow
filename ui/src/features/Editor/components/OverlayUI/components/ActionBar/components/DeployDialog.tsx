@@ -45,10 +45,10 @@ const DeployDialog: React.FC<Props> = ({
     deployment?.description ?? "",
   );
 
-  const handleWorkflowDeployment = useCallback(
-    () => onWorkflowDeployment(deployment?.id, description),
-    [description, deployment?.id, onWorkflowDeployment],
-  );
+  const handleWorkflowDeployment = useCallback(() => {
+    onWorkflowDeployment(deployment?.id, description);
+    setShowDialog(undefined);
+  }, [description, deployment?.id, onWorkflowDeployment, setShowDialog]);
 
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(undefined)}>
