@@ -1,10 +1,10 @@
-import { createLazyFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { WorkspaceIdWrapper } from "@flow/features/PageWrapper";
 import LeftPanel from "@flow/features/WorkspaceLeftPanel";
 import { TopNavigation } from "@flow/features/WorkspaceTopNavigation";
 
-export const Route = createLazyFileRoute("/workspaces")({
+export const Route = createFileRoute("/workspaces")({
   component: () => (
     <WorkspaceIdWrapper>
       <div className="flex h-screen flex-col">

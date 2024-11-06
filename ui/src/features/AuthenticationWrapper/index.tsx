@@ -9,7 +9,7 @@ type Props = {
 
 const AuthenticationWrapper: React.FC<Props> = ({ children }) => {
   const [isAuthenticated] = useAuthenticationRequired(); // TODO: show error
-  return isAuthenticated && children ? <>{children}</> : null;
+  return isAuthenticated && children ? children : null;
 };
 
 const withAuthorisation = (): ((

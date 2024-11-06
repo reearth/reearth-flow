@@ -1,8 +1,8 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
 import { DeploymentManager } from "@flow/features/WorkspaceDeployments";
 
-export const Route = createLazyFileRoute(
+export const Route = createFileRoute(
   "/workspaces/$workspaceId_/deployments/$tab",
 )({
   component: () => <DeploymentManager />,

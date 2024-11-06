@@ -13,10 +13,11 @@ import {
 } from "@flow/components";
 import { config } from "@flow/config";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
-import { useOpenLink, useShortcuts } from "@flow/hooks";
+import { useShortcuts } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
+import { openLinkInNewTab } from "@flow/utils";
 
 import { AccountUpdateDialog } from "./AccountUpdateDialog";
 
@@ -43,8 +44,8 @@ const UserNavigation: React.FC<Props> = ({
 
   const { tosUrl, documentationUrl } = config();
 
-  const handleTosPageOpen = useOpenLink(tosUrl ?? "");
-  const handleDocumentationPageOpen = useOpenLink(documentationUrl ?? "");
+  const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
+  const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
 
   useShortcuts([
     {

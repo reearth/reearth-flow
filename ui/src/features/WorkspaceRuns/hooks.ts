@@ -4,33 +4,21 @@ import { useCallback, useMemo } from "react";
 import { useT } from "@flow/lib/i18n";
 import { runs as mockRuns } from "@flow/mock_data/runsData";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Run } from "@flow/types";
+import { lastOfUrl as getRunId } from "@flow/utils";
 
 import { RouteOption } from "../WorkspaceLeftPanel";
 
-import { NewRun, StatusContent, RunDetails } from "./components";
-
-type Status = "running" | "queued" | "completed";
-
-const Runs: React.FC = () => {
+export default () => {
   const t = useT();
+  const navigate = useNavigate();
+
+  const [currentWorkspace] = useCurrentWorkspace();
 
   const {
     location: { pathname },
   } = useRouterState();
 
-  const tab: RouteOption = pathname.includes("running")
-    ? "running"
-    : pathname.includes("new")
-      ? "new"
-      : pathname.includes("queued")
-        ? "queued"
-        : pathname.includes("completed")
-          ? "completed"
-          : "all";
-
-  const navigate = useNavigate();
-  const [currentWorkspace] = useCurrentWorkspace();
+  const tab = getTab(pathname);
 
   const selectedRun = useMemo(
     () => mockRuns.find((run) => run.id === tab),
@@ -38,9 +26,9 @@ const Runs: React.FC = () => {
   );
 
   const handleRunSelect = useCallback(
-    (run: Run) =>
+    (runId: string) =>
       navigate({
-        to: `/workspaces/${currentWorkspace?.id}/runs/${run.id}`,
+        to: `/workspaces/${currentWorkspace?.id}/runs/${runId}`,
       }),
     [currentWorkspace, navigate],
   );
@@ -67,30 +55,24 @@ const Runs: React.FC = () => {
     [t],
   );
 
-  return (
-    <div className="flex-1">
-      {tab === "new" ? (
-        <NewRun />
-      ) : isList(tab) ? (
-        <StatusContent
-          label={statusLabels[tab as Status]}
-          runs={runs}
-          onRunSelect={handleRunSelect}
-        />
-      ) : (
-        <RunDetails selectedRun={selectedRun} />
-      )}
-    </div>
-  );
+  return {
+    tab,
+    statusLabels,
+    selectedRun,
+    runs,
+    handleRunSelect,
+  };
 };
 
-export { Runs };
-
-function isList(value: string) {
-  return !!(
-    value === "running" ||
-    value === "queued" ||
-    value === "completed" ||
-    value === "all"
-  );
-}
+const getTab = (pathname: string): RouteOption =>
+  pathname.includes("running")
+    ? "running"
+    : pathname.includes("new")
+      ? "new"
+      : pathname.includes("queued")
+        ? "queued"
+        : pathname.includes("completed")
+          ? "completed"
+          : pathname.includes("all")
+            ? "all"
+            : getRunId(pathname);

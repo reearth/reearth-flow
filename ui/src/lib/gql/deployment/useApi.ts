@@ -56,8 +56,8 @@ export const useDeployment = () => {
 
   const useUpdateDeployment = async (
     deploymentId: string,
-    workflowId: string,
-    workflowYaml: string,
+    workflowId?: string,
+    workflowYaml?: string,
     description?: string,
   ): Promise<UpdateDeployment> => {
     const { mutateAsync, ...rest } = updateDeploymentMutation;
@@ -67,6 +67,10 @@ export const useDeployment = () => {
         workflowId,
         workflowYaml,
         description,
+      });
+      toast({
+        title: t("Deployment Updated"),
+        description: t("Deployment has been successfully updated."),
       });
       return { deployment, ...rest };
     } catch (_err) {
