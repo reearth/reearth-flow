@@ -156,21 +156,19 @@ export default ({
         workflow.set("name", new YText(name));
 
         // Update subworkflow node in main workflow if this is a subworkflow
-        if (workflowIndex > 0) {
-          const mainWorkflow = yWorkflows.get(0);
-          const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray;
+        const mainWorkflow = yWorkflows.get(0);
+        const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray;
 
-          mainWorkflowNodes?.forEach((node, index) => {
-            if (node.id === id) {
-              const updatedNode = {
-                ...node,
-                data: { ...node.data, name },
-              };
-              mainWorkflowNodes.delete(index);
-              mainWorkflowNodes.insert(index, [updatedNode]);
-            }
-          });
-        }
+        mainWorkflowNodes?.forEach((node, index) => {
+          if (node.id === id) {
+            const updatedNode = {
+              ...node,
+              data: { ...node.data, name },
+            };
+            mainWorkflowNodes.delete(index);
+            mainWorkflowNodes.insert(index, [updatedNode]);
+          }
+        });
       }),
     [undoTrackerActionWrapper, yWorkflows, workflows, setWorkflows],
   );
