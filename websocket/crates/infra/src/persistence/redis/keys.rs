@@ -30,7 +30,7 @@ macro_rules! define_key_methods {
     ($($method:ident => $suffix:expr),* $(,)?) => {
         $(
             fn $method(&self, project_id: &str) -> Result<String, $crate::persistence::redis::errors::FlowProjectRedisDataManagerError> {
-                Ok(format!("{}:{}", self.session_prefix(project_id, None)?, $suffix))
+                Ok(format!("{}:{}", self.project_prefix(project_id), $suffix))
             }
         )*
     };

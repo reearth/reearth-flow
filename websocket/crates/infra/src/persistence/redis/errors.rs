@@ -18,8 +18,8 @@ pub enum FlowProjectRedisDataManagerError {
     LastUpdateId,
     #[error("Missing state update - Key: {key}, Context: {context}")]
     MissingStateUpdate { key: String, context: String },
-    #[error("Session not set")]
-    SessionNotSet,
+    #[error("Session not set for project {project_id}")]
+    SessionNotSet { project_id: String },
     #[error(transparent)]
     DecodeUpdate(#[from] yrs::encoding::read::Error),
     #[error(transparent)]

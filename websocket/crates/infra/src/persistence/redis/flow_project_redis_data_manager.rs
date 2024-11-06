@@ -178,9 +178,8 @@ impl RedisDataManagerImpl for FlowProjectRedisDataManager {
     }
 
     async fn create_session(&self, project_id: &str, session_id: &str) -> Result<(), Self::Error> {
-        let _: () = self
-            .get_connection()
-            .await?
+        let mut conn = self.get_connection().await?;
+        let _: () = conn
             .set(
                 self.key_manager.active_editing_session_id_key(project_id),
                 session_id,
@@ -201,12 +200,19 @@ impl RedisDataManagerImpl for FlowProjectRedisDataManager {
         };
 
         let value = serde_json::to_string(&update_data)?;
-        let fields = &[("value", value.as_str()), ("format", "json")];
+        let fields = &[("value", value.as_str())];
+
+        debug!("Pushing update to Redis stream: {:?}", fields);
 
         let mut conn = self.get_connection().await?;
+
+        debug!("Getting connection to push update to Redis stream");
+
         let _: () = conn
             .xadd(self.key_manager.state_updates_key(project_id)?, "*", fields)
             .await?;
+
+        debug!("Update pushed to Redis stream");
 
         let timestamp = chrono::Utc::now().timestamp().to_string();
         let _: () = conn

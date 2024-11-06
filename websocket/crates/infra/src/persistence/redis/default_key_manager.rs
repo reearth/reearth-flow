@@ -1,3 +1,5 @@
+use flow_websocket_domain::generate_id;
+
 use super::errors::FlowProjectRedisDataManagerError;
 use super::keys::RedisKeyManager;
 use crate::define_key_methods;
@@ -15,10 +17,15 @@ impl RedisKeyManager for DefaultKeyManager {
         project_id: &str,
         session_id: Option<&str>,
     ) -> Result<String, FlowProjectRedisDataManagerError> {
-        match session_id {
-            Some(sid) => Ok(format!("{}:{}", self.project_prefix(project_id), sid)),
-            None => Err(FlowProjectRedisDataManagerError::SessionNotSet),
-        }
+        let sid = match session_id {
+            Some(sid) => sid.to_string(),
+            None => generate_id!("session"),
+        };
+        Ok(format!(
+            "{}:session:{}",
+            self.project_prefix(project_id),
+            sid
+        ))
     }
 
     fn active_editing_session_id_key(&self, project_id: &str) -> String {
