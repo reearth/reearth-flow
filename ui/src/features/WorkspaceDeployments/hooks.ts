@@ -1,5 +1,5 @@
-import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useDeployment } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -11,8 +11,12 @@ import { RouteOption } from "../WorkspaceLeftPanel";
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { history } = useRouter();
 
   const [currentWorkspace] = useCurrentWorkspace();
+  const [deploymentToBeDeleted, setDeploymentToBeDeleted] = useState<
+    string | undefined
+  >(undefined);
 
   const {
     useGetDeploymentsInfinite,
@@ -69,7 +73,8 @@ export default () => {
   const handleDeploymentDelete = useCallback(() => {
     if (!selectedDeployment || !currentWorkspace) return;
     useDeleteDeployment(selectedDeployment.id, currentWorkspace.id);
-  }, [selectedDeployment, currentWorkspace, useDeleteDeployment]);
+    history.go(-1); // Go back to previous page
+  }, [selectedDeployment, currentWorkspace, history, useDeleteDeployment]);
 
   // Auto fills the page
   useEffect(() => {
@@ -103,6 +108,8 @@ export default () => {
     ref,
     deployments,
     selectedDeployment,
+    deploymentToBeDeleted,
+    setDeploymentToBeDeleted,
     handleDeploymentSelect,
     handleDeploymentUpdate,
     handleDeploymentDelete,

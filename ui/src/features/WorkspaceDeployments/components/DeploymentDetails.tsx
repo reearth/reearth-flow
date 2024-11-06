@@ -10,14 +10,14 @@ import type { Deployment } from "@flow/types";
 
 type Props = {
   selectedDeployment?: Deployment;
+  setDeploymentToBeDeleted: (deployment: string | undefined) => void;
   onDeploymentUpdate: (description?: string) => Promise<void>;
-  onDeploymentDelete: () => void;
 };
 
 const DeploymentDetails: React.FC<Props> = ({
   selectedDeployment,
+  setDeploymentToBeDeleted,
   onDeploymentUpdate,
-  onDeploymentDelete,
 }) => {
   const t = useT();
   const { history } = useRouter();
@@ -26,17 +26,17 @@ const DeploymentDetails: React.FC<Props> = ({
     selectedDeployment?.description || "",
   );
 
-  const handleBack = useCallback(() => history.go(-1), [history]);
+  const handleBack = useCallback(() => history.go(-1), [history]); // Go back to previous page
 
-  const handleUpdate = useCallback(() => {
-    onDeploymentUpdate(updatedDescription);
-  }, [onDeploymentUpdate, updatedDescription]);
+  const handleUpdate = useCallback(
+    () => onDeploymentUpdate(updatedDescription),
+    [onDeploymentUpdate, updatedDescription],
+  );
 
   const handleDelete = useCallback(() => {
     if (!selectedDeployment) return;
-    onDeploymentDelete();
-    handleBack();
-  }, [selectedDeployment, handleBack, onDeploymentDelete]);
+    setDeploymentToBeDeleted(selectedDeployment.id);
+  }, [selectedDeployment, setDeploymentToBeDeleted]);
 
   const handleDescriptionChange = useCallback((content: DetailsBoxContent) => {
     setUpdatedDescription(content.value);

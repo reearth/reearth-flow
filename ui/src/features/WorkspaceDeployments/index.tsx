@@ -5,7 +5,7 @@ import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
 
-import { DeploymentDetails } from "./components";
+import { DeploymentDeletionDialog, DeploymentDetails } from "./components";
 import useHooks from "./hooks";
 
 const DeploymentManager: React.FC = () => {
@@ -13,6 +13,8 @@ const DeploymentManager: React.FC = () => {
   const {
     deployments,
     selectedDeployment,
+    deploymentToBeDeleted,
+    setDeploymentToBeDeleted,
     handleDeploymentSelect,
     handleDeploymentUpdate,
     handleDeploymentDelete,
@@ -46,7 +48,12 @@ const DeploymentManager: React.FC = () => {
       <DeploymentDetails
         selectedDeployment={selectedDeployment}
         onDeploymentUpdate={handleDeploymentUpdate}
-        onDeploymentDelete={handleDeploymentDelete}
+        setDeploymentToBeDeleted={setDeploymentToBeDeleted}
+      />
+      <DeploymentDeletionDialog
+        deploymentToBeDeleted={deploymentToBeDeleted}
+        setDeploymentToBeDeleted={setDeploymentToBeDeleted}
+        onDeleteDeployment={handleDeploymentDelete}
       />
     </div>
   ) : (

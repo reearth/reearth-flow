@@ -1,5 +1,5 @@
 import { type XYPosition } from "@xyflow/react";
-import { memo } from "react";
+import { useMemo, memo } from "react";
 
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
@@ -44,6 +44,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   children: canvas,
 }) => {
   // const { devMode } = config();
+  const allowedToDeploy = useMemo(() => nodes.length > 0, [nodes]);
   return (
     <>
       <div className="relative flex flex-1 flex-col">
@@ -51,7 +52,10 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {canvas}
         <Breadcrumb />
         <Toolbox onRedo={onWorkflowRedo} onUndo={onWorkflowUndo} />
-        <ActionBar onWorkflowDeployment={onWorkflowDeployment} />
+        <ActionBar
+          allowedToDeploy={allowedToDeploy}
+          onWorkflowDeployment={onWorkflowDeployment}
+        />
         <CanvasActionBar />
         <Infobar hoveredDetails={hoveredDetails} />
       </div>

@@ -1,11 +1,5 @@
 import { CaretRight } from "@phosphor-icons/react";
-import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   Button,
@@ -22,14 +16,16 @@ import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 
 type Props = {
+  allowedToDeploy: boolean;
   onWorkflowDeployment: (
     deploymentId?: string,
     description?: string,
   ) => Promise<void>;
-  setShowDialog: Dispatch<SetStateAction<"deploy" | undefined>>;
+  setShowDialog: (show: boolean) => void;
 };
 
 const DeployDialog: React.FC<Props> = ({
+  allowedToDeploy,
   onWorkflowDeployment,
   setShowDialog,
 }) => {
@@ -47,11 +43,19 @@ const DeployDialog: React.FC<Props> = ({
 
   const handleWorkflowDeployment = useCallback(() => {
     onWorkflowDeployment(deployment?.id, description);
-    setShowDialog(undefined);
-  }, [description, deployment?.id, onWorkflowDeployment, setShowDialog]);
+    if (allowedToDeploy) {
+      setShowDialog(false);
+    }
+  }, [
+    description,
+    deployment?.id,
+    allowedToDeploy,
+    onWorkflowDeployment,
+    setShowDialog,
+  ]);
 
   return (
-    <Dialog open={true} onOpenChange={() => setShowDialog(undefined)}>
+    <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       <DialogContent size="sm">
         <DialogTitle>{t("Deploy project")}</DialogTitle>
         <DialogContentWrapper>
