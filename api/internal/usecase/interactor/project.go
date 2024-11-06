@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -52,7 +53,8 @@ func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
-	hasPermission, err := cerbosClient.CheckPermission(ctx, i.permissionChecker, rbac.ResourceProject, rbac.ActionEdit)
+	authInfo := adapter.GetAuthInfo(ctx)
+	hasPermission, err := cerbosClient.CheckPermission(ctx, authInfo, i.permissionChecker, rbac.ResourceProject, rbac.ActionEdit)
 	if err != nil {
 		return nil, err
 	}
