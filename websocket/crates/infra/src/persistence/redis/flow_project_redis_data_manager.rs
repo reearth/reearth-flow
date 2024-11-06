@@ -21,7 +21,7 @@ pub struct FlowProjectRedisDataManager {
 }
 
 impl FlowProjectRedisDataManager {
-    pub async fn new(redis_url: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new(redis_url: &str) -> Result<Self, FlowProjectRedisDataManagerError> {
         let manager = RedisConnectionManager::new(redis_url)?;
         let redis_pool = Pool::builder().build(manager).await?;
         let global_lock = FlowProjectLock::new(redis_url);
