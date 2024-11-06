@@ -57,7 +57,15 @@ pub async fn handle_upgrade(
     };
 
     ws.on_upgrade(move |socket| {
-        handle_socket(socket, addr, query.token.to_string(), room_id, state, user)
+        handle_socket(
+            socket,
+            addr,
+            query.token.to_string(),
+            room_id,
+            state,
+            None,
+            user,
+        )
     })
 }
 
@@ -67,6 +75,7 @@ async fn handle_socket(
     token: String,
     room_id: String,
     state: Arc<AppState>,
+    project_id: Option<String>,
     user: User,
 ) {
     if socket.send(Message::Ping(vec![4])).await.is_ok() {
@@ -87,14 +96,7 @@ async fn handle_socket(
         return;
     }
 
-    let (tx, rx) = mpsc::channel(32);
-
-    tx.send(SessionCommand::Start {
-        project_id: room_id.clone(),
-        user: user.clone(),
-    })
-    .await
-    .unwrap();
+    let (_tx, rx) = mpsc::channel(32);
 
     // Spawn service processor
     tokio::spawn({
@@ -108,7 +110,16 @@ async fn handle_socket(
 
     while let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
-            match handle_message(msg, addr, &room_id, None, state.clone(), user.clone()).await {
+            match handle_message(
+                msg,
+                addr,
+                &room_id,
+                project_id.clone(),
+                state.clone(),
+                user.clone(),
+            )
+            .await
+            {
                 Ok(Some(msg)) => {
                     let _ = socket.send(Message::Binary(msg.into())).await;
                     continue;
@@ -170,7 +181,7 @@ async fn handle_message(
             state
                 .command_tx
                 .send(SessionCommand::PushUpdate {
-                    project_id: room_id.to_string(),
+                    project_id: project_id.unwrap(),
                     update: d,
                     updated_by: Some(user.name.clone()),
                 })
