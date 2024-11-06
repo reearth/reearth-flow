@@ -18,7 +18,6 @@ import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
 import { yWorkflowBuilder, type YWorkflow } from "./utils";
-import { fromYjsText } from "./utils/conversions";
 
 export default ({
   workflowId,
@@ -137,8 +136,8 @@ export default ({
           rawWorkflows
             .map((w): Workflow | undefined => {
               if (!w || w.nodes.length < 1) return undefined;
-              const id = fromYjsText(w.id as Y.Text);
-              const name = fromYjsText(w.name as Y.Text);
+              const id = w.id as string;
+              const name = w.name as string;
               const n = w.nodes as Node[];
               const e = w.edges as Edge[];
               return { id, name, nodes: n, edges: e };

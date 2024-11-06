@@ -1,9 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
-import { Text as YText } from "yjs";
 
 import { Edge, Node } from "@flow/types";
-
-import { fromYjsText } from "./utils/conversions";
+import { isDefined } from "@flow/utils";
 
 export default ({
   workflowId,
@@ -11,13 +9,13 @@ export default ({
   handleWorkflowIdChange,
 }: {
   workflowId?: string;
-  rawWorkflows: Record<string, YText | Node[] | Edge[]>[];
+  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
   const [workflows, setWorkflows] = useState<{ id: string; name: string }[]>(
-    rawWorkflows.map((w2) => ({
-      id: fromYjsText(w2?.id as YText),
-      name: fromYjsText(w2?.name as YText),
+    rawWorkflows.filter(isDefined).map((w2) => ({
+      id: w2.id as string,
+      name: w2.name as string,
     })),
   );
 
