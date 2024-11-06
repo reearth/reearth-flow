@@ -18,7 +18,7 @@ const RunDetails: React.FC<Props> = ({ selectedRun }) => {
 
   const handleBack = useCallback(() => history.go(-1), [history]);
 
-  const details: DetailsBoxContent | undefined = useMemo(
+  const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
       selectedRun
         ? [

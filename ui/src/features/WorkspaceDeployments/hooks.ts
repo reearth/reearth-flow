@@ -14,7 +14,11 @@ export default () => {
 
   const [currentWorkspace] = useCurrentWorkspace();
 
-  const { useGetDeploymentsInfinite, useDeleteDeployment } = useDeployment();
+  const {
+    useGetDeploymentsInfinite,
+    useUpdateDeployment,
+    useDeleteDeployment,
+  } = useDeployment();
 
   const { pages, hasNextPage, isFetching, fetchNextPage } =
     useGetDeploymentsInfinite(currentWorkspace?.id);
@@ -47,6 +51,19 @@ export default () => {
         to: `/workspaces/${currentWorkspace?.id}/deployments/${deployment.id}`,
       }),
     [currentWorkspace, navigate],
+  );
+
+  const handleDeploymentUpdate = useCallback(
+    async (description?: string) => {
+      if (!selectedDeployment) return;
+      await useUpdateDeployment(
+        selectedDeployment.id,
+        undefined,
+        undefined,
+        description,
+      );
+    },
+    [selectedDeployment, useUpdateDeployment],
   );
 
   const handleDeploymentDelete = useCallback(() => {
@@ -87,6 +104,7 @@ export default () => {
     deployments,
     selectedDeployment,
     handleDeploymentSelect,
+    handleDeploymentUpdate,
     handleDeploymentDelete,
   };
 };

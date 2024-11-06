@@ -162,7 +162,7 @@ function DataTable<TData, TValue>({
                 table.getRowModel().rows.map((row) => (
                   <TableRow
                     key={row.id}
-                    className={`${rowHeight ? "h-" + rowHeight : "h-10"}`}
+                    className={`${rowHeight ? "h-" + rowHeight : "h-10"} cursor-pointer`}
                     data-state={row.getIsSelected() && "selected"}
                     onClick={() => {
                       row.toggleSelected();

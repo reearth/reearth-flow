@@ -14,6 +14,7 @@ const DeploymentManager: React.FC = () => {
     deployments,
     selectedDeployment,
     handleDeploymentSelect,
+    handleDeploymentUpdate,
     handleDeploymentDelete,
   } = useHooks();
 
@@ -48,6 +49,7 @@ const DeploymentManager: React.FC = () => {
     <div className="flex flex-1">
       <DeploymentDetails
         selectedDeployment={selectedDeployment}
+        onDeploymentUpdate={handleDeploymentUpdate}
         onDeploymentDelete={handleDeploymentDelete}
       />
     </div>

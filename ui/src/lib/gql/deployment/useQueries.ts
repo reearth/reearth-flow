@@ -9,7 +9,10 @@ import { isDefined } from "@flow/utils";
 import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
-import { DeleteDeploymentInput } from "../__gen__/plugins/graphql-request";
+import {
+  DeleteDeploymentInput,
+  UpdateDeploymentInput,
+} from "../__gen__/plugins/graphql-request";
 import { toDeployment, toJob } from "../convert";
 import { JobQueryKeys } from "../job/useQueries";
 import { ProjectQueryKeys } from "../project/useQueries";
@@ -81,14 +84,18 @@ export const useQueries = () => {
       description,
     }: {
       deploymentId: string;
-      workflowId: string;
-      workflowYaml: string;
+      workflowId?: string;
+      workflowYaml?: string;
       description?: string;
     }) => {
-      const formData = yamlToFormData(workflowYaml, workflowId);
+      const input: UpdateDeploymentInput = { deploymentId, description };
+      if (workflowYaml) {
+        const formData = yamlToFormData(workflowYaml, workflowId);
+        input.file = formData.get("file");
+      }
 
       const data = await graphQLContext?.UpdateDeployment({
-        input: { deploymentId, file: formData.get("file"), description },
+        input,
       });
 
       if (data?.updateDeployment?.deployment) {

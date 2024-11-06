@@ -1,6 +1,6 @@
 import { CaretLeft } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { Button } from "@flow/components";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
@@ -10,25 +10,39 @@ import type { Deployment } from "@flow/types";
 
 type Props = {
   selectedDeployment?: Deployment;
+  onDeploymentUpdate: (description?: string) => Promise<void>;
   onDeploymentDelete: () => void;
 };
 
 const DeploymentDetails: React.FC<Props> = ({
   selectedDeployment,
+  onDeploymentUpdate,
   onDeploymentDelete,
 }) => {
   const t = useT();
   const { history } = useRouter();
 
+  const [updatedDescription, setUpdatedDescription] = useState(
+    selectedDeployment?.description || "",
+  );
+
   const handleBack = useCallback(() => history.go(-1), [history]);
 
-  const handleDeploymentDelete = useCallback(() => {
+  const handleUpdate = useCallback(() => {
+    onDeploymentUpdate(updatedDescription);
+  }, [onDeploymentUpdate, updatedDescription]);
+
+  const handleDelete = useCallback(() => {
     if (!selectedDeployment) return;
     onDeploymentDelete();
     handleBack();
   }, [selectedDeployment, handleBack, onDeploymentDelete]);
 
-  const details: DetailsBoxContent | undefined = useMemo(
+  const handleDescriptionChange = useCallback((content: DetailsBoxContent) => {
+    setUpdatedDescription(content.value);
+  }, []);
+
+  const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
       selectedDeployment
         ? [
@@ -40,7 +54,8 @@ const DeploymentDetails: React.FC<Props> = ({
             {
               id: "description",
               name: t("Description"),
-              value: selectedDeployment.description || t("N/A"),
+              value: updatedDescription,
+              type: "textbox",
             },
             {
               id: "project",
@@ -72,7 +87,7 @@ const DeploymentDetails: React.FC<Props> = ({
             },
           ]
         : undefined,
-    [t, selectedDeployment],
+    [t, selectedDeployment, updatedDescription],
   );
 
   return (
@@ -82,16 +97,24 @@ const DeploymentDetails: React.FC<Props> = ({
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeft />
           </Button>
-          <Button variant="destructive" onClick={handleDeploymentDelete}>
+          <Button variant="destructive" onClick={handleDelete}>
             {t("Delete Deployment")}
           </Button>
         </div>
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
-          <DetailsBox title={t("Deployment Details")} content={details} />
-          {/* <div className="max-h-[50vh] overflow-auto">
-            <LogConsole />
-          </div> */}
+          <DetailsBox
+            title={t("Deployment Details")}
+            content={details}
+            onContentChange={handleDescriptionChange}
+          />
+          <Button
+            variant="default"
+            className="self-end"
+            disabled={updatedDescription === selectedDeployment.description}
+            onClick={handleUpdate}>
+            {t("Update Deployment")}
+          </Button>
         </div>
       </div>
     )
