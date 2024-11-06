@@ -59,6 +59,10 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, o
 		return nil, fmt.Errorf("permission denied")
 	}
 
+	if err := i.CanWriteWorkspace(p.WorkspaceID, operator); err != nil {
+		return nil, err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return

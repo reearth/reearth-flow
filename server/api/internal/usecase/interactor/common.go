@@ -99,12 +99,16 @@ func workspaceMemberCountEnforcer(_ *repo.Container) accountinteractor.Workspace
 	}
 }
 
-func checkPermissionClient(client any) (*infraPermission.PermissionChecker, bool) {
+type PermissionChecker interface {
+	CheckPermission(ctx context.Context, resource string, action string) (bool, error)
+}
+
+func checkPermissionClient(client any) (PermissionChecker, bool) {
 	if client == nil {
 		return nil, false
 	}
 
-	adapter, ok := client.(*infraPermission.PermissionChecker)
+	adapter, ok := client.(PermissionChecker)
 	if !ok || adapter == nil {
 		return nil, false
 	}
