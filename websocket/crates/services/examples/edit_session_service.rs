@@ -5,9 +5,8 @@ use flow_websocket_infra::persistence::{
         flow_project_redis_data_manager::FlowProjectRedisDataManager, redis_client::RedisClient,
     },
 };
-use flow_websocket_services::{
-    manage_project_edit_session::{ManageEditSessionService, SessionCommand},
-    types::ManageProjectEditSessionTaskData,
+use flow_websocket_services::manage_project_edit_session::{
+    ManageEditSessionService, SessionCommand,
 };
 use std::sync::Arc;
 use tokio::sync::mpsc;
