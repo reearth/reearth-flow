@@ -36,13 +36,13 @@ const DeployDialog: React.FC<Props> = ({
   const t = useT();
   const [currentProject] = useCurrentProject();
 
-  const [description, setDescription] = useState<string>(
-    currentProject?.description ?? "",
-  );
-
   const deployment = useMemo(
     () => currentProject?.deployment,
     [currentProject?.deployment],
+  );
+
+  const [description, setDescription] = useState<string>(
+    deployment?.description ?? "",
   );
 
   const handleWorkflowDeployment = useCallback(
