@@ -39,10 +39,6 @@ const DeploymentManager: React.FC = () => {
       accessorKey: "updatedAt",
       header: t("Updated At"),
     },
-    {
-      accessorKey: "actions",
-      header: t("Actions"),
-    },
   ];
 
   return selectedDeployment ? (
