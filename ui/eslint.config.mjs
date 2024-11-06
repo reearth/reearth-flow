@@ -39,7 +39,7 @@ const graphqlConfig = {
     },
   },
   rules: {
-    ...graphql.flatConfigs["operations-recommended"].rules,
+    ...graphql.configs["flat/operations-recommended"],
     "@typescript-eslint/consistent-type-assertions": "off",
     "@graphql-eslint/require-selections": "off",
     "@graphql-eslint/no-unused-fragments": "off",

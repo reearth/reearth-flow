@@ -1,5 +1,6 @@
-use crate::utils::generate_id;
 use serde::{Deserialize, Serialize};
+
+use crate::generate_id;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
@@ -10,12 +11,12 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(email: String, name: String, tenant_id: String) -> Self {
+    pub fn new(email: String, name: String) -> Self {
         Self {
-            id: generate_id(14, "user"),
+            id: generate_id!("user"),
             email,
             name,
-            tenant_id,
+            tenant_id: generate_id!("tenant"),
         }
     }
 }
@@ -56,25 +57,16 @@ mod tests {
 
     #[test]
     fn test_user_creation() {
-        let user = User::new(
-            "test@example.com".to_string(),
-            "Test User".to_string(),
-            "tenant123".to_string(),
-        );
+        let user = User::new("test@example.com".to_string(), "Test User".to_string());
 
         assert!(user.id.starts_with("user"));
         assert_eq!(user.email, "test@example.com");
         assert_eq!(user.name, "Test User");
-        assert_eq!(user.tenant_id, "tenant123");
     }
 
     #[test]
     fn test_user_claims_conversion() {
-        let user = User::new(
-            "test@example.com".to_string(),
-            "Test User".to_string(),
-            "tenant123".to_string(),
-        );
+        let user = User::new("test@example.com".to_string(), "Test User".to_string());
 
         let claims: UserClaims = user.clone().into();
         assert_eq!(claims.sub, user.id);

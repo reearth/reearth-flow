@@ -1,10 +1,10 @@
 use std::cmp::min;
 
-use uuid::Uuid;
-
-pub fn generate_id(length: usize, prefix: &str) -> String {
-    let _ = length;
-    format!("{}{}", prefix, Uuid::new_v4())
+#[macro_export]
+macro_rules! generate_id {
+    ($prefix:expr) => {
+        format!("{}{}", $prefix, uuid::Uuid::new_v4())
+    };
 }
 
 #[inline]

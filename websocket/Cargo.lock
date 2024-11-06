@@ -66,7 +66,10 @@ dependencies = [
  "axum",
  "dotenv",
  "envy",
- "redis 0.25.4",
+ "flow-websocket-domain",
+ "flow-websocket-infra",
+ "flow-websocket-services",
+ "redis 0.27.5",
  "serde",
  "serde_json",
  "thiserror",
@@ -374,6 +377,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
+name = "bb8"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d89aabfae550a5c44b43ab941844ffcd2e993cb6900b342debf59e9ea74acdb8"
+dependencies = [
+ "async-trait",
+ "futures-util",
+ "parking_lot",
+ "tokio",
+]
+
+[[package]]
+name = "bb8-redis"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1781f22daa0ae97d934fdf04a5c66646f154a164c4bdc157ec8d3c11166c05cc"
+dependencies = [
+ "async-trait",
+ "bb8",
+ "redis 0.27.5",
+]
+
+[[package]]
 name = "bitflags"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -645,10 +671,11 @@ dependencies = [
  "async-trait",
  "chrono",
  "mockall",
- "redis 0.25.4",
+ "redis 0.27.5",
  "serde",
  "thiserror",
  "tokio",
+ "tracing",
  "uuid",
 ]
 
@@ -660,12 +687,14 @@ dependencies = [
  "axum",
  "axum-extra",
  "axum-macros",
+ "bb8",
+ "bb8-redis",
  "chrono",
  "flow-websocket-domain",
  "google-cloud-storage",
  "lru",
  "mockall",
- "redis 0.25.4",
+ "redis 0.27.5",
  "rslock",
  "serde",
  "serde_json",
@@ -688,6 +717,8 @@ dependencies = [
  "axum",
  "axum-extra",
  "axum-macros",
+ "bb8",
+ "bb8-redis",
  "chrono",
  "flow-websocket-domain",
  "flow-websocket-infra",
@@ -1687,15 +1718,17 @@ dependencies = [
 
 [[package]]
 name = "redis"
-version = "0.25.4"
+version = "0.27.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0d7a6955c7511f60f3ba9e86c6d02b3c3f144f8c24b288d1f4e18074ab8bbec"
+checksum = "81cccf17a692ce51b86564334614d72dcae1def0fd5ecebc9f02956da74352b5"
 dependencies = [
+ "arc-swap",
  "async-trait",
  "bytes",
  "combine",
  "futures-util",
  "itoa",
+ "num-bigint",
  "percent-encoding",
  "pin-project-lite",
  "ryu",
