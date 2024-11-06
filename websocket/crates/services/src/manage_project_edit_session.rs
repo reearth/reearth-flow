@@ -64,6 +64,11 @@ pub enum SessionCommand {
     ListAllSnapshotsVersions {
         project_id: String,
     },
+    PushUpdate {
+        project_id: String,
+        update: Vec<u8>,
+        updated_by: Option<String>,
+    },
 }
 
 #[automock]
@@ -118,6 +123,9 @@ where
                                     debug!("Client count increased to: {:?}", *count);
                                 }
                             }
+                        },
+                        SessionCommand::PushUpdate { project_id, update, updated_by } => {
+                            self.push_update(&project_id, update, updated_by).await?;
                         },
                         SessionCommand::End { project_id, user } => {
                             if let Some(task_data) = self.get_task_data(&project_id).await {
@@ -243,6 +251,18 @@ where
 
         sleep(JOB_COMPLETION_DELAY).await;
 
+        Ok(())
+    }
+
+    pub async fn push_update(
+        &self,
+        project_id: &str,
+        update: Vec<u8>,
+        updated_by: Option<String>,
+    ) -> Result<(), ProjectServiceError> {
+        self.project_service
+            .push_update_to_redis_stream(project_id, update, updated_by)
+            .await?;
         Ok(())
     }
 }

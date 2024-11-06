@@ -13,6 +13,7 @@ use axum::{
 };
 use flow_websocket_domain::user::User;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
+use flow_websocket_services::ManageProjectEditSessionTaskData;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace};
@@ -86,6 +87,38 @@ async fn handle_socket(
         return;
     }
 
+    // Add task data for the room
+    let task_data = ManageProjectEditSessionTaskData {
+        project_id: room_id.clone(),
+        last_merged_at: Arc::new(tokio::sync::RwLock::new(None)),
+        last_snapshot_at: Arc::new(tokio::sync::RwLock::new(None)),
+        clients_disconnected_at: Arc::new(tokio::sync::RwLock::new(None)),
+        client_count: Arc::new(tokio::sync::RwLock::new(Some(0))),
+    };
+
+    let (tx, rx) = mpsc::channel(32);
+
+    // Initialize session management
+    tx.send(SessionCommand::AddTask { task_data })
+        .await
+        .unwrap();
+    tx.send(SessionCommand::Start {
+        project_id: room_id.clone(),
+        user: user.clone(),
+    })
+    .await
+    .unwrap();
+
+    // Spawn service processor
+    tokio::spawn({
+        let service = state.service.clone();
+        async move {
+            if let Err(e) = service.process(rx).await {
+                error!("Error processing session commands: {:?}", e);
+            }
+        }
+    });
+
     while let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
             match handle_message(msg, addr, &room_id, state.clone(), user.clone()).await {
@@ -131,7 +164,6 @@ async fn handle_message(
             Ok(None)
         }
         Message::Binary(d) => {
-            // TODO: handle binary message
             trace!("{} sent {} bytes: {:?}", addr, d.len(), d);
             if d.len() < 3 {
                 return Ok(None);
@@ -142,31 +174,59 @@ async fn handle_message(
                 .get(room_id)
                 .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
 
-            let (tx, _rx) = mpsc::channel(32);
+            let (tx, rx) = mpsc::channel(32);
 
-            tx.send(SessionCommand::Start {
+            // Send update to session service
+            tx.send(SessionCommand::PushUpdate {
                 project_id: room_id.to_string(),
-                user: user.clone(),
+                update: d,
+                updated_by: Some(user.name.clone()),
             })
             .await
             .unwrap();
+
+            // Process the update
+            tokio::spawn({
+                let service = state.service.clone();
+                async move {
+                    if let Err(e) = service.process(rx).await {
+                        error!("Error processing update: {:?}", e);
+                    }
+                }
+            });
+
             Ok(None)
         }
         Message::Close(c) => {
-            // TODO: handle close message
             if let Some(cf) = c {
-                println!(
+                debug!(
                     ">>> {} sent close with code {} and reason `{}`",
                     addr, cf.code, cf.reason
                 );
 
                 let (tx, rx) = mpsc::channel(32);
+
+                // End and complete the session
                 tx.send(SessionCommand::End {
+                    project_id: room_id.to_string(),
+                    user: user.clone(),
+                })
+                .await
+                .unwrap();
+
+                tx.send(SessionCommand::RemoveTask {
+                    project_id: room_id.to_string(),
+                })
+                .await
+                .unwrap();
+
+                tx.send(SessionCommand::Complete {
                     project_id: room_id.to_string(),
                     user,
                 })
                 .await
                 .unwrap();
+
                 tokio::spawn({
                     let service = state.service.clone();
                     async move {

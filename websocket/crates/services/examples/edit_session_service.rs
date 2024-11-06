@@ -92,6 +92,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })
     .await?;
 
+    // Push update
+    tx.send(SessionCommand::PushUpdate {
+        project_id: project_id.clone(),
+        update: vec![1, 2, 3],
+        updated_by: Some(test_user.name.clone()),
+    })
+    .await?;
+
     // End session
     tx.send(SessionCommand::End {
         project_id: project_id.clone(),
