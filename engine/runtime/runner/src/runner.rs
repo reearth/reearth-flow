@@ -10,6 +10,12 @@ use tracing::{error, info, info_span};
 
 use crate::orchestrator::Orchestrator;
 
+/// Controls the number of worker threads in the Tokio runtime.
+///
+/// # Environment Variable
+/// - FLOW_RUNTIME_WORKER_NUM: Number of worker threads (default: 30)
+///
+/// # Notes
 static WORKER_NUM: Lazy<usize> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_WORKER_NUM")
         .ok()

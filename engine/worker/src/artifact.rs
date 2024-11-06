@@ -49,15 +49,15 @@ pub(crate) async fn upload_artifact(
             async move {
                 let storage = storage_resolver
                     .resolve(uri)
-                    .map_err(crate::errors::Error::failed_to_download_asset_files)?;
+                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
                 let bytes = storage
                     .get(uri.path().as_path())
                     .await
-                    .map_err(crate::errors::Error::failed_to_download_asset_files)?;
+                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
                 let bytes = bytes
                     .bytes()
                     .await
-                    .map_err(crate::errors::Error::failed_to_download_asset_files)?;
+                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
 
                 let s = uri.to_string();
                 let s = s.replace(&local_artifact_root_path.to_string(), "");
@@ -70,11 +70,11 @@ pub(crate) async fn upload_artifact(
                     .map_err(crate::errors::Error::failed_to_upload_artifact)?;
                 let root_storage = storage_resolver
                     .resolve(&location)
-                    .map_err(crate::errors::Error::failed_to_download_asset_files)?;
+                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
                 root_storage
                     .put(location.path().as_path(), Bytes::from(bytes.to_vec()))
                     .await
-                    .map_err(crate::errors::Error::failed_to_download_asset_files)?;
+                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
                 Ok(())
             }
         })
