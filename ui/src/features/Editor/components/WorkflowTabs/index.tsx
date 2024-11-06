@@ -96,7 +96,7 @@ const WorkflowTabs: React.FC<Props> = ({
                           e.key === "Enter" && handleSubmit()
                         }
                         placeholder={t("Set Workflow name")}
-                        className="h-4 text-xs"
+                        className="h-4 text-xs focus-visible:ring-0"
                         onBlur={handleSubmit}
                       />
                     ) : (
