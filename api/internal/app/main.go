@@ -9,6 +9,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
@@ -17,8 +18,6 @@ import (
 	"github.com/reearth/reearthx/log"
 	"golang.org/x/net/http2"
 )
-
-const serviceName = "flow"
 
 func Start(debug bool, version string) {
 	log.Infof("reerath-flow %s", version)
@@ -49,7 +48,7 @@ func Start(debug bool, version string) {
 	repos, gateways, acRepos, acGateways := initReposAndGateways(ctx, conf, debug)
 
 	// PermissionChecker
-	permissionChecker := cerbosClient.NewPermissionChecker(serviceName, conf.DashboardHost)
+	permissionChecker := cerbosClient.NewPermissionChecker(rbac.ServiceName, conf.DashboardHost)
 
 	// Start web server
 	NewServer(ctx, &ServerConfig{

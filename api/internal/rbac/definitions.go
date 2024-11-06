@@ -5,6 +5,11 @@ import (
 )
 
 const (
+	ServiceName   = "flow"
+	PolicyFileDir = "policies"
+)
+
+const (
 	ResourceProject  = "project"
 	ResourceWorkflow = "workflow"
 )
