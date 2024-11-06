@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-import WorkspaceSettings from '@flow/features/WorkspaceSettings'
+import WorkspaceSettings from "@flow/features/WorkspaceSettings";
 
-export const Route = createFileRoute('/workspaces/$workspaceId_/settings/$tab')(
+export const Route = createFileRoute("/workspaces/$workspaceId_/settings/$tab")(
   {
     component: () => <WorkspaceSettings />,
   },
-)
+);

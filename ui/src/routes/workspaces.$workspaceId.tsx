@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-import ProjectsManager from '@flow/features/WorkspaceProjects'
+import ProjectsManager from "@flow/features/WorkspaceProjects";
 
-export const Route = createFileRoute('/workspaces/$workspaceId')({
+export const Route = createFileRoute("/workspaces/$workspaceId")({
   component: () => <ProjectsManager />,
-})
+});
