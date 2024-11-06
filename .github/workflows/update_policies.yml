@@ -35,10 +35,10 @@ jobs:
           echo "$bucket_files"
 
           echo "Local policy files:"
-          local_files=$(ls api/policies/flow_*.yaml || true)
+          local_files=$(ls policies/flow_*.yaml || true)
           echo "$local_files"
 
-          for file in api/policies/flow_*.yaml; do
+          for file in policies/flow_*.yaml; do
             if [ -f "$file" ]; then
               file_name=$(basename "$file")
               echo "Uploading/Updating: $file_name"
@@ -48,7 +48,7 @@ jobs:
 
           for bucket_file in $GCS_BUCKET_PATH/flow_*.yaml; do
             file_name=$(basename "$bucket_file")
-            if [ ! -f "api/policies/$file_name" ] && [[ "$file_name" == flow_* ]]; then
+            if [ ! -f "policies/$file_name" ] && [[ "$file_name" == flow_* ]]; then
               echo "Deleting: $file_name"
               gsutil rm "$bucket_file"
             fi
@@ -56,3 +56,4 @@ jobs:
 
           echo "Sync completed. All files in bucket:"
           gsutil ls $GCS_BUCKET_PATH/ || true
+        working-directory: api
