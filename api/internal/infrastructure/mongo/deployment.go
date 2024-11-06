@@ -82,7 +82,7 @@ func (r *Deployment) Save(ctx context.Context, deployment *deployment.Deployment
 }
 
 func (r *Deployment) Remove(ctx context.Context, id id.DeploymentID) error {
-	return r.client.RemoveOne(ctx, r.writeFilter(bson.M{"id": id.String()}))
+	return r.client.RemoveOne(ctx, bson.M{"id": id.String()})
 }
 
 func (r *Deployment) find(ctx context.Context, filter interface{}) ([]*deployment.Deployment, error) {
