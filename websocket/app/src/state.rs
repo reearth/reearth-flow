@@ -1,4 +1,5 @@
-use super::errors::Result;
+use crate::errors::WsError;
+
 use super::room::Room;
 use flow_websocket_infra::persistence::project_repository::{
     ProjectLocalRepository, ProjectRedisRepository,
@@ -6,9 +7,12 @@ use flow_websocket_infra::persistence::project_repository::{
 use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManager;
 use flow_websocket_infra::persistence::redis::redis_client::RedisClient as FlowRedisClient;
 use flow_websocket_services::manage_project_edit_session::ManageEditSessionService;
+use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 use tokio::sync::Mutex;
+use tracing::error;
 
 type SessionService = ManageEditSessionService<
     ProjectRedisRepository<FlowRedisClient>,
@@ -24,10 +28,11 @@ pub struct AppState {
     pub session_repo: Arc<ProjectRedisRepository<FlowRedisClient>>,
     pub service: Arc<SessionService>,
     pub redis_url: String,
+    pub command_tx: mpsc::Sender<SessionCommand>,
 }
 
 impl AppState {
-    pub async fn new(redis_url: Option<String>) -> Result<Self> {
+    pub async fn new(redis_url: Option<String>) -> Result<Self, WsError> {
         let redis_url = redis_url.unwrap_or_else(|| {
             std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string())
         });
@@ -50,6 +55,15 @@ impl AppState {
             Arc::new(redis_data_manager),
         ));
 
+        let (tx, rx) = mpsc::channel(32);
+
+        let service_clone = service.clone();
+        tokio::spawn(async move {
+            if let Err(e) = service_clone.process(rx).await {
+                error!("Service processing error: {:?}", e);
+            }
+        });
+
         Ok(AppState {
             rooms: Arc::new(Mutex::new(HashMap::new())),
             redis_client: Arc::try_unwrap(redis_client).unwrap_or_else(|arc| (*arc).clone()),
@@ -57,17 +71,18 @@ impl AppState {
             session_repo,
             service,
             redis_url,
+            command_tx: tx,
         })
     }
 
     // Room related methods
-    pub fn make_room(&self, room_id: String) -> Result<()> {
+    pub fn make_room(&self, room_id: String) -> Result<(), tokio::sync::TryLockError> {
         let mut rooms = self.rooms.try_lock()?;
         rooms.insert(room_id, Room::new());
         Ok(())
     }
 
-    pub fn delete_room(&self, id: String) -> Result<()> {
+    pub fn delete_room(&self, id: String) -> Result<(), tokio::sync::TryLockError> {
         let mut rooms = self.rooms.try_lock()?;
         rooms.remove(&id);
         Ok(())

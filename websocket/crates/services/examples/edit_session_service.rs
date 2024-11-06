@@ -62,16 +62,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Simulate session lifecycle
     debug!("Starting session simulation");
 
-    // Add task data
-    let task_data = ManageProjectEditSessionTaskData {
+    tx.send(SessionCommand::AddTask {
         project_id: project_id.clone(),
-        last_merged_at: Arc::new(tokio::sync::RwLock::new(None)),
-        last_snapshot_at: Arc::new(tokio::sync::RwLock::new(None)),
-        clients_disconnected_at: Arc::new(tokio::sync::RwLock::new(None)),
-        client_count: Arc::new(tokio::sync::RwLock::new(Some(0))),
-    };
-
-    tx.send(SessionCommand::AddTask { task_data }).await?;
+    })
+    .await?;
 
     // Start session
     tx.send(SessionCommand::Start {

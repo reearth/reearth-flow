@@ -10,6 +10,7 @@ use flow_websocket_infra::persistence::{
     project_repository::ProjectRepositoryError, redis::errors::FlowProjectRedisDataManagerError,
 };
 use mockall::automock;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
@@ -38,7 +39,7 @@ where
     tasks: Arc<Mutex<HashMap<String, ManageProjectEditSessionTaskData>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SessionCommand {
     Start {
         project_id: String,
@@ -56,7 +57,7 @@ pub enum SessionCommand {
         project_id: String,
     },
     AddTask {
-        task_data: ManageProjectEditSessionTaskData,
+        project_id: String,
     },
     RemoveTask {
         project_id: String,
@@ -182,7 +183,8 @@ where
                         SessionCommand::CheckStatus { project_id } => {
                             debug!("Checking session status for project: {}", project_id);
                         },
-                        SessionCommand::AddTask { task_data } => {
+                        SessionCommand::AddTask { project_id } => {
+                            let task_data = ManageProjectEditSessionTaskData::new(project_id);
                             let mut tasks = self.tasks.lock().await;
                             tasks.insert(task_data.project_id.clone(), task_data.clone());
                             debug!("Added task for project: {}", task_data.project_id);

@@ -12,17 +12,12 @@ pub struct ManageProjectEditSessionTaskData {
 }
 
 impl ManageProjectEditSessionTaskData {
-    pub fn new(
-        project_id: String,
-        last_merged_at: Option<DateTime<Utc>>,
-        last_snapshot_at: Option<DateTime<Utc>>,
-        clients_disconnected_at: Option<DateTime<Utc>>,
-    ) -> Self {
+    pub fn new(project_id: String) -> Self {
         Self {
             project_id,
-            last_merged_at: Arc::new(RwLock::new(last_merged_at)),
-            last_snapshot_at: Arc::new(RwLock::new(last_snapshot_at)),
-            clients_disconnected_at: Arc::new(RwLock::new(clients_disconnected_at)),
+            last_merged_at: Arc::new(RwLock::new(None)),
+            last_snapshot_at: Arc::new(RwLock::new(None)),
+            clients_disconnected_at: Arc::new(RwLock::new(None)),
             client_count: Arc::new(RwLock::new(None)),
         }
     }

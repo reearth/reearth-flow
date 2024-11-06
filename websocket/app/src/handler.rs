@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use super::errors::{Result, WsError};
+use super::errors::WsError;
 use super::state::AppState;
 use axum::extract::{Path, Query};
 use axum::http::{Method, StatusCode, Uri};
@@ -13,7 +13,6 @@ use axum::{
 };
 use flow_websocket_domain::user::User;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
-use flow_websocket_services::ManageProjectEditSessionTaskData;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace};
@@ -26,9 +25,10 @@ enum Event {
     Emit { data: String },
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct FlowMessage {
     event: Event,
+    session_command: Option<SessionCommand>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -87,21 +87,8 @@ async fn handle_socket(
         return;
     }
 
-    // Add task data for the room
-    let task_data = ManageProjectEditSessionTaskData {
-        project_id: room_id.clone(),
-        last_merged_at: Arc::new(tokio::sync::RwLock::new(None)),
-        last_snapshot_at: Arc::new(tokio::sync::RwLock::new(None)),
-        clients_disconnected_at: Arc::new(tokio::sync::RwLock::new(None)),
-        client_count: Arc::new(tokio::sync::RwLock::new(Some(0))),
-    };
-
     let (tx, rx) = mpsc::channel(32);
 
-    // Initialize session management
-    tx.send(SessionCommand::AddTask { task_data })
-        .await
-        .unwrap();
     tx.send(SessionCommand::Start {
         project_id: room_id.clone(),
         user: user.clone(),
@@ -121,7 +108,7 @@ async fn handle_socket(
 
     while let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
-            match handle_message(msg, addr, &room_id, state.clone(), user.clone()).await {
+            match handle_message(msg, addr, &room_id, None, state.clone(), user.clone()).await {
                 Ok(Some(msg)) => {
                     let _ = socket.send(Message::Binary(msg.into())).await;
                     continue;
@@ -143,9 +130,10 @@ async fn handle_message(
     msg: Message,
     addr: SocketAddr,
     room_id: &str,
+    project_id: Option<String>,
     state: Arc<AppState>,
     user: User,
-) -> Result<Option<Message>> {
+) -> Result<Option<Message>, WsError> {
     match msg {
         Message::Text(t) => {
             let msg: FlowMessage = match serde_json::from_str(&t) {
@@ -158,9 +146,14 @@ async fn handle_message(
 
             match msg.event {
                 Event::Join { room_id } => state.join(&room_id).await?,
-                Event::Leave => state.leave(room_id).await?,
-                Event::Emit { data } => state.emit(&data).await?,
+                Event::Leave => state.leave(room_id).await,
+                Event::Emit { data } => state.emit(&data).await,
             };
+
+            if let Some(command) = msg.session_command {
+                state.command_tx.send(command).await?;
+            }
+
             Ok(None)
         }
         Message::Binary(d) => {
@@ -174,26 +167,14 @@ async fn handle_message(
                 .get(room_id)
                 .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
 
-            let (tx, rx) = mpsc::channel(32);
-
-            // Send update to session service
-            tx.send(SessionCommand::PushUpdate {
-                project_id: room_id.to_string(),
-                update: d,
-                updated_by: Some(user.name.clone()),
-            })
-            .await
-            .unwrap();
-
-            // Process the update
-            tokio::spawn({
-                let service = state.service.clone();
-                async move {
-                    if let Err(e) = service.process(rx).await {
-                        error!("Error processing update: {:?}", e);
-                    }
-                }
-            });
+            state
+                .command_tx
+                .send(SessionCommand::PushUpdate {
+                    project_id: room_id.to_string(),
+                    update: d,
+                    updated_by: Some(user.name.clone()),
+                })
+                .await?;
 
             Ok(None)
         }
@@ -204,37 +185,20 @@ async fn handle_message(
                     addr, cf.code, cf.reason
                 );
 
-                let (tx, rx) = mpsc::channel(32);
+                if let Some(project_id) = project_id {
+                    state
+                        .command_tx
+                        .send(SessionCommand::End {
+                            project_id: project_id.clone(),
+                            user: user.clone(),
+                        })
+                        .await?;
 
-                // End and complete the session
-                tx.send(SessionCommand::End {
-                    project_id: room_id.to_string(),
-                    user: user.clone(),
-                })
-                .await
-                .unwrap();
-
-                tx.send(SessionCommand::RemoveTask {
-                    project_id: room_id.to_string(),
-                })
-                .await
-                .unwrap();
-
-                tx.send(SessionCommand::Complete {
-                    project_id: room_id.to_string(),
-                    user,
-                })
-                .await
-                .unwrap();
-
-                tokio::spawn({
-                    let service = state.service.clone();
-                    async move {
-                        if let Err(e) = service.process(rx).await {
-                            error!("Error processing session end: {:?}", e);
-                        }
-                    }
-                });
+                    state
+                        .command_tx
+                        .send(SessionCommand::RemoveTask { project_id })
+                        .await?;
+                }
             }
             Ok(None)
         }
@@ -257,24 +221,24 @@ impl AppState {
         unimplemented!()
     }
 
-    async fn join(&self, room_id: &str) -> Result<()> {
+    async fn join(&self, room_id: &str) -> Result<(), WsError> {
         let mut rooms = self.rooms.try_lock()?;
         let room = rooms
             .get_mut(room_id)
             .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
-        room.join("brabrabra".to_string()).await?;
+        room.join("brabrabra".to_string()).await;
         Ok(())
     }
 
-    async fn leave(&self, _room_id: &str) -> Result<()> {
+    async fn leave(&self, _room_id: &str) {
         unimplemented!()
     }
 
-    async fn emit(&self, _data: &str) -> Result<()> {
+    async fn emit(&self, _data: &str) {
         unimplemented!()
     }
 
-    async fn _timeout(&self) -> Result<()> {
+    async fn _timeout(&self) {
         unimplemented!()
     }
 }
