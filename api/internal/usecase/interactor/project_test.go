@@ -12,6 +12,7 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
 	"github.com/reearth/reearthx/account/accountusecase"
+	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 	"github.com/samber/lo"
@@ -32,7 +33,7 @@ func setupProject(t *testing.T, permissionChecker *mockPermissionChecker) *Proje
 func TestProject_Create(t *testing.T) {
 	ctx := context.Background()
 
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
 		return true, nil
 	})
 
@@ -104,7 +105,7 @@ func TestProject_Create(t *testing.T) {
 					WritableWorkspaces: workspace.IDList{ws.ID()},
 				},
 			},
-			permission: NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+			permission: NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
 				return false, nil
 			}),
 			wantErr: errors.New("permission denied"),
