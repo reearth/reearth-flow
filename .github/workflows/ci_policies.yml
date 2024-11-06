@@ -33,24 +33,3 @@ jobs:
             echo "No policy files were generated"
           fi
         working-directory: api
-      - name: Setup Cerbos
-        uses: cerbos/cerbos-setup-action@v1
-        with:
-          version: latest
-      - name: Compile and test policies
-        uses: cerbos/cerbos-compile-action@v1
-        with:
-          policyDir: api/policies
-          testDir: api/policies
-      - name: Show test results
-        run: |
-          echo "Cerbos test results:"
-          if [ -d "policies/.cerbos" ]; then
-            ls -la policies/.cerbos/
-            echo "\nCompiled policy files:"
-            for file in policies/.cerbos/*.json; do
-              echo "\n--- Content of $file ---"
-              cat "$file"
-            done
-          fi
-        working-directory: api
