@@ -4,11 +4,6 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait RedisKeyManager: Send + Sync {
     fn project_prefix(&self, project_id: &str) -> String;
-    fn session_prefix(
-        &self,
-        project_id: &str,
-        session_id: Option<&str>,
-    ) -> Result<String, FlowProjectRedisDataManagerError>;
     fn active_editing_session_id_key(&self, project_id: &str) -> String;
     fn state_key(&self, project_id: &str) -> Result<String, FlowProjectRedisDataManagerError>;
     fn state_updated_by_key(

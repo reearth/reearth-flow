@@ -107,18 +107,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })
     .await?;
 
-    // Remove task
-    tx.send(SessionCommand::RemoveTask {
-        project_id: project_id.clone(),
-    })
-    .await?;
+    // // Remove task
+    // tx.send(SessionCommand::RemoveTask {
+    //     project_id: project_id.clone(),
+    // })
+    // .await?;
 
-    // Complete session
-    tx.send(SessionCommand::Complete {
-        project_id,
-        user: test_user,
-    })
-    .await?;
+    // // Complete session
+    // tx.send(SessionCommand::Complete {
+    //     project_id,
+    //     user: test_user,
+    // })
+    // .await?;
 
     // Drop sender to terminate service
     drop(tx);

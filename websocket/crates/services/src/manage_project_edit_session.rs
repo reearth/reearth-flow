@@ -143,9 +143,16 @@ where
                                 }
 
                                 if let Some(mut session) = self.get_latest_session(&project_id).await? {
-                                    if let Ok(()) = self.end_editing_session_if_conditions_met(&mut session, &task_data).await {
-                                        debug!("Session ended by user: {} for project: {}", user.name, project_id);
-                                        break;
+                                    debug!("Checking if job is complete for project: {}", project_id);
+                                    match self.complete_job_if_met_requirements(&mut session).await {
+                                        Ok(()) => {
+                                            debug!("Session ended by user: {} for project: {}", user.name, project_id);
+                                            break;
+                                        }
+                                        Err(e) => {
+                                            debug!("Failed to complete job: {:?}", e);
+                                            return Err(e);
+                                        }
                                     }
                                 }
                             }
@@ -159,9 +166,15 @@ where
 
                         SessionCommand::Complete { project_id, user } => {
                             if let Some(mut session) = self.get_latest_session(&project_id).await? {
-                                if let Ok(()) = self.complete_job_if_met_requirements(&mut session).await {
-                                    debug!("Job completed by user: {} for project: {}", user.name, project_id);
-                                    break;
+                                match self.complete_job_if_met_requirements(&mut session).await {
+                                    Ok(()) => {
+                                        debug!("Job completed by user: {} for project: {}", user.name, project_id);
+                                        break;
+                                    }
+                                    Err(e) => {
+                                        debug!("Failed to complete job: {:?}", e);
+                                        return Err(e);
+                                    }
                                 }
                             }
                         },
@@ -248,6 +261,8 @@ where
         self.project_service
             .end_session("system".to_string(), session.clone())
             .await?;
+
+        debug!("Job completed for project: {}", session.project_id);
 
         sleep(JOB_COMPLETION_DELAY).await;
 
