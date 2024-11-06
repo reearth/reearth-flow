@@ -10,23 +10,54 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
       - name: set up
         uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: false
-      - name: Generate policies
-        run: make gen-policies
+
+      - name: Debug Environment
+        run: |
+          echo "Current directory structure:"
+          pwd
+          ls -la
+          echo "\nGo environment:"
+          go env
+          echo "\nGo modules:"
+          go list -m all
         working-directory: api
+
+      - name: Prepare policy generation
+        run: |
+          mkdir -p policies
+          chmod 755 policies
+        working-directory: api
+
+      - name: Generate policies
+        run: |
+          echo "Starting policy generation..."
+          make gen-policies
+          echo "Policy generation completed"
+        working-directory: api
+
       - name: List generated policy files
         run: |
-          echo "Generated policy files:"
-          ls -la api/policies/
-          echo "\nContent of policy files:"
-          for file in api/policies/*.yaml; do
-            echo "\n--- Content of $file ---"
-            cat "$file"
-          done
+          echo "Generated policy files in api/policies/:"
+          ls -la policies/ || echo "No files found"
+          if [ -d "policies" ] && [ "$(ls -A policies/)" ]; then
+            echo "\nContent of policy files:"
+            for file in policies/*.yaml; do
+              echo "\n--- Content of $file ---"
+              cat "$file"
+            done
+          else
+            echo "No policy files were generated"
+          fi
+        working-directory: api
+
       - name: Setup Cerbos
         uses: cerbos/cerbos-setup-action@v1
         with:
@@ -38,11 +69,12 @@ jobs:
       - name: Show test results
         run: |
           echo "Cerbos test results:"
-          if [ -d "api/policies/.cerbos" ]; then
-            ls -la api/policies/.cerbos/
+          if [ -d "policies/.cerbos" ]; then
+            ls -la policies/.cerbos/
             echo "\nCompiled policy files:"
-            for file in api/policies/.cerbos/*.json; do
+            for file in policies/.cerbos/*.json; do
               echo "\n--- Content of $file ---"
               cat "$file"
             done
           fi
+        working-directory: api
