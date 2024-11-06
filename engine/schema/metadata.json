@@ -2,8 +2,11 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Metadata",
   "type": "object",
-  "required": ["assets", "jobId", "timestamps"],
+  "required": ["artifactRootUrl", "assets", "jobId", "timestamps"],
   "properties": {
+    "artifactRootUrl": {
+      "type": "string"
+    },
     "assets": {
       "$ref": "#/definitions/Asset"
     },
