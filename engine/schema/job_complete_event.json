@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JobCompleteEvent",
+  "type": "object",
+  "required": ["jobId", "result", "timestamp", "workflowId"],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "result": {
+      "$ref": "#/definitions/JobResult"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "workflowId": {
+      "type": "string",
+      "format": "uuid"
+    }
+  },
+  "definitions": {
+    "JobResult": {
+      "type": "string",
+      "enum": ["success", "failed"]
+    }
+  }
+}

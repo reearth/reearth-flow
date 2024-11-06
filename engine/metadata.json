@@ -1,0 +1,11 @@
+{
+  "jobId": "5566c900-9581-4c5c-be02-fd13e4d93669",
+  "assets": {
+    "baseUrl": "gs://hope-stg-reearth-flow-assets",
+    "files": ["assets/01_共通.tsv", "assets/01_copy.tsv"]
+  },
+  "artifactBaseUrl": "gs://hope-stg-reearth-flow-assets/artifacts",
+  "timestamps": {
+    "created": "2024-10-29T03:55:00Z"
+  }
+}
