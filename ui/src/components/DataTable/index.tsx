@@ -46,6 +46,7 @@ type DataTableProps<TData, TValue> = {
   enablePagination?: boolean;
   pageSize?: number;
   rowHeight?: number;
+  onRowClick?: (row: TData) => void;
 };
 
 function DataTable<TData, TValue>({
@@ -56,6 +57,7 @@ function DataTable<TData, TValue>({
   enablePagination = false,
   pageSize = 10,
   rowHeight,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -161,7 +163,11 @@ function DataTable<TData, TValue>({
                   <TableRow
                     key={row.id}
                     className={`${rowHeight ? "h-" + rowHeight : "h-10"}`}
-                    data-state={row.getIsSelected() && "selected"}>
+                    data-state={row.getIsSelected() && "selected"}
+                    onClick={() => {
+                      row.toggleSelected();
+                      onRowClick?.(row.original);
+                    }}>
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
                         {flexRender(

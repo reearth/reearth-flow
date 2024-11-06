@@ -5,7 +5,7 @@ import { RunsTable } from "./RunsTable";
 type Props = {
   label: string;
   runs: Run[];
-  onRunSelect: (run: Run) => void;
+  onRunSelect: (runId: string) => void;
 };
 
 const StatusContent: React.FC<Props> = ({ label, runs, onRunSelect }) => (
@@ -14,7 +14,7 @@ const StatusContent: React.FC<Props> = ({ label, runs, onRunSelect }) => (
       <p className="text-xl dark:font-extralight">{label}</p>
     </div>
     <div className="w-full border-b" />
-    <div className="mt-4 flex max-w-[1200px] flex-col gap-6">
+    <div className="mt-4 flex flex-col gap-6">
       <div className="min-h-[50vh] overflow-auto rounded-md">
         <RunsTable runs={runs} onRunSelect={onRunSelect} />
       </div>

@@ -1,17 +1,29 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useDeployment } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Deployment } from "@flow/types";
+import { lastOfUrl as getDeploymentId } from "@flow/utils";
+
+import { RouteOption } from "../WorkspaceLeftPanel";
 
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
-  const [workspace] = useCurrentWorkspace();
+  const navigate = useNavigate();
 
-  const { useGetDeploymentsInfinite } = useDeployment();
+  const [currentWorkspace] = useCurrentWorkspace();
+
+  const { useGetDeploymentsInfinite, useDeleteDeployment } = useDeployment();
 
   const { pages, hasNextPage, isFetching, fetchNextPage } =
-    useGetDeploymentsInfinite(workspace?.id);
+    useGetDeploymentsInfinite(currentWorkspace?.id);
+
+  const {
+    location: { pathname },
+  } = useRouterState();
+
+  const tab = getTab(pathname);
 
   const deployments: Deployment[] | undefined = useMemo(
     () =>
@@ -23,6 +35,24 @@ export default () => {
       }, [] as Deployment[]),
     [pages],
   );
+
+  const selectedDeployment = useMemo(
+    () => deployments?.find((deployment) => deployment.id === tab),
+    [tab, deployments],
+  );
+
+  const handleDeploymentSelect = useCallback(
+    (deployment: Deployment) =>
+      navigate({
+        to: `/workspaces/${currentWorkspace?.id}/deployments/${deployment.id}`,
+      }),
+    [currentWorkspace, navigate],
+  );
+
+  const handleDeploymentDelete = useCallback(() => {
+    if (!selectedDeployment || !currentWorkspace) return;
+    useDeleteDeployment(selectedDeployment.id, currentWorkspace.id);
+  }, [selectedDeployment, currentWorkspace, useDeleteDeployment]);
 
   // Auto fills the page
   useEffect(() => {
@@ -53,7 +83,13 @@ export default () => {
   }, [isFetching, fetchNextPage, hasNextPage]);
 
   return {
-    deployments,
     ref,
+    deployments,
+    selectedDeployment,
+    handleDeploymentSelect,
+    handleDeploymentDelete,
   };
 };
+
+const getTab = (pathname: string): RouteOption =>
+  pathname.includes("all") ? "all" : getDeploymentId(pathname);

@@ -4,12 +4,15 @@ import { useCallback, useMemo } from "react";
 import { useT } from "@flow/lib/i18n";
 import { runs as mockRuns } from "@flow/mock_data/runsData";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Run } from "@flow/types";
+import { lastOfUrl as getRunId } from "@flow/utils";
 
 import { RouteOption } from "../WorkspaceLeftPanel";
 
 export default () => {
   const t = useT();
+  const navigate = useNavigate();
+
+  const [currentWorkspace] = useCurrentWorkspace();
 
   const {
     location: { pathname },
@@ -17,18 +20,15 @@ export default () => {
 
   const tab = getTab(pathname);
 
-  const navigate = useNavigate();
-  const [currentWorkspace] = useCurrentWorkspace();
-
   const selectedRun = useMemo(
     () => mockRuns.find((run) => run.id === tab),
     [tab],
   );
 
   const handleRunSelect = useCallback(
-    (run: Run) =>
+    (runId: string) =>
       navigate({
-        to: `/workspaces/${currentWorkspace?.id}/runs/${run.id}`,
+        to: `/workspaces/${currentWorkspace?.id}/runs/${runId}`,
       }),
     [currentWorkspace, navigate],
   );
@@ -76,8 +76,3 @@ const getTab = (pathname: string): RouteOption =>
           : pathname.includes("all")
             ? "all"
             : getRunId(pathname);
-
-const getRunId = (url: string) => {
-  const parts = url.split("/");
-  return parts[parts.length - 1];
-};

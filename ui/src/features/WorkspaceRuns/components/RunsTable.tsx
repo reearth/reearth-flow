@@ -33,7 +33,7 @@ import { Run } from "@flow/types";
 type Props = {
   runs: Run[];
   rowSelection?: RowSelectionState;
-  onRunSelect?: (run: Run) => void;
+  onRunSelect?: (runId: string) => void;
 };
 
 const RunsTable: React.FC<Props> = ({ runs, onRunSelect }) => {
@@ -169,7 +169,7 @@ const RunsTable: React.FC<Props> = ({ runs, onRunSelect }) => {
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => {
                     row.toggleSelected();
-                    onRunSelect?.(row.original);
+                    onRunSelect?.(row.original.id);
                   }}
                   onSelect={(s) => console.log("S", s)}>
                   {row.getVisibleCells().map((cell) => (
