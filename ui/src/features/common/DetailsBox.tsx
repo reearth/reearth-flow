@@ -60,7 +60,7 @@ const DetailsBox: React.FC<Props> = ({ title, content }) => {
             </p>
           ))
         ) : (
-          <p>{t("No Content to be displayed")}</p>
+          <p>{t("No content to display")}</p>
         )}
       </div>
     </div>
