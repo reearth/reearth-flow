@@ -13,6 +13,7 @@ impl From<LockError> for GlobalLockError {
     }
 }
 
+#[derive(Clone)]
 pub struct FlowProjectLock {
     lock_manager: LockManager,
 }
