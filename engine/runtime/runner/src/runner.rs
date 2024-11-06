@@ -1,5 +1,6 @@
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{collections::HashMap, env, sync::Arc, time::Instant};
 
+use once_cell::sync::Lazy;
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_runtime::{event::EventHandler, node::NodeKind, shutdown};
 use reearth_flow_state::State;
@@ -8,6 +9,19 @@ use reearth_flow_types::workflow::Workflow;
 use tracing::{error, info, info_span};
 
 use crate::orchestrator::Orchestrator;
+
+/// Controls the number of worker threads in the Tokio runtime.
+///
+/// # Environment Variable
+/// - FLOW_RUNTIME_WORKER_NUM: Number of worker threads (default: 30)
+///
+/// # Notes
+static WORKER_NUM: Lazy<usize> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_WORKER_NUM")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(30)
+});
 
 pub struct Runner;
 
@@ -38,10 +52,15 @@ impl Runner {
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), crate::errors::Error> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(30)
+            .worker_threads(*WORKER_NUM)
             .enable_all()
             .build()
-            .unwrap();
+            .map_err(|e| {
+                crate::errors::Error::RuntimeError(format!(
+                    "Failed to init tokio runtime with {:?}",
+                    e
+                ))
+            })?;
 
         let start = Instant::now();
         let span = info_span!(
@@ -71,7 +90,7 @@ impl Runner {
         });
 
         if let Err(e) = &result {
-            error!("Failed to workflow: {:?}", e);
+            error!(parent: &span, "Failed to workflow: {:?}", e);
         }
         info!(parent: &span, "Finish workflow = {:?}, duration = {:?}", workflow_name.as_str(), start.elapsed());
         result

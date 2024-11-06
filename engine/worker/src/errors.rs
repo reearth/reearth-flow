@@ -18,14 +18,14 @@ pub enum Error {
     #[error("Failed to encode: {0}")]
     FailedToEncode(#[source] serde_json::Error),
 
+    #[error("Failed to upload artifact: {0}")]
+    FailedToUploadArtifact(String),
+
     #[error("Failed to initialize cli: {0}")]
     Init(String),
 
     #[error("Failed to run cli: {0}")]
     Run(String),
-
-    #[error("Failed to cleanup: {0}")]
-    Cleanup(String),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -47,7 +47,7 @@ impl Error {
         Self::FailedToDownloadAssetFiles(message.to_string())
     }
 
-    pub(crate) fn cleanup<T: ToString>(message: T) -> Self {
-        Self::Cleanup(message.to_string())
+    pub(crate) fn failed_to_upload_artifact<T: ToString>(message: T) -> Self {
+        Self::FailedToUploadArtifact(message.to_string())
     }
 }

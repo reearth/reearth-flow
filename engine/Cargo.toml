@@ -170,4 +170,5 @@ uuid = { version = "1.11.0", features = [
   "serde",
   "v4",
 ] }
+walkdir = "2.5.0"
 zstd = "0.13.0"
