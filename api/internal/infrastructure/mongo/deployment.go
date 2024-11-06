@@ -128,7 +128,3 @@ func filterDeployments(ids []id.DeploymentID, rows []*deployment.Deployment) []*
 	}
 	return res
 }
-
-func (r *Deployment) writeFilter(filter interface{}) interface{} {
-	return applyWorkspaceFilter(filter, r.f.Writable)
-}
