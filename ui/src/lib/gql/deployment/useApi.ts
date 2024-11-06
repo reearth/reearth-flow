@@ -1,9 +1,9 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
-import { DEFAULT_PROJECT_NAME } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import type {
   CreateDeployment,
   DeleteDeployment,
+  Deployment,
   ExecuteDeployment,
   GetDeployments,
   UpdateDeployment,
@@ -29,33 +29,26 @@ export const useDeployment = () => {
   const createDeployment = async (
     workspaceId: string,
     projectId: string,
-    workflowId?: string,
-    workflow?: string,
-    workflowDescription?: string,
+    workflowId: string,
+    workflow: string,
+    description?: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
-    if (!workflowId || !workflow) {
-      toast({
-        title: t("Empty workflow detected"),
-        description: t("You cannot create a deployment without a workflow."),
-      });
-      return { deployment: undefined, ...rest };
-    }
 
     try {
       const formData = yamlToFormData(workflow, workflowId);
 
-      const deployment = await mutateAsync({
+      const data = await mutateAsync({
         workspaceId,
         projectId,
         file: formData,
-        description: workflowDescription,
+        description,
       });
       toast({
         title: t("Deployment Created"),
         description: t("Deployment has been successfully created."),
       });
-      return { deployment, ...rest };
+      return { deployment: data?.deployment, ...rest };
     } catch (_err) {
       return { deployment: undefined, ...rest };
     }
@@ -63,34 +56,23 @@ export const useDeployment = () => {
 
   const useUpdateDeployment = async (
     deploymentId: string,
-    workflowId: string,
-    workflowYaml: string,
+    workflowId?: string,
+    workflowYaml?: string,
     description?: string,
   ): Promise<UpdateDeployment> => {
     const { mutateAsync, ...rest } = updateDeploymentMutation;
     try {
-      const deployment = await mutateAsync({
+      const deployment: Deployment | undefined = await mutateAsync({
         deploymentId,
         workflowId,
         workflowYaml,
         description,
       });
-      return deployment
-        ? {
-            deployment: {
-              id: deployment?.id,
-              projectId: deployment.projectId,
-              projectName: deployment.project?.name ?? t(DEFAULT_PROJECT_NAME),
-              workspaceId: deployment.workspaceId,
-              workflowUrl: deployment.workflowUrl,
-              description: deployment.description ?? undefined,
-              version: deployment.version,
-              createdAt: deployment.createdAt,
-              updatedAt: deployment.updatedAt,
-            },
-            ...rest,
-          }
-        : { deployment: undefined, ...rest };
+      toast({
+        title: t("Deployment Updated"),
+        description: t("Deployment has been successfully updated."),
+      });
+      return { deployment, ...rest };
     } catch (_err) {
       return { deployment: undefined, ...rest };
     }
@@ -129,7 +111,6 @@ export const useDeployment = () => {
   ): Promise<ExecuteDeployment> => {
     const { mutateAsync, ...rest } = executeDeploymentMutation;
     try {
-      console.log("input", input);
       const job = await mutateAsync(input);
       toast({
         title: t("Deployment Executed"),

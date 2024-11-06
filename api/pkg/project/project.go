@@ -66,32 +66,35 @@ func (p *Project) CreatedAt() time.Time {
 
 func (p *Project) SetArchived(isArchived bool) {
 	p.isArchived = isArchived
+	p.updatedAt = time.Now()
 }
 
 func (p *Project) SetIsBasicAuthActive(isBasicAuthActive bool) {
 	p.isBasicAuthActive = isBasicAuthActive
+	p.updatedAt = time.Now()
 }
 
 func (p *Project) SetBasicAuthUsername(basicAuthUsername string) {
 	p.basicAuthUsername = basicAuthUsername
+	p.updatedAt = time.Now()
 }
 
 func (p *Project) SetBasicAuthPassword(basicAuthPassword string) {
 	p.basicAuthPassword = basicAuthPassword
+	p.updatedAt = time.Now()
 }
 
-func (p *Project) SetUpdatedAt(updatedAt time.Time) {
-	p.updatedAt = updatedAt
-}
-
-func (p *Project) UpdateName(name string) {
+func (p *Project) SetUpdateName(name string) {
 	p.name = name
+	p.updatedAt = time.Now()
 }
 
-func (p *Project) UpdateDescription(description string) {
+func (p *Project) SetUpdateDescription(description string) {
 	p.description = description
+	p.updatedAt = time.Now()
 }
 
-func (p *Project) UpdateWorkspace(workspace WorkspaceID) {
+func (p *Project) SetUpdateWorkspace(workspace WorkspaceID) {
 	p.workspace = workspace
+	p.updatedAt = time.Now()
 }

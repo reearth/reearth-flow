@@ -4,7 +4,7 @@ import { Job } from "./job";
 export type Deployment = {
   id: string;
   projectId: string;
-  projectName: string;
+  projectName?: string;
   workspaceId: string;
   workflowUrl: string;
   description?: string;

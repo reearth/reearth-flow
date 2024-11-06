@@ -1,9 +1,9 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-import type { Job, JobStatus } from "@flow/types";
+import type { Job } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
-import { JobFragment, JobStatus as GraphqlJobStatus } from "../__gen__/graphql";
+import { toJob } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum JobQueryKeys {
@@ -35,9 +35,7 @@ export const useQueries = () => {
             pageInfo: { endCursor, hasNextPage },
           },
         } = data;
-        const jobs: Job[] = nodes
-          .filter(isDefined)
-          .map((job) => createNewJobObject(job));
+        const jobs: Job[] = nodes.filter(isDefined).map((job) => toJob(job));
         return { jobs, endCursor, hasNextPage };
       },
       enabled: !!workspaceId,
@@ -54,7 +52,7 @@ export const useQueries = () => {
       queryFn: async () => {
         const data = await graphQLContext?.GetJob({ id: jobId });
         if (!data?.job) return;
-        return createNewJobObject(data.job);
+        return toJob(data.job);
       },
     });
 
@@ -63,28 +61,3 @@ export const useQueries = () => {
     useGetJobQuery,
   };
 };
-
-function toJobStatus(status: GraphqlJobStatus): JobStatus {
-  switch (status) {
-    case "RUNNING":
-      return "running";
-    case "COMPLETED":
-      return "completed";
-    case "FAILED":
-      return "failed";
-    case "PENDING":
-    default:
-      return "pending";
-  }
-}
-
-export function createNewJobObject(job: JobFragment): Job {
-  return {
-    id: job.id,
-    deploymentId: job.deploymentId,
-    workspaceId: job.workspaceId,
-    status: toJobStatus(job.status),
-    startedAt: job.startedAt,
-    completedAt: job.completedAt,
-  };
-}

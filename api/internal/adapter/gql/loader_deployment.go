@@ -69,6 +69,19 @@ func (c *DeploymentLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID
 	}, nil
 }
 
+func (c *DeploymentLoader) FindByProject(ctx context.Context, pID gqlmodel.ID) (*gqlmodel.Deployment, error) {
+	pid, err := gqlmodel.ToID[id.Project](pID)
+	if err != nil {
+		return nil, err
+	}
+
+	res, _ := c.usecase.FindByProject(ctx, pid, getOperator(ctx))
+
+	dep := gqlmodel.ToDeployment(res)
+
+	return dep, nil
+}
+
 // data loaders
 
 type DeploymentDataLoader interface {

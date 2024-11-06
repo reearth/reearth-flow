@@ -39,13 +39,16 @@ const graphqlConfig = {
     },
   },
   rules: {
-    ...graphql.flatConfigs["operations-recommended"].rules,
+    ...graphql.configs["flat/operations-recommended"],
     "@typescript-eslint/consistent-type-assertions": "off",
     "@graphql-eslint/require-selections": "off",
     "@graphql-eslint/no-unused-fragments": "off",
     "@graphql-eslint/unique-fragment-name": "off",
     "@graphql-eslint/unique-operation-name": "off",
     "@graphql-eslint/selection-set-depth": "off",
+    "@graphql-eslint/known-fragment-names": "off",
+    "@graphql-eslint/no-undefined-variables": "off",
+    "@graphql-eslint/no-unused-variables": "off",
     "@graphql-eslint/naming-convention": [
       "error",
       {

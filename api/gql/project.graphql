@@ -11,6 +11,7 @@ type Project implements Node {
   description: String!
   workspaceId: ID!
   workspace: Workspace
+  deployment: Deployment
 }
 
 # InputType

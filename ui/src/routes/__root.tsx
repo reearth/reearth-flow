@@ -1,5 +1,5 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { lazy } from "react";
+// import { lazy } from "react";
 
 import { TooltipProvider } from "@flow/components";
 import { config } from "@flow/config";
@@ -16,19 +16,19 @@ export const Route = createRootRoute({
   notFoundComponent: () => <NotFoundPage />,
 });
 
-const TanStackQueryDevtools = lazy(() =>
-  import("@tanstack/react-query-devtools/build/modern/production.js").then(
-    (d) => ({
-      default: d.ReactQueryDevtools,
-    }),
-  ),
-);
+// const TanStackQueryDevtools = lazy(() =>
+//   import("@tanstack/react-query-devtools/build/modern/production.js").then(
+//     (d) => ({
+//       default: d.ReactQueryDevtools,
+//     }),
+//   ),
+// );
 
-const TanStackRouterDevtools = lazy(() =>
-  import("@tanstack/router-devtools").then((d) => ({
-    default: d.TanStackRouterDevtools,
-  })),
-);
+// const TanStackRouterDevtools = lazy(() =>
+//   import("@tanstack/router-devtools").then((d) => ({
+//     default: d.TanStackRouterDevtools,
+//   })),
+// );
 
 function RootRoute() {
   const { devMode } = config();
@@ -44,8 +44,8 @@ function RootRoute() {
                 <Outlet />
                 {devMode && (
                   <>
-                    <TanStackQueryDevtools initialIsOpen={false} />
-                    <TanStackRouterDevtools />
+                    {/* <TanStackQueryDevtools initialIsOpen={false} /> */}
+                    {/* <TanStackRouterDevtools /> */}
                   </>
                 )}
               </AuthenticationWrapper>

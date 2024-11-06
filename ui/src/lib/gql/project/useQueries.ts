@@ -13,11 +13,11 @@ import {
   CreateProjectInput,
   DeleteProjectInput,
   UpdateProjectInput,
-  ProjectFragment,
   RunProjectInput,
 } from "../__gen__/graphql";
+import { toProject } from "../convert";
 
-enum ProjectQueryKeys {
+export enum ProjectQueryKeys {
   GetWorkspaceProjects = "getWorkspaceProjects",
   GetProject = "getProject",
 }
@@ -33,7 +33,7 @@ export const useQueries = () => {
       const data = await graphQLContext?.CreateProject({ input });
 
       if (data?.createProject?.project) {
-        return createNewProjectObject(data.createProject.project);
+        return toProject(data.createProject.project);
       }
     },
     onSuccess: (project) =>
@@ -62,7 +62,7 @@ export const useQueries = () => {
         } = data;
         const projects: Project[] = nodes
           .filter(isDefined)
-          .map((project) => createNewProjectObject(project));
+          .map((project) => toProject(project));
         return { projects, endCursor, hasNextPage };
       },
       enabled: !!workspaceId,
@@ -80,9 +80,7 @@ export const useQueries = () => {
         graphQLContext?.GetProjectById({ projectId: projectId ?? "" }),
       enabled: !!projectId,
       select: (data) =>
-        data?.node?.__typename === "Project"
-          ? createNewProjectObject(data.node)
-          : undefined,
+        data?.node?.__typename === "Project" ? toProject(data.node) : undefined,
     });
 
   const updateProjectMutation = useMutation({
@@ -90,7 +88,7 @@ export const useQueries = () => {
       const data = await graphQLContext?.UpdateProject({ input });
 
       if (data?.updateProject?.project) {
-        return createNewProjectObject(data.updateProject.project);
+        return toProject(data.updateProject.project);
       }
     },
     onSuccess: (project) =>
@@ -149,14 +147,3 @@ export const useQueries = () => {
     useGetProjectByIdQuery,
   };
 };
-
-function createNewProjectObject(project: ProjectFragment): Project {
-  return {
-    id: project.id,
-    name: project.name,
-    createdAt: project.createdAt,
-    updatedAt: project.updatedAt,
-    description: project.description,
-    workspaceId: project.workspaceId,
-  };
-}

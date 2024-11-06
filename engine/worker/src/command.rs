@@ -1,15 +1,28 @@
 use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
+use google_cloud_pubsub::client::{Client, ClientConfig};
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
-use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
+use reearth_flow_common::{
+    dir::{self, setup_job_directory},
+    fs,
+    uri::Uri,
+};
 use reearth_flow_runner::runner::AsyncRunner;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::{self, StorageResolver};
 use reearth_flow_types::Workflow;
-use tokio::runtime::Runtime;
 
-use crate::{asset::download_asset, factory::ALL_ACTION_FACTORIES, types::metadata::Metadata};
+use crate::{
+    asset::download_asset,
+    event_handler::EventHandler,
+    factory::ALL_ACTION_FACTORIES,
+    pubsub::{publisher::Publisher, CloudPubSub},
+    types::{
+        job_complete_event::{JobCompleteEvent, JobResult},
+        metadata::Metadata,
+    },
+};
 
 const WORKER_ASSET_GLOBAL_PARAMETER_VARIABLE: &str = "workerAssetPath";
 const WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE: &str = "workerArtifactPath";
@@ -20,6 +33,7 @@ pub fn build_worker_command() -> Command {
         .long_about("Start a worker to run a workflow.")
         .arg(workflow_arg())
         .arg(asset_arg())
+        .arg(worker_num_arg())
         .arg(vars_arg())
 }
 
@@ -41,13 +55,21 @@ fn asset_arg() -> Arg {
         .display_order(2)
 }
 
+fn worker_num_arg() -> Arg {
+    Arg::new("worker_num")
+        .long("worker-num")
+        .help("Number of workers")
+        .required(false)
+        .display_order(3)
+}
+
 fn vars_arg() -> Arg {
     Arg::new("var")
         .long("var")
         .help("Workflow variables")
         .required(false)
         .action(ArgAction::Append)
-        .display_order(3)
+        .display_order(4)
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -55,18 +77,20 @@ pub struct RunWorkerCommand {
     workflow: String,
     metadata_path: Uri,
     vars: HashMap<String, String>,
+    worker_num: usize,
 }
 
 impl RunWorkerCommand {
     pub fn parse_cli_args(mut matches: ArgMatches) -> crate::errors::Result<Self> {
         let workflow = matches
             .remove_one::<String>("workflow")
-            .ok_or(crate::errors::WorkerError::init("No workflow provided"))?;
-        let metadata_path = matches.remove_one::<String>("metadata_path").ok_or(
-            crate::errors::WorkerError::init("No metadata path provided"),
-        )?;
+            .ok_or(crate::errors::Error::init("No workflow provided"))?;
+        let metadata_path = matches
+            .remove_one::<String>("metadata_path")
+            .ok_or(crate::errors::Error::init("No metadata path provided"))?;
         let metadata_path =
-            Uri::from_str(metadata_path.as_str()).map_err(crate::errors::WorkerError::init)?;
+            Uri::from_str(metadata_path.as_str()).map_err(crate::errors::Error::init)?;
+        let worker_num = matches.remove_one::<usize>("worker_num").unwrap_or(30);
         let vars = matches.remove_many::<String>("var");
         let vars = if let Some(vars) = vars {
             vars.into_iter()
@@ -86,78 +110,108 @@ impl RunWorkerCommand {
             workflow,
             metadata_path,
             vars,
+            worker_num,
         })
     }
 
     pub fn execute(&self) -> crate::errors::Result<()> {
-        let runtime = Arc::new(
-            Runtime::new().map_err(crate::errors::WorkerError::FailedToCreateTokioRuntime)?,
-        );
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(self.worker_num)
+            .enable_all()
+            .build()
+            .map_err(crate::errors::Error::FailedToCreateTokioRuntime)?;
         runtime.block_on(self.run())
     }
 
     async fn run(&self) -> crate::errors::Result<()> {
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
-        let (workflow, state, logger_factory) = self.prepare(&storage_resolver).await?;
-        AsyncRunner::run(
+        let (workflow, state, logger_factory, event_handler, meta) =
+            self.prepare(&storage_resolver).await?;
+        let workflow_id = workflow.id;
+        let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = Arc::new(event_handler);
+        let result = AsyncRunner::run_with_event_handler(
             workflow,
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,
-            storage_resolver,
+            storage_resolver.clone(),
             state,
+            vec![handler],
         )
-        .await
-        .map_err(crate::errors::WorkerError::run)
+        .await;
+        let config = ClientConfig::default()
+            .with_auth()
+            .await
+            .map_err(crate::errors::Error::init)?;
+        let client = Client::new(config)
+            .await
+            .map_err(crate::errors::Error::init)?;
+        let pubsub = CloudPubSub::new(client);
+        let job_result = match result {
+            Ok(_) => {
+                self.cleanup(&meta, &storage_resolver).await?;
+                JobResult::Success
+            }
+            Err(_) => JobResult::Failed,
+        };
+        pubsub
+            .publish(JobCompleteEvent::new(workflow_id, meta.job_id, job_result))
+            .await
+            .map_err(crate::errors::Error::run)
     }
 
     async fn prepare(
         &self,
         storage_resolver: &Arc<StorageResolver>,
-    ) -> crate::errors::Result<(Workflow, Arc<State>, Arc<LoggerFactory>)> {
+    ) -> crate::errors::Result<(
+        Workflow,
+        Arc<State>,
+        Arc<LoggerFactory>,
+        EventHandler<CloudPubSub>,
+        Metadata,
+    )> {
         let json = if self.workflow == "-" {
-            io::read_to_string(io::stdin()).map_err(crate::errors::WorkerError::init)?
+            io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?
         } else {
-            let path =
-                Uri::from_str(self.workflow.as_str()).map_err(crate::errors::WorkerError::init)?;
+            let path = Uri::from_str(self.workflow.as_str()).map_err(crate::errors::Error::init)?;
             let storage = storage_resolver
                 .resolve(&path)
-                .map_err(crate::errors::WorkerError::init)?;
+                .map_err(crate::errors::Error::init)?;
             let bytes = storage
                 .get(path.path().as_path())
                 .await
-                .map_err(crate::errors::WorkerError::FailedToDownloadWorkflow)?;
+                .map_err(crate::errors::Error::FailedToDownloadWorkflow)?;
             let bytes = bytes
                 .bytes()
                 .await
-                .map_err(crate::errors::WorkerError::FailedToDownloadWorkflow)?;
-            String::from_utf8(bytes.to_vec()).map_err(crate::errors::WorkerError::init)?
+                .map_err(crate::errors::Error::FailedToDownloadWorkflow)?;
+            String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?
         };
         let mut workflow = Workflow::try_from(json.as_str())
-            .map_err(crate::errors::WorkerError::failed_to_create_workflow)?;
+            .map_err(crate::errors::Error::failed_to_create_workflow)?;
 
         let storage = storage_resolver
             .resolve(&self.metadata_path)
-            .map_err(crate::errors::WorkerError::init)?;
+            .map_err(crate::errors::Error::init)?;
 
         let meta = storage
             .get(&self.metadata_path.as_path())
             .await
-            .map_err(crate::errors::WorkerError::FailedToDownloadMetadata)?;
+            .map_err(crate::errors::Error::FailedToDownloadMetadata)?;
         let meta_json = meta
             .bytes()
             .await
-            .map_err(crate::errors::WorkerError::FailedToDownloadMetadata)?;
+            .map_err(crate::errors::Error::FailedToDownloadMetadata)?;
         let meta_json =
-            String::from_utf8(meta_json.to_vec()).map_err(crate::errors::WorkerError::init)?;
+            String::from_utf8(meta_json.to_vec()).map_err(crate::errors::Error::init)?;
         let meta: Metadata =
-            serde_json::from_str(meta_json.as_str()).map_err(crate::errors::WorkerError::init)?;
+            serde_json::from_str(meta_json.as_str()).map_err(crate::errors::Error::init)?;
 
         let job_id = meta.job_id;
-        let asset_path = setup_job_directory("worker", "assets", job_id)
-            .map_err(crate::errors::WorkerError::init)?;
+        let asset_path =
+            setup_job_directory("workers", "assets", job_id).map_err(crate::errors::Error::init)?;
 
-        let artifact_path = setup_job_directory("worker", "artifacts", job_id)
-            .map_err(crate::errors::WorkerError::init)?;
+        let artifact_path = setup_job_directory("workers", "artifacts", job_id)
+            .map_err(crate::errors::Error::init)?;
 
         let mut global = HashMap::new();
         global.insert(
@@ -170,25 +224,79 @@ impl RunWorkerCommand {
         );
         workflow
             .extend_with(global)
-            .map_err(crate::errors::WorkerError::failed_to_create_workflow)?;
+            .map_err(crate::errors::Error::failed_to_create_workflow)?;
         workflow
             .merge_with(self.vars.clone())
-            .map_err(crate::errors::WorkerError::failed_to_create_workflow)?;
+            .map_err(crate::errors::Error::failed_to_create_workflow)?;
 
         download_asset(storage_resolver, &meta.assets, &asset_path).await?;
 
-        let action_log_uri = setup_job_directory("worker", "action-log", job_id)
-            .map_err(crate::errors::WorkerError::init)?;
-        let state_uri = setup_job_directory("worker", "feature-store", job_id)
-            .map_err(crate::errors::WorkerError::init)?;
-        let state = Arc::new(
-            State::new(&state_uri, storage_resolver).map_err(crate::errors::WorkerError::init)?,
-        );
+        let action_log_uri = setup_job_directory("workers", "action-log", job_id)
+            .map_err(crate::errors::Error::init)?;
+        let state_uri = setup_job_directory("workers", "feature-store", job_id)
+            .map_err(crate::errors::Error::init)?;
+        let state =
+            Arc::new(State::new(&state_uri, storage_resolver).map_err(crate::errors::Error::init)?);
 
         let logger_factory = Arc::new(LoggerFactory::new(
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        Ok((workflow, state, logger_factory))
+        let config = ClientConfig::default()
+            .with_auth()
+            .await
+            .map_err(crate::errors::Error::init)?;
+        let client = Client::new(config)
+            .await
+            .map_err(crate::errors::Error::init)?;
+
+        let event_handler = EventHandler::new(workflow.id, job_id, CloudPubSub::new(client));
+        Ok((workflow, state, logger_factory, event_handler, meta))
+    }
+
+    async fn cleanup(
+        &self,
+        meta: &Metadata,
+        storage_resolver: &Arc<StorageResolver>,
+    ) -> crate::errors::Result<()> {
+        let remote_artifact_path =
+            Uri::from_str(format!("{}/{}.zip", &meta.artifact_base_url, meta.job_id).as_str())
+                .map_err(crate::errors::Error::cleanup)?;
+        let job_root_dir = dir::get_job_root_dir_path("workers", meta.job_id)
+            .map_err(crate::errors::Error::cleanup)?;
+        let zip_temp_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())
+            .map_err(crate::errors::Error::cleanup)?;
+        let zip_temp_path = zip_temp_path.join(format!("{}.zip", meta.job_id));
+        fs::create_zip_file(job_root_dir, zip_temp_path.clone())
+            .await
+            .map_err(crate::errors::Error::cleanup)?;
+
+        let zip_temp_path = zip_temp_path
+            .as_os_str()
+            .to_str()
+            .and_then(|s| Uri::from_str(s).ok())
+            .ok_or(crate::errors::Error::cleanup(
+                "Failed to parse uri to zip temp path",
+            ))?;
+        let storage = storage_resolver
+            .resolve(&zip_temp_path)
+            .map_err(crate::errors::Error::cleanup)?;
+        let zip_file_content = storage
+            .get(zip_temp_path.as_path().as_path())
+            .await
+            .map_err(crate::errors::Error::cleanup)?;
+        let zip_file_content = zip_file_content
+            .bytes()
+            .await
+            .map_err(crate::errors::Error::cleanup)?;
+
+        let storage = storage_resolver
+            .resolve(&remote_artifact_path)
+            .map_err(crate::errors::Error::cleanup)?;
+        storage
+            .put(remote_artifact_path.as_path().as_path(), zip_file_content)
+            .await
+            .map_err(crate::errors::Error::cleanup)?;
+        Ok(())
     }
 }

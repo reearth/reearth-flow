@@ -4,16 +4,11 @@ use directories::ProjectDirs;
 
 use crate::{uri::Uri, Error};
 
-pub fn project_output_dir(id: &str) -> crate::Result<String> {
-    let p = get_project_cache_dir_path("engine")?;
-    PathBuf::from(p)
-        .join("output")
-        .join(id)
-        .to_str()
-        .map_or_else(
-            || Err(Error::dir("Invalid project directory path")),
-            |s| Ok(s.to_string()),
-        )
+pub fn project_temp_dir(id: &str) -> crate::Result<PathBuf> {
+    let p = get_project_cache_dir_path("temp")?;
+    let dir_path = PathBuf::from(p).join("temp").join(id);
+    fs::create_dir_all(&dir_path).map_err(Error::dir)?;
+    Ok(dir_path)
 }
 
 pub fn get_project_cache_dir_path(key: &str) -> crate::Result<String> {
@@ -25,11 +20,16 @@ pub fn get_project_cache_dir_path(key: &str) -> crate::Result<String> {
         .map(String::from)
 }
 
-pub fn setup_job_directory(key: &str, sub_dir: &str, job_id: uuid::Uuid) -> crate::Result<Uri> {
+pub fn get_job_root_dir_path(key: &str, job_id: uuid::Uuid) -> crate::Result<PathBuf> {
     let p = get_project_cache_dir_path(key)?;
     let dir_path = PathBuf::from(p.clone())
-        .join(sub_dir)
+        .join("jobs")
         .join(job_id.to_string());
+    Ok(dir_path)
+}
+
+pub fn setup_job_directory(key: &str, sub_dir: &str, job_id: uuid::Uuid) -> crate::Result<Uri> {
+    let dir_path = get_job_root_dir_path(key, job_id)?.join(sub_dir);
     fs::create_dir_all(&dir_path).map_err(Error::dir)?;
     Uri::from_str(
         dir_path

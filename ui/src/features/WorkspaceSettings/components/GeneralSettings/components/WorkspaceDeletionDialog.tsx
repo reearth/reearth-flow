@@ -44,9 +44,9 @@ const WorkspaceDeletionDialog: React.FC<Props> = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
           <AlertDialogAction onClick={onWorkspaceDelete}>
-            Continue
+            {t("Continue")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
