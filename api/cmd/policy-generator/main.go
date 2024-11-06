@@ -9,9 +9,9 @@ import (
 
 func main() {
 	if err := generator.GeneratePolicies(
-		"flow",
+		rbac.ServiceName,
 		rbac.DefineResources,
-		"policies",
+		rbac.PolicyFileDir,
 	); err != nil {
 		log.Fatalf("Failed to generate policies: %v", err)
 	}
