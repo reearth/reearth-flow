@@ -71,6 +71,6 @@ graphs:
 
 ### PubSub
 #### Topics
-* flow-edge-pass-through-topic
-* flow-log-stream-topic
-* flow-job-complete-topic
+* environment variables: FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC (default: flow-edge-pass-through-topic)
+* environment variables: FLOW_WORKER_LOG_STREAM_TOPIC (default: flow-log-stream-topic)
+* environment variables: FLOW_WORKER_JOB_COMPLETE_TOPIC (default: flow-job-complete-topic)
