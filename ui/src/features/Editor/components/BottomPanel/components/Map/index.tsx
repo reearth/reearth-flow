@@ -1,18 +1,24 @@
-import { CoreVisualizer, SceneMode, SceneProperty, Layer } from "@reearth/core";
+import { CoreVisualizer, SceneProperty, Layer } from "@reearth/core";
 import { useEffect, useState } from "react";
 
-import { Button } from "@flow/components";
+import { Button, TwoDMap } from "@flow/components";
 import fires from "@flow/mock_data/fires.json";
 
-const sceneModes: SceneMode[] = ["2d", "3d"];
+export type MapMode = "2d" | "3d";
 
-const Map: React.FC = () => {
+const mapModes: MapMode[] = ["2d", "3d"];
+
+type Props = {
+  mapMode: MapMode;
+  setMapMode?: (mode: MapMode) => void;
+};
+
+const Map: React.FC<Props> = ({ mapMode, setMapMode }) => {
   const [isReady, setIsReady] = useState(false);
-  const [sceneMode, setSceneMode] = useState<SceneMode>("2d");
 
   const sceneProperty: SceneProperty = {
     default: {
-      sceneMode,
+      sceneMode: mapMode,
     },
     camera: {
       camera: {
@@ -60,24 +66,28 @@ const Map: React.FC = () => {
   return (
     <div className="relative w-6/12">
       <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border bg-background transition-all">
-        {sceneModes.map((b) => (
+        {mapModes.map((b) => (
           <Button
-            className={`cursor-pointer rounded-none transition-all ${sceneMode === b ? "bg-accent text-accent-foreground" : ""}`}
+            className={`cursor-pointer rounded-none transition-all ${mapMode === b ? "bg-accent text-accent-foreground" : ""}`}
             variant="ghost"
             size="icon"
             key={b}
-            onClick={() => sceneMode !== b && setSceneMode(b)}>
+            onClick={() => mapMode !== b && setMapMode?.(b)}>
             {b}
           </Button>
         ))}
       </div>
-      <CoreVisualizer
-        engine="cesium"
-        isBuilt
-        ready={isReady}
-        sceneProperty={sceneProperty}
-        layers={layers}
-      />
+      {mapMode === "2d" ? (
+        <TwoDMap />
+      ) : (
+        <CoreVisualizer
+          engine="cesium"
+          isBuilt
+          ready={isReady}
+          sceneProperty={sceneProperty}
+          layers={layers}
+        />
+      )}
     </div>
   );
 };
