@@ -9,11 +9,11 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
-	infraPermission "github.com/reearth/reearth-flow/api/internal/infrastructure/permission"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
+	cerbosClient "github.com/reearth/reearthx/cerbos/client"
 	"github.com/reearth/reearthx/log"
 	"golang.org/x/net/http2"
 )
@@ -49,7 +49,7 @@ func Start(debug bool, version string) {
 	repos, gateways, acRepos, acGateways := initReposAndGateways(ctx, conf, debug)
 
 	// PermissionChecker
-	permissionChecker := infraPermission.NewPermissionChecker(serviceName, conf.DashboardHost)
+	permissionChecker := cerbosClient.NewPermissionChecker(serviceName, conf.DashboardHost)
 
 	// Start web server
 	NewServer(ctx, &ServerConfig{
@@ -75,7 +75,7 @@ type ServerConfig struct {
 	AccountRepos      *accountrepo.Container
 	Gateways          *gateway.Container
 	AccountGateways   *accountgateway.Container
-	PermissionChecker *infraPermission.PermissionChecker
+	PermissionChecker *cerbosClient.PermissionChecker
 }
 
 func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {

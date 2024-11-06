@@ -13,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
+	cerbosClient "github.com/reearth/reearthx/cerbos/client"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -26,10 +27,10 @@ type Project struct {
 	transaction       usecasex.Transaction
 	file              gateway.File
 	batch             gateway.Batch
-	permissionChecker gateway.PermissionChecker
+	permissionChecker cerbosClient.PermissionService
 }
 
-func NewProject(r *repo.Container, gr *gateway.Container, permissionChecker gateway.PermissionChecker) interfaces.Project {
+func NewProject(r *repo.Container, gr *gateway.Container, permissionChecker cerbosClient.PermissionService) interfaces.Project {
 	return &Project{
 		assetRepo:         r.Asset,
 		workflowRepo:      r.Workflow,
@@ -51,7 +52,7 @@ func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
-	hasPermission, err := checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, rbac.ActionEdit)
+	hasPermission, err := cerbosClient.CheckPermission(ctx, i.permissionChecker, rbac.ResourceProject, rbac.ActionEdit)
 	if err != nil {
 		return nil, err
 	}
