@@ -91,7 +91,7 @@ async fn handle_socket(
     }
 
     debug!("{:?}", state.make_room(room_id.clone()));
-    if let Err(e) = state.join(&room_id).await {
+    if let Err(e) = state.join(&room_id, &user.id).await {
         debug!("Failed to join room: {:?}", e);
         return;
     }
@@ -156,8 +156,8 @@ async fn handle_message(
             };
 
             match msg.event {
-                Event::Join { room_id } => state.join(&room_id).await?,
-                Event::Leave => state.leave(room_id).await,
+                Event::Join { room_id } => state.join(&room_id, &user.id).await?,
+                Event::Leave => state.leave(room_id, &user.id).await,
                 Event::Emit { data } => state.emit(&data).await,
             };
 
@@ -178,14 +178,16 @@ async fn handle_message(
                 .get(room_id)
                 .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
 
-            state
-                .command_tx
-                .send(SessionCommand::PushUpdate {
-                    project_id: project_id.unwrap(),
-                    update: d,
-                    updated_by: Some(user.name.clone()),
-                })
-                .await?;
+            if let Some(project_id) = project_id {
+                state
+                    .command_tx
+                    .send(SessionCommand::PushUpdate {
+                        project_id,
+                        update: d,
+                        updated_by: Some(user.name.clone()),
+                    })
+                    .await?;
+            }
 
             Ok(None)
         }
@@ -229,27 +231,44 @@ pub async fn handle_error(
 
 impl AppState {
     async fn _on_disconnect(&self) {
-        unimplemented!()
+        // todo
+        if let Ok(mut rooms) = self.rooms.try_lock() {
+            rooms.clear();
+        }
     }
 
-    async fn join(&self, room_id: &str) -> Result<(), WsError> {
+    async fn join(&self, room_id: &str, user_id: &str) -> Result<(), WsError> {
+        // todo
         let mut rooms = self.rooms.try_lock()?;
         let room = rooms
             .get_mut(room_id)
             .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
-        room.join("brabrabra".to_string()).await;
+        room.join(user_id.to_string()).await;
         Ok(())
     }
 
-    async fn leave(&self, _room_id: &str) {
-        unimplemented!()
+    async fn leave(&self, room_id: &str, user_id: &str) {
+        // todo
+        if let Ok(mut rooms) = self.rooms.try_lock() {
+            if let Some(room) = rooms.get_mut(room_id) {
+                room._leave(user_id.to_string()).await;
+            }
+        }
     }
 
-    async fn emit(&self, _data: &str) {
-        unimplemented!()
+    async fn emit(&self, data: &str) {
+        // todo
+        if let Ok(rooms) = self.rooms.try_lock() {
+            for room in rooms.values() {
+                let _ = room._broadcast(data.to_string());
+            }
+        }
     }
 
     async fn _timeout(&self) {
-        unimplemented!()
+        // todo
+        if let Ok(mut rooms) = self.rooms.try_lock() {
+            rooms.clear();
+        }
     }
 }
