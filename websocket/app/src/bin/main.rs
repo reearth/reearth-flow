@@ -21,7 +21,7 @@ async fn main() -> std::io::Result<()> {
     let config = Config::from_env();
 
     let state: Arc<AppState> = Arc::new(
-        AppState::new(&config.redis_url)
+        AppState::new(Some(config.redis_url.clone()))
             .await
             .expect("Failed to create AppState"),
     );
