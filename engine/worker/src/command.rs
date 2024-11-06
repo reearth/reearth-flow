@@ -14,8 +14,14 @@ use reearth_flow_storage::resolve::{self, StorageResolver};
 use reearth_flow_types::Workflow;
 
 use crate::{
-    asset::download_asset, event_handler::EventHandler, factory::ALL_ACTION_FACTORIES,
-    pubsub::CloudPubSub, types::metadata::Metadata,
+    asset::download_asset,
+    event_handler::EventHandler,
+    factory::ALL_ACTION_FACTORIES,
+    pubsub::{publisher::Publisher, CloudPubSub},
+    types::{
+        job_complete_event::{JobCompleteEvent, JobResult},
+        metadata::Metadata,
+    },
 };
 
 const WORKER_ASSET_GLOBAL_PARAMETER_VARIABLE: &str = "workerAssetPath";
@@ -121,8 +127,9 @@ impl RunWorkerCommand {
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
         let (workflow, state, logger_factory, event_handler, meta) =
             self.prepare(&storage_resolver).await?;
+        let workflow_id = workflow.id;
         let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = Arc::new(event_handler);
-        AsyncRunner::run_with_event_handler(
+        let result = AsyncRunner::run_with_event_handler(
             workflow,
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,
@@ -130,9 +137,26 @@ impl RunWorkerCommand {
             state,
             vec![handler],
         )
-        .await
-        .map_err(crate::errors::Error::run)?;
-        self.cleanup(&meta, &storage_resolver).await
+        .await;
+        let config = ClientConfig::default()
+            .with_auth()
+            .await
+            .map_err(crate::errors::Error::init)?;
+        let client = Client::new(config)
+            .await
+            .map_err(crate::errors::Error::init)?;
+        let pubsub = CloudPubSub::new(client);
+        let job_result = match result {
+            Ok(_) => {
+                self.cleanup(&meta, &storage_resolver).await?;
+                JobResult::Success
+            }
+            Err(_) => JobResult::Failed,
+        };
+        pubsub
+            .publish(JobCompleteEvent::new(workflow_id, meta.job_id, job_result))
+            .await
+            .map_err(crate::errors::Error::run)
     }
 
     async fn prepare(
@@ -236,7 +260,7 @@ impl RunWorkerCommand {
         storage_resolver: &Arc<StorageResolver>,
     ) -> crate::errors::Result<()> {
         let remote_artifact_path =
-            Uri::from_str(format!("{}/{}.zip", &meta.artifact_root_url, meta.job_id).as_str())
+            Uri::from_str(format!("{}/{}.zip", &meta.artifact_base_url, meta.job_id).as_str())
                 .map_err(crate::errors::Error::cleanup)?;
         let job_root_dir = dir::get_job_root_dir_path("workers", meta.job_id)
             .map_err(crate::errors::Error::cleanup)?;

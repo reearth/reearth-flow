@@ -12,34 +12,44 @@ use crate::pubsub::{
     topic::Topic,
 };
 
-static EDGE_PASS_THROUGH_EVENT_TOPIC: Lazy<String> = Lazy::new(|| {
-    env::var("FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC")
+static JOB_COMPLETE_TOPIC: Lazy<String> = Lazy::new(|| {
+    env::var("FLOW_WORKER_JOB_COMPLETE_TOPIC")
         .ok()
-        .unwrap_or("flow-edge-pass-through-topic".to_string())
+        .unwrap_or("flow-job-complete-topic".to_string())
 });
 
 #[derive(Serialize, Deserialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub enum EventStatus {
-    InProgress,
-    Completed,
+pub enum JobResult {
+    Success,
+    Failed,
 }
 
 #[derive(Serialize, Deserialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct EdgePassThroughEvent {
+pub struct JobCompleteEvent {
     pub workflow_id: Uuid,
     pub job_id: Uuid,
-    pub status: EventStatus,
+    pub result: JobResult,
     pub timestamp: chrono::DateTime<Utc>,
-    pub updated_edges: Vec<UpdatedEdge>,
 }
 
-impl EncodableMessage for EdgePassThroughEvent {
+impl JobCompleteEvent {
+    pub fn new(workflow_id: Uuid, job_id: Uuid, result: JobResult) -> Self {
+        Self {
+            workflow_id,
+            job_id,
+            result,
+            timestamp: chrono::Utc::now(),
+        }
+    }
+}
+
+impl EncodableMessage for JobCompleteEvent {
     type Error = crate::errors::Error;
 
     fn topic(&self) -> Topic {
-        Topic::new(EDGE_PASS_THROUGH_EVENT_TOPIC.clone())
+        Topic::new(JOB_COMPLETE_TOPIC.clone())
     }
 
     /// Encode the message payload.
@@ -50,12 +60,4 @@ impl EncodableMessage for EdgePassThroughEvent {
                 ValidatedMessage::new(uuid::Uuid::new_v4(), self.timestamp, Bytes::from(payload))
             })
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdatedEdge {
-    pub id: String,
-    pub status: EventStatus,
-    pub feature_id: Option<Uuid>,
 }
