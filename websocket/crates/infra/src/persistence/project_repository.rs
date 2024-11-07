@@ -1,5 +1,4 @@
 use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
-//use crate::persistence::redis::redis_client::RedisClientError;
 use async_trait::async_trait;
 use flow_websocket_domain::generate_id;
 use flow_websocket_domain::project::Project;
@@ -17,7 +16,6 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use super::local_storage::LocalStorageError;
-//use super::redis::redis_client::RedisClientTrait;
 use super::StorageClient;
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
@@ -85,8 +83,8 @@ impl ProjectEditingSessionImpl for ProjectRedisRepository {
         let active_session_key = format!("project:{}:active_session", session.project_id);
 
         let session_json = serde_json::to_string(&session)?;
-        conn.set(&session_key, session_json).await?;
-        conn.set(&active_session_key, &session_id).await?;
+        let _: () = conn.set(&session_key, session_json).await?;
+        let _: () = conn.set(&active_session_key, &session_id).await?;
 
         Ok(session_id)
     }
@@ -119,10 +117,10 @@ impl ProjectEditingSessionImpl for ProjectRedisRepository {
 
         let key = format!("session:{}", session_id);
         let session_json = serde_json::to_string(&session)?;
-        conn.set(&key, session_json).await?;
+        let _: () = conn.set(&key, session_json).await?;
 
         let active_session_key = format!("project:{}:active_session", session.project_id);
-        conn.set(&active_session_key, session_id).await?;
+        let _: () = conn.set(&active_session_key, session_id).await?;
 
         Ok(())
     }

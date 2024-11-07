@@ -11,6 +11,7 @@ use flow_websocket_services::manage_project_edit_session::{
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
+use yrs::{Doc, Text, Transact};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -88,10 +89,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })
     .await?;
 
-    // Push update
+    // Create Y.js document and update
+    let doc = Doc::new();
+    let text = doc.get_or_insert_text("test");
+    let yjs_update = {
+        let mut txn = doc.transact_mut();
+        text.push(&mut txn, "Hello, YJS!");
+        txn.encode_update_v2()
+    };
+
+    // Push update with Y.js data
     tx.send(SessionCommand::PushUpdate {
         project_id: project_id.clone(),
-        update: vec![1, 2, 3],
+        update: yjs_update,
+        updated_by: Some(test_user.name.clone()),
+    })
+    .await?;
+
+    // Create second update
+    let yjs_update2 = {
+        let mut txn = doc.transact_mut();
+        text.push(&mut txn, " More text!");
+        txn.encode_update_v2()
+    };
+
+    // Push second update
+    tx.send(SessionCommand::PushUpdate {
+        project_id: project_id.clone(),
+        update: yjs_update2,
         updated_by: Some(test_user.name.clone()),
     })
     .await?;

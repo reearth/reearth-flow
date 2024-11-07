@@ -21,7 +21,6 @@ use crate::project::ProjectService;
 use crate::{types::ManageProjectEditSessionTaskData, ProjectServiceError};
 
 const MAX_EMPTY_SESSION_DURATION: Duration = Duration::from_secs(10);
-//const MAX_SNAPSHOT_DELTA: Duration = Duration::from_secs(5 * 60);
 const JOB_COMPLETION_DELAY: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone)]

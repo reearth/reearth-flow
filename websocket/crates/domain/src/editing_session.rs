@@ -294,7 +294,8 @@ impl ProjectEditingSession {
         R: RedisDataManagerImpl,
         S: ProjectSnapshotImpl,
     {
-        self.check_session_setup()?;
+        debug!("______________________");
+        //self.check_session_setup()?;
         let _lock = self.session_lock.lock().await;
 
         let (state, edits) = redis_data_manager
@@ -302,13 +303,16 @@ impl ProjectEditingSession {
             .await
             .map_err(ProjectEditingSessionError::redis)?;
 
-        debug!("Merged updates for project: {:?}", state);
+        debug!("2-------------");
+        debug!("state: {:?}", state);
 
         if save_changes {
             let snapshot = snapshot_repo
                 .get_latest_snapshot(&self.project_id)
                 .await
                 .map_err(ProjectEditingSessionError::snapshot)?;
+            debug!("3-------------");
+            debug!("snapshot: {:?}", snapshot);
 
             if let Some(mut snapshot) = snapshot {
                 snapshot.data = state;
