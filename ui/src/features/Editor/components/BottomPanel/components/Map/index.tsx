@@ -1,8 +1,12 @@
-import { Button, ThreeDMap, TwoDMap } from "@flow/components";
+import {
+  Button,
+  SupportedVisualizations,
+  ThreeDMap,
+  TwoDMap,
+} from "@flow/components";
+import { useT } from "@flow/lib/i18n";
 
-export type MapMode = "2d" | "3d";
-
-const mapModes: MapMode[] = ["2d", "3d"];
+export type MapMode = Extract<SupportedVisualizations, "3d-map" | "2d-map">;
 
 type Props = {
   mapMode: MapMode;
@@ -10,23 +14,26 @@ type Props = {
 };
 
 const Map: React.FC<Props> = ({ mapMode, setMapMode }) => {
+  const t = useT();
+  const mapModes: { key: MapMode; value: string }[] = [
+    { key: "2d-map", value: t("2D") },
+    { key: "3d-map", value: t("3D") },
+  ];
   return (
-    <div className="flex w-1/2">
-      <div className="relative w-full">
-        <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border bg-background transition-all">
-          {mapModes.map((b) => (
-            <Button
-              className={`cursor-pointer rounded-none transition-all ${mapMode === b ? "bg-accent text-accent-foreground" : ""}`}
-              variant="ghost"
-              size="icon"
-              key={b}
-              onClick={() => mapMode !== b && setMapMode?.(b)}>
-              {b}
-            </Button>
-          ))}
-        </div>
-        {mapMode === "2d" ? <TwoDMap /> : <ThreeDMap />}
+    <div className="relative w-full">
+      <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border bg-background transition-all">
+        {mapModes.map((b) => (
+          <Button
+            className={`cursor-pointer rounded-none transition-all ${mapMode === b.key ? "bg-accent text-accent-foreground" : ""}`}
+            variant="ghost"
+            size="icon"
+            key={b.key}
+            onClick={() => mapMode !== b.key && setMapMode?.(b.key)}>
+            {b.value}
+          </Button>
+        ))}
       </div>
+      {mapMode === "3d-map" ? <ThreeDMap /> : <TwoDMap />}
     </div>
   );
 };
