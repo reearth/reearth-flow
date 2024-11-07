@@ -9,6 +9,7 @@ use flow_websocket_domain::user::User;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
 use std::sync::Arc;
+use tracing::debug;
 
 #[derive(Debug, Clone)]
 pub struct ProjectService<E, S, R> {
@@ -60,7 +61,10 @@ where
             None => ProjectEditingSession::new(project_id.to_string()),
         };
 
+        debug!("Session ID: {:?}", session.session_id);
+
         if session.session_id.is_none() {
+            debug!("Starting new session for project: {}", project_id);
             session
                 .start_or_join_session(
                     &*self.snapshot_repository,

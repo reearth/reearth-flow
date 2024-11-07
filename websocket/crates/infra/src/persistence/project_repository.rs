@@ -80,7 +80,7 @@ where
     ) -> Result<String, Self::Error> {
         let session_id = session
             .session_id
-            .get_or_insert_with(|| generate_id!("editor-session"))
+            .get_or_insert_with(|| generate_id!("editor-session:"))
             .clone();
 
         let session_key = format!("session:{}", session_id);

@@ -10,6 +10,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::Mutex;
+use tracing::debug;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectEditingSession {
@@ -86,12 +87,17 @@ impl ProjectEditingSession {
         S: ProjectSnapshotImpl,
         R: RedisDataManagerImpl,
     {
+        debug!(
+            "Starting or joining session for project: {}",
+            self.project_id
+        );
         if let Some(project_editing_session) = project_editing_session_repository
             .get_active_session(&self.project_id)
             .await
             .map_err(ProjectEditingSessionError::project_editing_session_repository)?
         {
             self.session_id = project_editing_session.session_id.clone();
+            debug!("Joined existing session for project: {}", self.project_id);
             return Ok(());
         }
 
@@ -101,6 +107,8 @@ impl ProjectEditingSession {
             .create_session(project_editing_session)
             .await
             .map_err(ProjectEditingSessionError::project_editing_session_repository)?;
+
+        debug!("Created new session for project: {}", self.project_id);
 
         self.load_session(snapshot_repo, redis_manager, user).await
     }
@@ -115,38 +123,27 @@ impl ProjectEditingSession {
         R: RedisDataManagerImpl,
         S: ProjectSnapshotImpl,
     {
-        if self.check_snapshot_exists(snapshot_repo).await.is_ok() {
-            let snapshot = snapshot_repo
-                .get_latest_snapshot(&self.project_id)
+        if let Some(snapshot) = snapshot_repo
+            .get_latest_snapshot(&self.project_id)
+            .await
+            .map_err(ProjectEditingSessionError::snapshot)?
+        {
+            debug!("Found existing snapshot for project: {}", self.project_id);
+            redis_manager
+                .push_update(&self.project_id, snapshot.data, Some(user.name.clone()))
                 .await
-                .map_err(ProjectEditingSessionError::snapshot)?;
-
-            if let Some(snapshot) = snapshot {
-                redis_manager
-                    .push_update(&self.project_id, snapshot.data, Some(user.name.clone()))
-                    .await
-                    .map_err(ProjectEditingSessionError::redis)?;
-            }
+                .map_err(ProjectEditingSessionError::redis)?;
         } else {
+            debug!(
+                "No existing snapshot found for project: {}",
+                self.project_id
+            );
             self.create_snapshot(user, snapshot_repo, Vec::new(), None)
                 .await
                 .map_err(ProjectEditingSessionError::snapshot)?;
+            debug!("Created new snapshot for project: {}", self.project_id);
         }
         Ok(())
-    }
-
-    async fn check_snapshot_exists<S>(
-        &self,
-        snapshot_repo: &S,
-    ) -> Result<(), ProjectEditingSessionError>
-    where
-        S: ProjectSnapshotImpl,
-    {
-        snapshot_repo
-            .get_latest_snapshot(&self.project_id)
-            .await
-            .map(|_| ())
-            .map_err(ProjectEditingSessionError::snapshot)
     }
 
     pub async fn get_diff_update<R>(
@@ -241,8 +238,6 @@ impl ProjectEditingSession {
     where
         S: ProjectSnapshotImpl,
     {
-        self.check_session_setup()?;
-
         let _lock = self.session_lock.lock().await;
         self.create_snapshot_internal(snapshot_repo, user, data, snapshot_name)
             .await
@@ -306,6 +301,8 @@ impl ProjectEditingSession {
             .merge_updates(&self.project_id, true)
             .await
             .map_err(ProjectEditingSessionError::redis)?;
+
+        debug!("Merged updates for project: {:?}", state);
 
         if save_changes {
             let snapshot = snapshot_repo

@@ -118,19 +118,7 @@ impl UpdateManager {
                     FlowProjectRedisDataManagerError::Unknown("Missing value field".to_string())
                 })?;
 
-            let format = items
-                .iter()
-                .find(|(key, _)| key == "format")
-                .map(|(_, v)| v)
-                .ok_or_else(|| {
-                    FlowProjectRedisDataManagerError::Unknown("Missing format field".to_string())
-                })?;
-
-            let encoded_update: FlowEncodedUpdate = if format == "json" {
-                serde_json::from_str(value)?
-            } else {
-                continue;
-            };
+            let encoded_update: FlowEncodedUpdate = serde_json::from_str(value)?;
 
             if encoded_update.update.is_empty() || encoded_update.update == "[]" {
                 continue;

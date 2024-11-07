@@ -5,9 +5,8 @@ use flow_websocket_infra::persistence::{
         flow_project_redis_data_manager::FlowProjectRedisDataManager, redis_client::RedisClient,
     },
 };
-use flow_websocket_services::{
-    manage_project_edit_session::{ManageEditSessionService, SessionCommand},
-    types::ManageProjectEditSessionTaskData,
+use flow_websocket_services::manage_project_edit_session::{
+    ManageEditSessionService, SessionCommand,
 };
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -62,16 +61,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Simulate session lifecycle
     debug!("Starting session simulation");
 
-    // Add task data
-    let task_data = ManageProjectEditSessionTaskData {
+    tx.send(SessionCommand::AddTask {
         project_id: project_id.clone(),
-        last_merged_at: Arc::new(tokio::sync::RwLock::new(None)),
-        last_snapshot_at: Arc::new(tokio::sync::RwLock::new(None)),
-        clients_disconnected_at: Arc::new(tokio::sync::RwLock::new(None)),
-        client_count: Arc::new(tokio::sync::RwLock::new(Some(0))),
-    };
-
-    tx.send(SessionCommand::AddTask { task_data }).await?;
+    })
+    .await?;
 
     // Start session
     tx.send(SessionCommand::Start {
@@ -92,6 +85,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })
     .await?;
 
+    // Push update
+    tx.send(SessionCommand::PushUpdate {
+        project_id: project_id.clone(),
+        update: vec![1, 2, 3],
+        updated_by: Some(test_user.name.clone()),
+    })
+    .await?;
+
     // End session
     tx.send(SessionCommand::End {
         project_id: project_id.clone(),
@@ -99,18 +100,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })
     .await?;
 
-    // Remove task
-    tx.send(SessionCommand::RemoveTask {
-        project_id: project_id.clone(),
-    })
-    .await?;
+    // // Remove task
+    // tx.send(SessionCommand::RemoveTask {
+    //     project_id: project_id.clone(),
+    // })
+    // .await?;
 
-    // Complete session
-    tx.send(SessionCommand::Complete {
-        project_id,
-        user: test_user,
-    })
-    .await?;
+    // // Complete session
+    // tx.send(SessionCommand::Complete {
+    //     project_id,
+    //     user: test_user,
+    // })
+    // .await?;
 
     // Drop sender to terminate service
     drop(tx);

@@ -10,6 +10,7 @@ use flow_websocket_infra::persistence::{
     project_repository::ProjectRepositoryError, redis::errors::FlowProjectRedisDataManagerError,
 };
 use mockall::automock;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
@@ -38,7 +39,7 @@ where
     tasks: Arc<Mutex<HashMap<String, ManageProjectEditSessionTaskData>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SessionCommand {
     Start {
         project_id: String,
@@ -56,13 +57,18 @@ pub enum SessionCommand {
         project_id: String,
     },
     AddTask {
-        task_data: ManageProjectEditSessionTaskData,
+        project_id: String,
     },
     RemoveTask {
         project_id: String,
     },
     ListAllSnapshotsVersions {
         project_id: String,
+    },
+    PushUpdate {
+        project_id: String,
+        update: Vec<u8>,
+        updated_by: Option<String>,
     },
 }
 
@@ -119,6 +125,9 @@ where
                                 }
                             }
                         },
+                        SessionCommand::PushUpdate { project_id, update, updated_by } => {
+                            self.push_update(&project_id, update, updated_by).await?;
+                        },
                         SessionCommand::End { project_id, user } => {
                             if let Some(task_data) = self.get_task_data(&project_id).await {
                                 {
@@ -135,9 +144,16 @@ where
                                 }
 
                                 if let Some(mut session) = self.get_latest_session(&project_id).await? {
-                                    if let Ok(()) = self.end_editing_session_if_conditions_met(&mut session, &task_data).await {
-                                        debug!("Session ended by user: {} for project: {}", user.name, project_id);
-                                        break;
+                                    debug!("Checking if job is complete for project: {}", project_id);
+                                    match self.complete_job_if_met_requirements(&mut session).await {
+                                        Ok(()) => {
+                                            debug!("Session ended by user: {} for project: {}", user.name, project_id);
+                                            break;
+                                        }
+                                        Err(e) => {
+                                            debug!("Failed to complete job: {:?}", e);
+                                            return Err(e);
+                                        }
                                     }
                                 }
                             }
@@ -151,9 +167,15 @@ where
 
                         SessionCommand::Complete { project_id, user } => {
                             if let Some(mut session) = self.get_latest_session(&project_id).await? {
-                                if let Ok(()) = self.complete_job_if_met_requirements(&mut session).await {
-                                    debug!("Job completed by user: {} for project: {}", user.name, project_id);
-                                    break;
+                                match self.complete_job_if_met_requirements(&mut session).await {
+                                    Ok(()) => {
+                                        debug!("Job completed by user: {} for project: {}", user.name, project_id);
+                                        break;
+                                    }
+                                    Err(e) => {
+                                        debug!("Failed to complete job: {:?}", e);
+                                        return Err(e);
+                                    }
                                 }
                             }
                         },
@@ -161,7 +183,8 @@ where
                         SessionCommand::CheckStatus { project_id } => {
                             debug!("Checking session status for project: {}", project_id);
                         },
-                        SessionCommand::AddTask { task_data } => {
+                        SessionCommand::AddTask { project_id } => {
+                            let task_data = ManageProjectEditSessionTaskData::new(project_id);
                             let mut tasks = self.tasks.lock().await;
                             tasks.insert(task_data.project_id.clone(), task_data.clone());
                             debug!("Added task for project: {}", task_data.project_id);
@@ -241,8 +264,22 @@ where
             .end_session("system".to_string(), session.clone())
             .await?;
 
+        debug!("Job completed for project: {}", session.project_id);
+
         sleep(JOB_COMPLETION_DELAY).await;
 
+        Ok(())
+    }
+
+    pub async fn push_update(
+        &self,
+        project_id: &str,
+        update: Vec<u8>,
+        updated_by: Option<String>,
+    ) -> Result<(), ProjectServiceError> {
+        self.project_service
+            .push_update_to_redis_stream(project_id, update, updated_by)
+            .await?;
         Ok(())
     }
 }
