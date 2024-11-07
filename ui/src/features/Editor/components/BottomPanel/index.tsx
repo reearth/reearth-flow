@@ -42,6 +42,7 @@ const BottomPanel: React.FC<Props> = ({
 }) => {
   const t = useT();
   const [windowSize, setWindowSize] = useState<WindowSize>("min");
+  const [mapMode, setMapMode] = useState<"2d" | "3d">("2d");
 
   const handlePanelToggle = useCallback(
     (open: boolean) => onOpen(open ? "bottom" : undefined),
@@ -60,9 +61,9 @@ const BottomPanel: React.FC<Props> = ({
       icon: <Globe className="size-[20px]" weight="thin" />,
       title: t("Preview"),
       component: (
-        <div className="flex flex-1">
+        <div className="flex w-full justify-between">
           <DataTable />
-          <Map />
+          <Map mapMode={mapMode} setMapMode={setMapMode} />
         </div>
       ),
     },
