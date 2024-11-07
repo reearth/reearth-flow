@@ -28,4 +28,4 @@ export * from "./TextArea";
 export * from "./RadioGroup";
 export * from "./SchemaForm";
 export * from "./BasicBoiler";
-export * from "./TwoDMap";
+export * from "./visualizations";
