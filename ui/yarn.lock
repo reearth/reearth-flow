@@ -3877,7 +3877,6 @@ __metadata:
     jsdom: "npm:25.0.1"
     lodash-es: "npm:4.17.21"
     maplibre-gl: "npm:4.7.1"
-    pmtiles: "npm:3.2.1"
     postcss: "npm:8.4.47"
     prettier: "npm:3.3.3"
     react: "npm:18.3.1"
@@ -6397,15 +6396,6 @@ __metadata:
   version: 5.0.5
   resolution: "@types/jsonpath-plus@npm:5.0.5"
   checksum: 10c0/be9cc91dd1a4898e189cb004fc3abc3ce7dec2ff16189f7966913d8d27ccd1fbd186d936b2f001931e4c7bc404699fecfb532e9405f11797cb5e9d511060f41d
-  languageName: node
-  linkType: hard
-
-"@types/leaflet@npm:^1.9.8":
-  version: 1.9.14
-  resolution: "@types/leaflet@npm:1.9.14"
-  dependencies:
-    "@types/geojson": "npm:*"
-  checksum: 10c0/0c7df77581d62e0c6b106b5f8718001e7f0feec8caea0bfcd03c91204dd5b431a4f32df7b482318c9f7942e892058a8f8decebe8b1a517b9bcdf6ab508c44060
   languageName: node
   linkType: hard
 
@@ -10502,13 +10492,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fflate@npm:^0.8.0":
-  version: 0.8.2
-  resolution: "fflate@npm:0.8.2"
-  checksum: 10c0/03448d630c0a583abea594835a9fdb2aaf7d67787055a761515bf4ed862913cfd693b4c4ffd5c3f3b355a70cf1e19033e9ae5aedcca103188aaff91b8bd6e293
-  languageName: node
-  linkType: hard
-
 "figures@npm:^3.0.0":
   version: 3.2.0
   resolution: "figures@npm:3.2.0"
@@ -13955,16 +13938,6 @@ __metadata:
   dependencies:
     fflate: "npm:^0.7.3"
   checksum: 10c0/7c4ec45e0f017b3e4d13ef49151e342c22b3a08d431473f1fbc59810d946187aeab3ce5b4147298c7f84ceb4eb5ace5e2339ad7bdd4570fa88b18867abc924d6
-  languageName: node
-  linkType: hard
-
-"pmtiles@npm:3.2.1":
-  version: 3.2.1
-  resolution: "pmtiles@npm:3.2.1"
-  dependencies:
-    "@types/leaflet": "npm:^1.9.8"
-    fflate: "npm:^0.8.0"
-  checksum: 10c0/645612bb23837808345581dde9cee89c2987b0556c26ac0b661dffeef42c53ceb888bb5be8817ef3fd40623b96dc6036808773529ee5f6694ddbb38af4bc5bcb
   languageName: node
   linkType: hard
 
