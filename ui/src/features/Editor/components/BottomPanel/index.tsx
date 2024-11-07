@@ -61,7 +61,7 @@ const BottomPanel: React.FC<Props> = ({
       icon: <Globe className="size-[20px]" weight="thin" />,
       title: t("Preview"),
       component: (
-        <div className="flex flex-1">
+        <div className="flex w-full justify-between">
           <DataTable />
           <Map mapMode={mapMode} setMapMode={setMapMode} />
         </div>

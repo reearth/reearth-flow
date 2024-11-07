@@ -98,7 +98,7 @@ function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="flex w-full flex-col justify-between">
+    <div className="flex flex-col justify-between">
       <div>
         <div className="flex items-center gap-4 py-4">
           {showFiltering && (

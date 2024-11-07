@@ -79,8 +79,10 @@ const data: Fire[] = points;
 
 const DataTable: React.FC = () => {
   return (
-    <div className="container mx-auto w-6/12 overflow-auto">
-      <Table columns={columns} data={data} selectColumns showFiltering />
+    <div className="box-border flex-1 overflow-auto">
+      <div className="box-border p-2">
+        <Table columns={columns} data={data} selectColumns showFiltering />
+      </div>
     </div>
   );
 };

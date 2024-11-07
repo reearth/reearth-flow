@@ -64,30 +64,32 @@ const Map: React.FC<Props> = ({ mapMode, setMapMode }) => {
   }, [isReady]);
 
   return (
-    <div className="relative w-6/12">
-      <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border bg-background transition-all">
-        {mapModes.map((b) => (
-          <Button
-            className={`cursor-pointer rounded-none transition-all ${mapMode === b ? "bg-accent text-accent-foreground" : ""}`}
-            variant="ghost"
-            size="icon"
-            key={b}
-            onClick={() => mapMode !== b && setMapMode?.(b)}>
-            {b}
-          </Button>
-        ))}
+    <div className="flex w-1/2">
+      <div className="relative w-full">
+        <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border bg-background transition-all">
+          {mapModes.map((b) => (
+            <Button
+              className={`cursor-pointer rounded-none transition-all ${mapMode === b ? "bg-accent text-accent-foreground" : ""}`}
+              variant="ghost"
+              size="icon"
+              key={b}
+              onClick={() => mapMode !== b && setMapMode?.(b)}>
+              {b}
+            </Button>
+          ))}
+        </div>
+        {mapMode === "2d" ? (
+          <TwoDMap />
+        ) : (
+          <CoreVisualizer
+            engine="cesium"
+            isBuilt
+            ready={isReady}
+            sceneProperty={sceneProperty}
+            layers={layers}
+          />
+        )}
       </div>
-      {mapMode === "2d" ? (
-        <TwoDMap />
-      ) : (
-        <CoreVisualizer
-          engine="cesium"
-          isBuilt
-          ready={isReady}
-          sceneProperty={sceneProperty}
-          layers={layers}
-        />
-      )}
     </div>
   );
 };
