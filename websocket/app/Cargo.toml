@@ -26,3 +26,5 @@ envy.workspace = true
 flow-websocket-services.workspace = true
 flow-websocket-infra.workspace = true
 flow-websocket-domain.workspace = true
+bb8.workspace = true
+bb8-redis.workspace = true

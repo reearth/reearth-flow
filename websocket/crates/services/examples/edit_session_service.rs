@@ -1,9 +1,9 @@
+use bb8::Pool;
+use bb8_redis::RedisConnectionManager;
 use flow_websocket_domain::{generate_id, user::User};
 use flow_websocket_infra::persistence::{
     project_repository::{ProjectLocalRepository, ProjectRedisRepository},
-    redis::{
-        flow_project_redis_data_manager::FlowProjectRedisDataManager, redis_client::RedisClient,
-    },
+    redis::flow_project_redis_data_manager::FlowProjectRedisDataManager,
 };
 use flow_websocket_services::manage_project_edit_session::{
     ManageEditSessionService, SessionCommand,
@@ -24,13 +24,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let redis_url =
         std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string());
 
+    // Initialize Redis connection pool
+    let manager = RedisConnectionManager::new(&*redis_url)?;
+    let redis_pool = Pool::builder().build(manager).await?;
+
     // Initialize components
-    let redis_client = RedisClient::new("redis://localhost:6379").await?;
     let local_storage = ProjectLocalRepository::new("./local_storage".into()).await?;
-    let session_repo = ProjectRedisRepository::<RedisClient>::new(Arc::new(redis_client.clone()));
+    let session_repo = ProjectRedisRepository::new(redis_pool.clone());
+    let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
     let project_id = "project_123".to_string();
-    let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
     // Create service
     let service = ManageEditSessionService::new(

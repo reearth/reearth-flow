@@ -80,11 +80,7 @@ impl UpdateManager {
         &self,
         project_id: &str,
     ) -> Result<StreamItems, FlowProjectRedisDataManagerError> {
-        let mut conn = self
-            .redis_pool
-            .get()
-            .await
-            .map_err(FlowProjectRedisDataManagerError::PoolRunError)?;
+        let mut conn = self.redis_pool.get().await?;
         let key = self.key_manager.state_updates_key(project_id)?;
 
         let result: RedisStreamResult = redis::cmd("XREAD")

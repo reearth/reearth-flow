@@ -64,6 +64,8 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "bb8",
+ "bb8-redis",
  "dotenv",
  "envy",
  "flow-websocket-domain",

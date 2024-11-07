@@ -1,3 +1,4 @@
+use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use thiserror::Error;
 
@@ -21,4 +22,8 @@ pub enum WsError {
     AwarenessUpdate(#[from] yrs::sync::awareness::Error),
     #[error(transparent)]
     MpscSendError(#[from] tokio::sync::mpsc::error::SendError<SessionCommand>),
+    #[error(transparent)]
+    Pool(#[from] FlowProjectRedisDataManagerError),
+    #[error(transparent)]
+    LocalStorage(#[from] std::io::Error),
 }

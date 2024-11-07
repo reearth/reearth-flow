@@ -21,8 +21,6 @@ pub enum FlowProjectRedisDataManagerError {
     #[error(transparent)]
     ParseInt(#[from] std::num::ParseIntError),
     #[error(transparent)]
-    RedisClient(#[from] super::redis_client::RedisClientError),
-    #[error(transparent)]
     Join(#[from] tokio::task::JoinError),
     #[error("Unknown error: {0}")]
     Unknown(String),
