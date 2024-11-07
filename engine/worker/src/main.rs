@@ -1,3 +1,4 @@
+mod artifact;
 mod asset;
 mod command;
 mod errors;

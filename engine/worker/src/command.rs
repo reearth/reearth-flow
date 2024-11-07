@@ -3,17 +3,14 @@ use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use google_cloud_pubsub::client::{Client, ClientConfig};
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
-use reearth_flow_common::{
-    dir::{self, setup_job_directory},
-    fs,
-    uri::Uri,
-};
+use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
 use reearth_flow_runner::runner::AsyncRunner;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::{self, StorageResolver};
 use reearth_flow_types::Workflow;
 
 use crate::{
+    artifact::upload_artifact,
     asset::download_asset,
     event_handler::EventHandler,
     factory::ALL_ACTION_FACTORIES,
@@ -41,7 +38,7 @@ fn workflow_arg() -> Arg {
     Arg::new("workflow")
         .long("workflow")
         .help("Workflow file location. Use '-' to read from stdin.")
-        .env("REEARTH_FLOW_WORKER_WORKFLOW")
+        .env("FLOW_WORKER_WORKFLOW")
         .required(true)
         .display_order(1)
 }
@@ -50,7 +47,7 @@ fn asset_arg() -> Arg {
     Arg::new("metadata_path")
         .long("metadata-path")
         .help("Metadata path")
-        .env("REEARTH_FLOW_WORKER_METADATA_PATH")
+        .env("FLOW_WORKER_METADATA_PATH")
         .required(true)
         .display_order(2)
 }
@@ -59,6 +56,7 @@ fn worker_num_arg() -> Arg {
     Arg::new("worker_num")
         .long("worker-num")
         .help("Number of workers")
+        .env("FLOW_WORKER_WORKER_NUM")
         .required(false)
         .display_order(3)
 }
@@ -259,44 +257,7 @@ impl RunWorkerCommand {
         meta: &Metadata,
         storage_resolver: &Arc<StorageResolver>,
     ) -> crate::errors::Result<()> {
-        let remote_artifact_path =
-            Uri::from_str(format!("{}/{}.zip", &meta.artifact_base_url, meta.job_id).as_str())
-                .map_err(crate::errors::Error::cleanup)?;
-        let job_root_dir = dir::get_job_root_dir_path("workers", meta.job_id)
-            .map_err(crate::errors::Error::cleanup)?;
-        let zip_temp_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())
-            .map_err(crate::errors::Error::cleanup)?;
-        let zip_temp_path = zip_temp_path.join(format!("{}.zip", meta.job_id));
-        fs::create_zip_file(job_root_dir, zip_temp_path.clone())
-            .await
-            .map_err(crate::errors::Error::cleanup)?;
-
-        let zip_temp_path = zip_temp_path
-            .as_os_str()
-            .to_str()
-            .and_then(|s| Uri::from_str(s).ok())
-            .ok_or(crate::errors::Error::cleanup(
-                "Failed to parse uri to zip temp path",
-            ))?;
-        let storage = storage_resolver
-            .resolve(&zip_temp_path)
-            .map_err(crate::errors::Error::cleanup)?;
-        let zip_file_content = storage
-            .get(zip_temp_path.as_path().as_path())
-            .await
-            .map_err(crate::errors::Error::cleanup)?;
-        let zip_file_content = zip_file_content
-            .bytes()
-            .await
-            .map_err(crate::errors::Error::cleanup)?;
-
-        let storage = storage_resolver
-            .resolve(&remote_artifact_path)
-            .map_err(crate::errors::Error::cleanup)?;
-        storage
-            .put(remote_artifact_path.as_path().as_path(), zip_file_content)
-            .await
-            .map_err(crate::errors::Error::cleanup)?;
+        upload_artifact(storage_resolver, meta).await?;
         Ok(())
     }
 }
