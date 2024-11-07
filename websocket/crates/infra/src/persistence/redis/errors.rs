@@ -1,15 +1,11 @@
 use thiserror::Error;
 
-use super::flow_project_lock::GlobalLockError;
-
 #[derive(Error, Debug)]
 pub enum FlowProjectRedisDataManagerError {
     #[error(transparent)]
     Redis(#[from] redis::RedisError),
     #[error("Serde JSON error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("Global lock error: {0}")]
-    GlobalLock(#[from] GlobalLockError),
     #[error("Another Editing Session in progress")]
     EditingSessionInProgress,
     #[error("Failed to merge updates")]
@@ -34,4 +30,12 @@ pub enum FlowProjectRedisDataManagerError {
     LockError,
     #[error("Pool run error: {0}")]
     PoolRunError(#[from] bb8::RunError<redis::RedisError>),
+    #[error("Global Lock Error: {0:?}")]
+    FlowProjectLock(rslock::LockError),
+}
+
+impl From<rslock::LockError> for FlowProjectRedisDataManagerError {
+    fn from(err: rslock::LockError) -> Self {
+        FlowProjectRedisDataManagerError::FlowProjectLock(err)
+    }
 }
