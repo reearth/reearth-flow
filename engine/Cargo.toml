@@ -160,6 +160,7 @@ tracing = "0.1.40"
 tracing-opentelemetry = { version = "0.27.0", default-features = false, features = ["metrics", "tracing-log"] }
 tracing-subscriber = { version = "0.3.18", features = [
   "env-filter",
+  "json",
   "std",
   "time",
 ] }
