@@ -10,6 +10,7 @@ use flow_websocket_infra::{
 use flow_websocket_services::project::ProjectService;
 use std::sync::Arc;
 use tracing::{debug, info};
+use yrs::{updates::decoder::Decode, Doc, GetString, Text, Transact, Update};
 
 ///RUST_LOG=debug cargo run --example project_service
 
@@ -76,10 +77,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     info!("Allowed actions: {:?}", allowed_actions);
 
-    debug!("Pushing update...");
-    let update = b"test update".to_vec();
+    // Create a Yjs document with initial content
+    let doc = Doc::new();
+    let text = doc.get_or_insert_text("content");
+    let update = {
+        let mut txn = doc.transact_mut();
+        text.push(&mut txn, "Initial content");
+        txn.encode_update_v2()
+    };
+
+    debug!("Pushing initial update...");
     service
         .push_update_to_redis_stream(project_id, update, Some(test_user.name.clone()))
+        .await?;
+
+    // Create another update
+    let second_update = {
+        let mut txn = doc.transact_mut();
+        text.push(&mut txn, " - More content");
+        txn.encode_update_v2()
+    };
+
+    debug!("Pushing second update...");
+    service
+        .push_update_to_redis_stream(project_id, second_update, Some(test_user.name.clone()))
         .await?;
 
     debug!("Getting current state...");
@@ -87,7 +108,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .get_current_state(project_id, session.session_id.as_deref())
         .await?
     {
-        info!("Current state size: {} bytes", state.len());
+        if !state.is_empty() {
+            debug!("---------------------");
+            debug!("state: {:?}", state);
+            debug!("------------");
+
+            // Create a new doc to apply the state
+            let doc = Doc::new();
+            let update = Update::decode_v2(&state).map_err(Box::new)?;
+            doc.transact_mut().apply_update(update);
+
+            let text = doc.get_or_insert_text("content");
+            let content = {
+                let txn = doc.transact();
+                text.get_string(&txn)
+            };
+
+            info!("Current document content: {}", content);
+            info!("Current state size: {} bytes", state.len());
+        } else {
+            debug!("Received empty state update, skipping...");
+        }
     }
 
     debug!("Getting latest snapshot...");

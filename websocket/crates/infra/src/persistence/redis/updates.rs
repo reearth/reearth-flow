@@ -40,7 +40,11 @@ impl UpdateManager {
         let mut txn = doc.transact_mut();
 
         for update in updates {
-            txn.apply_update(Update::decode_v2(&update.update)?);
+            debug!("update: {:?}", update);
+            if !update.update.is_empty() {
+                debug!("apply update: {:?}", update.update);
+                txn.apply_update(Update::decode_v2(&update.update)?);
+            }
         }
 
         Ok(Some(txn.encode_update_v2()))

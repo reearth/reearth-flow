@@ -119,10 +119,13 @@ impl FlowProjectRedisDataManager {
         if entries.is_empty() {
             return Ok(None);
         }
+
         let mut updates = Vec::new();
         for (_, fields) in entries {
             if let Some((_, update_data)) = fields.first() {
-                updates.push(update_data.clone());
+                if !update_data.is_empty() {
+                    updates.push(update_data.clone());
+                }
             }
         }
 
@@ -239,7 +242,6 @@ impl RedisDataManagerImpl for FlowProjectRedisDataManager {
     ) -> Result<Option<Vec<u8>>, Self::Error> {
         let state_updates = self.get_state_update_in_redis(project_id).await?;
         let merged_update = self.update_manager.get_merged_update(project_id).await?;
-
         match (state_updates, merged_update) {
             (Some(state_updates), Some(merged_update)) => {
                 let doc = Doc::new();
@@ -248,8 +250,10 @@ impl RedisDataManagerImpl for FlowProjectRedisDataManager {
                 for state_update in state_updates {
                     txn.apply_update(Update::decode_v2(&state_update)?);
                 }
+                if !merged_update.is_empty() {
+                    txn.apply_update(Update::decode_v2(&merged_update)?);
+                }
 
-                txn.apply_update(Update::decode_v2(&merged_update)?);
                 Ok(Some(txn.encode_update_v2()))
             }
             (state_updates, _) => Ok(state_updates.and_then(|updates| updates.into_iter().next())),
