@@ -11,7 +11,6 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-flow-websocket-domain.workspace = true
 flow-websocket-infra.workspace = true
 
 async-trait.workspace = true

@@ -1,9 +1,12 @@
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
-use flow_websocket_domain::{generate_id, user::User};
-use flow_websocket_infra::persistence::{
-    project_repository::{ProjectLocalRepository, ProjectRedisRepository},
-    redis::flow_project_redis_data_manager::FlowProjectRedisDataManager,
+use flow_websocket_infra::{
+    generate_id,
+    persistence::{
+        project_repository::{ProjectLocalRepository, ProjectRedisRepository},
+        redis::flow_project_redis_data_manager::FlowProjectRedisDataManager,
+    },
+    types::user::User,
 };
 use flow_websocket_services::manage_project_edit_session::{
     ManageEditSessionService, SessionCommand,
@@ -13,6 +16,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 use yrs::{Doc, Text, Transact};
 
+///RUST_LOG=debug cargo run --example edit_session_service
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing

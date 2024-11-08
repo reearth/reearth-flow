@@ -1,3 +1,5 @@
+use crate::persistence::repository::RedisDataManagerImpl;
+
 use super::{
     connection::RedisConnection, default_key_manager::DefaultKeyManager,
     errors::FlowProjectRedisDataManagerError, flow_project_lock::FlowProjectLock,
@@ -5,7 +7,6 @@ use super::{
 };
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
-use flow_websocket_domain::repository::RedisDataManagerImpl;
 use redis::{streams::StreamMaxlen, AsyncCommands};
 use std::sync::Arc;
 use tracing::debug;

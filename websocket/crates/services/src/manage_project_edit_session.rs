@@ -1,14 +1,11 @@
 use chrono::Utc;
-use flow_websocket_domain::{
-    editing_session::ProjectEditingSession,
-    repository::{
-        ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
-    },
-    user::User,
+use flow_websocket_infra::persistence::editing_session::ProjectEditingSession;
+use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
+use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
+use flow_websocket_infra::persistence::repository::{
+    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
 };
-use flow_websocket_infra::persistence::{
-    project_repository::ProjectRepositoryError, redis::errors::FlowProjectRedisDataManagerError,
-};
+use flow_websocket_infra::types::user::User;
 use mockall::automock;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
