@@ -19,7 +19,8 @@ reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
-crossbeam = "0.8.4"
+async-trait.workspace = true
+crossbeam.workspace = true
 directories.workspace = true
 futures.workspace = true
 futures-util.workspace = true

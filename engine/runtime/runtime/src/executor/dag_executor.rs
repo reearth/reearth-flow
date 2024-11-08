@@ -6,7 +6,6 @@ use std::thread::{self, Builder};
 use std::time::Duration;
 
 use futures::Future;
-use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -21,8 +20,9 @@ use super::sink_node::SinkNode;
 use crate::builder_dag::{BuilderDag, NodeKind};
 use crate::dag_schemas::DagSchemas;
 use crate::errors::ExecutionError;
-use crate::event::{Event, EventHandler};
+use crate::event::{Event, EventHandler, EventHub};
 use crate::executor_operation::{ExecutorOptions, NodeContext};
+use crate::kvs::KvStore;
 
 use super::execution_dag::ExecutionDag;
 use super::source_node::{create_source_node, SourceNode};
@@ -38,8 +38,11 @@ pub struct DagExecutorJoinHandle {
 }
 
 impl DagExecutor {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        ctx: NodeContext,
+        expr_engine: Arc<Engine>,
+        storage_resolver: Arc<StorageResolver>,
+        kv_store: Arc<dyn KvStore>,
         entry_graph_id: uuid::Uuid,
         graphs: Vec<Graph>,
         options: ExecutorOptions,
@@ -47,8 +50,9 @@ impl DagExecutor {
         global_params: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<Self, ExecutionError> {
         let dag_schemas = DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params);
-        let builder_dag = BuilderDag::new(ctx, dag_schemas, options.event_hub_capacity).await?;
-
+        let event_hub = EventHub::new(options.event_hub_capacity);
+        let ctx = NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub);
+        let builder_dag = BuilderDag::new(ctx, dag_schemas).await?;
         Ok(Self {
             builder_dag,
             options,
@@ -62,7 +66,6 @@ impl DagExecutor {
         runtime: Arc<Handle>,
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
-        logger: Arc<LoggerFactory>,
         kv_store: Arc<dyn crate::kvs::KvStore>,
         state: Arc<State>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
@@ -71,7 +74,6 @@ impl DagExecutor {
         let mut execution_dag = ExecutionDag::new(
             self.builder_dag,
             self.options.channel_buffer_sz,
-            self.options.error_threshold,
             self.options.feature_flush_threshold,
             Arc::clone(&state),
         )?;
@@ -80,8 +82,8 @@ impl DagExecutor {
         let ctx = NodeContext::new(
             Arc::clone(&expr_engine),
             Arc::clone(&storage_resolver),
-            Arc::clone(&logger),
             Arc::clone(&kv_store),
+            execution_dag.event_hub().clone(),
         );
         // Start the threads.
         let source_node = create_source_node(
@@ -110,8 +112,8 @@ impl DagExecutor {
                     let ctx = NodeContext::new(
                         Arc::clone(&expr_engine),
                         Arc::clone(&storage_resolver),
-                        Arc::clone(&logger),
                         Arc::clone(&kv_store),
+                        execution_dag.event_hub().clone(),
                     );
                     let processor_node = ProcessorNode::new(
                         ctx,
@@ -127,8 +129,8 @@ impl DagExecutor {
                     let ctx = NodeContext::new(
                         Arc::clone(&expr_engine),
                         Arc::clone(&storage_resolver),
-                        Arc::clone(&logger),
                         Arc::clone(&kv_store),
+                        execution_dag.event_hub().clone(),
                     );
                     let sink_node = SinkNode::new(
                         ctx,

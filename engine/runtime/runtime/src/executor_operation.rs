@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
-use reearth_flow_action_log::factory::LoggerFactory;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
 use tracing::{error_span, info_span};
 
 use crate::{
+    event::EventHub,
     kvs::KvStore,
     node::{Port, DEFAULT_PORT},
 };
@@ -22,8 +21,8 @@ pub enum ExecutorOperation {
 pub struct Context {
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
-    pub logger: Arc<LoggerFactory>,
     pub kv_store: Arc<dyn KvStore>,
+    pub event_hub: EventHub,
 }
 
 impl From<ExecutorContext> for Context {
@@ -31,8 +30,8 @@ impl From<ExecutorContext> for Context {
         Self {
             expr_engine: ctx.expr_engine,
             storage_resolver: ctx.storage_resolver,
-            logger: ctx.logger,
             kv_store: ctx.kv_store,
+            event_hub: ctx.event_hub,
         }
     }
 }
@@ -42,8 +41,8 @@ impl From<NodeContext> for Context {
         Self {
             expr_engine: ctx.expr_engine,
             storage_resolver: ctx.storage_resolver,
-            logger: ctx.logger,
             kv_store: ctx.kv_store,
+            event_hub: ctx.event_hub,
         }
     }
 }
@@ -52,14 +51,14 @@ impl Context {
     pub fn new(
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
-        logger: Arc<LoggerFactory>,
         kv_store: Arc<dyn KvStore>,
+        event_hub: EventHub,
     ) -> Self {
         Self {
             expr_engine,
             storage_resolver,
-            logger,
             kv_store,
+            event_hub,
         }
     }
 
@@ -69,8 +68,8 @@ impl Context {
             port,
             expr_engine: self.expr_engine.clone(),
             storage_resolver: self.storage_resolver.clone(),
-            logger: self.logger.clone(),
             kv_store: self.kv_store.clone(),
+            event_hub: self.event_hub.clone(),
         }
     }
 }
@@ -81,8 +80,8 @@ pub struct ExecutorContext {
     pub port: Port,
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
-    pub logger: Arc<LoggerFactory>,
     pub kv_store: Arc<dyn KvStore>,
+    pub event_hub: EventHub,
 }
 
 impl From<Context> for ExecutorContext {
@@ -92,8 +91,8 @@ impl From<Context> for ExecutorContext {
             port: DEFAULT_PORT.clone(),
             expr_engine: ctx.expr_engine,
             storage_resolver: ctx.storage_resolver,
-            logger: ctx.logger,
             kv_store: ctx.kv_store,
+            event_hub: ctx.event_hub,
         }
     }
 }
@@ -105,14 +104,8 @@ impl Default for ExecutorContext {
             port: DEFAULT_PORT.clone(),
             expr_engine: Arc::new(Engine::new()),
             storage_resolver: Arc::new(StorageResolver::new()),
-            logger: Arc::new(LoggerFactory::new(
-                reearth_flow_action_log::ActionLogger::root(
-                    reearth_flow_action_log::Discard,
-                    reearth_flow_action_log::o!(),
-                ),
-                Uri::for_test("ram:///log/").path(),
-            )),
             kv_store: Arc::new(crate::kvs::create_kv_store()),
+            event_hub: EventHub::new(30),
         }
     }
 }
@@ -123,16 +116,16 @@ impl ExecutorContext {
         port: Port,
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
-        logger: Arc<LoggerFactory>,
         kv_store: Arc<dyn KvStore>,
+        event_hub: EventHub,
     ) -> Self {
         Self {
             feature,
             port,
             expr_engine,
             storage_resolver,
-            logger,
             kv_store,
+            event_hub,
         }
     }
 
@@ -140,8 +133,8 @@ impl ExecutorContext {
         Context {
             expr_engine: self.expr_engine.clone(),
             storage_resolver: self.storage_resolver.clone(),
-            logger: self.logger.clone(),
             kv_store: self.kv_store.clone(),
+            event_hub: self.event_hub.clone(),
         }
     }
 
@@ -151,8 +144,8 @@ impl ExecutorContext {
             port,
             expr_engine: Arc::clone(&self.expr_engine),
             storage_resolver: Arc::clone(&self.storage_resolver),
-            logger: Arc::clone(&self.logger),
             kv_store: Arc::clone(&self.kv_store),
+            event_hub: self.event_hub.clone(),
         }
     }
 
@@ -166,8 +159,8 @@ impl ExecutorContext {
             port,
             expr_engine: Arc::clone(&ctx.expr_engine),
             storage_resolver: Arc::clone(&ctx.storage_resolver),
-            logger: Arc::clone(&ctx.logger),
             kv_store: Arc::clone(&ctx.kv_store),
+            event_hub: ctx.event_hub.clone(),
         }
     }
 
@@ -177,8 +170,8 @@ impl ExecutorContext {
             port,
             expr_engine: Arc::clone(&ctx.expr_engine),
             storage_resolver: Arc::clone(&ctx.storage_resolver),
-            logger: Arc::clone(&ctx.logger),
             kv_store: Arc::clone(&ctx.kv_store),
+            event_hub: ctx.event_hub.clone(),
         }
     }
 
@@ -186,16 +179,16 @@ impl ExecutorContext {
         feature: Feature,
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
-        logger: Arc<LoggerFactory>,
         kv_store: Arc<dyn KvStore>,
+        event_hub: EventHub,
     ) -> Self {
         Self {
             feature,
             port: DEFAULT_PORT.clone(),
             expr_engine,
             storage_resolver,
-            logger,
             kv_store,
+            event_hub,
         }
     }
 
@@ -212,8 +205,8 @@ impl ExecutorContext {
 pub struct NodeContext {
     pub expr_engine: Arc<Engine>,
     pub storage_resolver: Arc<StorageResolver>,
-    pub logger: Arc<LoggerFactory>,
     pub kv_store: Arc<dyn KvStore>,
+    pub event_hub: EventHub,
 }
 
 impl From<Context> for NodeContext {
@@ -221,8 +214,8 @@ impl From<Context> for NodeContext {
         Self {
             expr_engine: ctx.expr_engine,
             storage_resolver: ctx.storage_resolver,
-            logger: ctx.logger,
             kv_store: ctx.kv_store,
+            event_hub: ctx.event_hub,
         }
     }
 }
@@ -232,14 +225,8 @@ impl Default for NodeContext {
         Self {
             expr_engine: Arc::new(Engine::new()),
             storage_resolver: Arc::new(StorageResolver::new()),
-            logger: Arc::new(LoggerFactory::new(
-                reearth_flow_action_log::ActionLogger::root(
-                    reearth_flow_action_log::Discard,
-                    reearth_flow_action_log::o!(),
-                ),
-                Uri::for_test("ram:///log/").path(),
-            )),
             kv_store: Arc::new(crate::kvs::create_kv_store()),
+            event_hub: EventHub::new(30),
         }
     }
 }
@@ -248,14 +235,14 @@ impl NodeContext {
     pub fn new(
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
-        logger: Arc<LoggerFactory>,
         kv_store: Arc<dyn KvStore>,
+        event_hub: EventHub,
     ) -> Self {
         Self {
             expr_engine,
             storage_resolver,
-            logger,
             kv_store,
+            event_hub,
         }
     }
 
@@ -271,8 +258,8 @@ impl NodeContext {
         Context {
             expr_engine: self.expr_engine.clone(),
             storage_resolver: self.storage_resolver.clone(),
-            logger: self.logger.clone(),
             kv_store: self.kv_store.clone(),
+            event_hub: self.event_hub.clone(),
         }
     }
 }
@@ -281,7 +268,6 @@ impl NodeContext {
 pub struct ExecutorOptions {
     pub channel_buffer_sz: usize,
     pub event_hub_capacity: usize,
-    pub error_threshold: Option<u32>,
     pub thread_pool_size: usize,
     pub feature_flush_threshold: usize,
 }

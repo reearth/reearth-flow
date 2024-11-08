@@ -5,10 +5,9 @@ use std::sync::Arc;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt};
 use once_cell::sync::Lazy;
-use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::event::EventHandler;
-use reearth_flow_runtime::executor_operation::{ExecutorOptions, NodeContext};
+use reearth_flow_runtime::executor_operation::ExecutorOptions;
 use reearth_flow_runtime::kvs::create_kv_store;
 use reearth_flow_runtime::node::NodeKind;
 use reearth_flow_runtime::shutdown::ShutdownReceiver;
@@ -65,7 +64,6 @@ impl Orchestrator {
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
-        logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
@@ -74,7 +72,6 @@ impl Orchestrator {
         let options = ExecutorOptions {
             channel_buffer_sz: *CHANNEL_BUFFER_SIZE,
             event_hub_capacity: *EVENT_HUB_CAPACITY,
-            error_threshold: None,
             thread_pool_size: *THREAD_POOL_SIZE,
             feature_flush_threshold: *FEATURE_FLUSH_THRESHOLD,
         };
@@ -82,20 +79,25 @@ impl Orchestrator {
         if let Some(with) = &workflow.with {
             expr_engine.append(with);
         }
-        let ctx = NodeContext {
-            expr_engine: Arc::new(expr_engine),
-            storage_resolver: storage_resolver.clone(),
-            logger: logger_factory.clone(),
-            kv_store: Arc::new(create_kv_store()),
-        };
+        let expr_engine = Arc::new(expr_engine);
+        let kv_store = Arc::new(create_kv_store());
         let dag_executor = executor
-            .create_dag_executor(ctx.clone(), workflow, factories, options)
+            .create_dag_executor(
+                expr_engine.clone(),
+                storage_resolver.clone(),
+                kv_store.clone(),
+                workflow,
+                factories,
+                options,
+            )
             .await?;
         let runtime_clone = self.runtime.clone();
         let shutdown_clone = shutdown.clone();
         let pipeline_future = self.runtime.spawn_blocking(move || {
             run_dag_executor(
-                ctx.clone(),
+                expr_engine.clone(),
+                storage_resolver,
+                kv_store.clone(),
                 &runtime_clone,
                 dag_executor,
                 shutdown_clone,
@@ -119,7 +121,6 @@ impl Orchestrator {
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
-        logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
         state: Arc<State>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
@@ -129,7 +130,6 @@ impl Orchestrator {
             workflow,
             factories,
             pipeline_shutdown,
-            logger_factory,
             storage_resolver,
             state,
             event_handlers,

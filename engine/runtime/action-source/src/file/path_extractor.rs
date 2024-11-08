@@ -7,7 +7,6 @@ use std::{
 
 use async_zip::base::read::mem::ZipFileReader;
 use futures::AsyncReadExt;
-use reearth_flow_action_log::action_log;
 use reearth_flow_common::{dir, uri::Uri};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
@@ -195,8 +194,9 @@ pub async fn extract(
                 e
             ))
         })?;
-        action_log!(
-            parent: span, ctx.logger.action_logger("echo"), "file path extract with path = {:?}", file_path,
+        ctx.event_hub.info_log(
+            Some(span.clone()),
+            format!("file path extract with path = {:?}", file_path),
         );
         let attribute_value = AttributeValue::try_from(file_path).map_err(|e| {
             crate::errors::SourceError::FilePathExtractor(format!(
