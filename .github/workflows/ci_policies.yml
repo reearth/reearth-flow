@@ -33,3 +33,10 @@ jobs:
             echo "No policy files were generated"
           fi
         working-directory: api
+      - name: Setup Cerbos
+        uses: cerbos/cerbos-setup-action@v1
+        with:
+          version: latest
+      - name: Validate Cerbos policies
+        run: cerbos compile ./policies
+        working-directory: api
