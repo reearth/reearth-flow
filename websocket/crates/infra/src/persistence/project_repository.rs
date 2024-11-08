@@ -209,7 +209,7 @@ impl ProjectSnapshotImpl for ProjectLocalRepository {
     type Error = ProjectRepositoryError;
 
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let path = format!("snapshots/{}", snapshot.metadata.id);
+        let path = format!("snapshots/{}", snapshot.metadata.project_id);
         self.client.upload_versioned(path, &snapshot).await?;
         Ok(())
     }
@@ -227,7 +227,7 @@ impl ProjectSnapshotImpl for ProjectLocalRepository {
     }
 
     async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let path = format!("snapshots/{}", snapshot.metadata.id);
+        let path = format!("snapshots/{}", snapshot.metadata.project_id);
         self.client.update_latest_versioned(path, &snapshot).await?;
         Ok(())
     }
