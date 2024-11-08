@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use reearth_flow_action_log::factory::LoggerFactory;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
+    event::EventHub,
     executor_operation::ExecutorContext,
     kvs,
     node::{Port, DEFAULT_PORT},
@@ -40,13 +39,7 @@ pub(crate) fn create_default_execute_context(feature: &Feature) -> ExecutorConte
         DEFAULT_PORT.clone(),
         Arc::new(Engine::new()),
         Arc::new(StorageResolver::new()),
-        Arc::new(LoggerFactory::new(
-            reearth_flow_action_log::ActionLogger::root(
-                reearth_flow_action_log::Discard,
-                reearth_flow_action_log::o!(),
-            ),
-            Uri::for_test("ram:///log/").path(),
-        )),
         Arc::new(kvs::create_kv_store()),
+        EventHub::new(30),
     )
 }

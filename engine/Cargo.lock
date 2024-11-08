@@ -5135,6 +5135,7 @@ dependencies = [
 name = "reearth-flow-runner"
 version = "0.0.2"
 dependencies = [
+ "async-trait",
  "bytes",
  "crossbeam",
  "directories",

@@ -436,8 +436,8 @@ impl Processor for Router {
             Port::new(&self.routing_port),
             Arc::clone(&ctx.expr_engine),
             Arc::clone(&ctx.storage_resolver),
-            Arc::clone(&ctx.logger),
             Arc::clone(&ctx.kv_store),
+            ctx.event_hub,
         ));
         Ok(())
     }

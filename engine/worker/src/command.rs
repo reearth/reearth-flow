@@ -88,7 +88,7 @@ impl RunWorkerCommand {
             .ok_or(crate::errors::Error::init("No metadata path provided"))?;
         let metadata_path =
             Uri::from_str(metadata_path.as_str()).map_err(crate::errors::Error::init)?;
-        let worker_num = matches.remove_one::<usize>("worker_num").unwrap_or(30);
+        let worker_num = matches.remove_one::<usize>("worker_num").unwrap_or(100);
         let vars = matches.remove_many::<String>("var");
         let vars = if let Some(vars) = vars {
             vars.into_iter()
@@ -128,6 +128,7 @@ impl RunWorkerCommand {
         let workflow_id = workflow.id;
         let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = Arc::new(event_handler);
         let result = AsyncRunner::run_with_event_handler(
+            meta.job_id,
             workflow,
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,

@@ -203,8 +203,8 @@ impl Processor for FeatureMerger {
                                 Context {
                                     expr_engine: ctx.expr_engine.clone(),
                                     storage_resolver: ctx.storage_resolver.clone(),
-                                    logger: ctx.logger.clone(),
                                     kv_store: ctx.kv_store.clone(),
+                                    event_hub: ctx.event_hub.clone(),
                                 },
                                 fw,
                             )?;
@@ -241,8 +241,8 @@ impl Processor for FeatureMerger {
                                 Context {
                                     expr_engine: ctx.expr_engine.clone(),
                                     storage_resolver: ctx.storage_resolver.clone(),
-                                    logger: ctx.logger.clone(),
                                     kv_store: ctx.kv_store.clone(),
+                                    event_hub: ctx.event_hub.clone(),
                                 },
                                 fw,
                             )?;
