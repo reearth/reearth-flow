@@ -24,7 +24,6 @@ use earcut::{utils3d::project3d_to_2d, Earcut};
 use indexmap::IndexSet;
 use itertools::Itertools;
 use nusamai_citygml::{schema::Schema, CityGmlElement};
-use nusamai_mvt::tileid::TileIdMethod;
 use nusamai_plateau::models::TopLevelCityObject;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::prelude::*;
@@ -54,6 +53,7 @@ use super::{
     tiling,
 };
 use crate::errors::SinkError;
+use crate::file::mvt::tileid::TileIdMethod;
 
 #[derive(Debug, Clone, Default)]
 pub struct Cesium3DTilesSinkFactory;
