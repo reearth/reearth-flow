@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
-use crate::generate_id;
 use crate::persistence::repository::{
     ProjectEditingSessionImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
 };
-use crate::types::snapshot::ObjectTenant;
-use crate::types::snapshot::{Metadata, ObjectDelete, ProjectSnapshot, SnapshotInfo};
+use crate::types::snapshot::{ProjectSnapshot, SnapshotMetadata, SnapshotType};
 use crate::types::user::User;
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::Mutex;
@@ -15,6 +12,7 @@ use tracing::debug;
 
 use super::project_repository::ProjectRepositoryError;
 use super::redis::errors::FlowProjectRedisDataManagerError;
+use crate::persistence::event_handler::EventHandler;
 
 struct SessionLockGuard<'a> {
     _lock: tokio::sync::MutexGuard<'a, ()>,
@@ -26,6 +24,9 @@ pub struct ProjectEditingSession {
     pub session_id: Option<String>,
     #[serde(skip)]
     session_lock: Arc<Mutex<()>>,
+    /// Event handler for session events
+    #[serde(skip)]
+    event_handler: Option<Arc<dyn EventHandler<Error = ProjectRepositoryError> + Send + Sync>>,
 }
 
 #[derive(Error, Debug)]
@@ -40,6 +41,12 @@ pub enum ProjectEditingSessionError {
     Snapshot(#[from] ProjectRepositoryError),
     #[error(transparent)]
     Redis(#[from] FlowProjectRedisDataManagerError),
+    /// Error when creating a snapshot
+    #[error("Error creating snapshot: {0}")]
+    SnapshotCreationError(String),
+    /// Error when recording an event
+    #[error("Failed to record event: {0}")]
+    EventRecordError(String),
 }
 
 impl Default for ProjectEditingSession {
@@ -48,6 +55,7 @@ impl Default for ProjectEditingSession {
             project_id: "".to_string(),
             session_id: None,
             session_lock: Arc::new(Mutex::new(())),
+            event_handler: None,
         }
     }
 }
@@ -64,9 +72,20 @@ impl ProjectEditingSession {
             project_id,
             session_id: None,
             session_lock: Arc::new(Mutex::new(())),
+            event_handler: None,
         }
     }
 
+    /// Sets the event handler for this session
+    pub fn with_event_handler(
+        mut self,
+        handler: impl EventHandler<Error = ProjectRepositoryError> + Send + Sync + 'static,
+    ) -> Self {
+        self.event_handler = Some(Arc::new(handler));
+        self
+    }
+
+    /// Starts a new editing session or joins an existing one
     pub async fn start_or_join_session<S, E, R>(
         &mut self,
         snapshot_repo: &S,
@@ -97,8 +116,6 @@ impl ProjectEditingSession {
         project_editing_session_repository
             .create_session(project_editing_session)
             .await?;
-
-        debug!("Created new session for project: {}", self.project_id);
 
         self.load_session(snapshot_repo, redis_manager, user).await
     }
@@ -193,26 +210,45 @@ impl ProjectEditingSession {
     {
         let _guard = self.acquire_lock().await;
 
-        let now = Utc::now();
-        let metadata = Metadata::new(
-            generate_id!("snap"),
-            self.project_id.clone(),
-            self.session_id.clone(),
-            snapshot_name,
-            String::new(),
-        );
+        let latest_snapshot = snapshot_repo.get_latest_snapshot(&self.project_id).await?;
 
-        let snapshot_info = SnapshotInfo::new(
-            user.name.clone(),
-            vec![],
-            ObjectTenant::new(user.id.clone(), user.tenant_id.clone()),
-            ObjectDelete::new(false, None),
-            Some(now),
-            None,
-        );
+        let (version, parent_version) = match latest_snapshot {
+            Some(snapshot) => (snapshot.version + 1, Some(snapshot.version)),
+            None => (1, None),
+        };
 
-        let snapshot = ProjectSnapshot::new(metadata, snapshot_info, data);
+        let snapshot = ProjectSnapshot::builder()
+            .project_id(self.project_id.clone())
+            .created_by(user.name.clone())
+            .data(data)
+            .snapshot_type(SnapshotType::Manual)
+            .version(version)
+            .parent_version(parent_version)
+            .path(snapshot_name.clone().unwrap_or_default())
+            .tenant_id(user.tenant_id.clone())
+            .metadata(SnapshotMetadata {
+                name: snapshot_name.clone(),
+                description: None,
+                tags: vec![],
+                custom_properties: Default::default(),
+            })
+            .build()
+            .map_err(|e| ProjectEditingSessionError::SnapshotCreationError(e.to_string()))?;
+
         snapshot_repo.create_snapshot(snapshot).await?;
+
+        if let Some(handler) = &self.event_handler {
+            handler
+                .record_snapshot_created(
+                    &self.project_id,
+                    &user.id,
+                    version,
+                    snapshot_name.as_deref(),
+                )
+                .await
+                .map_err(|e| ProjectEditingSessionError::EventRecordError(e.to_string()))?;
+        }
+
         Ok(())
     }
 

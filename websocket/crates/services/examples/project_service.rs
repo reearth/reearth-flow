@@ -70,13 +70,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let snapshots = service.list_all_snapshots_versions(project_id).await?;
     info!("Available snapshots: {:?}", snapshots);
 
-    debug!("Checking allowed actions...");
-    let actions = vec!["read".to_string(), "write".to_string()];
-    let allowed_actions = service
-        .get_project_allowed_actions(project_id, actions)
-        .await?;
-    info!("Allowed actions: {:?}", allowed_actions);
-
     // Create a Yjs document with initial content
     let doc = Doc::new();
     let text = doc.get_or_insert_text("content");

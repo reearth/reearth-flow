@@ -52,6 +52,7 @@ pub trait StorageClient {
 }
 
 pub mod editing_session;
+pub mod event_handler;
 pub mod gcs;
 pub mod local_storage;
 pub mod project_repository;
