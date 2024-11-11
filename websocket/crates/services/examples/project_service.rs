@@ -137,9 +137,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     debug!("Ending session...");
-    service
-        .end_session("test_snapshot".to_string(), session)
-        .await?;
+    debug!("session: {:?}", session.session_id);
+    service.end_session(project_id.to_string(), session).await?;
 
     info!("Project service example completed successfully");
     Ok(())

@@ -16,6 +16,10 @@ use tracing::debug;
 use super::project_repository::ProjectRepositoryError;
 use super::redis::errors::FlowProjectRedisDataManagerError;
 
+struct SessionLockGuard<'a> {
+    _lock: tokio::sync::MutexGuard<'a, ()>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectEditingSession {
     pub project_id: String,
@@ -49,6 +53,12 @@ impl Default for ProjectEditingSession {
 }
 
 impl ProjectEditingSession {
+    async fn acquire_lock(&self) -> SessionLockGuard<'_> {
+        SessionLockGuard {
+            _lock: self.session_lock.lock().await,
+        }
+    }
+
     pub fn new(project_id: String) -> Self {
         Self {
             project_id,
@@ -57,10 +67,6 @@ impl ProjectEditingSession {
         }
     }
 
-    /// Start or join a session for a project
-    /// If the session already exists, it will join the session
-    /// If the session does not exist, it will create a new session
-    /// The session will be created in the database and in redis
     pub async fn start_or_join_session<S, E, R>(
         &mut self,
         snapshot_repo: &S,
@@ -132,12 +138,11 @@ impl ProjectEditingSession {
         R: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError>,
     {
         self.check_session_setup()?;
-
-        let _lock = self.session_lock.lock().await;
-        let (state, edits) = redis_data_manager
+        let _guard = self.acquire_lock().await;
+        redis_data_manager
             .merge_updates(&self.project_id, false)
-            .await?;
-        Ok((state, edits))
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn get_state_update<R>(
@@ -169,12 +174,11 @@ impl ProjectEditingSession {
         R: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError>,
     {
         self.check_session_setup()?;
-
-        let _lock = self.session_lock.lock().await;
+        let _guard = self.acquire_lock().await;
         redis_data_manager
             .push_update(&self.project_id, update, Some(updated_by))
-            .await?;
-        Ok(())
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn create_snapshot<S>(
@@ -187,24 +191,9 @@ impl ProjectEditingSession {
     where
         S: ProjectSnapshotImpl<Error = ProjectRepositoryError>,
     {
-        let _lock = self.session_lock.lock().await;
-        self.create_snapshot_internal(snapshot_repo, user, data, snapshot_name)
-            .await
-    }
+        let _guard = self.acquire_lock().await;
 
-    async fn create_snapshot_internal<S>(
-        &self,
-        snapshot_repo: &S,
-        user: &User,
-        data: Vec<u8>,
-        snapshot_name: Option<String>,
-    ) -> Result<(), ProjectEditingSessionError>
-    where
-        S: ProjectSnapshotImpl<Error = ProjectRepositoryError>,
-    {
         let now = Utc::now();
-        let user_name = user.name.clone();
-
         let metadata = Metadata::new(
             generate_id!("snap"),
             self.project_id.clone(),
@@ -214,7 +203,7 @@ impl ProjectEditingSession {
         );
 
         let snapshot_info = SnapshotInfo::new(
-            user_name,
+            user.name.clone(),
             vec![],
             ObjectTenant::new(user.id.clone(), user.tenant_id.clone()),
             ObjectDelete::new(false, None),
@@ -223,9 +212,7 @@ impl ProjectEditingSession {
         );
 
         let snapshot = ProjectSnapshot::new(metadata, snapshot_info, data);
-
         snapshot_repo.create_snapshot(snapshot).await?;
-
         Ok(())
     }
 
@@ -240,31 +227,33 @@ impl ProjectEditingSession {
         R: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError>,
         S: ProjectSnapshotImpl<Error = ProjectRepositoryError>,
     {
-        //self.check_session_setup()?;
-        let _lock = self.session_lock.lock().await;
+        self.check_session_setup()?;
 
-        let (state, edits) = redis_data_manager
-            .merge_updates(&self.project_id, true)
-            .await?;
+        {
+            let _guard = self.acquire_lock().await;
 
-        debug!("state: {:?}", state);
+            let (state, edits) = redis_data_manager
+                .merge_updates(&self.project_id, true)
+                .await?;
 
-        if save_changes {
-            let snapshot = snapshot_repo.get_latest_snapshot(&self.project_id).await?;
-            debug!("3-------------");
-            debug!("snapshot: {:?}", snapshot);
+            debug!("state: {:?}", state);
 
-            if let Some(mut snapshot) = snapshot {
-                snapshot.data = state;
-                snapshot.info.changes_by = edits;
-                snapshot.metadata.name = Some(snapshot_name);
-                snapshot_repo.update_latest_snapshot(snapshot).await?;
+            if save_changes {
+                let snapshot = snapshot_repo.get_latest_snapshot(&self.project_id).await?;
+                debug!("snapshot: {:?}", snapshot);
+
+                if let Some(mut snapshot) = snapshot {
+                    snapshot.data = state;
+                    snapshot.info.changes_by = edits;
+                    snapshot.metadata.name = Some(snapshot_name);
+                    snapshot_repo.update_latest_snapshot(snapshot).await?;
+                }
             }
-        }
 
-        redis_data_manager
-            .clear_data(&self.project_id, self.session_id.as_deref())
-            .await?;
+            redis_data_manager
+                .clear_data(&self.project_id, self.session_id.as_deref())
+                .await?;
+        }
 
         self.session_id = None;
         Ok(())
@@ -277,7 +266,6 @@ impl ProjectEditingSession {
         Ok(self.session_id.clone())
     }
 
-    // Helper method to check if the session is set up
     fn check_session_setup(&self) -> Result<(), ProjectEditingSessionError> {
         match &self.session_id {
             Some(_) => Ok(()),
