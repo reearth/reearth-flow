@@ -29,7 +29,7 @@ const Contents: React.FC<Props> = ({ isOpen, selectedId }) => {
       className={`flex h-[calc(100%-64px)] flex-1 bg-background ${isOpen ? "flex" : "hidden"}`}>
       <div className="flex flex-1">
         {selectedId === "visual-preview" ? (
-          <div className="flex w-full justify-between bg-red-300">
+          <div className="flex w-full justify-between">
             <DataTable />
             <div className="flex w-1/2">
               {!supportedVisualizations.includes(visualizationMode) ? (
