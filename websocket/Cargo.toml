@@ -33,7 +33,6 @@ panic = "abort"
 strip = true
 
 [workspace.dependencies]
-flow-websocket-domain = { path = "crates/domain" }
 flow-websocket-infra = { path = "crates/infra" }
 flow-websocket-services = { path = "crates/services" }
 

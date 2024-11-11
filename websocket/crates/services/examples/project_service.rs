@@ -1,185 +1,145 @@
-// use flow_websocket_domain::generate_id;
-// use flow_websocket_domain::repository::RedisDataManagerImpl;
-// use flow_websocket_infra::persistence::{
-//     project_repository::{ProjectLocalRepository, ProjectRedisRepository},
-//     redis::{
-//         flow_project_redis_data_manager::FlowProjectRedisDataManager, redis_client::RedisClient,
-//     },
-// };
-// use flow_websocket_services::project::ProjectService;
-// use std::sync::Arc;
-// use tracing::{debug, error, info, instrument, trace, warn};
+use bb8::Pool;
+use bb8_redis::RedisConnectionManager;
+use flow_websocket_infra::{
+    persistence::{
+        project_repository::{ProjectLocalRepository, ProjectRedisRepository},
+        redis::flow_project_redis_data_manager::FlowProjectRedisDataManager,
+    },
+    types::user::User,
+};
+use flow_websocket_services::project::ProjectService;
+use std::sync::Arc;
+use tracing::{debug, info};
+use yrs::{updates::decoder::Decode, Doc, GetString, Text, Transact, Update};
 
-// /// # Project Service Example
-// ///
-// /// This example demonstrates the usage of `ProjectService` to handle
-// /// project-related operations.
-// ///
-// /// ## Overview
-// ///
-// /// The example performs the following steps:
-// ///
-// /// 1. Initializes the necessary components (Redis client, local storage, etc.)
-// /// 2. Creates a `ProjectService` instance
-// /// 3. Simulates various project-related operations
-// ///
-// /// ## Usage
-// ///
-// /// To run this example with different log levels, use:
-// ///
-// /// ```shell
-// /// RUST_LOG=info cargo run --example project_service
-// /// RUST_LOG=debug,websocket=trace cargo run --example project_service
-// /// RUST_LOG=trace cargo run --example project_service
-// /// ```
-// #[tokio::main]
-// #[instrument]
-// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//     // Initialize tracing
-//     tracing_subscriber::fmt()
-//         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-//         .init();
+///RUST_LOG=debug cargo run --example project_service
 
-//     info!("Starting project service example");
-//     debug!("Initializing components...");
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
 
-//     let redis_client = RedisClient::new("redis://localhost:6379").await?;
-//     trace!("Redis client created");
+    info!("Starting project service example");
 
-//     let local_storage = ProjectLocalRepository::new("./local_storage".into()).await?;
-//     trace!("Local storage initialized");
+    // Initialize Redis connection
+    let redis_url =
+        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string());
+    let manager = RedisConnectionManager::new(&*redis_url)?;
+    let redis_pool = Pool::builder().build(manager).await?;
 
-//     let session_repo = ProjectRedisRepository::<RedisClient>::new(Arc::new(redis_client.clone()));
-//     trace!("Session repository created");
+    // Initialize repositories and managers
+    let local_storage = ProjectLocalRepository::new("./local_storage".into()).await?;
+    let session_repo = ProjectRedisRepository::new(redis_pool.clone());
+    let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
-//     let project_id = generate_id(14, "project");
-//     debug!(?project_id, "Project ID generated");
+    // Create ProjectService instance
+    let service = ProjectService::new(
+        Arc::new(session_repo),
+        Arc::new(local_storage),
+        Arc::new(redis_data_manager),
+    );
 
-//     let session_id = generate_id(14, "session");
-//     debug!(?session_id, "Session ID generated");
+    // Example project ID
+    let project_id = "test_project_123";
 
-//     let redis_data_manager = FlowProjectRedisDataManager::new(
-//         project_id.clone(),
-//         Some(session_id),
-//         Arc::new(redis_client.clone()),
-//     );
-//     trace!("Redis data manager initialized");
+    // Create test user
+    let test_user = User {
+        id: "user_123".to_string(),
+        email: "test@example.com".to_string(),
+        name: "Test User".to_string(),
+        tenant_id: "tenant_123".to_string(),
+    };
 
-//     let service = ProjectService::new(
-//         Arc::new(session_repo),
-//         Arc::new(local_storage),
-//         Arc::new(redis_data_manager),
-//     );
-//     debug!("ProjectService created");
+    // Demonstrate service operations
+    debug!("Getting project details...");
+    if let Some(project) = service.get_project(project_id).await? {
+        info!("Found project: {:?}", project);
+    } else {
+        info!("Project not found");
+    }
 
-//     // Simulate project operations
-//     match simulate_project_operations(&service, &project_id).await {
-//         Ok(_) => info!("Project operations simulation completed successfully"),
-//         Err(e) => error!("Error during project operations simulation: {:?}", e),
-//     }
+    debug!("Creating editing session...");
+    let session = service
+        .get_or_create_editing_session(project_id, test_user.clone())
+        .await?;
+    info!("Created session: {:?}", session);
 
-//     info!("Project service example completed");
-//     Ok(())
-// }
+    debug!("Listing snapshots...");
+    let snapshots = service.list_all_snapshots_versions(project_id).await?;
+    info!("Available snapshots: {:?}", snapshots);
 
-// /// Simulates various project operations using the ProjectService
-// ///
-// /// This function demonstrates the following operations:
-// ///
-// /// 1. Creating a project
-// /// 2. Getting project details
-// /// 3. Creating and retrieving an editing session
-// /// 4. Getting project allowed actions
-// /// 5. Pushing an update to the project
-// /// 6. Getting the current project state
-// ///
-// #[instrument(skip(service))]
-// async fn simulate_project_operations(
-//     service: &ProjectService<
-//         ProjectRedisRepository<RedisClient>,
-//         ProjectLocalRepository,
-//         FlowProjectRedisDataManager,
-//     >,
-//     project_id: &str,
-// ) -> Result<(), Box<dyn std::error::Error>> {
-//     // Get project details (
-//     match service.get_project(project_id).await {
-//         Ok(retrieved_project) => info!(?retrieved_project, "Retrieved project details"),
-//         Err(e) => {
-//             error!("Failed to retrieve project: {:?}", e);
-//             return Err(Box::new(e));
-//         }
-//     }
+    debug!("Checking allowed actions...");
+    let actions = vec!["read".to_string(), "write".to_string()];
+    let allowed_actions = service
+        .get_project_allowed_actions(project_id, actions)
+        .await?;
+    info!("Allowed actions: {:?}", allowed_actions);
 
-//     // Create and retrieve an editing session
-//     let session = match service
-//         .get_or_create_editing_session(project_id, None, None)
-//         .await
-//     {
-//         Ok(session) => {
-//             info!(?session, "Editing session created/retrieved");
-//             session
-//         }
-//         Err(e) => {
-//             error!("Failed to create or retrieve editing session: {:?}", e);
-//             return Err(Box::new(e));
-//         }
-//     };
+    // Create a Yjs document with initial content
+    let doc = Doc::new();
+    let text = doc.get_or_insert_text("content");
+    let update = {
+        let mut txn = doc.transact_mut();
+        text.push(&mut txn, "Initial content");
+        txn.encode_update_v2()
+    };
 
-//     // Check if session ID is set
-//     if session.session_id.is_none() {
-//         error!("Session ID is not set after get_or_create_editing_session");
-//         return Err("Session ID not set".into());
-//     }
+    debug!("Pushing initial update...");
+    service
+        .push_update_to_redis_stream(project_id, update, Some(test_user.name.clone()))
+        .await?;
 
-//     // Get project allowed actions
-//     let actions = vec![
-//         "read".to_string(),
-//         "write".to_string(),
-//         "delete".to_string(),
-//     ];
-//     let allowed_actions = service
-//         .get_project_allowed_actions(project_id, actions)
-//         .await?;
-//     info!(?allowed_actions, "Retrieved project allowed actions");
+    // Create another update
+    let second_update = {
+        let mut txn = doc.transact_mut();
+        text.push(&mut txn, " - More content");
+        txn.encode_update_v2()
+    };
 
-//     // Push an update to the project
-//     let update = vec![1, 2, 3, 4, 5]; // Example update data
-//     match service
-//         .push_update(update.clone(), Some("user1".to_string()))
-//         .await
-//     {
-//         Ok(_) => info!(?update, "Update pushed to the project"),
-//         Err(e) => warn!("Failed to push update: {:?}", e),
-//     }
+    debug!("Pushing second update...");
+    service
+        .push_update_to_redis_stream(project_id, second_update, Some(test_user.name.clone()))
+        .await?;
 
-//     // Get current project state
-//     match service.get_current_state().await {
-//         Ok(current_state) => {
-//             info!(?current_state, "Retrieved current project state");
-//             debug!("Current state structure: {:#?}", current_state);
-//         }
-//         Err(e) => {
-//             error!("Failed to get current state: {:?}", e);
+    debug!("Getting current state...");
+    if let Some(state) = service
+        .get_current_state(project_id, session.session_id.as_deref())
+        .await?
+    {
+        if !state.is_empty() {
+            debug!("---------------------");
+            debug!("state: {:?}", state);
+            debug!("------------");
 
-//             if let Some(response_start) = e.to_string().find("response was [") {
-//                 let response_str = &e.to_string()[response_start..];
-//                 debug!(
-//                     "Redis response structure: {}",
-//                     response_str.trim_matches(|c| c == '[' || c == ']')
-//                 );
+            // Create a new doc to apply the state
+            let doc = Doc::new();
+            let update = Update::decode_v2(&state).map_err(Box::new)?;
+            doc.transact_mut().apply_update(update);
 
-//                 warn!("Redis response contains a nested structure with state updates");
-//                 debug!("Expected format should match: [key, [[timestamp, [field, value, field, value]], ...]]");
-//             }
+            let text = doc.get_or_insert_text("content");
+            let content = {
+                let txn = doc.transact();
+                text.get_string(&txn)
+            };
 
-//             return Err(Box::new(e));
-//         }
-//     }
+            info!("Current document content: {}", content);
+            info!("Current state size: {} bytes", state.len());
+        } else {
+            debug!("Received empty state update, skipping...");
+        }
+    }
 
-//     Ok(())
-// }
+    debug!("Getting latest snapshot...");
+    if let Some(snapshot) = service.get_latest_snapshot(project_id).await? {
+        info!("Latest snapshot: {:?}", snapshot);
+    }
 
-fn main() {
-    todo!()
+    debug!("Ending session...");
+    debug!("session: {:?}", session.session_id);
+    service.end_session(project_id.to_string(), session).await?;
+
+    info!("Project service example completed successfully");
+    Ok(())
 }

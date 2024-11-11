@@ -1,13 +1,13 @@
 use crate::error::ProjectServiceError;
-use flow_websocket_domain::editing_session::ProjectEditingSession;
-use flow_websocket_domain::project::{Action, Project, ProjectAllowedActions};
-use flow_websocket_domain::repository::{
-    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
-};
-use flow_websocket_domain::snapshot::ProjectSnapshot;
-use flow_websocket_domain::user::User;
+use flow_websocket_infra::persistence::editing_session::ProjectEditingSession;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
+use flow_websocket_infra::persistence::repository::{
+    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
+};
+use flow_websocket_infra::types::project::{Action, Project, ProjectAllowedActions};
+use flow_websocket_infra::types::snapshot::ProjectSnapshot;
+use flow_websocket_infra::types::user::User;
 use std::sync::Arc;
 use tracing::debug;
 
