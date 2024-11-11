@@ -240,7 +240,7 @@ impl ProjectEditingSession {
         R: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError>,
         S: ProjectSnapshotImpl<Error = ProjectRepositoryError>,
     {
-        self.check_session_setup()?;
+        //self.check_session_setup()?;
         let _lock = self.session_lock.lock().await;
 
         let (state, edits) = redis_data_manager

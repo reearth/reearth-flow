@@ -72,7 +72,9 @@ impl UpdateManager {
             if let Some(updated_by) = u.updated_by {
                 updates_by.push(updated_by);
             }
-            txn.apply_update(Update::decode_v2(&u.update)?);
+            if !u.update.is_empty() {
+                txn.apply_update(Update::decode_v2(&u.update)?);
+            }
         }
         debug!("Last stream id: {}", last_stream_id);
 

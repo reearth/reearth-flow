@@ -132,11 +132,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })
     .await?;
 
-    // // Remove task
-    // tx.send(SessionCommand::RemoveTask {
-    //     project_id: project_id.clone(),
-    // })
-    // .await?;
+    // Remove task
+    tx.send(SessionCommand::RemoveTask {
+        project_id: project_id.clone(),
+    })
+    .await?;
 
     // // Complete session
     // tx.send(SessionCommand::Complete {
