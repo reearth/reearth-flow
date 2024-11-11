@@ -62,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Creating editing session...");
     let session = service
-        .get_or_create_editing_session(project_id, test_user.clone())
+        .get_or_create_editing_session(Some(project_id.to_string()), test_user.clone())
         .await?;
     info!("Created session: {:?}", session);
 
@@ -109,10 +109,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?
     {
         if !state.is_empty() {
-            debug!("---------------------");
-            debug!("state: {:?}", state);
-            debug!("------------");
-
             // Create a new doc to apply the state
             let doc = Doc::new();
             let update = Update::decode_v2(&state).map_err(Box::new)?;

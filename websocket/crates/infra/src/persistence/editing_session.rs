@@ -16,32 +16,44 @@ use tracing::debug;
 use super::project_repository::ProjectRepositoryError;
 use super::redis::errors::FlowProjectRedisDataManagerError;
 
+/// A guard that holds a mutex lock for the duration of its lifetime
 struct SessionLockGuard<'a> {
     _lock: tokio::sync::MutexGuard<'a, ()>,
 }
 
+/// Represents an editing session for a project
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectEditingSession {
+    /// The ID of the project being edited
     pub project_id: String,
+    /// The ID of the current editing session, if one exists
     pub session_id: Option<String>,
+    /// A mutex lock to ensure thread-safe access to session data
     #[serde(skip)]
     session_lock: Arc<Mutex<()>>,
 }
 
+/// Errors that can occur during project editing session operations
 #[derive(Error, Debug)]
 pub enum ProjectEditingSessionError {
+    /// Error when trying to perform operations without an active session
     #[error("Session not setup")]
     SessionNotSetup,
+    /// Error when a snapshot cannot be found for a given session ID
     #[error("Snapshot not found for session ID: {0}")]
     SnapshotNotFound(String),
+    /// Error when a snapshot's project ID doesn't match the current project
     #[error("Snapshot project ID does not match current project")]
     SnapshotProjectIdMismatch,
+    /// Error from snapshot repository operations
     #[error(transparent)]
     Snapshot(#[from] ProjectRepositoryError),
+    /// Error from Redis operations
     #[error(transparent)]
     Redis(#[from] FlowProjectRedisDataManagerError),
 }
 
+/// Default implementation for ProjectEditingSession
 impl Default for ProjectEditingSession {
     fn default() -> Self {
         Self {
@@ -53,12 +65,14 @@ impl Default for ProjectEditingSession {
 }
 
 impl ProjectEditingSession {
+    /// Acquires a lock on the session
     async fn acquire_lock(&self) -> SessionLockGuard<'_> {
         SessionLockGuard {
             _lock: self.session_lock.lock().await,
         }
     }
 
+    /// Creates a new ProjectEditingSession with the given project ID
     pub fn new(project_id: String) -> Self {
         Self {
             project_id,
@@ -67,6 +81,7 @@ impl ProjectEditingSession {
         }
     }
 
+    /// Starts a new editing session or joins an existing one
     pub async fn start_or_join_session<S, E, R>(
         &mut self,
         snapshot_repo: &S,
@@ -79,10 +94,6 @@ impl ProjectEditingSession {
         S: ProjectSnapshotImpl<Error = ProjectRepositoryError>,
         R: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError>,
     {
-        debug!(
-            "Starting or joining session for project: {}",
-            self.project_id
-        );
         if let Some(project_editing_session) = project_editing_session_repository
             .get_active_session(&self.project_id)
             .await?
@@ -103,6 +114,7 @@ impl ProjectEditingSession {
         self.load_session(snapshot_repo, redis_manager, user).await
     }
 
+    /// Loads the session data from a snapshot or creates a new snapshot if none exists
     async fn load_session<R, S>(
         &self,
         snapshot_repo: &S,
@@ -130,6 +142,7 @@ impl ProjectEditingSession {
         Ok(())
     }
 
+    /// Merges all pending updates for the project
     pub async fn merge_updates<R>(
         &self,
         redis_data_manager: &R,
@@ -145,6 +158,7 @@ impl ProjectEditingSession {
             .map_err(Into::into)
     }
 
+    /// Gets the current state of the project
     pub async fn get_state_update<R>(
         &self,
         redis_data_manager: &R,
@@ -164,6 +178,7 @@ impl ProjectEditingSession {
         }
     }
 
+    /// Pushes a new update to the project state
     pub async fn push_update<R>(
         &self,
         update: Vec<u8>,
@@ -181,6 +196,7 @@ impl ProjectEditingSession {
             .map_err(Into::into)
     }
 
+    /// Creates a new snapshot of the project state
     pub async fn create_snapshot<S>(
         &self,
         user: &User,
@@ -216,6 +232,7 @@ impl ProjectEditingSession {
         Ok(())
     }
 
+    /// Ends the current editing session
     pub async fn end_session<R, S>(
         &mut self,
         redis_data_manager: &R,
@@ -259,6 +276,7 @@ impl ProjectEditingSession {
         Ok(())
     }
 
+    /// Gets the ID of the active editing session, if one exists
     pub async fn active_editing_session(
         &self,
     ) -> Result<Option<String>, ProjectEditingSessionError> {
@@ -266,6 +284,7 @@ impl ProjectEditingSession {
         Ok(self.session_id.clone())
     }
 
+    /// Checks if a session is currently set up
     fn check_session_setup(&self) -> Result<(), ProjectEditingSessionError> {
         match &self.session_id {
             Some(_) => Ok(()),

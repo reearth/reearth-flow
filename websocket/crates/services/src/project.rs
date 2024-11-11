@@ -1,4 +1,5 @@
 use crate::error::ProjectServiceError;
+use flow_websocket_infra::generate_id;
 use flow_websocket_infra::persistence::editing_session::ProjectEditingSession;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
@@ -11,10 +12,14 @@ use flow_websocket_infra::types::user::User;
 use std::sync::Arc;
 use tracing::debug;
 
+/// A service for managing project-related operations including editing sessions, snapshots, and Redis interactions.
 #[derive(Debug, Clone)]
 pub struct ProjectService<E, S, R> {
+    /// Repository for managing project editing sessions
     pub session_repository: Arc<E>,
+    /// Repository for managing project snapshots
     pub snapshot_repository: Arc<S>,
+    /// Manager for Redis data operations
     pub redis_data_manager: Arc<R>,
 }
 
@@ -27,6 +32,7 @@ where
     S: ProjectSnapshotImpl<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError> + Send + Sync,
 {
+    /// Creates a new ProjectService instance with the provided repositories and data manager
     pub fn new(
         session_repository: Arc<E>,
         snapshot_repository: Arc<S>,
@@ -39,6 +45,7 @@ where
         }
     }
 
+    /// Retrieves a project by its ID
     pub async fn get_project(
         &self,
         project_id: &str,
@@ -46,14 +53,16 @@ where
         Ok(self.session_repository.get_project(project_id).await?)
     }
 
+    /// Gets an existing editing session or creates a new one for a project
     pub async fn get_or_create_editing_session(
         &self,
-        project_id: &str,
+        project_id: Option<String>,
         user: User,
     ) -> Result<ProjectEditingSession, ProjectServiceError> {
+        let project_id = project_id.unwrap_or(generate_id!("project"));
         let mut session = match self
             .session_repository
-            .get_active_session(project_id)
+            .get_active_session(&project_id)
             .await?
         {
             Some(session) => session,
@@ -78,6 +87,7 @@ where
         Ok(session)
     }
 
+    /// Lists all snapshot versions for a project
     pub async fn list_all_snapshots_versions(
         &self,
         project_id: &str,
@@ -88,6 +98,7 @@ where
             .await?)
     }
 
+    /// Gets allowed actions for a project
     pub async fn get_project_allowed_actions(
         &self,
         project_id: &str,
@@ -105,6 +116,7 @@ where
         })
     }
 
+    /// Pushes an update to the Redis stream for a project
     pub async fn push_update_to_redis_stream(
         &self,
         project_id: &str,
@@ -117,6 +129,7 @@ where
             .await?)
     }
 
+    /// Ends an editing session and creates a snapshot
     pub async fn end_session(
         &self,
         snapshot_name: String,
@@ -133,6 +146,7 @@ where
         Ok(())
     }
 
+    /// Gets the current state of a project
     pub async fn get_current_state(
         &self,
         project_id: &str,
@@ -144,6 +158,7 @@ where
             .await?)
     }
 
+    /// Gets the latest snapshot for a project
     pub async fn get_latest_snapshot(
         &self,
         project_id: &str,
@@ -154,10 +169,12 @@ where
             .await?)
     }
 
+    /// Deletes a session for a project
     pub async fn delete_session(&self, project_id: &str) -> Result<(), ProjectServiceError> {
         Ok(self.session_repository.delete_session(project_id).await?)
     }
 
+    /// Deletes a snapshot for a project
     pub async fn delete_snapshot(&self, project_id: &str) -> Result<(), ProjectServiceError> {
         Ok(self.snapshot_repository.delete_snapshot(project_id).await?)
     }

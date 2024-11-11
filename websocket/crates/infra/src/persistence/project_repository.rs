@@ -18,41 +18,55 @@ use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
 use redis::AsyncCommands;
 
+/// Error type for project repository operations
 #[derive(Error, Debug)]
 pub enum ProjectRepositoryError {
+    /// GCS storage errors
     #[error(transparent)]
     Gcs(#[from] GcsError),
+    /// Local storage errors
     #[error(transparent)]
     Local(#[from] LocalStorageError),
+    /// JSON serialization/deserialization errors
     #[error(transparent)]
     Serialization(#[from] serde_json::Error),
+    /// IO errors
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
+    /// Error when session ID is missing
     #[error("Session ID not found")]
     SessionIdNotFound,
+    /// Custom error messages
     #[error("{0}")]
     Custom(String),
+    /// Redis errors
     #[error(transparent)]
     Redis(#[from] redis::RedisError),
+    /// Redis connection pool errors
     #[error(transparent)]
     Pool(#[from] bb8::RunError<redis::RedisError>),
 }
 
+/// Repository for storing project data in Redis
 #[derive(Clone)]
 pub struct ProjectRedisRepository {
+    /// Redis connection pool
     redis_pool: Pool<RedisConnectionManager>,
 }
 
 impl ProjectRedisRepository {
+    /// Creates a new ProjectRedisRepository with the given Redis connection pool
     pub fn new(redis_pool: Pool<RedisConnectionManager>) -> Self {
         Self { redis_pool }
     }
 }
 
+/// Implementation of project operations for Redis storage
 #[async_trait]
 impl ProjectImpl for ProjectRedisRepository {
     type Error = ProjectRepositoryError;
 
+    /// Gets a project by ID from Redis
     async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error> {
         let mut conn = self.redis_pool.get().await?;
         let key = format!("project:{}", project_id);
@@ -61,10 +75,12 @@ impl ProjectImpl for ProjectRedisRepository {
     }
 }
 
+/// Implementation of project editing session operations for Redis storage
 #[async_trait]
 impl ProjectEditingSessionImpl for ProjectRedisRepository {
     type Error = ProjectRepositoryError;
 
+    /// Creates a new editing session in Redis
     async fn create_session(
         &self,
         mut session: ProjectEditingSession,
@@ -86,6 +102,7 @@ impl ProjectEditingSessionImpl for ProjectRedisRepository {
         Ok(session_id)
     }
 
+    /// Gets the active editing session for a project from Redis
     async fn get_active_session(
         &self,
         project_id: &str,
@@ -104,6 +121,7 @@ impl ProjectEditingSessionImpl for ProjectRedisRepository {
         }
     }
 
+    /// Updates an existing editing session in Redis
     async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
         let mut conn = self.redis_pool.get().await?;
 
@@ -122,6 +140,7 @@ impl ProjectEditingSessionImpl for ProjectRedisRepository {
         Ok(())
     }
 
+    /// Deletes an editing session from Redis
     async fn delete_session(&self, project_id: &str) -> Result<(), Self::Error> {
         let mut conn = self.redis_pool.get().await?;
         let active_session_key = format!("project:{}:active_session", project_id);
@@ -130,27 +149,33 @@ impl ProjectEditingSessionImpl for ProjectRedisRepository {
     }
 }
 
+/// Repository for storing project data in Google Cloud Storage
 #[derive(Clone)]
 pub struct ProjectGcsRepository {
+    /// GCS client for storage operations
     client: GcsClient,
 }
 
 impl ProjectGcsRepository {
+    /// Creates a new ProjectGcsRepository with the given GCS client
     pub fn new(client: GcsClient) -> Self {
         Self { client }
     }
 }
 
+/// Implementation of project snapshot operations for GCS storage
 #[async_trait]
 impl ProjectSnapshotImpl for ProjectGcsRepository {
     type Error = ProjectRepositoryError;
 
+    /// Creates a new snapshot in GCS
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         let path = format!("snapshot/{}", snapshot.metadata.project_id);
         self.client.upload_versioned(path, &snapshot).await?;
         Ok(())
     }
 
+    /// Gets the latest snapshot for a project from GCS
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
@@ -160,6 +185,7 @@ impl ProjectSnapshotImpl for ProjectGcsRepository {
         Ok(snapshot)
     }
 
+    /// Updates the latest snapshot in GCS
     async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         let latest_version = self
             .client
@@ -175,12 +201,14 @@ impl ProjectSnapshotImpl for ProjectGcsRepository {
         Ok(())
     }
 
+    /// Deletes a snapshot from GCS
     async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
         let path = format!("snapshot/{}", project_id);
         self.client.delete(path).await?;
         Ok(())
     }
 
+    /// Lists all snapshot versions for a project from GCS
     async fn list_all_snapshots_versions(
         &self,
         project_id: &str,
@@ -191,12 +219,15 @@ impl ProjectSnapshotImpl for ProjectGcsRepository {
     }
 }
 
+/// Repository for storing project data in local storage
 #[derive(Clone)]
 pub struct ProjectLocalRepository {
+    /// Local storage client
     client: Arc<LocalClient>,
 }
 
 impl ProjectLocalRepository {
+    /// Creates a new ProjectLocalRepository with storage at the given base path
     pub async fn new(base_path: PathBuf) -> io::Result<Self> {
         Ok(Self {
             client: Arc::new(LocalClient::new(base_path).await?),
@@ -204,16 +235,19 @@ impl ProjectLocalRepository {
     }
 }
 
+/// Implementation of project snapshot operations for local storage
 #[async_trait]
 impl ProjectSnapshotImpl for ProjectLocalRepository {
     type Error = ProjectRepositoryError;
 
+    /// Creates a new snapshot in local storage
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         let path = format!("snapshots/{}", snapshot.metadata.project_id);
         self.client.upload_versioned(path, &snapshot).await?;
         Ok(())
     }
 
+    /// Gets the latest snapshot for a project from local storage
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
@@ -226,18 +260,21 @@ impl ProjectSnapshotImpl for ProjectLocalRepository {
         Ok(snapshot)
     }
 
+    /// Updates the latest snapshot in local storage
     async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
         let path = format!("snapshots/{}", snapshot.metadata.project_id);
         self.client.update_latest_versioned(path, &snapshot).await?;
         Ok(())
     }
 
+    /// Deletes a snapshot from local storage
     async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
         let path = format!("snapshots/{}", project_id);
         self.client.delete(path).await?;
         Ok(())
     }
 
+    /// Lists all snapshot versions for a project from local storage
     async fn list_all_snapshots_versions(
         &self,
         project_id: &str,

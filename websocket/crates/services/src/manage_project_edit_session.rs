@@ -20,6 +20,7 @@ use crate::{types::ManageProjectEditSessionTaskData, ProjectServiceError};
 const MAX_EMPTY_SESSION_DURATION: Duration = Duration::from_secs(10);
 const JOB_COMPLETION_DELAY: Duration = Duration::from_secs(5);
 
+/// Service for managing project editing sessions
 #[derive(Debug, Clone)]
 pub struct ManageEditSessionService<R, S, M>
 where
@@ -31,36 +32,30 @@ where
         + Clone
         + 'static,
 {
+    /// Project service instance for handling project-related operations
     pub project_service: ProjectService<R, S, M>,
+    /// Map of project tasks indexed by project ID
     tasks: Arc<Mutex<HashMap<String, ManageProjectEditSessionTaskData>>>,
 }
 
+/// Commands that can be sent to manage editing sessions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SessionCommand {
-    Start {
-        project_id: String,
-        user: User,
-    },
-    End {
-        project_id: String,
-        user: User,
-    },
-    Complete {
-        project_id: String,
-        user: User,
-    },
-    CheckStatus {
-        project_id: String,
-    },
-    AddTask {
-        project_id: String,
-    },
-    RemoveTask {
-        project_id: String,
-    },
-    ListAllSnapshotsVersions {
-        project_id: String,
-    },
+    /// Start a new editing session
+    Start { project_id: String, user: User },
+    /// End an existing editing session
+    End { project_id: String, user: User },
+    /// Complete an editing session
+    Complete { project_id: String, user: User },
+    /// Check the status of an editing session
+    CheckStatus { project_id: String },
+    /// Add a new task for managing a project session
+    AddTask { project_id: String },
+    /// Remove a task for managing a project session
+    RemoveTask { project_id: String },
+    /// List all snapshot versions for a project
+    ListAllSnapshotsVersions { project_id: String },
+    /// Push an update to the project
     PushUpdate {
         project_id: String,
         update: Vec<u8>,
@@ -84,6 +79,7 @@ where
         + Clone
         + 'static,
 {
+    /// Creates a new ManageEditSessionService instance
     pub fn new(
         session_repository: Arc<R>,
         snapshot_repository: Arc<S>,
@@ -99,6 +95,7 @@ where
         }
     }
 
+    /// Processes incoming session commands
     pub async fn process(
         &self,
         mut command_rx: mpsc::Receiver<SessionCommand>,
@@ -109,7 +106,7 @@ where
                     match command {
                         SessionCommand::Start { project_id, user } => {
                             let session = self.project_service
-                                .get_or_create_editing_session(&project_id, user.clone())
+                                .get_or_create_editing_session(Some(project_id.clone()), user.clone())
                                 .await?;
 
                             if session.session_id.is_some() {
@@ -208,11 +205,13 @@ where
         Ok(())
     }
 
+    /// Gets task data for a project
     async fn get_task_data(&self, project_id: &str) -> Option<ManageProjectEditSessionTaskData> {
         let tasks = self.tasks.lock().await;
         tasks.get(project_id).cloned()
     }
 
+    /// Gets the latest active session for a project
     pub async fn get_latest_session(
         &self,
         project_id: &str,
@@ -225,6 +224,7 @@ where
         Ok(ret)
     }
 
+    /// Ends an editing session if conditions are met
     pub async fn end_editing_session_if_conditions_met(
         &self,
         session: &mut ProjectEditingSession,
@@ -252,6 +252,7 @@ where
         Ok(())
     }
 
+    /// Completes a job if requirements are met
     pub async fn complete_job_if_met_requirements(
         &self,
         session: &mut ProjectEditingSession,
@@ -267,6 +268,7 @@ where
         Ok(())
     }
 
+    /// Pushes an update to the project
     pub async fn push_update(
         &self,
         project_id: &str,

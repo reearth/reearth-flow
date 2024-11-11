@@ -13,31 +13,44 @@ use tokio::io::{self, AsyncReadExt};
 use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::sync::Mutex;
 
+/// Error type for local storage operations
 #[derive(Error, Debug)]
 pub enum LocalStorageError {
+    /// I/O errors from file system operations
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+    /// JSON serialization/deserialization errors
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
+    /// UTF-8 string conversion errors
     #[error("UTF-8 conversion error: {0}")]
     Utf8(#[from] std::string::FromUtf8Error),
+    /// Error when a timestamp cannot be converted to a DateTime
     #[error("Invalid timestamp")]
     InvalidTimestamp,
 }
 
+/// Client for interacting with local file system storage
 pub struct LocalClient {
+    /// Base directory path for all storage operations
     base_path: PathBuf,
+    /// Mutex-protected map of file locks to prevent concurrent access
     file_locks: Mutex<HashMap<PathBuf, ()>>,
+    /// LRU cache for storing recently accessed file contents
     cache: Mutex<LruCache<String, Vec<u8>>>,
 }
 
+/// Metadata structure for versioned objects in local storage
 #[derive(Serialize, Deserialize, Debug)]
 struct VersionMetadata {
+    /// Path to the latest version of the object
     latest_version: String,
+    /// History of all versions, mapping timestamps to version paths
     version_history: BTreeMap<i64, String>, // Timestamp to version path
 }
 
 impl LocalClient {
+    /// Creates a new LocalClient with the specified base directory
     pub async fn new<P: AsRef<Path>>(base_path: P) -> io::Result<Self> {
         let base_path = base_path.as_ref().to_path_buf();
         fs::create_dir_all(&base_path).await?;
@@ -50,6 +63,7 @@ impl LocalClient {
         })
     }
 
+    /// Converts a relative path to a full path within the base directory
     fn get_full_path(&self, path: &str) -> PathBuf {
         let sanitized_path = Path::new(path)
             .components()
@@ -58,11 +72,13 @@ impl LocalClient {
         self.base_path.join(sanitized_path)
     }
 
+    /// Acquires a lock for a file to prevent concurrent access
     async fn lock_file(&self, path: &Path) {
         let mut locks = self.file_locks.lock().await;
         locks.entry(path.to_path_buf()).or_insert(());
     }
 
+    /// Releases a lock for a file
     async fn unlock_file(&self, path: &PathBuf) {
         let mut locks = self.file_locks.lock().await;
         locks.remove(path);
@@ -73,6 +89,7 @@ impl LocalClient {
 impl StorageClient for LocalClient {
     type Error = LocalStorageError;
 
+    /// Uploads data to local storage at the specified path
     async fn upload<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
@@ -111,6 +128,7 @@ impl StorageClient for LocalClient {
         result
     }
 
+    /// Downloads and deserializes data from local storage
     async fn download<T: for<'de> Deserialize<'de> + Send + 'static>(
         &self,
         path: String,
@@ -143,12 +161,14 @@ impl StorageClient for LocalClient {
         result
     }
 
+    /// Deletes a file from local storage
     async fn delete(&self, path: String) -> Result<(), Self::Error> {
         let full_path = self.get_full_path(&path);
         fs::remove_file(full_path).await?;
         Ok(())
     }
 
+    /// Uploads a new version of data to local storage
     async fn upload_versioned<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
@@ -192,6 +212,7 @@ impl StorageClient for LocalClient {
         Ok(versioned_path)
     }
 
+    /// Updates the latest version of an object in local storage
     async fn update_latest_versioned<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
@@ -202,6 +223,7 @@ impl StorageClient for LocalClient {
         self.upload(metadata.latest_version, data).await
     }
 
+    /// Gets the path to the latest version of an object
     async fn get_latest_version(&self, path_prefix: &str) -> Result<Option<String>, Self::Error> {
         let metadata_path = format!("{}_metadata", path_prefix);
         match self.download::<VersionMetadata>(metadata_path).await {
@@ -210,6 +232,7 @@ impl StorageClient for LocalClient {
         }
     }
 
+    /// Gets the version of an object that was current at a specific timestamp
     async fn get_version_at(
         &self,
         path_prefix: &str,
@@ -229,6 +252,7 @@ impl StorageClient for LocalClient {
         }
     }
 
+    /// Lists versions of an object, optionally limited to a specific count
     async fn list_versions(
         &self,
         path_prefix: &str,
@@ -255,6 +279,7 @@ impl StorageClient for LocalClient {
         }
     }
 
+    /// Downloads and deserializes the latest version of an object
     async fn download_latest<T: for<'de> Deserialize<'de> + Send + 'static>(
         &self,
         path_prefix: &str,

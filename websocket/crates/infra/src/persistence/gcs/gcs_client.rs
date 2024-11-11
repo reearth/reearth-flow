@@ -12,33 +12,46 @@ use thiserror::Error;
 
 use crate::persistence::StorageClient;
 
+/// Error type for GCS operations
 #[derive(Error, Debug)]
 pub enum GcsError {
+    /// Authentication errors from Google Cloud Storage
     #[error(transparent)]
     Auth(#[from] google_cloud_storage::client::google_cloud_auth::error::Error),
+    /// HTTP errors from Google Cloud Storage API
     #[error(transparent)]
     Http(#[from] google_cloud_storage::http::Error),
+    /// JSON serialization/deserialization errors
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
+    /// UTF-8 string conversion errors
     #[error("UTF-8 conversion error: {0}")]
     Utf8(#[from] std::string::FromUtf8Error),
 }
 
+/// Client for interacting with Google Cloud Storage
 #[derive(Clone)]
 pub struct GcsClient {
+    /// The underlying GCS client
     client: Client,
+    /// The GCS bucket name
     bucket: String,
 }
 
+/// Metadata structure for versioned objects in GCS
 #[derive(Serialize, Deserialize)]
 struct VersionMetadata {
+    /// Path to the latest version of the object
     latest_version: String,
+    /// History of all versions, mapping timestamps to version paths
     version_history: BTreeMap<i64, String>, // Timestamp to version path
 }
 
 #[async_trait]
 impl StorageClient for GcsClient {
     type Error = GcsError;
+
+    /// Uploads data to GCS at the specified path
     async fn upload<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
@@ -60,6 +73,7 @@ impl StorageClient for GcsClient {
         Ok(())
     }
 
+    /// Downloads and deserializes data from GCS at the specified path
     async fn download<T: for<'de> Deserialize<'de> + Send + 'static>(
         &self,
         path: String,
@@ -80,6 +94,7 @@ impl StorageClient for GcsClient {
         Ok(data)
     }
 
+    /// Deletes an object from GCS at the specified path
     async fn delete(&self, path: String) -> Result<(), GcsError> {
         self.client
             .delete_object(&DeleteObjectRequest {
@@ -91,6 +106,7 @@ impl StorageClient for GcsClient {
         Ok(())
     }
 
+    /// Uploads a new version of data to GCS, maintaining version history
     async fn upload_versioned<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
@@ -136,6 +152,7 @@ impl StorageClient for GcsClient {
         Ok(versioned_path)
     }
 
+    /// Updates the latest version of an object in GCS
     async fn update_latest_versioned<T: Serialize + Send + Sync + 'static>(
         &self,
         path: String,
@@ -151,6 +168,7 @@ impl StorageClient for GcsClient {
         Ok(())
     }
 
+    /// Gets the path to the latest version of an object
     async fn get_latest_version(&self, path_prefix: &str) -> Result<Option<String>, GcsError> {
         let metadata_path = format!("{}_metadata", path_prefix);
         match self.download::<VersionMetadata>(metadata_path).await {
@@ -159,6 +177,7 @@ impl StorageClient for GcsClient {
         }
     }
 
+    /// Gets the version of an object that was current at a specific timestamp
     async fn get_version_at(
         &self,
         path_prefix: &str,
@@ -178,6 +197,7 @@ impl StorageClient for GcsClient {
         }
     }
 
+    /// Lists versions of an object, optionally limited to a specific count
     async fn list_versions(
         &self,
         path_prefix: &str,
@@ -202,6 +222,7 @@ impl StorageClient for GcsClient {
         }
     }
 
+    /// Downloads and deserializes the latest version of an object
     async fn download_latest<T: for<'de> Deserialize<'de> + Send + 'static>(
         &self,
         path_prefix: &str,
@@ -219,6 +240,7 @@ impl StorageClient for GcsClient {
 }
 
 impl GcsClient {
+    /// Creates a new GCS client for the specified bucket
     pub async fn new(bucket: String) -> Result<Self, GcsError> {
         let config = ClientConfig::default().with_auth().await?;
         let client = Client::new(config);
