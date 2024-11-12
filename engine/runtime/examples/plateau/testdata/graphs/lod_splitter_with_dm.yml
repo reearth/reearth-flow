@@ -13,13 +13,6 @@ nodes:
     type: action
     action: GeometrySplitter
 
-  - id: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
-    name: HorizontalReprojector
-    type: action
-    action: HorizontalReprojector
-    with:
-      epsgCode: 6677
-
   - id: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     name: FeatureFilterByLod
     type: action
@@ -85,11 +78,6 @@ edges:
     toPort: default
   - id: 5857909b-7fc0-4d3e-adfa-65a5669a6646
     from: 8fe1a102-e3f3-40dd-b235-66e9c148830f
-    to: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
-    fromPort: default
-    toPort: default
-  - id: 237968a8-4e1b-434d-b215-aa98c404c8d7
-    from: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
     to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     fromPort: default
     toPort: default

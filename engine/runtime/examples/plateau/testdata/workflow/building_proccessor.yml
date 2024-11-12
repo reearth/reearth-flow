@@ -55,13 +55,6 @@ graphs:
               value: |
                 env.get("__value").geometryName[3]
 
-      - id: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
-        name: horizontalReprojector_01
-        type: action
-        action: HorizontalReprojector
-        with:
-          epsgCode: 6677
-
       - id: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
         name: featureFilter_02
         type: action
@@ -105,13 +98,8 @@ graphs:
         to: d2b4977d-e218-4628-96f2-d26407aeea14
         fromPort: default
         toPort: default
-      - id: fc116a08-6e00-46e9-bb7d-69b8e56f9adb
-        from: d2b4977d-e218-4628-96f2-d26407aeea14
-        to: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
-        fromPort: default
-        toPort: default
       - id: 237968a8-4e1b-434d-b215-aa98c404c8d7
-        from: 231fb361-be18-46c0-a8e2-fb93a4f5d7bc
+        from: d2b4977d-e218-4628-96f2-d26407aeea14
         to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
         fromPort: default
         toPort: default

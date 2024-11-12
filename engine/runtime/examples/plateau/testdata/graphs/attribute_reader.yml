@@ -7,7 +7,7 @@ nodes:
     subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
   - id: cc7d973e-a2eb-4db9-9879-a27154098001
-    name: FeatureTransformer01
+    name: FeatureTransformer
     type: action
     action: FeatureTransformer
     with:
@@ -18,12 +18,12 @@ nodes:
             }
 
   - id: b90a3d22-7aaf-4e1c-9e27-d9f01b75d82d
-    name: PLATEAU.DictionariesInitiator01
+    name: PLATEAU.DictionariesInitiator
     type: action
     action: PLATEAU.DictionariesInitiator
 
   - id: 53c4f2fd-8d0f-40b0-8dca-42e6c68ae62b
-    name: XMLFragmenter01
+    name: XMLFragmenter
     type: action
     action: XMLFragmenter
     with:
@@ -35,26 +35,26 @@ nodes:
       attribute: cityGmlPath
 
   - id: e1715556-31ed-4cae-9932-1ac331b9fb04
-    name: PLATEAU.XMLAttributeExtractor01
+    name: PLATEAU.XMLAttributeExtractor
     type: action
     action: PLATEAU.XMLAttributeExtractor
 
   - id: 3d103429-37b0-4645-b1f3-6f14305ad913
-    name: filePathRouter
+    name: FilePathRouter
     type: action
     action: Router
     with:
       routingPort: filePath
 
   - id: fed5f2f2-7663-481e-b177-3f215fc40241
-    name: attributeFeatureRouter
+    name: AttributeFeatureRouter
     type: action
     action: Router
     with:
       routingPort: attributeFeature
 
   - id: 213f5f78-c7ad-473b-8364-a757855998c4
-    name: summaryRouter
+    name: SummaryRouter
     type: action
     action: Router
     with:

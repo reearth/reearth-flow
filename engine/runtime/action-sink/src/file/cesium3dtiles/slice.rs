@@ -49,7 +49,6 @@ pub fn slice_to_tiles<E>(
 
     let (lng_center, lat_center, approx_dx, approx_dy, approx_dh) = {
         let vertice = city_gml.max_min_vertice();
-
         let approx_dx = ellipsoid.a()
             * vertice.min_lat.to_radians().cos()
             * (vertice.max_lng - vertice.min_lng).to_radians();
