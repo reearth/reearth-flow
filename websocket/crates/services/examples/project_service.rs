@@ -19,6 +19,7 @@ use tracing::{debug, info};
 use yrs::{updates::decoder::Decode, Doc, GetString, Text, Transact, Update};
 
 ///RUST_LOG=debug cargo run --example project_service
+/// RUST_LOG=debug cargo run --example project_service  --features local-storage
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -21,7 +21,7 @@ use tracing::{debug, error, info};
 use yrs::{Doc, Text, Transact};
 
 ///export REDIS_URL="redis://default:my_redis_password@localhost:6379/0"
-///RUST_LOG=debug cargo run --example edit_session_service
+///RUST_LOG=debug cargo run --example edit_session_service  --features local-storage
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
