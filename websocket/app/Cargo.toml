@@ -9,6 +9,12 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+default = ["local-storage"] 
+gcs-storage = ["flow-websocket-infra/gcs-storage"]  
+local-storage = ["flow-websocket-infra/local-storage"]
+
+
 [dependencies]
 tracing.workspace = true
 tracing-subscriber.workspace = true
@@ -24,6 +30,6 @@ redis.workspace = true
 dotenv.workspace = true
 envy.workspace = true
 flow-websocket-services.workspace = true
-flow-websocket-infra.workspace = true
+flow-websocket-infra = { workspace = true, default-features = false } 
 bb8.workspace = true
 bb8-redis.workspace = true

@@ -3,7 +3,7 @@ use bb8_redis::RedisConnectionManager;
 use flow_websocket_infra::{
     generate_id,
     persistence::{
-        project_repository::{ProjectLocalRepository, ProjectRedisRepository},
+        project_repository::{ProjectRedisRepository, ProjectStorageRepository},
         redis::flow_project_redis_data_manager::FlowProjectRedisDataManager,
     },
     types::user::User,
@@ -16,6 +16,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 use yrs::{Doc, Text, Transact};
 
+///export REDIS_URL="redis://default:my_redis_password@localhost:6379/0"
 ///RUST_LOG=debug cargo run --example edit_session_service
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,7 +35,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let redis_pool = Pool::builder().build(manager).await?;
 
     // Initialize components
-    let local_storage = ProjectLocalRepository::new("./local_storage".into()).await?;
+    #[cfg(feature = "local-storage")]
+    let storage = ProjectStorageRepository::new("./local_storage".into()).await?;
+    // #[cfg(feature = "gcs-storage")]
+    // let storage = ProjectStorageRepository::new("your-gcs-bucket".to_string()).await?;
+
     let session_repo = ProjectRedisRepository::new(redis_pool.clone());
     let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
@@ -43,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create service
     let service = ManageEditSessionService::new(
         Arc::new(session_repo),
-        Arc::new(local_storage),
+        Arc::new(storage),
         Arc::new(redis_data_manager),
     );
 
