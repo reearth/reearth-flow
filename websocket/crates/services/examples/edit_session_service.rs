@@ -45,8 +45,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize storage
     #[cfg(feature = "local-storage")]
+    #[allow(unused_variables)]
     let storage = ProjectLocalRepository::new("./local_storage".into()).await?;
     #[cfg(feature = "gcs-storage")]
+    #[allow(unused_variables)]
     let storage = ProjectGcsRepository::new("your-gcs-bucket".to_string()).await?;
 
     let session_repo = ProjectRedisRepository::new(redis_pool.clone());

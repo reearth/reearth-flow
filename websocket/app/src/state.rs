@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use super::room::Room;
 use crate::errors::WsError;
 use bb8::Pool;
@@ -52,8 +53,10 @@ impl AppState {
 
         // Initialize storage based on feature
         #[cfg(feature = "local-storage")]
+        #[allow(unused_variables)]
         let storage = Arc::new(ProjectStorageRepository::new("./local_storage".into()).await?);
         #[cfg(feature = "gcs-storage")]
+        #[allow(unused_variables)]
         let storage = Arc::new(ProjectStorageRepository::new("your-gcs-bucket".into()).await?);
 
         let session_repo = Arc::new(ProjectRedisRepository::new(redis_pool.clone()));
