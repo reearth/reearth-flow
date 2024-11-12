@@ -127,10 +127,10 @@ graphs:
         with:
           format: mvt
           layerName: luse
-          minZoom: 12
-          maxZoom: 18
+          minZoom: 8
+          maxZoom: 16
           output: |
-            env.get("outputPath")
+             file::join_path(env.get("outputPath"), "luse")
 
     edges:
       - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d

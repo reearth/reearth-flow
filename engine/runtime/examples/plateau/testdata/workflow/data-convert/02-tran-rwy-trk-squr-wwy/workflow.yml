@@ -71,6 +71,55 @@ graphs:
         type: subGraph
         subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
+      - id: 0274320c-6aad-4ea2-b4cc-b2d7fe7071d8
+        name: AttributeMapperLod0-2Tran
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - multipleExpr: |
+                let attributes = env.get("__value").cityGmlAttributes;
+                let ancestors = attributes.ancestors;
+                let value = env.get("__value");
+                #{
+                  lod: value.lod,
+                  meshcode: value.meshCode,
+                  city_code: value.cityCode,
+                  city_name: value.cityName,
+                  feature_type: value.gmlName.split(":")[1],
+                  gml_id: value.gmlId,
+                  tran_class: attributes["tran:class"] ?? "",
+                  tran_function: attributes["tran:function"] ?? "",
+                  tran_usage: attributes["tran:usage"] ?? "",
+                  uro_widthType: "",
+                  uro_width: "",
+                  uro_numberOfLanes: "",
+                  uro_sectionType: attributes["uro:roadStructureAttribute"][0]["uro:sectionType"] ?? "",
+                  uro_sectionID: "",
+                  uro_weekday12hourTrafficVolume: "",
+                  uro_weekday24hourTrafficVolume: "",
+                  uro_largeVehicleRate: "",
+                  uro_congestionRate: "",
+                  uro_averageTravelSpeedInCongestion: "",
+                  uro_averageOutboundTravelSpeedInCongestion: "",
+                  uro_averageInboundTravelSpeedNotCongestion: "",
+                  uro_averageOutboundTravelSpeedNotCongestion: "",
+                  uro_observationPointName: "",
+                  uro_surveyYear: "",
+                }
+
+      - id: bf626e6d-9559-4722-b266-af137e56498f
+        name: MvtWriterTran
+        type: action
+        action: MVTWriter
+        with:
+          format: mvt
+          layerName: Road
+          minZoom: 8
+          maxZoom: 16
+          output: |
+             file::join_path(env.get("outputPath"), "tran_lod" + env.get("__value").lod)
+
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         name: AttributeMapperLod3Tran
         type: action
@@ -104,7 +153,7 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-            env.get("outputPath")
+             file::join_path(env.get("outputPath"), "tran_lod3")
 
     edges:
       - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
@@ -125,6 +174,26 @@ graphs:
       - id: df19bc5c-bda7-4dc0-9137-ad289b4f037a
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
         to: 612d546f-e4e4-4bbe-9f4e-d47313347f00
+        fromPort: default
+        toPort: default
+      - id: a7b057c4-f3c7-474c-83b2-1abc0bc557ba
+        from: 612d546f-e4e4-4bbe-9f4e-d47313347f00
+        to: 0274320c-6aad-4ea2-b4cc-b2d7fe7071d8
+        fromPort: lod0
+        toPort: default
+      - id: f13f3dd7-5737-427a-9bbc-65ece32652f2
+        from: 612d546f-e4e4-4bbe-9f4e-d47313347f00
+        to: 0274320c-6aad-4ea2-b4cc-b2d7fe7071d8
+        fromPort: lod1
+        toPort: default
+      - id: 32596b7d-4074-408c-a3b8-cd1cf0f0b307
+        from: 612d546f-e4e4-4bbe-9f4e-d47313347f00
+        to: 0274320c-6aad-4ea2-b4cc-b2d7fe7071d8
+        fromPort: lod2
+        toPort: default
+      - id: 51ed356b-73b0-4f25-8cfd-3195a47ae989
+        from: 0274320c-6aad-4ea2-b4cc-b2d7fe7071d8
+        to: bf626e6d-9559-4722-b266-af137e56498f
         fromPort: default
         toPort: default
       - id: d4c1c8a9-00a6-49c1-9735-db62a736932b
