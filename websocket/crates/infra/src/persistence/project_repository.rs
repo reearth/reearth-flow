@@ -21,10 +21,14 @@ use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
 use redis::AsyncCommands;
 
-#[cfg(feature = "gcs-storage")]
+#[cfg(all(feature = "gcs-storage", not(feature = "local-storage")))]
 pub use self::gcs::ProjectGcsRepository as ProjectStorageRepository;
-#[cfg(feature = "local-storage")]
+#[cfg(all(feature = "local-storage", not(feature = "gcs-storage")))]
 pub use self::local::ProjectLocalRepository as ProjectStorageRepository;
+#[cfg(all(not(feature = "gcs-storage"), not(feature = "local-storage")))]
+compile_error!("Either 'gcs-storage' or 'local-storage' feature must be enabled");
+#[cfg(all(feature = "gcs-storage", feature = "local-storage"))]
+compile_error!("Only one storage feature can be enabled at a time");
 
 #[derive(Error, Debug)]
 pub enum ProjectRepositoryError {
