@@ -20,12 +20,11 @@ use thiserror::Error;
 #[cfg(feature = "gcs-storage")]
 use crate::persistence::StorageClient;
 
+#[cfg(feature = "gcs-storage")]
 #[derive(Error, Debug)]
 pub enum GcsError {
-    #[cfg(feature = "gcs-storage")]
     #[error(transparent)]
     Auth(#[from] google_cloud_storage::client::google_cloud_auth::error::Error),
-    #[cfg(feature = "gcs-storage")]
     #[error(transparent)]
     Http(#[from] google_cloud_storage::http::Error),
     #[error("Serialization error: {0}")]
@@ -41,6 +40,7 @@ pub struct GcsClient {
     bucket: String,
 }
 
+#[cfg(feature = "gcs-storage")]
 #[derive(Serialize, Deserialize)]
 struct VersionMetadata {
     latest_version: String,

@@ -33,8 +33,8 @@ panic = "abort"
 strip = true
 
 [workspace.dependencies]
-flow-websocket-infra = { path = "crates/infra" }
-flow-websocket-services = { path = "crates/services" }
+flow-websocket-infra = { path = "crates/infra", default-features = false }
+flow-websocket-services = { path = "crates/services", default-features = false }
 
 async-trait = "0.1.80"
 axum = { version = "0.7", features = ["ws"] }

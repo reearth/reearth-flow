@@ -2,12 +2,12 @@ use super::room::Room;
 use crate::errors::WsError;
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
-#[cfg(feature = "gcs-storage")]
-use flow_websocket_infra::persistence::project_repository::ProjectGcsRepository;
-#[cfg(feature = "local-storage")]
-use flow_websocket_infra::persistence::project_repository::ProjectLocalRepository;
 use flow_websocket_infra::persistence::project_repository::ProjectRedisRepository;
 use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManager;
+#[cfg(feature = "gcs-storage")]
+use flow_websocket_infra::persistence::ProjectGcsRepository;
+#[cfg(feature = "local-storage")]
+use flow_websocket_infra::persistence::ProjectLocalRepository;
 use flow_websocket_services::manage_project_edit_session::ManageEditSessionService;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use std::collections::HashMap;
@@ -21,7 +21,6 @@ use tracing::error;
 pub type ProjectStorageRepository = ProjectGcsRepository;
 
 #[cfg(feature = "local-storage")]
-#[cfg(not(feature = "gcs-storage"))]
 pub type ProjectStorageRepository = ProjectLocalRepository;
 
 type SessionService = ManageEditSessionService<
@@ -55,7 +54,7 @@ impl AppState {
         #[cfg(feature = "local-storage")]
         let storage = Arc::new(ProjectStorageRepository::new("./local_storage".into()).await?);
         #[cfg(feature = "gcs-storage")]
-        let storage = Arc::new(ProjectStorageRepository::new("your-gcs-bucket".to_string()).await?);
+        let storage = Arc::new(ProjectStorageRepository::new("your-gcs-bucket".into()).await?);
 
         let session_repo = Arc::new(ProjectRedisRepository::new(redis_pool.clone()));
 
