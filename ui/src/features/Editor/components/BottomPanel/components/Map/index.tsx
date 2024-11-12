@@ -1,12 +1,5 @@
-import {
-  Button,
-  SupportedVisualizations,
-  ThreeDMap,
-  TwoDMap,
-} from "@flow/components";
+import { Button, Map as MapComponent, type MapMode } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-
-export type MapMode = Extract<SupportedVisualizations, "3d-map" | "2d-map">;
 
 type Props = {
   mapMode: MapMode;
@@ -33,7 +26,7 @@ const Map: React.FC<Props> = ({ mapMode, setMapMode }) => {
           </Button>
         ))}
       </div>
-      {mapMode === "3d-map" ? <ThreeDMap /> : <TwoDMap />}
+      <MapComponent mapMode={mapMode} />
     </div>
   );
 };
