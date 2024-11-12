@@ -23,6 +23,7 @@ use redis::AsyncCommands;
 
 #[cfg(feature = "gcs-storage")]
 pub use self::gcs::ProjectGcsRepository as ProjectStorageRepository;
+#[cfg(feature = "local-storage")]
 pub use self::local::ProjectLocalRepository as ProjectStorageRepository;
 
 #[derive(Error, Debug)]
