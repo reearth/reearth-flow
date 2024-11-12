@@ -11,12 +11,12 @@ rust-version.workspace = true
 version.workspace = true
 
 [features]
-default = ["local-storage"]  
-gcs-storage = ["flow-websocket-infra/gcs-storage"]  
-local-storage = ["flow-websocket-infra/local-storage"]  
+default = ["local-storage"]
+gcs-storage = ["flow-websocket-infra/gcs-storage"]
+local-storage = ["flow-websocket-infra/local-storage"]
 
 [dependencies]
-flow-websocket-infra = { workspace = true, default-features = false }  
+flow-websocket-infra = { workspace = true, default-features = false }
 
 async-trait.workspace = true
 axum.workspace = true
@@ -39,4 +39,4 @@ yrs.workspace = true
 
 [[example]]
 name = "edit_session_service"
-required-features = ["local-storage"]  # 指定示例需要的特性
+required-features = ["local-storage"] # 指定示例需要的特性
