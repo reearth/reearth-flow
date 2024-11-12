@@ -1,4 +1,3 @@
-use super::errors::FlowProjectRedisDataManagerError;
 use bb8::{Pool, PooledConnection};
 use bb8_redis::RedisConnectionManager;
 
@@ -8,11 +7,8 @@ pub trait RedisConnection {
 
     async fn get_connection(
         &self,
-    ) -> Result<PooledConnection<'_, RedisConnectionManager>, FlowProjectRedisDataManagerError>
+    ) -> Result<PooledConnection<'_, RedisConnectionManager>, bb8::RunError<redis::RedisError>>
     {
-        self.get_pool()
-            .get()
-            .await
-            .map_err(FlowProjectRedisDataManagerError::PoolRunError)
+        Ok(self.get_pool().get().await?)
     }
 }

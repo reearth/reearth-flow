@@ -5,9 +5,8 @@ use crossbeam::channel::Sender;
 use tokio::runtime::Handle;
 
 use crate::channels::ProcessorChannelForwarder;
-use crate::error_manager::ErrorManager;
 use crate::errors::ExecutionError;
-use crate::event::Event;
+use crate::event::{Event, EventHub};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::feature_store::FeatureWriter;
 use crate::node::{NodeHandle, Port};
@@ -43,10 +42,8 @@ pub struct ChannelManager {
     owner: NodeHandle,
     feature_writers: HashMap<Port, Box<dyn FeatureWriter>>,
     senders: Vec<SenderWithPortMapping>,
-    error_manager: Arc<ErrorManager>,
     runtime: Arc<Handle>,
-    #[allow(dead_code)]
-    event_sender: tokio::sync::broadcast::Sender<Event>,
+    event_hub: EventHub,
 }
 
 impl ChannelManager {
@@ -60,7 +57,7 @@ impl ChannelManager {
             self.runtime.spawn(async move {
                 let _ = writer.write(&feature).await;
             });
-            let _ = self.event_sender.send(Event::EdgePassThrough {
+            self.event_hub.send(Event::EdgePassThrough {
                 feature_id,
                 edge_id,
             });
@@ -91,7 +88,8 @@ impl ChannelManager {
             for writer in writers {
                 let result = writer.flush().await;
                 if let Err(e) = result {
-                    self.error_manager.report(e.into());
+                    self.event_hub
+                        .error_log(None, format!("Failed to flush feature writer: {e}"));
                 }
             }
         });
@@ -106,17 +104,15 @@ impl ChannelManager {
         owner: NodeHandle,
         feature_writers: HashMap<Port, Box<dyn FeatureWriter>>,
         senders: Vec<SenderWithPortMapping>,
-        error_manager: Arc<ErrorManager>,
         runtime: Arc<Handle>,
-        event_sender: tokio::sync::broadcast::Sender<Event>,
+        event_hub: EventHub,
     ) -> Self {
         Self {
             owner,
             feature_writers,
             senders,
-            error_manager,
             runtime,
-            event_sender,
+            event_hub,
         }
     }
 }

@@ -9,10 +9,6 @@ use std::vec;
 use flate2::{write::ZlibEncoder, Compression};
 use flatgeom::MultiPolygon as NMultiPolygon;
 use itertools::Itertools;
-use nusamai_mvt::geometry::GeometryEncoder;
-use nusamai_mvt::tag::TagsEncoder;
-use nusamai_mvt::tileid::TileIdMethod;
-use nusamai_mvt::vector_tile;
 use prost::Message;
 use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
@@ -28,9 +24,13 @@ use reearth_flow_types::Feature;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+use tinymvt::geometry::GeometryEncoder;
+use tinymvt::tag::TagsEncoder;
+use tinymvt::vector_tile;
 
 use super::slice::slice_cityobj_geoms;
 use super::tags::convert_properties;
+use super::tileid::TileIdMethod;
 use crate::errors::SinkError;
 
 #[derive(Debug, Clone, Default)]
@@ -401,21 +401,19 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> crate::errors
             continue;
         }
 
-        let mut tags: Vec<u32> = Vec::new();
-
         let layer = {
             let layer = layers.entry(feature.typename).or_default();
 
             // Encode attributes as MVT tags
             for (key, value) in &feature.properties {
-                convert_properties(&mut tags, &mut layer.tags_enc, key.as_ref(), value);
+                convert_properties(&mut layer.tags_enc, key.as_ref(), value);
             }
             layer
         };
 
         layer.features.push(vector_tile::tile::Feature {
             id: None,
-            tags,
+            tags: layer.tags_enc.take_tags(),
             r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
             geometry,
         });

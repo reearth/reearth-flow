@@ -1,6 +1,5 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use reearth_flow_action_log::action_log;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -60,8 +59,12 @@ impl Processor for EchoProcessor {
     ) -> Result<(), BoxedError> {
         let span = ctx.info_span();
         let feature: serde_json::Value = ctx.feature.clone().into();
-        action_log!(
-            parent: span, ctx.logger.action_logger("echo"), "echo with feature = {:?}", serde_json::to_string(&feature).unwrap_or_default(),
+        ctx.event_hub.info_log(
+            Some(span.clone()),
+            format!(
+                "echo with feature = {:?}",
+                serde_json::to_string(&feature).unwrap_or_default()
+            ),
         );
         fw.send(ctx);
         Ok(())

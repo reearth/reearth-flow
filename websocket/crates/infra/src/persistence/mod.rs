@@ -51,7 +51,10 @@ pub trait StorageClient {
     ) -> Result<Option<T>, Self::Error>;
 }
 
+pub mod editing_session;
+pub mod event_handler;
 pub mod gcs;
 pub mod local_storage;
 pub mod project_repository;
 pub mod redis;
+pub mod repository;

@@ -97,11 +97,7 @@ pub struct BuilderDag {
 }
 
 impl BuilderDag {
-    pub async fn new(
-        ctx: NodeContext,
-        dag_schemas: DagSchemas,
-        event_hub_capacity: usize,
-    ) -> Result<Self, ExecutionError> {
+    pub async fn new(ctx: NodeContext, dag_schemas: DagSchemas) -> Result<Self, ExecutionError> {
         let graph_id = dag_schemas.id;
         // Collect sources that may affect a node.
         let mut affecting_sources = dag_schemas
@@ -118,7 +114,6 @@ impl BuilderDag {
             .collect::<Vec<_>>();
 
         // Build the sinks and load checkpoint.
-        let event_hub = EventHub::new(event_hub_capacity);
         let mut graph = petgraph::graph::DiGraph::<NodeType, EdgeType>::new();
         let mut source_id_to_sinks = HashMap::<NodeHandle, Vec<NodeIndex>>::new();
         let mut node_index_map: HashMap<NodeIndex, NodeIndex> = HashMap::new();
@@ -150,7 +145,7 @@ impl BuilderDag {
                 let mut sink = sink
                     .build(
                         ctx.clone(),
-                        event_hub.clone(),
+                        ctx.event_hub.clone(),
                         node.node.action().to_string(),
                         node.with.clone(),
                     )
@@ -204,7 +199,7 @@ impl BuilderDag {
                     let source = source
                         .build(
                             ctx.clone(),
-                            event_hub.clone(),
+                            ctx.event_hub.clone(),
                             node.node.action().to_string(),
                             node.with.clone(),
                             source_states.remove(&node.handle),
@@ -242,7 +237,7 @@ impl BuilderDag {
                     let processor = processor
                         .build(
                             ctx.clone(),
-                            event_hub.clone(),
+                            ctx.event_hub.clone(),
                             node.node.action().to_string(),
                             node.with.clone(),
                         )
@@ -276,7 +271,7 @@ impl BuilderDag {
         Ok(BuilderDag {
             id: graph_id,
             graph,
-            event_hub,
+            event_hub: ctx.event_hub.clone(),
         })
     }
 

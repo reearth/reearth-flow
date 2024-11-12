@@ -1,13 +1,13 @@
 use crate::error::ProjectServiceError;
-use flow_websocket_domain::editing_session::ProjectEditingSession;
-use flow_websocket_domain::project::{Action, Project, ProjectAllowedActions};
-use flow_websocket_domain::repository::{
-    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
-};
-use flow_websocket_domain::snapshot::ProjectSnapshot;
-use flow_websocket_domain::user::User;
+use flow_websocket_infra::persistence::editing_session::ProjectEditingSession;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
+use flow_websocket_infra::persistence::repository::{
+    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
+};
+use flow_websocket_infra::types::project::Project;
+use flow_websocket_infra::types::snapshot::ProjectSnapshot;
+use flow_websocket_infra::types::user::User;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -86,23 +86,6 @@ where
             .snapshot_repository
             .list_all_snapshots_versions(project_id)
             .await?)
-    }
-
-    pub async fn get_project_allowed_actions(
-        &self,
-        project_id: &str,
-        actions: Vec<String>,
-    ) -> Result<ProjectAllowedActions, ProjectServiceError> {
-        Ok(ProjectAllowedActions {
-            id: project_id.to_string(),
-            actions: actions
-                .into_iter()
-                .map(|action| Action {
-                    action,
-                    allowed: true,
-                })
-                .collect(),
-        })
     }
 
     pub async fn push_update_to_redis_stream(

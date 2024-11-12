@@ -60,6 +60,9 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
             reearth_flow_runtime::event::Event::EdgePassThrough { .. } => {
                 // TODO: Implement this
             }
+            reearth_flow_runtime::event::Event::Log { .. } => {
+                // TODO: Implement this
+            }
         }
     }
 }
@@ -83,6 +86,7 @@ pub(crate) fn execute(workflow: &str) {
     let handlers: Vec<Arc<dyn reearth_flow_runtime::event::EventHandler>> =
         vec![Arc::new(EventHandler)];
     Runner::run_with_event_handler(
+        job_id,
         workflow,
         ALL_ACTION_FACTORIES.clone(),
         logger_factory,

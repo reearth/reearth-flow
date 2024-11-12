@@ -11,7 +11,6 @@ use tokio::sync::Mutex;
 use crate::{
     builder_dag::{BuilderDag, NodeKind},
     dag_schemas::{EdgeHavePorts, SchemaEdgeKind},
-    error_manager::ErrorManager,
     errors::ExecutionError,
     event::EventHub,
     executor_operation::ExecutorOperation,
@@ -51,14 +50,12 @@ pub struct ExecutionDag {
     /// Nodes will be moved into execution threads.
     graph: petgraph::graph::DiGraph<NodeType, EdgeType>,
     event_hub: EventHub,
-    error_manager: Arc<ErrorManager>,
 }
 
 impl ExecutionDag {
     pub fn new(
         builder_dag: BuilderDag,
         channel_buffer_sz: usize,
-        error_threshold: Option<u32>,
         feature_flush_threshold: usize,
         state: Arc<State>,
     ) -> Result<Self, ExecutionError> {
@@ -145,16 +142,7 @@ impl ExecutionDag {
             id: graph_id,
             graph,
             event_hub,
-            error_manager: Arc::new(if let Some(threshold) = error_threshold {
-                ErrorManager::new_threshold(threshold)
-            } else {
-                ErrorManager::new_unlimited()
-            }),
         })
-    }
-
-    pub fn error_manager(&self) -> &Arc<ErrorManager> {
-        &self.error_manager
     }
 
     pub fn graph(&self) -> &petgraph::graph::DiGraph<NodeType, EdgeType> {

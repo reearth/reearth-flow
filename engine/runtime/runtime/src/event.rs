@@ -4,7 +4,7 @@ use tokio::sync::{
     broadcast::{Receiver, Sender},
     Notify,
 };
-use tracing::{error, info};
+use tracing::{error, info, Level, Span};
 
 use crate::node::{EdgeId, NodeHandle};
 
@@ -23,6 +23,11 @@ pub enum Event {
         feature_id: uuid::Uuid,
         edge_id: EdgeId,
     },
+    Log {
+        level: Level,
+        span: Option<Span>,
+        message: String,
+    },
 }
 
 #[derive(Debug)]
@@ -35,6 +40,42 @@ impl EventHub {
     pub fn new(capacity: usize) -> Self {
         let (sender, receiver) = tokio::sync::broadcast::channel(capacity);
         Self { sender, receiver }
+    }
+
+    pub fn send(&self, event: Event) {
+        let _ = self.sender.send(event);
+    }
+
+    pub fn info_log<T: ToString>(&self, span: Option<Span>, message: T) {
+        self.send(Event::Log {
+            level: Level::INFO,
+            span,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn debug_log<T: ToString>(&self, span: Option<Span>, message: T) {
+        self.send(Event::Log {
+            level: Level::DEBUG,
+            span,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn warn_log<T: ToString>(&self, span: Option<Span>, message: T) {
+        self.send(Event::Log {
+            level: Level::WARN,
+            span,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn error_log<T: ToString>(&self, span: Option<Span>, message: T) {
+        self.send(Event::Log {
+            level: Level::ERROR,
+            span,
+            message: message.to_string(),
+        });
     }
 }
 

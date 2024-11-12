@@ -11,7 +11,7 @@ use axum::{
     },
     response::IntoResponse,
 };
-use flow_websocket_domain::user::User;
+use flow_websocket_infra::types::user::User;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;

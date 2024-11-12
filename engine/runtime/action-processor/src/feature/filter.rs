@@ -1,7 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::Lazy;
-use reearth_flow_action_log::action_error_log;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -138,8 +137,9 @@ impl Processor for FeatureFilter {
                 }
                 Ok(_) => {}
                 Err(err) => {
-                    action_error_log!(
-                        parent: ctx.error_span(), ctx.logger.action_logger("FeatureFilter"), "filter eval error = {:?}", err,
+                    ctx.event_hub.error_log(
+                        Some(ctx.error_span()),
+                        format!("filter eval error = {:?}", err),
                     );
                     continue;
                 }
