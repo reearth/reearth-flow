@@ -1,9 +1,13 @@
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
+#[cfg(feature = "gcs-storage")]
+use flow_websocket_infra::persistence::ProjectGcsRepository;
+#[cfg(feature = "local-storage")]
+use flow_websocket_infra::persistence::ProjectLocalRepository;
 use flow_websocket_infra::{
     generate_id,
     persistence::{
-        project_repository::{ProjectRedisRepository, ProjectStorageRepository},
+        project_repository::ProjectRedisRepository,
         redis::flow_project_redis_data_manager::FlowProjectRedisDataManager,
     },
     types::user::User,
@@ -34,11 +38,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let manager = RedisConnectionManager::new(&*redis_url)?;
     let redis_pool = Pool::builder().build(manager).await?;
 
-    // Initialize components
     #[cfg(feature = "local-storage")]
-    let storage = ProjectStorageRepository::new("./local_storage".into()).await?;
-    // #[cfg(feature = "gcs-storage")]
-    // let storage = ProjectStorageRepository::new("your-gcs-bucket".to_string()).await?;
+    debug!("local-storage feature is enabled");
+    #[cfg(feature = "gcs-storage")]
+    debug!("gcs-storage feature is enabled");
+
+    // Initialize storage
+    #[cfg(feature = "local-storage")]
+    let storage = ProjectLocalRepository::new("./local_storage".into()).await?;
+    #[cfg(feature = "gcs-storage")]
+    let storage = ProjectGcsRepository::new("your-gcs-bucket".to_string()).await?;
 
     let session_repo = ProjectRedisRepository::new(redis_pool.clone());
     let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;

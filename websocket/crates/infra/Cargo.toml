@@ -11,7 +11,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [features]
-default = ["local-storage"]
+default = ["gcs-storage"]
 gcs-storage = ["dep:google-cloud-storage"]
 local-storage = []
 

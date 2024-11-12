@@ -13,11 +13,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
 
-#[warn(unused_imports)]
-#[cfg(all(feature = "gcs-storage", not(feature = "local-storage")))]
-pub use self::gcs::ProjectGcsRepository as ProjectStorageRepository;
-#[cfg(all(feature = "local-storage", not(feature = "gcs-storage")))]
-pub use self::local::ProjectLocalRepository as ProjectStorageRepository;
+pub use self::local::ProjectLocalRepository;
 use super::editing_session::ProjectEditingSession;
 use super::local_storage::LocalStorageError;
 use super::repository::{ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl};
@@ -141,7 +137,8 @@ impl ProjectEditingSessionImpl for ProjectRedisRepository {
 }
 
 #[cfg(feature = "gcs-storage")]
-mod gcs {
+pub(crate) mod gcs {
+
     use super::*;
 
     #[derive(Clone)]
@@ -150,8 +147,9 @@ mod gcs {
     }
 
     impl ProjectGcsRepository {
-        pub fn new(client: GcsClient) -> Self {
-            Self { client }
+        pub async fn new(bucket: String) -> Result<Self, GcsError> {
+            let client = GcsClient::new(bucket).await?;
+            Ok(Self { client })
         }
     }
 
@@ -210,7 +208,7 @@ mod gcs {
 }
 
 #[cfg(feature = "local-storage")]
-mod local {
+pub(crate) mod local {
     use super::*;
 
     #[derive(Clone)]

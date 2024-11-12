@@ -39,4 +39,3 @@ yrs.workspace = true
 
 [[example]]
 name = "edit_session_service"
-required-features = ["local-storage"]
