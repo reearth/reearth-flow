@@ -1,4 +1,3 @@
-#[allow(unused_imports)]
 use super::room::Room;
 use crate::errors::WsError;
 use bb8::Pool;
@@ -6,8 +5,10 @@ use bb8_redis::RedisConnectionManager;
 use flow_websocket_infra::persistence::project_repository::ProjectRedisRepository;
 use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManager;
 #[cfg(feature = "gcs-storage")]
+#[allow(unused_imports)]
 use flow_websocket_infra::persistence::ProjectGcsRepository;
 #[cfg(feature = "local-storage")]
+#[allow(unused_imports)]
 use flow_websocket_infra::persistence::ProjectLocalRepository;
 use flow_websocket_services::manage_project_edit_session::ManageEditSessionService;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
