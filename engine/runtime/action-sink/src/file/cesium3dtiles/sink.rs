@@ -171,7 +171,7 @@ impl Sink for Cesium3DTilesWriter {
             let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
             let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
             scope.spawn(|| {
-                let _ = geometry_slicing_stage(
+                let result = geometry_slicing_stage(
                     upstream,
                     tile_id_conv,
                     sender_sliced,
@@ -179,9 +179,21 @@ impl Sink for Cesium3DTilesWriter {
                     self.params.max_zoom,
                     attach_texture,
                 );
+                if let Err(e) = &result {
+                    ctx.event_hub.error_log(
+                        None,
+                        format!("Failed to geometry_slicing_stage with error = {:?}", e),
+                    );
+                }
             });
             scope.spawn(|| {
-                let _ = feature_sorting_stage(receiver_sliced, sender_sorted);
+                let result = feature_sorting_stage(receiver_sliced, sender_sorted);
+                if let Err(e) = &result {
+                    ctx.event_hub.error_log(
+                        None,
+                        format!("Failed to feature_sorting_stage with error = {:?}", e),
+                    );
+                }
             });
             scope.spawn(|| {
                 let pool = rayon::ThreadPoolBuilder::new()
@@ -191,7 +203,7 @@ impl Sink for Cesium3DTilesWriter {
                 pool.install(|| {
                     let mut schema = nusamai_citygml::schema::Schema::default();
                     TopLevelCityObject::collect_schema(&mut schema);
-                    let _ = tile_writing_stage(
+                    let result = tile_writing_stage(
                         ctx.as_context(),
                         &output,
                         receiver_sorted,
@@ -199,6 +211,12 @@ impl Sink for Cesium3DTilesWriter {
                         &schema,
                         None,
                     );
+                    if let Err(e) = &result {
+                        ctx.event_hub.error_log(
+                            None,
+                            format!("Failed to tile_writing_stage with error = {:?}", e),
+                        );
+                    }
                 })
             });
         });
@@ -229,14 +247,18 @@ fn geometry_slicing_stage(
                 let Some(AttributeValue::String(feature_type)) =
                     parcel.get(&"feature_type".to_string())
                 else {
-                    return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
+                    return Err(crate::errors::SinkError::cesium3dtiles_writer(
+                        "Failed to get feature type",
+                    ));
                 };
                 let tile_id = tile_id_conv.zxy_to_id(z, x, y);
                 let serialized_feature = (tile_id, feature_type.to_string(), bytes);
-                if sender_sliced.send(serialized_feature).is_err() {
-                    return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
-                };
-
+                sender_sliced.send(serialized_feature).map_err(|e| {
+                    crate::errors::SinkError::cesium3dtiles_writer(format!(
+                        "Failed to send sliced feature with error = {:?}",
+                        e
+                    ))
+                })?;
                 Ok(())
             },
         )
@@ -285,15 +307,17 @@ fn feature_sorting_stage(
             Ok(serialized_feats) => {
                 let tile_id = key.tile_id;
                 let typename = typename_to_seq[key.type_seq as usize].clone();
-                if sender_sorted
-                    .send((tile_id, typename, serialized_feats))
-                    .is_err()
-                {
-                    return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
+                if let Err(e) = sender_sorted.send((tile_id, typename, serialized_feats)) {
+                    return Err(crate::errors::SinkError::cesium3dtiles_writer(format!(
+                        "Failed to send sorted features with error = {:?}",
+                        e
+                    )));
                 }
             }
             Err(kv_extsort::Error::Canceled) => {
-                return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
+                return Err(crate::errors::SinkError::cesium3dtiles_writer(
+                    "Sort canceled",
+                ));
             }
             Err(err) => {
                 return Err(crate::errors::SinkError::cesium3dtiles_writer(format!(
