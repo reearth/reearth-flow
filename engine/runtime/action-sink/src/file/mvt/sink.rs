@@ -63,27 +63,41 @@ impl SinkFactory for MVTSinkFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, JsonValue>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: MVTWriterParam = if let Some(with) = with {
             let value: JsonValue = serde_json::to_value(with).map_err(|e| {
-                SinkError::BuildFactory(format!("Failed to serialize `with` parameter: {}", e))
+                SinkError::MvtWriterFactory(format!("Failed to serialize `with` parameter: {}", e))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                SinkError::BuildFactory(format!("Failed to deserialize `with` parameter: {}", e))
+                SinkError::MvtWriterFactory(format!(
+                    "Failed to deserialize `with` parameter: {}",
+                    e
+                ))
             })?
         } else {
-            return Err(
-                SinkError::BuildFactory("Missing required parameter `with`".to_string()).into(),
-            );
+            return Err(SinkError::MvtWriterFactory(
+                "Missing required parameter `with`".to_string(),
+            )
+            .into());
         };
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let expr_output = &params.output;
+        let template_ast = expr_engine
+            .compile(expr_output.as_ref())
+            .map_err(|e| SinkError::MvtWriterFactory(format!("{:?}", e)))?;
 
         let sink = MVTWriter {
-            buffer: Vec::new(),
-            params,
+            buffer: HashMap::new(),
+            params: MVTWriterCompiledParam {
+                output: template_ast,
+                layer_name: params.layer_name,
+                min_zoom: params.min_zoom,
+                max_zoom: params.max_zoom,
+            },
         };
         Ok(Box::new(sink))
     }
@@ -91,20 +105,22 @@ impl SinkFactory for MVTSinkFactory {
 
 #[derive(Debug, Clone)]
 pub struct MVTWriter {
-    pub(super) params: MVTWriterParam,
-    pub(super) buffer: Vec<Feature>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct MVTWriterCommonParam {
-    pub(super) output: Expr,
+    pub(super) params: MVTWriterCompiledParam,
+    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MVTWriterParam {
     pub(super) output: Expr,
+    pub(super) layer_name: String,
+    pub(super) min_zoom: u8,
+    pub(super) max_zoom: u8,
+}
+
+#[derive(Debug, Clone)]
+pub struct MVTWriterCompiledParam {
+    pub(super) output: rhai::AST,
     pub(super) layer_name: String,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
@@ -124,7 +140,14 @@ impl Sink for MVTWriter {
         };
         match geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_) => {
-                self.buffer.push(feature);
+                let output = self.params.output.clone();
+                let scope = feature.new_scope(ctx.expr_engine.clone());
+                let path = scope
+                    .eval_ast::<String>(&output)
+                    .map_err(|e| SinkError::MvtWriter(format!("{:?}", e)))?;
+                let output = Uri::from_str(path.as_str())?;
+                let buffer = self.buffer.entry(output).or_default();
+                buffer.push(feature);
             }
             _ => {
                 return Err(Box::new(SinkError::MvtWriter(
@@ -136,24 +159,48 @@ impl Sink for MVTWriter {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let upstream = &self.buffer;
-        let tile_id_conv = TileIdMethod::Hilbert;
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = self.params.output.clone();
-        let scope = expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let output = Uri::from_str(path.as_str())?;
+        for (output, buffer) in &self.buffer {
+            self.write(ctx.as_context(), buffer, output)?;
+        }
+        Ok(())
+    }
+}
 
+impl MVTWriter {
+    pub fn write(
+        &self,
+        ctx: Context,
+        upstream: &[Feature],
+        output: &Uri,
+    ) -> crate::errors::Result<()> {
+        let tile_id_conv = TileIdMethod::Hilbert;
         std::thread::scope(|scope| {
             let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
             let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
             scope.spawn(|| {
-                let _ = geometry_slicing_stage(upstream, tile_id_conv, sender_sliced, &self.params);
+                let result = geometry_slicing_stage(
+                    upstream,
+                    tile_id_conv,
+                    sender_sliced,
+                    &self.params.layer_name,
+                    self.params.min_zoom,
+                    self.params.max_zoom,
+                );
+                if let Err(err) = result {
+                    ctx.event_hub.error_log(
+                        None,
+                        format!("Failed to geometry_slicing_stage with error =  {:?}", err),
+                    );
+                }
             });
             scope.spawn(|| {
-                let _ = feature_sorting_stage(receiver_sliced, sender_sorted);
+                let result = feature_sorting_stage(receiver_sliced, sender_sorted);
+                if let Err(err) = result {
+                    ctx.event_hub.error_log(
+                        None,
+                        format!("Failed to feature_sorting_stage with error =  {:?}", err),
+                    );
+                }
             });
             scope.spawn(|| {
                 let pool = rayon::ThreadPoolBuilder::new()
@@ -161,12 +208,14 @@ impl Sink for MVTWriter {
                     .build()
                     .unwrap();
                 pool.install(|| {
-                    let _ = tile_writing_stage(
-                        ctx.as_context(),
-                        &output,
-                        receiver_sorted,
-                        tile_id_conv,
-                    );
+                    let result =
+                        tile_writing_stage(ctx.clone(), output, receiver_sorted, tile_id_conv);
+                    if let Err(err) = result {
+                        ctx.event_hub.error_log(
+                            None,
+                            format!("Failed to tile_writing_stage with error =  {:?}", err),
+                        );
+                    }
                 })
             });
         });
@@ -178,7 +227,9 @@ fn geometry_slicing_stage(
     upstream: &[Feature],
     tile_id_conv: TileIdMethod,
     sender_sliced: std::sync::mpsc::SyncSender<(u64, Vec<u8>)>,
-    mvt_options: &MVTWriterParam,
+    layer_name: &str,
+    min_zoom: u8,
+    max_zoom: u8,
 ) -> crate::errors::Result<()> {
     let bincode_config = bincode::config::standard();
 
@@ -188,9 +239,9 @@ fn geometry_slicing_stage(
         let buffer_pixels = 5;
         slice_cityobj_geoms(
             feature,
-            &mvt_options.layer_name,
-            mvt_options.min_zoom,
-            mvt_options.max_zoom,
+            layer_name,
+            min_zoom,
+            max_zoom,
             max_detail,
             buffer_pixels,
             |(z, x, y, typename), mpoly| {
