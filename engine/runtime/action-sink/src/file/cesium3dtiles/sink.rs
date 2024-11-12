@@ -253,12 +253,12 @@ fn geometry_slicing_stage(
                 };
                 let tile_id = tile_id_conv.zxy_to_id(z, x, y);
                 let serialized_feature = (tile_id, feature_type.to_string(), bytes);
-                if let Err(e) = sender_sliced.send(serialized_feature) {
-                    return Err(crate::errors::SinkError::cesium3dtiles_writer(format!(
+                sender_sliced.send(serialized_feature).map_err(|e| {
+                    crate::errors::SinkError::cesium3dtiles_writer(format!(
                         "Failed to send sliced feature with error = {:?}",
                         e
-                    )));
-                };
+                    ))
+                })?;
                 Ok(())
             },
         )
@@ -307,9 +307,7 @@ fn feature_sorting_stage(
             Ok(serialized_feats) => {
                 let tile_id = key.tile_id;
                 let typename = typename_to_seq[key.type_seq as usize].clone();
-                if let Err(e) = sender_sorted
-                    .send((tile_id, typename, serialized_feats))
-                {
+                if let Err(e) = sender_sorted.send((tile_id, typename, serialized_feats)) {
                     return Err(crate::errors::SinkError::cesium3dtiles_writer(format!(
                         "Failed to send sorted features with error = {:?}",
                         e
@@ -317,7 +315,9 @@ fn feature_sorting_stage(
                 }
             }
             Err(kv_extsort::Error::Canceled) => {
-                return Err(crate::errors::SinkError::cesium3dtiles_writer("Sort canceled"));
+                return Err(crate::errors::SinkError::cesium3dtiles_writer(
+                    "Sort canceled",
+                ));
             }
             Err(err) => {
                 return Err(crate::errors::SinkError::cesium3dtiles_writer(format!(
