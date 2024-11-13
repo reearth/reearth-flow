@@ -1,6 +1,6 @@
 import { Plus } from "@phosphor-icons/react";
 
-import { Button, FlowLogo } from "@flow/components/";
+import { Button, FlowLogo, ScrollArea } from "@flow/components/";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
 
@@ -47,6 +47,7 @@ const ProjectsManager: React.FC = () => {
           </Button>
         </div>
         {projects && projects?.length > 0 ? (
+          <ScrollArea>
           <div
             className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
             ref={ref}>
@@ -61,6 +62,7 @@ const ProjectsManager: React.FC = () => {
               />
             ))}
           </div>
+          </ScrollArea>
         ) : (
           <BasicBoiler
             text={t("No Projects")}
