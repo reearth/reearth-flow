@@ -1,4 +1,6 @@
-use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
+use flow_websocket_infra::persistence::{
+    gcs::gcs_client::GcsError, redis::errors::FlowProjectRedisDataManagerError,
+};
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use thiserror::Error;
 
@@ -26,4 +28,6 @@ pub enum WsError {
     Pool(#[from] FlowProjectRedisDataManagerError),
     #[error(transparent)]
     LocalStorage(#[from] std::io::Error),
+    #[error(transparent)]
+    GcsStorage(#[from] GcsError),
 }

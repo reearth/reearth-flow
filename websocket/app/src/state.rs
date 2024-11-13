@@ -2,10 +2,14 @@ use super::room::Room;
 use crate::errors::WsError;
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
-use flow_websocket_infra::persistence::project_repository::{
-    ProjectLocalRepository, ProjectRedisRepository,
-};
+use flow_websocket_infra::persistence::project_repository::ProjectRedisRepository;
 use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManager;
+#[cfg(feature = "gcs-storage")]
+#[allow(unused_imports)]
+use flow_websocket_infra::persistence::ProjectGcsRepository;
+#[cfg(feature = "local-storage")]
+#[allow(unused_imports)]
+use flow_websocket_infra::persistence::ProjectLocalRepository;
 use flow_websocket_services::manage_project_edit_session::ManageEditSessionService;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use std::collections::HashMap;
@@ -14,9 +18,16 @@ use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 use tracing::error;
 
+#[cfg(feature = "gcs-storage")]
+#[cfg(not(feature = "local-storage"))]
+pub type ProjectStorageRepository = ProjectGcsRepository;
+
+#[cfg(feature = "local-storage")]
+pub type ProjectStorageRepository = ProjectLocalRepository;
+
 type SessionService = ManageEditSessionService<
     ProjectRedisRepository,
-    ProjectLocalRepository,
+    ProjectStorageRepository,
     FlowProjectRedisDataManager,
 >;
 
@@ -24,7 +35,7 @@ type SessionService = ManageEditSessionService<
 pub struct AppState {
     pub rooms: Arc<Mutex<HashMap<String, Room>>>,
     pub redis_pool: Pool<RedisConnectionManager>,
-    pub local_storage: Arc<ProjectLocalRepository>,
+    pub storage: Arc<ProjectStorageRepository>,
     pub session_repo: Arc<ProjectRedisRepository>,
     pub service: Arc<SessionService>,
     pub redis_url: String,
@@ -41,7 +52,13 @@ impl AppState {
         let manager = RedisConnectionManager::new(&*redis_url)?;
         let redis_pool = Pool::builder().build(manager).await?;
 
-        let local_storage = Arc::new(ProjectLocalRepository::new("./local_storage".into()).await?);
+        // Initialize storage based on feature
+        #[cfg(feature = "local-storage")]
+        #[allow(unused_variables)]
+        let storage = Arc::new(ProjectStorageRepository::new("./local_storage".into()).await?);
+        #[cfg(feature = "gcs-storage")]
+        #[allow(unused_variables)]
+        let storage = Arc::new(ProjectStorageRepository::new("your-gcs-bucket".into()).await?);
 
         let session_repo = Arc::new(ProjectRedisRepository::new(redis_pool.clone()));
 
@@ -49,7 +66,7 @@ impl AppState {
 
         let service = Arc::new(ManageEditSessionService::new(
             session_repo.clone(),
-            local_storage.clone(),
+            storage.clone(),
             Arc::new(redis_data_manager),
         ));
 
@@ -65,7 +82,7 @@ impl AppState {
         Ok(AppState {
             rooms: Arc::new(Mutex::new(HashMap::new())),
             redis_pool,
-            local_storage,
+            storage,
             session_repo,
             service,
             redis_url,

@@ -58,3 +58,8 @@ pub mod local_storage;
 pub mod project_repository;
 pub mod redis;
 pub mod repository;
+
+#[cfg(feature = "gcs-storage")]
+pub use project_repository::gcs::ProjectGcsRepository;
+#[cfg(feature = "local-storage")]
+pub use project_repository::local::ProjectLocalRepository;

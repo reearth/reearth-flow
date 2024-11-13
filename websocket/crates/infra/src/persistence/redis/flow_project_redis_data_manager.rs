@@ -295,6 +295,9 @@ impl RedisDataManagerImpl for FlowProjectRedisDataManager {
             )
             .await?;
 
+        let _ = self.execute_merge_updates(project_id).await?;
+        debug!("Updates merged after push");
+
         Ok(())
     }
 
