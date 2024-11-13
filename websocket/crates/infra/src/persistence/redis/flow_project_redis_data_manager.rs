@@ -222,25 +222,24 @@ impl FlowProjectRedisDataManager {
         project_id: &str,
         user_id: &str,
     ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
-        let state_updates = self.get_state_update_in_redis(project_id).await?;
         let mut merged_update: Vec<u8> = Vec::new();
         let mut updates_by: Vec<String> = Vec::new();
 
-        if let Some(_state_updates) = state_updates {
-            // Filter entries by user_id and collect their updates
-            for (_, fields) in self
-                .xread_map(&self.key_manager.state_updates_key(project_id)?, "0")
-                .await?
-            {
-                if let Some((updated_by, update_data)) = fields.first() {
-                    if updated_by == user_id {
-                        let (new_merged_update, new_updates_by) = self
-                            .update_manager
-                            .merge_updates(project_id, Some(update_data.clone()))
-                            .await?;
-                        merged_update = new_merged_update;
-                        updates_by = new_updates_by;
-                    }
+        // Fetch all updates from Redis
+        let entries = self
+            .xread_map(&self.key_manager.state_updates_key(project_id)?, "0")
+            .await?;
+
+        // Filter entries by user_id and collect their updates
+        for (_, fields) in entries {
+            if let Some((updated_by, update_data)) = fields.first() {
+                if updated_by == user_id {
+                    let (new_merged_update, new_updates_by) = self
+                        .update_manager
+                        .merge_updates(project_id, Some(update_data.clone()))
+                        .await?;
+                    merged_update = new_merged_update;
+                    updates_by = new_updates_by;
                 }
             }
         }

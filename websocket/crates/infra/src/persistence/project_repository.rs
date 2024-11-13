@@ -36,8 +36,6 @@ pub enum ProjectRepositoryError {
     Io(#[from] io::Error),
     #[error("Session ID not found")]
     SessionIdNotFound,
-    #[error("{0}")]
-    Custom(String),
     #[error(transparent)]
     Redis(#[from] redis::RedisError),
     #[error(transparent)]
