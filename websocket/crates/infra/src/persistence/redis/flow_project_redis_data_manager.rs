@@ -80,25 +80,26 @@ impl FlowProjectRedisDataManager {
         };
 
         match result {
-            redis::Value::Array(outer) => {
-                let mut mapped_results = Vec::new();
-                for stream in outer {
-                    if let redis::Value::Array(stream_data) = stream {
-                        if stream_data.len() >= 2 {
-                            if let redis::Value::Array(entries) = &stream_data[1] {
-                                mapped_results.extend(entries.iter().filter_map(|entry| {
-                                    if let redis::Value::Array(entry_fields) = entry {
-                                        Self::parse_stream_entry(entry_fields)
-                                    } else {
-                                        None
-                                    }
-                                }));
-                            }
+            redis::Value::Array(outer) => Ok(outer
+                .into_iter()
+                .filter_map(|stream| match stream {
+                    redis::Value::Array(mut stream_data) if stream_data.len() >= 2 => {
+                        match stream_data.remove(1) {
+                            redis::Value::Array(entries) => Some(entries),
+                            _ => None,
                         }
                     }
-                }
-                Ok(mapped_results)
-            }
+                    _ => None,
+                })
+                .flat_map(|entries| {
+                    entries.into_iter().filter_map(|entry| match entry {
+                        redis::Value::Array(entry_fields) => {
+                            Self::parse_stream_entry(&entry_fields)
+                        }
+                        _ => None,
+                    })
+                })
+                .collect()),
             _ => Ok(vec![]),
         }
     }
