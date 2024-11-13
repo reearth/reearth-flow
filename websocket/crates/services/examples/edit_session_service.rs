@@ -141,6 +141,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     })
     .await?;
 
+    // Merge updates for the user
+    tx.send(SessionCommand::MergeUpdates {
+        project_id: project_id.clone(),
+        user_id: test_user.id.clone(),
+        skip_lock: false,
+    })
+    .await?;
+
+    // Check status again after merge
+    tx.send(SessionCommand::CheckStatus {
+        project_id: project_id.clone(),
+    })
+    .await?;
+
     // End session
     tx.send(SessionCommand::End {
         project_id: project_id.clone(),

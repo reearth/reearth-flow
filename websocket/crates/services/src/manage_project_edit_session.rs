@@ -66,6 +66,11 @@ pub enum SessionCommand {
         update: Vec<u8>,
         updated_by: Option<String>,
     },
+    MergeUpdates {
+        project_id: String,
+        user_id: String,
+        skip_lock: bool,
+    },
 }
 
 #[automock]
@@ -121,9 +126,13 @@ where
                                 }
                             }
                         },
+                        SessionCommand::MergeUpdates { project_id, user_id, skip_lock } => {
+                            self.project_service.merge_updates_by_user_id(&project_id, &user_id, skip_lock).await?;
+                        },
                         SessionCommand::PushUpdate { project_id, update, updated_by } => {
                             self.push_update(&project_id, update, updated_by).await?;
                         },
+
                         SessionCommand::End { project_id, user } => {
                             if let Some(task_data) = self.get_task_data(&project_id).await {
                                 {

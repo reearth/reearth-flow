@@ -50,6 +50,12 @@ pub trait RedisDataManagerImpl {
         project_id: &str,
         skip_lock: bool,
     ) -> Result<(Vec<u8>, Vec<String>), Self::Error>;
+    async fn merge_updates_by_user_id(
+        &self,
+        project_id: &str,
+        user_id: &str,
+        skip_lock: bool,
+    ) -> Result<(Vec<u8>, Vec<String>), Self::Error>;
     async fn get_current_state(
         &self,
         project_id: &str,

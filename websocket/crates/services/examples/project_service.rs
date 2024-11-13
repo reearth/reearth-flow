@@ -57,69 +57,90 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example project ID
     let project_id = "test_project_123";
 
-    // Create test user
-    let test_user = User {
+    // Create test users
+    let test_user1 = User {
         id: "user_123".to_string(),
-        email: "test@example.com".to_string(),
-        name: "Test User".to_string(),
+        email: "test1@example.com".to_string(),
+        name: "Test User 1".to_string(),
         tenant_id: "tenant_123".to_string(),
     };
 
-    // Demonstrate service operations
-    debug!("Getting project details...");
-    if let Some(project) = service.get_project(project_id).await? {
-        info!("Found project: {:?}", project);
-    } else {
-        info!("Project not found");
-    }
+    let test_user2 = User {
+        id: "user_456".to_string(),
+        email: "test2@example.com".to_string(),
+        name: "Test User 2".to_string(),
+        tenant_id: "tenant_123".to_string(),
+    };
 
     debug!("Creating editing session...");
     let session = service
-        .get_or_create_editing_session(project_id, test_user.clone())
+        .get_or_create_editing_session(project_id, test_user1.clone())
         .await?;
     info!("Created session: {:?}", session);
 
-    debug!("Listing snapshots...");
-    let snapshots = service.list_all_snapshots_versions(project_id).await?;
-    info!("Available snapshots: {:?}", snapshots);
-
-    // Create a Yjs document with initial content
-    let doc = Doc::new();
-    let text = doc.get_or_insert_text("content");
-    let update = {
-        let mut txn = doc.transact_mut();
-        text.push(&mut txn, "Initial content");
+    // User 1's updates
+    let doc1 = Doc::new();
+    let text1 = doc1.get_or_insert_text("content");
+    let update1 = {
+        let mut txn = doc1.transact_mut();
+        text1.push(&mut txn, "User 1's initial content");
         txn.encode_update_v2()
     };
 
-    debug!("Pushing initial update...");
+    debug!("Pushing User 1's first update...");
     service
-        .push_update_to_redis_stream(project_id, update, Some(test_user.name.clone()))
+        .push_update_to_redis_stream(project_id, update1, Some(test_user1.name.clone()))
         .await?;
 
-    // Create another update
-    let second_update = {
-        let mut txn = doc.transact_mut();
-        text.push(&mut txn, " - More content");
+    let second_update1 = {
+        let mut txn = doc1.transact_mut();
+        text1.push(&mut txn, " - More from User 1");
         txn.encode_update_v2()
     };
 
-    debug!("Pushing second update...");
+    debug!("Pushing User 1's second update...");
     service
-        .push_update_to_redis_stream(project_id, second_update, Some(test_user.name.clone()))
+        .push_update_to_redis_stream(project_id, second_update1, Some(test_user1.name.clone()))
         .await?;
 
-    debug!("Getting current state...");
+    // User 2's updates
+    let doc2 = Doc::new();
+    let text2 = doc2.get_or_insert_text("content");
+    let update2 = {
+        let mut txn = doc2.transact_mut();
+        text2.push(&mut txn, "User 2's content");
+        txn.encode_update_v2()
+    };
+
+    debug!("Pushing User 2's first update...");
+    service
+        .push_update_to_redis_stream(project_id, update2, Some(test_user2.name.clone()))
+        .await?;
+
+    let second_update2 = {
+        let mut txn = doc2.transact_mut();
+        text2.push(&mut txn, " - Additional content from User 2");
+        txn.encode_update_v2()
+    };
+
+    debug!("Pushing User 2's second update...");
+    service
+        .push_update_to_redis_stream(project_id, second_update2, Some(test_user2.name.clone()))
+        .await?;
+
+    // Merge updates for User 1
+    debug!("Merging updates for User 1...");
+    service
+        .merge_updates_by_user_id(project_id, &test_user1.id, false)
+        .await?;
+
+    // Check state after User 1's merge
+    debug!("Getting state after User 1's merge...");
     if let Some(state) = service
         .get_current_state(project_id, session.session_id.as_deref())
         .await?
     {
         if !state.is_empty() {
-            debug!("---------------------");
-            debug!("state: {:?}", state);
-            debug!("------------");
-
-            // Create a new doc to apply the state
             let doc = Doc::new();
             let update = Update::decode_v2(&state).map_err(Box::new)?;
             doc.transact_mut().apply_update(update);
@@ -130,20 +151,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 text.get_string(&txn)
             };
 
-            info!("Current document content: {}", content);
-            info!("Current state size: {} bytes", state.len());
-        } else {
-            debug!("Received empty state update, skipping...");
+            info!("Content after User 1's merge: {}", content);
         }
     }
 
-    debug!("Getting latest snapshot...");
-    if let Some(snapshot) = service.get_latest_snapshot(project_id).await? {
-        info!("Latest snapshot: {:?}", snapshot);
+    // Merge updates for User 2
+    debug!("Merging updates for User 2...");
+    service
+        .merge_updates_by_user_id(project_id, &test_user2.id, false)
+        .await?;
+
+    // Check final state after both users' merges
+    debug!("Getting final state after all merges...");
+    if let Some(state) = service
+        .get_current_state(project_id, session.session_id.as_deref())
+        .await?
+    {
+        if !state.is_empty() {
+            let doc = Doc::new();
+            let update = Update::decode_v2(&state).map_err(Box::new)?;
+            doc.transact_mut().apply_update(update);
+
+            let text = doc.get_or_insert_text("content");
+            let content = {
+                let txn = doc.transact();
+                text.get_string(&txn)
+            };
+
+            info!("Final content after all merges: {}", content);
+            info!("Final state size: {} bytes", state.len());
+        }
     }
 
     debug!("Ending session...");
-    debug!("session: {:?}", session.session_id);
     service.end_session(project_id.to_string(), session).await?;
 
     info!("Project service example completed successfully");

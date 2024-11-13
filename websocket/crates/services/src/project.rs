@@ -45,6 +45,26 @@ where
     ) -> Result<Option<Project>, ProjectServiceError> {
         Ok(self.session_repository.get_project(project_id).await?)
     }
+    /// Merge all updates in the stream
+    pub async fn merge_updates(&self, project_id: &str) -> Result<(), ProjectServiceError> {
+        self.redis_data_manager
+            .merge_updates(project_id, false)
+            .await?;
+        Ok(())
+    }
+
+    /// Merge updates by user id
+    pub async fn merge_updates_by_user_id(
+        &self,
+        project_id: &str,
+        user_id: &str,
+        skip_lock: bool,
+    ) -> Result<(), ProjectServiceError> {
+        self.redis_data_manager
+            .merge_updates_by_user_id(project_id, user_id, skip_lock)
+            .await?;
+        Ok(())
+    }
 
     pub async fn get_or_create_editing_session(
         &self,

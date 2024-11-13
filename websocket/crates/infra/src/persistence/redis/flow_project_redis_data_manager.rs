@@ -216,6 +216,38 @@ impl FlowProjectRedisDataManager {
         Ok((merged_update, updates_by))
     }
 
+    /// Merge updates by user id
+    async fn execute_merge_updates_by_user_id(
+        &self,
+        project_id: &str,
+        user_id: &str,
+    ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
+        let state_updates = self.get_state_update_in_redis(project_id).await?;
+        let mut merged_update: Vec<u8> = Vec::new();
+        let mut updates_by: Vec<String> = Vec::new();
+
+        if let Some(_state_updates) = state_updates {
+            // Filter entries by user_id and collect their updates
+            for (_, fields) in self
+                .xread_map(&self.key_manager.state_updates_key(project_id)?, "0")
+                .await?
+            {
+                if let Some((updated_by, update_data)) = fields.first() {
+                    if updated_by == user_id {
+                        let (new_merged_update, new_updates_by) = self
+                            .update_manager
+                            .merge_updates(project_id, Some(update_data.clone()))
+                            .await?;
+                        merged_update = new_merged_update;
+                        updates_by = new_updates_by;
+                    }
+                }
+            }
+        }
+
+        Ok((merged_update, updates_by))
+    }
+
     async fn lock_and_execute_merge_updates(
         &self,
         project_id: &str,
@@ -228,6 +260,22 @@ impl FlowProjectRedisDataManager {
             .await?;
 
         self.execute_merge_updates(project_id).await
+    }
+
+    async fn lock_and_execute_merge_updates_by_user_id(
+        &self,
+        project_id: &str,
+        user_id: &str,
+    ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
+        self.global_lock
+            .lock_updates(project_id, 5000, |_| async {
+                Ok::<(), FlowProjectRedisDataManagerError>(())
+            })
+            .await?
+            .await?;
+
+        self.execute_merge_updates_by_user_id(project_id, user_id)
+            .await
     }
 }
 
@@ -339,6 +387,7 @@ impl RedisDataManagerImpl for FlowProjectRedisDataManager {
         Ok(())
     }
 
+    /// Merge all updates in the stream
     async fn merge_updates(
         &self,
         project_id: &str,
@@ -348,6 +397,21 @@ impl RedisDataManagerImpl for FlowProjectRedisDataManager {
             self.execute_merge_updates(project_id).await
         } else {
             self.lock_and_execute_merge_updates(project_id).await
+        }
+    }
+
+    async fn merge_updates_by_user_id(
+        &self,
+        project_id: &str,
+        user_id: &str,
+        skip_lock: bool,
+    ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
+        if skip_lock {
+            self.execute_merge_updates_by_user_id(project_id, user_id)
+                .await
+        } else {
+            self.lock_and_execute_merge_updates_by_user_id(project_id, user_id)
+                .await
         }
     }
 
