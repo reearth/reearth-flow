@@ -38,6 +38,7 @@ pub struct WebSocketQuery {
     user_email: String,
     user_name: String,
     tenant_id: String,
+    project_id: Option<String>,
 }
 
 pub async fn handle_upgrade(
@@ -63,7 +64,7 @@ pub async fn handle_upgrade(
             query.token.to_string(),
             room_id,
             state,
-            None,
+            query.project_id.clone(),
             user,
         )
     })
@@ -184,7 +185,7 @@ async fn handle_message(
                     .send(SessionCommand::PushUpdate {
                         project_id,
                         update: d,
-                        updated_by: Some(user.name.clone()),
+                        updated_by: Some(user.id.clone()),
                     })
                     .await?;
             }
