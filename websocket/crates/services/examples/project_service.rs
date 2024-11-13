@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Pushing User 1's first update...");
     service
-        .push_update_to_redis_stream(project_id, update1, Some(test_user1.id.clone()))
+        .merge_updates(project_id, update1, Some(test_user1.id.clone()))
         .await?;
 
     let second_update1 = {
@@ -100,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Pushing User 1's second update...");
     service
-        .push_update_to_redis_stream(project_id, second_update1, Some(test_user1.id.clone()))
+        .merge_updates(project_id, second_update1, Some(test_user1.id.clone()))
         .await?;
 
     // User 2's updates
@@ -114,7 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Pushing User 2's first update...");
     service
-        .push_update_to_redis_stream(project_id, update2, Some(test_user2.id.clone()))
+        .merge_updates(project_id, update2.clone(), Some(test_user2.id.clone()))
         .await?;
 
     let second_update2 = {
@@ -125,21 +125,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Pushing User 2's second update...");
     service
-        .push_update_to_redis_stream(project_id, second_update2, Some(test_user2.id.clone()))
+        .merge_updates(project_id, second_update2, Some(test_user2.id.clone()))
         .await?;
 
     // Merge updates for User 1
     debug!("Merging updates for User 1...");
     service
-        .merge_updates_by_user_id(project_id, &test_user1.id, false)
+        .merge_updates(project_id, update2, Some(test_user2.id.clone()))
         .await?;
 
     // Check state after User 1's merge
     debug!("Getting state after User 1's merge...");
-    if let Some(state) = service
-        .get_current_state(project_id, session.session_id.as_deref())
-        .await?
-    {
+    if let Some(state) = service.get_current_state(project_id).await? {
         if !state.is_empty() {
             let doc = Doc::new();
             let update = Update::decode_v2(&state).map_err(Box::new)?;
@@ -155,18 +152,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Merge updates for User 2
-    debug!("Merging updates for User 2...");
-    service
-        .merge_updates_by_user_id(project_id, &test_user2.id, false)
-        .await?;
-
     // Check final state after both users' merges
     debug!("Getting final state after all merges...");
-    if let Some(state) = service
-        .get_current_state(project_id, session.session_id.as_deref())
-        .await?
-    {
+    if let Some(state) = service.get_current_state(project_id).await? {
         if !state.is_empty() {
             let doc = Doc::new();
             let update = Update::decode_v2(&state).map_err(Box::new)?;

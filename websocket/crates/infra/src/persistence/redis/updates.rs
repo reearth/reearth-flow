@@ -27,29 +27,6 @@ impl UpdateManager {
         }
     }
 
-    pub async fn get_merged_update(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
-        let updates = self.get_flow_updates_from_stream(project_id).await?;
-        if updates.is_empty() {
-            return Ok(None);
-        }
-
-        let doc = Doc::new();
-        let mut txn = doc.transact_mut();
-
-        for update in updates {
-            debug!("update: {:?}", update);
-            if !update.update.is_empty() {
-                debug!("apply update: {:?}", update.update);
-                txn.apply_update(Update::decode_v2(&update.update)?);
-            }
-        }
-
-        Ok(Some(txn.encode_update_v2()))
-    }
-
     pub async fn get_merged_update_from_stream(
         &self,
         project_id: &str,
@@ -123,7 +100,7 @@ impl UpdateManager {
         Ok(updates)
     }
 
-    pub async fn merge_updates(
+    pub async fn merge_updates_internal(
         &self,
         project_id: &str,
         state_update: Option<Vec<u8>>,

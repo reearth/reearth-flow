@@ -174,9 +174,9 @@ async fn handle_message(
             if let Some(project_id) = project_id {
                 state
                     .command_tx
-                    .send(SessionCommand::PushUpdate {
+                    .send(SessionCommand::MergeUpdates {
                         project_id,
-                        update: d,
+                        data: d,
                         updated_by: Some(user.id.clone()),
                     })
                     .await?;

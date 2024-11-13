@@ -46,22 +46,14 @@ where
         Ok(self.session_repository.get_project(project_id).await?)
     }
     /// Merge all updates in the stream
-    pub async fn merge_updates(&self, project_id: &str) -> Result<(), ProjectServiceError> {
-        self.redis_data_manager
-            .merge_updates(project_id, false)
-            .await?;
-        Ok(())
-    }
-
-    /// Merge updates by user id
-    pub async fn merge_updates_by_user_id(
+    pub async fn merge_updates(
         &self,
         project_id: &str,
-        user_id: &str,
-        skip_lock: bool,
+        data: Vec<u8>,
+        updates_by: Option<String>,
     ) -> Result<(), ProjectServiceError> {
         self.redis_data_manager
-            .merge_updates_by_user_id(project_id, user_id, skip_lock)
+            .merge_updates(project_id, data, updates_by)
             .await?;
         Ok(())
     }
@@ -108,18 +100,6 @@ where
             .await?)
     }
 
-    pub async fn push_update_to_redis_stream(
-        &self,
-        project_id: &str,
-        update: Vec<u8>,
-        updated_by: Option<String>,
-    ) -> Result<(), ProjectServiceError> {
-        Ok(self
-            .redis_data_manager
-            .push_update(project_id, update, updated_by)
-            .await?)
-    }
-
     pub async fn end_session(
         &self,
         snapshot_name: String,
@@ -139,11 +119,10 @@ where
     pub async fn get_current_state(
         &self,
         project_id: &str,
-        session_id: Option<&str>,
     ) -> Result<Option<Vec<u8>>, ProjectServiceError> {
         Ok(self
             .redis_data_manager
-            .get_current_state(project_id, session_id)
+            .get_current_state(project_id)
             .await?)
     }
 

@@ -119,9 +119,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Push update with Y.js data
-    tx.send(SessionCommand::PushUpdate {
+    tx.send(SessionCommand::MergeUpdates {
         project_id: project_id.clone(),
-        update: yjs_update,
+        data: yjs_update,
         updated_by: Some(test_user.id.clone()),
     })
     .await?;
@@ -134,18 +134,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Push second update
-    tx.send(SessionCommand::PushUpdate {
-        project_id: project_id.clone(),
-        update: yjs_update2,
-        updated_by: Some(test_user.id.clone()),
-    })
-    .await?;
-
-    // Merge updates for the user
     tx.send(SessionCommand::MergeUpdates {
         project_id: project_id.clone(),
-        user_id: test_user.id.clone(),
-        skip_lock: false,
+        data: yjs_update2,
+        updated_by: Some(test_user.id.clone()),
     })
     .await?;
 

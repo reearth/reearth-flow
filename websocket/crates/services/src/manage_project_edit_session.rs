@@ -61,15 +61,10 @@ pub enum SessionCommand {
     ListAllSnapshotsVersions {
         project_id: String,
     },
-    PushUpdate {
-        project_id: String,
-        update: Vec<u8>,
-        updated_by: Option<String>,
-    },
     MergeUpdates {
         project_id: String,
-        user_id: String,
-        skip_lock: bool,
+        data: Vec<u8>,
+        updated_by: Option<String>,
     },
 }
 
@@ -126,11 +121,8 @@ where
                                 }
                             }
                         },
-                        SessionCommand::MergeUpdates { project_id, user_id, skip_lock } => {
-                            self.project_service.merge_updates_by_user_id(&project_id, &user_id, skip_lock).await?;
-                        },
-                        SessionCommand::PushUpdate { project_id, update, updated_by } => {
-                            self.push_update(&project_id, update, updated_by).await?;
+                        SessionCommand::MergeUpdates { project_id, data, updated_by } => {
+                            self.project_service.merge_updates(&project_id, data, updated_by).await?;
                         },
 
                         SessionCommand::End { project_id, user } => {
@@ -273,18 +265,6 @@ where
 
         sleep(JOB_COMPLETION_DELAY).await;
 
-        Ok(())
-    }
-
-    pub async fn push_update(
-        &self,
-        project_id: &str,
-        update: Vec<u8>,
-        updated_by: Option<String>,
-    ) -> Result<(), ProjectServiceError> {
-        self.project_service
-            .push_update_to_redis_stream(project_id, update, updated_by)
-            .await?;
         Ok(())
     }
 }
