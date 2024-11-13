@@ -48,20 +48,20 @@ const ProjectsManager: React.FC = () => {
         </div>
         {projects && projects?.length > 0 ? (
           <ScrollArea>
-          <div
-            className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-            ref={ref}>
-            {projects?.map((p) => (
-              <ProjectCard
-                key={p.id}
-                project={p}
-                currentProject={currentProject}
-                setEditProject={setEditProject}
-                setProjectToBeDeleted={setProjectToBeDeleted}
-                onProjectSelect={handleProjectSelect}
-              />
-            ))}
-          </div>
+            <div
+              className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+              ref={ref}>
+              {projects?.map((p) => (
+                <ProjectCard
+                  key={p.id}
+                  project={p}
+                  currentProject={currentProject}
+                  setEditProject={setEditProject}
+                  setProjectToBeDeleted={setProjectToBeDeleted}
+                  onProjectSelect={handleProjectSelect}
+                />
+              ))}
+            </div>
           </ScrollArea>
         ) : (
           <BasicBoiler
