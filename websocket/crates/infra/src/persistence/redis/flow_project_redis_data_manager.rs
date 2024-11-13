@@ -116,24 +116,20 @@ impl FlowProjectRedisDataManager {
         let entries = self.xread_map(&state_update_key, "0").await?;
         debug!("State update entries: {:?}", entries);
 
-        if entries.is_empty() {
-            return Ok(None);
-        }
+        let updates: Vec<Vec<u8>> = entries
+            .into_iter()
+            .filter_map(|(_, fields)| {
+                fields.first().and_then(|(_, update_data)| {
+                    if !update_data.is_empty() {
+                        Some(update_data.clone())
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect();
 
-        let mut updates = Vec::new();
-        for (_, fields) in entries {
-            if let Some((_, update_data)) = fields.first() {
-                if !update_data.is_empty() {
-                    updates.push(update_data.clone());
-                }
-            }
-        }
-
-        if updates.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(updates))
-        }
+        Ok((!updates.is_empty()).then_some(updates))
     }
 
     async fn set_state_data_internal(
