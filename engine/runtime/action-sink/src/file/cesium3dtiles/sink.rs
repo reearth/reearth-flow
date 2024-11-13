@@ -85,7 +85,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, JsonValue>>,
@@ -110,9 +110,20 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             .into());
         };
 
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let expr_output = &params.output;
+        let template_ast = expr_engine
+            .compile(expr_output.as_ref())
+            .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{:?}", e)))?;
+
         let sink = Cesium3DTilesWriter {
-            buffer: Vec::new(),
-            params,
+            buffer: HashMap::new(),
+            params: Cesium3DTilesWriterCompiledParam {
+                output: template_ast,
+                min_zoom: params.min_zoom,
+                max_zoom: params.max_zoom,
+                attach_texture: params.attach_texture,
+            },
         };
         Ok(Box::new(sink))
     }
@@ -120,14 +131,22 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
-    pub(super) params: Cesium3DTilesWriterParam,
-    pub(super) buffer: Vec<Feature>,
+    pub(super) params: Cesium3DTilesWriterCompiledParam,
+    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Cesium3DTilesWriterParam {
     pub(super) output: Expr,
+    pub(super) min_zoom: u8,
+    pub(super) max_zoom: u8,
+    pub(super) attach_texture: Option<bool>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Cesium3DTilesWriterCompiledParam {
+    pub(super) output: rhai::AST,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
     pub(super) attach_texture: Option<bool>,
@@ -146,7 +165,14 @@ impl Sink for Cesium3DTilesWriter {
         let feature = ctx.feature;
         match geometry_value {
             geometry_types::GeometryValue::CityGmlGeometry(_) => {
-                self.buffer.push(feature);
+                let output = self.params.output.clone();
+                let scope = feature.new_scope(ctx.expr_engine.clone());
+                let path = scope
+                    .eval_ast::<String>(&output)
+                    .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
+                let output = Uri::from_str(path.as_str())?;
+                let buffer = self.buffer.entry(output).or_default();
+                buffer.push(feature);
             }
             _ => {
                 return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
@@ -156,17 +182,22 @@ impl Sink for Cesium3DTilesWriter {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let upstream = &self.buffer;
-        let tile_id_conv = TileIdMethod::Hilbert;
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = self.params.output.clone();
-        let scope = expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let output = Uri::from_str(path.as_str())?;
-        let attach_texture = self.params.attach_texture.unwrap_or(false);
+        for (output, buffer) in &self.buffer {
+            self.write(ctx.as_context(), buffer, output)?;
+        }
+        Ok(())
+    }
+}
 
+impl Cesium3DTilesWriter {
+    pub fn write(
+        &self,
+        ctx: Context,
+        upstream: &[Feature],
+        output: &Uri,
+    ) -> crate::errors::Result<()> {
+        let tile_id_conv = TileIdMethod::Hilbert;
+        let attach_texture = self.params.attach_texture.unwrap_or(false);
         std::thread::scope(|scope| {
             let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
             let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
@@ -204,8 +235,8 @@ impl Sink for Cesium3DTilesWriter {
                     let mut schema = nusamai_citygml::schema::Schema::default();
                     TopLevelCityObject::collect_schema(&mut schema);
                     let result = tile_writing_stage(
-                        ctx.as_context(),
-                        &output,
+                        ctx.clone(),
+                        output,
                         receiver_sorted,
                         tile_id_conv,
                         &schema,
