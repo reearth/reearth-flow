@@ -77,8 +77,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create test user
     let test_user = User {
         id: generate_id!("user"),
-        email: "test.user@example.com".to_string(),
-        name: "Test User".to_string(),
+        email: Some("test.user@example.com".to_string()),
+        name: Some("Test User".to_string()),
         tenant_id: generate_id!("tenant"),
     };
 
@@ -122,7 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tx.send(SessionCommand::PushUpdate {
         project_id: project_id.clone(),
         update: yjs_update,
-        updated_by: Some(test_user.name.clone()),
+        updated_by: Some(test_user.id.clone()),
     })
     .await?;
 
@@ -137,7 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tx.send(SessionCommand::PushUpdate {
         project_id: project_id.clone(),
         update: yjs_update2,
-        updated_by: Some(test_user.name.clone()),
+        updated_by: Some(test_user.id.clone()),
     })
     .await?;
 

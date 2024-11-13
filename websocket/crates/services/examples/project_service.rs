@@ -60,15 +60,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create test users
     let test_user1 = User {
         id: "user_123".to_string(),
-        email: "test1@example.com".to_string(),
-        name: "Test User 1".to_string(),
+        email: Some("test1@example.com".to_string()),
+        name: Some("Test User 1".to_string()),
         tenant_id: "tenant_123".to_string(),
     };
 
     let test_user2 = User {
         id: "user_456".to_string(),
-        email: "test2@example.com".to_string(),
-        name: "Test User 2".to_string(),
+        email: Some("test2@example.com".to_string()),
+        name: Some("Test User 2".to_string()),
         tenant_id: "tenant_123".to_string(),
     };
 
@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Pushing User 1's first update...");
     service
-        .push_update_to_redis_stream(project_id, update1, Some(test_user1.name.clone()))
+        .push_update_to_redis_stream(project_id, update1, Some(test_user1.id.clone()))
         .await?;
 
     let second_update1 = {
@@ -100,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Pushing User 1's second update...");
     service
-        .push_update_to_redis_stream(project_id, second_update1, Some(test_user1.name.clone()))
+        .push_update_to_redis_stream(project_id, second_update1, Some(test_user1.id.clone()))
         .await?;
 
     // User 2's updates
@@ -114,7 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Pushing User 2's first update...");
     service
-        .push_update_to_redis_stream(project_id, update2, Some(test_user2.name.clone()))
+        .push_update_to_redis_stream(project_id, update2, Some(test_user2.id.clone()))
         .await?;
 
     let second_update2 = {
@@ -125,7 +125,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Pushing User 2's second update...");
     service
-        .push_update_to_redis_stream(project_id, second_update2, Some(test_user2.name.clone()))
+        .push_update_to_redis_stream(project_id, second_update2, Some(test_user2.id.clone()))
         .await?;
 
     // Merge updates for User 1

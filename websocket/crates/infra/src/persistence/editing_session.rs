@@ -133,7 +133,7 @@ impl ProjectEditingSession {
         if let Some(snapshot) = snapshot_repo.get_latest_snapshot(&self.project_id).await? {
             debug!("Found existing snapshot for project: {}", self.project_id);
             redis_manager
-                .push_update(&self.project_id, snapshot.data, Some(user.name.clone()))
+                .push_update(&self.project_id, snapshot.data, Some(user.id.clone()))
                 .await?;
         } else {
             debug!(
@@ -219,7 +219,7 @@ impl ProjectEditingSession {
 
         let snapshot = ProjectSnapshot::builder()
             .project_id(self.project_id.clone())
-            .created_by(user.name.clone())
+            .created_by(user.id.clone())
             .data(data)
             .snapshot_type(SnapshotType::Manual)
             .version(version)

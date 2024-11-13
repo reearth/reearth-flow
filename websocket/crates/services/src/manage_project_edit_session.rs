@@ -152,7 +152,7 @@ where
                                     debug!("Checking if job is complete for project: {}", project_id);
                                     match self.complete_job_if_met_requirements(&mut session).await {
                                         Ok(()) => {
-                                            debug!("Session ended by user: {} for project: {}", user.name, project_id);
+                                            debug!("Session ended by user: {} for project: {}", user.id, project_id);
                                             break;
                                         }
                                         Err(e) => {
@@ -174,7 +174,7 @@ where
                             if let Some(mut session) = self.get_latest_session(&project_id).await? {
                                 match self.complete_job_if_met_requirements(&mut session).await {
                                     Ok(()) => {
-                                        debug!("Job completed by user: {} for project: {}", user.name, project_id);
+                                        debug!("Job completed by user: {} for project: {}", user.id, project_id);
                                         break;
                                     }
                                     Err(e) => {

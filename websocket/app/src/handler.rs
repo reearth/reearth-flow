@@ -35,9 +35,6 @@ struct FlowMessage {
 pub struct WebSocketQuery {
     token: String,
     user_id: String,
-    user_email: String,
-    user_name: String,
-    tenant_id: String,
     project_id: Option<String>,
 }
 
@@ -50,12 +47,7 @@ pub async fn handle_upgrade(
 ) -> impl IntoResponse {
     debug!("{:?}", query);
 
-    let user = User {
-        id: query.user_id.clone(),
-        email: query.user_email.clone(),
-        name: query.user_name.clone(),
-        tenant_id: query.tenant_id.clone(),
-    };
+    let user = User::new(query.user_id.clone(), None, None);
 
     ws.on_upgrade(move |socket| {
         handle_socket(
