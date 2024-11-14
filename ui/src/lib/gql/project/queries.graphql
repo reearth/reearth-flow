@@ -1,12 +1,3 @@
-fragment Project on Project {
-  id
-  name
-  description
-  createdAt
-  updatedAt
-  workspaceId
-}
-
 mutation CreateProject($input: CreateProjectInput!) {
   createProject(input: $input) {
     project {

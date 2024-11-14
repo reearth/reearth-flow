@@ -3,7 +3,6 @@ package memory
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
@@ -65,6 +64,19 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 	), nil
 }
 
+func (r *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deployment.Deployment, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	for _, d := range r.data {
+		if d.Project() == id && r.f.CanRead(d.Workspace()) {
+			return d, nil
+		}
+	}
+
+	return nil, rerror.ErrNotFound
+}
+
 func (r *Deployment) FindByID(ctx context.Context, id id.DeploymentID) (*deployment.Deployment, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -98,7 +110,6 @@ func (r *Deployment) Save(ctx context.Context, d *deployment.Deployment) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	d.SetUpdatedAt(time.Now())
 	r.data[d.ID()] = d
 	return nil
 }

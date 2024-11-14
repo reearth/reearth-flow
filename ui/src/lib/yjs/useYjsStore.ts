@@ -4,19 +4,20 @@ import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useCurrentProject } from "@flow/stores";
 import type { Edge, Node, Workflow } from "@flow/types";
 import { isDefined } from "@flow/utils";
 import { createWorkflowsYaml } from "@flow/utils/engineWorkflowYaml/workflowYaml";
 
 import { useDeployment } from "../gql/deployment";
+import { useT } from "../i18n";
 
 import useWorkflowTabs from "./useWorkflowTabs";
 import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
 import { yWorkflowBuilder, type YWorkflow } from "./utils";
-import { fromYjsText } from "./utils/conversions";
 
 export default ({
   workflowId,
@@ -25,8 +26,11 @@ export default ({
   workflowId?: string;
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
+  const { toast } = useToast();
+  const t = useT();
+
   const [currentProject] = useCurrentProject();
-  const { createDeployment } = useDeployment();
+  const { createDeployment, useUpdateDeployment } = useDeployment();
 
   const yWebSocketRef = useRef<WebsocketProvider | null>(null);
   useEffect(() => () => yWebSocketRef.current?.destroy(), []);
@@ -121,27 +125,23 @@ export default ({
   ) as Edge[];
 
   const handleWorkflowDeployment = useCallback(
-    async (description?: string) => {
-      console.log(
-        "ABCD: ",
-        currentProject,
-        rawWorkflows.map((w): Workflow => {
-          if (!w) return { id: "", name: "", nodes: [], edges: [] };
-          const id = fromYjsText(w.id as Y.Text);
-          const name = fromYjsText(w.name as Y.Text);
-          const n = w.nodes as Node[];
-          const e = w.edges as Edge[];
-          return { id, name, nodes: n, edges: e };
-        }),
-      );
+    async (deploymentId?: string, description?: string) => {
+      const {
+        name: projectName,
+        workspaceId,
+        id: projectId,
+      } = currentProject ?? {};
+
+      if (!workspaceId || !projectId) return;
+
       const { workflowId, yamlWorkflow } =
         createWorkflowsYaml(
-          currentProject?.name,
+          projectName,
           rawWorkflows
             .map((w): Workflow | undefined => {
               if (!w || w.nodes.length < 1) return undefined;
-              const id = fromYjsText(w.id as Y.Text);
-              const name = fromYjsText(w.name as Y.Text);
+              const id = w.id as string;
+              const name = w.name as string;
               const n = w.nodes as Node[];
               const e = w.edges as Edge[];
               return { id, name, nodes: n, edges: e };
@@ -149,18 +149,39 @@ export default ({
             .filter(isDefined),
         ) ?? {};
 
-      console.log("1234", yamlWorkflow, currentProject, workflowId);
-      if (!currentProject?.id || !currentProject.workspaceId) return;
+      if (!workflowId || !yamlWorkflow) {
+        toast({
+          title: t("Empty workflow detected"),
+          description: t("You cannot create a deployment without a workflow."),
+        });
+        return;
+      }
 
-      await createDeployment(
-        currentProject.workspaceId,
-        currentProject.id,
-        workflowId,
-        yamlWorkflow,
-        description,
-      );
+      if (deploymentId) {
+        await useUpdateDeployment(
+          deploymentId,
+          workflowId,
+          yamlWorkflow,
+          description,
+        );
+      } else {
+        await createDeployment(
+          workspaceId,
+          projectId,
+          workflowId,
+          yamlWorkflow,
+          description,
+        );
+      }
     },
-    [rawWorkflows, currentProject, createDeployment],
+    [
+      rawWorkflows,
+      currentProject,
+      t,
+      createDeployment,
+      useUpdateDeployment,
+      toast,
+    ],
   );
 
   const { handleNodesUpdate } = useYNode({

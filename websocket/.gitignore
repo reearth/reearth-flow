@@ -14,3 +14,5 @@ out.json
 .idea
 .vscode
 .idea
+local_storage/
+.DS_Store

@@ -1,13 +1,13 @@
-import { CornersIn, CornersOut, Globe, Terminal } from "@phosphor-icons/react";
-import { memo, useCallback, useState } from "react";
+import { CornersIn, CornersOut } from "@phosphor-icons/react";
+import { memo } from "react";
 
 import { IconButton } from "@flow/components";
-import { useShortcuts } from "@flow/hooks";
-import { useT } from "@flow/lib/i18n";
 
 import { WorkflowTabs } from "..";
 
-import { DataTable, LogConsole, Map } from "./components";
+import { BaseActionButtons } from "./components";
+import { Contents } from "./components/Contents";
+import useHooks from "./hooks";
 
 type Props = {
   currentWorkflowId?: string;
@@ -23,15 +23,6 @@ type Props = {
   onWorkflowRename: (id: string, name: string) => void;
 };
 
-type PanelContent = {
-  id: string;
-  component: React.ReactNode;
-  title?: string;
-  icon?: React.ReactNode;
-};
-
-type WindowSize = "min" | "max";
-
 const BottomPanel: React.FC<Props> = ({
   currentWorkflowId,
   openWorkflows,
@@ -42,64 +33,16 @@ const BottomPanel: React.FC<Props> = ({
   onWorkflowChange,
   onWorkflowRename,
 }) => {
-  const t = useT();
-  const [windowSize, setWindowSize] = useState<WindowSize>("min");
-
-  const handlePanelToggle = useCallback(
-    (open: boolean) => onOpen(open ? "bottom" : undefined),
-    [onOpen],
-  );
-
-  const panelContents: PanelContent[] = [
-    {
-      id: "output-log",
-      icon: <Terminal className="size-[20px]" weight="thin" />,
-      title: t("Log"),
-      component: <LogConsole />,
-    },
-    {
-      id: "visual-preview",
-      icon: <Globe className="size-[20px]" weight="thin" />,
-      title: t("Preview"),
-      component: (
-        <div className="flex flex-1">
-          <DataTable />
-          <Map />
-        </div>
-      ),
-    },
-  ];
-
-  const [selectedId, setSelectedId] = useState<string>(panelContents?.[0].id);
-
-  const handleSelection = useCallback(
-    (id: string) => {
-      if (id !== selectedId) {
-        setSelectedId(id);
-        if (!isOpen) {
-          handlePanelToggle?.(true);
-        }
-      } else {
-        handlePanelToggle?.(!isOpen);
-      }
-    },
-    [isOpen, handlePanelToggle, selectedId, setSelectedId],
-  );
-
-  useShortcuts([
-    {
-      keyBinding: { key: "l", commandKey: true },
-      callback: () => {
-        handleSelection("output-log");
-      },
-    },
-    {
-      keyBinding: { key: "p", commandKey: true },
-      callback: () => {
-        handleSelection("visual-preview");
-      },
-    },
-  ]);
+  const {
+    selectedId,
+    windowSize,
+    panelContentOptions,
+    setWindowSize,
+    handleSelection,
+  } = useHooks({
+    isOpen,
+    onOpen,
+  });
 
   return (
     <div
@@ -114,52 +57,32 @@ const BottomPanel: React.FC<Props> = ({
       {isOpen && (
         <div
           id="top-edge"
-          className="flex h-[29px] shrink-0 items-center gap-1">
-          <div className="flex h-full flex-1 items-center justify-end gap-1 px-1">
-            <BaseActionButtons
-              panelContents={panelContents}
-              selectedId={selectedId}
-              onSelection={handleSelection}
-            />
-            {isOpen && (
-              <div className="flex h-[29px] items-center px-1">
-                {windowSize === "min" && (
-                  <IconButton
-                    className="h-4/5 w-[55px]"
-                    icon={<CornersOut />}
-                    tooltipText={"Enter full screen"}
-                    tooltipPosition="top"
-                    onClick={() => setWindowSize("max")}
-                  />
-                )}
-                {windowSize === "max" && (
-                  <IconButton
-                    className="h-4/5 w-[55px]"
-                    icon={<CornersIn />}
-                    tooltipText={"Enter full screen"}
-                    tooltipPosition="top"
-                    onClick={() => setWindowSize("min")}
-                  />
-                )}
-              </div>
-            )}
-          </div>
+          className="flex h-[29px] shrink-0 items-center justify-end gap-2">
+          <BaseActionButtons
+            panelContentOptions={panelContentOptions}
+            selectedId={selectedId}
+            onSelection={handleSelection}
+          />
+          {isOpen && (
+            <div className="flex h-[29px] items-center px-1">
+              <IconButton
+                className="h-4/5 w-[55px]"
+                icon={windowSize === "min" ? <CornersOut /> : <CornersIn />}
+                tooltipPosition="top"
+                onClick={() =>
+                  windowSize === "min"
+                    ? setWindowSize("max")
+                    : setWindowSize("min")
+                }
+              />
+            </div>
+          )}
         </div>
       )}
-      <div
-        id="content"
-        className={`flex h-[calc(100%-64px)] flex-1 bg-background ${isOpen ? "flex" : "hidden"}`}>
-        {panelContents.map((p) => (
-          <div
-            className={`flex-1 ${selectedId === p.id ? "flex" : "hidden"}`}
-            key={p.id}>
-            {p.component}
-          </div>
-        ))}
-      </div>
+      <Contents isOpen={isOpen} selectedId={selectedId} />
       <div
         id="bottom-edge"
-        className="flex h-[29px] shrink-0 items-center justify-end gap-1 bg-secondary">
+        className="mx-2 flex h-[29px] shrink-0 items-center justify-between gap-2 bg-secondary">
         <WorkflowTabs
           currentWorkflowId={currentWorkflowId}
           openWorkflows={openWorkflows}
@@ -168,11 +91,10 @@ const BottomPanel: React.FC<Props> = ({
           onWorkflowChange={onWorkflowChange}
           onWorkflowRename={onWorkflowRename}
         />
-        <div className="h-full border-r" />
-        <div className="mx-4 flex h-full flex-1 items-center justify-end gap-1">
+        <div className="flex h-full items-center gap-1">
           {!isOpen && (
             <BaseActionButtons
-              panelContents={panelContents}
+              panelContentOptions={panelContentOptions}
               selectedId={selectedId}
               onSelection={handleSelection}
             />
@@ -184,29 +106,3 @@ const BottomPanel: React.FC<Props> = ({
 };
 
 export default memo(BottomPanel);
-
-const BaseActionButtons: React.FC<{
-  panelContents?: PanelContent[];
-  selectedId?: string;
-  onSelection?: (id: string) => void;
-}> = memo(({ panelContents, selectedId, onSelection }) => {
-  return (
-    <>
-      {panelContents?.map((content) => (
-        <div
-          key={content.id}
-          className={`flex h-4/5 min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-popover hover:text-popover-foreground ${
-            selectedId === content.id
-              ? "bg-popover text-popover-foreground"
-              : ""
-          }`}
-          onClick={() => onSelection?.(content.id)}>
-          {content.icon}
-          <p className="text-sm dark:font-thin">{content.title}</p>
-        </div>
-      ))}
-    </>
-  );
-});
-
-BaseActionButtons.displayName = "BaseActionButtons";

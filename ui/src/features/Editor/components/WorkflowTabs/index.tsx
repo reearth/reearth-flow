@@ -1,8 +1,7 @@
 import { Plus, X } from "@phosphor-icons/react";
-import { TooltipTrigger } from "@radix-ui/react-tooltip";
 import { memo, useState } from "react";
 
-import { IconButton, Input, Tooltip, TooltipContent } from "@flow/components";
+import { IconButton, Input } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 import { Workflow } from "@flow/types";
@@ -69,54 +68,46 @@ const WorkflowTabs: React.FC<Props> = ({
 
   return (
     <div className="w-[75vw]">
-      <div className="flex h-[29px] flex-1 items-center">
+      <div className="flex h-[29px] flex-1 items-center gap-1">
         <div
-          className={`mx-1 flex w-[135px] cursor-pointer items-center justify-center rounded px-[6px] py-[2px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"}`}
+          className={`flex h-4/5 w-[135px] cursor-pointer items-center justify-center rounded px-[6px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent text-accent-foreground" : "hover:bg-popover"}`}
           onClick={() => onWorkflowChange(mainWorkflow?.id)}>
           <p
             className={`select-none truncate text-center text-xs dark:font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-accent-foreground"}`}>
             {t("Main Workflow")}
           </p>
         </div>
-        <div className="flex h-[29px] items-center gap-1 overflow-auto">
+        <div className="flex h-full items-center gap-1 overflow-auto">
           {subWorkflows &&
             subWorkflows.length > 0 &&
             subWorkflows.map((sw) => (
-              <Tooltip key={sw.id} delayDuration={1500}>
-                <TooltipTrigger asChild>
-                  <div
-                    className={`relative flex w-[135px] items-center justify-center rounded py-[2px] ${currentWorkflowId === sw?.id ? "bg-node-entrance/70 text-accent-foreground" : "hover:bg-node-entrance/30"} group cursor-pointer`}
-                    onClick={() => onWorkflowChange(sw.id)}
-                    onDoubleClick={() => handleDoubleClick(sw.id, sw.name)}>
-                    {sw.id === editId ? (
-                      <Input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        onKeyDownCapture={(e) =>
-                          e.key === "Enter" && handleSubmit()
-                        }
-                        placeholder={t("Set Workflow name")}
-                        className="h-4 text-xs"
-                        onBlur={handleSubmit}
-                      />
-                    ) : (
-                      <p
-                        className={`select-none truncate px-[15px] text-center text-xs group-hover:text-accent-foreground dark:font-extralight ${currentWorkflowId === sw?.id && "text-accent-foreground"}`}>
-                        {sw.name}
-                      </p>
-                    )}
-
-                    <X
-                      className="absolute right-[4px] hidden size-[12px] hover:bg-accent group-hover:block"
-                      weight="bold"
-                      onClick={handleWorkflowClose(sw.id)}
-                    />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>{sw.name}</p>
-                </TooltipContent>
-              </Tooltip>
+              <div
+                className={`relative flex h-4/5 w-[135px] items-center justify-center rounded ${currentWorkflowId === sw?.id ? "bg-node-entrance/70 text-accent-foreground" : "hover:bg-node-entrance/30"} group cursor-pointer`}
+                onClick={() => onWorkflowChange(sw.id)}
+                onDoubleClick={() => handleDoubleClick(sw.id, sw.name)}>
+                {sw.id === editId ? (
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onKeyDownCapture={(e) =>
+                      e.key === "Enter" && handleSubmit()
+                    }
+                    placeholder={t("Set Workflow name")}
+                    className="h-4 text-xs"
+                    onBlur={handleSubmit}
+                  />
+                ) : (
+                  <p
+                    className={`select-none truncate px-[15px] text-center text-xs group-hover:text-accent-foreground dark:font-extralight ${currentWorkflowId === sw?.id && "text-accent-foreground"}`}>
+                    {sw.name}
+                  </p>
+                )}
+                <X
+                  className="absolute right-[4px] hidden size-[12px] hover:bg-accent group-hover:block"
+                  weight="bold"
+                  onClick={handleWorkflowClose(sw.id)}
+                />
+              </div>
             ))}
         </div>
         <div className="flex items-center">

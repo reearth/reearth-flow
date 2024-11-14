@@ -2,7 +2,6 @@ pub mod builder_dag;
 pub mod channels;
 pub mod dag_schemas;
 pub mod epoch;
-pub mod error_manager;
 pub mod errors;
 pub mod event;
 pub mod executor;

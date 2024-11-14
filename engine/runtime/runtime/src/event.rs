@@ -4,6 +4,7 @@ use tokio::sync::{
     broadcast::{Receiver, Sender},
     Notify,
 };
+use tracing::{error, info, Level, Span};
 
 use crate::node::{EdgeId, NodeHandle};
 
@@ -22,6 +23,11 @@ pub enum Event {
         feature_id: uuid::Uuid,
         edge_id: EdgeId,
     },
+    Log {
+        level: Level,
+        span: Option<Span>,
+        message: String,
+    },
 }
 
 #[derive(Debug)]
@@ -34,6 +40,42 @@ impl EventHub {
     pub fn new(capacity: usize) -> Self {
         let (sender, receiver) = tokio::sync::broadcast::channel(capacity);
         Self { sender, receiver }
+    }
+
+    pub fn send(&self, event: Event) {
+        let _ = self.sender.send(event);
+    }
+
+    pub fn info_log<T: ToString>(&self, span: Option<Span>, message: T) {
+        self.send(Event::Log {
+            level: Level::INFO,
+            span,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn debug_log<T: ToString>(&self, span: Option<Span>, message: T) {
+        self.send(Event::Log {
+            level: Level::DEBUG,
+            span,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn warn_log<T: ToString>(&self, span: Option<Span>, message: T) {
+        self.send(Event::Log {
+            level: Level::WARN,
+            span,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn error_log<T: ToString>(&self, span: Option<Span>, message: T) {
+        self.send(Event::Log {
+            level: Level::ERROR,
+            span,
+            message: message.to_string(),
+        });
     }
 }
 
@@ -49,16 +91,26 @@ impl Clone for EventHub {
 #[async_trait::async_trait]
 pub trait EventHandler: Send + Sync {
     async fn on_event(&self, event: &Event);
+    async fn on_shutdown(&self) {}
 }
 
 pub async fn subscribe_event(
     receiver: &mut Receiver<Event>,
     notify: Arc<Notify>,
-    event_handlers: &[Box<dyn EventHandler>],
+    event_handlers: &[Arc<dyn EventHandler>],
 ) {
     loop {
         tokio::select! {
             _ = notify.notified() => {
+                let shutdown_futures = event_handlers.iter()
+                    .map(|handler| handler.on_shutdown());
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    futures::future::join_all(shutdown_futures)
+                ).await {
+                    Ok(_) => info!("All handlers shut down successfully"),
+                    Err(_) => error!("Shutdown timed out for some handlers"),
+                }
                 return;
             },
             Ok(ev) = receiver.recv() => {

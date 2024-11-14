@@ -1,83 +1,32 @@
-import { CoreVisualizer, SceneMode, SceneProperty, Layer } from "@reearth/core";
-import { useEffect, useState } from "react";
+import { Button, Map as MapComponent, type MapMode } from "@flow/components";
+import { useT } from "@flow/lib/i18n";
 
-import { Button } from "@flow/components";
-import fires from "@flow/mock_data/fires.json";
+type Props = {
+  mapMode: MapMode;
+  setMapMode?: (mode: MapMode) => void;
+};
 
-const sceneModes: SceneMode[] = ["2d", "3d"];
-
-const Map: React.FC = () => {
-  const [isReady, setIsReady] = useState(false);
-  const [sceneMode, setSceneMode] = useState<SceneMode>("2d");
-
-  const sceneProperty: SceneProperty = {
-    default: {
-      sceneMode,
-    },
-    camera: {
-      camera: {
-        lng: 127.05177672074426,
-        lat: -6.260283141094241,
-        height: 7594277.78896907,
-        heading: 1.129814464206902e-9,
-        pitch: -1.5707963267948966,
-        roll: 0,
-        fov: 1,
-        aspectRatio: 1,
-      },
-    },
-    tiles: [
-      {
-        id: "default",
-        tile_type: "default",
-      },
-    ],
-  };
-
-  const layers: Layer[] = [
-    {
-      id: "marker",
-      type: "simple",
-      data: {
-        type: "geojson",
-        value: fires,
-      },
-      marker: {
-        imageColor: {
-          expression: {
-            conditions: [["true", "color('#FF0000')"]],
-          },
-        },
-      },
-    },
+const Map: React.FC<Props> = ({ mapMode, setMapMode }) => {
+  const t = useT();
+  const mapModes: { key: MapMode; value: string }[] = [
+    { key: "2d-map", value: t("2D") },
+    { key: "3d-map", value: t("3D") },
   ];
-
-  useEffect(() => {
-    if (isReady) return;
-    setIsReady(true);
-  }, [isReady]);
-
   return (
-    <div className="relative w-6/12">
+    <div className="relative w-full">
       <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border bg-background transition-all">
-        {sceneModes.map((b) => (
+        {mapModes.map((b) => (
           <Button
-            className={`cursor-pointer rounded-none transition-all ${sceneMode === b ? "bg-accent text-accent-foreground" : ""}`}
+            className={`cursor-pointer rounded-none transition-all ${mapMode === b.key ? "bg-accent text-accent-foreground" : ""}`}
             variant="ghost"
             size="icon"
-            key={b}
-            onClick={() => sceneMode !== b && setSceneMode(b)}>
-            {b}
+            key={b.key}
+            onClick={() => mapMode !== b.key && setMapMode?.(b.key)}>
+            {b.value}
           </Button>
         ))}
       </div>
-      <CoreVisualizer
-        engine="cesium"
-        isBuilt
-        ready={isReady}
-        sceneProperty={sceneProperty}
-        layers={layers}
-      />
+      <MapComponent mapMode={mapMode} />
     </div>
   );
 };

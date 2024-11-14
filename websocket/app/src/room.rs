@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use yrs::Doc;
 
-use super::errors::Result;
 use tokio::sync::{broadcast, Mutex};
 
 pub struct Room {
@@ -26,17 +25,15 @@ impl Room {
         Room::default()
     }
 
-    pub async fn join(&self, user_id: String) -> Result<()> {
+    pub async fn join(&self, user_id: String) {
         self.users.lock().await.insert(user_id);
-        Ok(())
     }
 
-    pub async fn _leave(&self, user_id: String) -> Result<()> {
+    pub async fn _leave(&self, user_id: String) {
         self.users.lock().await.remove(&user_id);
-        Ok(())
     }
 
-    pub fn _broadcast(&self, msg: String) -> Result<()> {
+    pub fn _broadcast(&self, msg: String) -> Result<(), broadcast::error::SendError<String>> {
         self._tx.send(msg)?;
         Ok(())
     }

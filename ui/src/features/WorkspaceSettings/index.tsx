@@ -1,9 +1,9 @@
 import { PlugsConnected, Toolbox, UsersThree } from "@phosphor-icons/react";
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRouterState } from "@tanstack/react-router";
 
-import { TopNavigation } from "@flow/features/TopNavigation";
 import { useT } from "@flow/lib/i18n";
+
+import { RouteOption } from "../WorkspaceLeftPanel";
 
 import {
   GeneralSettings,
@@ -13,12 +13,17 @@ import {
 
 type Tab = "general" | "integrations" | "members";
 
-const DEFAULT_TAB: Tab = "general";
-
 const WorkspaceSettings: React.FC = () => {
-  const { workspaceId, tab } = useParams({ strict: false });
   const t = useT();
-  const navigate = useNavigate();
+  const {
+    location: { pathname },
+  } = useRouterState();
+
+  const selectedTab: RouteOption = pathname.includes("integrations")
+    ? "integrations"
+    : pathname.includes("members")
+      ? "members"
+      : "general";
 
   const content: {
     id: Tab;
@@ -45,36 +50,14 @@ const WorkspaceSettings: React.FC = () => {
       component: <IntegrationsSettings />,
     },
   ];
-  const checkTab = content.find((c) => c.id === tab)?.id;
-
-  const [selectedTab, selectTab] = useState<Tab>(checkTab ?? DEFAULT_TAB);
-
-  const handleTabChange = (t: Tab) => {
-    navigate({ to: `/workspaces/${workspaceId}/settings/${t}` });
-    selectTab(t);
-  };
 
   return (
-    <div className="flex h-screen flex-col">
-      <TopNavigation />
-      <div className="flex flex-1">
-        <div className="flex w-[250px] flex-col gap-3 border-r bg-secondary px-2 py-4">
-          {content.map(({ id, name, icon }) => (
-            <div
-              key={id}
-              className={`flex cursor-pointer items-center gap-2 rounded border-l-2 border-transparent px-2 py-1 hover:bg-accent ${selectedTab === id ? "bg-accent" : undefined}`}
-              onClick={() => handleTabChange(id)}>
-              {icon}
-              <p className="dark:font-extralight">{name}</p>
-            </div>
-          ))}
-        </div>
-        <div className="flex-1 p-8">
-          {content.find((c) => c.id === selectedTab)?.component}
-        </div>
+    <div className="flex flex-1">
+      <div className="flex-1 p-8">
+        {content.find((c) => c.id === selectedTab)?.component}
       </div>
     </div>
   );
 };
 
-export { WorkspaceSettings };
+export default WorkspaceSettings;

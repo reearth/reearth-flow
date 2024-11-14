@@ -14,13 +14,20 @@ import { DeployDialog } from "./components";
 const tooltipOffset = 6;
 
 type Props = {
-  onWorkflowDeployment: (description?: string) => Promise<void>;
+  allowedToDeploy: boolean;
+  onWorkflowDeployment: (
+    deploymentId?: string,
+    description?: string,
+  ) => Promise<void>;
 };
 
-const ActionBar: React.FC<Props> = ({ onWorkflowDeployment }) => {
+const ActionBar: React.FC<Props> = ({
+  allowedToDeploy,
+  onWorkflowDeployment,
+}) => {
   const t = useT();
 
-  const [showDialog, setShowDialog] = useState<"deploy" | undefined>(undefined);
+  const [showDialog, setShowDialog] = useState(false);
 
   return (
     <>
@@ -45,7 +52,7 @@ const ActionBar: React.FC<Props> = ({ onWorkflowDeployment }) => {
                 tooltipText={t("Deploy project workflow")}
                 tooltipOffset={tooltipOffset}
                 icon={<RocketLaunch weight="thin" />}
-                onClick={() => setShowDialog("deploy")}
+                onClick={() => setShowDialog(true)}
               />
               <IconButton
                 className="rounded-[4px]"
@@ -57,8 +64,9 @@ const ActionBar: React.FC<Props> = ({ onWorkflowDeployment }) => {
           </div>
         </div>
       </div>
-      {showDialog === "deploy" && (
+      {showDialog && (
         <DeployDialog
+          allowedToDeploy={allowedToDeploy}
           setShowDialog={setShowDialog}
           onWorkflowDeployment={onWorkflowDeployment}
         />

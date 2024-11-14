@@ -1,3 +1,4 @@
 export * from "./DataTable";
 export * from "./Map";
-export * from "./Console";
+export * from "./LogsConsole";
+export * from "./BaseActionButtons";

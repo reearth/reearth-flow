@@ -1,0 +1,62 @@
+use std::sync::Arc;
+
+use reearth_flow_action_log::{action_error_log, action_log, factory::LoggerFactory, ActionLogger};
+use tracing::{debug, debug_span, error_span, info_span, trace_span, warn_span};
+
+pub(crate) struct LogEventHandler {
+    #[allow(dead_code)]
+    pub(crate) workflow_id: uuid::Uuid,
+    #[allow(dead_code)]
+    pub(crate) job_id: uuid::Uuid,
+    pub(crate) logger: Arc<ActionLogger>,
+}
+
+impl LogEventHandler {
+    pub(crate) fn new(
+        workflow_id: uuid::Uuid,
+        job_id: uuid::Uuid,
+        logger_factory: Arc<LoggerFactory>,
+    ) -> Self {
+        let logger = logger_factory.action_logger(&job_id.to_string());
+        Self {
+            workflow_id,
+            job_id,
+            logger: Arc::new(logger),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl reearth_flow_runtime::event::EventHandler for LogEventHandler {
+    async fn on_event(&self, event: &reearth_flow_runtime::event::Event) {
+        if let reearth_flow_runtime::event::Event::Log {
+            span,
+            level,
+            message,
+        } = event
+        {
+            match *level {
+                tracing::Level::ERROR => {
+                    let span = span.clone().unwrap_or_else(|| error_span!(""));
+                    action_error_log!(parent: span, self.logger, "{:?}", message);
+                }
+                tracing::Level::WARN => {
+                    let span = span.clone().unwrap_or_else(|| warn_span!(""));
+                    tracing::event!(parent: span, tracing::Level::WARN,  "job_id"=self.job_id.to_string(),  "{:?}", message);
+                }
+                tracing::Level::INFO => {
+                    let span = span.clone().unwrap_or_else(|| info_span!(""));
+                    action_log!(parent: span, self.logger, "{:?}", message);
+                }
+                tracing::Level::DEBUG => {
+                    let span = span.clone().unwrap_or_else(|| debug_span!(""));
+                    debug!(parent: span, "{:?}", message);
+                }
+                tracing::Level::TRACE => {
+                    let span = span.clone().unwrap_or_else(|| trace_span!(""));
+                    debug!(parent: span, "{:?}", message);
+                }
+            }
+        }
+    }
+}

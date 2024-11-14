@@ -1,4 +1,3 @@
-use reearth_flow_action_log::action_log;
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -57,8 +56,12 @@ impl Sink for EchoSink {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let span = ctx.info_span();
         let feature: serde_json::Value = ctx.feature.clone().into();
-        action_log!(
-            parent: span, ctx.logger.action_logger("echo"), "echo with feature = {:?}", serde_json::to_string(&feature).unwrap_or_default(),
+        ctx.event_hub.info_log(
+            Some(span.clone()),
+            format!(
+                "echo with feature = {:?}",
+                serde_json::to_string(&feature).unwrap_or_default()
+            ),
         );
         Ok(())
     }

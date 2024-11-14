@@ -1,8 +1,11 @@
+mod artifact;
 mod asset;
 mod command;
 mod errors;
+mod event_handler;
 mod factory;
 mod logger;
+mod pubsub;
 mod types;
 
 use command::{build_worker_command, RunWorkerCommand};

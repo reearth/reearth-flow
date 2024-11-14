@@ -1,18 +1,24 @@
 use rslock::{LockError, LockGuard, LockManager};
-use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum GlobalLockError {
-    #[error("Global Lock Error: {0:?}")]
-    LockError(LockError),
+macro_rules! define_lock_method {
+    ($name:ident, $($lock_key:expr),+) => {
+        pub async fn $name<F, T>(
+            &self,
+            project_id: &str,
+            duration_ms: u64,
+            callback: F,
+        ) -> Result<T, LockError>
+        where
+            F: FnOnce(&LockGuard) -> T + Send,
+            T: Send,
+        {
+            let lock_keys = vec![$(format!("{}:locks:{}", project_id, $lock_key)),+];
+            self.with_lock(lock_keys, duration_ms, callback).await
+        }
+    };
 }
 
-impl From<LockError> for GlobalLockError {
-    fn from(err: LockError) -> Self {
-        GlobalLockError::LockError(err)
-    }
-}
-
+#[derive(Clone)]
 pub struct FlowProjectLock {
     lock_manager: LockManager,
 }
@@ -28,7 +34,7 @@ impl FlowProjectLock {
         resources: Vec<String>,
         duration_ms: u64,
         callback: F,
-    ) -> Result<T, GlobalLockError>
+    ) -> Result<T, LockError>
     where
         F: FnOnce(&LockGuard) -> T + Send,
         T: Send,
@@ -37,8 +43,7 @@ impl FlowProjectLock {
         let lock = self
             .lock_manager
             .lock(&resource_bytes, duration_ms as usize)
-            .await
-            .map_err(GlobalLockError::from)?;
+            .await?;
         let guard = LockGuard { lock };
         let result = callback(&guard);
         self.lock_manager.unlock(&guard.lock).await;
@@ -46,79 +51,8 @@ impl FlowProjectLock {
         Ok(result)
     }
 
-    pub async fn lock_state<F, T>(
-        &self,
-        project_id: &str,
-        duration_ms: u64,
-        callback: F,
-    ) -> Result<T, GlobalLockError>
-    where
-        F: FnOnce(&LockGuard) -> T + Send,
-        T: Send,
-    {
-        let lock_key = format!("{}:locks:state", project_id);
-        self.with_lock(vec![lock_key], duration_ms, callback).await
-    }
-
-    pub async fn lock_updates<F, T>(
-        &self,
-        project_id: &str,
-        duration_ms: u64,
-        callback: F,
-    ) -> Result<T, GlobalLockError>
-    where
-        F: FnOnce(&LockGuard) -> T + Send,
-        T: Send,
-    {
-        let state_lock_key = format!("{}:locks:state", project_id);
-        let updates_lock_key = format!("{}:locks:updates", project_id);
-        self.with_lock(
-            vec![state_lock_key, updates_lock_key],
-            duration_ms,
-            callback,
-        )
-        .await
-    }
-
-    pub async fn lock_snapshots<F, T>(
-        &self,
-        project_id: &str,
-        duration_ms: u64,
-        callback: F,
-    ) -> Result<T, GlobalLockError>
-    where
-        F: FnOnce(&LockGuard) -> T + Send,
-        T: Send,
-    {
-        let state_lock_key = format!("{}:locks:state", project_id);
-        let updates_lock_key = format!("{}:locks:updates", project_id);
-        let snapshots_lock_key = format!("{}:locks:snapshots", project_id);
-        self.with_lock(
-            vec![state_lock_key, updates_lock_key, snapshots_lock_key],
-            duration_ms,
-            callback,
-        )
-        .await
-    }
-
-    pub async fn lock_session<F, T>(
-        &self,
-        project_id: &str,
-        duration_ms: u64,
-        callback: F,
-    ) -> Result<T, GlobalLockError>
-    where
-        F: FnOnce(&LockGuard) -> T + Send,
-        T: Send,
-    {
-        let state_lock_key = format!("{}:locks:state", project_id);
-        let updates_lock_key = format!("{}:locks:updates", project_id);
-        let snapshots_lock_key = format!("{}:locks:snapshots", project_id);
-        self.with_lock(
-            vec![state_lock_key, updates_lock_key, snapshots_lock_key],
-            duration_ms,
-            callback,
-        )
-        .await
-    }
+    define_lock_method!(lock_state, "state");
+    define_lock_method!(lock_updates, "state", "updates");
+    define_lock_method!(lock_snapshots, "state", "updates", "snapshots");
+    define_lock_method!(lock_session, "state", "updates", "snapshots");
 }

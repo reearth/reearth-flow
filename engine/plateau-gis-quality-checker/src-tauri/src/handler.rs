@@ -63,6 +63,7 @@ pub(crate) async fn run_flow(
         action_log_uri.path(),
     ));
     AsyncRunner::run(
+        job_id,
         workflow,
         ALL_ACTION_FACTORIES.clone(),
         logger_factory,

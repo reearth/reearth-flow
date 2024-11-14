@@ -9,7 +9,6 @@ use std::{
 use crossbeam::channel::Receiver;
 use futures::Future;
 use petgraph::graph::NodeIndex;
-use reearth_flow_action_log::{action_log, factory::LoggerFactory, ActionLogger};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
@@ -17,9 +16,8 @@ use tracing::info_span;
 
 use crate::{
     builder_dag::NodeKind,
-    error_manager::ErrorManager,
     errors::ExecutionError,
-    event::Event,
+    event::{Event, EventHub},
     executor_operation::{ExecutorContext, ExecutorOperation, NodeContext},
     kvs::KvStore,
     node::{NodeHandle, Sink},
@@ -39,21 +37,17 @@ pub struct SinkNode<F> {
     receivers: Vec<Receiver<ExecutorOperation>>,
     /// The sink.
     sink: Box<dyn Sink>,
-    event_sender: tokio::sync::broadcast::Sender<Event>,
-    #[allow(dead_code)]
-    error_manager: Arc<ErrorManager>,
+    event_hub: EventHub,
     /// The shutdown future.
     #[allow(dead_code)]
     shutdown: F,
     /// The runtime to run the source in.
     #[allow(dead_code)]
     runtime: Arc<Handle>,
-    logger: Arc<ActionLogger>,
-    logger_factory: Arc<LoggerFactory>,
     span: tracing::Span,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
-    kv_store: Arc<Box<dyn KvStore>>,
+    kv_store: Arc<dyn KvStore>,
 }
 
 impl<F: Future + Unpin + Debug> SinkNode<F> {
@@ -75,10 +69,6 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
 
         let (node_handles, receivers) = dag.collect_receivers(node_index);
 
-        let logger = ctx
-            .logger
-            .clone()
-            .action_logger(node_handle.id.to_string().as_str());
         let span = info_span!(
             "action",
             "otel.name" = sink.name(),
@@ -91,13 +81,10 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             node_handles,
             receivers,
             sink,
-            event_sender: dag.event_hub().sender.clone(),
-            error_manager: dag.error_manager().clone(),
+            event_hub: ctx.event_hub.clone(),
             shutdown,
             runtime,
-            logger: Arc::new(logger),
             span,
-            logger_factory: ctx.logger.clone(),
             expr_engine: ctx.expr_engine.clone(),
             storage_resolver: ctx.storage_resolver.clone(),
             kv_store: ctx.kv_store.clone(),
@@ -126,18 +113,18 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         let mut is_terminated = vec![false; receivers.len()];
         let now = time::Instant::now();
         let span = self.span.clone();
-        let logger = self.logger.clone();
         let mut sel = init_select(&receivers);
         self.sink
             .initialize(NodeContext {
-                logger: self.logger_factory.clone(),
                 expr_engine: self.expr_engine.clone(),
                 kv_store: self.kv_store.clone(),
                 storage_resolver: self.storage_resolver.clone(),
+                event_hub: self.event_hub.clone(),
             })
             .map_err(ExecutionError::Sink)?;
-        action_log!(
-            parent: span, logger, "{:?} process start...", self.sink.name(),
+        self.event_hub.info_log(
+            Some(span.clone()),
+            format!("{:?} sink start...", self.sink.name()),
         );
         loop {
             let index = sel.ready();
@@ -152,8 +139,13 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                     is_terminated[index] = true;
                     sel.remove(index);
                     if is_terminated.iter().all(|value| *value) {
-                        action_log!(
-                            parent: span, logger, "{:?} sink finish. elapsed = {:?}", self.sink.name() , now.elapsed(),
+                        self.event_hub.info_log(
+                            Some(span.clone()),
+                            format!(
+                                "{:?} sink finish. elapsed = {:?}",
+                                self.sink.name(),
+                                now.elapsed()
+                            ),
                         );
                         self.on_terminate(ctx)?;
                         return Ok(());
@@ -174,7 +166,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             .sink
             .finish(ctx)
             .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)));
-        let _ = self.event_sender.send(Event::SinkFinished {
+        self.event_hub.send(Event::SinkFinished {
             node: self.node_handle.clone(),
             name: self.sink.name().to_string(),
         });

@@ -1,6 +1,7 @@
 import { Run } from "@flow/types";
+import { formatDate } from "@flow/utils";
 
-const date = new Date();
+const date = formatDate(new Date());
 export const runs: Run[] = [
   {
     id: "12342q34safd",

@@ -3,20 +3,22 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useCallback } from "react";
 
-import { DEFAULT_PROJECT_NAME } from "@flow/global-constants";
-import { useT } from "@flow/lib/i18n";
 import { Deployment } from "@flow/types";
 import { isDefined } from "@flow/utils";
 import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
-import { DeploymentFragment, ExecuteDeploymentInput } from "../__gen__/graphql";
-import { DeleteDeploymentInput } from "../__gen__/plugins/graphql-request";
-import { createNewJobObject, JobQueryKeys } from "../job/useQueries";
+import { ExecuteDeploymentInput } from "../__gen__/graphql";
+import {
+  DeleteDeploymentInput,
+  UpdateDeploymentInput,
+} from "../__gen__/plugins/graphql-request";
+import { toDeployment, toJob } from "../convert";
+import { JobQueryKeys } from "../job/useQueries";
+import { ProjectQueryKeys } from "../project/useQueries";
 import { useGraphQLContext } from "../provider";
 
-enum DeploymentQueryKeys {
+export enum DeploymentQueryKeys {
   GetDeployments = "getDeployments",
 }
 
@@ -25,22 +27,6 @@ const DEPLOYMENT_FETCH_RATE = 10;
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
-  const t = useT();
-
-  const createNewDeploymentObject = useCallback(
-    (deployment: DeploymentFragment): Deployment => ({
-      id: deployment.id,
-      workspaceId: deployment.workspaceId,
-      projectId: deployment.projectId,
-      projectName: deployment.project?.name ?? t(DEFAULT_PROJECT_NAME),
-      workflowUrl: deployment.workflowUrl,
-      description: deployment.description ?? undefined,
-      version: deployment.version,
-      createdAt: deployment.createdAt,
-      updatedAt: deployment.updatedAt,
-    }),
-    [t],
-  );
 
   const createDeploymentMutation = useMutation({
     mutationFn: async ({
@@ -64,13 +50,28 @@ export const useQueries = () => {
       });
 
       if (data?.createDeployment?.deployment) {
-        return createNewDeploymentObject(data.createDeployment.deployment);
+        return {
+          deployment: toDeployment(data.createDeployment.deployment),
+          projectId,
+        };
       }
     },
-    onSuccess: (deployment) => {
+    onSuccess: (result) => {
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
-        queryKey: [DeploymentQueryKeys.GetDeployments, deployment?.workspaceId],
+        queryKey: [
+          DeploymentQueryKeys.GetDeployments,
+          result?.deployment?.workspaceId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          ProjectQueryKeys.GetWorkspaceProjects,
+          result?.deployment?.workspaceId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProject, result?.projectId],
       });
     },
   });
@@ -83,25 +84,39 @@ export const useQueries = () => {
       description,
     }: {
       deploymentId: string;
-      workflowId: string;
-      workflowYaml: string;
+      workflowId?: string;
+      workflowYaml?: string;
       description?: string;
     }) => {
-      const formData = yamlToFormData(workflowYaml, workflowId);
+      const input: UpdateDeploymentInput = { deploymentId, description };
+      if (workflowYaml) {
+        const formData = yamlToFormData(workflowYaml, workflowId);
+        input.file = formData.get("file");
+      }
 
       const data = await graphQLContext?.UpdateDeployment({
-        input: { deploymentId, file: formData.get("file"), description },
+        input,
       });
 
       if (data?.updateDeployment?.deployment) {
-        return data?.updateDeployment?.deployment;
+        return toDeployment(data.updateDeployment.deployment);
       }
     },
-    onSuccess: (deployment) =>
+    onSuccess: (deployment) => {
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
         queryKey: [DeploymentQueryKeys.GetDeployments, deployment?.workspaceId],
-      }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          ProjectQueryKeys.GetWorkspaceProjects,
+          deployment?.workspaceId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProject],
+      });
+    },
   });
 
   const deleteDeploymentMutation = useMutation({
@@ -117,10 +132,17 @@ export const useQueries = () => {
         workspaceId,
       };
     },
-    onSuccess: ({ workspaceId }) =>
+    onSuccess: ({ workspaceId }) => {
       queryClient.invalidateQueries({
         queryKey: [DeploymentQueryKeys.GetDeployments, workspaceId],
-      }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProject],
+      });
+    },
   });
 
   const executeDeploymentMutation = useMutation({
@@ -128,7 +150,7 @@ export const useQueries = () => {
       const data = await graphQLContext?.ExecuteDeployment({ input });
 
       if (data?.executeDeployment?.job) {
-        return createNewJobObject(data.executeDeployment.job);
+        return toJob(data.executeDeployment.job);
       }
     },
     onSuccess: (job) =>
@@ -159,7 +181,7 @@ export const useQueries = () => {
         } = data;
         const deployments: Deployment[] = nodes
           .filter(isDefined)
-          .map((deployment) => createNewDeploymentObject(deployment));
+          .map((deployment) => toDeployment(deployment));
         return { deployments, endCursor, hasNextPage };
       },
       enabled: !!workspaceId,

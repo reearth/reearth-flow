@@ -21,5 +21,6 @@ tools/mvt/dist/**
 !tools/mvt/dist/.gitkeep
 output.png
 sample.xlsx
+metadata.json
 
 tmp/

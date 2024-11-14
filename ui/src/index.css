@@ -3,10 +3,22 @@
 @tailwind utilities;
 
 :root {
-  font-family: Inter, sans-serif;
+  font-family: Inter, "Noto Sans JP", sans-serif;
   font-feature-settings:
     "liga" 1,
     "calt" 1; /* fix for Chrome */
+}
+
+@layer utilities {
+  /* Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
 }
 
 @layer base {
@@ -90,6 +102,7 @@
 @layer base {
   * {
     @apply border-border;
+    @apply no-scrollbar;
   }
   body {
     @apply bg-background text-foreground;

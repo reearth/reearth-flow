@@ -10,21 +10,27 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-[dependencies]
-flow-websocket-domain.workspace = true
+[features]
+default = ["gcs-storage"]
+gcs-storage = ["dep:google-cloud-storage"]
+local-storage = []
 
+[dependencies]
 async-trait.workspace = true
 axum.workspace = true
 axum-extra.workspace = true
 axum-macros.workspace = true
+bb8.workspace = true
+bb8-redis.workspace = true
 chrono.workspace = true
-google-cloud-storage.workspace = true
+google-cloud-storage = { workspace = true, optional = true }
 lru.workspace = true
 mockall.workspace = true
 redis.workspace = true
 rslock.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true

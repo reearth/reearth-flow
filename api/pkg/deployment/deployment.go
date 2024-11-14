@@ -74,7 +74,3 @@ func (d *Deployment) SetVersion(version string) {
 	d.version = version
 	d.updatedAt = time.Now()
 }
-
-func (d *Deployment) SetUpdatedAt(updatedAt time.Time) {
-	d.updatedAt = updatedAt
-}

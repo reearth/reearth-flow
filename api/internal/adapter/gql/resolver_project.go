@@ -15,3 +15,7 @@ type projectResolver struct{ *Resolver }
 func (r *projectResolver) Workspace(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Workspace, error) {
 	return dataloaders(ctx).Workspace.Load(obj.WorkspaceID)
 }
+
+func (r *projectResolver) Deployment(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Deployment, error) {
+	return loaders(ctx).Deployment.FindByProject(ctx, obj.ID)
+}

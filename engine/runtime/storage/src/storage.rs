@@ -1,3 +1,4 @@
+use std::fs;
 use std::ops::Range;
 use std::path::Path;
 use std::pin::Pin;
@@ -123,10 +124,10 @@ impl Storage {
                 path: format!("{:?}", location).into(),
             },
         })?;
-        self.inner
-            .is_exist(p)
-            .await
-            .map_err(|err| format_object_store_error(err, p))
+        fs::exists(p).map_err(|err| object_store::Error::Generic {
+            store: "FileError",
+            source: Box::new(err),
+        })
     }
 
     pub async fn get_range(&self, location: &Path, range: Range<usize>) -> Result<Bytes> {

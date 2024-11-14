@@ -9,15 +9,12 @@ use crossbeam::channel::Receiver;
 use futures::Future;
 use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
-use reearth_flow_action_log::factory::LoggerFactory;
-use reearth_flow_action_log::{action_error_log, action_log, slow_action_log, ActionLogger};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
 use tracing::{info_span, Span};
 
-use crate::error_manager::ErrorManager;
-use crate::event::Event;
+use crate::event::EventHub;
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::kvs::KvStore;
 use crate::{
@@ -57,19 +54,13 @@ pub struct ProcessorNode<F> {
     /// The runtime to run the source in.
     #[allow(dead_code)]
     runtime: Arc<Handle>,
-    #[allow(dead_code)]
-    error_manager: Arc<ErrorManager>,
-    logger_factory: Arc<LoggerFactory>,
-    logger: Arc<ActionLogger>,
-    slow_logger: Arc<ActionLogger>,
     span: tracing::Span,
     thread_pool: rayon::ThreadPool,
     thread_counter: Arc<AtomicU32>,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
-    kv_store: Arc<Box<dyn KvStore>>,
-    #[allow(dead_code)]
-    event_sender: tokio::sync::broadcast::Sender<Event>,
+    kv_store: Arc<dyn KvStore>,
+    event_hub: EventHub,
 }
 
 impl<F: Future + Unpin + Debug> ProcessorNode<F> {
@@ -97,9 +88,8 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             node_handle.clone(),
             record_writers,
             senders,
-            dag.error_manager().clone(),
             runtime.clone(),
-            dag.event_hub().sender.clone(),
+            dag.event_hub().clone(),
         );
         let span = info_span!(
             "action",
@@ -109,11 +99,6 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             "node.id" = node_handle.id.to_string().as_str(),
         );
 
-        let logger = ctx
-            .logger
-            .action_logger(node_handle.id.to_string().as_str());
-        let slow_logger = ctx.logger.slow_action_logger();
-        let logger_factory = Arc::clone(&ctx.logger);
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let kv_store = Arc::clone(&ctx.kv_store);
@@ -126,10 +111,6 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             channel_manager: Arc::new(parking_lot::RwLock::new(channel_manager)),
             shutdown,
             runtime,
-            error_manager: dag.error_manager().clone(),
-            logger_factory,
-            logger: Arc::new(logger),
-            slow_logger: Arc::new(slow_logger),
             span,
             thread_pool: rayon::ThreadPoolBuilder::new()
                 .num_threads(num_threads)
@@ -139,7 +120,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             expr_engine,
             storage_resolver,
             kv_store,
-            event_sender: dag.event_hub().sender.clone(),
+            event_hub: dag.event_hub().clone(),
         }
     }
 
@@ -164,7 +145,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let mut sel = init_select(&receivers);
 
         let span = self.span.clone();
-        let logger = self.logger.clone();
         let now = time::Instant::now();
         let processor = Arc::clone(&self.processor);
         processor
@@ -172,12 +152,14 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             .initialize(NodeContext::new(
                 self.expr_engine.clone(),
                 self.storage_resolver.clone(),
-                self.logger_factory.clone(),
                 self.kv_store.clone(),
+                self.event_hub.clone(),
             ))
             .map_err(ExecutionError::Processor)?;
-        action_log!(
-            parent: span, logger, "{:?} process start...", self.processor.read().name(),
+
+        self.event_hub.info_log(
+            Some(span.clone()),
+            format!("{:?} process start...", self.processor.read().name()),
         );
 
         loop {
@@ -187,14 +169,20 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     .load(std::sync::atomic::Ordering::SeqCst)
                     == 0
                 {
-                    action_log!(
-                        parent: span, logger, "{:?} process finish. elapsed = {:?}", self.processor.read().name() , now.elapsed(),
+                    self.event_hub.info_log(
+                        Some(span.clone()),
+                        format!(
+                            "{:?} process finish. elapsed = {:?}",
+                            self.processor.read().name(),
+                            now.elapsed()
+                        ),
                     );
+
                     self.on_terminate(NodeContext::new(
                         self.expr_engine.clone(),
                         self.storage_resolver.clone(),
-                        self.logger_factory.clone(),
                         self.kv_store.clone(),
+                        self.event_hub.clone(),
                     ))?;
                     return Ok(());
                 }
@@ -226,18 +214,16 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let processor = Arc::clone(&self.processor);
 
         let span = self.span.clone();
-        let logger = self.logger.clone();
-        let slow_logger = self.slow_logger.clone();
         let node_handle = self.node_handle.clone();
         let counter = Arc::clone(&self.thread_counter);
+        let event_hub = self.event_hub.clone();
         counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         self.thread_pool.spawn(move || {
             process(
                 ctx,
                 node_handle,
                 span,
-                logger,
-                slow_logger,
+                event_hub,
                 channel_manager,
                 processor,
             );
@@ -257,9 +243,13 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             .finish(ctx.clone(), channel_manager)
             .map_err(|e| ExecutionError::CannotSendToChannel(format!("{:?}", e)))?;
         let span = self.span.clone();
-        let logger = self.logger.clone();
-        action_log!(
-            parent: span, logger, "{:?} finish process complete. elapsed = {:?}", processor.read().name(), now.elapsed(),
+        self.event_hub.info_log(
+            Some(span),
+            format!(
+                "{:?} finish process complete. elapsed = {:?}",
+                processor.read().name(),
+                now.elapsed()
+            ),
         );
         channel_manager.send_terminate(ctx)
     }
@@ -269,8 +259,7 @@ fn process(
     ctx: ExecutorContext,
     node_handle: NodeHandle,
     span: Span,
-    logger: Arc<ActionLogger>,
-    slow_logger: Arc<ActionLogger>,
+    event_hub: EventHub,
     channel_manager: Arc<parking_lot::RwLock<ChannelManager>>,
     processor: Arc<parking_lot::RwLock<Box<dyn Processor>>>,
 ) {
@@ -283,24 +272,27 @@ fn process(
     let result = processor.process(ctx, channel_manager);
     let elapsed = now.elapsed();
     if elapsed >= *SLOW_ACTION_THRESHOLD {
-        slow_action_log!(
-            parent: span,
-            slow_logger,
-            "Slow action, processor node name = {:?}, node_id = {}, feature id = {:?}, elapsed = {:?}",
-            processor.name(),
-            node_handle.id,
-            feature_id,
-            elapsed,
-        )
+        event_hub.info_log(
+            Some(span.clone()),
+            format!(
+                "Slow action, processor node name = {:?}, node_id = {}, feature id = {:?}, elapsed = {:?}",
+                processor.name(),
+                node_handle.id,
+                feature_id,
+                elapsed,
+            ),
+        );
     }
     if let Err(e) = result {
-        action_error_log!(
-            parent: span,
-            logger,
-            "Error operation, processor node name = {:?}, node_id = {}, feature id = {:?}, error = {:?}", processor.name(),
-            node_handle.id,
-            feature_id,
-            e,
-        )
+        event_hub.error_log(
+            Some(span.clone()),
+            format!(
+                "Error operation, processor node name = {:?}, node_id = {}, feature id = {:?}, error = {:?}",
+                processor.name(),
+                node_handle.id,
+                feature_id,
+                e,
+            ),
+        );
     }
 }

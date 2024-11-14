@@ -1,14 +1,17 @@
 use std::{collections::HashMap, sync::Arc, thread, time::Duration};
 
 use reearth_flow_common::future::SharedFuture;
+use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
     event::EventHandler,
     executor::dag_executor::DagExecutor,
-    executor_operation::{ExecutorOptions, NodeContext},
+    executor_operation::ExecutorOptions,
+    kvs::KvStore,
     node::{NodeKind, RouterFactory},
     shutdown::ShutdownReceiver,
 };
 use reearth_flow_state::State;
+use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Workflow;
 use tokio::runtime::Handle;
 
@@ -19,7 +22,9 @@ pub struct Executor;
 impl Executor {
     pub async fn create_dag_executor(
         self,
-        ctx: NodeContext,
+        expr_engine: Arc<Engine>,
+        storage_resolver: Arc<StorageResolver>,
+        kv_store: Arc<dyn KvStore>,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         executor_options: ExecutorOptions,
@@ -30,7 +35,9 @@ impl Executor {
             NodeKind::Processor(Box::<RouterFactory>::default()),
         );
         let executor = DagExecutor::new(
-            ctx,
+            expr_engine,
+            storage_resolver,
+            kv_store,
             workflow.entry_graph_id,
             workflow.graphs,
             executor_options,
@@ -42,23 +49,25 @@ impl Executor {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_dag_executor(
-    ctx: NodeContext,
+    expr_engine: Arc<Engine>,
+    storage_resolver: Arc<StorageResolver>,
+    kv_store: Arc<dyn KvStore>,
     runtime: &Arc<Handle>,
     dag_executor: DagExecutor,
     shutdown: ShutdownReceiver,
     state: Arc<State>,
-    event_handlers: Vec<Box<dyn EventHandler>>,
+    event_handlers: Vec<Arc<dyn EventHandler>>,
 ) -> Result<(), Error> {
     let shutdown_future = shutdown.create_shutdown_future();
 
     let mut join_handle = runtime.block_on(dag_executor.start(
         SharedFuture::new(Box::pin(shutdown_future)),
         runtime.clone(),
-        ctx.expr_engine.clone(),
-        ctx.storage_resolver.clone(),
-        ctx.logger.clone(),
-        ctx.kv_store.clone(),
+        expr_engine,
+        storage_resolver,
+        kv_store,
         state,
         event_handlers,
     ))?;

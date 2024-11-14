@@ -1,6 +1,8 @@
+use flow_websocket_infra::persistence::{
+    gcs::gcs_client::GcsError, redis::errors::FlowProjectRedisDataManagerError,
+};
+use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use thiserror::Error;
-
-pub type Result<T> = std::result::Result<T, WsError>;
 
 #[derive(Debug, Error)]
 pub enum WsError {
@@ -20,4 +22,12 @@ pub enum WsError {
     UpdateDecode(#[from] yrs::encoding::read::Error),
     #[error(transparent)]
     AwarenessUpdate(#[from] yrs::sync::awareness::Error),
+    #[error(transparent)]
+    MpscSendError(#[from] tokio::sync::mpsc::error::SendError<SessionCommand>),
+    #[error(transparent)]
+    Pool(#[from] FlowProjectRedisDataManagerError),
+    #[error(transparent)]
+    LocalStorage(#[from] std::io::Error),
+    #[error(transparent)]
+    GcsStorage(#[from] GcsError),
 }
