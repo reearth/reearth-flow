@@ -38,7 +38,6 @@ pub struct AppState {
     pub storage: Arc<ProjectStorageRepository>,
     pub session_repo: Arc<ProjectRedisRepository>,
     pub service: Arc<SessionService>,
-    pub redis_url: String,
     pub command_tx: mpsc::Sender<SessionCommand>,
 }
 
@@ -61,6 +60,7 @@ impl AppState {
         #[cfg(not(feature = "local-storage"))]
         let gcs_bucket =
             std::env::var("GCS_BUCKET_NAME").expect("GCS_BUCKET_NAME must be provided");
+
         #[cfg(feature = "gcs-storage")]
         #[cfg(not(feature = "local-storage"))]
         #[allow(unused_variables)]
@@ -91,7 +91,6 @@ impl AppState {
             storage,
             session_repo,
             service,
-            redis_url,
             command_tx: tx,
         })
     }
