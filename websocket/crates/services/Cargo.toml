@@ -10,8 +10,13 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+default = ["local-storage"]
+gcs-storage = ["flow-websocket-infra/gcs-storage"]
+local-storage = ["flow-websocket-infra/local-storage"]
+
 [dependencies]
-flow-websocket-infra.workspace = true
+flow-websocket-infra = { workspace = true, default-features = false }
 
 async-trait.workspace = true
 axum.workspace = true
@@ -31,3 +36,6 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
 yrs.workspace = true
+
+[[example]]
+name = "edit_session_service"

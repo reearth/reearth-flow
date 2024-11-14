@@ -1,17 +1,26 @@
+#[cfg(feature = "gcs-storage")]
 use async_trait::async_trait;
+#[cfg(feature = "gcs-storage")]
 use chrono::{DateTime, Utc};
+#[cfg(feature = "gcs-storage")]
 use google_cloud_storage::client::{Client, ClientConfig};
+#[cfg(feature = "gcs-storage")]
 use google_cloud_storage::http::objects::delete::DeleteObjectRequest;
+#[cfg(feature = "gcs-storage")]
 use google_cloud_storage::http::objects::download::Range;
+#[cfg(feature = "gcs-storage")]
 use google_cloud_storage::http::objects::get::GetObjectRequest;
+#[cfg(feature = "gcs-storage")]
 use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use thiserror::Error;
 
+#[cfg(feature = "gcs-storage")]
 use crate::persistence::StorageClient;
 
+#[cfg(feature = "gcs-storage")]
 #[derive(Error, Debug)]
 pub enum GcsError {
     #[error(transparent)]
@@ -24,18 +33,21 @@ pub enum GcsError {
     Utf8(#[from] std::string::FromUtf8Error),
 }
 
+#[cfg(feature = "gcs-storage")]
 #[derive(Clone)]
 pub struct GcsClient {
     client: Client,
     bucket: String,
 }
 
+#[cfg(feature = "gcs-storage")]
 #[derive(Serialize, Deserialize)]
 struct VersionMetadata {
     latest_version: String,
-    version_history: BTreeMap<i64, String>, // Timestamp to version path
+    version_history: BTreeMap<i64, String>,
 }
 
+#[cfg(feature = "gcs-storage")]
 #[async_trait]
 impl StorageClient for GcsClient {
     type Error = GcsError;
@@ -218,6 +230,7 @@ impl StorageClient for GcsClient {
     }
 }
 
+#[cfg(feature = "gcs-storage")]
 impl GcsClient {
     pub async fn new(bucket: String) -> Result<Self, GcsError> {
         let config = ClientConfig::default().with_auth().await?;
@@ -228,9 +241,13 @@ impl GcsClient {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "gcs-storage")]
     use super::*;
+    #[cfg(feature = "gcs-storage")]
     use mockall::mock;
+    #[cfg(feature = "gcs-storage")]
     use mockall::predicate::*;
+    #[cfg(feature = "gcs-storage")]
 
     mock! {
         pub GcsClientMock {}
@@ -249,6 +266,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "gcs-storage")]
     #[tokio::test]
     async fn test_upload_versioned() {
         let mut mock = MockGcsClientMock::new();
@@ -263,6 +281,7 @@ mod tests {
         assert_eq!(result.unwrap(), "test_path_v1234567890".to_string());
     }
 
+    #[cfg(feature = "gcs-storage")]
     #[tokio::test]
     async fn test_update_versioned() {
         let mut mock = MockGcsClientMock::new();
@@ -276,6 +295,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(feature = "gcs-storage")]
     #[tokio::test]
     async fn test_get_latest_version() {
         let mut mock = MockGcsClientMock::new();
@@ -288,6 +308,7 @@ mod tests {
         assert_eq!(result.unwrap(), Some("test_path_v1234567890".to_string()));
     }
 
+    #[cfg(feature = "gcs-storage")]
     #[tokio::test]
     async fn test_download_latest() {
         let mut mock = MockGcsClientMock::new();

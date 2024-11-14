@@ -1,5 +1,8 @@
 use crate::generate_id;
+#[cfg(feature = "gcs-storage")]
 use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
+
+#[cfg(feature = "local-storage")]
 use crate::persistence::local_storage::LocalClient;
 use crate::types::project::Project;
 use crate::types::snapshot::ProjectSnapshot;
@@ -10,6 +13,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
 
+pub use self::local::ProjectLocalRepository;
 use super::editing_session::ProjectEditingSession;
 use super::local_storage::LocalStorageError;
 use super::repository::{ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl};
@@ -20,8 +24,10 @@ use redis::AsyncCommands;
 
 #[derive(Error, Debug)]
 pub enum ProjectRepositoryError {
+    #[cfg(feature = "gcs-storage")]
     #[error(transparent)]
     Gcs(#[from] GcsError),
+    #[cfg(feature = "local-storage")]
     #[error(transparent)]
     Local(#[from] LocalStorageError),
     #[error(transparent)]
@@ -130,121 +136,139 @@ impl ProjectEditingSessionImpl for ProjectRedisRepository {
     }
 }
 
-#[derive(Clone)]
-pub struct ProjectGcsRepository {
-    client: GcsClient,
-}
+#[cfg(feature = "gcs-storage")]
+pub(crate) mod gcs {
 
-impl ProjectGcsRepository {
-    pub fn new(client: GcsClient) -> Self {
-        Self { client }
-    }
-}
+    use super::*;
 
-#[async_trait]
-impl ProjectSnapshotImpl for ProjectGcsRepository {
-    type Error = ProjectRepositoryError;
-
-    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let path = format!("snapshot/{}", snapshot.metadata.project_id);
-        self.client.upload_versioned(path, &snapshot).await?;
-        Ok(())
+    #[derive(Clone)]
+    pub struct ProjectGcsRepository {
+        client: GcsClient,
     }
 
-    async fn get_latest_snapshot(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, Self::Error> {
-        let path_prefix = format!("snapshot/{}", project_id);
-        let snapshot = self.client.download_latest(&path_prefix).await?;
-        Ok(snapshot)
+    impl ProjectGcsRepository {
+        pub async fn new(bucket: String) -> Result<Self, GcsError> {
+            let client = GcsClient::new(bucket).await?;
+            Ok(Self { client })
+        }
     }
 
-    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let latest_version = self
-            .client
-            .get_latest_version(&format!("snapshot/{}", snapshot.metadata.project_id))
-            .await?;
-        if let Some(_version) = latest_version {
-            let path = format!("snapshot/{}", snapshot.metadata.project_id);
-            self.client.update_latest_versioned(path, &snapshot).await?;
-        } else {
+    #[async_trait]
+    impl ProjectSnapshotImpl for ProjectGcsRepository {
+        type Error = ProjectRepositoryError;
+
+        async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
             let path = format!("snapshot/{}", snapshot.metadata.project_id);
             self.client.upload_versioned(path, &snapshot).await?;
+            Ok(())
         }
-        Ok(())
-    }
 
-    async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
-        let path = format!("snapshot/{}", project_id);
-        self.client.delete(path).await?;
-        Ok(())
-    }
+        async fn get_latest_snapshot(
+            &self,
+            project_id: &str,
+        ) -> Result<Option<ProjectSnapshot>, Self::Error> {
+            let path_prefix = format!("snapshot/{}", project_id);
+            let snapshot = self.client.download_latest(&path_prefix).await?;
+            Ok(snapshot)
+        }
 
-    async fn list_all_snapshots_versions(
-        &self,
-        project_id: &str,
-    ) -> Result<Vec<String>, Self::Error> {
-        let path = format!("snapshot/{}", project_id);
-        let versions = self.client.list_versions(&path, None).await?;
-        Ok(versions.iter().map(|(_, v)| v.clone()).collect())
+        async fn update_latest_snapshot(
+            &self,
+            snapshot: ProjectSnapshot,
+        ) -> Result<(), Self::Error> {
+            let latest_version = self
+                .client
+                .get_latest_version(&format!("snapshot/{}", snapshot.metadata.project_id))
+                .await?;
+            if let Some(_version) = latest_version {
+                let path = format!("snapshot/{}", snapshot.metadata.project_id);
+                self.client.update_latest_versioned(path, &snapshot).await?;
+            } else {
+                let path = format!("snapshot/{}", snapshot.metadata.project_id);
+                self.client.upload_versioned(path, &snapshot).await?;
+            }
+            Ok(())
+        }
+
+        async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
+            let path = format!("snapshot/{}", project_id);
+            self.client.delete(path).await?;
+            Ok(())
+        }
+
+        async fn list_all_snapshots_versions(
+            &self,
+            project_id: &str,
+        ) -> Result<Vec<String>, Self::Error> {
+            let path = format!("snapshot/{}", project_id);
+            let versions = self.client.list_versions(&path, None).await?;
+            Ok(versions.iter().map(|(_, v)| v.clone()).collect())
+        }
     }
 }
 
-#[derive(Clone)]
-pub struct ProjectLocalRepository {
-    client: Arc<LocalClient>,
-}
+#[cfg(feature = "local-storage")]
+pub(crate) mod local {
+    use super::*;
 
-impl ProjectLocalRepository {
-    pub async fn new(base_path: PathBuf) -> io::Result<Self> {
-        Ok(Self {
-            client: Arc::new(LocalClient::new(base_path).await?),
-        })
-    }
-}
-
-#[async_trait]
-impl ProjectSnapshotImpl for ProjectLocalRepository {
-    type Error = ProjectRepositoryError;
-
-    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let path = format!("snapshots/{}", snapshot.metadata.project_id);
-        self.client.upload_versioned(path, &snapshot).await?;
-        Ok(())
+    #[derive(Clone)]
+    pub struct ProjectLocalRepository {
+        client: Arc<LocalClient>,
     }
 
-    async fn get_latest_snapshot(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, Self::Error> {
-        let path = format!("snapshots/{}", project_id);
-        let snapshot = self
-            .client
-            .download_latest::<ProjectSnapshot>(&path)
-            .await?;
-        Ok(snapshot)
+    impl ProjectLocalRepository {
+        pub async fn new(base_path: PathBuf) -> io::Result<Self> {
+            Ok(Self {
+                client: Arc::new(LocalClient::new(base_path).await?),
+            })
+        }
     }
 
-    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let path = format!("snapshots/{}", snapshot.metadata.project_id);
-        self.client.update_latest_versioned(path, &snapshot).await?;
-        Ok(())
-    }
+    #[async_trait]
+    impl ProjectSnapshotImpl for ProjectLocalRepository {
+        type Error = ProjectRepositoryError;
 
-    async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
-        let path = format!("snapshots/{}", project_id);
-        self.client.delete(path).await?;
-        Ok(())
-    }
+        async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+            let path = format!("snapshots/{}", snapshot.metadata.project_id);
+            self.client.upload_versioned(path, &snapshot).await?;
+            Ok(())
+        }
 
-    async fn list_all_snapshots_versions(
-        &self,
-        project_id: &str,
-    ) -> Result<Vec<String>, Self::Error> {
-        let path = format!("snapshots/{}", project_id);
-        let versions = self.client.list_versions(&path, None).await?;
-        Ok(versions.iter().map(|(_, v)| v.clone()).collect())
+        async fn get_latest_snapshot(
+            &self,
+            project_id: &str,
+        ) -> Result<Option<ProjectSnapshot>, Self::Error> {
+            let path = format!("snapshots/{}", project_id);
+            let snapshot = self
+                .client
+                .download_latest::<ProjectSnapshot>(&path)
+                .await?;
+            Ok(snapshot)
+        }
+
+        async fn update_latest_snapshot(
+            &self,
+            snapshot: ProjectSnapshot,
+        ) -> Result<(), Self::Error> {
+            let path = format!("snapshots/{}", snapshot.metadata.project_id);
+            self.client.update_latest_versioned(path, &snapshot).await?;
+            Ok(())
+        }
+
+        async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
+            let path = format!("snapshots/{}", project_id);
+            self.client.delete(path).await?;
+            Ok(())
+        }
+
+        async fn list_all_snapshots_versions(
+            &self,
+            project_id: &str,
+        ) -> Result<Vec<String>, Self::Error> {
+            let path = format!("snapshots/{}", project_id);
+            let versions = self.client.list_versions(&path, None).await?;
+            Ok(versions.iter().map(|(_, v)| v.clone()).collect())
+        }
     }
 }
 

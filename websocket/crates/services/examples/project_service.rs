@@ -1,8 +1,14 @@
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
+
+#[cfg(feature = "gcs-storage")]
+use flow_websocket_infra::persistence::ProjectGcsRepository;
+#[cfg(feature = "local-storage")]
+use flow_websocket_infra::persistence::ProjectLocalRepository;
+
 use flow_websocket_infra::{
     persistence::{
-        project_repository::{ProjectLocalRepository, ProjectRedisRepository},
+        project_repository::ProjectRedisRepository,
         redis::flow_project_redis_data_manager::FlowProjectRedisDataManager,
     },
     types::user::User,
@@ -13,6 +19,7 @@ use tracing::{debug, info};
 use yrs::{updates::decoder::Decode, Doc, GetString, Text, Transact, Update};
 
 ///RUST_LOG=debug cargo run --example project_service
+/// RUST_LOG=debug cargo run --example project_service  --features local-storage
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,15 +36,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let manager = RedisConnectionManager::new(&*redis_url)?;
     let redis_pool = Pool::builder().build(manager).await?;
 
-    // Initialize repositories and managers
-    let local_storage = ProjectLocalRepository::new("./local_storage".into()).await?;
+    // Initialize repositories and managers based on feature
+    #[cfg(feature = "local-storage")]
+    #[allow(unused_variables)]
+    let storage = ProjectLocalRepository::new("./local_storage".into()).await?;
+    #[cfg(feature = "gcs-storage")]
+    #[allow(unused_variables)]
+    let storage = ProjectGcsRepository::new("your-gcs-bucket".to_string()).await?;
+
     let session_repo = ProjectRedisRepository::new(redis_pool.clone());
     let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
     // Create ProjectService instance
     let service = ProjectService::new(
         Arc::new(session_repo),
-        Arc::new(local_storage),
+        Arc::new(storage),
         Arc::new(redis_data_manager),
     );
 

@@ -10,8 +10,12 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-[dependencies]
+[features]
+default = ["gcs-storage"]
+gcs-storage = ["dep:google-cloud-storage"]
+local-storage = []
 
+[dependencies]
 async-trait.workspace = true
 axum.workspace = true
 axum-extra.workspace = true
@@ -19,7 +23,7 @@ axum-macros.workspace = true
 bb8.workspace = true
 bb8-redis.workspace = true
 chrono.workspace = true
-google-cloud-storage.workspace = true
+google-cloud-storage = { workspace = true, optional = true }
 lru.workspace = true
 mockall.workspace = true
 redis.workspace = true
