@@ -1,5 +1,5 @@
 mod helper;
 
 fn main() {
-    helper::execute("data-convert/02-tran-rwy-trk-squr-wwy/workflow.yml");
+    helper::execute("data-convert/06-urf-area/workflow.yml");
 }
