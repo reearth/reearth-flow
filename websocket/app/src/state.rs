@@ -56,9 +56,15 @@ impl AppState {
         #[cfg(feature = "local-storage")]
         #[allow(unused_variables)]
         let storage = Arc::new(ProjectStorageRepository::new("./local_storage".into()).await?);
+
         #[cfg(feature = "gcs-storage")]
+        #[cfg(not(feature = "local-storage"))]
+        let gcs_bucket =
+            std::env::var("GCS_BUCKET_NAME").expect("GCS_BUCKET_NAME must be provided");
+        #[cfg(feature = "gcs-storage")]
+        #[cfg(not(feature = "local-storage"))]
         #[allow(unused_variables)]
-        let storage = Arc::new(ProjectStorageRepository::new("your-gcs-bucket".into()).await?);
+        let storage = Arc::new(ProjectStorageRepository::new(gcs_bucket).await?);
 
         let session_repo = Arc::new(ProjectRedisRepository::new(redis_pool.clone()));
 
