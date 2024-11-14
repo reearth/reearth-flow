@@ -49,7 +49,11 @@ const WorkflowTabs: React.FC<Props> = ({
   };
 
   const handleSubmit = () => {
-    if (!name || !editId) return;
+    if (!name || !editId) {
+      setEditId(undefined);
+      setName(undefined);
+      return;
+    }
     const trimmedName = name?.trim();
     if (!trimmedName || trimmedName.length < 1) return;
 
