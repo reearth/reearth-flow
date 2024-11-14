@@ -97,28 +97,6 @@ graphs:
             - attribute: luse_class
               parentAttribute: cityGmlAttributes
               childAttribute: luse:class
-            - multipleExpr: |
-                let attributes = env.get("__value").cityGmlAttributes["uro:landUseDetailAttribute"] ?? [];
-                #{
-                  luse_usage: attributes[0]["luse:usage"] ?? "",
-                  uro_id: attributes[0]["uro:id"] ?? "",
-                  uro_orgLandUse: attributes[0]["uro:orgLandUse"] ?? "",
-                  uro_nominalArea: attributes[0]["uro:nominalArea"] ?? "",
-                  uro_ownerType: attributes[0]["uro:ownerType"] ?? "",
-                  uro_areaInSquareMeter: attributes[0]["uro:areaInSquareMeter"] ?? "",
-                  uro_areaInHa: attributes[0]["uro:areaInHa"] ?? "",
-                  uro_buildingCoverageRate: attributes[0]["uro:buildingCoverageRate"] ?? "",
-                  uro_floorAreaRate: attributes[0]["uro:floorAreaRate"] ?? "",
-                  uro_specifiedBuildingCoverageRate: attributes[0]["uro:specifiedBuildingCoverageRate"] ?? "",
-                  uro_specifiedFoorAreaRate: attributes[0]["uro:specifiedFoorAreaRate"] ?? "",
-                  uro_standardFloorAreaRate: attributes[0]["uro:standardFloorAreaRate"] ?? "",
-                  uro_urbanPlanType: attributes[0]["uro:urbanPlanType"] ?? "",
-                  uro_areaClassificationType: attributes[0]["uro:areaClassificationType"] ?? "",
-                  uro_districtsAndZonesType: attributes[0]["uro:districtsAndZonesType"] ?? "",
-                  uro_prefecture: attributes[0]["uro:prefecture"] ?? "",
-                  uro_city: attributes[0]["uro:city"] ?? "",
-                  uro_surveyYear: attributes[0]["uro:surveyYear"] ?? "",
-                }
 
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         name: mvtWriter
