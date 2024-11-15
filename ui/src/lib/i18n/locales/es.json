@@ -53,6 +53,7 @@
   "Unable to rename workflow": "No se puede renombrar el flujo de trabajo",
   "Renaming workflow failed. Please try again later.": "Renombrar el flujo de trabajo falló. Por favor, inténtalo de nuevo más tarde.",
   "Main Workflow": "Flujo de trabajo principal",
+  "Set Workflow name": "Establecer nombre del flujo de trabajo",
   "Keyboard shortcuts": "Atajos de teclado",
   "General shortcuts": "",
   "Open the keyboard shortcuts dialog": "Abrir el diálogo de atajos de teclado",
