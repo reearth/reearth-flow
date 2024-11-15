@@ -77,11 +77,7 @@ export default function Editor() {
             onWorkflowChange={handleWorkflowChange}
           />
         </div>
-        <RightPanel
-          selected={locallyLockedNode}
-          nodes={nodes}
-          onNodesUpdate={handleNodesUpdate}
-        />
+        <RightPanel selected={locallyLockedNode} />
       </div>
     </div>
   );
