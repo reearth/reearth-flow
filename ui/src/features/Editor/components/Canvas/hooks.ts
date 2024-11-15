@@ -9,6 +9,7 @@ type Props = {
   workflow?: Workflow;
   nodes: Node[];
   edges: Edge[];
+  onWorkflowAdd: (position?: XYPosition) => void;
   onNodesUpdate: (newNodes: Node[]) => void;
   onEdgesUpdate: (newEdges: Edge[]) => void;
   onNodeLocking: (nodeId: string) => void;
@@ -35,6 +36,7 @@ export const defaultEdgeOptions: DefaultEdgeOptions = {
 export default ({
   nodes,
   edges,
+  onWorkflowAdd,
   onNodeLocking,
   onNodesUpdate,
   onEdgesUpdate,
@@ -49,6 +51,7 @@ export default ({
   } = useNodes({
     nodes,
     edges,
+    onWorkflowAdd,
     onNodesChange: onNodesUpdate,
     onEdgesChange: onEdgesUpdate,
     onNodeLocking,

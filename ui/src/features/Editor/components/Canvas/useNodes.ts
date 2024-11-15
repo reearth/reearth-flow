@@ -20,6 +20,7 @@ import useDnd from "./useDnd";
 type Props = {
   nodes: Node[];
   edges: Edge[];
+  onWorkflowAdd: (position?: XYPosition) => void;
   onNodesChange: (newNodes: Node[]) => void;
   onEdgesChange: (edges: Edge[]) => void;
   onNodeLocking: (nodeId: string) => void;
@@ -29,6 +30,7 @@ type Props = {
 export default ({
   nodes,
   edges,
+  onWorkflowAdd,
   onNodesChange,
   onEdgesChange,
   onNodeLocking,
@@ -39,6 +41,7 @@ export default ({
 
   const { handleNodeDragOver, handleNodeDrop } = useDnd({
     nodes,
+    onWorkflowAdd,
     onNodesChange,
     onNodeLocking,
     onNodePickerOpen,

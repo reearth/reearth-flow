@@ -5,6 +5,7 @@ import {
   Disc,
   Lightning,
   Note,
+  Plus,
   RectangleDashed,
 } from "@phosphor-icons/react";
 import { memo, type DragEvent } from "react";
@@ -60,6 +61,11 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
       name: t("Batch Node"),
       icon: <RectangleDashed weight="thin" />,
     },
+    {
+      id: "subworkflow",
+      name: t("Subworkflow Node"),
+      icon: <Plus weight="light" />,
+    },
   ];
 
   const availableActions: Action[] = [
@@ -89,7 +95,7 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
     root.render(
       <div className="flex size-12 rounded bg-secondary">
         <div
-          className={`flex w-full justify-center rounded align-middle  ${nodeType === "reader" ? "bg-node-reader/60" : nodeType === "writer" ? "bg-node-writer/60" : "bg-node-transformer/60"}`}>
+          className={`flex w-full justify-center rounded align-middle  ${nodeType === "reader" ? "bg-node-reader/60" : nodeType === "writer" ? "bg-node-writer/60" : nodeType === "subworkflow" ? "bg-node-entrance" : "bg-node-transformer/60"}`}>
           <Lightning className="self-center" />
         </div>
       </div>,

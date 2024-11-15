@@ -18,7 +18,6 @@ type Props = {
   isOpen: boolean;
   onOpen: (panel?: "left" | "right" | "bottom") => void;
   onWorkflowClose: (workflowId: string) => void;
-  onWorkflowAdd: () => void;
   onWorkflowChange: (workflowId?: string) => void;
 };
 
@@ -28,7 +27,6 @@ const BottomPanel: React.FC<Props> = ({
   isOpen,
   onOpen,
   onWorkflowClose,
-  onWorkflowAdd,
   onWorkflowChange,
 }) => {
   const {
@@ -85,7 +83,6 @@ const BottomPanel: React.FC<Props> = ({
           currentWorkflowId={currentWorkflowId}
           openWorkflows={openWorkflows}
           onWorkflowClose={onWorkflowClose}
-          onWorkflowAdd={onWorkflowAdd}
           onWorkflowChange={onWorkflowChange}
         />
         <div className="flex h-full items-center gap-1">
