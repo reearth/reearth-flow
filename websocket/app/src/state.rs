@@ -31,6 +31,11 @@ type SessionService = ManageEditSessionService<
     FlowProjectRedisDataManager,
 >;
 
+const DEFAULT_REDIS_URL: &str = "redis://localhost:6379/0";
+const CHANNEL_BUFFER_SIZE: usize = 32;
+#[cfg(feature = "local-storage")]
+const DEFAULT_LOCAL_STORAGE_PATH: &str = "./local_storage";
+
 #[derive(Clone)]
 pub struct AppState {
     pub rooms: Arc<Mutex<HashMap<String, Room>>>,
@@ -44,7 +49,7 @@ pub struct AppState {
 impl AppState {
     pub async fn new(redis_url: Option<String>) -> Result<Self, WsError> {
         let redis_url = redis_url.unwrap_or_else(|| {
-            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string())
+            std::env::var("REDIS_URL").unwrap_or_else(|_| DEFAULT_REDIS_URL.to_string())
         });
 
         // Initialize Redis connection pool
@@ -54,7 +59,8 @@ impl AppState {
         // Initialize storage based on feature
         #[cfg(feature = "local-storage")]
         #[allow(unused_variables)]
-        let storage = Arc::new(ProjectStorageRepository::new("./local_storage".into()).await?);
+        let storage =
+            Arc::new(ProjectStorageRepository::new(DEFAULT_LOCAL_STORAGE_PATH.into()).await?);
 
         #[cfg(feature = "gcs-storage")]
         #[cfg(not(feature = "local-storage"))]
@@ -76,12 +82,12 @@ impl AppState {
             Arc::new(redis_data_manager),
         ));
 
-        let (tx, rx) = mpsc::channel(32);
+        let (tx, rx) = mpsc::channel(CHANNEL_BUFFER_SIZE);
 
         let service_clone = service.clone();
         tokio::spawn(async move {
             if let Err(e) = service_clone.process(rx).await {
-                error!("Service processing error: {:?}", e);
+                error!("Service processing error: {}", e);
             }
         });
 
@@ -95,13 +101,20 @@ impl AppState {
         })
     }
 
-    // Room related methods
+    /// Creates a new room with the given ID.
+    ///
+    /// # Errors
+    /// Returns `TryLockError` if the rooms mutex is poisoned or locked.
     pub fn make_room(&self, room_id: String) -> Result<(), tokio::sync::TryLockError> {
         let mut rooms = self.rooms.try_lock()?;
         rooms.insert(room_id, Room::new());
         Ok(())
     }
 
+    /// Deletes a room with the given ID.
+    ///
+    /// # Errors
+    /// Returns `TryLockError` if the rooms mutex is poisoned or locked.
     pub fn delete_room(&self, id: String) -> Result<(), tokio::sync::TryLockError> {
         let mut rooms = self.rooms.try_lock()?;
         rooms.remove(&id);

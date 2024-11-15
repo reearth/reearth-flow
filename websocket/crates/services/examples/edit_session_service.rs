@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let redis_url =
         std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string());
     // let redis_url =
-    //     std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://:123@localhost:6379/0".to_string());
+    //     std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://:my_redis_password@localhost:6379/0".to_string());
 
     // Initialize Redis connection pool
     let manager = RedisConnectionManager::new(&*redis_url)?;
