@@ -98,6 +98,8 @@ export default ({
         yWorkflows.push([newYWorkflow]);
         setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
         setOpenWorkflowIds((ids) => [...ids, workflowId]);
+
+        handleWorkflowIdChange(workflowId);
       }),
     [
       yWorkflows,
@@ -105,6 +107,7 @@ export default ({
       setOpenWorkflowIds,
       setWorkflows,
       handleWorkflowOpen,
+      handleWorkflowIdChange,
     ],
   );
 
