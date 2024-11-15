@@ -70,7 +70,15 @@ impl Default for Geometry {
 }
 
 impl Geometry {
-    pub fn new(epsg: EpsgCode, value: GeometryValue) -> Self {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        matches!(self.value, GeometryValue::None)
+    }
+
+    pub fn new_with(epsg: EpsgCode, value: GeometryValue) -> Self {
         Self {
             epsg: Some(epsg),
             value,

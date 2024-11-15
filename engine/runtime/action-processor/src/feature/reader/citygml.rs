@@ -14,7 +14,9 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder, executor_operation::ExecutorContext, node::DEFAULT_PORT,
 };
-use reearth_flow_types::{geometry::Geometry, Attribute, AttributeValue, Feature};
+use reearth_flow_types::{
+    geometry::Geometry, metadata::Metadata, Attribute, AttributeValue, Feature,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -168,6 +170,10 @@ fn parse_tree_reader<R: BufRead>(
             ),
         ]);
         attributes.extend(ctx.feature.attributes.clone());
+        let metadata = Metadata {
+            feature_id: entity.root.id().map(|id| id.to_string()),
+            feature_type: entity.root.typename().map(|name| name.to_string()),
+        };
         let entities = if flatten {
             FlattenTreeTransform::transform(entity)
         } else {
@@ -186,6 +192,7 @@ fn parse_tree_reader<R: BufRead>(
             })?;
             let mut feature: Feature = geometry.into();
             feature.extend(attributes.clone());
+            feature.metadata = metadata.clone();
             fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         }
     }

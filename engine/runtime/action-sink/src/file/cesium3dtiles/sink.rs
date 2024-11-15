@@ -157,27 +157,26 @@ impl Sink for Cesium3DTilesWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let Some(geometry) = ctx.feature.geometry.as_ref() else {
+        let geometry = &ctx.feature.geometry;
+        if geometry.is_empty() {
             return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
         };
-        let geometry_value = geometry.value.clone();
-        let feature = ctx.feature;
-        match geometry_value {
-            geometry_types::GeometryValue::CityGmlGeometry(_) => {
-                let output = self.params.output.clone();
-                let scope = feature.new_scope(ctx.expr_engine.clone());
-                let path = scope
-                    .eval_ast::<String>(&output)
-                    .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
-                let output = Uri::from_str(path.as_str())?;
-                let buffer = self.buffer.entry(output).or_default();
-                buffer.push(feature);
-            }
-            _ => {
-                return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
-            }
+        let geometry_value = &geometry.value;
+        if !matches!(
+            geometry_value,
+            geometry_types::GeometryValue::CityGmlGeometry(_)
+        ) {
+            return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
         }
-
+        let feature = ctx.feature;
+        let output = self.params.output.clone();
+        let scope = feature.new_scope(ctx.expr_engine.clone());
+        let path = scope
+            .eval_ast::<String>(&output)
+            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
+        let output = Uri::from_str(path.as_str())?;
+        let buffer = self.buffer.entry(output).or_default();
+        buffer.push(feature);
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {

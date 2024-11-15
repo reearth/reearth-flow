@@ -105,7 +105,8 @@ impl Processor for OrientationExtractor {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             let mut feature = feature.clone();
             feature.attributes.insert(
                 self.output_attribute.clone(),

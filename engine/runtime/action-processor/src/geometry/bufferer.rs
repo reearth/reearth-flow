@@ -98,7 +98,8 @@ impl Processor for Bufferer {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
             return Ok(());
         };
@@ -147,7 +148,7 @@ impl Bufferer {
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                         line_string.to_polygon(self.distance, self.interpolation_angle),
                     ));
-                    feature.geometry = Some(geometry);
+                    feature.geometry = geometry;
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 Geometry2D::Polygon(polygon) => {
@@ -156,7 +157,7 @@ impl Bufferer {
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                         polygon.to_polygon(self.distance, self.interpolation_angle),
                     ));
-                    feature.geometry = Some(geometry);
+                    feature.geometry = geometry;
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 _ => {
@@ -183,7 +184,7 @@ impl Bufferer {
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                         line_string.to_polygon(self.distance, self.interpolation_angle),
                     ));
-                    feature.geometry = Some(geometry);
+                    feature.geometry = geometry;
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 Geometry3D::Polygon(polygon) => {
@@ -193,7 +194,7 @@ impl Bufferer {
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
                         polygon.to_polygon(self.distance, self.interpolation_angle),
                     ));
-                    feature.geometry = Some(geometry);
+                    feature.geometry = geometry;
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
                 _ => {
@@ -201,7 +202,7 @@ impl Bufferer {
                     let mut geometry = geometry.clone();
                     geometry.value = GeometryValue::FlowGeometry2D(value);
                     let mut feature = feature.clone();
-                    feature.geometry = Some(geometry);
+                    feature.geometry = geometry;
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
             },

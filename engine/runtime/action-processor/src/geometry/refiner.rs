@@ -72,11 +72,12 @@ impl Processor for Refiner {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = feature.geometry.clone();
-        let geometry_value = geometry.clone().unwrap().value.clone();
+        let geometry_value = geometry.value.clone();
 
-        let gc = geometry.clone().unwrap();
+        let gc = geometry.clone();
         let geom_epsg = gc.epsg;
         let attributes = feature.attributes.clone();
+        let metadata = feature.metadata.clone();
 
         fw.send(ctx.new_with_feature_and_port(feature.clone(), REMAIN_PORT.clone()));
 
@@ -90,10 +91,11 @@ impl Processor for Refiner {
                 for geo in geometries {
                     let feature = Feature {
                         id: Uuid::new_v4(),
-                        geometry: Some(TypeGeometry {
+                        geometry: TypeGeometry {
                             epsg: geom_epsg,
                             value: GeometryValue::FlowGeometry2D(geo),
-                        }),
+                        },
+                        metadata: metadata.clone(),
                         attributes: attributes.clone(),
                     };
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -104,10 +106,11 @@ impl Processor for Refiner {
                 for geo in geometries {
                     let feature = Feature {
                         id: Uuid::new_v4(),
-                        geometry: Some(TypeGeometry {
+                        geometry: TypeGeometry {
                             epsg: geom_epsg,
                             value: GeometryValue::FlowGeometry3D(geo),
-                        }),
+                        },
+                        metadata: metadata.clone(),
                         attributes: attributes.clone(),
                     };
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));

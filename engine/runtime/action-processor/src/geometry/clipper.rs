@@ -82,7 +82,8 @@ impl Processor for Clipper {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
         };
@@ -116,8 +117,7 @@ impl Processor for Clipper {
         let clip_regions2d = self
             .clippers
             .iter()
-            .filter_map(|clip| clip.geometry.as_ref().map(|g| g.value.clone()))
-            .filter_map(|g| match g {
+            .filter_map(|g| match &g.geometry.value {
                 GeometryValue::FlowGeometry2D(geos) => Some(geos),
                 _ => None,
             })
@@ -132,8 +132,7 @@ impl Processor for Clipper {
         let clip_regions3d = self
             .clippers
             .iter()
-            .filter_map(|clip| clip.geometry.as_ref().map(|g| g.value.clone()))
-            .filter_map(|g| match g {
+            .filter_map(|g| match &g.geometry.value {
                 GeometryValue::FlowGeometry3D(geos) => Some(geos),
                 _ => None,
             })
@@ -163,24 +162,24 @@ impl Processor for Clipper {
             return Ok(());
         }
         for candidate in &self.candidates {
-            let geometry = candidate.geometry.as_ref().map(|g| g.value.clone());
+            let geometry = candidate.geometry.value.clone();
             match geometry {
-                Some(GeometryValue::FlowGeometry2D(geos)) => {
+                GeometryValue::FlowGeometry2D(geos) => {
                     handle_2d_geometry(
                         &geos,
                         &clip_regions2d,
                         candidate,
-                        candidate.geometry.as_ref().unwrap(),
+                        &candidate.geometry,
                         &ctx,
                         fw,
                     );
                 }
-                Some(GeometryValue::FlowGeometry3D(geos)) => {
+                GeometryValue::FlowGeometry3D(geos) => {
                     handle_3d_geometry(
                         &geos,
                         &clip_regions3d,
                         candidate,
-                        candidate.geometry.as_ref().unwrap(),
+                        &candidate.geometry,
                         &ctx,
                         fw,
                     );
@@ -246,7 +245,7 @@ fn forward_polygon2d(
         let mut feature = feature.clone();
         let mut geometry = geometry.clone();
         geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(inside.clone()));
-        feature.geometry = Some(geometry);
+        feature.geometry = geometry;
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
             ctx,
             feature,
@@ -257,7 +256,7 @@ fn forward_polygon2d(
         let mut feature = feature.clone();
         let mut geometry = geometry.clone();
         geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(outside.clone()));
-        feature.geometry = Some(geometry);
+        feature.geometry = geometry;
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
             ctx,
             feature,
@@ -310,7 +309,7 @@ fn forward_polygon3d(
         let mut feature = feature.clone();
         let mut geometry = geometry.clone();
         geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::Polygon(inside.clone()));
-        feature.geometry = Some(geometry);
+        feature.geometry = geometry;
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
             ctx,
             feature,
@@ -321,7 +320,7 @@ fn forward_polygon3d(
         let mut feature = feature.clone();
         let mut geometry = geometry.clone();
         geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::Polygon(outside.clone()));
-        feature.geometry = Some(geometry);
+        feature.geometry = geometry;
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
             ctx,
             feature,
