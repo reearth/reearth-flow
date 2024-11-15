@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction, useCallback } from "react";
-import { Array as YArray, Text as YText } from "yjs";
+import { Array as YArray } from "yjs";
 
 import type { Node } from "@flow/types";
 import { randomID } from "@flow/utils";
@@ -146,31 +146,20 @@ export default ({
         // Update local state
         setWorkflows((w) => w.map((w) => (w.id === id ? { ...w, name } : w)));
 
-        const workflowIndex = workflows.findIndex((w) => w.id === id);
-
-        // Update Yjs shared data
-        const workflow = yWorkflows.get(workflowIndex);
-        if (!workflow) {
-          throw new Error("Workflow not found");
-        }
-        workflow.set("name", new YText(name));
-
         // Update subworkflow node in main workflow if this is a subworkflow
         const mainWorkflow = yWorkflows.get(0);
         const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray;
 
-        mainWorkflowNodes?.forEach((node, index) => {
+        for (const node of mainWorkflowNodes) {
           if (node.id === id) {
-            const updatedNode = {
-              ...node,
-              data: { ...node.data, name },
+            node.data = {
+              ...node.data,
+              name,
             };
-            mainWorkflowNodes.delete(index);
-            mainWorkflowNodes.insert(index, [updatedNode]);
           }
-        });
+        }
       }),
-    [undoTrackerActionWrapper, yWorkflows, workflows, setWorkflows],
+    [undoTrackerActionWrapper, yWorkflows, setWorkflows],
   );
 
   return {
