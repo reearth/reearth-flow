@@ -74,23 +74,43 @@ graphs:
           reprojectorType: jgd2011ToWgs84
 
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        name: AttributeMapperBldg
+        name: AttributeManagerCreateValid
         type: action
-        action: AttributeMapper
+        action: AttributeManager
         with:
-          mappers:
-            - attribute: id
-              valueAttribute: gmlId
-            - attribute: meshcode
-              valueAttribute: meshCode
-            - attribute: city_code
-              valueAttribute: cityCode
-            - attribute: city_name
-              valueAttribute: cityName
-            - attribute: feature_type
-              valueAttribute: gmlName
+          operations:
+          - attribute: gmlId
+            method: rename
+            value: id
+          - attribute: cityGmlPath
+            method: remove
+          - attribute: package
+            method: remove
+          - attribute: gmlName
+            method: rename
+            value: featureType
+          - attribute: cityName
+            method: remove
+          - attribute: geometryName
+            method: remove
+          - attribute: featureParentId
+            method: remove
+          - attribute: root
+            method: remove
+          - attribute: type
+            method: remove
+          - attribute: udxDirs
+            method: remove
+          - attribute: cityCode
+            method: remove
+          - attribute: meshCode
+            method: remove
+          - attribute: gmlRootId
+            method: remove
+          - attribute: featureId
+            method: remove
 
-      - id: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
+      - id: 41d69f1f-2a4d-4bc1-a5d0-175698273571
         name: cesium3DTilesWriter
         type: action
         action: Cesium3DTilesWriter
@@ -99,7 +119,7 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-            env.get("outputPath")
+             file::join_path(env.get("outputPath"), "bldg_lod")
 
     edges:
       - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
@@ -122,18 +142,18 @@ graphs:
         to: 1bd42875-4b8c-4439-82dc-9554d9946b07
         fromPort: default
         toPort: default
-      - id: 7aaeca77-6dce-427c-a84d-374f42c6c2ea
+      - id: d4c1c8a9-00a6-49c1-9735-db62a736932b
         from: 1bd42875-4b8c-4439-82dc-9554d9946b07
         to: 928e21d9-fc30-4876-ba03-41338cfa47ed
         fromPort: default
         toPort: default
-      - id: d4c1c8a9-00a6-49c1-9735-db62a736932b
+      - id: 8ca2968d-b44f-42dd-befa-86134bd9b030
         from: 928e21d9-fc30-4876-ba03-41338cfa47ed
         to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         fromPort: default
         toPort: default
-      - id: 8ca2968d-b44f-42dd-befa-86134bd9b030
+      - id: 1c7273e8-f529-4233-a9ef-34ee68c6d586
         from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        to: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
+        to: 41d69f1f-2a4d-4bc1-a5d0-175698273571
         fromPort: default
         toPort: default

@@ -149,6 +149,7 @@ pub fn slice_to_tiles<E>(
                                                 .attributes
                                                 .clone()
                                                 .into_iter()
+                                                .filter(|(_, v)| v.convertible_nusamai_type_ref())
                                                 .map(|(k, v)| (k.to_string(), v.clone()))
                                                 .collect(),
                                             polygon_material_ids: Default::default(),
