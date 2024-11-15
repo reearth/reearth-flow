@@ -14,7 +14,6 @@ type Props = {
   }[];
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
-  onWorkflowAdd: () => void;
   onWorkflowRename: (id: string, name: string) => void;
 };
 
