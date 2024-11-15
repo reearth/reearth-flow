@@ -60,7 +60,8 @@ impl Processor for TwoDimensionForcer {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
             return Ok(());
         };
@@ -76,7 +77,7 @@ impl Processor for TwoDimensionForcer {
                 let mut geometry = geometry.clone();
                 geometry.value = GeometryValue::FlowGeometry2D(value);
                 let mut feature = feature.clone();
-                feature.geometry = Some(geometry);
+                feature.geometry = geometry;
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             GeometryValue::CityGmlGeometry(gml) => {
@@ -84,7 +85,7 @@ impl Processor for TwoDimensionForcer {
                 let mut geometry = geometry.clone();
                 geometry.value = GeometryValue::FlowGeometry2D(value);
                 let mut feature = feature.clone();
-                feature.geometry = Some(geometry);
+                feature.geometry = geometry;
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
         }

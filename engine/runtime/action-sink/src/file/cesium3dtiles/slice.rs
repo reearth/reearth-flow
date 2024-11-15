@@ -31,14 +31,9 @@ pub fn slice_to_tiles<E>(
     attach_texture: bool,
     send_feature: impl Fn(TileZXYName, SlicedFeature) -> Result<(), E>,
 ) -> Result<(), E> {
-    let Some(city_gml) = feature
-        .geometry
-        .as_ref()
-        .and_then(|g| g.value.as_citygml_geometry())
-    else {
+    let Some(city_gml) = feature.geometry.value.as_citygml_geometry() else {
         return Ok(());
     };
-
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
 
     let slicing_enabled = true;

@@ -12,7 +12,9 @@ use quick_xml::NsReader;
 use reearth_flow_common::{str::to_hash, uri::Uri};
 use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{geometry::Geometry, Attribute, AttributeValue, Feature};
+use reearth_flow_types::{
+    geometry::Geometry, metadata::Metadata, Attribute, AttributeValue, Feature,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
@@ -153,7 +155,10 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                 AttributeValue::String(format!("root_{}", to_hash(base_url.as_str()))),
             ),
         ]);
-
+        let metadata = Metadata {
+            feature_id: entity.root.id().map(|id| id.to_string()),
+            feature_type: entity.root.typename().map(|name| name.to_string()),
+        };
         let entities = if flatten {
             FlattenTreeTransform::transform(entity)
         } else {
@@ -167,6 +172,7 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
                 .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
             let mut feature: Feature = geometry.into();
             feature.extend(attributes.clone());
+            feature.metadata = metadata.clone();
             sender
                 .send((
                     DEFAULT_PORT.clone(),

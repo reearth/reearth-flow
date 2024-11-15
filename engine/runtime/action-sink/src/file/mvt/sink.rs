@@ -138,13 +138,15 @@ impl Sink for MVTWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let feature = ctx.feature;
-        let Some(geometry) = feature.geometry.as_ref() else {
+        let geometry = &ctx.feature.geometry;
+        if geometry.is_empty() {
             return Err(Box::new(SinkError::MvtWriter(
                 "Unsupported input".to_string(),
             )));
         };
-        match geometry.value {
+
+        let feature = ctx.feature;
+        match feature.geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_) => {
                 let output = self.params.output.clone();
                 let scope = feature.new_scope(ctx.expr_engine.clone());

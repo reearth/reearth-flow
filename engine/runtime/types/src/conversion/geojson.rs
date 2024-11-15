@@ -12,10 +12,10 @@ impl TryFrom<Feature> for Vec<geojson::Feature> {
 
     fn try_from(geom: Feature) -> Result<Self> {
         let properites = extract_properties(&geom.attributes);
-        let Some(geometry) = geom.geometry else {
+        if geom.geometry.is_empty() {
             return Err(Error::unsupported_feature("no geometry found"));
         };
-        let geojson_features = match geometry.value {
+        let geojson_features = match geom.geometry.value {
             GeometryValue::CityGmlGeometry(gml_geometry) => gml_geometry
                 .gml_geometries
                 .into_iter()

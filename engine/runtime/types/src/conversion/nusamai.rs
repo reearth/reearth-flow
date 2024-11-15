@@ -139,7 +139,7 @@ impl TryFrom<Entity> for Geometry {
             }
             geometry_entity.polygon_uvs = poly_uvs;
         }
-        Ok(Self::new(
+        Ok(Self::new_with(
             epsg,
             GeometryValue::CityGmlGeometry(geometry_entity),
         ))

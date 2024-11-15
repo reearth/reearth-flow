@@ -90,45 +90,43 @@ impl Processor for CityGmlGeometryLodFilter {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        if let Some(geometry) = &feature.geometry {
-            match &geometry.value {
-                GeometryValue::CityGmlGeometry(v) => {
-                    let mut feature = feature.clone();
-                    let mut geometry = geometry.clone();
-                    let mut geometry_value = v.clone();
-                    geometry_value.gml_geometries.retain(|g| {
-                        if let Some(lod) = g.lod {
-                            self.lods.contains(&lod)
-                        } else {
-                            false
-                        }
-                    });
-                    if geometry_value.gml_geometries.is_empty() {
-                        fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
-                        return Ok(());
+        match &feature.geometry.value {
+            GeometryValue::CityGmlGeometry(v) => {
+                let mut feature = feature.clone();
+                let mut geometry = feature.geometry.clone();
+                let mut geometry_value = v.clone();
+                geometry_value.gml_geometries.retain(|g| {
+                    if let Some(lod) = g.lod {
+                        self.lods.contains(&lod)
+                    } else {
+                        false
                     }
-                    geometry.value = GeometryValue::CityGmlGeometry(geometry_value);
-                    feature.geometry = Some(geometry);
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                });
+                if geometry_value.gml_geometries.is_empty() {
+                    fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
+                    return Ok(());
                 }
-                GeometryValue::FlowGeometry2D(_) => {
-                    return Err(GeometryProcessorError::CityGmlGeometryLodFilter(
-                        "FlowGeometry2D is not supported".to_string(),
-                    )
-                    .into());
-                }
-                GeometryValue::FlowGeometry3D(_) => {
-                    return Err(GeometryProcessorError::CityGmlGeometryLodFilter(
-                        "FlowGeometry3D is not supported".to_string(),
-                    )
-                    .into());
-                }
-                GeometryValue::None => {
-                    return Err(GeometryProcessorError::CityGmlGeometryLodFilter(
-                        "GeometryValue is None".to_string(),
-                    )
-                    .into());
-                }
+                geometry.value = GeometryValue::CityGmlGeometry(geometry_value);
+                feature.geometry = geometry;
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            }
+            GeometryValue::FlowGeometry2D(_) => {
+                return Err(GeometryProcessorError::CityGmlGeometryLodFilter(
+                    "FlowGeometry2D is not supported".to_string(),
+                )
+                .into());
+            }
+            GeometryValue::FlowGeometry3D(_) => {
+                return Err(GeometryProcessorError::CityGmlGeometryLodFilter(
+                    "FlowGeometry3D is not supported".to_string(),
+                )
+                .into());
+            }
+            GeometryValue::None => {
+                return Err(GeometryProcessorError::CityGmlGeometryLodFilter(
+                    "GeometryValue is None".to_string(),
+                )
+                .into());
             }
         }
         Ok(())

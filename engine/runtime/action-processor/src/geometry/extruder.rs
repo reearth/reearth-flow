@@ -112,7 +112,8 @@ impl Processor for Extruder {
             )
             .into());
         };
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             return Err(GeometryProcessorError::Extruder("Missing geometry".to_string()).into());
         };
         let geometry = geometry.clone();
@@ -128,7 +129,7 @@ impl Processor for Extruder {
             ..geometry
         };
         let mut feature = feature.clone();
-        feature.geometry = Some(geometry);
+        feature.geometry = geometry;
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }

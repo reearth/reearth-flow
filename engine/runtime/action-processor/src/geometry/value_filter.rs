@@ -97,7 +97,8 @@ impl Processor for GeometryValueFilter {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), NONE_PORT.clone()));
             return Ok(());
         };
@@ -141,10 +142,7 @@ mod tests {
     #[test]
     fn test_filter_geometry_null() {
         let mut fw = MockProcessorChannelForwarder::default();
-        let feature = Feature {
-            geometry: None,
-            ..Default::default()
-        };
+        let feature = Feature::default();
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
         assert_eq!(fw.send_port, NONE_PORT.clone());
@@ -153,13 +151,7 @@ mod tests {
     #[test]
     fn test_filter_geometry_none() {
         let mut fw = MockProcessorChannelForwarder::default();
-        let feature = Feature {
-            geometry: Some(Geometry {
-                value: GeometryValue::None,
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
+        let feature = Feature::default();
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
         assert_eq!(fw.send_port, NONE_PORT.clone());
@@ -169,10 +161,10 @@ mod tests {
     fn test_filter_geometry_2d() {
         let mut fw = MockProcessorChannelForwarder::default();
         let feature = Feature {
-            geometry: Some(Geometry {
+            geometry: Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Default::default())),
                 ..Default::default()
-            }),
+            },
             ..Default::default()
         };
         let ctx = create_default_execute_context(&feature);
@@ -184,10 +176,10 @@ mod tests {
     fn test_filter_geometry_3d() {
         let mut fw = MockProcessorChannelForwarder::default();
         let feature = Feature {
-            geometry: Some(Geometry {
+            geometry: Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Default::default())),
                 ..Default::default()
-            }),
+            },
             ..Default::default()
         };
         let ctx = create_default_execute_context(&feature);
@@ -199,10 +191,10 @@ mod tests {
     fn test_filter_geometry_citygml() {
         let mut fw = MockProcessorChannelForwarder::default();
         let feature = Feature {
-            geometry: Some(Geometry {
+            geometry: Geometry {
                 value: GeometryValue::CityGmlGeometry(Default::default()),
                 ..Default::default()
-            }),
+            },
             ..Default::default()
         };
         let ctx = create_default_execute_context(&feature);

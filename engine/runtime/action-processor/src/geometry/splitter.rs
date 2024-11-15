@@ -60,9 +60,10 @@ impl Processor for GeometrySplitter {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             return Ok(());
-        };
+        }
         match &geometry.value {
             GeometryValue::CityGmlGeometry(city_gml_geometry) => {
                 if city_gml_geometry.gml_geometries.len() < 2 {

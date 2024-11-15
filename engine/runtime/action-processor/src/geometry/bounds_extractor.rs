@@ -99,7 +99,7 @@ impl Processor for BoundsExtractor {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = feature.geometry.clone();
-        let geometry_value = geometry.unwrap().value.clone();
+        let geometry_value = geometry.value.clone();
         let bounds = match geometry_value {
             GeometryValue::None => None,
             GeometryValue::CityGmlGeometry(city_gml) => Self::calc_city_gml(&city_gml),

@@ -27,7 +27,8 @@ pub(super) fn slice_cityobj_geoms(
 
     let extent = 1 << max_detail;
     let buffer = extent * buffer_pixels / 256;
-    let Some(geometry) = feature.geometry.as_ref() else {
+    let geometry = &feature.geometry;
+    if geometry.is_empty() {
         return Err(crate::errors::SinkError::MvtWriter(
             "Feature does not have geometry".to_string(),
         ));
