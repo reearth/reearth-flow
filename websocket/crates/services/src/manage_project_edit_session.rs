@@ -61,9 +61,9 @@ pub enum SessionCommand {
     ListAllSnapshotsVersions {
         project_id: String,
     },
-    PushUpdate {
+    MergeUpdates {
         project_id: String,
-        update: Vec<u8>,
+        data: Vec<u8>,
         updated_by: Option<String>,
     },
 }
@@ -121,9 +121,10 @@ where
                                 }
                             }
                         },
-                        SessionCommand::PushUpdate { project_id, update, updated_by } => {
-                            self.push_update(&project_id, update, updated_by).await?;
+                        SessionCommand::MergeUpdates { project_id, data, updated_by } => {
+                            self.project_service.merge_updates(&project_id, data, updated_by).await?;
                         },
+
                         SessionCommand::End { project_id, user } => {
                             if let Some(task_data) = self.get_task_data(&project_id).await {
                                 {
@@ -143,7 +144,7 @@ where
                                     debug!("Checking if job is complete for project: {}", project_id);
                                     match self.complete_job_if_met_requirements(&mut session).await {
                                         Ok(()) => {
-                                            debug!("Session ended by user: {} for project: {}", user.name, project_id);
+                                            debug!("Session ended by user: {} for project: {}", user.id, project_id);
                                             break;
                                         }
                                         Err(e) => {
@@ -165,7 +166,7 @@ where
                             if let Some(mut session) = self.get_latest_session(&project_id).await? {
                                 match self.complete_job_if_met_requirements(&mut session).await {
                                     Ok(()) => {
-                                        debug!("Job completed by user: {} for project: {}", user.name, project_id);
+                                        debug!("Job completed by user: {} for project: {}", user.id, project_id);
                                         break;
                                     }
                                     Err(e) => {
@@ -264,18 +265,6 @@ where
 
         sleep(JOB_COMPLETION_DELAY).await;
 
-        Ok(())
-    }
-
-    pub async fn push_update(
-        &self,
-        project_id: &str,
-        update: Vec<u8>,
-        updated_by: Option<String>,
-    ) -> Result<(), ProjectServiceError> {
-        self.project_service
-            .push_update_to_redis_stream(project_id, update, updated_by)
-            .await?;
         Ok(())
     }
 }

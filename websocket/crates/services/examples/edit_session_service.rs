@@ -33,6 +33,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let redis_url =
         std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string());
+    // let redis_url =
+    //     std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://:my_redis_password@localhost:6379/0".to_string());
 
     // Initialize Redis connection pool
     let manager = RedisConnectionManager::new(&*redis_url)?;
@@ -77,8 +79,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create test user
     let test_user = User {
         id: generate_id!("user"),
-        email: "test.user@example.com".to_string(),
-        name: "Test User".to_string(),
+        email: Some("test.user@example.com".to_string()),
+        name: Some("Test User".to_string()),
         tenant_id: generate_id!("tenant"),
     };
 
@@ -119,10 +121,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Push update with Y.js data
-    tx.send(SessionCommand::PushUpdate {
+    tx.send(SessionCommand::MergeUpdates {
         project_id: project_id.clone(),
-        update: yjs_update,
-        updated_by: Some(test_user.name.clone()),
+        data: yjs_update,
+        updated_by: Some(test_user.id.clone()),
     })
     .await?;
 
@@ -134,10 +136,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Push second update
-    tx.send(SessionCommand::PushUpdate {
+    tx.send(SessionCommand::MergeUpdates {
         project_id: project_id.clone(),
-        update: yjs_update2,
-        updated_by: Some(test_user.name.clone()),
+        data: yjs_update2,
+        updated_by: Some(test_user.id.clone()),
+    })
+    .await?;
+
+    // Check status again after merge
+    tx.send(SessionCommand::CheckStatus {
+        project_id: project_id.clone(),
     })
     .await?;
 

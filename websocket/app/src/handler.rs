@@ -35,9 +35,7 @@ struct FlowMessage {
 pub struct WebSocketQuery {
     token: String,
     user_id: String,
-    user_email: String,
-    user_name: String,
-    tenant_id: String,
+    project_id: Option<String>,
 }
 
 pub async fn handle_upgrade(
@@ -49,12 +47,7 @@ pub async fn handle_upgrade(
 ) -> impl IntoResponse {
     debug!("{:?}", query);
 
-    let user = User {
-        id: query.user_id.clone(),
-        email: query.user_email.clone(),
-        name: query.user_name.clone(),
-        tenant_id: query.tenant_id.clone(),
-    };
+    let user = User::new(query.user_id.clone(), None, None);
 
     ws.on_upgrade(move |socket| {
         handle_socket(
@@ -63,7 +56,7 @@ pub async fn handle_upgrade(
             query.token.to_string(),
             room_id,
             state,
-            None,
+            query.project_id.clone(),
             user,
         )
     })
@@ -78,21 +71,11 @@ async fn handle_socket(
     project_id: Option<String>,
     user: User,
 ) {
-    if socket.send(Message::Ping(vec![4])).await.is_ok() {
-        println!("pinned to {addr}");
-    } else {
-        println!("couldn't ping to {addr}");
+    if !verify_connection(&mut socket, &addr, &token).await {
         return;
     }
 
-    // TODO: authentication
-    if token != "nyaan" {
-        return;
-    }
-
-    debug!("{:?}", state.make_room(room_id.clone()));
-    if let Err(e) = state.join(&room_id, &user.id).await {
-        debug!("Failed to join room: {:?}", e);
+    if !initialize_room(&state, &room_id, &user).await {
         return;
     }
 
@@ -135,6 +118,31 @@ async fn handle_socket(
             println!("client {addr} disconnected");
         }
     }
+}
+
+async fn verify_connection(socket: &mut WebSocket, addr: &SocketAddr, token: &str) -> bool {
+    if socket.send(Message::Ping(vec![4])).await.is_err() || token != "nyaan" {
+        debug!("Connection failed for {addr}: ping failed or invalid token");
+        return false;
+    }
+    true
+}
+
+async fn initialize_room(state: &Arc<AppState>, room_id: &str, user: &User) -> bool {
+    match state.make_room(room_id.to_string()) {
+        Ok(_) => debug!("Room created/exists: {}", room_id),
+        Err(e) => {
+            debug!("Failed to create room: {:?}", e);
+            return false;
+        }
+    }
+
+    if let Err(e) = state.join(room_id, &user.id).await {
+        debug!("Failed to join room: {:?}", e);
+        return false;
+    }
+
+    true
 }
 
 async fn handle_message(
@@ -181,10 +189,10 @@ async fn handle_message(
             if let Some(project_id) = project_id {
                 state
                     .command_tx
-                    .send(SessionCommand::PushUpdate {
+                    .send(SessionCommand::MergeUpdates {
                         project_id,
-                        update: d,
-                        updated_by: Some(user.name.clone()),
+                        data: d,
+                        updated_by: Some(user.id.clone()),
                     })
                     .await?;
             }
