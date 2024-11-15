@@ -104,6 +104,31 @@ impl From<Feature> for AttributeValue {
     }
 }
 
+impl From<&Feature> for nusamai_citygml::schema::Schema {
+    fn from(v: &Feature) -> Self {
+        let mut schema = nusamai_citygml::schema::Schema::default();
+        let Some(feature_type) = v.feature_type() else {
+            return schema;
+        };
+        let mut attributes = nusamai_citygml::schema::Map::default();
+        for (k, v) in v
+            .attributes
+            .iter()
+            .filter(|(_, v)| v.convertible_nusamai_type_ref())
+        {
+            attributes.insert(k.to_string(), v.clone().into());
+        }
+        schema.types.insert(
+            feature_type,
+            nusamai_citygml::schema::TypeDef::Feature(nusamai_citygml::schema::FeatureTypeDef {
+                attributes,
+                additional_attributes: true,
+            }),
+        );
+        schema
+    }
+}
+
 impl From<Feature> for HashMap<String, AttributeValue> {
     fn from(v: Feature) -> Self {
         v.attributes
@@ -325,5 +350,20 @@ impl Feature {
             }
         }
         keys
+    }
+
+    pub fn feature_id(&self) -> Option<String> {
+        self.get(&"gmlId")
+            .and_then(|v| v.as_string())
+            .or_else(|| self.get(&"gml_id").and_then(|v| v.as_string()))
+            .or_else(|| self.get(&"id").and_then(|v| v.as_string()))
+    }
+
+    pub fn feature_type(&self) -> Option<String> {
+        self.get(&"featureType")
+            .and_then(|v| v.as_string())
+            .or_else(|| self.get(&"feature_type").and_then(|v| v.as_string()))
+            .or_else(|| self.get(&"type").and_then(|v| v.as_string()))
+            .or_else(|| self.get(&"gmlName").and_then(|v| v.as_string()))
     }
 }
