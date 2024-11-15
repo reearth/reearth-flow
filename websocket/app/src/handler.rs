@@ -71,21 +71,11 @@ async fn handle_socket(
     project_id: Option<String>,
     user: User,
 ) {
-    if socket.send(Message::Ping(vec![4])).await.is_ok() {
-        println!("pinned to {addr}");
-    } else {
-        println!("couldn't ping to {addr}");
+    if !verify_connection(&mut socket, &addr, &token).await {
         return;
     }
 
-    // TODO: authentication
-    if token != "nyaan" {
-        return;
-    }
-
-    debug!("{:?}", state.make_room(room_id.clone()));
-    if let Err(e) = state.join(&room_id, &user.id).await {
-        debug!("Failed to join room: {:?}", e);
+    if !initialize_room(&state, &room_id, &user).await {
         return;
     }
 
@@ -128,6 +118,31 @@ async fn handle_socket(
             println!("client {addr} disconnected");
         }
     }
+}
+
+async fn verify_connection(socket: &mut WebSocket, addr: &SocketAddr, token: &str) -> bool {
+    if socket.send(Message::Ping(vec![4])).await.is_err() || token != "nyaan" {
+        debug!("Connection failed for {addr}: ping failed or invalid token");
+        return false;
+    }
+    true
+}
+
+async fn initialize_room(state: &Arc<AppState>, room_id: &str, user: &User) -> bool {
+    match state.make_room(room_id.to_string()) {
+        Ok(_) => debug!("Room created/exists: {}", room_id),
+        Err(e) => {
+            debug!("Failed to create room: {:?}", e);
+            return false;
+        }
+    }
+
+    if let Err(e) = state.join(room_id, &user.id).await {
+        debug!("Failed to join room: {:?}", e);
+        return false;
+    }
+
+    true
 }
 
 async fn handle_message(
