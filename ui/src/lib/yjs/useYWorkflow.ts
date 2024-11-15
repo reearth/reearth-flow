@@ -1,3 +1,4 @@
+import { XYPosition } from "@xyflow/react";
 import { Dispatch, SetStateAction, useCallback } from "react";
 import { Array as YArray } from "yjs";
 
@@ -38,7 +39,7 @@ export default ({
   const currentYWorkflow = yWorkflows.get(currentWorkflowIndex);
 
   const handleWorkflowAdd = useCallback(
-    () =>
+    (position?: XYPosition) =>
       undoTrackerActionWrapper(() => {
         const workflowId = yWorkflows.length.toString() + "-workflow";
         const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
@@ -78,7 +79,7 @@ export default ({
         const newSubworkflowNode: Node = {
           id: workflowId,
           type: "subworkflow",
-          position: { x: 600, y: 200 },
+          position: position ?? { x: 600, y: 200 },
           data: {
             name: workflowName,
             status: "idle",
@@ -97,6 +98,8 @@ export default ({
         yWorkflows.push([newYWorkflow]);
         setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
         setOpenWorkflowIds((ids) => [...ids, workflowId]);
+
+        handleWorkflowIdChange(workflowId);
       }),
     [
       yWorkflows,
@@ -104,6 +107,7 @@ export default ({
       setOpenWorkflowIds,
       setWorkflows,
       handleWorkflowOpen,
+      handleWorkflowIdChange,
     ],
   );
 

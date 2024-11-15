@@ -86,15 +86,19 @@ impl SinkFactory for MVTSinkFactory {
         };
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let expr_output = &params.output;
-        let template_ast = expr_engine
+        let output = expr_engine
             .compile(expr_output.as_ref())
+            .map_err(|e| SinkError::MvtWriterFactory(format!("{:?}", e)))?;
+        let expr_layer_name = &params.layer_name;
+        let layer_name = expr_engine
+            .compile(expr_layer_name.as_ref())
             .map_err(|e| SinkError::MvtWriterFactory(format!("{:?}", e)))?;
 
         let sink = MVTWriter {
             buffer: HashMap::new(),
             params: MVTWriterCompiledParam {
-                output: template_ast,
-                layer_name: params.layer_name,
+                output,
+                layer_name,
                 min_zoom: params.min_zoom,
                 max_zoom: params.max_zoom,
             },
@@ -103,17 +107,19 @@ impl SinkFactory for MVTSinkFactory {
     }
 }
 
+type BufferKey = (Uri, String);
+
 #[derive(Debug, Clone)]
 pub struct MVTWriter {
     pub(super) params: MVTWriterCompiledParam,
-    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
+    pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MVTWriterParam {
     pub(super) output: Expr,
-    pub(super) layer_name: String,
+    pub(super) layer_name: Expr,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
 }
@@ -121,7 +127,7 @@ pub struct MVTWriterParam {
 #[derive(Debug, Clone)]
 pub struct MVTWriterCompiledParam {
     pub(super) output: rhai::AST,
-    pub(super) layer_name: String,
+    pub(super) layer_name: rhai::AST,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
 }
@@ -132,13 +138,15 @@ impl Sink for MVTWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let feature = ctx.feature;
-        let Some(geometry) = feature.geometry.as_ref() else {
+        let geometry = &ctx.feature.geometry;
+        if geometry.is_empty() {
             return Err(Box::new(SinkError::MvtWriter(
                 "Unsupported input".to_string(),
             )));
         };
-        match geometry.value {
+
+        let feature = ctx.feature;
+        match feature.geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_) => {
                 let output = self.params.output.clone();
                 let scope = feature.new_scope(ctx.expr_engine.clone());
@@ -146,7 +154,10 @@ impl Sink for MVTWriter {
                     .eval_ast::<String>(&output)
                     .map_err(|e| SinkError::MvtWriter(format!("{:?}", e)))?;
                 let output = Uri::from_str(path.as_str())?;
-                let buffer = self.buffer.entry(output).or_default();
+                let layer_name = scope
+                    .eval_ast::<String>(&self.params.layer_name)
+                    .map_err(|e| SinkError::MvtWriter(format!("{:?}", e)))?;
+                let buffer = self.buffer.entry((output, layer_name)).or_default();
                 buffer.push(feature);
             }
             _ => {
@@ -159,8 +170,8 @@ impl Sink for MVTWriter {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        for (output, buffer) in &self.buffer {
-            self.write(ctx.as_context(), buffer, output)?;
+        for ((output, layer_name), buffer) in &self.buffer {
+            self.write(ctx.as_context(), buffer, output, layer_name)?;
         }
         Ok(())
     }
@@ -172,6 +183,7 @@ impl MVTWriter {
         ctx: Context,
         upstream: &[Feature],
         output: &Uri,
+        layer_name: &str,
     ) -> crate::errors::Result<()> {
         let tile_id_conv = TileIdMethod::Hilbert;
         std::thread::scope(|scope| {
@@ -182,7 +194,7 @@ impl MVTWriter {
                     upstream,
                     tile_id_conv,
                     sender_sliced,
-                    &self.params.layer_name,
+                    layer_name,
                     self.params.min_zoom,
                     self.params.max_zoom,
                 );

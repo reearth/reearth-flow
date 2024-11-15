@@ -149,21 +149,19 @@ impl Processor for ThreeDimensionRotator {
         let direction_x = scope.eval_ast::<f64>(&self.direction_x)?;
         let direction_y = scope.eval_ast::<f64>(&self.direction_y)?;
         let direction_z = scope.eval_ast::<f64>(&self.direction_z)?;
-        let geometry = match &feature.geometry {
-            Some(geometry) => match &geometry.value {
-                GeometryValue::FlowGeometry3D(geos) => {
-                    let rotate = geos.rotate_3d(
-                        angle_degree,
-                        Some(Point3D::new_(origin_x, origin_y, origin_z)),
-                        Point3D::new_(direction_x, direction_y, direction_z),
-                    );
-                    let mut geometry = geometry.clone();
-                    geometry.value = GeometryValue::FlowGeometry3D(rotate);
-                    Some(geometry)
-                }
-                _ => Some(geometry.clone()),
-            },
-            None => None,
+        let geometry = &feature.geometry;
+        let geometry = match &geometry.value {
+            GeometryValue::FlowGeometry3D(geos) => {
+                let rotate = geos.rotate_3d(
+                    angle_degree,
+                    Some(Point3D::new_(origin_x, origin_y, origin_z)),
+                    Point3D::new_(direction_x, direction_y, direction_z),
+                );
+                let mut geometry = geometry.clone();
+                geometry.value = GeometryValue::FlowGeometry3D(rotate);
+                geometry
+            }
+            _ => geometry.clone(),
         };
 
         let mut feature = ctx.feature.clone();

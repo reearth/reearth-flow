@@ -120,7 +120,8 @@ impl Processor for LineOnLineOverlayer {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
         };
@@ -229,16 +230,16 @@ impl LineOnLineOverlayer {
     ) {
         let mut line_features = HashMap::<Line2DFloat, LineFeature>::new();
         for feature in features.iter() {
-            let line_string = feature.geometry.as_ref().and_then(|g| {
-                g.value
-                    .as_flow_geometry_2d()
-                    .and_then(|g| g.as_line_string())
-            });
-            let multi_line_string = feature.geometry.as_ref().and_then(|g| {
-                g.value
-                    .as_flow_geometry_2d()
-                    .and_then(|g| g.as_multi_line_string())
-            });
+            let line_string = feature
+                .geometry
+                .value
+                .as_flow_geometry_2d()
+                .and_then(|g| g.as_line_string());
+            let multi_line_string = feature
+                .geometry
+                .value
+                .as_flow_geometry_2d()
+                .and_then(|g| g.as_multi_line_string());
             if line_string.is_none() && multi_line_string.is_none() {
                 continue;
             }
@@ -277,7 +278,7 @@ impl LineOnLineOverlayer {
                                             attributes.insert(k.clone(), v.clone());
                                         }
                                         let line_feature = LineFeature {
-                                            epsg: feature.geometry.as_ref().and_then(|g| g.epsg),
+                                            epsg: feature.geometry.epsg,
                                             attributes: HashMap::from([(feature.id, attributes)]),
                                             overlap: 1,
                                         };
@@ -299,12 +300,12 @@ impl LineOnLineOverlayer {
                     AttributeValue::Number(serde_json::Number::from(1)),
                 );
                 line_string_feature.refresh_id();
-                line_string_feature.geometry = Some(Geometry {
-                    epsg: feature.geometry.as_ref().and_then(|g| g.epsg),
+                line_string_feature.geometry = Geometry {
+                    epsg: feature.geometry.epsg,
                     value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(
                         line_string.clone(),
                     )),
-                });
+                };
                 fw.send(ExecutorContext::new_with_context_feature_and_port(
                     &ctx,
                     line_string_feature.clone(),
@@ -340,10 +341,10 @@ impl LineOnLineOverlayer {
                 let mut start_feature = feature.clone();
                 start_feature.refresh_id();
                 let start_point = line.0.start_point();
-                start_feature.geometry = Some(Geometry {
+                start_feature.geometry = Geometry {
                     epsg: line_feature.epsg,
                     value: GeometryValue::FlowGeometry2D(Geometry2D::Point(start_point)),
-                });
+                };
                 fw.send(ExecutorContext::new_with_context_feature_and_port(
                     &ctx,
                     start_feature,
@@ -352,10 +353,10 @@ impl LineOnLineOverlayer {
                 let mut end_feature = feature.clone();
                 end_feature.refresh_id();
                 let end_point = line.0.end_point();
-                end_feature.geometry = Some(Geometry {
+                end_feature.geometry = Geometry {
                     epsg: line_feature.epsg,
                     value: GeometryValue::FlowGeometry2D(Geometry2D::Point(end_point)),
-                });
+                };
                 fw.send(ExecutorContext::new_with_context_feature_and_port(
                     &ctx,
                     end_feature,
@@ -364,10 +365,10 @@ impl LineOnLineOverlayer {
             }
             let mut line_feat = feature.clone();
             line_feat.refresh_id();
-            line_feat.geometry = Some(Geometry {
+            line_feat.geometry = Geometry {
                 epsg: line_feature.epsg,
                 value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(line.0.into())),
-            });
+            };
             fw.send(ExecutorContext::new_with_context_feature_and_port(
                 &ctx,
                 line_feat,

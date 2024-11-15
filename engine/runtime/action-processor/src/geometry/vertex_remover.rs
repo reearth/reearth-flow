@@ -71,7 +71,8 @@ impl Processor for VertexRemover {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
         };
@@ -122,7 +123,7 @@ impl VertexRemover {
                 geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::LineString(
                     remove_redundant_vertices(&line_string, EPSILON),
                 ));
-                feature.geometry = Some(geometry);
+                feature.geometry = geometry;
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             Geometry2D::MultiLineString(mline_string) => {
@@ -135,7 +136,7 @@ impl VertexRemover {
                         .map(|line_string| remove_redundant_vertices(line_string, EPSILON))
                         .collect(),
                 ));
-                feature.geometry = Some(geometry);
+                feature.geometry = geometry;
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             _ => {
@@ -160,7 +161,7 @@ impl VertexRemover {
                 geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::LineString(
                     remove_redundant_vertices(&line_string, EPSILON),
                 ));
-                feature.geometry = Some(geometry);
+                feature.geometry = geometry;
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             Geometry3D::MultiLineString(mline_string) => {
@@ -173,7 +174,7 @@ impl VertexRemover {
                         .map(|line_string| remove_redundant_vertices(line_string, EPSILON))
                         .collect(),
                 ));
-                feature.geometry = Some(geometry);
+                feature.geometry = geometry;
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             _ => {

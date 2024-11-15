@@ -2009,7 +2009,7 @@ Writes features to a file
   ],
   "properties": {
     "layerName": {
-      "type": "string"
+      "$ref": "#/definitions/Expr"
     },
     "maxZoom": {
       "type": "integer",

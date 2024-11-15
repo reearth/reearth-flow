@@ -31,6 +31,7 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   canvasLock: boolean;
+  onWorkflowAdd: (position?: XYPosition) => void;
   onNodesUpdate: (newNodes: Node[]) => void;
   onNodeLocking: (nodeId: string) => void;
   onNodeHover: (e: MouseEvent, node?: Node) => void;
@@ -43,6 +44,7 @@ const Canvas: React.FC<Props> = ({
   canvasLock,
   nodes,
   edges,
+  onWorkflowAdd,
   onNodesUpdate,
   onNodeLocking,
   onNodeHover,
@@ -62,6 +64,7 @@ const Canvas: React.FC<Props> = ({
   } = useHooks({
     nodes,
     edges,
+    onWorkflowAdd,
     onNodesUpdate,
     onEdgesUpdate,
     onNodeLocking,

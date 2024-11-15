@@ -8,7 +8,6 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::Geometry;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -92,13 +91,9 @@ impl Processor for CoordinateSystemSetter {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let mut feature = feature.clone();
-        let mut geometry = if feature.geometry.is_some() {
-            feature.geometry.unwrap()
-        } else {
-            Geometry::default()
-        };
+        let mut geometry = feature.geometry;
         geometry.epsg = Some(self.epsg_code);
-        feature.geometry = Some(geometry);
+        feature.geometry = geometry;
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }

@@ -64,7 +64,8 @@ impl Processor for PlanarityFilter {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), NOT_PLANARITY_PORT.clone()));
             return Ok(());
         };
@@ -135,7 +136,7 @@ impl Processor for PlanarityFilter {
 
 #[cfg(test)]
 mod tests {
-    use reearth_flow_types::{Feature, Geometry};
+    use reearth_flow_types::Feature;
 
     use super::*;
     use crate::tests::utils::{create_default_execute_context, MockProcessorChannelForwarder};
@@ -145,10 +146,7 @@ mod tests {
         let mut processor = PlanarityFilter;
         let mut fw = MockProcessorChannelForwarder::default();
 
-        let feature = Feature {
-            geometry: Some(Geometry::default()),
-            ..Default::default()
-        };
+        let feature = Feature::default();
         let ctx = create_default_execute_context(&feature);
 
         processor.process(ctx, &mut fw).unwrap();

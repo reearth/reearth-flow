@@ -93,7 +93,8 @@ impl Processor for GeometryCoercer {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
             return Ok(());
         };
@@ -153,7 +154,7 @@ impl GeometryCoercer {
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry2D(geo);
-                        feature.geometry = Some(geometry);
+                        feature.geometry = geometry;
                     }
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -187,7 +188,7 @@ impl GeometryCoercer {
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry2D(geo);
-                        feature.geometry = Some(geometry);
+                        feature.geometry = geometry;
                     }
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -221,7 +222,7 @@ impl GeometryCoercer {
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry3D(geo);
-                        feature.geometry = Some(geometry);
+                        feature.geometry = geometry;
                     }
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -255,7 +256,7 @@ impl GeometryCoercer {
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry3D(geo);
-                        feature.geometry = Some(geometry);
+                        feature.geometry = geometry;
                     }
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -300,7 +301,7 @@ impl GeometryCoercer {
                     geometry.value = GeometryValue::FlowGeometry3D(geo);
                     let mut feature = feature.clone();
                     feature.refresh_id();
-                    feature.geometry = Some(geometry);
+                    feature.geometry = geometry;
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
             }

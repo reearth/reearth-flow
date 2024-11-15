@@ -1,7 +1,7 @@
-import { Plus, X } from "@phosphor-icons/react";
+import { X } from "@phosphor-icons/react";
 import { memo, useState } from "react";
 
-import { IconButton, Input } from "@flow/components";
+import { Input } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 import { Workflow } from "@flow/types";
@@ -22,7 +22,6 @@ const WorkflowTabs: React.FC<Props> = ({
   currentWorkflowId,
   openWorkflows,
   onWorkflowClose,
-  onWorkflowAdd,
   onWorkflowChange,
   onWorkflowRename,
 }) => {
@@ -114,14 +113,6 @@ const WorkflowTabs: React.FC<Props> = ({
                 />
               </div>
             ))}
-        </div>
-        <div className="flex items-center">
-          <IconButton
-            className="h-[25px]"
-            icon={<Plus weight="light" />}
-            tooltipText={t("Create new sub workflow")}
-            onClick={() => onWorkflowAdd()}
-          />
         </div>
       </div>
     </div>
