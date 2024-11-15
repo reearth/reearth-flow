@@ -88,7 +88,8 @@ const WorkflowTabs: React.FC<Props> = ({
               <div
                 className={`relative flex h-4/5 w-[135px] items-center justify-center rounded ${currentWorkflowId === sw?.id ? "bg-node-entrance/70 text-accent-foreground" : "hover:bg-node-entrance/30"} group cursor-pointer`}
                 onClick={() => onWorkflowChange(sw.id)}
-                onDoubleClick={() => handleDoubleClick(sw.id, sw.name)}>
+                onDoubleClick={() => handleDoubleClick(sw.id, sw.name)}
+                key={sw.id}>
                 {sw.id === editId ? (
                   <Input
                     value={name}
@@ -97,7 +98,7 @@ const WorkflowTabs: React.FC<Props> = ({
                       e.key === "Enter" && handleSubmit()
                     }
                     placeholder={t("Set Workflow name")}
-                    className="h-4 text-xs"
+                    className="h-4 border-none text-xs focus-visible:ring-0"
                     onBlur={handleSubmit}
                   />
                 ) : (
