@@ -1,7 +1,7 @@
 import { Logs } from "@flow/components/Logs";
 import { logData } from "@flow/mock_data/logsData";
 
-const LogConsole: React.FC = () => {
+const LogsConsole: React.FC = () => {
   const props = {
     columns: [
       {
@@ -28,4 +28,4 @@ const LogConsole: React.FC = () => {
   return <Logs {...props} />;
 };
 
-export { LogConsole };
+export { LogsConsole };

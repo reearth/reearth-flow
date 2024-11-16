@@ -1,5 +1,5 @@
-use crate::editing_session::ProjectEditingSession;
-use crate::project::Project;
+use crate::persistence::editing_session::ProjectEditingSession;
+use crate::types::project::Project;
 use crate::types::snapshot::ProjectSnapshot;
 use std::error::Error;
 
@@ -43,24 +43,15 @@ pub trait ProjectSnapshotImpl {
 #[async_trait::async_trait]
 pub trait RedisDataManagerImpl {
     type Error: Error + Send + Sync + 'static;
-
+    async fn get_current_state(&self, project_id: &str) -> Result<Option<Vec<u8>>, Self::Error>;
+    async fn get_state_updates_by(&self, project_id: &str) -> Result<Option<String>, Self::Error>;
     async fn create_session(&self, project_id: &str, session_id: &str) -> Result<(), Self::Error>;
     async fn merge_updates(
         &self,
         project_id: &str,
-        skip_lock: bool,
-    ) -> Result<(Vec<u8>, Vec<String>), Self::Error>;
-    async fn get_current_state(
-        &self,
-        project_id: &str,
-        session_id: Option<&str>,
-    ) -> Result<Option<Vec<u8>>, Self::Error>;
-    async fn push_update(
-        &self,
-        project_id: &str,
         update_data: Vec<u8>,
         updated_by: Option<String>,
-    ) -> Result<(), Self::Error>;
+    ) -> Result<(Vec<u8>, Vec<String>), Self::Error>;
     async fn clear_data(
         &self,
         project_id: &str,

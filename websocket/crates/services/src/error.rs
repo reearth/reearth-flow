@@ -1,5 +1,5 @@
 use chrono::OutOfRangeError;
-use flow_websocket_domain::editing_session::ProjectEditingSessionError;
+
 use flow_websocket_infra::persistence::{
     project_repository::ProjectRepositoryError, redis::errors::FlowProjectRedisDataManagerError,
 };
@@ -11,7 +11,9 @@ pub enum ProjectServiceError {
     Repository(#[from] ProjectRepositoryError),
 
     #[error(transparent)]
-    EditingSession(#[from] ProjectEditingSessionError),
+    EditingSession(
+        #[from] flow_websocket_infra::persistence::editing_session::ProjectEditingSessionError,
+    ),
 
     #[error(transparent)]
     FlowProjectRedisDataManager(#[from] FlowProjectRedisDataManagerError),

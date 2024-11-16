@@ -1,17 +1,38 @@
 use std::{collections::HashMap, fmt::Display, sync::Arc};
 
+use nutype::nutype;
 use reearth_flow_common::{str, xml::XmlXpathValue};
 use reearth_flow_eval_expr::{engine::Engine, scope::Scope};
 use serde::{Deserialize, Serialize};
 
 pub use crate::attribute::AttributeValue;
-use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry};
+use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry, metadata::Metadata};
+
+#[nutype(
+    sanitize(trim),
+    derive(
+        Debug,
+        Display,
+        Clone,
+        Eq,
+        PartialEq,
+        PartialOrd,
+        Ord,
+        AsRef,
+        Serialize,
+        Deserialize,
+        Hash,
+        JsonSchema
+    )
+)]
+pub struct MetadataKey(String);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feature {
     pub id: uuid::Uuid,
     pub attributes: HashMap<Attribute, AttributeValue>,
-    pub geometry: Option<Geometry>,
+    pub metadata: Metadata,
+    pub geometry: Geometry,
 }
 
 impl Default for Feature {
@@ -43,7 +64,8 @@ impl From<HashMap<String, AttributeValue>> for Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes,
-            geometry: None,
+            metadata: Default::default(),
+            geometry: Default::default(),
         }
     }
 }
@@ -53,7 +75,8 @@ impl From<HashMap<Attribute, AttributeValue>> for Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: v,
-            geometry: None,
+            metadata: Default::default(),
+            geometry: Default::default(),
         }
     }
 }
@@ -62,8 +85,9 @@ impl From<Geometry> for Feature {
     fn from(v: Geometry) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
+            geometry: v,
+            metadata: Default::default(),
             attributes: HashMap::new(),
-            geometry: Some(v),
         }
     }
 }
@@ -87,7 +111,8 @@ impl From<AttributeValue> for Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes,
-            geometry: None,
+            metadata: Default::default(),
+            geometry: Default::default(),
         }
     }
 }
@@ -101,6 +126,31 @@ impl From<Feature> for AttributeValue {
             .collect::<HashMap<_, _>>();
         attributes.insert("_id".to_string(), AttributeValue::String(v.id.to_string()));
         AttributeValue::Map(attributes)
+    }
+}
+
+impl From<&Feature> for nusamai_citygml::schema::Schema {
+    fn from(v: &Feature) -> Self {
+        let mut schema = nusamai_citygml::schema::Schema::default();
+        let Some(feature_type) = v.feature_type() else {
+            return schema;
+        };
+        let mut attributes = nusamai_citygml::schema::Map::default();
+        for (k, v) in v
+            .attributes
+            .iter()
+            .filter(|(_, v)| v.convertible_nusamai_type_ref())
+        {
+            attributes.insert(k.to_string(), v.clone().into());
+        }
+        schema.types.insert(
+            feature_type,
+            nusamai_citygml::schema::TypeDef::Feature(nusamai_citygml::schema::FeatureTypeDef {
+                attributes,
+                additional_attributes: true,
+            }),
+        );
+        schema
     }
 }
 
@@ -143,10 +193,16 @@ impl From<serde_json::Value> for Feature {
             .get("geometry")
             .cloned()
             .map(|v| serde_json::from_value(v).unwrap_or_default());
+
+        let metadata: Option<Metadata> = v
+            .get("metadata")
+            .cloned()
+            .map(|v| serde_json::from_value(v).unwrap_or_default());
         Self {
             id,
             attributes,
-            geometry,
+            geometry: geometry.unwrap_or_default(),
+            metadata: metadata.unwrap_or_default(),
         }
     }
 }
@@ -171,6 +227,10 @@ impl From<Feature> for serde_json::Value {
             "geometry".to_string(),
             serde_json::to_value(v.geometry).unwrap_or_default(),
         );
+        map.insert(
+            "metadata".to_string(),
+            serde_json::to_value(v.metadata).unwrap_or_default(),
+        );
         serde_json::Value::Object(map)
     }
 }
@@ -180,7 +240,8 @@ impl Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: HashMap::new(),
-            geometry: None,
+            metadata: Metadata::new(),
+            geometry: Geometry::new(),
         }
     }
 
@@ -191,7 +252,8 @@ impl Feature {
         Self {
             id,
             attributes,
-            geometry: None,
+            metadata: Default::default(),
+            geometry: Default::default(),
         }
     }
 
@@ -199,7 +261,8 @@ impl Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes,
-            geometry: None,
+            metadata: Default::default(),
+            geometry: Default::default(),
         }
     }
 
@@ -210,7 +273,8 @@ impl Feature {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes,
-            geometry: Some(geometry),
+            geometry,
+            metadata: Default::default(),
         }
     }
 
@@ -223,6 +287,7 @@ impl Feature {
             id: self.id,
             attributes,
             geometry: self.geometry.clone(),
+            metadata: self.metadata.clone(),
         }
     }
 
@@ -231,6 +296,7 @@ impl Feature {
             id: self.id,
             attributes,
             geometry: self.geometry,
+            metadata: self.metadata,
         }
     }
 
@@ -325,5 +391,13 @@ impl Feature {
             }
         }
         keys
+    }
+
+    pub fn feature_id(&self) -> Option<String> {
+        self.metadata.feature_id.clone()
+    }
+
+    pub fn feature_type(&self) -> Option<String> {
+        self.metadata.feature_type.clone()
     }
 }

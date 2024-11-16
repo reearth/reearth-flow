@@ -106,7 +106,7 @@ impl Processor for ThreeDimensionBoxReplacer {
             FlowGeometry3D::Polygon(rectangle.to_polygon()),
         ));
         let mut feature = ctx.feature.clone();
-        feature.geometry = Some(geometry);
+        feature.geometry = geometry;
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }

@@ -1,13 +1,13 @@
 use crate::error::ProjectServiceError;
-use flow_websocket_domain::editing_session::ProjectEditingSession;
-use flow_websocket_domain::project::{Action, Project, ProjectAllowedActions};
-use flow_websocket_domain::repository::{
-    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
-};
-use flow_websocket_domain::snapshot::ProjectSnapshot;
-use flow_websocket_domain::user::User;
+use flow_websocket_infra::persistence::editing_session::ProjectEditingSession;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
+use flow_websocket_infra::persistence::repository::{
+    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
+};
+use flow_websocket_infra::types::project::Project;
+use flow_websocket_infra::types::snapshot::ProjectSnapshot;
+use flow_websocket_infra::types::user::User;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -44,6 +44,18 @@ where
         project_id: &str,
     ) -> Result<Option<Project>, ProjectServiceError> {
         Ok(self.session_repository.get_project(project_id).await?)
+    }
+    /// Merge all updates in the stream
+    pub async fn merge_updates(
+        &self,
+        project_id: &str,
+        data: Vec<u8>,
+        updates_by: Option<String>,
+    ) -> Result<(), ProjectServiceError> {
+        self.redis_data_manager
+            .merge_updates(project_id, data, updates_by)
+            .await?;
+        Ok(())
     }
 
     pub async fn get_or_create_editing_session(
@@ -88,35 +100,6 @@ where
             .await?)
     }
 
-    pub async fn get_project_allowed_actions(
-        &self,
-        project_id: &str,
-        actions: Vec<String>,
-    ) -> Result<ProjectAllowedActions, ProjectServiceError> {
-        Ok(ProjectAllowedActions {
-            id: project_id.to_string(),
-            actions: actions
-                .into_iter()
-                .map(|action| Action {
-                    action,
-                    allowed: true,
-                })
-                .collect(),
-        })
-    }
-
-    pub async fn push_update_to_redis_stream(
-        &self,
-        project_id: &str,
-        update: Vec<u8>,
-        updated_by: Option<String>,
-    ) -> Result<(), ProjectServiceError> {
-        Ok(self
-            .redis_data_manager
-            .push_update(project_id, update, updated_by)
-            .await?)
-    }
-
     pub async fn end_session(
         &self,
         snapshot_name: String,
@@ -136,11 +119,10 @@ where
     pub async fn get_current_state(
         &self,
         project_id: &str,
-        session_id: Option<&str>,
     ) -> Result<Option<Vec<u8>>, ProjectServiceError> {
         Ok(self
             .redis_data_manager
-            .get_current_state(project_id, session_id)
+            .get_current_state(project_id)
             .await?)
     }
 

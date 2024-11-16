@@ -1,11 +1,15 @@
-use crate::errors::WsError;
-
 use super::room::Room;
-use flow_websocket_infra::persistence::project_repository::{
-    ProjectLocalRepository, ProjectRedisRepository,
-};
+use crate::errors::WsError;
+use bb8::Pool;
+use bb8_redis::RedisConnectionManager;
+use flow_websocket_infra::persistence::project_repository::ProjectRedisRepository;
 use flow_websocket_infra::persistence::redis::flow_project_redis_data_manager::FlowProjectRedisDataManager;
-use flow_websocket_infra::persistence::redis::redis_client::RedisClient as FlowRedisClient;
+#[cfg(feature = "gcs-storage")]
+#[allow(unused_imports)]
+use flow_websocket_infra::persistence::ProjectGcsRepository;
+#[cfg(feature = "local-storage")]
+#[allow(unused_imports)]
+use flow_websocket_infra::persistence::ProjectLocalRepository;
 use flow_websocket_services::manage_project_edit_session::ManageEditSessionService;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use std::collections::HashMap;
@@ -14,74 +18,103 @@ use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 use tracing::error;
 
+#[cfg(feature = "gcs-storage")]
+#[cfg(not(feature = "local-storage"))]
+pub type ProjectStorageRepository = ProjectGcsRepository;
+
+#[cfg(feature = "local-storage")]
+pub type ProjectStorageRepository = ProjectLocalRepository;
+
 type SessionService = ManageEditSessionService<
-    ProjectRedisRepository<FlowRedisClient>,
-    ProjectLocalRepository,
+    ProjectRedisRepository,
+    ProjectStorageRepository,
     FlowProjectRedisDataManager,
 >;
+
+const DEFAULT_REDIS_URL: &str = "redis://localhost:6379/0";
+const CHANNEL_BUFFER_SIZE: usize = 32;
+#[cfg(feature = "local-storage")]
+const DEFAULT_LOCAL_STORAGE_PATH: &str = "./local_storage";
 
 #[derive(Clone)]
 pub struct AppState {
     pub rooms: Arc<Mutex<HashMap<String, Room>>>,
-    pub redis_client: FlowRedisClient,
-    pub local_storage: Arc<ProjectLocalRepository>,
-    pub session_repo: Arc<ProjectRedisRepository<FlowRedisClient>>,
+    pub redis_pool: Pool<RedisConnectionManager>,
+    pub storage: Arc<ProjectStorageRepository>,
+    pub session_repo: Arc<ProjectRedisRepository>,
     pub service: Arc<SessionService>,
-    pub redis_url: String,
     pub command_tx: mpsc::Sender<SessionCommand>,
 }
 
 impl AppState {
     pub async fn new(redis_url: Option<String>) -> Result<Self, WsError> {
         let redis_url = redis_url.unwrap_or_else(|| {
-            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string())
+            std::env::var("REDIS_URL").unwrap_or_else(|_| DEFAULT_REDIS_URL.to_string())
         });
 
-        let redis_client = FlowRedisClient::new(&redis_url).await.unwrap();
-        let redis_client = Arc::new(redis_client);
+        // Initialize Redis connection pool
+        let manager = RedisConnectionManager::new(&*redis_url)?;
+        let redis_pool = Pool::builder().build(manager).await?;
 
-        let local_storage = Arc::new(
-            ProjectLocalRepository::new("./local_storage".into())
-                .await
-                .unwrap(),
-        );
-        let session_repo = Arc::new(ProjectRedisRepository::new(redis_client.clone()));
+        // Initialize storage based on feature
+        #[cfg(feature = "local-storage")]
+        #[allow(unused_variables)]
+        let storage =
+            Arc::new(ProjectStorageRepository::new(DEFAULT_LOCAL_STORAGE_PATH.into()).await?);
 
-        let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await.unwrap();
+        #[cfg(feature = "gcs-storage")]
+        #[cfg(not(feature = "local-storage"))]
+        let gcs_bucket =
+            std::env::var("GCS_BUCKET_NAME").expect("GCS_BUCKET_NAME must be provided");
+
+        #[cfg(feature = "gcs-storage")]
+        #[cfg(not(feature = "local-storage"))]
+        #[allow(unused_variables)]
+        let storage = Arc::new(ProjectStorageRepository::new(gcs_bucket).await?);
+
+        let session_repo = Arc::new(ProjectRedisRepository::new(redis_pool.clone()));
+
+        let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
         let service = Arc::new(ManageEditSessionService::new(
             session_repo.clone(),
-            local_storage.clone(),
+            storage.clone(),
             Arc::new(redis_data_manager),
         ));
 
-        let (tx, rx) = mpsc::channel(32);
+        let (tx, rx) = mpsc::channel(CHANNEL_BUFFER_SIZE);
 
         let service_clone = service.clone();
         tokio::spawn(async move {
             if let Err(e) = service_clone.process(rx).await {
-                error!("Service processing error: {:?}", e);
+                error!("Service processing error: {}", e);
             }
         });
 
         Ok(AppState {
             rooms: Arc::new(Mutex::new(HashMap::new())),
-            redis_client: Arc::try_unwrap(redis_client).unwrap_or_else(|arc| (*arc).clone()),
-            local_storage,
+            redis_pool,
+            storage,
             session_repo,
             service,
-            redis_url,
             command_tx: tx,
         })
     }
 
-    // Room related methods
+    /// Creates a new room with the given ID.
+    ///
+    /// # Errors
+    /// Returns `TryLockError` if the rooms mutex is poisoned or locked.
     pub fn make_room(&self, room_id: String) -> Result<(), tokio::sync::TryLockError> {
         let mut rooms = self.rooms.try_lock()?;
         rooms.insert(room_id, Room::new());
         Ok(())
     }
 
+    /// Deletes a room with the given ID.
+    ///
+    /// # Errors
+    /// Returns `TryLockError` if the rooms mutex is poisoned or locked.
     pub fn delete_room(&self, id: String) -> Result<(), tokio::sync::TryLockError> {
         let mut rooms = self.rooms.try_lock()?;
         rooms.remove(&id);

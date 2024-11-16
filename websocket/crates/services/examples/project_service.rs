@@ -1,185 +1,181 @@
-// use flow_websocket_domain::generate_id;
-// use flow_websocket_domain::repository::RedisDataManagerImpl;
-// use flow_websocket_infra::persistence::{
-//     project_repository::{ProjectLocalRepository, ProjectRedisRepository},
-//     redis::{
-//         flow_project_redis_data_manager::FlowProjectRedisDataManager, redis_client::RedisClient,
-//     },
-// };
-// use flow_websocket_services::project::ProjectService;
-// use std::sync::Arc;
-// use tracing::{debug, error, info, instrument, trace, warn};
+use bb8::Pool;
+use bb8_redis::RedisConnectionManager;
 
-// /// # Project Service Example
-// ///
-// /// This example demonstrates the usage of `ProjectService` to handle
-// /// project-related operations.
-// ///
-// /// ## Overview
-// ///
-// /// The example performs the following steps:
-// ///
-// /// 1. Initializes the necessary components (Redis client, local storage, etc.)
-// /// 2. Creates a `ProjectService` instance
-// /// 3. Simulates various project-related operations
-// ///
-// /// ## Usage
-// ///
-// /// To run this example with different log levels, use:
-// ///
-// /// ```shell
-// /// RUST_LOG=info cargo run --example project_service
-// /// RUST_LOG=debug,websocket=trace cargo run --example project_service
-// /// RUST_LOG=trace cargo run --example project_service
-// /// ```
-// #[tokio::main]
-// #[instrument]
-// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//     // Initialize tracing
-//     tracing_subscriber::fmt()
-//         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-//         .init();
+#[cfg(feature = "gcs-storage")]
+use flow_websocket_infra::persistence::ProjectGcsRepository;
+#[cfg(feature = "local-storage")]
+use flow_websocket_infra::persistence::ProjectLocalRepository;
 
-//     info!("Starting project service example");
-//     debug!("Initializing components...");
+use flow_websocket_infra::{
+    persistence::{
+        project_repository::ProjectRedisRepository,
+        redis::flow_project_redis_data_manager::FlowProjectRedisDataManager,
+    },
+    types::user::User,
+};
+use flow_websocket_services::project::ProjectService;
+use std::sync::Arc;
+use tracing::{debug, info};
+use yrs::{updates::decoder::Decode, Doc, GetString, Text, Transact, Update};
 
-//     let redis_client = RedisClient::new("redis://localhost:6379").await?;
-//     trace!("Redis client created");
+///RUST_LOG=debug cargo run --example project_service
+/// RUST_LOG=debug cargo run --example project_service  --features local-storage
 
-//     let local_storage = ProjectLocalRepository::new("./local_storage".into()).await?;
-//     trace!("Local storage initialized");
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
 
-//     let session_repo = ProjectRedisRepository::<RedisClient>::new(Arc::new(redis_client.clone()));
-//     trace!("Session repository created");
+    info!("Starting project service example");
 
-//     let project_id = generate_id(14, "project");
-//     debug!(?project_id, "Project ID generated");
+    // Initialize Redis connection
+    let redis_url =
+        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string());
+    // let redis_url =
+    //     std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://:my_redis_password@localhost:6379/0".to_string());
+    let manager = RedisConnectionManager::new(&*redis_url)?;
+    let redis_pool = Pool::builder().build(manager).await?;
 
-//     let session_id = generate_id(14, "session");
-//     debug!(?session_id, "Session ID generated");
+    // Initialize repositories and managers based on feature
+    #[cfg(feature = "local-storage")]
+    #[allow(unused_variables)]
+    let storage = ProjectLocalRepository::new("./local_storage".into()).await?;
+    #[cfg(feature = "gcs-storage")]
+    #[allow(unused_variables)]
+    let storage = ProjectGcsRepository::new("your-gcs-bucket".to_string()).await?;
 
-//     let redis_data_manager = FlowProjectRedisDataManager::new(
-//         project_id.clone(),
-//         Some(session_id),
-//         Arc::new(redis_client.clone()),
-//     );
-//     trace!("Redis data manager initialized");
+    let session_repo = ProjectRedisRepository::new(redis_pool.clone());
+    let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
-//     let service = ProjectService::new(
-//         Arc::new(session_repo),
-//         Arc::new(local_storage),
-//         Arc::new(redis_data_manager),
-//     );
-//     debug!("ProjectService created");
+    // Create ProjectService instance
+    let service = ProjectService::new(
+        Arc::new(session_repo),
+        Arc::new(storage),
+        Arc::new(redis_data_manager),
+    );
 
-//     // Simulate project operations
-//     match simulate_project_operations(&service, &project_id).await {
-//         Ok(_) => info!("Project operations simulation completed successfully"),
-//         Err(e) => error!("Error during project operations simulation: {:?}", e),
-//     }
+    // Example project ID
+    let project_id = "test_project_123";
 
-//     info!("Project service example completed");
-//     Ok(())
-// }
+    // Create test users
+    let test_user1 = User {
+        id: "user_123".to_string(),
+        email: Some("test1@example.com".to_string()),
+        name: Some("Test User 1".to_string()),
+        tenant_id: "tenant_123".to_string(),
+    };
 
-// /// Simulates various project operations using the ProjectService
-// ///
-// /// This function demonstrates the following operations:
-// ///
-// /// 1. Creating a project
-// /// 2. Getting project details
-// /// 3. Creating and retrieving an editing session
-// /// 4. Getting project allowed actions
-// /// 5. Pushing an update to the project
-// /// 6. Getting the current project state
-// ///
-// #[instrument(skip(service))]
-// async fn simulate_project_operations(
-//     service: &ProjectService<
-//         ProjectRedisRepository<RedisClient>,
-//         ProjectLocalRepository,
-//         FlowProjectRedisDataManager,
-//     >,
-//     project_id: &str,
-// ) -> Result<(), Box<dyn std::error::Error>> {
-//     // Get project details (
-//     match service.get_project(project_id).await {
-//         Ok(retrieved_project) => info!(?retrieved_project, "Retrieved project details"),
-//         Err(e) => {
-//             error!("Failed to retrieve project: {:?}", e);
-//             return Err(Box::new(e));
-//         }
-//     }
+    let test_user2 = User {
+        id: "user_456".to_string(),
+        email: Some("test2@example.com".to_string()),
+        name: Some("Test User 2".to_string()),
+        tenant_id: "tenant_123".to_string(),
+    };
 
-//     // Create and retrieve an editing session
-//     let session = match service
-//         .get_or_create_editing_session(project_id, None, None)
-//         .await
-//     {
-//         Ok(session) => {
-//             info!(?session, "Editing session created/retrieved");
-//             session
-//         }
-//         Err(e) => {
-//             error!("Failed to create or retrieve editing session: {:?}", e);
-//             return Err(Box::new(e));
-//         }
-//     };
+    debug!("Creating editing session...");
+    let session = service
+        .get_or_create_editing_session(project_id, test_user1.clone())
+        .await?;
+    info!("Created session: {:?}", session);
 
-//     // Check if session ID is set
-//     if session.session_id.is_none() {
-//         error!("Session ID is not set after get_or_create_editing_session");
-//         return Err("Session ID not set".into());
-//     }
+    // User 1's updates
+    let doc1 = Doc::new();
+    let text1 = doc1.get_or_insert_text("content");
+    let update1 = {
+        let mut txn = doc1.transact_mut();
+        text1.push(&mut txn, "User 1's initial content");
+        txn.encode_update_v2()
+    };
 
-//     // Get project allowed actions
-//     let actions = vec![
-//         "read".to_string(),
-//         "write".to_string(),
-//         "delete".to_string(),
-//     ];
-//     let allowed_actions = service
-//         .get_project_allowed_actions(project_id, actions)
-//         .await?;
-//     info!(?allowed_actions, "Retrieved project allowed actions");
+    debug!("Pushing User 1's first update...");
+    service
+        .merge_updates(project_id, update1, Some(test_user1.id.clone()))
+        .await?;
 
-//     // Push an update to the project
-//     let update = vec![1, 2, 3, 4, 5]; // Example update data
-//     match service
-//         .push_update(update.clone(), Some("user1".to_string()))
-//         .await
-//     {
-//         Ok(_) => info!(?update, "Update pushed to the project"),
-//         Err(e) => warn!("Failed to push update: {:?}", e),
-//     }
+    let second_update1 = {
+        let mut txn = doc1.transact_mut();
+        text1.push(&mut txn, " - More from User 1");
+        txn.encode_update_v2()
+    };
 
-//     // Get current project state
-//     match service.get_current_state().await {
-//         Ok(current_state) => {
-//             info!(?current_state, "Retrieved current project state");
-//             debug!("Current state structure: {:#?}", current_state);
-//         }
-//         Err(e) => {
-//             error!("Failed to get current state: {:?}", e);
+    debug!("Pushing User 1's second update...");
+    service
+        .merge_updates(project_id, second_update1, Some(test_user1.id.clone()))
+        .await?;
 
-//             if let Some(response_start) = e.to_string().find("response was [") {
-//                 let response_str = &e.to_string()[response_start..];
-//                 debug!(
-//                     "Redis response structure: {}",
-//                     response_str.trim_matches(|c| c == '[' || c == ']')
-//                 );
+    // User 2's updates
+    let doc2 = Doc::new();
+    let text2 = doc2.get_or_insert_text("content");
+    let update2 = {
+        let mut txn = doc2.transact_mut();
+        text2.push(&mut txn, "User 2's content");
+        txn.encode_update_v2()
+    };
 
-//                 warn!("Redis response contains a nested structure with state updates");
-//                 debug!("Expected format should match: [key, [[timestamp, [field, value, field, value]], ...]]");
-//             }
+    debug!("Pushing User 2's first update...");
+    service
+        .merge_updates(project_id, update2.clone(), Some(test_user2.id.clone()))
+        .await?;
 
-//             return Err(Box::new(e));
-//         }
-//     }
+    let second_update2 = {
+        let mut txn = doc2.transact_mut();
+        text2.push(&mut txn, " - Additional content from User 2");
+        txn.encode_update_v2()
+    };
 
-//     Ok(())
-// }
+    debug!("Pushing User 2's second update...");
+    service
+        .merge_updates(project_id, second_update2, Some(test_user2.id.clone()))
+        .await?;
 
-fn main() {
-    todo!()
+    // Merge updates for User 1
+    debug!("Merging updates for User 1...");
+    service
+        .merge_updates(project_id, update2, Some(test_user2.id.clone()))
+        .await?;
+
+    // Check state after User 1's merge
+    debug!("Getting state after User 1's merge...");
+    if let Some(state) = service.get_current_state(project_id).await? {
+        if !state.is_empty() {
+            let doc = Doc::new();
+            let update = Update::decode_v2(&state).map_err(Box::new)?;
+            doc.transact_mut().apply_update(update);
+
+            let text = doc.get_or_insert_text("content");
+            let content = {
+                let txn = doc.transact();
+                text.get_string(&txn)
+            };
+
+            info!("Content after User 1's merge: {}", content);
+        }
+    }
+
+    // Check final state after both users' merges
+    debug!("Getting final state after all merges...");
+    if let Some(state) = service.get_current_state(project_id).await? {
+        if !state.is_empty() {
+            let doc = Doc::new();
+            let update = Update::decode_v2(&state).map_err(Box::new)?;
+            doc.transact_mut().apply_update(update);
+
+            let text = doc.get_or_insert_text("content");
+            let content = {
+                let txn = doc.transact();
+                text.get_string(&txn)
+            };
+
+            info!("Final content after all merges: {}", content);
+            info!("Final state size: {} bytes", state.len());
+        }
+    }
+
+    debug!("Ending session...");
+    service.end_session(project_id.to_string(), session).await?;
+
+    info!("Project service example completed successfully");
+    Ok(())
 }

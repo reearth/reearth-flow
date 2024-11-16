@@ -1,31 +1,33 @@
+use crate::generate_id;
+#[cfg(feature = "gcs-storage")]
 use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
-use crate::persistence::redis::redis_client::RedisClientError;
-use async_trait::async_trait;
-use flow_websocket_domain::generate_id;
-use flow_websocket_domain::project::Project;
 
+#[cfg(feature = "local-storage")]
 use crate::persistence::local_storage::LocalClient;
-use flow_websocket_domain::editing_session::ProjectEditingSession;
-use flow_websocket_domain::repository::{
-    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl,
-};
-use flow_websocket_domain::snapshot::ProjectSnapshot;
+use crate::types::project::Project;
+use crate::types::snapshot::ProjectSnapshot;
+use async_trait::async_trait;
 use serde_json;
 use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
 
+pub use self::local::ProjectLocalRepository;
+use super::editing_session::ProjectEditingSession;
 use super::local_storage::LocalStorageError;
-use super::redis::redis_client::RedisClientTrait;
+use super::repository::{ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl};
 use super::StorageClient;
+use bb8::Pool;
+use bb8_redis::RedisConnectionManager;
+use redis::AsyncCommands;
 
 #[derive(Error, Debug)]
 pub enum ProjectRepositoryError {
-    #[error(transparent)]
-    Redis(#[from] RedisClientError),
+    #[cfg(feature = "gcs-storage")]
     #[error(transparent)]
     Gcs(#[from] GcsError),
+    #[cfg(feature = "local-storage")]
     #[error(transparent)]
     Local(#[from] LocalStorageError),
     #[error(transparent)]
@@ -34,50 +36,45 @@ pub enum ProjectRepositoryError {
     Io(#[from] io::Error),
     #[error("Session ID not found")]
     SessionIdNotFound,
-    #[error("{0}")]
-    Custom(String),
+    #[error(transparent)]
+    Redis(#[from] redis::RedisError),
+    #[error(transparent)]
+    Pool(#[from] bb8::RunError<redis::RedisError>),
 }
 
 #[derive(Clone)]
-pub struct ProjectRedisRepository<R>
-where
-    R: RedisClientTrait + Send + Sync,
-{
-    redis_client: Arc<R>,
+pub struct ProjectRedisRepository {
+    redis_pool: Pool<RedisConnectionManager>,
 }
 
-impl<R: RedisClientTrait + Send + Sync> ProjectRedisRepository<R> {
-    pub fn new(redis_client: Arc<R>) -> Self {
-        Self { redis_client }
+impl ProjectRedisRepository {
+    pub fn new(redis_pool: Pool<RedisConnectionManager>) -> Self {
+        Self { redis_pool }
     }
 }
 
 #[async_trait]
-impl<R> ProjectImpl for ProjectRedisRepository<R>
-where
-    R: RedisClientTrait + Send + Sync,
-{
+impl ProjectImpl for ProjectRedisRepository {
     type Error = ProjectRepositoryError;
 
     async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error> {
+        let mut conn = self.redis_pool.get().await?;
         let key = format!("project:{}", project_id);
-        let project = self.redis_client.get(&key).await?;
-        Ok(project)
+        let project: Option<String> = conn.get(&key).await?;
+        Ok(project.map(|p| serde_json::from_str(&p)).transpose()?)
     }
 }
 
 #[async_trait]
-impl<R> ProjectEditingSessionImpl for ProjectRedisRepository<R>
-where
-    R: RedisClientTrait + Send + Sync,
-{
+impl ProjectEditingSessionImpl for ProjectRedisRepository {
     type Error = ProjectRepositoryError;
 
-    /// crate session and set active session
     async fn create_session(
         &self,
         mut session: ProjectEditingSession,
     ) -> Result<String, Self::Error> {
+        let mut conn = self.redis_pool.get().await?;
+
         let session_id = session
             .session_id
             .get_or_insert_with(|| generate_id!("editor-session:"))
@@ -86,10 +83,9 @@ where
         let session_key = format!("session:{}", session_id);
         let active_session_key = format!("project:{}:active_session", session.project_id);
 
-        self.redis_client.set(&session_key, &session).await?;
-        self.redis_client
-            .set(&active_session_key, &session_id)
-            .await?;
+        let session_json = serde_json::to_string(&session)?;
+        let _: () = conn.set(&session_key, session_json).await?;
+        let _: () = conn.set(&active_session_key, &session_id).await?;
 
         Ok(session_id)
     }
@@ -98,157 +94,179 @@ where
         &self,
         project_id: &str,
     ) -> Result<Option<ProjectEditingSession>, Self::Error> {
+        let mut conn = self.redis_pool.get().await?;
+
         let active_session_key = format!("project:{}:active_session", project_id);
-        let session_id: Option<String> = self.redis_client.get(&active_session_key).await?;
+        let session_id: Option<String> = conn.get(&active_session_key).await?;
 
         if let Some(session_id) = session_id {
             let session_key = format!("session:{}", session_id);
-            let session: Option<ProjectEditingSession> =
-                self.redis_client.get(&session_key).await?;
-            Ok(session)
+            let session: Option<String> = conn.get(&session_key).await?;
+            Ok(session.map(|s| serde_json::from_str(&s)).transpose()?)
         } else {
             Ok(None)
         }
     }
 
     async fn update_session(&self, session: ProjectEditingSession) -> Result<(), Self::Error> {
+        let mut conn = self.redis_pool.get().await?;
+
         let session_id = session
             .session_id
             .as_ref()
             .ok_or(ProjectRepositoryError::SessionIdNotFound)?;
+
         let key = format!("session:{}", session_id);
-        self.redis_client.set(&key, &session).await?;
+        let session_json = serde_json::to_string(&session)?;
+        let _: () = conn.set(&key, session_json).await?;
 
         let active_session_key = format!("project:{}:active_session", session.project_id);
-        self.redis_client
-            .set(&active_session_key, session_id)
-            .await?;
+        let _: () = conn.set(&active_session_key, session_id).await?;
 
         Ok(())
     }
 
     async fn delete_session(&self, project_id: &str) -> Result<(), Self::Error> {
+        let mut conn = self.redis_pool.get().await?;
         let active_session_key = format!("project:{}:active_session", project_id);
-        self.redis_client.delete_key(&active_session_key).await?;
+        let _: () = conn.del(&active_session_key).await?;
         Ok(())
     }
 }
 
-#[derive(Clone)]
-pub struct ProjectGcsRepository {
-    client: GcsClient,
-}
+#[cfg(feature = "gcs-storage")]
+pub(crate) mod gcs {
 
-impl ProjectGcsRepository {
-    pub fn new(client: GcsClient) -> Self {
-        Self { client }
-    }
-}
+    use super::*;
 
-#[async_trait]
-impl ProjectSnapshotImpl for ProjectGcsRepository {
-    type Error = ProjectRepositoryError;
-
-    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let path = format!("snapshot/{}", snapshot.metadata.project_id);
-        self.client.upload_versioned(path, &snapshot).await?;
-        Ok(())
+    #[derive(Clone)]
+    pub struct ProjectGcsRepository {
+        client: GcsClient,
     }
 
-    async fn get_latest_snapshot(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, Self::Error> {
-        let path_prefix = format!("snapshot/{}", project_id);
-        let snapshot = self.client.download_latest(&path_prefix).await?;
-        Ok(snapshot)
+    impl ProjectGcsRepository {
+        pub async fn new(bucket: String) -> Result<Self, GcsError> {
+            let client = GcsClient::new(bucket).await?;
+            Ok(Self { client })
+        }
     }
 
-    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let latest_version = self
-            .client
-            .get_latest_version(&format!("snapshot/{}", snapshot.metadata.project_id))
-            .await?;
-        if let Some(_version) = latest_version {
-            let path = format!("snapshot/{}", snapshot.metadata.project_id);
-            self.client.update_latest_versioned(path, &snapshot).await?;
-        } else {
+    #[async_trait]
+    impl ProjectSnapshotImpl for ProjectGcsRepository {
+        type Error = ProjectRepositoryError;
+
+        async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
             let path = format!("snapshot/{}", snapshot.metadata.project_id);
             self.client.upload_versioned(path, &snapshot).await?;
+            Ok(())
         }
-        Ok(())
-    }
 
-    async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
-        let path = format!("snapshot/{}", project_id);
-        self.client.delete(path).await?;
-        Ok(())
-    }
+        async fn get_latest_snapshot(
+            &self,
+            project_id: &str,
+        ) -> Result<Option<ProjectSnapshot>, Self::Error> {
+            let path_prefix = format!("snapshot/{}", project_id);
+            let snapshot = self.client.download_latest(&path_prefix).await?;
+            Ok(snapshot)
+        }
 
-    async fn list_all_snapshots_versions(
-        &self,
-        project_id: &str,
-    ) -> Result<Vec<String>, Self::Error> {
-        let path = format!("snapshot/{}", project_id);
-        let versions = self.client.list_versions(&path, None).await?;
-        Ok(versions.iter().map(|(_, v)| v.clone()).collect())
+        async fn update_latest_snapshot(
+            &self,
+            snapshot: ProjectSnapshot,
+        ) -> Result<(), Self::Error> {
+            let latest_version = self
+                .client
+                .get_latest_version(&format!("snapshot/{}", snapshot.metadata.project_id))
+                .await?;
+            if let Some(_version) = latest_version {
+                let path = format!("snapshot/{}", snapshot.metadata.project_id);
+                self.client.update_latest_versioned(path, &snapshot).await?;
+            } else {
+                let path = format!("snapshot/{}", snapshot.metadata.project_id);
+                self.client.upload_versioned(path, &snapshot).await?;
+            }
+            Ok(())
+        }
+
+        async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
+            let path = format!("snapshot/{}", project_id);
+            self.client.delete(path).await?;
+            Ok(())
+        }
+
+        async fn list_all_snapshots_versions(
+            &self,
+            project_id: &str,
+        ) -> Result<Vec<String>, Self::Error> {
+            let path = format!("snapshot/{}", project_id);
+            let versions = self.client.list_versions(&path, None).await?;
+            Ok(versions.iter().map(|(_, v)| v.clone()).collect())
+        }
     }
 }
 
-#[derive(Clone)]
-pub struct ProjectLocalRepository {
-    client: Arc<LocalClient>,
-}
+#[cfg(feature = "local-storage")]
+pub(crate) mod local {
+    use super::*;
 
-impl ProjectLocalRepository {
-    pub async fn new(base_path: PathBuf) -> io::Result<Self> {
-        Ok(Self {
-            client: Arc::new(LocalClient::new(base_path).await?),
-        })
-    }
-}
-
-#[async_trait]
-impl ProjectSnapshotImpl for ProjectLocalRepository {
-    type Error = ProjectRepositoryError;
-
-    async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let path = format!("snapshots/{}", snapshot.metadata.id);
-        self.client.upload_versioned(path, &snapshot).await?;
-        Ok(())
+    #[derive(Clone)]
+    pub struct ProjectLocalRepository {
+        client: Arc<LocalClient>,
     }
 
-    async fn get_latest_snapshot(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<ProjectSnapshot>, Self::Error> {
-        let path = format!("snapshots/{}", project_id);
-        let snapshot = self
-            .client
-            .download_latest::<ProjectSnapshot>(&path)
-            .await?;
-        Ok(snapshot)
+    impl ProjectLocalRepository {
+        pub async fn new(base_path: PathBuf) -> io::Result<Self> {
+            Ok(Self {
+                client: Arc::new(LocalClient::new(base_path).await?),
+            })
+        }
     }
 
-    async fn update_latest_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
-        let path = format!("snapshots/{}", snapshot.metadata.id);
-        self.client.update_latest_versioned(path, &snapshot).await?;
-        Ok(())
-    }
+    #[async_trait]
+    impl ProjectSnapshotImpl for ProjectLocalRepository {
+        type Error = ProjectRepositoryError;
 
-    async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
-        let path = format!("snapshots/{}", project_id);
-        self.client.delete(path).await?;
-        Ok(())
-    }
+        async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
+            let path = format!("snapshots/{}", snapshot.metadata.project_id);
+            self.client.upload_versioned(path, &snapshot).await?;
+            Ok(())
+        }
 
-    async fn list_all_snapshots_versions(
-        &self,
-        project_id: &str,
-    ) -> Result<Vec<String>, Self::Error> {
-        let path = format!("snapshots/{}", project_id);
-        let versions = self.client.list_versions(&path, None).await?;
-        Ok(versions.iter().map(|(_, v)| v.clone()).collect())
+        async fn get_latest_snapshot(
+            &self,
+            project_id: &str,
+        ) -> Result<Option<ProjectSnapshot>, Self::Error> {
+            let path = format!("snapshots/{}", project_id);
+            let snapshot = self
+                .client
+                .download_latest::<ProjectSnapshot>(&path)
+                .await?;
+            Ok(snapshot)
+        }
+
+        async fn update_latest_snapshot(
+            &self,
+            snapshot: ProjectSnapshot,
+        ) -> Result<(), Self::Error> {
+            let path = format!("snapshots/{}", snapshot.metadata.project_id);
+            self.client.update_latest_versioned(path, &snapshot).await?;
+            Ok(())
+        }
+
+        async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
+            let path = format!("snapshots/{}", project_id);
+            self.client.delete(path).await?;
+            Ok(())
+        }
+
+        async fn list_all_snapshots_versions(
+            &self,
+            project_id: &str,
+        ) -> Result<Vec<String>, Self::Error> {
+            let path = format!("snapshots/{}", project_id);
+            let versions = self.client.list_versions(&path, None).await?;
+            Ok(versions.iter().map(|(_, v)| v.clone()).collect())
+        }
     }
 }
 

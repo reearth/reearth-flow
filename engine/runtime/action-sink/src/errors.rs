@@ -14,6 +14,8 @@ pub enum SinkError {
     GeoJsonWriterFactory(String),
     #[error("GeoJson Writer error: {0}")]
     GeoJsonWriter(String),
+    #[error("Mvt Writer Factory error: {0}")]
+    MvtWriterFactory(String),
     #[error("Mvt Writer error: {0}")]
     MvtWriter(String),
 }

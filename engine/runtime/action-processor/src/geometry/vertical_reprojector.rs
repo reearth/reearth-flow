@@ -104,26 +104,24 @@ impl Processor for VerticalReprojector {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
-        if let Some(geometry) = &feature.geometry {
-            let geometry_value = geometry.value.clone();
-            let epsg = geometry.epsg;
-            match geometry_value {
-                GeometryValue::CityGmlGeometry(mut geos) => {
-                    geos.transform_inplace(&self.reprojector);
-                    feature.geometry = Some(Geometry {
-                        epsg,
-                        value: GeometryValue::CityGmlGeometry(geos),
-                    });
-                }
-                GeometryValue::FlowGeometry3D(mut geos) => {
-                    geos.transform_inplace(&self.reprojector);
-                    feature.geometry = Some(Geometry {
-                        epsg,
-                        value: GeometryValue::FlowGeometry3D(geos),
-                    });
-                }
-                GeometryValue::None | GeometryValue::FlowGeometry2D(..) => {}
+        let geometry_value = feature.geometry.value.clone();
+        let epsg = feature.geometry.epsg;
+        match geometry_value {
+            GeometryValue::CityGmlGeometry(mut geos) => {
+                geos.transform_inplace(&self.reprojector);
+                feature.geometry = Geometry {
+                    epsg,
+                    value: GeometryValue::CityGmlGeometry(geos),
+                };
             }
+            GeometryValue::FlowGeometry3D(mut geos) => {
+                geos.transform_inplace(&self.reprojector);
+                feature.geometry = Geometry {
+                    epsg,
+                    value: GeometryValue::FlowGeometry3D(geos),
+                };
+            }
+            GeometryValue::None | GeometryValue::FlowGeometry2D(..) => {}
         }
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())

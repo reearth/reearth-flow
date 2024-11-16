@@ -1,0 +1,218 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: b6632c8d-49bc-4569-9d59-f1532405da44
+name: "DataConvert-05-fld"
+entryGraphId: 45580b09-63a4-471a-92eb-1241660bddfb
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../../../config/schema.txt
+  targetPackages:
+    - fld
+    - tnm
+    - htd
+    - ifld
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+  outputPath:
+graphs:
+  - !include ../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../graphs/attribute_reader.yml
+  - !include ../../../graphs/folder_and_file_path_reader.yml
+  - id: 45580b09-63a4-471a-92eb-1241660bddfb
+    name: entry_point
+    nodes:
+      - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        name: AttributeReader
+        type: subGraph
+        subGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
+
+      - id: fc649773-af86-49bd-9629-149f9ac4166b
+        name: AttributeMapperFilePath
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: code
+              valueAttribute: meshCode
+            - attribute: type
+              valueAttribute: package
+            - attribute: maxLod
+              valueAttribute: maxLod
+            - attribute: length
+              expr: |
+                env.get("__value")["package"].len()
+            - attribute: file
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+
+      - id: 6e2a7c56-1ce3-48ee-b969-b1a1a0f057ca
+        name: FileWriterTsvFilePath
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "maxLod.tsv")
+
+      - id: 8a29a394-49c8-40d9-a7db-4fbfb219c11a
+        name: FeatureTransformerByScale
+        type: action
+        action: FeatureTransformer
+        with:
+          transformers:
+            - expr: |
+                env.get("__value") + #{
+                  scale: str::extract_single_by_regex("?<=_(l[12].*?)?=[_\.]", file::extract_filename(env.get("__value").cityGmlPath))
+                }
+
+      - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        name: FeatureReaderByCityGml
+        type: action
+        action: FeatureReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value").cityGmlPath
+
+      - id: 612d546f-e4e4-4bbe-9f4e-d47313347f00
+        name: LodSplitterWithDm
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      - id: 0274320c-6aad-4ea2-b4cc-b2d7fe7071d8
+        name: AttributeMapperLod0-2Tran
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - multipleExpr: |
+                let attributes = env.get("__value").cityGmlAttributes;
+                let ancestors = attributes.ancestors;
+                let value = env.get("__value");
+                #{
+                  lod: value.lod,
+                  meshcode: value.meshCode,
+                  city_code: value.cityCode,
+                  city_name: value.cityName,
+                  feature_type: value.gmlName.split(":")[1],
+                  gml_id: value.gmlId,
+                  tran_class: attributes["tran:class"] ?? "",
+                  tran_function: attributes["tran:function"] ?? "",
+                  tran_usage: attributes["tran:usage"] ?? "",
+                  uro_widthType: "",
+                  uro_width: "",
+                  uro_numberOfLanes: "",
+                  uro_sectionType: attributes["uro:roadStructureAttribute"][0]["uro:sectionType"] ?? "",
+                  uro_sectionID: "",
+                  uro_weekday12hourTrafficVolume: "",
+                  uro_weekday24hourTrafficVolume: "",
+                  uro_largeVehicleRate: "",
+                  uro_congestionRate: "",
+                  uro_averageTravelSpeedInCongestion: "",
+                  uro_averageOutboundTravelSpeedInCongestion: "",
+                  uro_averageInboundTravelSpeedNotCongestion: "",
+                  uro_averageOutboundTravelSpeedNotCongestion: "",
+                  uro_observationPointName: "",
+                  uro_surveyYear: "",
+                }
+
+      - id: bf626e6d-9559-4722-b266-af137e56498f
+        name: MvtWriterTran
+        type: action
+        action: MVTWriter
+        with:
+          format: mvt
+          layerName: Road
+          minZoom: 8
+          maxZoom: 16
+          output: |
+             file::join_path(env.get("outputPath"), "tran_lod" + env.get("__value").lod)
+
+      - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        name: AttributeMapperLod3Tran
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: id
+              valueAttribute: gmlId
+            - attribute: meshcode
+              valueAttribute: meshCode
+            - attribute: city_code
+              valueAttribute: cityCode
+            - attribute: city_name
+              valueAttribute: cityName
+            - attribute: feature_type
+              valueAttribute: gmlName
+
+      - id: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        name: VerticalReprojector
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
+        name: cesium3DTilesWriter
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: true
+          output: |
+             file::join_path(env.get("outputPath"), "tran_lod3")
+
+    edges:
+      - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
+        from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        to: fc649773-af86-49bd-9629-149f9ac4166b
+        fromPort: filePath
+        toPort: default
+      - id: 284b02d9-8051-4614-a03c-583274c700f8
+        from: fc649773-af86-49bd-9629-149f9ac4166b
+        to: 6e2a7c56-1ce3-48ee-b969-b1a1a0f057ca
+        fromPort: default
+        toPort: default
+      - id: a4751655-5956-4e27-a976-e35f8914ad31
+        from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        to: 8a29a394-49c8-40d9-a7db-4fbfb219c11a
+        fromPort: filePath
+        toPort: default
+      - id: 8e13d4e3-0fac-45fe-8a19-736272d67618
+        from: 8a29a394-49c8-40d9-a7db-4fbfb219c11a
+        to: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        fromPort: default
+        toPort: default
+      - id: df19bc5c-bda7-4dc0-9137-ad289b4f037a
+        from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 612d546f-e4e4-4bbe-9f4e-d47313347f00
+        fromPort: default
+        toPort: default
+      - id: f13f3dd7-5737-427a-9bbc-65ece32652f2
+        from: 612d546f-e4e4-4bbe-9f4e-d47313347f00
+        to: 0274320c-6aad-4ea2-b4cc-b2d7fe7071d8
+        fromPort: lod1
+        toPort: default
+      - id: 51ed356b-73b0-4f25-8cfd-3195a47ae989
+        from: 0274320c-6aad-4ea2-b4cc-b2d7fe7071d8
+        to: bf626e6d-9559-4722-b266-af137e56498f
+        fromPort: default
+        toPort: default
+      - id: d4c1c8a9-00a6-49c1-9735-db62a736932b
+        from: 612d546f-e4e4-4bbe-9f4e-d47313347f00
+        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        fromPort: lod3
+        toPort: default
+      - id: c4955c3b-bc28-4623-994a-a4b4cc0bed9b
+        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        fromPort: default
+        toPort: default
+      - id: 8ca2968d-b44f-42dd-befa-86134bd9b030
+        from: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        to: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
+        fromPort: default
+        toPort: default

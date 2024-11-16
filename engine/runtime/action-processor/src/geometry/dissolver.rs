@@ -110,7 +110,8 @@ impl Processor for GeometryDissolver {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
         };
@@ -189,7 +190,8 @@ impl GeometryDissolver {
         ctx: &ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) {
-        let Some(geometry) = feature.geometry.as_ref() else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             return;
         };
@@ -197,11 +199,7 @@ impl GeometryDissolver {
             GeometryValue::FlowGeometry2D(geos) => {
                 let others = others
                     .iter()
-                    .filter_map(|f| {
-                        f.geometry
-                            .as_ref()
-                            .and_then(|g| g.value.as_flow_geometry_2d().cloned())
-                    })
+                    .flat_map(|f| f.geometry.value.as_flow_geometry_2d().cloned())
                     .collect::<Vec<_>>();
                 self.handle_2d_geometry(geos, &others, feature, ctx, fw);
             }
@@ -275,15 +273,16 @@ impl GeometryDissolver {
             others.iter().for_each(|other_polygon| {
                 let multi_polygon = polygon.intersection(other_polygon);
                 for polygon in multi_polygon.iter() {
-                    let Some(geometry) = &feature.geometry else {
-                        return;
+                    let geometry = &feature.geometry;
+                    if geometry.is_empty() {
+                        continue;
                     };
                     let mut geometry = geometry.clone();
                     let mut feature = feature.clone();
                     feature.refresh_id();
                     geometry.value =
                         GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon.clone()));
-                    feature.geometry = Some(geometry);
+                    feature.geometry = geometry;
                     fw.send(ctx.new_with_feature_and_port(feature, AREA_PORT.clone()));
                 }
             });

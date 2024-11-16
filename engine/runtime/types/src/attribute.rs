@@ -110,6 +110,10 @@ impl AttributeValue {
             _ => None,
         }
     }
+
+    pub fn convertible_nusamai_type_ref(&self) -> bool {
+        matches!(self, Self::String(_))
+    }
 }
 
 impl PartialEq for AttributeValue {
@@ -378,6 +382,33 @@ impl TryFrom<Uri> for AttributeValue {
         let value: serde_json::Value =
             serde_json::to_value(value).map_err(error::Error::internal_runtime)?;
         Ok(value.into())
+    }
+}
+
+impl From<AttributeValue> for nusamai_citygml::schema::TypeRef {
+    fn from(value: AttributeValue) -> Self {
+        match value {
+            AttributeValue::String(_) => nusamai_citygml::schema::TypeRef::String,
+            AttributeValue::Number(v) => {
+                if v.as_i64().is_some() {
+                    nusamai_citygml::schema::TypeRef::Integer
+                } else {
+                    nusamai_citygml::schema::TypeRef::Double
+                }
+            }
+            AttributeValue::Bool(_) => nusamai_citygml::schema::TypeRef::Boolean,
+            AttributeValue::DateTime(_) => nusamai_citygml::schema::TypeRef::DateTime,
+            _ => nusamai_citygml::schema::TypeRef::Unknown,
+        }
+    }
+}
+
+impl From<AttributeValue> for nusamai_citygml::schema::Attribute {
+    fn from(value: AttributeValue) -> Self {
+        nusamai_citygml::schema::Attribute {
+            type_ref: value.into(),
+            ..Default::default()
+        }
     }
 }
 

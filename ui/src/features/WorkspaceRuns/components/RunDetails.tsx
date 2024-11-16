@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 
 import { Button } from "@flow/components";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
-import { LogConsole } from "@flow/features/Editor/components/BottomPanel/components";
+import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
 import { useT } from "@flow/lib/i18n";
 import { Run } from "@flow/types";
 
@@ -72,7 +72,7 @@ const RunDetails: React.FC<Props> = ({ selectedRun }) => {
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
           <DetailsBox title={t("Run details")} content={details} />
           <div className="max-h-[50vh] overflow-auto">
-            <LogConsole />
+            <LogsConsole />
           </div>
         </div>
       </div>

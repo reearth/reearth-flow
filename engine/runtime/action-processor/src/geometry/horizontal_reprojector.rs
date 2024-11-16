@@ -122,95 +122,90 @@ impl Processor for HorizontalReprojector {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        if let Some(geometry) = &feature.geometry {
-            match &geometry.value {
-                GeometryValue::CityGmlGeometry(v) => {
-                    let mut feature = feature.clone();
-                    let mut geometry = geometry.clone();
-                    let Some(projection) = &self.projection else {
-                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        let geometry = &feature.geometry;
+        match &geometry.value {
+            GeometryValue::CityGmlGeometry(v) => {
+                let mut feature = feature.clone();
+                let mut geometry = geometry.clone();
+                let Some(projection) = &self.projection else {
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    return Ok(());
+                };
+                geometry.epsg = self.epsg_code;
+                let mut geometry_value = v.clone();
+                for gml_geometry in &mut geometry_value.gml_geometries {
+                    for polygon in &mut gml_geometry.polygons {
+                        polygon.project_forward(projection)?;
+                    }
+                }
+                geometry.value = GeometryValue::CityGmlGeometry(geometry_value);
+                feature.geometry = geometry;
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            }
+            GeometryValue::FlowGeometry2D(geos) => {
+                let projection = if let Some(projection) = &self.projection {
+                    projection.clone()
+                } else {
+                    let Some(centroid) = geos.centroid() else {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()),
+                        );
                         return Ok(());
                     };
-                    geometry.epsg = self.epsg_code;
-                    let mut geometry_value = v.clone();
-                    for gml_geometry in &mut geometry_value.gml_geometries {
-                        for polygon in &mut gml_geometry.polygons {
-                            polygon.project_forward(projection)?;
-                        }
-                    }
-                    geometry.value = GeometryValue::CityGmlGeometry(geometry_value);
-                    feature.geometry = Some(geometry);
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-                }
-                GeometryValue::FlowGeometry2D(geos) => {
-                    let projection =
-                        if let Some(projection) = &self.projection {
-                            projection.clone()
-                        } else {
-                            let Some(centroid) = geos.centroid() else {
-                                fw.send(ctx.new_with_feature_and_port(
-                                    feature.clone(),
-                                    DEFAULT_PORT.clone(),
-                                ));
-                                return Ok(());
-                            };
-                            ExtendedTransverseMercatorProjection::new(
-                                centroid.x(),
-                                centroid.y(),
-                                K,
-                                &wgs84(),
-                            )
-                        };
-                    let epsg = if let Some(epsg_code) = self.epsg_code {
-                        Some(epsg_code)
-                    } else {
-                        Some(EPSG_JGD2011_GEOGRAPHIC_2D)
+                    ExtendedTransverseMercatorProjection::new(
+                        centroid.x(),
+                        centroid.y(),
+                        K,
+                        &wgs84(),
+                    )
+                };
+                let epsg = if let Some(epsg_code) = self.epsg_code {
+                    Some(epsg_code)
+                } else {
+                    Some(EPSG_JGD2011_GEOGRAPHIC_2D)
+                };
+                let mut feature = feature.clone();
+                let mut geometry = geometry.clone();
+                let mut geos = geos.clone();
+                geos.project_forward(&projection)?;
+                geometry.value = GeometryValue::FlowGeometry2D(geos);
+                geometry.epsg = epsg;
+                feature.geometry = geometry;
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            }
+            GeometryValue::FlowGeometry3D(geos) => {
+                let projection = if let Some(projection) = &self.projection {
+                    projection.clone()
+                } else {
+                    let Some(centroid) = geos.centroid() else {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()),
+                        );
+                        return Ok(());
                     };
-                    let mut feature = feature.clone();
-                    let mut geometry = geometry.clone();
-                    let mut geos = geos.clone();
-                    geos.project_forward(&projection)?;
-                    geometry.value = GeometryValue::FlowGeometry2D(geos);
-                    geometry.epsg = epsg;
-                    feature.geometry = Some(geometry);
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-                }
-                GeometryValue::FlowGeometry3D(geos) => {
-                    let projection =
-                        if let Some(projection) = &self.projection {
-                            projection.clone()
-                        } else {
-                            let Some(centroid) = geos.centroid() else {
-                                fw.send(ctx.new_with_feature_and_port(
-                                    feature.clone(),
-                                    DEFAULT_PORT.clone(),
-                                ));
-                                return Ok(());
-                            };
-                            ExtendedTransverseMercatorProjection::new(
-                                centroid.x(),
-                                centroid.y(),
-                                K,
-                                &wgs84(),
-                            )
-                        };
-                    let epsg = if let Some(epsg_code) = self.epsg_code {
-                        Some(epsg_code)
-                    } else {
-                        Some(EPSG_JGD2011_GEOGRAPHIC_3D)
-                    };
-                    let mut feature = feature.clone();
-                    let mut geometry = geometry.clone();
-                    let mut geos = geos.clone();
-                    geos.project_forward(&projection)?;
-                    geometry.value = GeometryValue::FlowGeometry3D(geos);
-                    geometry.epsg = epsg;
-                    feature.geometry = Some(geometry);
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-                }
-                GeometryValue::None => {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()))
-                }
+                    ExtendedTransverseMercatorProjection::new(
+                        centroid.x(),
+                        centroid.y(),
+                        K,
+                        &wgs84(),
+                    )
+                };
+                let epsg = if let Some(epsg_code) = self.epsg_code {
+                    Some(epsg_code)
+                } else {
+                    Some(EPSG_JGD2011_GEOGRAPHIC_3D)
+                };
+                let mut feature = feature.clone();
+                let mut geometry = geometry.clone();
+                let mut geos = geos.clone();
+                geos.project_forward(&projection)?;
+                geometry.value = GeometryValue::FlowGeometry3D(geos);
+                geometry.epsg = epsg;
+                feature.geometry = geometry;
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            }
+            GeometryValue::None => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()))
             }
         }
         Ok(())

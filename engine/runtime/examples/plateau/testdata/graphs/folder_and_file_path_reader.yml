@@ -2,7 +2,7 @@ id: c6863b71-953b-4d15-af56-396fc93fc617
 name: FolderAndfilePathReader
 nodes:
   - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
-    name: FilePathExtractor01
+    name: FilePathExtractor
     type: action
     action: FilePathExtractor
     with:
@@ -11,7 +11,7 @@ nodes:
       extractArchive: true
 
   - id: 9d04983e-e84e-4622-b0c6-827d7afad720
-    name: FeatureFilter01
+    name: FeatureFilter
     type: action
     action: FeatureFilter
     with:
@@ -21,7 +21,7 @@ nodes:
           outputPort: default
 
   - id: 712e4c72-950d-466d-9598-19f299668e7e
-    name: PLATEAU.UDXFolderExtractor-01
+    name: PLATEAU.UDXFolderExtractor
     type: action
     action: PLATEAU.UDXFolderExtractor
     with:
@@ -29,7 +29,7 @@ nodes:
         env.get("__value")["path"]
 
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-    name: FeatureFilter02
+    name: FeatureFilterByPackage
     type: action
     action: FeatureFilter
     with:
@@ -39,7 +39,7 @@ nodes:
           outputPort: default
 
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
-    name: FeatureCounter01
+    name: FeatureCounterByUdxDirs
     type: action
     action: FeatureCounter
     with:

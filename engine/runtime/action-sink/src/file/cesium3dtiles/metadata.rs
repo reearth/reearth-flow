@@ -155,7 +155,10 @@ impl Class {
         }
 
         // Encode attributes
-        for (attr_name, value) in attributes {
+        for (attr_name, value) in attributes
+            .iter()
+            .filter(|(_, v)| v.convertible_nusamai_type_ref())
+        {
             let Some(prop) = self.properties.get_mut(&attr_name.to_string()) else {
                 continue;
             };

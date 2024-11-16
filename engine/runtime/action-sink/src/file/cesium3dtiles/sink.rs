@@ -23,8 +23,7 @@ use bytemuck::Zeroable;
 use earcut::{utils3d::project3d_to_2d, Earcut};
 use indexmap::IndexSet;
 use itertools::Itertools;
-use nusamai_citygml::{schema::Schema, CityGmlElement};
-use nusamai_plateau::models::TopLevelCityObject;
+use nusamai_citygml::schema::Schema;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::prelude::*;
 use reearth_flow_common::{
@@ -36,9 +35,9 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
+use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::Expr;
 use reearth_flow_types::Feature;
-use reearth_flow_types::{geometry as geometry_types, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -85,7 +84,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, JsonValue>>,
@@ -110,9 +109,20 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             .into());
         };
 
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let expr_output = &params.output;
+        let template_ast = expr_engine
+            .compile(expr_output.as_ref())
+            .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{:?}", e)))?;
+
         let sink = Cesium3DTilesWriter {
-            buffer: Vec::new(),
-            params,
+            buffer: HashMap::new(),
+            params: Cesium3DTilesWriterCompiledParam {
+                output: template_ast,
+                min_zoom: params.min_zoom,
+                max_zoom: params.max_zoom,
+                attach_texture: params.attach_texture,
+            },
         };
         Ok(Box::new(sink))
     }
@@ -120,8 +130,8 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
-    pub(super) params: Cesium3DTilesWriterParam,
-    pub(super) buffer: Vec<Feature>,
+    pub(super) params: Cesium3DTilesWriterCompiledParam,
+    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -133,45 +143,68 @@ pub struct Cesium3DTilesWriterParam {
     pub(super) attach_texture: Option<bool>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Cesium3DTilesWriterCompiledParam {
+    pub(super) output: rhai::AST,
+    pub(super) min_zoom: u8,
+    pub(super) max_zoom: u8,
+    pub(super) attach_texture: Option<bool>,
+}
+
 impl Sink for Cesium3DTilesWriter {
     fn name(&self) -> &str {
         "Cesium3DTilesWriter"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let Some(geometry) = ctx.feature.geometry.as_ref() else {
+        let geometry = &ctx.feature.geometry;
+        if geometry.is_empty() {
             return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
         };
-        let geometry_value = geometry.value.clone();
-        let feature = ctx.feature;
-        match geometry_value {
-            geometry_types::GeometryValue::CityGmlGeometry(_) => {
-                self.buffer.push(feature);
-            }
-            _ => {
-                return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
-            }
+        let geometry_value = &geometry.value;
+        if !matches!(
+            geometry_value,
+            geometry_types::GeometryValue::CityGmlGeometry(_)
+        ) {
+            return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
         }
-
+        let feature = ctx.feature;
+        let output = self.params.output.clone();
+        let scope = feature.new_scope(ctx.expr_engine.clone());
+        let path = scope
+            .eval_ast::<String>(&output)
+            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
+        let output = Uri::from_str(path.as_str())?;
+        let buffer = self.buffer.entry(output).or_default();
+        buffer.push(feature);
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let upstream = &self.buffer;
-        let tile_id_conv = TileIdMethod::Hilbert;
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = self.params.output.clone();
-        let scope = expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let output = Uri::from_str(path.as_str())?;
-        let attach_texture = self.params.attach_texture.unwrap_or(false);
+        for (output, buffer) in &self.buffer {
+            self.write(ctx.as_context(), buffer, output)?;
+        }
+        Ok(())
+    }
+}
 
+impl Cesium3DTilesWriter {
+    pub fn write(
+        &self,
+        ctx: Context,
+        upstream: &[Feature],
+        output: &Uri,
+    ) -> crate::errors::Result<()> {
+        let tile_id_conv = TileIdMethod::Hilbert;
+        let attach_texture = self.params.attach_texture.unwrap_or(false);
+        let Some(first) = upstream.first() else {
+            return Ok(());
+        };
+        let schema: nusamai_citygml::schema::Schema = first.into();
         std::thread::scope(|scope| {
             let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
             let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
             scope.spawn(|| {
-                let _ = geometry_slicing_stage(
+                let result = geometry_slicing_stage(
                     upstream,
                     tile_id_conv,
                     sender_sliced,
@@ -179,9 +212,21 @@ impl Sink for Cesium3DTilesWriter {
                     self.params.max_zoom,
                     attach_texture,
                 );
+                if let Err(e) = &result {
+                    ctx.event_hub.error_log(
+                        None,
+                        format!("Failed to geometry_slicing_stage with error = {:?}", e),
+                    );
+                }
             });
             scope.spawn(|| {
-                let _ = feature_sorting_stage(receiver_sliced, sender_sorted);
+                let result = feature_sorting_stage(receiver_sliced, sender_sorted);
+                if let Err(e) = &result {
+                    ctx.event_hub.error_log(
+                        None,
+                        format!("Failed to feature_sorting_stage with error = {:?}", e),
+                    );
+                }
             });
             scope.spawn(|| {
                 let pool = rayon::ThreadPoolBuilder::new()
@@ -189,16 +234,20 @@ impl Sink for Cesium3DTilesWriter {
                     .build()
                     .unwrap();
                 pool.install(|| {
-                    let mut schema = nusamai_citygml::schema::Schema::default();
-                    TopLevelCityObject::collect_schema(&mut schema);
-                    let _ = tile_writing_stage(
-                        ctx.as_context(),
-                        &output,
+                    let result = tile_writing_stage(
+                        ctx.clone(),
+                        output,
                         receiver_sorted,
                         tile_id_conv,
                         &schema,
                         None,
                     );
+                    if let Err(e) = &result {
+                        ctx.event_hub.error_log(
+                            None,
+                            format!("Failed to tile_writing_stage with error = {:?}", e),
+                        );
+                    }
                 })
             });
         });
@@ -225,18 +274,19 @@ fn geometry_slicing_stage(
             |(z, x, y), feature| {
                 let bytes = bincode::serde::encode_to_vec(&feature, bincode_config)
                     .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
-                // TODO extract feature type from parcel
-                let Some(AttributeValue::String(feature_type)) =
-                    parcel.get(&"feature_type".to_string())
-                else {
-                    return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
+                let Some(feature_type) = parcel.feature_type() else {
+                    return Err(crate::errors::SinkError::cesium3dtiles_writer(
+                        "Failed to get feature type",
+                    ));
                 };
                 let tile_id = tile_id_conv.zxy_to_id(z, x, y);
                 let serialized_feature = (tile_id, feature_type.to_string(), bytes);
-                if sender_sliced.send(serialized_feature).is_err() {
-                    return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
-                };
-
+                sender_sliced.send(serialized_feature).map_err(|e| {
+                    crate::errors::SinkError::cesium3dtiles_writer(format!(
+                        "Failed to send sliced feature with error = {:?}",
+                        e
+                    ))
+                })?;
                 Ok(())
             },
         )
@@ -285,15 +335,17 @@ fn feature_sorting_stage(
             Ok(serialized_feats) => {
                 let tile_id = key.tile_id;
                 let typename = typename_to_seq[key.type_seq as usize].clone();
-                if sender_sorted
-                    .send((tile_id, typename, serialized_feats))
-                    .is_err()
-                {
-                    return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
+                if let Err(e) = sender_sorted.send((tile_id, typename, serialized_feats)) {
+                    return Err(crate::errors::SinkError::cesium3dtiles_writer(format!(
+                        "Failed to send sorted features with error = {:?}",
+                        e
+                    )));
                 }
             }
             Err(kv_extsort::Error::Canceled) => {
-                return Err(crate::errors::SinkError::cesium3dtiles_writer("Canceled"));
+                return Err(crate::errors::SinkError::cesium3dtiles_writer(
+                    "Sort canceled",
+                ));
             }
             Err(err) => {
                 return Err(crate::errors::SinkError::cesium3dtiles_writer(format!(
@@ -393,7 +445,12 @@ fn tile_writing_stage(
                     let feature = {
                         let (mut feature, _): (SlicedFeature, _) =
                             bincode::serde::decode_from_slice(&serialized_feat, bincode_config)
-                                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+                                .map_err(|e| {
+                                    crate::errors::SinkError::cesium3dtiles_writer(format!(
+                                        "Failed to decode_from_slice with {:?}",
+                                        e
+                                    ))
+                                })?;
 
                         feature
                             .polygons
@@ -700,7 +757,7 @@ fn tile_writing_stage(
             let output_path = output_path.path().join(Path::new(&content_path));
             storage
                 .put_sync(Path::new(&output_path), bytes::Bytes::from(buffer))
-                .map_err(crate::errors::SinkError::file_writer)?;
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
             Ok::<(), crate::errors::SinkError>(())
         })?;
 

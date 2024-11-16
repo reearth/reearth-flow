@@ -17,9 +17,10 @@ docs/mdbook/book
 
 tools/cesium/3dtiles/**
 !tools/cesium/3dtiles/.gitkeep
-tools/mvt/dist/**
-!tools/mvt/dist/.gitkeep
+tools/mvt/tiles/**
+!tools/mvt/tiles/.gitkeep
 output.png
 sample.xlsx
+metadata.json
 
 tmp/

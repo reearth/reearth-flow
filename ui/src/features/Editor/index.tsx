@@ -18,10 +18,10 @@ export default function Editor() {
     hoveredDetails,
     nodePickerOpen,
     openPanel,
+    handleWorkflowAdd,
     handleWorkflowDeployment,
     handlePanelOpen,
     handleWorkflowClose,
-    handleWorkflowAdd,
     handleWorkflowChange,
     handleNodesUpdate,
     handleNodeHover,
@@ -59,6 +59,7 @@ export default function Editor() {
               nodes={nodes}
               edges={edges}
               canvasLock={!!locallyLockedNode}
+              onWorkflowAdd={handleWorkflowAdd}
               onNodesUpdate={handleNodesUpdate}
               onNodeHover={handleNodeHover}
               onNodeLocking={handleNodeLocking}
@@ -73,7 +74,6 @@ export default function Editor() {
             isOpen={openPanel === "bottom" && !locallyLockedNode}
             onOpen={handlePanelOpen}
             onWorkflowClose={handleWorkflowClose}
-            onWorkflowAdd={handleWorkflowAdd}
             onWorkflowChange={handleWorkflowChange}
           />
         </div>

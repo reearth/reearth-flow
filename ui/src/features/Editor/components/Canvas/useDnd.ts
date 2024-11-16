@@ -17,6 +17,7 @@ import { baseNoteNode } from "./components/Nodes/NoteNode";
 
 type Props = {
   nodes: Node[];
+  onWorkflowAdd: (position?: XYPosition) => void;
   onNodesChange: (nodes: Node[]) => void;
   onNodeLocking: (nodeId: string) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
@@ -26,6 +27,7 @@ type Props = {
 // This is not used for node dnd within the canvas. That is done internally by react-flow
 export default ({
   nodes,
+  onWorkflowAdd,
   onNodesChange,
   onNodeLocking,
   onNodePickerOpen,
@@ -51,6 +53,11 @@ export default ({
 
       // check if the dropped element is valid
       if (typeof d === "undefined" || !d) return;
+
+      if (d === "subworkflow") {
+        onWorkflowAdd(position);
+        return;
+      }
 
       let newNode: Node = {
         id: randomID(),
@@ -106,6 +113,7 @@ export default ({
     [
       nodes,
       api,
+      onWorkflowAdd,
       onNodeLocking,
       screenToFlowPosition,
       onNodesChange,

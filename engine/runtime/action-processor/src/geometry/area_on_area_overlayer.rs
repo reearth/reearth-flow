@@ -137,7 +137,8 @@ impl Processor for AreaOnAreaOverlayer {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(geometry) = &feature.geometry else {
+        let geometry = &feature.geometry;
+        if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
         };
@@ -315,10 +316,10 @@ impl AreaOnAreaOverlayer {
             for other_feature in features.iter() {
                 feature.attributes.extend(other_feature.attributes.clone());
             }
-            feature.geometry = Some(Geometry {
-                epsg: features.first().unwrap().geometry.as_ref().unwrap().epsg,
+            feature.geometry = Geometry {
+                epsg: features.first().unwrap().geometry.epsg,
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon.0)),
-            });
+            };
             fw.send(ExecutorContext::new_with_context_feature_and_port(
                 &ctx,
                 feature,
@@ -331,18 +332,13 @@ impl AreaOnAreaOverlayer {
         &self,
         feature: &Feature,
     ) -> Option<MultiPolygon2D<f64>> {
-        feature
-            .geometry
-            .as_ref()
-            .and_then(|geometry| match &geometry.value {
-                GeometryValue::FlowGeometry2D(Geometry2D::Polygon(poly)) => {
-                    Some(MultiPolygon2D::new(vec![poly.clone()]))
-                }
-                GeometryValue::FlowGeometry2D(Geometry2D::MultiPolygon(mpoly)) => {
-                    Some(mpoly.clone())
-                }
-                _ => None,
-            })
+        match &feature.geometry.value {
+            GeometryValue::FlowGeometry2D(Geometry2D::Polygon(poly)) => {
+                Some(MultiPolygon2D::new(vec![poly.clone()]))
+            }
+            GeometryValue::FlowGeometry2D(Geometry2D::MultiPolygon(mpoly)) => Some(mpoly.clone()),
+            _ => None,
+        }
     }
 
     fn change_group(&mut self, ctx: ExecutorContext, fw: &mut dyn ProcessorChannelForwarder) {
