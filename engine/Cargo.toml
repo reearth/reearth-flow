@@ -172,4 +172,6 @@ uuid = { version = "1.11.0", features = [
   "v4",
 ] }
 walkdir = "2.5.0"
+wasmer = "5.0.1"
+wasmer-wasix = "0.31.0"
 zstd = "0.13.2"

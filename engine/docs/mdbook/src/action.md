@@ -2590,6 +2590,60 @@ Reprojects the geometry of a feature to a specified coordinate system
 ### Category
 * Geometry
 
+## WasmRuntimeExecutor
+### Type
+* processor
+### Description
+Compiles scripts into .wasm and runs at the wasm runtime
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WasmRuntimeExecutorParam",
+  "type": "object",
+  "required": [
+    "processorType",
+    "programmingLanguage",
+    "sourceCodeFilePath",
+    "wasmFilePath"
+  ],
+  "properties": {
+    "processorType": {
+      "$ref": "#/definitions/ProcessorType"
+    },
+    "programmingLanguage": {
+      "$ref": "#/definitions/ProgrammingLanguage"
+    },
+    "sourceCodeFilePath": {
+      "type": "string"
+    },
+    "wasmFilePath": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "ProcessorType": {
+      "type": "string",
+      "enum": [
+        "Attribute"
+      ]
+    },
+    "ProgrammingLanguage": {
+      "type": "string",
+      "enum": [
+        "Python"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Wasm
+
 ## XMLFragmenter
 ### Type
 * processor
