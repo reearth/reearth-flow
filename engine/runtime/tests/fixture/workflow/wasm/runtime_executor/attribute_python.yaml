@@ -2,6 +2,8 @@
 id: 00caad2a-9f7d-4189-b479-153fa9ea36dc
 name: "WasmRuntimeExecutorExample"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  outputFilePath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -30,9 +32,13 @@ graphs:
           wasmFilePath: "fixture/testdata/wasm/runtime_executor/attribute_python/sample.wasm"
 
       - id: 756F498A-7A5C-4579-AB1C-FCBBA8121869
-        name: EchoSink
+        name: FileWriter
         type: action
-        action: EchoSink
+        action: FileWriter
+        with:
+          format: json
+          output: |
+            env.get("outputFilePath")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
