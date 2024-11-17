@@ -1,4 +1,5 @@
 use rslock::{LockError, LockGuard, LockManager};
+use std::time::Duration;
 
 macro_rules! define_lock_method {
     ($name:ident, $($lock_key:expr),+) => {
@@ -42,7 +43,7 @@ impl FlowProjectLock {
         let resource_bytes: Vec<u8> = resources.join(":").into_bytes();
         let lock = self
             .lock_manager
-            .lock(&resource_bytes, duration_ms as usize)
+            .lock(&resource_bytes, Duration::from_millis(duration_ms))
             .await?;
         let guard = LockGuard { lock };
         let result = callback(&guard);

@@ -3,24 +3,26 @@ use crate::generate_id;
 use crate::persistence::gcs::gcs_client::{GcsClient, GcsError};
 
 #[cfg(feature = "local-storage")]
+pub use self::local::ProjectLocalRepository;
+use super::editing_session::ProjectEditingSession;
+#[cfg(feature = "local-storage")]
+use super::local_storage::LocalStorageError;
+use super::repository::{ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl};
+use super::StorageClient;
+#[cfg(feature = "local-storage")]
 use crate::persistence::local_storage::LocalClient;
 use crate::types::project::Project;
 use crate::types::snapshot::ProjectSnapshot;
 use async_trait::async_trait;
-use serde_json;
-use std::io;
-use std::path::PathBuf;
-use std::sync::Arc;
-use thiserror::Error;
-
-pub use self::local::ProjectLocalRepository;
-use super::editing_session::ProjectEditingSession;
-use super::local_storage::LocalStorageError;
-use super::repository::{ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl};
-use super::StorageClient;
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
 use redis::AsyncCommands;
+use serde_json;
+use std::io;
+#[cfg(feature = "local-storage")]
+use std::path::PathBuf;
+use std::sync::Arc;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ProjectRepositoryError {

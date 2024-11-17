@@ -50,7 +50,7 @@ impl UpdateManager {
                 updates_by.push(updated_by);
             }
             if !u.update.is_empty() {
-                txn.apply_update(Update::decode_v2(&u.update)?);
+                let _ = txn.apply_update(Update::decode_v2(&u.update)?);
             }
         }
         debug!("Last stream id: {}", last_stream_id);
@@ -127,7 +127,7 @@ impl UpdateManager {
 
         let optimized_merged_state = tokio::task::spawn_blocking(move || {
             let mut txn = doc.transact_mut();
-            txn.apply_update(Update::decode_v2(&merged_update)?);
+            let _ = txn.apply_update(Update::decode_v2(&merged_update)?);
             Ok::<_, FlowProjectRedisDataManagerError>(txn.encode_update_v2())
         })
         .await??;
