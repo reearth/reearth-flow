@@ -1,7 +1,30 @@
 use futures_util::{SinkExt, StreamExt};
-use serde_json::json;
+use serde::Serialize;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use url::Url;
+
+// Add these struct definitions at the top
+#[derive(Serialize)]
+struct Event<T> {
+    event: EventData<T>,
+    session_command: Option<String>,
+}
+
+#[derive(Serialize)]
+struct EventData<T> {
+    tag: &'static str,
+    content: T,
+}
+
+#[derive(Serialize)]
+struct JoinContent {
+    room_id: String,
+}
+
+#[derive(Serialize)]
+struct EmitContent {
+    data: String,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -15,30 +38,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (mut write, mut read) = ws_stream.split();
 
-    // Send Join event
-    let join_message = json!({
-        "event": {
-            "tag": "Join",
-            "content": {
-                "room_id": "room123"
-            }
+    // Replace manual JSON construction with send_event
+    send_event(
+        &mut write,
+        "Join",
+        JoinContent {
+            room_id: "room123".to_string(),
         },
-        "session_command": null
-    });
-    write.send(Message::Text(join_message.to_string())).await?;
+    )
+    .await?;
     println!("Join message sent");
 
-    // Send some test data
-    let test_data = json!({
-        "event": {
-            "tag": "Emit",
-            "content": {
-                "data": "Hello, WebSocket!"
-            }
+    send_event(
+        &mut write,
+        "Emit",
+        EmitContent {
+            data: "Hello, WebSocket!".to_string(),
         },
-        "session_command": null
-    });
-    write.send(Message::Text(test_data.to_string())).await?;
+    )
+    .await?;
     println!("Test data sent");
 
     // Receive and print server responses
@@ -57,5 +75,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    Ok(())
+}
+
+// Add the send_event helper function
+async fn send_event<T: Serialize>(
+    writer: &mut futures_util::stream::SplitSink<
+        tokio_tungstenite::WebSocketStream<
+            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+        >,
+        Message,
+    >,
+    tag: &'static str,
+    content: T,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let event = Event {
+        event: EventData { tag, content },
+        session_command: None,
+    };
+    writer
+        .send(Message::Text(serde_json::to_string(&event)?))
+        .await?;
     Ok(())
 }
