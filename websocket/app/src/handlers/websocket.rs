@@ -1,9 +1,9 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use super::errors::WsError;
-use super::state::AppState;
+use super::types::{Event, FlowMessage, WebSocketQuery};
+use crate::errors::WsError;
+use crate::state::AppState;
 use axum::extract::{Path, Query};
-use axum::http::{Method, StatusCode, Uri};
 use axum::{
     extract::{
         ws::{Message, WebSocket},
@@ -13,30 +13,8 @@ use axum::{
 };
 use flow_websocket_infra::types::user::User;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
-use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{debug, error, trace};
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "tag", content = "content")]
-enum Event {
-    Join { room_id: String },
-    Leave,
-    Emit { data: String },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct FlowMessage {
-    event: Event,
-    session_command: Option<SessionCommand>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct WebSocketQuery {
-    token: String,
-    user_id: String,
-    project_id: Option<String>,
-}
 
 pub async fn handle_upgrade(
     ws: WebSocketUpgrade,
@@ -91,6 +69,23 @@ async fn handle_socket(
         }
     });
 
+    let cleanup = || async {
+        state.leave(&room_id, &user.id).await;
+        if let Some(project_id) = project_id.clone() {
+            let _ = state
+                .command_tx
+                .send(SessionCommand::End {
+                    project_id: project_id.clone(),
+                    user: user.clone(),
+                })
+                .await;
+            let _ = state
+                .command_tx
+                .send(SessionCommand::RemoveTask { project_id })
+                .await;
+        }
+    };
+
     while let Some(msg) = socket.recv().await {
         if let Ok(msg) = msg {
             match handle_message(
@@ -104,18 +99,24 @@ async fn handle_socket(
             .await
             {
                 Ok(Some(msg)) => {
-                    let _ = socket.send(Message::Binary(msg.into())).await;
-                    continue;
+                    if socket.send(Message::Binary(msg.into())).await.is_err() {
+                        debug!("Failed to send message to client {addr}");
+                        cleanup().await;
+                        return;
+                    }
                 }
                 Ok(_) => continue,
                 Err(e) => {
                     debug!("Error handling message: {:?}", e);
                     debug!("client {addr} disconnected");
+                    cleanup().await;
                     return;
                 }
             }
         } else {
-            println!("client {addr} disconnected");
+            debug!("client {addr} disconnected");
+            cleanup().await;
+            return;
         }
     }
 }
@@ -224,59 +225,5 @@ async fn handle_message(
             Ok(None)
         }
         _ => Ok(None),
-    }
-}
-
-pub async fn handle_error(
-    method: Method,
-    uri: Uri,
-    error: Box<dyn std::error::Error + Send + Sync>,
-) -> impl IntoResponse {
-    let error_message = format!("Error occurred for request {} {}: {}", method, uri, error);
-    tracing::error!(error_message);
-    StatusCode::INTERNAL_SERVER_ERROR.into_response()
-}
-
-impl AppState {
-    async fn _on_disconnect(&self) {
-        // todo
-        if let Ok(mut rooms) = self.rooms.try_lock() {
-            rooms.clear();
-        }
-    }
-
-    async fn join(&self, room_id: &str, user_id: &str) -> Result<(), WsError> {
-        // todo
-        let mut rooms = self.rooms.try_lock()?;
-        let room = rooms
-            .get_mut(room_id)
-            .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
-        room.join(user_id.to_string()).await;
-        Ok(())
-    }
-
-    async fn leave(&self, room_id: &str, user_id: &str) {
-        // todo
-        if let Ok(mut rooms) = self.rooms.try_lock() {
-            if let Some(room) = rooms.get_mut(room_id) {
-                room._leave(user_id.to_string()).await;
-            }
-        }
-    }
-
-    async fn emit(&self, data: &str) {
-        // todo
-        if let Ok(rooms) = self.rooms.try_lock() {
-            for room in rooms.values() {
-                let _ = room._broadcast(data.to_string());
-            }
-        }
-    }
-
-    async fn _timeout(&self) {
-        // todo
-        if let Ok(mut rooms) = self.rooms.try_lock() {
-            rooms.clear();
-        }
     }
 }

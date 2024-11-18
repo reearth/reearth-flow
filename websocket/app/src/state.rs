@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
+use tracing::debug;
 use tracing::error;
 
 #[cfg(feature = "gcs-storage")]
@@ -119,5 +120,57 @@ impl AppState {
         let mut rooms = self.rooms.try_lock()?;
         rooms.remove(&id);
         Ok(())
+    }
+
+    /// Handles disconnection by cleaning up resources
+    pub async fn on_disconnect(&self) {
+        debug!("Handling disconnect - cleaning up rooms");
+        if let Ok(mut rooms) = self.rooms.try_lock() {
+            rooms.clear();
+        }
+    }
+
+    /// Adds a user to a specific room
+    pub async fn join(&self, room_id: &str, user_id: &str) -> Result<(), WsError> {
+        let mut rooms = self.rooms.try_lock()?;
+        let room = rooms
+            .get_mut(room_id)
+            .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
+
+        room.join(user_id.to_string()).await;
+        debug!("User {} joined room {}", user_id, room_id);
+        Ok(())
+    }
+
+    /// Removes a user from a specific room
+    pub async fn leave(&self, room_id: &str, user_id: &str) {
+        if let Ok(mut rooms) = self.rooms.try_lock() {
+            if let Some(room) = rooms.get_mut(room_id) {
+                room.leave(user_id.to_string()).await;
+                debug!("User {} left room {}", user_id, room_id);
+            } else {
+                debug!("Room {} not found for user {}", room_id, user_id);
+            }
+        }
+    }
+
+    /// Broadcasts a message to all rooms
+    pub async fn emit(&self, data: &str) {
+        if let Ok(rooms) = self.rooms.try_lock() {
+            for (room_id, room) in rooms.iter() {
+                match room.broadcast(data.to_string()) {
+                    Ok(_) => debug!("Message broadcast to room {}", room_id),
+                    Err(e) => error!("Failed to broadcast to room {}: {:?}", room_id, e),
+                }
+            }
+        }
+    }
+
+    /// Handles room timeout by cleaning up
+    pub async fn timeout(&self) {
+        debug!("Room timeout - cleaning up rooms");
+        if let Ok(mut rooms) = self.rooms.try_lock() {
+            rooms.clear();
+        }
     }
 }

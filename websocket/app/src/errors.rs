@@ -26,8 +26,10 @@ pub enum WsError {
     MpscSendError(#[from] tokio::sync::mpsc::error::SendError<SessionCommand>),
     #[error(transparent)]
     Pool(#[from] FlowProjectRedisDataManagerError),
+    #[cfg(feature = "local-storage")]
     #[error(transparent)]
     LocalStorage(#[from] std::io::Error),
+    #[cfg(feature = "gcs-storage")]
     #[error(transparent)]
     GcsStorage(#[from] GcsError),
 }
