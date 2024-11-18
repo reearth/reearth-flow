@@ -137,20 +137,24 @@ impl AppState {
             .get_mut(room_id)
             .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
 
-        room.join(user_id.to_string()).await;
+        room.join(user_id.to_string()).await?;
         debug!("User {} joined room {}", user_id, room_id);
         Ok(())
     }
 
     /// Removes a user from a specific room
-    pub async fn leave(&self, room_id: &str, user_id: &str) {
+    pub async fn leave(&self, room_id: &str, user_id: &str) -> Result<(), WsError> {
         if let Ok(mut rooms) = self.rooms.try_lock() {
             if let Some(room) = rooms.get_mut(room_id) {
-                room.leave(user_id.to_string()).await;
+                room.leave(user_id.to_string()).await?;
                 debug!("User {} left room {}", user_id, room_id);
+                Ok(())
             } else {
                 debug!("Room {} not found for user {}", room_id, user_id);
+                Ok(())
             }
+        } else {
+            Ok(())
         }
     }
 

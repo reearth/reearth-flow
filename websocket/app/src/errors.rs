@@ -32,4 +32,6 @@ pub enum WsError {
     #[cfg(feature = "gcs-storage")]
     #[error(transparent)]
     GcsStorage(#[from] GcsError),
+    #[error(transparent)]
+    Room(#[from] crate::room::RoomError),
 }

@@ -62,23 +62,32 @@ async fn handle_socket(
         }
     });
 
-    let cleanup = || async {
-        state.leave(&room_id, &user.id).await;
-        if let Some(project_id) = project_id.clone() {
-            let _ = state
-                .command_tx
-                .send(SessionCommand::End {
-                    project_id: project_id.to_string(),
-                    user: user.clone(),
-                })
-                .await;
-            let _ = state
-                .command_tx
-                .send(SessionCommand::RemoveTask {
-                    project_id: project_id.to_string(),
-                })
-                .await;
-        }
+    let cleanup = || {
+        let state = state.clone();
+        let room_id = room_id.clone();
+        let user = user.clone();
+        let project_id = project_id.clone();
+
+        tokio::spawn(async move {
+            if let Err(e) = state.leave(&room_id, &user.id).await {
+                debug!("Cleanup error during leave: {:?}", e);
+            }
+            if let Some(project_id) = project_id {
+                let _ = state
+                    .command_tx
+                    .send(SessionCommand::End {
+                        project_id: project_id.to_string(),
+                        user: user.clone(),
+                    })
+                    .await;
+                let _ = state
+                    .command_tx
+                    .send(SessionCommand::RemoveTask {
+                        project_id: project_id.to_string(),
+                    })
+                    .await;
+            }
+        });
     };
 
     while let Some(msg) = socket.recv().await {
@@ -96,7 +105,7 @@ async fn handle_socket(
                 Ok(Some(msg)) => {
                     if socket.send(Message::Binary(msg.into())).await.is_err() {
                         debug!("Failed to send message to client {addr}");
-                        cleanup().await;
+                        cleanup();
                         return;
                     }
                 }
@@ -104,13 +113,13 @@ async fn handle_socket(
                 Err(e) => {
                     debug!("Error handling message: {:?}", e);
                     debug!("client {addr} disconnected");
-                    cleanup().await;
+                    cleanup();
                     return;
                 }
             }
         } else {
             debug!("client {addr} disconnected");
-            cleanup().await;
+            cleanup();
             return;
         }
     }
@@ -162,7 +171,7 @@ async fn handle_message(
 
             match msg.event {
                 Event::Join { room_id } => state.join(&room_id, &user.id).await?,
-                Event::Leave => state.leave(room_id, &user.id).await,
+                Event::Leave => state.leave(room_id, &user.id).await?,
                 Event::Emit { data } => state.emit(&data).await,
             };
 

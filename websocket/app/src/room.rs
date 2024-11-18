@@ -2,7 +2,18 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use yrs::Doc;
 
+use thiserror::Error;
 use tokio::sync::{broadcast, Mutex};
+
+#[derive(Error, Debug)]
+pub enum RoomError {
+    #[error("User {0} already exists in the room")]
+    UserAlreadyExists(String),
+    #[error("User {0} not found in the room")]
+    UserNotFound(String),
+    #[error("Failed to broadcast message: {0}")]
+    BroadcastError(#[from] broadcast::error::SendError<String>),
+}
 
 pub struct Room {
     users: Arc<Mutex<HashSet<String>>>,
@@ -26,17 +37,23 @@ impl Room {
     }
 
     /// Adds a user to the room
-    pub async fn join(&self, user_id: String) {
-        self.users.lock().await.insert(user_id);
+    pub async fn join(&self, user_id: String) -> Result<(), RoomError> {
+        if !self.users.lock().await.insert(user_id.clone()) {
+            return Err(RoomError::UserAlreadyExists(user_id));
+        }
+        Ok(())
     }
 
     /// Removes a user from the room
-    pub async fn leave(&self, user_id: String) {
-        self.users.lock().await.remove(&user_id);
+    pub async fn leave(&self, user_id: String) -> Result<(), RoomError> {
+        if !self.users.lock().await.remove(&user_id) {
+            return Err(RoomError::UserNotFound(user_id));
+        }
+        Ok(())
     }
 
     /// Broadcasts a message to all users in the room
-    pub fn broadcast(&self, msg: String) -> Result<(), broadcast::error::SendError<String>> {
+    pub fn broadcast(&self, msg: String) -> Result<(), RoomError> {
         self.tx.send(msg)?;
         Ok(())
     }
@@ -61,9 +78,14 @@ mod tests {
         let room = Room::new();
         let user_id = "user1".to_string();
 
-        room.join(user_id.clone()).await;
-        let users = room.get_users().await;
+        room.join(user_id.clone())
+            .await
+            .expect("Should join successfully");
 
+        let err = room.join(user_id.clone()).await.unwrap_err();
+        assert!(matches!(err, RoomError::UserAlreadyExists(_)));
+
+        let users = room.get_users().await;
         assert!(users.contains(&user_id));
         assert_eq!(users.len(), 1);
     }
@@ -73,8 +95,15 @@ mod tests {
         let room = Room::new();
         let user_id = "user1".to_string();
 
-        room.join(user_id.clone()).await;
-        room.leave(user_id.clone()).await;
+        room.join(user_id.clone())
+            .await
+            .expect("Should join successfully");
+        room.leave(user_id.clone())
+            .await
+            .expect("Should leave successfully");
+
+        let err = room.leave(user_id.clone()).await.unwrap_err();
+        assert!(matches!(err, RoomError::UserNotFound(_)));
 
         let users = room.get_users().await;
         assert!(!users.contains(&user_id));
@@ -87,8 +116,12 @@ mod tests {
         let user1 = "user1".to_string();
         let user2 = "user2".to_string();
 
-        room.join(user1.clone()).await;
-        room.join(user2.clone()).await;
+        room.join(user1.clone())
+            .await
+            .expect("Should join successfully");
+        room.join(user2.clone())
+            .await
+            .expect("Should join successfully");
 
         let users = room.get_users().await;
         assert_eq!(users.len(), 2);
@@ -103,8 +136,7 @@ mod tests {
 
         let _rx = room.tx.subscribe();
 
-        let result = room.broadcast(msg);
-        assert!(result.is_ok());
+        room.broadcast(msg).expect("Should broadcast successfully");
     }
 
     #[tokio::test]
