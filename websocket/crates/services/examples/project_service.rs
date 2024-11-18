@@ -142,7 +142,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if !state.is_empty() {
             let doc = Doc::new();
             let update = Update::decode_v2(&state).map_err(Box::new)?;
-            doc.transact_mut().apply_update(update);
+            let _ = doc.transact_mut().apply_update(update);
 
             let text = doc.get_or_insert_text("content");
             let content = {
@@ -160,7 +160,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if !state.is_empty() {
             let doc = Doc::new();
             let update = Update::decode_v2(&state).map_err(Box::new)?;
-            doc.transact_mut().apply_update(update);
+            let _ = doc.transact_mut().apply_update(update);
 
             let text = doc.get_or_insert_text("content");
             let content = {
