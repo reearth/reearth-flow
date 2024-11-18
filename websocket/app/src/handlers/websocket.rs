@@ -4,6 +4,7 @@ use super::types::{Event, FlowMessage, WebSocketQuery};
 use crate::errors::WsError;
 use crate::state::AppState;
 use axum::extract::{Path, Query};
+use axum::response::Response;
 use axum::{
     extract::{
         ws::{Message, WebSocket},
@@ -22,34 +23,26 @@ pub async fn handle_upgrade(
     Path(room_id): Path<String>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(state): State<Arc<AppState>>,
-) -> impl IntoResponse {
+) -> Response {
     debug!("{:?}", query);
 
-    let user = User::new(query.user_id.clone(), None, None);
+    let user = User::new(query.user_id().to_string(), None, None);
 
     ws.on_upgrade(move |socket| {
-        handle_socket(
-            socket,
-            addr,
-            query.token.to_string(),
-            room_id,
-            state,
-            query.project_id.clone(),
-            user,
-        )
+        handle_socket(socket, addr, room_id, state, query.project_id(), user)
     })
+    .into_response()
 }
 
 async fn handle_socket(
     mut socket: WebSocket,
     addr: SocketAddr,
-    token: String,
     room_id: String,
     state: Arc<AppState>,
     project_id: Option<String>,
     user: User,
 ) {
-    if !verify_connection(&mut socket, &addr, &token).await {
+    if !verify_connection(&mut socket, &addr).await {
         return;
     }
 
@@ -75,13 +68,15 @@ async fn handle_socket(
             let _ = state
                 .command_tx
                 .send(SessionCommand::End {
-                    project_id: project_id.clone(),
+                    project_id: project_id.to_string(),
                     user: user.clone(),
                 })
                 .await;
             let _ = state
                 .command_tx
-                .send(SessionCommand::RemoveTask { project_id })
+                .send(SessionCommand::RemoveTask {
+                    project_id: project_id.to_string(),
+                })
                 .await;
         }
     };
@@ -121,11 +116,12 @@ async fn handle_socket(
     }
 }
 
-async fn verify_connection(socket: &mut WebSocket, addr: &SocketAddr, token: &str) -> bool {
-    if socket.send(Message::Ping(vec![4])).await.is_err() || token != "nyaan" {
-        debug!("Connection failed for {addr}: ping failed or invalid token");
+async fn verify_connection(socket: &mut WebSocket, addr: &SocketAddr) -> bool {
+    if socket.send(Message::Ping(vec![4])).await.is_err() {
+        debug!("Connection failed for {addr}: ping failed");
         return false;
     }
+
     true
 }
 
@@ -191,7 +187,7 @@ async fn handle_message(
                 state
                     .command_tx
                     .send(SessionCommand::MergeUpdates {
-                        project_id,
+                        project_id: project_id.to_string(),
                         data: d,
                         updated_by: Some(user.id.clone()),
                     })
@@ -211,14 +207,16 @@ async fn handle_message(
                     state
                         .command_tx
                         .send(SessionCommand::End {
-                            project_id: project_id.clone(),
+                            project_id: project_id.to_string(),
                             user: user.clone(),
                         })
                         .await?;
 
                     state
                         .command_tx
-                        .send(SessionCommand::RemoveTask { project_id })
+                        .send(SessionCommand::RemoveTask {
+                            project_id: project_id.to_string(),
+                        })
                         .await?;
                 }
             }
