@@ -136,7 +136,6 @@ impl AppState {
         let room = rooms
             .get_mut(room_id)
             .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
-
         room.join(user_id.to_string()).await?;
         debug!("User {} joined room {}", user_id, room_id);
         Ok(())
@@ -171,10 +170,10 @@ impl AppState {
     }
 
     /// Handles room timeout by cleaning up
-    pub async fn timeout(&self) {
-        debug!("Room timeout - cleaning up rooms");
-        if let Ok(mut rooms) = self.rooms.try_lock() {
-            rooms.clear();
-        }
+    pub async fn cleanup_rooms(&self, reason: &str) -> Result<(), WsError> {
+        debug!("Cleaning up rooms due to {}", reason);
+        let mut rooms = self.rooms.try_lock()?;
+        rooms.clear();
+        Ok(())
     }
 }
