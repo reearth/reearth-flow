@@ -85,7 +85,7 @@ pub fn init_tracing(service_name: String) -> Result<Tracer> {
                     .with_endpoint(endpoint)
                     .build()
                     .map_err(|e| {
-                        Error::Tracing(format!("Failed to build metrics controller: {}", e))
+                        Error::Tracing(format!("Failed to build tracing exporter: {}", e))
                     })?,
                 opentelemetry_sdk::runtime::Tokio,
             )
