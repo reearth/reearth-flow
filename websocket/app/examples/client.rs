@@ -24,6 +24,11 @@ struct JoinContent {
 }
 
 #[derive(Serialize)]
+struct CreateContent {
+    room_id: String,
+}
+
+#[derive(Serialize)]
 struct EmitContent {
     data: String,
 }
@@ -50,6 +55,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (mut write, mut read) = ws_stream.split();
 
     // Replace manual JSON construction with send_event
+    send_event(
+        &mut write,
+        "Create",
+        CreateContent {
+            room_id: "room123".to_string(),
+        },
+    )
+    .await?;
+    info!("Create message sent");
+
     send_event(
         &mut write,
         "Join",
