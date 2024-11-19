@@ -1,4 +1,4 @@
 [source,bash]
 ----
-cargo run --package app --example client
+RUST_LOG=info cargo run --package app --example room_client
 ----
