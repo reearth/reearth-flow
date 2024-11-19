@@ -148,15 +148,11 @@ async fn handle_message(
                 }
             };
 
-            match msg.event {
-                Event::Create { room_id } => state.make_room(room_id).await?,
-                Event::Join { room_id } => state.join(&room_id, &user.id).await?,
-                Event::Leave => state.leave(room_id, &user.id).await?,
-                Event::Emit { data } => state.emit(&data).await,
-            };
-
+            //handle session command
             if let Some(command) = msg.session_command {
                 state.command_tx.send(command).await?;
+            } else {
+                handle_room_event(&msg.event, room_id, &state, &user).await?;
             }
 
             Ok(None)
@@ -213,4 +209,20 @@ async fn handle_message(
         }
         _ => Ok(None),
     }
+}
+
+#[inline]
+async fn handle_room_event(
+    event: &Event,
+    room_id: &str,
+    state: &Arc<AppState>,
+    user: &User,
+) -> Result<(), WsError> {
+    match event {
+        Event::Create { room_id } => state.make_room(room_id.clone()).await?,
+        Event::Join { room_id } => state.join(room_id, &user.id).await?,
+        Event::Leave => state.leave(room_id, &user.id).await?,
+        Event::Emit { data } => state.emit(data).await,
+    }
+    Ok(())
 }

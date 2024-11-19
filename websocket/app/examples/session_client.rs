@@ -7,23 +7,41 @@ use url::Url;
 use yrs::{Doc, Text, Transact};
 
 #[derive(Serialize)]
-struct Event<T> {
-    event: EventData<T>,
+#[serde(tag = "tag", content = "content")]
+enum Event {
+    Create { room_id: String },
+    Join { room_id: String },
+    //Leave,
+    Emit { data: String },
+}
+
+#[derive(Serialize)]
+struct FlowMessage {
+    event: Event,
     session_command: Option<SessionCommand>,
 }
 
 #[derive(Serialize)]
-struct EventData<T> {
-    tag: &'static str,
-    content: T,
-}
-
-#[derive(Serialize)]
-struct SessionCommand {
-    command_type: &'static str,
-    project_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    user: Option<User>,
+enum SessionCommand {
+    Start { project_id: String, user: User },
+    End { project_id: String, user: User },
+    // Complete {
+    //     project_id: String,
+    //     user: User,
+    // },
+    // CheckStatus {
+    //     project_id: String,
+    // },
+    AddTask { project_id: String },
+    RemoveTask { project_id: String },
+    // ListAllSnapshotsVersions {
+    //     project_id: String,
+    // },
+    // MergeUpdates {
+    //     project_id: String,
+    //     data: Vec<u8>,
+    //     updated_by: Option<String>,
+    // },
 }
 
 #[derive(Serialize, Clone)]
@@ -31,16 +49,7 @@ struct User {
     id: String,
     email: Option<String>,
     name: Option<String>,
-}
-
-#[derive(Serialize)]
-struct JoinContent {
-    room_id: String,
-}
-
-#[derive(Serialize)]
-struct CreateContent {
-    room_id: String,
+    tenant_id: String,
 }
 
 #[tokio::main]
@@ -52,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let room_id = "room123";
 
     let url = Url::parse(&format!(
-        "ws://127.0.0.1:8080/ws/{}/ws?user_id={}&project_id={}",
+        "ws://127.0.0.1:8080/ws?room_id={}&user_id={}&project_id={}",
         room_id, user_id, project_id
     ))?;
 
@@ -76,8 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     send_event(
         &mut write,
-        "Create",
-        CreateContent {
+        Event::Create {
             room_id: room_id.clone(),
         },
         None,
@@ -87,8 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     send_event(
         &mut write,
-        "Join",
-        JoinContent {
+        Event::Join {
             room_id: room_id.clone(),
         },
         None,
@@ -96,34 +103,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
     info!("Joined room");
 
-    send_event(
-        &mut write,
-        "SessionCommand",
-        (),
-        Some(SessionCommand {
-            command_type: "AddTask",
-            project_id: project_id.to_string(),
-            user: None,
-        }),
-    )
-    .await?;
-    info!("AddTask command sent");
-
     let test_user = User {
         id: user_id.to_string(),
         email: Some("test.user@example.com".to_string()),
         name: Some("Test User".to_string()),
+        tenant_id: "test_tenant".to_string(),
     };
 
-    send_event(
+    send_command(
         &mut write,
-        "SessionCommand",
-        (),
-        Some(SessionCommand {
-            command_type: "Start",
+        SessionCommand::AddTask {
             project_id: project_id.to_string(),
-            user: Some(test_user.clone()),
-        }),
+        },
+    )
+    .await?;
+    info!("AddTask command sent");
+
+    send_command(
+        &mut write,
+        SessionCommand::Start {
+            project_id: project_id.to_string(),
+            user: test_user.clone(),
+        },
     )
     .await?;
     info!("Start command sent");
@@ -149,28 +150,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     write.send(Message::Binary(update2)).await?;
     info!("Second YJS update sent");
 
-    send_event(
+    send_command(
         &mut write,
-        "SessionCommand",
-        (),
-        Some(SessionCommand {
-            command_type: "End",
+        SessionCommand::End {
             project_id: project_id.to_string(),
-            user: Some(test_user.clone()),
-        }),
+            user: test_user.clone(),
+        },
     )
     .await?;
     info!("End command sent");
 
-    send_event(
+    send_command(
         &mut write,
-        "SessionCommand",
-        (),
-        Some(SessionCommand {
-            command_type: "RemoveTask",
+        SessionCommand::RemoveTask {
             project_id: project_id.to_string(),
-            user: None,
-        }),
+        },
     )
     .await?;
     info!("RemoveTask command sent");
@@ -193,49 +187,52 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn send_event<T: Serialize>(
+async fn send_event(
     writer: &mut futures_util::stream::SplitSink<
         tokio_tungstenite::WebSocketStream<
             tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
         >,
         Message,
     >,
-    tag: &'static str,
-    content: T,
+    event: Event,
     session_command: Option<SessionCommand>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let event = Event {
-        event: EventData { tag, content },
+    let message = FlowMessage {
+        event,
         session_command,
     };
 
     writer
-        .send(Message::Text(serde_json::to_string(&event)?))
+        .send(Message::Text(serde_json::to_string(&message)?))
         .await?;
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     Ok(())
 }
 
-// async fn wait_for_response(
-//     read: &mut futures_util::stream::SplitStream<
-//         tokio_tungstenite::WebSocketStream<
-//             tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
-//         >,
-//     >,
-// ) -> Result<(), Box<dyn std::error::Error>> {
-//     if let Some(msg) = read.next().await {
-//         match msg {
-//             Ok(msg) => {
-//                 info!("Received response: {:?}", msg);
-//             }
-//             Err(e) => {
-//                 error!("Error receiving response: {}", e);
-//             }
-//         }
-//     }
-//     Ok(())
-// }
+async fn send_command(
+    writer: &mut futures_util::stream::SplitSink<
+        tokio_tungstenite::WebSocketStream<
+            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+        >,
+        Message,
+    >,
+    command: SessionCommand,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let message = FlowMessage {
+        event: Event::Emit {
+            data: String::new(),
+        },
+        session_command: Some(command),
+    };
+
+    writer
+        .send(Message::Text(serde_json::to_string(&message)?))
+        .await?;
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    Ok(())
+}
 
 fn generate_key() -> String {
     use base64::{engine::general_purpose::STANDARD, Engine};
