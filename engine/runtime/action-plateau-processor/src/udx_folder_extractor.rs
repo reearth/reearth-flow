@@ -88,7 +88,7 @@ impl ProcessorFactory for UdxFolderExtractorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: UdxFolderExtractorParam = if let Some(with) = with {
+        let params: UdxFolderExtractorParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::UdxFolderExtractorFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -118,6 +118,7 @@ impl ProcessorFactory for UdxFolderExtractorFactory {
                 ))
             })?;
         let process = UdxFolderExtractor {
+            global_params: with,
             city_gml_path,
             codelists_path: params.codelists_path,
             schemas_path: params.schemas_path,
@@ -128,6 +129,7 @@ impl ProcessorFactory for UdxFolderExtractorFactory {
 
 #[derive(Debug, Clone)]
 pub struct UdxFolderExtractor {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     city_gml_path: rhai::AST,
     codelists_path: Option<String>,
     schemas_path: Option<String>,
@@ -150,6 +152,7 @@ impl Processor for UdxFolderExtractor {
         let feature = &ctx.feature;
         let res = mapper(
             feature,
+            &self.global_params,
             &self.city_gml_path,
             Arc::clone(&ctx.expr_engine),
             Arc::clone(&ctx.storage_resolver),
@@ -186,6 +189,7 @@ impl Processor for UdxFolderExtractor {
 
 fn mapper(
     feature: &Feature,
+    global_params: &Option<HashMap<String, serde_json::Value>>,
     expr: &rhai::AST,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
@@ -193,7 +197,7 @@ fn mapper(
     schemas_path: &Option<String>,
 ) -> super::errors::Result<Response> {
     let city_gml_path = {
-        let scope = feature.new_scope(expr_engine.clone());
+        let scope = feature.new_scope(expr_engine.clone(), global_params);
         scope
             .eval_ast::<String>(expr)
             .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?

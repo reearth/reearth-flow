@@ -51,7 +51,7 @@ impl ProcessorFactory for FeatureTransformerFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: FeatureTransformerParam = if let Some(with) = with {
+        let params: FeatureTransformerParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::TransformerFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -80,13 +80,17 @@ impl ProcessorFactory for FeatureTransformerFactory {
                 .map_err(|e| FeatureProcessorError::TransformerFactory(format!("{:?}", e)))?;
             transformers.push(CompiledTransform { expr: template_ast });
         }
-        let process = FeatureTransformer { transformers };
+        let process = FeatureTransformer {
+            global_params: with,
+            transformers,
+        };
         Ok(Box::new(process))
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct FeatureTransformer {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     transformers: Vec<CompiledTransform>,
 }
 
@@ -117,7 +121,12 @@ impl Processor for FeatureTransformer {
         let feature = &ctx.feature;
         let mut new_feature = feature.clone();
         for transformer in &self.transformers {
-            new_feature = mapper(&new_feature, &transformer.expr, expr_engine.clone());
+            new_feature = mapper(
+                &new_feature,
+                &transformer.expr,
+                expr_engine.clone(),
+                &self.global_params,
+            );
         }
         fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
         Ok(())
@@ -136,8 +145,13 @@ impl Processor for FeatureTransformer {
     }
 }
 
-fn mapper(feature: &Feature, expr: &rhai::AST, expr_engine: Arc<Engine>) -> Feature {
-    let scope = feature.new_scope(expr_engine.clone());
+fn mapper(
+    feature: &Feature,
+    expr: &rhai::AST,
+    expr_engine: Arc<Engine>,
+    global_params: &Option<HashMap<String, serde_json::Value>>,
+) -> Feature {
+    let scope = feature.new_scope(expr_engine.clone(), global_params);
     let new_value = scope.eval_ast::<Dynamic>(expr);
     if let Ok(new_value) = new_value {
         if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {

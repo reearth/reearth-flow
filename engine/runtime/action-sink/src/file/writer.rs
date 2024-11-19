@@ -58,7 +58,7 @@ impl SinkFactory for FileWriterSinkFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params: FileWriterParam = if let Some(with) = with {
+        let params: FileWriterParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::BuildFactory(format!("Failed to serialize `with` parameter: {}", e))
             })?;
@@ -90,6 +90,7 @@ impl SinkFactory for FileWriterSinkFactory {
             },
         };
         let sink = FileWriter {
+            global_params: with,
             params,
             buffer: HashMap::new(),
         };
@@ -99,6 +100,7 @@ impl SinkFactory for FileWriterSinkFactory {
 
 #[derive(Debug, Clone)]
 pub struct FileWriter {
+    pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: FileWriterCompiledParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }
@@ -188,7 +190,7 @@ impl Sink for FileWriter {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let common_param = self.params.as_common_param();
         let feature = &ctx.feature;
-        let scope = feature.new_scope(expr_engine);
+        let scope = feature.new_scope(expr_engine, &self.global_params);
         let path = scope
             .eval_ast::<String>(&common_param.output)
             .map_err(|e| SinkError::FileWriter(e.to_string()))?;

@@ -18,6 +18,7 @@ pub struct CsvReaderParam {
 
 pub(crate) fn read_csv(
     delimiter: Delimiter,
+    global_params: &Option<HashMap<String, serde_json::Value>>,
     params: &CompiledCommonReaderParam,
     csv_params: &CsvReaderParam,
     ctx: ExecutorContext,
@@ -26,7 +27,7 @@ pub(crate) fn read_csv(
     let feature = &ctx.feature;
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let storage_resolver = &ctx.storage_resolver;
-    let scope = feature.new_scope(expr_engine.clone());
+    let scope = feature.new_scope(expr_engine.clone(), global_params);
     let csv_path = scope.eval_ast::<String>(&params.expr).map_err(|e| {
         super::errors::FeatureProcessorError::FileCsvReader(format!(
             "Failed to evaluate expr: {}",

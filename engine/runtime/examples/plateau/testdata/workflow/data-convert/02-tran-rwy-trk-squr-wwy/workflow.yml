@@ -70,6 +70,8 @@ graphs:
         name: LodSplitterWithDm
         type: subGraph
         subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+        with:
+          exceptSplit: true
 
       - id: 0274320c-6aad-4ea2-b4cc-b2d7fe7071d8
         name: AttributeMapperLod0-2Tran
@@ -86,7 +88,6 @@ graphs:
                   meshcode: value.meshCode,
                   city_code: value.cityCode,
                   city_name: value.cityName,
-                  feature_type: value.gmlName.split(":")[1],
                   gml_id: value.gmlId,
                   tran_class: attributes["tran:class"] ?? "",
                   tran_function: attributes["tran:function"] ?? "",
@@ -114,7 +115,8 @@ graphs:
         action: MVTWriter
         with:
           format: mvt
-          layerName: Road
+          layerName: |
+            "Road"
           minZoom: 8
           maxZoom: 16
           output: |

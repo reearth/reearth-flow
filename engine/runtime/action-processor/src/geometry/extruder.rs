@@ -50,7 +50,7 @@ impl ProcessorFactory for ExtruderFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: ExtruderParam = if let Some(with) = with {
+        let params: ExtruderParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::ExtruderFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -76,6 +76,7 @@ impl ProcessorFactory for ExtruderFactory {
             .compile(expr.as_ref())
             .map_err(|e| GeometryProcessorError::ExtruderFactory(format!("{:?}", e)))?;
         let process = Extruder {
+            global_params: with,
             distance: template_ast,
         };
         Ok(Box::new(process))
@@ -84,6 +85,7 @@ impl ProcessorFactory for ExtruderFactory {
 
 #[derive(Debug, Clone)]
 pub struct Extruder {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     distance: rhai::AST,
 }
 
@@ -105,7 +107,7 @@ impl Processor for Extruder {
     ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
-        let scope = feature.new_scope(expr_engine.clone());
+        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         let Ok(height) = scope.eval_ast::<f64>(&self.distance) else {
             return Err(GeometryProcessorError::Extruder(
                 "Failed to evaluate distance".to_string(),
