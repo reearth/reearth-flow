@@ -68,7 +68,7 @@ impl SinkFactory for MVTSinkFactory {
         _action: String,
         with: Option<HashMap<String, JsonValue>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params: MVTWriterParam = if let Some(with) = with {
+        let params: MVTWriterParam = if let Some(with) = with.clone() {
             let value: JsonValue = serde_json::to_value(with).map_err(|e| {
                 SinkError::MvtWriterFactory(format!("Failed to serialize `with` parameter: {}", e))
             })?;
@@ -95,6 +95,7 @@ impl SinkFactory for MVTSinkFactory {
             .map_err(|e| SinkError::MvtWriterFactory(format!("{:?}", e)))?;
 
         let sink = MVTWriter {
+            global_params: with,
             buffer: HashMap::new(),
             params: MVTWriterCompiledParam {
                 output,
@@ -111,6 +112,7 @@ type BufferKey = (Uri, String);
 
 #[derive(Debug, Clone)]
 pub struct MVTWriter {
+    pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: MVTWriterCompiledParam,
     pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
 }
@@ -149,7 +151,7 @@ impl Sink for MVTWriter {
         match feature.geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_) => {
                 let output = self.params.output.clone();
-                let scope = feature.new_scope(ctx.expr_engine.clone());
+                let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
                 let path = scope
                     .eval_ast::<String>(&output)
                     .map_err(|e| SinkError::MvtWriter(format!("{:?}", e)))?;

@@ -50,7 +50,7 @@ impl ProcessorFactory for AttributeMapperFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: AttributeMapperParam = if let Some(with) = with {
+        let params: AttributeMapperParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::MapperFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -101,6 +101,7 @@ impl ProcessorFactory for AttributeMapperFactory {
         }
 
         let processor = AttributeMapper {
+            global_params: with,
             mapper: CompiledAttributeMapperParam { mappers },
         };
         Ok(Box::new(processor))
@@ -141,6 +142,7 @@ struct CompiledMapper {
 
 #[derive(Debug, Clone)]
 pub struct AttributeMapper {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     mapper: CompiledAttributeMapperParam,
 }
 
@@ -153,7 +155,7 @@ impl Processor for AttributeMapper {
         let feature = &ctx.feature;
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let mut attributes = HashMap::<Attribute, AttributeValue>::new();
-        let scope = feature.new_scope(expr_engine.clone());
+        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         for mapper in &self.mapper.mappers {
             match &mapper.attribute {
                 Some(attribute) => {

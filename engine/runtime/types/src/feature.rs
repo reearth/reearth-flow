@@ -269,12 +269,13 @@ impl Feature {
     pub fn new_with_attributes_and_geometry(
         attributes: HashMap<Attribute, AttributeValue>,
         geometry: Geometry,
+        metadata: Metadata,
     ) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes,
             geometry,
-            metadata: Default::default(),
+            metadata,
         }
     }
 
@@ -335,7 +336,11 @@ impl Feature {
         self.attributes.iter()
     }
 
-    pub fn new_scope(&self, engine: Arc<Engine>) -> Scope {
+    pub fn new_scope(
+        &self,
+        engine: Arc<Engine>,
+        with: &Option<HashMap<String, serde_json::Value>>,
+    ) -> Scope {
         let scope = engine.new_scope();
         let value: serde_json::Value = serde_json::Value::Object(
             self.attributes
@@ -345,10 +350,15 @@ impl Feature {
                 .collect::<serde_json::Map<_, _>>(),
         );
         scope.set("__value", value);
+        if let Some(with) = with {
+            for (k, v) in with {
+                scope.set(k, v.clone());
+            }
+        }
         scope
     }
 
-    pub fn to_map(&self) -> HashMap<String, AttributeValue> {
+    pub fn as_map(&self) -> HashMap<String, AttributeValue> {
         self.attributes
             .iter()
             .map(|(k, v)| (k.to_string(), v.clone()))
@@ -358,6 +368,7 @@ impl Feature {
     pub fn fetch_attribute_value(
         &self,
         engine: Arc<Engine>,
+        with: &Option<HashMap<String, serde_json::Value>>,
         attribute: &Option<Vec<Attribute>>,
         attribute_ast: &Option<rhai::AST>,
     ) -> String {
@@ -373,7 +384,7 @@ impl Feature {
                 .collect::<Vec<_>>()
                 .join("-")
         } else if let Some(attribute_ast) = attribute_ast {
-            let scope = self.new_scope(engine.clone());
+            let scope = self.new_scope(engine.clone(), with);
             let value = scope.eval_ast::<String>(attribute_ast);
 
             value.unwrap_or_else(|_| "".to_string())

@@ -89,7 +89,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
         _action: String,
         with: Option<HashMap<String, JsonValue>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params: Cesium3DTilesWriterParam = if let Some(with) = with {
+        let params: Cesium3DTilesWriterParam = if let Some(with) = with.clone() {
             let value: serde_json::Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::Cesium3DTilesWriterFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -116,6 +116,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{:?}", e)))?;
 
         let sink = Cesium3DTilesWriter {
+            global_params: with,
             buffer: HashMap::new(),
             params: Cesium3DTilesWriterCompiledParam {
                 output: template_ast,
@@ -130,6 +131,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
+    pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }
@@ -170,7 +172,7 @@ impl Sink for Cesium3DTilesWriter {
         }
         let feature = ctx.feature;
         let output = self.params.output.clone();
-        let scope = feature.new_scope(ctx.expr_engine.clone());
+        let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;

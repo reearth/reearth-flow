@@ -204,7 +204,11 @@ impl Processor for GeometrySplitter {
                     );
                     geometry.value = GeometryValue::CityGmlGeometry(split_feature);
                     fw.send(ctx.new_with_feature_and_port(
-                        Feature::new_with_attributes_and_geometry(attributes, geometry),
+                        Feature::new_with_attributes_and_geometry(
+                            attributes,
+                            geometry,
+                            feature.metadata.clone(),
+                        ),
                         DEFAULT_PORT.clone(),
                     ));
                 }

@@ -58,7 +58,7 @@ impl ProcessorFactory for FeatureMergerFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: FeatureMergerParam = if let Some(with) = with {
+        let params: FeatureMergerParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::MergerFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -121,6 +121,7 @@ impl ProcessorFactory for FeatureMergerFactory {
             .into());
         }
         let process = FeatureMerger {
+            global_params: with,
             params: CompiledParam {
                 requestor_attribute_value,
                 supplier_attribute_value,
@@ -149,6 +150,7 @@ pub struct FeatureMergerParam {
 
 #[derive(Debug, Clone)]
 pub struct FeatureMerger {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledParam,
     requestor_buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped, features)
     supplier_buffer: HashMap<String, (bool, Vec<Feature>)>,  // (complete_grouped, features)
@@ -177,6 +179,7 @@ impl Processor for FeatureMerger {
                 let expr_engine = Arc::clone(&ctx.expr_engine);
                 let requestor_attribute_value = feature.fetch_attribute_value(
                     expr_engine,
+                    &self.global_params,
                     &self.params.requestor_attribute,
                     &self.params.requestor_attribute_value,
                 );
@@ -218,6 +221,7 @@ impl Processor for FeatureMerger {
                 let expr_engine = Arc::clone(&ctx.expr_engine);
                 let supplier_attribute_value = feature.fetch_attribute_value(
                     expr_engine,
+                    &self.global_params,
                     &self.params.supplier_attribute,
                     &self.params.supplier_attribute_value,
                 );

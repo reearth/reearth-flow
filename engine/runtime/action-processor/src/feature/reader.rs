@@ -53,7 +53,7 @@ impl ProcessorFactory for FeatureReaderFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: FeatureReaderParam = if let Some(with) = with {
+        let params: FeatureReaderParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::FilterFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -85,6 +85,7 @@ impl ProcessorFactory for FeatureReaderFactory {
                         .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
                 };
                 let process = FeatureReader {
+                    global_params: with,
                     params: CompiledFeatureReaderParam::CityGML {
                         common_param,
                         param,
@@ -102,6 +103,7 @@ impl ProcessorFactory for FeatureReaderFactory {
                         .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
                 };
                 let process = FeatureReader {
+                    global_params: with,
                     params: CompiledFeatureReaderParam::Csv {
                         common_param,
                         param,
@@ -119,6 +121,7 @@ impl ProcessorFactory for FeatureReaderFactory {
                         .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
                 };
                 let process = FeatureReader {
+                    global_params: with,
                     params: CompiledFeatureReaderParam::Tsv {
                         common_param,
                         param,
@@ -132,6 +135,7 @@ impl ProcessorFactory for FeatureReaderFactory {
 
 #[derive(Debug, Clone)]
 pub struct FeatureReader {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureReaderParam,
 }
 
@@ -200,13 +204,16 @@ impl Processor for FeatureReader {
     ) -> Result<(), BoxedError> {
         match self {
             FeatureReader {
+                global_params,
                 params:
                     CompiledFeatureReaderParam::CityGML {
                         common_param,
                         param,
                     },
-            } => citygml::read_citygml(common_param, param, ctx, fw).map_err(|e| e.into()),
+            } => citygml::read_citygml(global_params, common_param, param, ctx, fw)
+                .map_err(|e| e.into()),
             FeatureReader {
+                global_params,
                 params:
                     CompiledFeatureReaderParam::Csv {
                         common_param,
@@ -214,6 +221,7 @@ impl Processor for FeatureReader {
                     },
             } => csv::read_csv(
                 reearth_flow_common::csv::Delimiter::Comma,
+                global_params,
                 common_param,
                 param,
                 ctx,
@@ -221,6 +229,7 @@ impl Processor for FeatureReader {
             )
             .map_err(|e| e.into()),
             FeatureReader {
+                global_params,
                 params:
                     CompiledFeatureReaderParam::Tsv {
                         common_param,
@@ -228,6 +237,7 @@ impl Processor for FeatureReader {
                     },
             } => csv::read_csv(
                 reearth_flow_common::csv::Delimiter::Tab,
+                global_params,
                 common_param,
                 param,
                 ctx,
