@@ -77,19 +77,20 @@ impl AppState {
 
         let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
+        let (tx, rx) = mpsc::channel(CHANNEL_BUFFER_SIZE);
         let service = Arc::new(ManageEditSessionService::new(
             session_repo.clone(),
             storage.clone(),
             Arc::new(redis_data_manager),
         ));
 
-        let (tx, rx) = mpsc::channel(CHANNEL_BUFFER_SIZE);
-
         let service_clone = service.clone();
         tokio::spawn(async move {
+            debug!("Starting service processor");
             if let Err(e) = service_clone.process(rx).await {
                 error!("Service processing error: {}", e);
             }
+            debug!("Service processor ended");
         });
 
         Ok(AppState {

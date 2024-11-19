@@ -14,7 +14,6 @@ use axum::{
 };
 use flow_websocket_infra::types::user::User;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
-use tokio::sync::mpsc;
 use tracing::{debug, error, trace};
 
 pub async fn handle_upgrade(
@@ -46,18 +45,6 @@ async fn handle_socket(
         return;
     }
 
-    let (_tx, rx) = mpsc::channel(32);
-
-    // Spawn service processor
-    tokio::spawn({
-        let service = state.service.clone();
-        async move {
-            if let Err(e) = service.process(rx).await {
-                error!("Error processing session commands: {:?}", e);
-            }
-        }
-    });
-
     let cleanup = || {
         let state = state.clone();
         let room_id = room_id.clone();
@@ -69,19 +56,26 @@ async fn handle_socket(
                 debug!("Cleanup error during leave: {:?}", e);
             }
             if let Some(project_id) = project_id {
-                let _ = state
+                if let Err(e) = state
                     .command_tx
                     .send(SessionCommand::End {
                         project_id: project_id.to_string(),
                         user: user.clone(),
                     })
-                    .await;
-                let _ = state
+                    .await
+                {
+                    debug!("Failed to send End command during cleanup: {:?}", e);
+                }
+
+                if let Err(e) = state
                     .command_tx
                     .send(SessionCommand::RemoveTask {
                         project_id: project_id.to_string(),
                     })
-                    .await;
+                    .await
+                {
+                    debug!("Failed to send RemoveTask command during cleanup: {:?}", e);
+                }
             }
         });
     };
