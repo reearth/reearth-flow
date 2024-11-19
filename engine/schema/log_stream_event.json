@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LogStreamEvent",
+  "type": "object",
+  "required": [
+    "jobId",
+    "logLevel",
+    "message",
+    "timestamp",
+    "workflowId"
+  ],
+  "properties": {
+    "jobId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "logLevel": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "nodeId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "workflowId": {
+      "type": "string",
+      "format": "uuid"
+    }
+  }
+}
