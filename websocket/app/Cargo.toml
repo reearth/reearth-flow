@@ -10,13 +10,9 @@ rust-version.workspace = true
 version.workspace = true
 
 [features]
-default = ["gcs-storage"] 
-gcs-storage = [
-    "flow-websocket-infra/gcs-storage",
-]  
-local-storage = [
-    "flow-websocket-infra/local-storage",
-]
+default = ["gcs-storage"]
+gcs-storage = ["flow-websocket-infra/gcs-storage"]
+local-storage = ["flow-websocket-infra/local-storage"]
 
 
 [dependencies]
@@ -33,8 +29,8 @@ thiserror.workspace = true
 redis.workspace = true
 dotenv.workspace = true
 envy.workspace = true
-flow-websocket-services = { workspace = true, default-features = false}
-flow-websocket-infra = { workspace = true, default-features = false } 
+flow-websocket-services = { workspace = true, default-features = false }
+flow-websocket-infra = { workspace = true, default-features = false }
 bb8.workspace = true
 bb8-redis.workspace = true
 tokio-tungstenite.workspace = true

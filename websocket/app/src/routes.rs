@@ -12,6 +12,6 @@ fn create_base_router() -> Router<Arc<AppState>> {
 
 pub fn create_router(state: Arc<AppState>) -> Router {
     let base_router = create_base_router();
-    let router_with_middleware = add_middleware(base_router);
+    let router_with_middleware = add_middleware(base_router, true);
     router_with_middleware.with_state(state)
 }

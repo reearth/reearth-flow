@@ -24,3 +24,80 @@ pub async fn auth_middleware(
         Err(StatusCode::UNAUTHORIZED)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+        middleware,
+        response::Response,
+        routing::get,
+        Router,
+    };
+    use tower::ServiceExt;
+
+    async fn mock_handler(_: Request<Body>) -> Result<Response<Body>, StatusCode> {
+        Ok(Response::new(Body::from("Success")))
+    }
+
+    #[tokio::test]
+    async fn test_auth_middleware_with_valid_token() {
+        // Create a router with middleware and mock handler
+        let app = Router::new()
+            .route("/", get(mock_handler))
+            .layer(middleware::from_fn(auth_middleware));
+
+        // Create a request with a valid authorization header
+        let request = Request::builder()
+            .uri("/")
+            .header("Authorization", "Bearer valid_token")
+            .body(Body::empty())
+            .unwrap();
+
+        // Send the request
+        let response = app.oneshot(request).await.unwrap();
+
+        // Assert that the response is successful
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_auth_middleware_without_token() {
+        // Create a router with middleware and mock handler
+        let app = Router::new()
+            .route("/", get(mock_handler))
+            .layer(middleware::from_fn(auth_middleware));
+
+        // Create a request without an authorization header
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+
+        // Send the request
+        let response = app.oneshot(request).await.unwrap();
+
+        // Assert that the response is unauthorized
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_auth_middleware_with_invalid_token() {
+        // Create a router with middleware and mock handler
+        let app = Router::new()
+            .route("/", get(mock_handler))
+            .layer(middleware::from_fn(auth_middleware));
+
+        // Create a request with an invalid authorization header
+        let request = Request::builder()
+            .uri("/")
+            .header("Authorization", "InvalidTokenFormat")
+            .body(Body::empty())
+            .unwrap();
+
+        // Send the request
+        let response = app.oneshot(request).await.unwrap();
+
+        // Assert that the response is unauthorized
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+}
