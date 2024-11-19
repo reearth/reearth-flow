@@ -23,25 +23,35 @@ struct FlowMessage {
 
 #[derive(Serialize)]
 enum SessionCommand {
-    Start { project_id: String, user: User },
-    End { project_id: String, user: User },
-    // Complete {
-    //     project_id: String,
-    //     user: User,
-    // },
-    // CheckStatus {
-    //     project_id: String,
-    // },
-    AddTask { project_id: String },
-    RemoveTask { project_id: String },
-    // ListAllSnapshotsVersions {
-    //     project_id: String,
-    // },
-    // MergeUpdates {
-    //     project_id: String,
-    //     data: Vec<u8>,
-    //     updated_by: Option<String>,
-    // },
+    Start {
+        project_id: String,
+        user: User,
+    },
+    End {
+        project_id: String,
+        user: User,
+    },
+    Complete {
+        project_id: String,
+        user: User,
+    },
+    CheckStatus {
+        project_id: String,
+    },
+    AddTask {
+        project_id: String,
+    },
+    RemoveTask {
+        project_id: String,
+    },
+    ListAllSnapshotsVersions {
+        project_id: String,
+    },
+    MergeUpdates {
+        project_id: String,
+        data: Vec<u8>,
+        updated_by: Option<String>,
+    },
 }
 
 #[derive(Serialize, Clone)]
@@ -149,6 +159,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     write.send(Message::Binary(update2)).await?;
     info!("Second YJS update sent");
+
+    let update_data = {
+        let mut txn = doc.transact_mut();
+        text.push(&mut txn, "Hello from merge update!");
+        txn.encode_update_v2()
+    };
+
+    send_command(
+        &mut write,
+        SessionCommand::MergeUpdates {
+            project_id: project_id.to_string(),
+            data: update_data,
+            updated_by: Some(user_id.to_string()),
+        },
+    )
+    .await?;
+    info!("MergeUpdates command sent with YJS update");
+
+    send_command(
+        &mut write,
+        SessionCommand::Complete {
+            project_id: project_id.to_string(),
+            user: test_user.clone(),
+        },
+    )
+    .await?;
+    info!("Complete command sent");
+
+    send_command(
+        &mut write,
+        SessionCommand::CheckStatus {
+            project_id: project_id.to_string(),
+        },
+    )
+    .await?;
+    info!("CheckStatus command sent");
+
+    send_command(
+        &mut write,
+        SessionCommand::ListAllSnapshotsVersions {
+            project_id: project_id.to_string(),
+        },
+    )
+    .await?;
+    info!("ListAllSnapshotsVersions command sent");
 
     send_command(
         &mut write,
