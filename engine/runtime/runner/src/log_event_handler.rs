@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
 use reearth_flow_action_log::{action_error_log, action_log, factory::LoggerFactory, ActionLogger};
-use tracing::{debug, debug_span, error_span, info_span, trace_span, warn_span};
+use tracing::{debug_span, error_span, info_span, trace_span, warn_span};
 
 pub(crate) struct LogEventHandler {
     #[allow(dead_code)]
     pub(crate) workflow_id: uuid::Uuid,
-    #[allow(dead_code)]
     pub(crate) job_id: uuid::Uuid,
     pub(crate) logger: Arc<ActionLogger>,
 }
@@ -32,9 +31,14 @@ impl reearth_flow_runtime::event::EventHandler for LogEventHandler {
         if let reearth_flow_runtime::event::Event::Log {
             span,
             level,
+            node_handle,
             message,
         } = event
         {
+            let node_id = node_handle
+                .clone()
+                .map(|h| h.id.to_string())
+                .unwrap_or_else(|| "".to_string());
             match *level {
                 tracing::Level::ERROR => {
                     let span = span.clone().unwrap_or_else(|| error_span!(""));
@@ -42,7 +46,7 @@ impl reearth_flow_runtime::event::EventHandler for LogEventHandler {
                 }
                 tracing::Level::WARN => {
                     let span = span.clone().unwrap_or_else(|| warn_span!(""));
-                    tracing::event!(parent: span, tracing::Level::WARN,  "job_id"=self.job_id.to_string(),  "{:?}", message);
+                    tracing::event!(parent: span, tracing::Level::WARN, "job_id"=self.job_id.to_string(), "node_id"=node_id, "{:?}", message);
                 }
                 tracing::Level::INFO => {
                     let span = span.clone().unwrap_or_else(|| info_span!(""));
@@ -50,11 +54,11 @@ impl reearth_flow_runtime::event::EventHandler for LogEventHandler {
                 }
                 tracing::Level::DEBUG => {
                     let span = span.clone().unwrap_or_else(|| debug_span!(""));
-                    debug!(parent: span, "{:?}", message);
+                    tracing::event!(parent: span, tracing::Level::DEBUG, "job_id"=self.job_id.to_string(), "node_id"=node_id, "{:?}", message);
                 }
                 tracing::Level::TRACE => {
                     let span = span.clone().unwrap_or_else(|| trace_span!(""));
-                    debug!(parent: span, "{:?}", message);
+                    tracing::event!(parent: span, tracing::Level::TRACE, "job_id"=self.job_id.to_string(), "node_id"=node_id, "{:?}", message);
                 }
             }
         }

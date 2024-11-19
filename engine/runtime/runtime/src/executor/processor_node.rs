@@ -157,8 +157,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             ))
             .map_err(ExecutionError::Processor)?;
 
-        self.event_hub.info_log(
+        self.event_hub.info_log_with_node_handle(
             Some(span.clone()),
+            self.node_handle.clone(),
             format!("{:?} process start...", self.processor.read().name()),
         );
 
@@ -169,8 +170,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     .load(std::sync::atomic::Ordering::SeqCst)
                     == 0
                 {
-                    self.event_hub.info_log(
+                    self.event_hub.info_log_with_node_handle(
                         Some(span.clone()),
+                        self.node_handle.clone(),
                         format!(
                             "{:?} process finish. elapsed = {:?}",
                             self.processor.read().name(),
@@ -243,8 +245,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             .finish(ctx.clone(), channel_manager)
             .map_err(|e| ExecutionError::CannotSendToChannel(format!("{:?}", e)))?;
         let span = self.span.clone();
-        self.event_hub.info_log(
+        self.event_hub.info_log_with_node_handle(
             Some(span),
+            self.node_handle.clone(),
             format!(
                 "{:?} finish process complete. elapsed = {:?}",
                 processor.read().name(),
@@ -272,8 +275,9 @@ fn process(
     let result = processor.process(ctx, channel_manager);
     let elapsed = now.elapsed();
     if elapsed >= *SLOW_ACTION_THRESHOLD {
-        event_hub.info_log(
+        event_hub.info_log_with_node_handle(
             Some(span.clone()),
+            node_handle.clone(),
             format!(
                 "Slow action, processor node name = {:?}, node_id = {}, feature id = {:?}, elapsed = {:?}",
                 processor.name(),
@@ -284,8 +288,9 @@ fn process(
         );
     }
     if let Err(e) = result {
-        event_hub.error_log(
+        event_hub.error_log_with_node_handle(
             Some(span.clone()),
+            node_handle.clone(),
             format!(
                 "Error operation, processor node name = {:?}, node_id = {}, feature id = {:?}, error = {:?}",
                 processor.name(),

@@ -3,8 +3,20 @@
 ## Usage
 ### Command Line
 * To run a flow, use the following command:
-```console
+``` sh
 cargo run --package reearth-flow-worker -- --workflow gs://reearth-flow-assets/workflows/example.yml --metadata-path gs://reearth-flow-assets/metadata/metadata.json --var='csvPath=assets/input.tsv' --var='outputPath=result.json'
+```
+
+### Local Development
+``` sh
+# GCS Emulator
+export STORAGE_EMULATOR_HOST=http://localhost:4443
+# Cloud Pub/Sub Emulator
+export PUBSUB_EMULATOR_HOST=0.0.0.0:8085
+
+# Run the emulator
+docker compose build
+docker compose up -d
 ```
 
 ### Variables
