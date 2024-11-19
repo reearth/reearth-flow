@@ -54,7 +54,9 @@ impl Room {
 
     /// Broadcasts a message to all users in the room
     pub fn broadcast(&self, msg: String) -> Result<(), RoomError> {
-        self.tx.send(msg)?;
+        if self.tx.receiver_count() > 0 {
+            self.tx.send(msg)?;
+        }
         Ok(())
     }
 

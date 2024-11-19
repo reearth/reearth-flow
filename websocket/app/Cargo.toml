@@ -36,3 +36,5 @@ bb8-redis.workspace = true
 tokio-tungstenite.workspace = true
 futures-util.workspace = true
 url.workspace = true
+base64.workspace = true
+rand.workspace = true

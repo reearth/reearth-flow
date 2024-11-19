@@ -64,6 +64,7 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "base64 0.22.1",
  "bb8",
  "bb8-redis",
  "dotenv",
@@ -71,6 +72,7 @@ dependencies = [
  "flow-websocket-infra",
  "flow-websocket-services",
  "futures-util",
+ "rand",
  "redis",
  "serde",
  "serde_json",

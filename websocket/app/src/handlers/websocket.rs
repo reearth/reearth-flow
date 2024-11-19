@@ -42,11 +42,7 @@ async fn handle_socket(
     project_id: Option<String>,
     user: User,
 ) {
-    if !verify_connection(&mut socket, &addr).await {
-        return;
-    }
-
-    if !initialize_room(&state, &room_id, &user).await {
+    if !test_connection(&mut socket, &addr).await {
         return;
     }
 
@@ -125,26 +121,9 @@ async fn handle_socket(
     }
 }
 
-async fn verify_connection(socket: &mut WebSocket, addr: &SocketAddr) -> bool {
+async fn test_connection(socket: &mut WebSocket, addr: &SocketAddr) -> bool {
     if socket.send(Message::Ping(vec![4])).await.is_err() {
         debug!("Connection failed for {addr}: ping failed");
-        return false;
-    }
-
-    true
-}
-
-async fn initialize_room(state: &Arc<AppState>, room_id: &str, user: &User) -> bool {
-    match state.make_room(room_id.to_string()) {
-        Ok(_) => debug!("Room created/exists: {}", room_id),
-        Err(e) => {
-            debug!("Failed to create room: {:?}", e);
-            return false;
-        }
-    }
-
-    if let Err(e) = state.join(room_id, &user.id).await {
-        debug!("Failed to join room: {:?}", e);
         return false;
     }
 
@@ -170,6 +149,7 @@ async fn handle_message(
             };
 
             match msg.event {
+                Event::Create { room_id } => state.make_room(room_id).await?,
                 Event::Join { room_id } => state.join(&room_id, &user.id).await?,
                 Event::Leave => state.leave(room_id, &user.id).await?,
                 Event::Emit { data } => state.emit(&data).await,

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "tag", content = "content")]
 pub enum Event {
+    Create { room_id: String },
     Join { room_id: String },
     Leave,
     Emit { data: String },

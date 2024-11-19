@@ -40,6 +40,7 @@ async-trait = "0.1.80"
 axum = { version = "0.7.9", features = ["ws"] }
 axum-extra = { version = "0.9.6", features = ["typed-header"] }
 axum-macros = "0.4"
+base64 = "0.22.1"
 bb8 = "0.8"
 bb8-redis = "0.17.0"
 chrono = { version = "0.4", features = ["serde"] }
@@ -49,6 +50,7 @@ futures-util = "0.3"
 google-cloud-storage = "0.22.1"
 lru = "0.12.4"
 mockall = { version = "0.13.0" }
+rand = "0.8"
 redis = { version = "0.27.5", features = ["aio", "tokio-comp"] }
 rslock = "0.5.0"
 serde = { version = "1.0", features = ["derive"] }

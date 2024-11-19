@@ -21,6 +21,7 @@ use serde_json;
 use std::io;
 #[cfg(feature = "local-storage")]
 use std::path::PathBuf;
+#[cfg(feature = "local-storage")]
 use std::sync::Arc;
 use thiserror::Error;
 

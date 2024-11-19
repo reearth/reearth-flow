@@ -106,7 +106,7 @@ impl AppState {
     ///
     /// # Errors
     /// Returns `TryLockError` if the rooms mutex is poisoned or locked.
-    pub fn make_room(&self, room_id: String) -> Result<(), tokio::sync::TryLockError> {
+    pub async fn make_room(&self, room_id: String) -> Result<(), tokio::sync::TryLockError> {
         let mut rooms = self.rooms.try_lock()?;
         rooms.insert(room_id, Room::new());
         Ok(())
@@ -116,7 +116,7 @@ impl AppState {
     ///
     /// # Errors
     /// Returns `TryLockError` if the rooms mutex is poisoned or locked.
-    pub fn delete_room(&self, id: String) -> Result<(), tokio::sync::TryLockError> {
+    pub async fn delete_room(&self, id: String) -> Result<(), tokio::sync::TryLockError> {
         let mut rooms = self.rooms.try_lock()?;
         rooms.remove(&id);
         Ok(())
