@@ -1,0 +1,4 @@
+[source,bash]
+----
+cargo run --package app --example client
+----
