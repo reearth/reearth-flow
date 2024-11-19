@@ -15,7 +15,9 @@
       "format": "uuid"
     },
     "logLevel": {
-      "type": "string"
+      "type": "string",
+      "enum": ["ERROR", "WARN", "INFO", "DEBUG", "TRACE"],
+      "description": "The severity level of the log message"
     },
     "message": {
       "type": "string"
