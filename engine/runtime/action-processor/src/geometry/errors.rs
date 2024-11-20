@@ -95,6 +95,10 @@ pub(super) enum GeometryProcessorError {
     CityGmlGeometryLodFilterFactory(String),
     #[error("CityGmlGeometryLodFilter error: {0}")]
     CityGmlGeometryLodFilter(String),
+    #[error("GeometryLodFilter Factory error: {0}")]
+    GeometryLodFilterFactory(String),
+    #[error("GeometryLodFilter error: {0}")]
+    GeometryLodFilter(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
