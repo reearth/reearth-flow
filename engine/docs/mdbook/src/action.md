@@ -1727,6 +1727,45 @@ Filter geometry by type
 ### Category
 * Geometry
 
+## GeometryLodFilter
+### Type
+* processor
+### Description
+Filter geometry by lod
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeometryLodFilterParam",
+  "type": "object",
+  "properties": {
+    "maxLod": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "minLod": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint8",
+      "minimum": 0.0
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* unfiltered
+### Category
+* Geometry
+
 ## GeometryReplacer
 ### Type
 * processor

@@ -103,8 +103,7 @@ impl Processor for GeometryLodFilter {
         ctx: ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
-        let Some(lod) = feature.metadata.lod else {
+        let Some(lod) = &ctx.feature.metadata.lod else {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), UNFILTERED_PORT.clone()));
             return Ok(());
         };
