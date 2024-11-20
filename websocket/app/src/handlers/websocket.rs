@@ -1,3 +1,4 @@
+use std::time::Duration;
 use std::{net::SocketAddr, sync::Arc};
 
 use super::types::{Event, FlowMessage, WebSocketQuery};
@@ -14,6 +15,9 @@ use axum::{
 };
 use flow_websocket_infra::types::user::User;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
+use futures_util::{SinkExt, StreamExt};
+use tokio::sync::Mutex;
+use tokio::time::{interval, Instant};
 use tracing::{debug, error, trace};
 
 pub async fn handle_upgrade(
@@ -34,17 +38,42 @@ pub async fn handle_upgrade(
 }
 
 async fn handle_socket(
-    mut socket: WebSocket,
+    socket: WebSocket,
     addr: SocketAddr,
     room_id: String,
     state: Arc<AppState>,
     project_id: Option<String>,
     user: User,
 ) {
-    if !test_connection(&mut socket, &addr).await {
-        return;
-    }
+    let (sender, mut receiver) = socket.split();
+    let sender = Arc::new(Mutex::new(sender));
+    let last_pong = Arc::new(Mutex::new(Instant::now()));
 
+    let heartbeat_task = {
+        let last_pong = last_pong.clone();
+        let sender = sender.clone();
+        tokio::spawn(async move {
+            let mut interval = interval(Duration::from_secs(30));
+            loop {
+                interval.tick().await;
+                if sender
+                    .lock()
+                    .await
+                    .send(Message::Ping(vec![1]))
+                    .await
+                    .is_err()
+                {
+                    debug!("Ping failed for client {addr}");
+                    break;
+                }
+                let elapsed = last_pong.lock().await.elapsed();
+                if elapsed > Duration::from_secs(90) {
+                    debug!("Client {addr} ping timeout");
+                    break;
+                }
+            }
+        })
+    };
     let cleanup = || {
         let state = state.clone();
         let room_id = room_id.clone();
@@ -80,7 +109,7 @@ async fn handle_socket(
         });
     };
 
-    while let Some(msg) = socket.recv().await {
+    while let Some(msg) = receiver.next().await {
         if let Ok(msg) = msg {
             match handle_message(
                 msg,
@@ -93,10 +122,16 @@ async fn handle_socket(
             .await
             {
                 Ok(Some(msg)) => {
-                    if socket.send(Message::Binary(msg.into())).await.is_err() {
+                    if sender
+                        .lock()
+                        .await
+                        .send(Message::Binary(msg.into()))
+                        .await
+                        .is_err()
+                    {
                         debug!("Failed to send message to client {addr}");
                         cleanup();
-                        return;
+                        continue;
                     }
                 }
                 Ok(_) => continue,
@@ -104,7 +139,7 @@ async fn handle_socket(
                     debug!("Error handling message: {:?}", e);
                     debug!("client {addr} disconnected");
                     cleanup();
-                    return;
+                    continue;
                 }
             }
         } else {
@@ -113,15 +148,7 @@ async fn handle_socket(
             return;
         }
     }
-}
-
-async fn test_connection(socket: &mut WebSocket, addr: &SocketAddr) -> bool {
-    if socket.send(Message::Ping(vec![4])).await.is_err() {
-        debug!("Connection failed for {addr}: ping failed");
-        return false;
-    }
-
-    true
+    heartbeat_task.abort();
 }
 
 async fn handle_message(

@@ -192,24 +192,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
     info!("MergeUpdates command sent with YJS update");
 
-    // send_command(
-    //     &mut write,
-    //     SessionCommand::Complete {
-    //         project_id: project_id.to_string(),
-    //         user: test_user.clone(),
-    //     },
-    // )
-    // .await?;
-    // info!("Complete command sent");
+    send_command(
+        &mut write,
+        SessionCommand::Complete {
+            project_id: project_id.to_string(),
+            user: test_user.clone(),
+        },
+    )
+    .await?;
+    info!("Complete command sent");
 
-    // send_command(
-    //     &mut write,
-    //     SessionCommand::CheckStatus {
-    //         project_id: project_id.to_string(),
-    //     },
-    // )
-    // .await?;
-    // info!("CheckStatus command sent");
+    send_command(
+        &mut write,
+        SessionCommand::CheckStatus {
+            project_id: project_id.to_string(),
+        },
+    )
+    .await?;
+    info!("CheckStatus command sent");
 
     send_command(
         &mut write,
