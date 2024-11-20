@@ -6,7 +6,9 @@ use flow_websocket_infra::persistence::repository::{
     ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
     WorkspaceImpl,
 };
+use flow_websocket_infra::types::project::Project;
 use flow_websocket_infra::types::user::User;
+use flow_websocket_infra::types::workspace::Workspace;
 use mockall::automock;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -68,6 +70,27 @@ pub enum SessionCommand {
         project_id: String,
         data: Vec<u8>,
         updated_by: Option<String>,
+    },
+    CreateWorkspace {
+        workspace: Workspace,
+    },
+    DeleteWorkspace {
+        workspace_id: String,
+    },
+    UpdateWorkspace {
+        workspace: Workspace,
+    },
+    ListWorkspaceProjectsIds {
+        workspace_id: String,
+    },
+    CreateProject {
+        project: Project,
+    },
+    DeleteProject {
+        project_id: String,
+    },
+    UpdateProject {
+        project: Project,
     },
 }
 
@@ -194,7 +217,30 @@ where
                             let mut tasks = self.tasks.lock().await;
                             tasks.remove(&project_id);
                             debug!("Removed task for project: {}", project_id);
-                        }
+                        },
+                        SessionCommand::CreateWorkspace { workspace } => {
+                            self.project_service.create_workspace(workspace).await?;
+                        },
+                        SessionCommand::DeleteWorkspace { workspace_id } => {
+                            self.project_service.delete_workspace(&workspace_id).await?;
+                        },
+                        SessionCommand::UpdateWorkspace { workspace } => {
+                            self.project_service.update_workspace(workspace).await?;
+                        },
+                        SessionCommand::ListWorkspaceProjectsIds { workspace_id } => {
+                            let projects = self.project_service.list_workspace_projects_ids(&workspace_id).await?;
+                            debug!("List of all projects ids for workspace: {}", workspace_id);
+                            debug!("{:?}", projects);
+                        },
+                        SessionCommand::CreateProject { project } => {
+                            self.project_service.create_project(project).await?;
+                        },
+                        SessionCommand::DeleteProject { project_id } => {
+                            self.project_service.delete_project(&project_id).await?;
+                        },
+                        SessionCommand::UpdateProject { project } => {
+                            self.project_service.update_project(project).await?;
+                        },
                     }
                 },
                 _ = tokio::time::sleep(Duration::from_secs(1)) => {
