@@ -12,3 +12,13 @@ cargo run --features gcs-storage main.rs
 ----
 export APP_ENV="test"
 ----
+
+[source,bash]
+----
+export APP_ENV="development"
+----
+
+[source,bash]
+----
+export APP_ENV="production"
+----
