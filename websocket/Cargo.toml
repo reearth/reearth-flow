@@ -52,7 +52,6 @@ lru = "0.12.4"
 mockall = { version = "0.13.0" }
 rand = "0.8"
 redis = { version = "0.27.5", features = ["aio", "tokio-comp"] }
-rslock = "0.5.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.133", features = ["arbitrary_precision"] }
 serde_yaml = "0.9.0"
