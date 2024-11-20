@@ -35,10 +35,16 @@ struct EmitContent {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let url = Url::parse(
-        "ws://127.0.0.1:8080/ws?room_id=room123&user_id=test_user&project_id=test_project",
-    )?;
+    let project_id = "test_project";
+    let user_id = "test_user";
+    let room_id = "room123";
 
+    let url = Url::parse(&format!(
+        "ws://127.0.0.1:8080/{room_id}?user_id={user_id}&project_id={project_id}",
+        room_id = room_id,
+        user_id = user_id,
+        project_id = project_id
+    ))?;
     let request = Request::builder()
         .uri(url.as_str())
         .header("Host", url.host_str().unwrap())
@@ -64,6 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
     info!("Create message sent");
+    println!("Create message sent");
 
     send_event(
         &mut write,

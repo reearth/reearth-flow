@@ -71,8 +71,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let room_id = "room123";
 
     let url = Url::parse(&format!(
-        "ws://127.0.0.1:8080/ws?room_id={}&user_id={}&project_id={}",
-        room_id, user_id, project_id
+        "ws://127.0.0.1:8080/{room_id}?user_id={user_id}&project_id={project_id}",
+        room_id = room_id,
+        user_id = user_id,
+        project_id = project_id
     ))?;
 
     let auth_token = "your_auth_token_here";
@@ -125,23 +127,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None,
     )
     .await?;
-    info!("Joined room");
-
-    match read.next().await {
-        Some(Ok(msg)) => {
-            info!("Join room response: {:?}", msg);
-        }
-        Some(Err(e)) => {
-            error!("Error receiving join confirmation: {}", e);
-            return Err(e.into());
-        }
-        None => {
-            error!("Connection closed before join confirmation");
-            return Err("Premature connection close".into());
-        }
-    }
-
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     let test_user = User {
         id: user_id.to_string(),
@@ -207,24 +192,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
     info!("MergeUpdates command sent with YJS update");
 
-    send_command(
-        &mut write,
-        SessionCommand::Complete {
-            project_id: project_id.to_string(),
-            user: test_user.clone(),
-        },
-    )
-    .await?;
-    info!("Complete command sent");
+    // send_command(
+    //     &mut write,
+    //     SessionCommand::Complete {
+    //         project_id: project_id.to_string(),
+    //         user: test_user.clone(),
+    //     },
+    // )
+    // .await?;
+    // info!("Complete command sent");
 
-    send_command(
-        &mut write,
-        SessionCommand::CheckStatus {
-            project_id: project_id.to_string(),
-        },
-    )
-    .await?;
-    info!("CheckStatus command sent");
+    // send_command(
+    //     &mut write,
+    //     SessionCommand::CheckStatus {
+    //         project_id: project_id.to_string(),
+    //     },
+    // )
+    // .await?;
+    // info!("CheckStatus command sent");
 
     send_command(
         &mut write,

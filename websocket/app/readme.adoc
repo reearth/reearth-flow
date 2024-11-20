@@ -1,24 +1,35 @@
+= Application Setup Guide
+
+== Running the Application
+
+=== Storage Options
+
+With local storage:
 [source,bash]
 ----
 cargo run --features local-storage main.rs
 ----
 
+With Google Cloud Storage:
 [source,bash]
 ----
 cargo run --features gcs-storage main.rs
 ----
 
-[source,bash]
-----
-export APP_ENV="test"
-----
+=== Environment Configuration
+
+Available environments:
 
 [source,bash]
 ----
-export APP_ENV="development"
+# Test environment
+export APP_ENV="test" && cargo run --features local-storage main.rs
+
+# Development environment
+export APP_ENV="development" && cargo run --features local-storage main.rs
+
+# Production environment
+export APP_ENV="production" && cargo run --features local-storage main.rs
 ----
 
-[source,bash]
-----
-export APP_ENV="production"
-----
+NOTE: Make sure to set the appropriate environment variable before running the application.
