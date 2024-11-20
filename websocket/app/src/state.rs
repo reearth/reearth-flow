@@ -32,7 +32,6 @@ type SessionService = ManageEditSessionService<
     FlowProjectRedisDataManager,
 >;
 
-const DEFAULT_REDIS_URL: &str = "redis://localhost:6379/0";
 const CHANNEL_BUFFER_SIZE: usize = 32;
 #[cfg(feature = "local-storage")]
 const DEFAULT_LOCAL_STORAGE_PATH: &str = "./local_storage";
@@ -48,11 +47,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub async fn new(redis_url: Option<String>) -> Result<Self, WsError> {
-        let redis_url = redis_url.unwrap_or_else(|| {
-            std::env::var("REDIS_URL").unwrap_or_else(|_| DEFAULT_REDIS_URL.to_string())
-        });
-
+    pub async fn new(redis_url: String) -> Result<Self, WsError> {
         // Initialize Redis connection pool
         let manager = RedisConnectionManager::new(&*redis_url)?;
         let redis_pool = Pool::builder().build(manager).await?;

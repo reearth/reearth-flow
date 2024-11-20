@@ -7,3 +7,8 @@ cargo run --features local-storage main.rs
 ----
 cargo run --features gcs-storage main.rs
 ----
+
+[source,bash]
+----
+export APP_ENV="test"
+----
