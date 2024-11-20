@@ -3,9 +3,8 @@ use flow_websocket_infra::persistence::editing_session::ProjectEditingSession;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
 use flow_websocket_infra::persistence::repository::{
-    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
+    ProjectEditingSessionImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
 };
-use flow_websocket_infra::types::project::Project;
 use flow_websocket_infra::types::snapshot::ProjectSnapshot;
 use flow_websocket_infra::types::user::User;
 use std::sync::Arc;
@@ -20,10 +19,7 @@ pub struct ProjectService<E, S, R> {
 
 impl<E, S, R> ProjectService<E, S, R>
 where
-    E: ProjectEditingSessionImpl<Error = ProjectRepositoryError>
-        + ProjectImpl<Error = ProjectRepositoryError>
-        + Send
-        + Sync,
+    E: ProjectEditingSessionImpl<Error = ProjectRepositoryError> + Send + Sync,
     S: ProjectSnapshotImpl<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError> + Send + Sync,
 {
@@ -39,12 +35,6 @@ where
         }
     }
 
-    pub async fn get_project(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<Project>, ProjectServiceError> {
-        Ok(self.session_repository.get_project(project_id).await?)
-    }
     /// Merge all updates in the stream
     pub async fn merge_updates(
         &self,

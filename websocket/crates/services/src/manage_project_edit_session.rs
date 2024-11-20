@@ -3,7 +3,7 @@ use flow_websocket_infra::persistence::editing_session::ProjectEditingSession;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
 use flow_websocket_infra::persistence::repository::{
-    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
+    ProjectEditingSessionImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
 };
 use flow_websocket_infra::types::user::User;
 use mockall::automock;
@@ -71,12 +71,7 @@ pub enum SessionCommand {
 #[automock]
 impl<R, S, M> ManageEditSessionService<R, S, M>
 where
-    R: ProjectEditingSessionImpl<Error = ProjectRepositoryError>
-        + ProjectImpl<Error = ProjectRepositoryError>
-        + Send
-        + Sync
-        + Clone
-        + 'static,
+    R: ProjectEditingSessionImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
     S: ProjectSnapshotImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
     M: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError>
         + Send

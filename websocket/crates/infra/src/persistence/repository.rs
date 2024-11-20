@@ -5,13 +5,6 @@ use crate::types::workspace::Workspace;
 use std::error::Error;
 
 #[async_trait::async_trait]
-pub trait ProjectImpl {
-    type Error: Error + Send + Sync + 'static;
-
-    async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error>;
-}
-
-#[async_trait::async_trait]
 pub trait ProjectEditingSessionImpl {
     type Error: Error + Send + Sync + 'static;
 
@@ -29,11 +22,6 @@ pub trait ProjectSnapshotImpl {
     type Error: Error + Send + Sync + 'static;
 
     async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error>;
-    // async fn create_project_snapshot(
-    //     &self,
-    //     project_id: &str,
-    //     snapshot: ProjectSnapshot,
-    // ) -> Result<(), Self::Error>;
     async fn get_latest_snapshot(
         &self,
         project_id: &str,
@@ -71,11 +59,19 @@ pub trait WorkspaceImpl {
     type Error: Error + Send + Sync + 'static;
 
     async fn get_workspace(&self, workspace_id: &str) -> Result<Option<Workspace>, Self::Error>;
-    async fn list_workspace_projects(
+    async fn list_workspace_projects_ids(
         &self,
         workspace_id: &str,
-    ) -> Result<Vec<Project>, Self::Error>;
+    ) -> Result<Vec<String>, Self::Error>;
     async fn create_workspace(&self, workspace: Workspace) -> Result<(), Self::Error>;
     async fn update_workspace(&self, workspace: Workspace) -> Result<(), Self::Error>;
     async fn delete_workspace(&self, workspace_id: &str) -> Result<(), Self::Error>;
+}
+
+#[async_trait::async_trait]
+pub trait ProjectImpl {
+    type Error: Error + Send + Sync + 'static;
+    async fn create_project(&self, project: Project) -> Result<(), Self::Error>;
+    async fn delete_project(&self, project_id: &str) -> Result<(), Self::Error>;
+    async fn update_project(&self, project: Project) -> Result<(), Self::Error>;
 }
