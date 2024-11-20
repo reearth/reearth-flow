@@ -71,7 +71,7 @@ impl ProcessorFactory for GeometryLodFilterFactory {
             .into());
         };
         let max_lod = params.max_lod.unwrap_or(4);
-        let min_lod = params.min_lod.unwrap_or(1);
+        let min_lod = params.min_lod.unwrap_or(0);
         if max_lod < min_lod {
             return Err(GeometryProcessorError::GeometryLodFilterFactory(
                 "max_lod must be greater than or equal to min_lod".to_string(),
