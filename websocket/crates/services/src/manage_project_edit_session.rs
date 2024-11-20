@@ -3,7 +3,8 @@ use flow_websocket_infra::persistence::editing_session::ProjectEditingSession;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
 use flow_websocket_infra::persistence::repository::{
-    ProjectEditingSessionImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
+    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
+    WorkspaceImpl,
 };
 use flow_websocket_infra::types::user::User;
 use mockall::automock;
@@ -21,7 +22,7 @@ const MAX_EMPTY_SESSION_DURATION: Duration = Duration::from_secs(10);
 const JOB_COMPLETION_DELAY: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone)]
-pub struct ManageEditSessionService<R, S, M>
+pub struct ManageEditSessionService<R, S, M, P, W>
 where
     R: ProjectEditingSessionImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
     S: ProjectSnapshotImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
@@ -30,8 +31,10 @@ where
         + Sync
         + Clone
         + 'static,
+    P: ProjectImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
+    W: WorkspaceImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
 {
-    pub project_service: ProjectService<R, S, M>,
+    pub project_service: ProjectService<R, S, M, P, W>,
     tasks: Arc<Mutex<HashMap<String, ManageProjectEditSessionTaskData>>>,
 }
 
@@ -69,7 +72,7 @@ pub enum SessionCommand {
 }
 
 #[automock]
-impl<R, S, M> ManageEditSessionService<R, S, M>
+impl<R, S, M, P, W> ManageEditSessionService<R, S, M, P, W>
 where
     R: ProjectEditingSessionImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
     S: ProjectSnapshotImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
@@ -78,17 +81,23 @@ where
         + Sync
         + Clone
         + 'static,
+    P: ProjectImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
+    W: WorkspaceImpl<Error = ProjectRepositoryError> + Send + Sync + Clone + 'static,
 {
     pub fn new(
         session_repository: Arc<R>,
         snapshot_repository: Arc<S>,
         redis_data_manager: Arc<M>,
+        project_repository: Arc<P>,
+        workspace_repository: Arc<W>,
     ) -> Self {
         Self {
             project_service: ProjectService::new(
                 session_repository,
                 snapshot_repository,
                 redis_data_manager,
+                project_repository,
+                workspace_repository,
             ),
             tasks: Arc::new(Mutex::new(HashMap::new())),
         }

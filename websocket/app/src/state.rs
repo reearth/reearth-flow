@@ -30,6 +30,8 @@ type SessionService = ManageEditSessionService<
     ProjectRedisRepository,
     ProjectStorageRepository,
     FlowProjectRedisDataManager,
+    ProjectStorageRepository,
+    ProjectStorageRepository,
 >;
 
 const CHANNEL_BUFFER_SIZE: usize = 32;
@@ -77,6 +79,8 @@ impl AppState {
             session_repo.clone(),
             storage.clone(),
             Arc::new(redis_data_manager),
+            storage.clone(),
+            storage.clone(),
         ));
 
         let service_clone = service.clone();

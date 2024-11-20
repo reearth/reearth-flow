@@ -266,6 +266,8 @@ pub(crate) mod gcs {
 
 #[cfg(feature = "local-storage")]
 pub(crate) mod local {
+    use crate::types::workspace::Workspace;
+
     use super::*;
 
     #[derive(Clone)]
@@ -347,6 +349,47 @@ pub(crate) mod local {
         async fn update_project(&self, project: Project) -> Result<(), Self::Error> {
             let path = format!("project/{}", project.id);
             self.client.upload(path, &project).await?;
+            Ok(())
+        }
+    }
+
+    #[async_trait]
+    impl WorkspaceImpl for ProjectLocalRepository {
+        type Error = ProjectRepositoryError;
+
+        async fn get_workspace(
+            &self,
+            workspace_id: &str,
+        ) -> Result<Option<Workspace>, Self::Error> {
+            let path = format!("workspace/{}", workspace_id);
+            let workspace = self.client.download::<Workspace>(path).await?;
+            Ok(Some(workspace))
+        }
+
+        async fn list_workspace_projects_ids(
+            &self,
+            workspace_id: &str,
+        ) -> Result<Vec<String>, Self::Error> {
+            let path = format!("workspace/{}", workspace_id);
+            let workspace = self.client.download::<Workspace>(path).await?;
+            Ok(workspace.projects)
+        }
+
+        async fn create_workspace(&self, workspace: Workspace) -> Result<(), Self::Error> {
+            let path = format!("workspace/{}", workspace.id);
+            self.client.upload(path, &workspace).await?;
+            Ok(())
+        }
+
+        async fn update_workspace(&self, workspace: Workspace) -> Result<(), Self::Error> {
+            let path = format!("workspace/{}", workspace.id);
+            self.client.upload(path, &workspace).await?;
+            Ok(())
+        }
+
+        async fn delete_workspace(&self, workspace_id: &str) -> Result<(), Self::Error> {
+            let path = format!("workspace/{}", workspace_id);
+            self.client.delete(path).await?;
             Ok(())
         }
     }

@@ -3,36 +3,90 @@ use flow_websocket_infra::persistence::editing_session::ProjectEditingSession;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
 use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
 use flow_websocket_infra::persistence::repository::{
-    ProjectEditingSessionImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
+    ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
+    WorkspaceImpl,
 };
+use flow_websocket_infra::types::project::Project;
 use flow_websocket_infra::types::snapshot::ProjectSnapshot;
 use flow_websocket_infra::types::user::User;
+use flow_websocket_infra::types::workspace::Workspace;
 use std::sync::Arc;
 use tracing::debug;
 
 #[derive(Debug, Clone)]
-pub struct ProjectService<E, S, R> {
+pub struct ProjectService<E, S, R, P, W> {
     pub session_repository: Arc<E>,
     pub snapshot_repository: Arc<S>,
     pub redis_data_manager: Arc<R>,
+    pub project_repository: Arc<P>,
+    pub workspace_repository: Arc<W>,
 }
 
-impl<E, S, R> ProjectService<E, S, R>
+impl<E, S, R, P, W> ProjectService<E, S, R, P, W>
 where
     E: ProjectEditingSessionImpl<Error = ProjectRepositoryError> + Send + Sync,
     S: ProjectSnapshotImpl<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError> + Send + Sync,
+    P: ProjectImpl<Error = ProjectRepositoryError> + Send + Sync,
+    W: WorkspaceImpl<Error = ProjectRepositoryError> + Send + Sync,
 {
     pub fn new(
         session_repository: Arc<E>,
         snapshot_repository: Arc<S>,
         redis_data_manager: Arc<R>,
+        project_repository: Arc<P>,
+        workspace_repository: Arc<W>,
     ) -> Self {
         Self {
             session_repository,
             snapshot_repository,
             redis_data_manager,
+            project_repository,
+            workspace_repository,
         }
+    }
+
+    pub async fn create_project(&self, project: Project) -> Result<(), ProjectServiceError> {
+        Ok(self.project_repository.create_project(project).await?)
+    }
+
+    pub async fn delete_project(&self, project_id: &str) -> Result<(), ProjectServiceError> {
+        Ok(self.project_repository.delete_project(project_id).await?)
+    }
+
+    pub async fn update_project(&self, project: Project) -> Result<(), ProjectServiceError> {
+        Ok(self.project_repository.update_project(project).await?)
+    }
+
+    pub async fn create_workspace(&self, workspace: Workspace) -> Result<(), ProjectServiceError> {
+        Ok(self
+            .workspace_repository
+            .create_workspace(workspace)
+            .await?)
+    }
+
+    pub async fn delete_workspace(&self, workspace_id: &str) -> Result<(), ProjectServiceError> {
+        Ok(self
+            .workspace_repository
+            .delete_workspace(workspace_id)
+            .await?)
+    }
+
+    pub async fn update_workspace(&self, workspace: Workspace) -> Result<(), ProjectServiceError> {
+        Ok(self
+            .workspace_repository
+            .update_workspace(workspace)
+            .await?)
+    }
+
+    pub async fn list_workspace_projects_ids(
+        &self,
+        workspace_id: &str,
+    ) -> Result<Vec<String>, ProjectServiceError> {
+        Ok(self
+            .workspace_repository
+            .list_workspace_projects_ids(workspace_id)
+            .await?)
     }
 
     /// Merge all updates in the stream

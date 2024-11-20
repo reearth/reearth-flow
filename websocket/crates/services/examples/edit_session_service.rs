@@ -50,14 +50,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let session_repo = ProjectRedisRepository::new(redis_pool.clone());
     let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
-    let project_id = "project_123".to_string();
-
     // Create service
     let service = ManageEditSessionService::new(
         Arc::new(session_repo),
-        Arc::new(storage),
+        Arc::new(storage.clone()),
         Arc::new(redis_data_manager),
+        Arc::new(storage.clone()),
+        Arc::new(storage),
     );
+
+    let project_id = "project_123".to_string();
 
     // Create channel for commands
     let (tx, rx) = mpsc::channel(32);
