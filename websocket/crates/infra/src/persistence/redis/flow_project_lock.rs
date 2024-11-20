@@ -19,6 +19,14 @@ pub enum LockError {
     ClientCreation(String),
 }
 
+// Release lock using Lua script to ensure atomic delete with explicit return type
+const SCRIPT: &str = r"
+    if redis.call('get', KEYS[1]) == ARGV[1] then
+        return redis.call('del', KEYS[1])
+    else
+        return 0
+    end";
+
 macro_rules! define_lock_method {
     ($name:ident, $($lock_key:expr),+) => {
         pub async fn $name<F, T>(
@@ -85,15 +93,7 @@ impl FlowProjectLock {
 
         let result = callback(&guard);
 
-        // Release lock using Lua script to ensure atomic delete with explicit return type
-        let script = r"
-            if redis.call('get', KEYS[1]) == ARGV[1] then
-                return redis.call('del', KEYS[1])
-            else
-                return 0
-            end";
-
-        let _: i32 = redis::Script::new(script)
+        let _: i32 = redis::Script::new(SCRIPT)
             .key(&guard.key)
             .arg(&guard.token)
             .invoke_async(&mut conn)
