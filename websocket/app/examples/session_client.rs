@@ -103,6 +103,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
     info!("Room created");
 
+    match read.next().await {
+        Some(Ok(msg)) => {
+            info!("Room creation response: {:?}", msg);
+        }
+        Some(Err(e)) => {
+            error!("Error receiving room creation confirmation: {}", e);
+            return Err(e.into());
+        }
+        None => {
+            error!("Connection closed before room creation confirmation");
+            return Err("Premature connection close".into());
+        }
+    }
+
     send_event(
         &mut write,
         Event::Join {
@@ -112,6 +126,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
     info!("Joined room");
+
+    match read.next().await {
+        Some(Ok(msg)) => {
+            info!("Join room response: {:?}", msg);
+        }
+        Some(Err(e)) => {
+            error!("Error receiving join confirmation: {}", e);
+            return Err(e.into());
+        }
+        None => {
+            error!("Connection closed before join confirmation");
+            return Err("Premature connection close".into());
+        }
+    }
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     let test_user = User {
         id: user_id.to_string(),
