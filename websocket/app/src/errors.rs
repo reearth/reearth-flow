@@ -29,6 +29,9 @@ pub enum WsError {
     #[cfg(feature = "local-storage")]
     #[error(transparent)]
     LocalStorage(#[from] flow_websocket_infra::persistence::local_storage::LocalStorageError),
+    #[cfg(feature = "local-storage")]
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
     #[cfg(feature = "gcs-storage")]
     #[error(transparent)]
     GcsStorage(#[from] GcsError),

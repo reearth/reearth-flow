@@ -2,6 +2,55 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+#[async_trait]
+pub trait StorageClient {
+    type Error: std::error::Error + Send + Sync + 'static;
+
+    async fn upload<T: Serialize + Send + Sync + 'static>(
+        &self,
+        path: String,
+        data: &T,
+    ) -> Result<(), Self::Error>;
+
+    async fn download<T: for<'de> Deserialize<'de> + Send + 'static>(
+        &self,
+        path: String,
+    ) -> Result<T, Self::Error>;
+
+    async fn delete(&self, path: String) -> Result<(), Self::Error>;
+
+    async fn upload_versioned<T: Serialize + Send + Sync + 'static>(
+        &self,
+        path: String,
+        data: &T,
+    ) -> Result<String, Self::Error>;
+
+    async fn update_latest_versioned<T: Serialize + Send + Sync + 'static>(
+        &self,
+        path: String,
+        data: &T,
+    ) -> Result<(), Self::Error>;
+
+    async fn get_latest_version(&self, path_prefix: &str) -> Result<Option<String>, Self::Error>;
+
+    async fn get_version_at(
+        &self,
+        path_prefix: &str,
+        timestamp: DateTime<Utc>,
+    ) -> Result<Option<String>, Self::Error>;
+
+    async fn list_versions(
+        &self,
+        path_prefix: &str,
+        limit: Option<usize>,
+    ) -> Result<Vec<(DateTime<Utc>, String)>, Self::Error>;
+
+    async fn download_latest<T: for<'de> Deserialize<'de> + Send + 'static>(
+        &self,
+        path_prefix: &str,
+    ) -> Result<Option<T>, Self::Error>;
+}
+
 pub mod editing_session;
 pub mod event_handler;
 pub mod gcs;
@@ -14,42 +63,3 @@ pub mod repository;
 pub use project_repository::gcs::ProjectGcsRepository;
 #[cfg(feature = "local-storage")]
 pub use project_repository::local::ProjectLocalRepository;
-
-#[async_trait]
-pub trait StorageClient {
-    type Error;
-
-    async fn upload<T: Serialize + for<'de> Deserialize<'de> + Clone + Send + Sync + 'static>(
-        &self,
-        path: &str,
-        data: &T,
-    ) -> Result<i64, Self::Error>;
-
-    async fn get_latest_version<T: for<'de> Deserialize<'de> + Clone + Send + 'static>(
-        &self,
-        path: &str,
-    ) -> Result<Option<T>, Self::Error>;
-
-    async fn get_version_at<T: for<'de> Deserialize<'de> + Clone + Send + 'static>(
-        &self,
-        path: &str,
-        timestamp: DateTime<Utc>,
-    ) -> Result<Option<T>, Self::Error>;
-
-    async fn list_versions(
-        &self,
-        path: &str,
-        limit: Option<usize>,
-    ) -> Result<Vec<(DateTime<Utc>, String)>, Self::Error>;
-
-    async fn update_latest_version<
-        T: Serialize + for<'de> Deserialize<'de> + Clone + Send + Sync + 'static,
-    >(
-        &self,
-        path: &str,
-        data: &T,
-    ) -> Result<(), Self::Error>;
-
-    async fn delete_version(&self, path: &str, timestamp: DateTime<Utc>)
-        -> Result<(), Self::Error>;
-}
