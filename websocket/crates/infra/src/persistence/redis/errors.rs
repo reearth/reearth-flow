@@ -24,4 +24,6 @@ pub enum FlowProjectRedisDataManagerError {
     PoolRunError(#[from] bb8::RunError<redis::RedisError>),
     #[error(transparent)]
     LockError(#[from] LockError),
+    #[error(transparent)]
+    Yrs(#[from] yrs::error::UpdateError),
 }

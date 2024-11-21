@@ -12,8 +12,6 @@ use redis::streams::StreamMaxlen;
 use std::sync::Arc;
 use tracing::debug;
 
-type StreamEntry = (String, Vec<(String, Vec<u8>)>);
-
 #[derive(Clone)]
 pub struct FlowProjectRedisDataManager {
     redis_pool: Pool<RedisConnectionManager>,
@@ -39,98 +37,7 @@ impl FlowProjectRedisDataManager {
         Ok(instance)
     }
 
-    fn parse_entry_fields(fields: &[redis::Value]) -> Option<Vec<(String, Vec<u8>)>> {
-        fields
-            .chunks(2)
-            .filter(|chunk| chunk.len() == 2)
-            .filter_map(|chunk| match (&chunk[0], &chunk[1]) {
-                (redis::Value::BulkString(key), redis::Value::BulkString(val)) => {
-                    Some((String::from_utf8_lossy(key).into_owned(), val.clone()))
-                }
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .into()
-    }
-
-    fn parse_stream_entry(entry_fields: &[redis::Value]) -> Option<StreamEntry> {
-        if entry_fields.len() < 2 {
-            return None;
-        }
-
-        let entry_id = match &entry_fields[0] {
-            redis::Value::BulkString(bytes) => String::from_utf8_lossy(bytes).into_owned(),
-            _ => return None,
-        };
-
-        match &entry_fields[1] {
-            redis::Value::Array(fields) => Some((entry_id, Self::parse_entry_fields(fields)?)),
-            _ => None,
-        }
-    }
-
-    async fn xread_map(
-        &self,
-        key: &str,
-        id: &str,
-    ) -> Result<Vec<(String, Vec<(String, Vec<u8>)>)>, FlowProjectRedisDataManagerError> {
-        let result: redis::Value = {
-            let mut connection = self.get_connection().await?;
-            connection.xread(&[key], &[id]).await?
-        };
-
-        match result {
-            redis::Value::Array(outer) => Ok(outer
-                .into_iter()
-                .filter_map(|stream| match stream {
-                    redis::Value::Array(mut stream_data) if stream_data.len() >= 2 => {
-                        match stream_data.remove(1) {
-                            redis::Value::Array(entries) => Some(entries),
-                            _ => None,
-                        }
-                    }
-                    _ => None,
-                })
-                .flat_map(|entries| {
-                    entries.into_iter().filter_map(|entry| match entry {
-                        redis::Value::Array(entry_fields) => {
-                            Self::parse_stream_entry(&entry_fields)
-                        }
-                        _ => None,
-                    })
-                })
-                .collect()),
-            _ => Ok(vec![]),
-        }
-    }
-
-    async fn get_state_update_in_redis(
-        &self,
-        project_id: &str,
-    ) -> Result<Option<Vec<Vec<u8>>>, FlowProjectRedisDataManagerError> {
-        let state_update_key = self.key_manager.state_updates_key(project_id)?;
-
-        let entries = self.xread_map(&state_update_key, "0").await?;
-
-        debug!("State update entries: {:?}", entries);
-
-        let updates: Vec<Vec<u8>> = entries
-            .into_iter()
-            .filter_map(|(_, fields)| {
-                fields.first().and_then(|(_, update_data)| {
-                    if !update_data.is_empty() {
-                        Some(update_data.clone())
-                    } else {
-                        None
-                    }
-                })
-            })
-            .collect();
-
-        Ok((!updates.is_empty()).then_some(updates))
-    }
-
-    async fn set_state_with_stream(
+    async fn set_state_with_redis(
         &self,
         project_id: &str,
         state_data: &Vec<u8>,
@@ -153,11 +60,25 @@ impl FlowProjectRedisDataManager {
     ) -> Result<(), FlowProjectRedisDataManagerError> {
         self.global_lock
             .lock_state(project_id, 5000, |_| async {
-                self.set_state_with_stream(project_id, state_update, state_updated_by)
+                self.set_state_with_redis(project_id, state_update, state_updated_by)
                     .await
             })
             .await?
             .await
+    }
+
+    async fn get_state_in_redis(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
+        let mut conn = self.get_connection().await?;
+        debug!("-----------------------------1");
+        let state_updates_key = self.key_manager.state_key(project_id)?;
+        debug!("-----------------------------2");
+        debug!("state_updates_key: {}", state_updates_key);
+        let state_updates: Option<Vec<u8>> = conn.get(state_updates_key).await?;
+        debug!("-----------------------------3");
+        Ok(state_updates)
     }
 
     async fn execute_merge_updates(
@@ -167,31 +88,30 @@ impl FlowProjectRedisDataManager {
         updated_by: Option<String>,
     ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
         let updated_by = updated_by.unwrap_or_default();
-        self.set_update_data(project_id, update_data, Some(updated_by))
+        self.set_update_data(project_id, update_data, Some(updated_by.clone()))
             .await?;
-        let state_updates = self.get_state_update_in_redis(project_id).await?;
-        debug!("State updates in redis: {:?}", state_updates);
-        let mut merged_update: Vec<u8> = Vec::new();
-        let mut updates_by: Vec<String> = Vec::new();
-        if let Some(state_updates) = state_updates {
-            for state_update in state_updates {
-                let (new_merged_update, new_updates_by) = self
-                    .update_manager
-                    .merge_updates_internal(project_id, Some(state_update))
-                    .await?;
-                merged_update = new_merged_update;
-                updates_by = new_updates_by;
-            }
-        }
+        debug!("Set update data--------------");
+        debug!("Update data: {:?}", update_data);
 
-        let update_by_json = serde_json::to_string(&updates_by).unwrap_or_default();
+        let data_in_redis = self.get_state_in_redis(project_id).await?;
+        debug!("State updates in redis--------------");
+        debug!("State updates in redis: {:?}", data_in_redis);
 
-        self.set_state_data(project_id, &merged_update, Some(update_by_json))
+        let (new_merged_update, new_updates_by) = self
+            .update_manager
+            .merge_updates_internal(project_id, data_in_redis, Some(updated_by))
+            .await?;
+
+        debug!("New merged update: {:?}", new_merged_update);
+
+        let update_by_json = serde_json::to_string(&new_updates_by).unwrap_or_default();
+
+        self.set_state_data(project_id, &new_merged_update, Some(update_by_json))
             .await?;
 
         self.clear_state_updates_stream(project_id).await?;
 
-        Ok((merged_update, updates_by))
+        Ok((new_merged_update, new_updates_by))
     }
 
     async fn set_update_data(

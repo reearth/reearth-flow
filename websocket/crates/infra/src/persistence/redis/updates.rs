@@ -30,7 +30,7 @@ impl UpdateManager {
     pub async fn get_merged_update_from_stream(
         &self,
         project_id: &str,
-    ) -> Result<Option<(Vec<u8>, String, Vec<String>)>, FlowProjectRedisDataManagerError> {
+    ) -> Result<Option<(Vec<u8>, Vec<String>)>, FlowProjectRedisDataManagerError> {
         let updates = self.get_flow_updates_from_stream(project_id).await?;
         if updates.is_empty() {
             return Ok(None);
@@ -39,13 +39,9 @@ impl UpdateManager {
         let doc = Doc::new();
         let mut txn = doc.transact_mut();
         let mut updates_by = Vec::new();
-        let mut last_stream_id = String::new();
 
         for u in updates {
             debug!("Processing update: {:?}", u);
-            if let Some(stream_id) = u.stream_id {
-                last_stream_id = stream_id;
-            }
             if let Some(updated_by) = u.updated_by {
                 updates_by.push(updated_by);
             }
@@ -53,9 +49,7 @@ impl UpdateManager {
                 let _ = txn.apply_update(Update::decode_v2(&u.update)?);
             }
         }
-        debug!("Last stream id: {}", last_stream_id);
-
-        Ok(Some((txn.encode_update_v2(), last_stream_id, updates_by)))
+        Ok(Some((txn.encode_update_v2(), updates_by)))
     }
 
     pub async fn get_update_stream_items(
@@ -100,38 +94,42 @@ impl UpdateManager {
         Ok(updates)
     }
 
+    /// Merge updates from stream and redis
     pub async fn merge_updates_internal(
         &self,
         project_id: &str,
-        state_update: Option<Vec<u8>>,
+        redis_data: Option<Vec<u8>>,
+        new_update_by: Option<String>,
     ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
-        let doc = Arc::new(Doc::new());
-        let merged_stream_update = self.get_merged_update_from_stream(project_id).await?;
-        debug!("Merged stream update: {:?}", merged_stream_update);
+        let (stream_update, stream_updates_by) =
+            (self.get_merged_update_from_stream(project_id).await?).unwrap_or_default();
 
-        let (merged_update, updates_by) = if let Some((merged_update, _, updates_by)) =
-            merged_stream_update
-        {
-            (merged_update, updates_by)
-        } else {
-            match state_update {
-                Some(update) => (update, vec![]),
-                None => {
-                    return Err(FlowProjectRedisDataManagerError::MissingStateUpdate {
-                        key: self.key_manager.state_key(project_id)?,
-                        context: format!("No state update available for project: {}", project_id),
-                    })
+        let redis_update = redis_data.unwrap_or_default();
+
+        let optimized_merged_state = tokio::task::spawn_blocking(
+            move || -> Result<Vec<u8>, FlowProjectRedisDataManagerError> {
+                let doc = Doc::new();
+                let mut txn = doc.transact_mut();
+
+                if !stream_update.is_empty() {
+                    txn.apply_update(Update::decode_v2(&stream_update)?)?;
                 }
-            }
-        };
 
-        let optimized_merged_state = tokio::task::spawn_blocking(move || {
-            let mut txn = doc.transact_mut();
-            let _ = txn.apply_update(Update::decode_v2(&merged_update)?);
-            Ok::<_, FlowProjectRedisDataManagerError>(txn.encode_update_v2())
-        })
+                if !redis_update.is_empty() {
+                    txn.apply_update(Update::decode_v2(&redis_update)?)?;
+                }
+
+                Ok(txn.encode_update_v2())
+            },
+        )
         .await??;
 
+        let mut updates_by = stream_updates_by;
+        if let Some(new_update_by) = new_update_by {
+            updates_by.push(new_update_by);
+        }
+
+        debug!("Final merged state: {:?}", optimized_merged_state);
         Ok((optimized_merged_state, updates_by))
     }
 }
