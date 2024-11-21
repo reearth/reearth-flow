@@ -82,7 +82,7 @@ impl StorageClient for GcsClient {
         path: &str,
         data: &T,
     ) -> Result<i64, Self::Error> {
-        let mut versioned_data = match self.read_file::<T>(&path).await {
+        let mut versioned_data = match self.read_file::<T>(path).await {
             Ok(data) => data,
             Err(_) => VersionedData::new(),
         };
@@ -90,8 +90,8 @@ impl StorageClient for GcsClient {
         let timestamp = Utc::now().timestamp_millis();
         versioned_data.versions.insert(timestamp, data.clone());
 
-        self.compact_if_needed(&path, &mut versioned_data).await?;
-        self.write_file(&path, &versioned_data).await?;
+        self.compact_if_needed(path, &mut versioned_data).await?;
+        self.write_file(path, &versioned_data).await?;
 
         Ok(timestamp)
     }
@@ -113,7 +113,7 @@ impl StorageClient for GcsClient {
         path: &str,
         timestamp: DateTime<Utc>,
     ) -> Result<Option<T>, Self::Error> {
-        let versioned_data = self.read_file::<T>(&path).await?;
+        let versioned_data = self.read_file::<T>(path).await?;
         let target_timestamp = timestamp.timestamp_millis();
         Ok(versioned_data
             .versions
@@ -127,7 +127,7 @@ impl StorageClient for GcsClient {
         path: &str,
         limit: Option<usize>,
     ) -> Result<Vec<(DateTime<Utc>, String)>, Self::Error> {
-        let versioned_data = self.read_file::<serde_json::Value>(&path).await?;
+        let versioned_data = self.read_file::<serde_json::Value>(path).await?;
         let versions: Vec<_> = versioned_data
             .versions
             .iter()
@@ -151,7 +151,7 @@ impl StorageClient for GcsClient {
         path: &str,
         data: &T,
     ) -> Result<(), Self::Error> {
-        let mut versioned_data = self.read_file::<T>(&path).await?;
+        let mut versioned_data = self.read_file::<T>(path).await?;
 
         if let Some((&last_timestamp, _)) = versioned_data.versions.iter().next_back() {
             versioned_data.versions.remove(&last_timestamp);
@@ -160,7 +160,7 @@ impl StorageClient for GcsClient {
         let timestamp = Utc::now().timestamp_millis();
         versioned_data.versions.insert(timestamp, data.clone());
 
-        self.write_file(&path, &versioned_data).await?;
+        self.write_file(path, &versioned_data).await?;
         Ok(())
     }
 
@@ -169,11 +169,11 @@ impl StorageClient for GcsClient {
         path: &str,
         timestamp: DateTime<Utc>,
     ) -> Result<(), Self::Error> {
-        let mut versioned_data = self.read_file::<serde_json::Value>(&path).await?;
+        let mut versioned_data = self.read_file::<serde_json::Value>(path).await?;
         versioned_data
             .versions
             .remove(&timestamp.timestamp_millis());
-        self.write_file(&path, &versioned_data).await?;
+        self.write_file(path, &versioned_data).await?;
         Ok(())
     }
 }
