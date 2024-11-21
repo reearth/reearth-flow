@@ -10,7 +10,6 @@ use super::local_storage::LocalStorageError;
 use super::repository::{
     ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, WorkspaceImpl,
 };
-use super::StorageClient;
 #[cfg(feature = "local-storage")]
 use crate::persistence::local_storage::LocalClient;
 use crate::types::project::Project;
@@ -130,7 +129,7 @@ impl ProjectEditingSessionImpl for ProjectRedisRepository {
 #[cfg(feature = "gcs-storage")]
 pub(crate) mod gcs {
 
-    use crate::types::workspace::Workspace;
+    use crate::{persistence::StorageClient, types::workspace::Workspace};
 
     use super::*;
 
@@ -152,7 +151,7 @@ pub(crate) mod gcs {
 
         async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
             let path = format!("snapshot/{}", snapshot.metadata.project_id);
-            self.client.upload_versioned(path, &snapshot).await?;
+            self.client.upload(&path, &snapshot).await?;
             Ok(())
         }
 
@@ -161,7 +160,7 @@ pub(crate) mod gcs {
             project_id: &str,
         ) -> Result<Option<ProjectSnapshot>, Self::Error> {
             let path_prefix = format!("snapshot/{}", project_id);
-            let snapshot = self.client.download_latest(&path_prefix).await?;
+            let snapshot = self.client.get_latest_version(&path_prefix).await?;
             Ok(snapshot)
         }
 
@@ -169,23 +168,23 @@ pub(crate) mod gcs {
             &self,
             snapshot: ProjectSnapshot,
         ) -> Result<(), Self::Error> {
-            let latest_version = self
+            let latest_version: Option<ProjectSnapshot> = self
                 .client
                 .get_latest_version(&format!("snapshot/{}", snapshot.metadata.project_id))
                 .await?;
             if let Some(_version) = latest_version {
                 let path = format!("snapshot/{}", snapshot.metadata.project_id);
-                self.client.update_latest_versioned(path, &snapshot).await?;
+                self.client.update_latest_version(&path, &snapshot).await?;
             } else {
                 let path = format!("snapshot/{}", snapshot.metadata.project_id);
-                self.client.upload_versioned(path, &snapshot).await?;
+                self.client.upload(&path, &snapshot).await?;
             }
             Ok(())
         }
 
         async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
             let path = format!("snapshot/{}", project_id);
-            self.client.delete(path).await?;
+            self.client.delete(&path).await?;
             Ok(())
         }
 
@@ -208,8 +207,8 @@ pub(crate) mod gcs {
             workspace_id: &str,
         ) -> Result<Option<Workspace>, Self::Error> {
             let path = format!("workspace/{}", workspace_id);
-            let workspace = self.client.download::<Workspace>(path).await?;
-            Ok(Some(workspace))
+            let workspace = self.client.get_latest_version::<Workspace>(&path).await?;
+            Ok(workspace)
         }
 
         async fn list_workspace_projects_ids(
@@ -217,26 +216,30 @@ pub(crate) mod gcs {
             workspace_id: &str,
         ) -> Result<Vec<String>, Self::Error> {
             let path = format!("workspace/{}", workspace_id);
-            let workspace = self.client.download::<Workspace>(path).await?;
-            let project_ids = workspace.projects;
-            Ok(project_ids)
+            let workspace = self.client.get_latest_version::<Workspace>(&path).await?;
+            if let Some(workspace) = workspace {
+                let project_ids = workspace.projects;
+                Ok(project_ids)
+            } else {
+                Ok(vec![])
+            }
         }
 
         async fn create_workspace(&self, workspace: Workspace) -> Result<(), Self::Error> {
             let path = format!("workspace/{}", workspace.id);
-            self.client.upload(path, &workspace).await?;
+            self.client.upload(&path, &workspace).await?;
             Ok(())
         }
 
         async fn update_workspace(&self, workspace: Workspace) -> Result<(), Self::Error> {
             let path = format!("workspace/{}", workspace.id);
-            self.client.upload(path, &workspace).await?;
+            self.client.update_latest_version(&path, &workspace).await?;
             Ok(())
         }
 
         async fn delete_workspace(&self, workspace_id: &str) -> Result<(), Self::Error> {
             let path = format!("workspace/{}", workspace_id);
-            self.client.delete(path).await?;
+            self.client.delete(&path).await?;
             Ok(())
         }
     }
@@ -246,27 +249,33 @@ pub(crate) mod gcs {
 
         async fn create_project(&self, project: Project) -> Result<(), Self::Error> {
             let path = format!("project/{}", project.id);
-            self.client.upload(path, &project).await?;
+            self.client.upload(&path, &project).await?;
             Ok(())
         }
 
         async fn delete_project(&self, project_id: &str) -> Result<(), Self::Error> {
             let path = format!("project/{}", project_id);
-            self.client.delete(path).await?;
+            self.client.delete(&path).await?;
             Ok(())
         }
 
         async fn update_project(&self, project: Project) -> Result<(), Self::Error> {
             let path = format!("project/{}", project.id);
-            self.client.upload(path, &project).await?;
+            self.client.update_latest_version(&path, &project).await?;
             Ok(())
+        }
+
+        async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error> {
+            let path = format!("project/{}", project_id);
+            let project = self.client.get_latest_version::<Project>(&path).await?;
+            Ok(project)
         }
     }
 }
 
 #[cfg(feature = "local-storage")]
 pub(crate) mod local {
-    use crate::types::workspace::Workspace;
+    use crate::{persistence::StorageClient, types::workspace::Workspace};
 
     use super::*;
 
@@ -276,7 +285,7 @@ pub(crate) mod local {
     }
 
     impl ProjectLocalRepository {
-        pub async fn new(base_path: PathBuf) -> io::Result<Self> {
+        pub async fn new(base_path: PathBuf) -> Result<Self, LocalStorageError> {
             Ok(Self {
                 client: Arc::new(LocalClient::new(base_path).await?),
             })
@@ -289,7 +298,7 @@ pub(crate) mod local {
 
         async fn create_snapshot(&self, snapshot: ProjectSnapshot) -> Result<(), Self::Error> {
             let path = format!("snapshots/{}", snapshot.metadata.project_id);
-            self.client.upload_versioned(path, &snapshot).await?;
+            self.client.upload(&path, &snapshot).await?;
             Ok(())
         }
 
@@ -300,7 +309,7 @@ pub(crate) mod local {
             let path = format!("snapshots/{}", project_id);
             let snapshot = self
                 .client
-                .download_latest::<ProjectSnapshot>(&path)
+                .get_latest_version::<ProjectSnapshot>(&path)
                 .await?;
             Ok(snapshot)
         }
@@ -310,13 +319,13 @@ pub(crate) mod local {
             snapshot: ProjectSnapshot,
         ) -> Result<(), Self::Error> {
             let path = format!("snapshots/{}", snapshot.metadata.project_id);
-            self.client.update_latest_versioned(path, &snapshot).await?;
+            self.client.update_latest_version(&path, &snapshot).await?;
             Ok(())
         }
 
         async fn delete_snapshot(&self, project_id: &str) -> Result<(), Self::Error> {
             let path = format!("snapshots/{}", project_id);
-            self.client.delete(path).await?;
+            self.client.delete(&path).await?;
             Ok(())
         }
 
@@ -336,20 +345,26 @@ pub(crate) mod local {
 
         async fn create_project(&self, project: Project) -> Result<(), Self::Error> {
             let path = format!("project/{}", project.id);
-            self.client.upload(path, &project).await?;
+            self.client.upload(&path, &project).await?;
             Ok(())
         }
 
         async fn delete_project(&self, project_id: &str) -> Result<(), Self::Error> {
             let path = format!("project/{}", project_id);
-            self.client.delete(path).await?;
+            self.client.delete(&path).await?;
             Ok(())
         }
 
         async fn update_project(&self, project: Project) -> Result<(), Self::Error> {
             let path = format!("project/{}", project.id);
-            self.client.upload(path, &project).await?;
+            self.client.upload(&path, &project).await?;
             Ok(())
+        }
+
+        async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error> {
+            let path = format!("project/{}", project_id);
+            let project = self.client.get_latest_version::<Project>(&path).await?;
+            Ok(project)
         }
     }
 
@@ -362,8 +377,8 @@ pub(crate) mod local {
             workspace_id: &str,
         ) -> Result<Option<Workspace>, Self::Error> {
             let path = format!("workspace/{}", workspace_id);
-            let workspace = self.client.download::<Workspace>(path).await?;
-            Ok(Some(workspace))
+            let workspace = self.client.get_latest_version::<Workspace>(&path).await?;
+            Ok(workspace)
         }
 
         async fn list_workspace_projects_ids(
@@ -371,25 +386,29 @@ pub(crate) mod local {
             workspace_id: &str,
         ) -> Result<Vec<String>, Self::Error> {
             let path = format!("workspace/{}", workspace_id);
-            let workspace = self.client.download::<Workspace>(path).await?;
-            Ok(workspace.projects)
+            let workspace = self.client.get_latest_version::<Workspace>(&path).await?;
+            if let Some(workspace) = workspace {
+                Ok(workspace.projects)
+            } else {
+                Ok(vec![])
+            }
         }
 
         async fn create_workspace(&self, workspace: Workspace) -> Result<(), Self::Error> {
             let path = format!("workspace/{}", workspace.id);
-            self.client.upload(path, &workspace).await?;
+            self.client.upload(&path, &workspace).await?;
             Ok(())
         }
 
         async fn update_workspace(&self, workspace: Workspace) -> Result<(), Self::Error> {
             let path = format!("workspace/{}", workspace.id);
-            self.client.upload(path, &workspace).await?;
+            self.client.update_latest_version(&path, &workspace).await?;
             Ok(())
         }
 
         async fn delete_workspace(&self, workspace_id: &str) -> Result<(), Self::Error> {
             let path = format!("workspace/{}", workspace_id);
-            self.client.delete(path).await?;
+            self.client.delete(&path).await?;
             Ok(())
         }
     }

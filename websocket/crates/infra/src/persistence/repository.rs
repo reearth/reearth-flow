@@ -74,4 +74,5 @@ pub trait ProjectImpl {
     async fn create_project(&self, project: Project) -> Result<(), Self::Error>;
     async fn delete_project(&self, project_id: &str) -> Result<(), Self::Error>;
     async fn update_project(&self, project: Project) -> Result<(), Self::Error>;
+    async fn get_project(&self, project_id: &str) -> Result<Option<Project>, Self::Error>;
 }
