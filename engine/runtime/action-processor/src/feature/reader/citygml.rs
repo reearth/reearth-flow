@@ -66,9 +66,10 @@ pub(crate) fn read_citygml(
         .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
     parse_tree_reader(
         &mut st,
+        &feature.attributes,
         citygml_params.flatten.unwrap_or(false),
         base_url,
-        ctx,
+        &ctx,
         fw,
     )
     .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
@@ -77,9 +78,10 @@ pub(crate) fn read_citygml(
 
 fn parse_tree_reader<R: BufRead>(
     st: &mut SubTreeReader<'_, '_, R>,
+    base_attributes: &HashMap<Attribute, AttributeValue>,
     flatten: bool,
     base_url: Url,
-    ctx: ExecutorContext,
+    ctx: &ExecutorContext,
     fw: &mut dyn ProcessorChannelForwarder,
 ) -> Result<(), super::errors::FeatureProcessorError> {
     let mut entities = Vec::new();
@@ -153,7 +155,7 @@ fn parse_tree_reader<R: BufRead>(
         let attributes = entity.root.to_attribute_json();
         let gml_id = entity.root.id();
         let name = entity.root.typename();
-        let attributes = HashMap::<Attribute, AttributeValue>::from([
+        let mut attributes = HashMap::<Attribute, AttributeValue>::from([
             (Attribute::new("cityGmlAttributes"), attributes.into()),
             (
                 Attribute::new("gmlName"),
@@ -171,6 +173,7 @@ fn parse_tree_reader<R: BufRead>(
                 AttributeValue::String(format!("root_{}", to_hash(base_url.as_str()))),
             ),
         ]);
+        attributes.extend(base_attributes.clone());
         let lod = LodMask::find_lods_by_citygml_value(&entity.root);
         let metadata = Metadata {
             feature_id: gml_id.map(|id| id.to_string()),
