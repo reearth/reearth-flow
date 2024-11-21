@@ -3197,7 +3197,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.1#8aada32c1ed81afd53e41b3bb150765c7ff773a6"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.2#fc85eddbad32f9f5ece2554fa92f5619c3bde6a9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3589,7 +3589,7 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.1#8aada32c1ed81afd53e41b3bb150765c7ff773a6"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.2#fc85eddbad32f9f5ece2554fa92f5619c3bde6a9"
 dependencies = [
  "ahash 0.8.11",
  "chrono",
@@ -3610,7 +3610,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.1#8aada32c1ed81afd53e41b3bb150765c7ff773a6"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.2#fc85eddbad32f9f5ece2554fa92f5619c3bde6a9"
 dependencies = [
  "byteorder",
  "nusamai-gltf-json",
@@ -3620,7 +3620,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.1#8aada32c1ed81afd53e41b3bb150765c7ff773a6"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.2#fc85eddbad32f9f5ece2554fa92f5619c3bde6a9"
 dependencies = [
  "cesiumtiles",
  "serde",
@@ -3631,7 +3631,7 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.1#8aada32c1ed81afd53e41b3bb150765c7ff773a6"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.2#fc85eddbad32f9f5ece2554fa92f5619c3bde6a9"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -3649,7 +3649,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.1#8aada32c1ed81afd53e41b3bb150765c7ff773a6"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.5.2#fc85eddbad32f9f5ece2554fa92f5619c3bde6a9"
 dependencies = [
  "japan-geoid",
  "thiserror 2.0.3",
