@@ -28,7 +28,7 @@ pub enum WsError {
     Pool(#[from] FlowProjectRedisDataManagerError),
     #[cfg(feature = "local-storage")]
     #[error(transparent)]
-    LocalStorage(#[from] std::io::Error),
+    LocalStorage(#[from] flow_websocket_infra::persistence::local_storage::LocalStorageError),
     #[cfg(feature = "gcs-storage")]
     #[error(transparent)]
     GcsStorage(#[from] GcsError),

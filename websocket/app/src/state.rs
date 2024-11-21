@@ -61,7 +61,6 @@ impl AppState {
             Arc::new(ProjectStorageRepository::new(DEFAULT_LOCAL_STORAGE_PATH.into()).await?);
 
         #[cfg(feature = "gcs-storage")]
-        #[cfg(not(feature = "local-storage"))]
         let gcs_bucket =
             std::env::var("GCS_BUCKET_NAME").expect("GCS_BUCKET_NAME must be provided");
 
