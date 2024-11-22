@@ -111,12 +111,12 @@ impl UpdateManager {
                 let doc = Doc::new();
                 let mut txn = doc.transact_mut();
 
-                if !stream_update.is_empty() {
-                    txn.apply_update(Update::decode_v2(&stream_update)?)?;
-                }
-
                 if !redis_update.is_empty() {
                     txn.apply_update(Update::decode_v2(&redis_update)?)?;
+                }
+
+                if !stream_update.is_empty() {
+                    txn.apply_update(Update::decode_v2(&stream_update)?)?;
                 }
 
                 Ok(txn.encode_update_v2())
