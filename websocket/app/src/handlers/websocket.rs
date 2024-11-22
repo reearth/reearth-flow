@@ -165,10 +165,9 @@ pub async fn handle_socket(
                     }
                 }
             }
-            Err(_) => {
-                debug!("client {addr} disconnected");
-                cleanup();
-                break;
+            Err(e) => {
+                debug!("Error receiving message: {:?}", e);
+                continue;
             }
         }
     }
