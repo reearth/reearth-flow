@@ -13,7 +13,8 @@ use mockall::automock;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::broadcast;
+use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::debug;
 
@@ -128,119 +129,132 @@ where
 
     pub async fn process(
         &self,
-        mut command_rx: mpsc::Receiver<SessionCommand>,
+        mut command_rx: broadcast::Receiver<SessionCommand>,
     ) -> Result<(), ProjectServiceError> {
         loop {
             tokio::select! {
-                Some(command) = command_rx.recv() => {
-                    match command {
-                        SessionCommand::Start { project_id, user } => {
-                            let session = self.project_service
-                                .get_or_create_editing_session(&project_id, user.clone())
-                                .await?;
+                result = command_rx.recv() => {
+                    match result {
+                        Ok(command) => {
+                            match command {
+                                SessionCommand::Start { project_id, user } => {
+                                    let session = self.project_service
+                                        .get_or_create_editing_session(&project_id, user.clone())
+                                        .await?;
 
-                            if session.session_id.is_some() {
-                                debug!("Session exists/created for project: {}", project_id);
-                                if let Some(task_data) = self.get_task_data(&project_id).await {
-                                    let mut count = task_data.client_count.write().await;
-                                    *count = Some(count.unwrap_or(0) + 1);
-                                    debug!("Client count increased to: {:?}", *count);
-                                }
-                            }
-                        },
-                        SessionCommand::MergeUpdates { project_id, data, updated_by } => {
-                            self.project_service.merge_updates(&project_id, data, updated_by).await?;
-                        },
-
-                        SessionCommand::End { project_id, user } => {
-                            if let Some(task_data) = self.get_task_data(&project_id).await {
-                                {
-                                    let mut count = task_data.client_count.write().await;
-                                    if let Some(current_count) = *count {
-                                        *count = Some(current_count.saturating_sub(1));
-                                        debug!("Client count decreased to: {:?}", *count);
-                                        if *count == Some(0) {
-                                            let mut disconnected_at = task_data.clients_disconnected_at.write().await;
-                                            *disconnected_at = Some(Utc::now());
-                                            debug!("All clients disconnected at: {:?}", *disconnected_at);
+                                    if session.session_id.is_some() {
+                                        debug!("Session exists/created for project: {}", project_id);
+                                        if let Some(task_data) = self.get_task_data(&project_id).await {
+                                            let mut count = task_data.client_count.write().await;
+                                            *count = Some(count.unwrap_or(0) + 1);
+                                            debug!("Client count increased to: {:?}", *count);
                                         }
                                     }
-                                }
+                                },
+                                SessionCommand::MergeUpdates { project_id, data, updated_by } => {
+                                    self.project_service.merge_updates(&project_id, data, updated_by).await?;
+                                },
 
-                                if let Some(mut session) = self.get_latest_session(&project_id).await? {
-                                    debug!("Checking if job is complete for project: {}", project_id);
-                                    match self.complete_job_if_met_requirements(&mut session).await {
-                                        Ok(()) => {
-                                            debug!("Session ended by user: {} for project: {}", user.id, project_id);
-                                            break;
+                                SessionCommand::End { project_id, user } => {
+                                    if let Some(task_data) = self.get_task_data(&project_id).await {
+                                        {
+                                            let mut count = task_data.client_count.write().await;
+                                            if let Some(current_count) = *count {
+                                                *count = Some(current_count.saturating_sub(1));
+                                                debug!("Client count decreased to: {:?}", *count);
+                                                if *count == Some(0) {
+                                                    let mut disconnected_at = task_data.clients_disconnected_at.write().await;
+                                                    *disconnected_at = Some(Utc::now());
+                                                    debug!("All clients disconnected at: {:?}", *disconnected_at);
+                                                }
+                                            }
                                         }
-                                        Err(e) => {
-                                            debug!("Failed to complete job: {:?}", e);
-                                            return Err(e);
+
+                                        if let Some(mut session) = self.get_latest_session(&project_id).await? {
+                                            debug!("Checking if job is complete for project: {}", project_id);
+                                            match self.complete_job_if_met_requirements(&mut session).await {
+                                                Ok(()) => {
+                                                    debug!("Session ended by user: {} for project: {}", user.id, project_id);
+                                                    continue;
+                                                }
+                                                Err(e) => {
+                                                    debug!("Failed to complete job: {:?}", e);
+                                                    continue;
+                                                }
+                                            }
                                         }
                                     }
-                                }
-                            }
-                        },
+                                },
 
-                        SessionCommand::ListAllSnapshotsVersions { project_id } => {
-                            let versions = self.project_service.list_all_snapshots_versions(&project_id).await?;
-                            debug!("List of all snapshots versions for project: {}", project_id);
-                            debug!("{:?}", versions);
-                        },
+                                SessionCommand::ListAllSnapshotsVersions { project_id } => {
+                                    let versions = self.project_service.list_all_snapshots_versions(&project_id).await?;
+                                    debug!("List of all snapshots versions for project: {}", project_id);
+                                    debug!("{:?}", versions);
+                                },
 
-                        SessionCommand::Complete { project_id, user } => {
-                            if let Some(mut session) = self.get_latest_session(&project_id).await? {
-                                match self.complete_job_if_met_requirements(&mut session).await {
-                                    Ok(()) => {
-                                        debug!("Job completed by user: {} for project: {}", user.id, project_id);
-                                        break;
+                                SessionCommand::Complete { project_id, user } => {
+                                    if let Some(mut session) = self.get_latest_session(&project_id).await? {
+                                        match self.complete_job_if_met_requirements(&mut session).await {
+                                            Ok(()) => {
+                                                debug!("Job completed by user: {} for project: {}", user.id, project_id);
+                                                continue;
+                                            }
+                                            Err(e) => {
+                                                debug!("Failed to complete job: {:?}", e);
+                                                continue;
+                                            }
+                                        }
                                     }
-                                    Err(e) => {
-                                        debug!("Failed to complete job: {:?}", e);
-                                        return Err(e);
-                                    }
-                                }
-                            }
-                        },
+                                },
 
-                        SessionCommand::CheckStatus { project_id } => {
-                            debug!("Checking session status for project: {}", project_id);
-                        },
-                        SessionCommand::AddTask { project_id } => {
-                            let task_data = ManageProjectEditSessionTaskData::new(project_id);
-                            let mut tasks = self.tasks.lock().await;
-                            tasks.insert(task_data.project_id.clone(), task_data.clone());
-                            debug!("Added task for project: {}", task_data.project_id);
-                        },
-                        SessionCommand::RemoveTask { project_id } => {
-                            let mut tasks = self.tasks.lock().await;
-                            tasks.remove(&project_id);
-                            debug!("Removed task for project: {}", project_id);
-                        },
-                        SessionCommand::CreateWorkspace { workspace } => {
-                            self.project_service.create_workspace(workspace).await?;
-                        },
-                        SessionCommand::DeleteWorkspace { workspace_id } => {
-                            self.project_service.delete_workspace(&workspace_id).await?;
-                        },
-                        SessionCommand::UpdateWorkspace { workspace } => {
-                            self.project_service.update_workspace(workspace).await?;
-                        },
-                        SessionCommand::ListWorkspaceProjectsIds { workspace_id } => {
-                            let projects = self.project_service.list_workspace_projects_ids(&workspace_id).await?;
-                            debug!("List of all projects ids for workspace: {}", workspace_id);
-                            debug!("{:?}", projects);
-                        },
-                        SessionCommand::CreateProject { project } => {
-                            self.project_service.create_project(project).await?;
-                        },
-                        SessionCommand::DeleteProject { project_id } => {
-                            self.project_service.delete_project(&project_id).await?;
-                        },
-                        SessionCommand::UpdateProject { project } => {
-                            self.project_service.update_project(project).await?;
-                        },
+                                SessionCommand::CheckStatus { project_id } => {
+                                    debug!("Checking session status for project: {}", project_id);
+                                },
+                                SessionCommand::AddTask { project_id } => {
+                                    let task_data = ManageProjectEditSessionTaskData::new(project_id);
+                                    let mut tasks = self.tasks.lock().await;
+                                    tasks.insert(task_data.project_id.clone(), task_data.clone());
+                                    debug!("Added task for project: {}", task_data.project_id);
+                                },
+                                SessionCommand::RemoveTask { project_id } => {
+                                    let mut tasks = self.tasks.lock().await;
+                                    tasks.remove(&project_id);
+                                    debug!("Removed task for project: {}", project_id);
+                                },
+                                SessionCommand::CreateWorkspace { workspace } => {
+                                    self.project_service.create_workspace(workspace).await?;
+                                },
+                                SessionCommand::DeleteWorkspace { workspace_id } => {
+                                    self.project_service.delete_workspace(&workspace_id).await?;
+                                },
+                                SessionCommand::UpdateWorkspace { workspace } => {
+                                    self.project_service.update_workspace(workspace).await?;
+                                },
+                                SessionCommand::ListWorkspaceProjectsIds { workspace_id } => {
+                                    let projects = self.project_service.list_workspace_projects_ids(&workspace_id).await?;
+                                    debug!("List of all projects ids for workspace: {}", workspace_id);
+                                    debug!("{:?}", projects);
+                                },
+                                SessionCommand::CreateProject { project } => {
+                                    self.project_service.create_project(project).await?;
+                                },
+                                SessionCommand::DeleteProject { project_id } => {
+                                    self.project_service.delete_project(&project_id).await?;
+                                },
+                                SessionCommand::UpdateProject { project } => {
+                                    self.project_service.update_project(project).await?;
+                                },
+                            }
+                        }
+                        Err(broadcast::error::RecvError::Closed) => {
+                            debug!("Command channel closed");
+                            sleep(Duration::from_secs(1)).await;
+                            continue;
+                        }
+                        Err(broadcast::error::RecvError::Lagged(n)) => {
+                            debug!("Receiver lagged behind by {} messages", n);
+                            continue;
+                        }
                     }
                 },
                 _ = tokio::time::sleep(Duration::from_secs(1)) => {
@@ -255,8 +269,6 @@ where
                 }
             }
         }
-
-        Ok(())
     }
 
     async fn get_task_data(&self, project_id: &str) -> Option<ManageProjectEditSessionTaskData> {

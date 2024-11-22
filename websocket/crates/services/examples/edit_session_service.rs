@@ -16,7 +16,7 @@ use flow_websocket_services::manage_project_edit_session::{
     ManageEditSessionService, SessionCommand,
 };
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::broadcast;
 use tracing::{error, info};
 use yrs::{Doc, Text, Transact};
 
@@ -62,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let project_id = "project_123".to_string();
 
     // Create channel for commands
-    let (tx, rx) = mpsc::channel(32);
+    let (tx, rx) = broadcast::channel(32);
     let service_clone = service.clone();
 
     // Spawn service processing task
@@ -85,8 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tx.send(SessionCommand::AddTask {
         project_id: project_id.clone(),
-    })
-    .await?;
+    })?;
 
     info!("Starting session");
 
@@ -94,24 +93,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tx.send(SessionCommand::Start {
         project_id: project_id.clone(),
         user: test_user.clone(),
-    })
-    .await?;
+    })?;
 
     info!("Checking status");
 
     // Check status
     tx.send(SessionCommand::CheckStatus {
         project_id: project_id.clone(),
-    })
-    .await?;
+    })?;
 
     info!("Listing all snapshots versions");
 
     // List snapshots
     tx.send(SessionCommand::ListAllSnapshotsVersions {
         project_id: project_id.clone(),
-    })
-    .await?;
+    })?;
 
     info!("Creating Y.js document and update");
 
@@ -131,8 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         project_id: project_id.clone(),
         data: yjs_update,
         updated_by: Some(test_user.id.clone()),
-    })
-    .await?;
+    })?;
 
     info!("Creating second update");
 
@@ -150,16 +145,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         project_id: project_id.clone(),
         data: yjs_update2,
         updated_by: Some(test_user.id.clone()),
-    })
-    .await?;
+    })?;
 
     info!("Checking status again after merge");
 
     // Check status again after merge
     tx.send(SessionCommand::CheckStatus {
         project_id: project_id.clone(),
-    })
-    .await?;
+    })?;
 
     info!("Ending session");
 
@@ -167,16 +160,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tx.send(SessionCommand::End {
         project_id: project_id.clone(),
         user: test_user.clone(),
-    })
-    .await?;
+    })?;
 
     info!("Removing task");
 
     // Remove task
     tx.send(SessionCommand::RemoveTask {
         project_id: project_id.clone(),
-    })
-    .await?;
+    })?;
 
     // // Complete session
     // tx.send(SessionCommand::Complete {

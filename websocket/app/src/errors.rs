@@ -3,6 +3,7 @@ use flow_websocket_infra::persistence::{
 };
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use thiserror::Error;
+use tokio::sync::broadcast;
 
 #[derive(Debug, Error)]
 pub enum WsError {
@@ -14,6 +15,8 @@ pub enum WsError {
     LockError(#[from] tokio::sync::TryLockError),
     #[error(transparent)]
     BroadcastError(#[from] tokio::sync::broadcast::error::SendError<String>),
+    #[error(transparent)]
+    BroadcastSessionError(#[from] broadcast::error::SendError<SessionCommand>),
     #[error("JSON parsing error: {0}")]
     JsonError(#[from] serde_json::Error),
     #[error(transparent)]

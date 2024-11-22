@@ -33,24 +33,16 @@ pub fn perform_cleanup(
                 }
 
                 if let Some(project_id) = project_id {
-                    if let Err(e) = state
-                        .command_tx
-                        .send(SessionCommand::End {
-                            project_id: project_id.clone(),
-                            user: user.clone(),
-                        })
-                        .await
-                    {
+                    if let Err(e) = state.command_tx.send(SessionCommand::End {
+                        project_id: project_id.clone(),
+                        user: user.clone(),
+                    }) {
                         debug!("Failed to send End command: {:?}", e);
                     }
 
-                    if let Err(e) = state
-                        .command_tx
-                        .send(SessionCommand::RemoveTask {
-                            project_id: project_id.clone(),
-                        })
-                        .await
-                    {
+                    if let Err(e) = state.command_tx.send(SessionCommand::RemoveTask {
+                        project_id: project_id.clone(),
+                    }) {
                         debug!("Failed to send RemoveTask command: {:?}", e);
                     }
                 }

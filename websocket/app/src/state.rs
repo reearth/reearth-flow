@@ -14,7 +14,7 @@ use flow_websocket_services::manage_project_edit_session::ManageEditSessionServi
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::broadcast;
 use tokio::sync::Mutex;
 use tracing::debug;
 use tracing::error;
@@ -45,7 +45,7 @@ pub struct AppState {
     pub storage: Arc<ProjectStorageRepository>,
     pub session_repo: Arc<ProjectRedisRepository>,
     pub service: Arc<SessionService>,
-    pub command_tx: mpsc::Sender<SessionCommand>,
+    pub command_tx: broadcast::Sender<SessionCommand>,
 }
 
 impl AppState {
@@ -75,7 +75,7 @@ impl AppState {
 
         let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
-        let (tx, rx) = mpsc::channel(CHANNEL_BUFFER_SIZE);
+        let (tx, rx) = broadcast::channel(CHANNEL_BUFFER_SIZE);
         let service = Arc::new(ManageEditSessionService::new(
             session_repo.clone(),
             storage.clone(),

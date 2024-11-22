@@ -20,7 +20,7 @@ pub async fn handle_message(
             let msg: FlowMessage = serde_json::from_str(&t)?;
 
             if let Some(command) = msg.session_command {
-                state.command_tx.send(command).await?;
+                state.command_tx.send(command)?;
             } else {
                 handle_room_event(&msg.event, room_id, &state, &user).await?;
             }
@@ -30,14 +30,11 @@ pub async fn handle_message(
             trace!("{} sent {} bytes: {:?}", addr, d.len(), d);
             if d.len() >= 3 {
                 if let Some(project_id) = project_id {
-                    state
-                        .command_tx
-                        .send(SessionCommand::MergeUpdates {
-                            project_id: project_id.clone(),
-                            data: d,
-                            updated_by: Some(user.id.clone()),
-                        })
-                        .await?;
+                    state.command_tx.send(SessionCommand::MergeUpdates {
+                        project_id: project_id.clone(),
+                        data: d,
+                        updated_by: Some(user.id.clone()),
+                    })?;
                 }
             }
             Ok(None)
@@ -45,13 +42,10 @@ pub async fn handle_message(
         Message::Close(_) => {
             debug!("Client {addr} sent close message");
             if let Some(project_id) = project_id {
-                state
-                    .command_tx
-                    .send(SessionCommand::End {
-                        project_id: project_id.clone(),
-                        user: user.clone(),
-                    })
-                    .await?;
+                state.command_tx.send(SessionCommand::End {
+                    project_id: project_id.clone(),
+                    user: user.clone(),
+                })?;
             }
             Ok(None)
         }

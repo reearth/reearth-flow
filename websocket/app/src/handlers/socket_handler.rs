@@ -20,7 +20,7 @@ pub async fn handle_socket(
     user: User,
 ) {
     let (sender, mut receiver) = socket.split();
-    let sender = Arc::new(Mutex::new(sender)); // 封装为 Arc<Mutex<>>
+    let sender = Arc::new(Mutex::new(sender));
     let is_cleaning_up = Arc::new(AtomicBool::new(false));
     let (cleanup_tx, mut cleanup_rx) = mpsc::channel(1);
 
