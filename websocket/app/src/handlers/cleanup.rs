@@ -43,6 +43,16 @@ pub fn perform_cleanup(
                     {
                         debug!("Failed to send End command: {:?}", e);
                     }
+
+                    if let Err(e) = state
+                        .command_tx
+                        .send(SessionCommand::RemoveTask {
+                            project_id: project_id.clone(),
+                        })
+                        .await
+                    {
+                        debug!("Failed to send RemoveTask command: {:?}", e);
+                    }
                 }
 
                 let _ = cleanup_tx.send(()).await;
