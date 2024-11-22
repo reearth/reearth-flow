@@ -1,0 +1,9 @@
+[source,bash]
+----
+cargo run --features local-storage main.rs
+----
+
+[source,bash]
+----
+cargo run --features gcs-storage main.rs
+----

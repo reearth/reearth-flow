@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
-id: 3e39d990-0a80-47df-9be9-3bf7c0068b5a
-name: "DataConvert-04-luse-lsld-workflow"
-entryGraphId: 0e500d5a-7882-4835-9285-9763ba8b5b65
+id: 6c372b6c-4f91-4bdb-9cb8-afe1455276f0
+name: "DataConvert-07-brid-tun-workflow"
+entryGraphId: c9211b7b-fbb2-437e-ad2a-992656fb4b74
 with:
   cityGmlPath:
   cityCode:
@@ -9,15 +9,15 @@ with:
   schemasPath:
   schemaJson: !include ../../../config/schema.txt
   targetPackages:
-    - luse
-    - lsld
+    - brid
+    - tun
   addNsprefixToFeatureTypes: true
   extractDmGeometryAsXmlFragment: false
   outputPath:
 graphs:
   - !include ../../../graphs/attribute_reader.yml
   - !include ../../../graphs/folder_and_file_path_reader.yml
-  - id: 0e500d5a-7882-4835-9285-9763ba8b5b65
+  - id: c9211b7b-fbb2-437e-ad2a-992656fb4b74
     name: entry_point
     nodes:
       - id: d5fa7732-ef20-45ec-a331-e6d57571354b
@@ -69,14 +69,17 @@ graphs:
         with:
           conditions:
             - expr: |
-                env.get("__value")["package"] == "luse"
-              outputPort: luse
+                env.get("__value")["package"] == "brid"
+              outputPort: brid
             - expr: |
-                env.get("__value")["package"] == "lsld"
-              outputPort: lsld
+                env.get("__value")["package"] == "tun"
+              outputPort: tun
+            - expr: |
+                env.get("__value")["package"] == "cons"
+              outputPort: cons
 
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        name: AttributeMapperLuse
+        name: AttributeMapperBrid
         type: action
         action: AttributeMapper
         with:
@@ -91,24 +94,24 @@ graphs:
               valueAttribute: gmlName
             - attribute: gml_id
               valueAttribute: gmlId
-            - attribute: luse_class
-              parentAttribute: cityGmlAttributes
-              childAttribute: luse:class
-            - attribute: luse_class
-              parentAttribute: cityGmlAttributes
-              childAttribute: luse:class
+
+      - id: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        name: VerticalReprojectorBrid
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
 
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
-        name: mvtWriter
+        name: Cesium3DTilesWriterByBrid
         type: action
-        action: MVTWriter
+        action: Cesium3DTilesWriter
         with:
-          format: mvt
-          layerName: luse
-          minZoom: 8
-          maxZoom: 16
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: true
           output: |
-             file::join_path(env.get("outputPath"), "luse")
+             file::join_path(env.get("outputPath"), "brid_lod0-3")
 
     edges:
       - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
@@ -134,10 +137,15 @@ graphs:
       - id: 1e29f24a-620b-472c-805f-8295bf5920c2
         from: 8510992d-2546-4e89-a09b-f31ff435bbb7
         to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        fromPort: luse
+        fromPort: brid
+        toPort: default
+      - id: 703fbdd0-516f-4201-b2ad-5575ab684fbc
+        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        fromPort: default
         toPort: default
       - id: e862f11a-88a6-4c1b-a743-ba80253039df
-        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        from: 928e21d9-fc30-4876-ba03-41338cfa47ed
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         fromPort: default
         toPort: default

@@ -53,7 +53,7 @@ impl ProcessorFactory for XmlFragmenterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: XmlFragmenterParam = if let Some(with) = with {
+        let params: XmlFragmenterParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 XmlProcessorError::FragmenterFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -91,6 +91,7 @@ impl ProcessorFactory for XmlFragmenterFactory {
                 ))
             })?;
         let process = XmlFragmenter {
+            global_params: with,
             params,
             elements_to_match_ast,
             elements_to_exclude_ast,
@@ -101,6 +102,7 @@ impl ProcessorFactory for XmlFragmenterFactory {
 
 #[derive(Debug, Clone)]
 pub struct XmlFragmenter {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     params: XmlFragmenterParam,
     elements_to_match_ast: rhai::AST,
     elements_to_exclude_ast: rhai::AST,
@@ -173,6 +175,7 @@ impl Processor for XmlFragmenter {
                 send_xml_fragment(
                     &ctx,
                     fw,
+                    &self.global_params,
                     &ctx.feature,
                     &property.attribute,
                     &self.elements_to_match_ast,
@@ -199,6 +202,7 @@ impl Processor for XmlFragmenter {
 fn send_xml_fragment(
     ctx: &ExecutorContext,
     fw: &mut dyn ProcessorChannelForwarder,
+    global_params: &Option<HashMap<String, serde_json::Value>>,
     feature: &Feature,
     attribute: &Attribute,
     elements_to_match_ast: &rhai::AST,
@@ -207,7 +211,7 @@ fn send_xml_fragment(
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let expr_engine = Arc::clone(&ctx.expr_engine);
 
-    let scope = feature.new_scope(expr_engine.clone());
+    let scope = feature.new_scope(expr_engine.clone(), global_params);
     let elements_to_match = scope
         .eval_ast::<rhai::Array>(elements_to_match_ast)
         .map_err(|e| {

@@ -52,7 +52,7 @@ impl ProcessorFactory for AttributeManagerFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: AttributeManagerParam = if let Some(with) = with {
+        let params: AttributeManagerParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::ManagerFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -75,13 +75,17 @@ impl ProcessorFactory for AttributeManagerFactory {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let operations = convert_single_operation(&params.operations, Arc::clone(&expr_engine))?;
 
-        let process = AttributeManager { operations };
+        let process = AttributeManager {
+            global_params: with,
+            operations,
+        };
         Ok(Box::new(process))
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct AttributeManager {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     operations: Vec<Operate>,
 }
 
@@ -133,7 +137,12 @@ impl Processor for AttributeManager {
         ctx: ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let feature = process_feature(&ctx.feature, &self.operations, Arc::clone(&ctx.expr_engine));
+        let feature = process_feature(
+            &ctx.feature,
+            &self.operations,
+            Arc::clone(&ctx.expr_engine),
+            &self.global_params,
+        );
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
@@ -151,7 +160,12 @@ impl Processor for AttributeManager {
     }
 }
 
-fn process_feature(feature: &Feature, operations: &[Operate], expr_engine: Arc<Engine>) -> Feature {
+fn process_feature(
+    feature: &Feature,
+    operations: &[Operate],
+    expr_engine: Arc<Engine>,
+    global_params: &Option<HashMap<String, serde_json::Value>>,
+) -> Feature {
     let mut result = feature.clone();
     for operation in operations {
         match operation {
@@ -161,7 +175,7 @@ fn process_feature(feature: &Feature, operations: &[Operate], expr_engine: Arc<E
                     continue;
                 }
 
-                let scope = feature.new_scope(expr_engine.clone());
+                let scope = feature.new_scope(expr_engine.clone(), global_params);
                 if let Some(expr) = expr {
                     let new_value = scope.eval_ast::<Dynamic>(expr);
                     if let Ok(new_value) = new_value {
@@ -172,7 +186,7 @@ fn process_feature(feature: &Feature, operations: &[Operate], expr_engine: Arc<E
                 }
             }
             Operate::Create { expr, attribute } => {
-                let scope = feature.new_scope(expr_engine.clone());
+                let scope = feature.new_scope(expr_engine.clone(), global_params);
                 if let Some(expr) = expr {
                     let new_value = scope.eval_ast::<Dynamic>(expr);
                     if let Ok(new_value) = new_value {

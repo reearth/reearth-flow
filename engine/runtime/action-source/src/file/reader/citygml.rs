@@ -13,7 +13,7 @@ use reearth_flow_common::{str::to_hash, uri::Uri};
 use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{
-    geometry::Geometry, metadata::Metadata, Attribute, AttributeValue, Feature,
+    geometry::Geometry, lod::LodMask, metadata::Metadata, Attribute, AttributeValue, Feature,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -136,28 +136,31 @@ async fn parse_tree_reader<'a, 'b, R: BufRead>(
             });
         }
         let attributes = entity.root.to_attribute_json();
-        let gml_id = entity
-            .root
-            .id()
-            .map(|id| AttributeValue::String(id.to_string()))
-            .unwrap_or(AttributeValue::Null);
-        let name = entity
-            .root
-            .typename()
-            .map(|name| AttributeValue::String(name.to_string()))
-            .unwrap_or(AttributeValue::Null);
+        let gml_id = entity.root.id();
+        let name = entity.root.typename();
         let attributes = HashMap::<Attribute, AttributeValue>::from([
             (Attribute::new("cityGmlAttributes"), attributes.into()),
-            (Attribute::new("gmlName"), name),
-            (Attribute::new("gmlId"), gml_id),
+            (
+                Attribute::new("gmlName"),
+                name.map(|s| AttributeValue::String(s.to_string()))
+                    .unwrap_or(AttributeValue::Null),
+            ),
+            (
+                Attribute::new("gmlId"),
+                gml_id
+                    .map(|s| AttributeValue::String(s.to_string()))
+                    .unwrap_or(AttributeValue::Null),
+            ),
             (
                 Attribute::new("gmlRootId"),
                 AttributeValue::String(format!("root_{}", to_hash(base_url.as_str()))),
             ),
         ]);
+        let lod = LodMask::find_lods_by_citygml_value(&entity.root);
         let metadata = Metadata {
-            feature_id: entity.root.id().map(|id| id.to_string()),
-            feature_type: entity.root.typename().map(|name| name.to_string()),
+            feature_id: gml_id.map(|id| id.to_string()),
+            feature_type: name.map(|name| name.to_string()),
+            lod: Some(lod),
         };
         let entities = if flatten {
             FlattenTreeTransform::transform(entity)

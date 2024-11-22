@@ -37,34 +37,36 @@ flow-websocket-infra = { path = "crates/infra", default-features = false }
 flow-websocket-services = { path = "crates/services", default-features = false }
 
 async-trait = "0.1.80"
-axum = { version = "0.7", features = ["ws"] }
-axum-extra = { version = "0.9", features = ["typed-header"] }
+axum = { version = "0.7.9", features = ["ws"] }
+axum-extra = { version = "0.9.6", features = ["typed-header"] }
 axum-macros = "0.4"
 bb8 = "0.8"
 bb8-redis = "0.17.0"
 chrono = { version = "0.4", features = ["serde"] }
-dashmap = "5.4.0"
 dotenv = "0.15.0"
 envy = "0.4.2"
-google-cloud-storage = "0.18"
+futures-util = "0.3"
+google-cloud-storage = "0.22.1"
 lru = "0.12.4"
 mockall = { version = "0.13.0" }
 redis = { version = "0.27.5", features = ["aio", "tokio-comp"] }
-rslock = "0.3.0"
+rslock = "0.5.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0.117", features = ["arbitrary_precision"] }
+serde_json = { version = "1.0.133", features = ["arbitrary_precision"] }
 sha2 = "0.10.8"
 tempfile = "3.12.0"
-thiserror = "1.0.64"
+thiserror = "2.0.3"
 tokio = { version = "1.38.0", features = ["full", "time"] }
-tower = { version = "0.4", features = ["timeout"] }
-tower-http = { version = "0.5", features = ["fs", "trace"] }
+tokio-tungstenite = "0.20"
+tower = { version = "0.5.1", features = ["timeout"] }
+tower-http = { version = "0.6.1", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = "2.4"
 uuid = { version = "1.8.0", features = [
   "fast-rng",
   "macro-diagnostics",
   "serde",
   "v4",
 ] }
-yrs = "0.18"
+yrs = "0.21.3"
