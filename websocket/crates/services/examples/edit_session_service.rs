@@ -17,7 +17,7 @@ use flow_websocket_services::manage_project_edit_session::{
 };
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use tracing::{error, info};
+use tracing::info;
 use yrs::{Doc, Text, Transact};
 
 ///export REDIS_URL="redis://default:my_redis_password@localhost:6379/0"
@@ -66,11 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let service_clone = service.clone();
 
     // Spawn service processing task
-    let process_handle = tokio::spawn(async move {
-        if let Err(e) = service_clone.process(rx).await {
-            error!("Service processing error: {:?}", e);
-        }
-    });
+    let process_handle = tokio::spawn(async move { service_clone.process(rx).await });
 
     // Create test user
     let test_user = User {

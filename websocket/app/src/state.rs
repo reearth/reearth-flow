@@ -85,13 +85,7 @@ impl AppState {
         ));
 
         let service_clone = service.clone();
-        tokio::spawn(async move {
-            debug!("Starting service processor");
-            if let Err(e) = service_clone.process(rx).await {
-                error!("Service processing error: {}", e);
-            }
-            debug!("Service processor ended");
-        });
+        tokio::spawn(async move { service_clone.process(rx).await });
 
         Ok(AppState {
             rooms: Arc::new(Mutex::new(HashMap::new())),
