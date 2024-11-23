@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::io::Read;
 
 use reearth_flow_types::{Attribute, AttributeValue};
+use tempfile::NamedTempFile;
 use wasmer::{Module, Store};
 use wasmer_wasix::{Pipe, WasiEnv};
 
@@ -71,24 +72,40 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
             .into());
         };
 
-        self.compile_to_wasm(&params)?;
+        let wasm_binary = self.compile_to_wasm(&params)?;
 
-        let process = WasmRuntimeExecutor { params };
+        let process = WasmRuntimeExecutor {
+            params,
+            wasm_binary,
+        };
         Ok(Box::new(process))
     }
 }
 
 impl WasmRuntimeExecutorFactory {
-    fn compile_to_wasm(&self, params: &WasmRuntimeExecutorParam) -> super::errors::Result<()> {
-        match params.programming_language {
+    fn compile_to_wasm(&self, params: &WasmRuntimeExecutorParam) -> super::errors::Result<Vec<u8>> {
+        let temp_wasm_file = NamedTempFile::new().map_err(|e| {
+            WasmProcessorError::RuntimeExecutorFactory(format!(
+                "Failed to create temporary file: {}",
+                e
+            ))
+        })?;
+        let temp_wasm_path = temp_wasm_file.path();
+        let temp_wasm_path_str = temp_wasm_path.to_str().ok_or_else(|| {
+            WasmProcessorError::RuntimeExecutorFactory(
+                "Temporary file path is not valid UTF-8".to_string(),
+            )
+        })?;
+
+        let wasm_binary = match params.programming_language {
             ProgrammingLanguage::Python => {
                 let py2wasm_output = std::process::Command::new("py2wasm")
-                    .args([&params.source_code_file_path, "-o", &params.wasm_file_path])
+                    .args([&params.source_code_file_path, "-o", temp_wasm_path_str])
                     .output()
                     .map_err(|e| {
                         WasmProcessorError::RuntimeExecutorFactory(format!(
                             "Failed to run py2wasm: {}. Command: py2wasm {} -o {}",
-                            e, params.source_code_file_path, params.wasm_file_path
+                            e, params.source_code_file_path, temp_wasm_path_str
                         ))
                     })?;
 
@@ -99,28 +116,34 @@ impl WasmRuntimeExecutorFactory {
                         error_msg
                     )));
                 }
-            }
-            _ => {
-                return Err(WasmProcessorError::RuntimeExecutorFactory(
-                    "Unsupported programming language".to_string(),
-                ));
-            }
-        }
 
-        Ok(())
+                let mut binary = Vec::new();
+                std::fs::File::open(temp_wasm_path)
+                    .and_then(|mut file| file.read_to_end(&mut binary))
+                    .map_err(|e| {
+                        WasmProcessorError::RuntimeExecutorFactory(format!(
+                            "Failed to read compiled Wasm file: {}",
+                            e
+                        ))
+                    })?;
+                binary
+            }
+        };
+
+        Ok(wasm_binary)
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct WasmRuntimeExecutor {
     params: WasmRuntimeExecutorParam,
+    wasm_binary: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct WasmRuntimeExecutorParam {
     pub source_code_file_path: String,
-    pub wasm_file_path: String,
     pub processor_type: ProcessorType,
     pub programming_language: ProgrammingLanguage,
 }
@@ -142,11 +165,6 @@ impl Processor for WasmRuntimeExecutor {
     ) -> Result<(), BoxedError> {
         match self.params.processor_type {
             ProcessorType::Attribute => self.process_attribute(ctx, fw).map_err(Into::into),
-            _ => Err(WasmProcessorError::RuntimeExecutor(format!(
-                "Unsupported ProcessorType: {:?}",
-                self.params.processor_type
-            ))
-            .into()),
         }
     }
 
@@ -176,7 +194,7 @@ impl WasmRuntimeExecutor {
         let updated_attributes = self.parse_wasm_output(&output)?;
 
         feature.attributes = updated_attributes;
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 
@@ -193,21 +211,15 @@ impl WasmRuntimeExecutor {
     }
 
     fn execute_wasm_module(&self, input: &str) -> super::errors::Result<String> {
-        let wasm_bytes = std::fs::read(&self.params.wasm_file_path).map_err(|e| {
-            WasmProcessorError::RuntimeExecutor(format!(
-                "Failed to read Wasm file '{}': {}",
-                &self.params.wasm_file_path, e
-            ))
-        })?;
-
         let mut store = Store::default();
-        let module = Module::new(&store, wasm_bytes).map_err(|e| {
+        let module = Module::new(&store, &self.wasm_binary).map_err(|e| {
             WasmProcessorError::RuntimeExecutor(format!("Failed to compile module: {}", e))
         })?;
 
+        let program_name = "WasmRuntimeExecutor";
         let (stdout_tx, mut stdout_rx) = Pipe::channel();
-        WasiEnv::builder("")
-            .args(&[input])
+        WasiEnv::builder(program_name)
+            .args([input])
             .stdout(Box::new(stdout_tx))
             .run_with_store(module, &mut store)
             .map_err(|e| {
@@ -236,8 +248,8 @@ impl WasmRuntimeExecutor {
 
         let parsed_output: serde_json::Value = serde_json::from_str(output).map_err(|e| {
             WasmProcessorError::RuntimeExecutor(format!(
-                "Failed to parse Wasm module output as JSON: {}",
-                e
+                "Failed to parse Wasm module output as JSON. Output: '{}', Error: {}",
+                output, e
             ))
         })?;
 
@@ -254,8 +266,7 @@ impl WasmRuntimeExecutor {
                     Err(WasmProcessorError::RuntimeExecutor(format!(
                         "Missing '{}' in Wasm module output",
                         FIELD_ATTRIBUTES
-                    ))
-                    .into())
+                    )))
                 }
             }
             Some(serde_json::Value::String(status)) if status == STATUS_ERROR => {
@@ -265,13 +276,12 @@ impl WasmRuntimeExecutor {
                     }
                     _ => "Wasm module execution failed with an unknown error.".to_string(),
                 };
-                Err(WasmProcessorError::RuntimeExecutor(error_msg).into())
+                Err(WasmProcessorError::RuntimeExecutor(error_msg))
             }
             _ => Err(WasmProcessorError::RuntimeExecutor(format!(
                 "Unexpected '{}' in Wasm module output",
                 FIELD_STATUS
-            ))
-            .into()),
+            ))),
         }
     }
 }

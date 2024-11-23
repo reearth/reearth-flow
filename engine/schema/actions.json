@@ -2681,8 +2681,7 @@
         "required": [
           "processorType",
           "programmingLanguage",
-          "sourceCodeFilePath",
-          "wasmFilePath"
+          "sourceCodeFilePath"
         ],
         "properties": {
           "processorType": {
@@ -2692,9 +2691,6 @@
             "$ref": "#/definitions/ProgrammingLanguage"
           },
           "sourceCodeFilePath": {
-            "type": "string"
-          },
-          "wasmFilePath": {
             "type": "string"
           }
         },

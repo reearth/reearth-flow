@@ -2643,8 +2643,7 @@ Compiles scripts into .wasm and runs at the wasm runtime
   "required": [
     "processorType",
     "programmingLanguage",
-    "sourceCodeFilePath",
-    "wasmFilePath"
+    "sourceCodeFilePath"
   ],
   "properties": {
     "processorType": {
@@ -2654,9 +2653,6 @@ Compiles scripts into .wasm and runs at the wasm runtime
       "$ref": "#/definitions/ProgrammingLanguage"
     },
     "sourceCodeFilePath": {
-      "type": "string"
-    },
-    "wasmFilePath": {
       "type": "string"
     }
   },
