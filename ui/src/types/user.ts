@@ -15,6 +15,7 @@ export type User = {
   id: string;
   name: string;
   email: string;
+  tenant_id?: string;
 };
 
 export type SearchUser = {

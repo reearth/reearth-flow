@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useY } from "react-yjs";
-import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
@@ -13,6 +12,7 @@ import { createWorkflowsYaml } from "@flow/utils/engineWorkflowYaml/workflowYaml
 import { useDeployment } from "../gql/deployment";
 import { useT } from "../i18n";
 
+import { SocketYjsManager } from "./socketYjsManager";
 import useWorkflowTabs from "./useWorkflowTabs";
 import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
@@ -28,67 +28,77 @@ export default ({
 }) => {
   const { toast } = useToast();
   const t = useT();
-
   const [currentProject] = useCurrentProject();
   const { createDeployment, useUpdateDeployment } = useDeployment();
-
-  const yWebSocketRef = useRef<WebsocketProvider | null>(null);
-  useEffect(() => () => yWebSocketRef.current?.destroy(), []);
-
+  const managerRef = useRef<SocketYjsManager | null>(null);
   const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
 
-  const [{ yWorkflows, currentUserClientId, undoTrackerActionWrapper }] =
-    useState(() => {
-      const yDoc = new Y.Doc();
-      const { websocket, websocketToken } = config();
-      if (workflowId && websocket && websocketToken) {
-        yWebSocketRef.current = new WebsocketProvider(
-          websocket,
-          workflowId,
-          yDoc,
-          { params: { token: websocketToken } },
-        );
-      }
+  // Initialize store and connect
+  const [{ yWorkflows, currentUserClientId }] = useState(() => {
+    const doc = new Y.Doc();
+    const yWorkflows = doc.getArray<YWorkflow>("workflows");
 
-      const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    // Initialize with default workflow if empty
+    if (yWorkflows.length === 0) {
       const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
       yWorkflows.push([yWorkflow]);
+    }
 
-      const currentUserClientId = yDoc.clientID;
-
-      // NOTE: any changes to the yDoc should be wrapped in a transact
-      const undoTrackerActionWrapper = (callback: () => void) =>
-        yDoc.transact(callback, currentUserClientId);
-
-      return { yWorkflows, currentUserClientId, undoTrackerActionWrapper };
-    });
+    return {
+      yWorkflows,
+      currentUserClientId: doc.clientID,
+    };
+  });
 
   useEffect(() => {
-    if (yWorkflows) {
-      const manager = new Y.UndoManager(yWorkflows, {
-        trackedOrigins: new Set([currentUserClientId]), // Only track local changes
-        captureTimeout: 200, // default is 500. 200ms is a good balance between performance and user experience
+    const { websocket: websocketUrl, websocketToken } = config();
+    if (!websocketUrl || !websocketToken || !workflowId || !currentProject?.id)
+      return;
+
+    const doc = managerRef.current?.getDoc() || yWorkflows.doc;
+
+    // Create and setup socket manager
+    if (!doc) return;
+    const manager = new SocketYjsManager(doc);
+    manager
+      .setupSocket({
+        url: websocketUrl,
+        roomId: workflowId,
+        projectId: currentProject.id,
+        accessTokenProvider: async () => websocketToken,
+      })
+      .catch((error) => {
+        toast({
+          title: t("Connection Error"),
+          description: error.message,
+          variant: "destructive",
+        });
       });
-      setUndoManager(manager);
 
-      return () => {
-        manager.destroy(); // Clean up UndoManager on component unmount
-      };
-    }
-  }, [yWorkflows, currentUserClientId]);
+    // Setup undo manager
+    const undoMngr = new Y.UndoManager(yWorkflows, {
+      trackedOrigins: new Set([currentUserClientId]),
+      captureTimeout: 200,
+    });
+    setUndoManager(undoMngr);
 
-  const handleWorkflowUndo = useCallback(() => {
-    if (undoManager?.undoStack && undoManager.undoStack.length > 0) {
-      undoManager?.undo();
-    }
-  }, [undoManager]);
+    managerRef.current = manager;
 
-  const handleWorkflowRedo = useCallback(() => {
-    if (undoManager?.redoStack && undoManager.redoStack.length > 0) {
-      undoManager?.redo();
-    }
-  }, [undoManager]);
+    return () => {
+      manager.destroy();
+      undoMngr.destroy();
+      managerRef.current = null;
+    };
+  }, [
+    workflowId,
+    currentProject?.id,
+    toast,
+    t,
+    currentUserClientId,
+    yWorkflows,
+  ]);
 
+  // Get the raw workflows using useY
   const rawWorkflows = useY(yWorkflows);
 
   const {
@@ -99,7 +109,21 @@ export default ({
     setOpenWorkflowIds,
     handleWorkflowOpen,
     handleWorkflowClose,
-  } = useWorkflowTabs({ workflowId, rawWorkflows, handleWorkflowIdChange });
+  } = useWorkflowTabs({
+    workflowId,
+    rawWorkflows: rawWorkflows as Record<string, string | Node[] | Edge[]>[],
+    handleWorkflowIdChange,
+  });
+
+  // Create wrapper for undoTrackerActionWrapper
+  const undoTrackerActionWrapper = useCallback(
+    (callback: () => void) => {
+      const doc = managerRef.current?.getDoc();
+      if (!doc) return;
+      doc.transact(callback, currentUserClientId);
+    },
+    [currentUserClientId],
+  );
 
   const { currentYWorkflow, handleWorkflowAdd, handleWorkflowsRemove } =
     useYWorkflow({
@@ -120,6 +144,29 @@ export default ({
     currentYWorkflow?.get("edges") ?? new Y.Array<Edge>(),
   ) as Edge[];
 
+  const { handleNodesUpdate } = useYNode({
+    currentYWorkflow,
+    undoTrackerActionWrapper,
+    handleWorkflowsRemove,
+  });
+
+  const { handleEdgesUpdate } = useYEdge({
+    currentYWorkflow,
+    undoTrackerActionWrapper,
+  });
+
+  const handleWorkflowUndo = useCallback(() => {
+    if (undoManager?.undoStack.length) {
+      undoManager.undo();
+    }
+  }, [undoManager]);
+
+  const handleWorkflowRedo = useCallback(() => {
+    if (undoManager?.redoStack.length) {
+      undoManager.redo();
+    }
+  }, [undoManager]);
+
   const handleWorkflowDeployment = useCallback(
     async (deploymentId?: string, description?: string) => {
       const {
@@ -135,12 +182,13 @@ export default ({
           projectName,
           rawWorkflows
             .map((w): Workflow | undefined => {
-              if (!w || w.nodes.length < 1) return undefined;
-              const id = w.id as string;
-              const name = w.name as string;
-              const n = w.nodes as Node[];
-              const e = w.edges as Edge[];
-              return { id, name, nodes: n, edges: e };
+              if (!w || (w.nodes as Node[]).length < 1) return undefined;
+              return {
+                id: w.id as string,
+                name: w.name as string,
+                nodes: w.nodes as Node[],
+                edges: w.edges as Edge[],
+              };
             })
             .filter(isDefined),
         ) ?? {};
@@ -180,16 +228,6 @@ export default ({
     ],
   );
 
-  const { handleNodesUpdate } = useYNode({
-    currentYWorkflow,
-    undoTrackerActionWrapper,
-    handleWorkflowsRemove,
-  });
-
-  const { handleEdgesUpdate } = useYEdge({
-    currentYWorkflow,
-    undoTrackerActionWrapper,
-  });
 
   return {
     nodes,
