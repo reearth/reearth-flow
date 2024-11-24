@@ -1727,6 +1727,45 @@ Filter geometry by type
 ### Category
 * Geometry
 
+## GeometryLodFilter
+### Type
+* processor
+### Description
+Filter geometry by lod
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeometryLodFilterParam",
+  "type": "object",
+  "properties": {
+    "maxLod": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "minLod": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint8",
+      "minimum": 0.0
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* unfiltered
+### Category
+* Geometry
+
 ## GeometryReplacer
 ### Type
 * processor
@@ -2589,6 +2628,56 @@ Reprojects the geometry of a feature to a specified coordinate system
 * default
 ### Category
 * Geometry
+
+## WasmRuntimeExecutor
+### Type
+* processor
+### Description
+Compiles scripts into .wasm and runs at the wasm runtime
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WasmRuntimeExecutorParam",
+  "type": "object",
+  "required": [
+    "processorType",
+    "programmingLanguage",
+    "sourceCodeFilePath"
+  ],
+  "properties": {
+    "processorType": {
+      "$ref": "#/definitions/ProcessorType"
+    },
+    "programmingLanguage": {
+      "$ref": "#/definitions/ProgrammingLanguage"
+    },
+    "sourceCodeFilePath": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "ProcessorType": {
+      "type": "string",
+      "enum": [
+        "Attribute"
+      ]
+    },
+    "ProgrammingLanguage": {
+      "type": "string",
+      "enum": [
+        "Python"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Wasm
 
 ## XMLFragmenter
 ### Type

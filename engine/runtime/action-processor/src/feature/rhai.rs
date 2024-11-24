@@ -50,7 +50,7 @@ impl ProcessorFactory for RhaiCallerFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: RhaiCallerParam = if let Some(with) = with {
+        let params: RhaiCallerParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::RhaiCallerFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -78,6 +78,7 @@ impl ProcessorFactory for RhaiCallerFactory {
             .compile(params.process.into_inner().as_str())
             .map_err(|e| FeatureProcessorError::RhaiCallerFactory(format!("{:?}", e)))?;
         let process = RhaiCaller {
+            global_params: with,
             is_target: is_target_ast,
             process: process_ast,
         };
@@ -87,6 +88,7 @@ impl ProcessorFactory for RhaiCallerFactory {
 
 #[derive(Debug, Clone)]
 pub struct RhaiCaller {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     is_target: rhai::AST,
     process: rhai::AST,
 }
@@ -106,7 +108,7 @@ impl Processor for RhaiCaller {
     ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
-        let scope = feature.new_scope(expr_engine.clone());
+        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         let is_target = scope.eval_ast::<bool>(&self.is_target);
         if let Err(e) = is_target {
             return Err(FeatureProcessorError::RhaiCaller(format!("{:?}", e)).into());

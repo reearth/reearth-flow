@@ -122,8 +122,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                 event_hub: self.event_hub.clone(),
             })
             .map_err(ExecutionError::Sink)?;
-        self.event_hub.info_log(
+        self.event_hub.info_log_with_node_handle(
             Some(span.clone()),
+            self.node_handle.clone(),
             format!("{:?} sink start...", self.sink.name()),
         );
         loop {
@@ -139,8 +140,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                     is_terminated[index] = true;
                     sel.remove(index);
                     if is_terminated.iter().all(|value| *value) {
-                        self.event_hub.info_log(
+                        self.event_hub.info_log_with_node_handle(
                             Some(span.clone()),
+                            self.node_handle.clone(),
                             format!(
                                 "{:?} sink finish. elapsed = {:?}",
                                 self.sink.name(),

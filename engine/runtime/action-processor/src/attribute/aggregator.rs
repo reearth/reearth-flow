@@ -49,7 +49,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: AttributeAggregatorParam = if let Some(with) = with {
+        let params: AttributeAggregatorParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::AggregatorFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -103,6 +103,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
         };
 
         let process = AttributeAggregator {
+            global_params: with,
             aggregate_attributes,
             calculation,
             calculation_value: params.calculation_value,
@@ -116,6 +117,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 
 #[derive(Debug, Clone)]
 pub struct AttributeAggregator {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
     calculation: Option<rhai::AST>,
     calculation_value: Option<i64>,
@@ -167,7 +169,7 @@ impl Processor for AttributeAggregator {
     ) -> Result<(), BoxedError> {
         let feature = ctx.feature;
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine.clone());
+        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
 
         let mut aggregates = Vec::new();
         for aggregate_attribute in &self.aggregate_attributes {

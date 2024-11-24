@@ -1,0 +1,151 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 6c372b6c-4f91-4bdb-9cb8-afe1455276f0
+name: "DataConvert-07-brid-tun-workflow"
+entryGraphId: c9211b7b-fbb2-437e-ad2a-992656fb4b74
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../../../config/schema.txt
+  targetPackages:
+    - brid
+    - tun
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+  outputPath:
+graphs:
+  - !include ../../../graphs/attribute_reader.yml
+  - !include ../../../graphs/folder_and_file_path_reader.yml
+  - id: c9211b7b-fbb2-437e-ad2a-992656fb4b74
+    name: entry_point
+    nodes:
+      - id: d5fa7732-ef20-45ec-a331-e6d57571354b
+        name: AttributeReader
+        type: subGraph
+        subGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
+
+      - id: e1a0388f-78a3-4aec-b3e1-d6ffc9065dc9
+        name: AttributeMapperFilePath
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: code
+              valueAttribute: meshCode
+            - attribute: type
+              valueAttribute: package
+            - attribute: maxLod
+              valueAttribute: maxLod
+            - attribute: length
+              expr: |
+                env.get("__value")["package"].len()
+            - attribute: file
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+
+      - id: c8d0f9dd-8f3d-46e0-8608-dfa22801a3d2
+        name: FileWriterTsvFilePath
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "maxLod.tsv")
+
+      - id: 254d6287-7649-4647-9ab5-0c1c423f356a
+        name: FeatureReaderByCityGml
+        type: action
+        action: FeatureReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value").cityGmlPath
+
+      - id: 8510992d-2546-4e89-a09b-f31ff435bbb7
+        name: FeatureFilterByPackage
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["package"] == "brid"
+              outputPort: brid
+            - expr: |
+                env.get("__value")["package"] == "tun"
+              outputPort: tun
+            - expr: |
+                env.get("__value")["package"] == "cons"
+              outputPort: cons
+
+      - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        name: AttributeMapperBrid
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: meshcode
+              valueAttribute: meshCode
+            - attribute: city_code
+              valueAttribute: cityCode
+            - attribute: city_name
+              valueAttribute: cityName
+            - attribute: feature_type
+              valueAttribute: gmlName
+            - attribute: gml_id
+              valueAttribute: gmlId
+
+      - id: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        name: VerticalReprojectorBrid
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        name: Cesium3DTilesWriterByBrid
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: true
+          output: |
+             file::join_path(env.get("outputPath"), "brid_lod0-3")
+
+    edges:
+      - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
+        from: d5fa7732-ef20-45ec-a331-e6d57571354b
+        to: e1a0388f-78a3-4aec-b3e1-d6ffc9065dc9
+        fromPort: filePath
+        toPort: default
+      - id: 284b02d9-8051-4614-a03c-583274c700f8
+        from: e1a0388f-78a3-4aec-b3e1-d6ffc9065dc9
+        to: c8d0f9dd-8f3d-46e0-8608-dfa22801a3d2
+        fromPort: default
+        toPort: default
+      - id: a4751655-5956-4e27-a976-e35f8914ad31
+        from: d5fa7732-ef20-45ec-a331-e6d57571354b
+        to: 254d6287-7649-4647-9ab5-0c1c423f356a
+        fromPort: filePath
+        toPort: default
+      - id: fb48e9e0-fa1b-4f27-8a89-84b6d2e1c6d7
+        from: 254d6287-7649-4647-9ab5-0c1c423f356a
+        to: 8510992d-2546-4e89-a09b-f31ff435bbb7
+        fromPort: default
+        toPort: default
+      - id: 1e29f24a-620b-472c-805f-8295bf5920c2
+        from: 8510992d-2546-4e89-a09b-f31ff435bbb7
+        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        fromPort: brid
+        toPort: default
+      - id: 703fbdd0-516f-4201-b2ad-5575ab684fbc
+        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        fromPort: default
+        toPort: default
+      - id: e862f11a-88a6-4c1b-a743-ba80253039df
+        from: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        fromPort: default
+        toPort: default

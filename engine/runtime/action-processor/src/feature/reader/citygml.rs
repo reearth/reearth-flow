@@ -15,7 +15,7 @@ use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder, executor_operation::ExecutorContext, node::DEFAULT_PORT,
 };
 use reearth_flow_types::{
-    geometry::Geometry, metadata::Metadata, Attribute, AttributeValue, Feature,
+    geometry::Geometry, lod::LodMask, metadata::Metadata, Attribute, AttributeValue, Feature,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -30,6 +30,7 @@ pub struct CityGmlReaderParam {
 }
 
 pub(crate) fn read_citygml(
+    global_params: &Option<HashMap<String, serde_json::Value>>,
     params: &CompiledCommonReaderParam,
     citygml_params: &CityGmlReaderParam,
     ctx: ExecutorContext,
@@ -38,7 +39,7 @@ pub(crate) fn read_citygml(
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let feature = &ctx.feature;
-    let scope = feature.new_scope(expr_engine.clone());
+    let scope = feature.new_scope(expr_engine.clone(), global_params);
     let city_gml_path = scope.eval_ast::<String>(&params.expr).map_err(|e| {
         super::errors::FeatureProcessorError::FileCityGmlReader(format!(
             "Failed to evaluate expr: {}",
@@ -65,9 +66,10 @@ pub(crate) fn read_citygml(
         .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
     parse_tree_reader(
         &mut st,
+        &feature.attributes,
         citygml_params.flatten.unwrap_or(false),
         base_url,
-        ctx,
+        &ctx,
         fw,
     )
     .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
@@ -76,9 +78,10 @@ pub(crate) fn read_citygml(
 
 fn parse_tree_reader<R: BufRead>(
     st: &mut SubTreeReader<'_, '_, R>,
+    base_attributes: &HashMap<Attribute, AttributeValue>,
     flatten: bool,
     base_url: Url,
-    ctx: ExecutorContext,
+    ctx: &ExecutorContext,
     fw: &mut dyn ProcessorChannelForwarder,
 ) -> Result<(), super::errors::FeatureProcessorError> {
     let mut entities = Vec::new();
@@ -150,29 +153,32 @@ fn parse_tree_reader<R: BufRead>(
             });
         }
         let attributes = entity.root.to_attribute_json();
-        let gml_id = entity
-            .root
-            .id()
-            .map(|id| AttributeValue::String(id.to_string()))
-            .unwrap_or(AttributeValue::Null);
-        let name = entity
-            .root
-            .typename()
-            .map(|name| AttributeValue::String(name.to_string()))
-            .unwrap_or(AttributeValue::Null);
+        let gml_id = entity.root.id();
+        let name = entity.root.typename();
         let mut attributes = HashMap::<Attribute, AttributeValue>::from([
             (Attribute::new("cityGmlAttributes"), attributes.into()),
-            (Attribute::new("gmlName"), name),
-            (Attribute::new("gmlId"), gml_id),
+            (
+                Attribute::new("gmlName"),
+                name.map(|s| AttributeValue::String(s.to_string()))
+                    .unwrap_or(AttributeValue::Null),
+            ),
+            (
+                Attribute::new("gmlId"),
+                gml_id
+                    .map(|s| AttributeValue::String(s.to_string()))
+                    .unwrap_or(AttributeValue::Null),
+            ),
             (
                 Attribute::new("gmlRootId"),
                 AttributeValue::String(format!("root_{}", to_hash(base_url.as_str()))),
             ),
         ]);
-        attributes.extend(ctx.feature.attributes.clone());
+        attributes.extend(base_attributes.clone());
+        let lod = LodMask::find_lods_by_citygml_value(&entity.root);
         let metadata = Metadata {
-            feature_id: entity.root.id().map(|id| id.to_string()),
-            feature_type: entity.root.typename().map(|name| name.to_string()),
+            feature_id: gml_id.map(|id| id.to_string()),
+            feature_type: name.map(|name| name.to_string()),
+            lod: Some(lod),
         };
         let entities = if flatten {
             FlattenTreeTransform::transform(entity)

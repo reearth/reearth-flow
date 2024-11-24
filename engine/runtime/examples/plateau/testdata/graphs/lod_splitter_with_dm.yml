@@ -8,6 +8,16 @@ nodes:
     with:
       filterType: none
 
+  - id: 1787b15c-19b5-4386-a0ff-f0e58f477d07
+    name: FeatureFilterByExceptSplit
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("exceptSplit")
+          outputPort: exceptSplit
+
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
     type: action
@@ -73,13 +83,23 @@ nodes:
 edges:
   - id: 1386a662-cf02-4475-a5d2-3668a50a56b7
     from: 278ab965-ce22-473d-98c6-c7b381c38679
+    to: 1787b15c-19b5-4386-a0ff-f0e58f477d07
+    fromPort: unfiltered
+    toPort: default
+  - id: ef2f1484-6173-4f34-85bc-58bc45e31bff
+    from: 1787b15c-19b5-4386-a0ff-f0e58f477d07
     to: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     fromPort: unfiltered
     toPort: default
-  - id: 5857909b-7fc0-4d3e-adfa-65a5669a6646
+  - id: 111cc70e-e1ad-44f4-b4c8-82f7b1cf1309
     from: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     fromPort: default
+    toPort: default
+  - id: 5857909b-7fc0-4d3e-adfa-65a5669a6646
+    from: 1787b15c-19b5-4386-a0ff-f0e58f477d07
+    to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
+    fromPort: exceptSplit
     toPort: default
   - id: 1a802e2e-c876-42e3-b3ae-639af1bc7780
     from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6

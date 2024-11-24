@@ -1,5 +1,5 @@
 mod helper;
 
 fn main() {
-    helper::execute("quality-check/07-lsld/workflow.yml");
+    helper::execute("data-convert/07-brid-tun-cons/workflow.yml");
 }

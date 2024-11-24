@@ -52,7 +52,7 @@ impl ProcessorFactory for FeatureFilterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: FeatureFilterParam = if let Some(with) = with {
+        let params: FeatureFilterParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::FilterFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -84,13 +84,17 @@ impl ProcessorFactory for FeatureFilterFactory {
                 output_port: output_port.clone(),
             });
         }
-        let process = FeatureFilter { conditions };
+        let process = FeatureFilter {
+            global_params: with,
+            conditions,
+        };
         Ok(Box::new(process))
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct FeatureFilter {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     conditions: Vec<CompiledCondition>,
 }
 
@@ -122,7 +126,7 @@ impl Processor for FeatureFilter {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
         let mut routing = false;
-        let scope = feature.new_scope(expr_engine.clone());
+        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         for condition in &self.conditions {
             let eval = scope.eval_ast::<bool>(&condition.expr);
             match eval {

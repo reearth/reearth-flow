@@ -26,6 +26,7 @@ pub enum Event {
     Log {
         level: Level,
         span: Option<Span>,
+        node_handle: Option<NodeHandle>,
         message: String,
     },
 }
@@ -50,6 +51,21 @@ impl EventHub {
         self.send(Event::Log {
             level: Level::INFO,
             span,
+            node_handle: None,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn info_log_with_node_handle<T: ToString>(
+        &self,
+        span: Option<Span>,
+        node_handle: NodeHandle,
+        message: T,
+    ) {
+        self.send(Event::Log {
+            level: Level::INFO,
+            span,
+            node_handle: Some(node_handle),
             message: message.to_string(),
         });
     }
@@ -58,6 +74,21 @@ impl EventHub {
         self.send(Event::Log {
             level: Level::DEBUG,
             span,
+            node_handle: None,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn debug_log_with_node_handle<T: ToString>(
+        &self,
+        span: Option<Span>,
+        node_handle: NodeHandle,
+        message: T,
+    ) {
+        self.send(Event::Log {
+            level: Level::DEBUG,
+            span,
+            node_handle: Some(node_handle),
             message: message.to_string(),
         });
     }
@@ -66,6 +97,21 @@ impl EventHub {
         self.send(Event::Log {
             level: Level::WARN,
             span,
+            node_handle: None,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn warn_log_with_node_handle<T: ToString>(
+        &self,
+        span: Option<Span>,
+        node_handle: NodeHandle,
+        message: T,
+    ) {
+        self.send(Event::Log {
+            level: Level::WARN,
+            span,
+            node_handle: Some(node_handle),
             message: message.to_string(),
         });
     }
@@ -74,6 +120,21 @@ impl EventHub {
         self.send(Event::Log {
             level: Level::ERROR,
             span,
+            node_handle: None,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn error_log_with_node_handle<T: ToString>(
+        &self,
+        span: Option<Span>,
+        node_handle: NodeHandle,
+        message: T,
+    ) {
+        self.send(Event::Log {
+            level: Level::ERROR,
+            span,
+            node_handle: Some(node_handle),
             message: message.to_string(),
         });
     }
