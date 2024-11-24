@@ -11,6 +11,7 @@ pub struct Workspace {
     pub owner_id: String,
     pub members: Vec<WorkspaceMember>,
     pub settings: WorkspaceSettings,
+    pub projects: Vec<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -62,6 +63,7 @@ impl Workspace {
                 joined_at: now,
             }],
             settings: WorkspaceSettings::default(),
+            projects: Vec::new(),
             created_at: now,
             updated_at: now,
         }
@@ -147,6 +149,31 @@ impl Workspace {
         self.owner_id = new_owner_id;
         self.updated_at = Utc::now();
         Ok(())
+    }
+
+    pub fn add_project(&mut self, project_id: String) -> Result<(), &'static str> {
+        if self.projects.contains(&project_id) {
+            return Err("Project already exists in workspace");
+        }
+        self.projects.push(project_id);
+        self.updated_at = Utc::now();
+        Ok(())
+    }
+
+    pub fn remove_project(&mut self, project_id: &str) -> Result<(), &'static str> {
+        let initial_len = self.projects.len();
+        self.projects.retain(|p| p != project_id);
+
+        if self.projects.len() == initial_len {
+            return Err("Project not found in workspace");
+        }
+
+        self.updated_at = Utc::now();
+        Ok(())
+    }
+
+    pub fn get_projects(&self) -> &Vec<String> {
+        &self.projects
     }
 }
 

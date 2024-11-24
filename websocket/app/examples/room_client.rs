@@ -1,8 +1,10 @@
 use futures_util::{SinkExt, StreamExt};
 use serde::Serialize;
-use tokio_tungstenite::{connect_async, tungstenite::Message};
+use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::{connect_async_with_config, tungstenite::http::Request};
+use tracing::error;
+use tracing::info;
 use url::Url;
-
 // Add these struct definitions at the top
 #[derive(Serialize)]
 struct Event<T> {
@@ -22,23 +24,55 @@ struct JoinContent {
 }
 
 #[derive(Serialize)]
+struct CreateContent {
+    room_id: String,
+}
+
+#[derive(Serialize)]
 struct EmitContent {
     data: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let url = Url::parse(
-        "ws://127.0.0.1:8080/ws/room123?token=nyaan&user_id=test_user&project_id=test_project",
-    )?;
+    let project_id = "test_project";
+    let user_id = "test_user";
+    let room_id = "room123";
 
-    // Connect to WebSocket server
-    let (ws_stream, _) = connect_async(url).await?;
-    println!("WebSocket connection established");
+    let url = Url::parse(&format!(
+        "ws://127.0.0.1:8080/{room_id}?user_id={user_id}&project_id={project_id}",
+        room_id = room_id,
+        user_id = user_id,
+        project_id = project_id
+    ))?;
+
+    let request = Request::builder()
+        .uri(url.as_str())
+        .header("Host", url.host_str().unwrap())
+        .header("Authorization", "Bearer your_auth_token_here")
+        .header("Connection", "Upgrade")
+        .header("Upgrade", "websocket")
+        .header("Sec-WebSocket-Version", "13")
+        .header("Sec-WebSocket-Key", generate_key())
+        .body(())?;
+
+    let (ws_stream, _) = connect_async_with_config(request, None, false).await?;
+    info!("WebSocket connection established");
 
     let (mut write, mut read) = ws_stream.split();
 
     // Replace manual JSON construction with send_event
+    send_event(
+        &mut write,
+        "Create",
+        CreateContent {
+            room_id: "room123".to_string(),
+        },
+    )
+    .await?;
+    info!("Create message sent");
+    println!("Create message sent");
+
     send_event(
         &mut write,
         "Join",
@@ -47,7 +81,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     )
     .await?;
-    println!("Join message sent");
+    info!("Join message sent");
 
     send_event(
         &mut write,
@@ -57,19 +91,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     )
     .await?;
-    println!("Test data sent");
+    info!("Test data sent");
 
     // Receive and print server responses
     while let Some(msg) = read.next().await {
         match msg {
             Ok(msg) => {
-                println!("Received message: {:?}", msg);
+                info!("Received message: {:?}", msg);
                 if msg.is_close() {
                     break;
                 }
             }
             Err(e) => {
-                println!("Error: {}", e);
+                error!("Error: {}", e);
                 break;
             }
         }
@@ -97,4 +131,13 @@ async fn send_event<T: Serialize>(
         .send(Message::Text(serde_json::to_string(&event)?))
         .await?;
     Ok(())
+}
+
+fn generate_key() -> String {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use rand::Rng;
+
+    let mut key = [0u8; 16];
+    rand::thread_rng().fill(&mut key);
+    STANDARD.encode(key)
 }

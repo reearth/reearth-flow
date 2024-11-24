@@ -1,10 +1,10 @@
 mod config;
 mod errors;
-pub mod handler;
+mod handlers;
+mod middleware;
 mod room;
 pub mod state;
 pub use config::Config;
 mod routes;
-pub use routes::create_router;
-mod middleware;
 pub use middleware::add_middleware;
+pub use routes::create_router;

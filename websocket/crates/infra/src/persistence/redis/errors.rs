@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use super::flow_project_lock::LockError;
+
 #[derive(Error, Debug)]
 pub enum FlowProjectRedisDataManagerError {
     #[error(transparent)]
@@ -20,12 +22,8 @@ pub enum FlowProjectRedisDataManagerError {
     Unknown(String),
     #[error("Pool run error: {0}")]
     PoolRunError(#[from] bb8::RunError<redis::RedisError>),
-    #[error("Global Lock Error: {0:?}")]
-    FlowProjectLock(rslock::LockError),
-}
-
-impl From<rslock::LockError> for FlowProjectRedisDataManagerError {
-    fn from(err: rslock::LockError) -> Self {
-        FlowProjectRedisDataManagerError::FlowProjectLock(err)
-    }
+    #[error(transparent)]
+    LockError(#[from] LockError),
+    #[error(transparent)]
+    Yrs(#[from] yrs::error::UpdateError),
 }

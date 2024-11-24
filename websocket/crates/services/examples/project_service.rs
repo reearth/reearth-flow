@@ -52,8 +52,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create ProjectService instance
     let service = ProjectService::new(
         Arc::new(session_repo),
-        Arc::new(storage),
+        Arc::new(storage.clone()),
         Arc::new(redis_data_manager),
+        Arc::new(storage.clone()),
+        Arc::new(storage),
     );
 
     // Example project ID
