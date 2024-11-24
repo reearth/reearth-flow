@@ -18,6 +18,7 @@ pub struct FlowMessage {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct WebSocketQuery {
+    token: String,
     user_id: String,
     project_id: Option<String>,
 }
@@ -33,5 +34,9 @@ impl WebSocketQuery {
 
     pub fn _update_project_id(&mut self, project_id: Option<String>) {
         self.project_id = project_id;
+    }
+
+    pub fn token(&self) -> &str {
+        &self.token
     }
 }

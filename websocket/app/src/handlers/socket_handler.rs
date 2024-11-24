@@ -1,6 +1,6 @@
 use crate::handlers::message_handler::handle_message;
 use crate::state::AppState;
-use axum::extract::ws::WebSocket;
+use axum::extract::ws::{Message, WebSocket};
 use flow_websocket_infra::types::user::User;
 use futures_util::StreamExt;
 use std::sync::atomic::AtomicBool;
@@ -12,13 +12,18 @@ use super::cleanup::perform_cleanup;
 use super::heartbeat::start_heartbeat;
 
 pub async fn handle_socket(
-    socket: WebSocket,
+    mut socket: WebSocket,
     addr: SocketAddr,
+    token: String,
     room_id: String,
     state: Arc<AppState>,
     project_id: Option<String>,
     user: User,
 ) {
+    if !verify_connection(&mut socket, &addr, &token).await {
+        return;
+    }
+
     let (sender, mut receiver) = socket.split();
     let sender = Arc::new(Mutex::new(sender));
     let is_cleaning_up = Arc::new(AtomicBool::new(false));
@@ -73,4 +78,12 @@ pub async fn handle_socket(
 
     let _ = cleanup_rx.recv().await;
     heartbeat_task.abort();
+}
+
+async fn verify_connection(socket: &mut WebSocket, addr: &SocketAddr, token: &str) -> bool {
+    if socket.send(Message::Ping(vec![4])).await.is_err() || token != "nyaan" {
+        debug!("Connection failed for {addr}: ping failed or invalid token");
+        return false;
+    }
+    true
 }

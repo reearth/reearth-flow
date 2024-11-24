@@ -1,8 +1,6 @@
-mod auth;
 mod trace;
-use auth::auth_middleware;
 use axum::{
-    error_handling::HandleErrorLayer, http::StatusCode, middleware, response::IntoResponse,
+    error_handling::HandleErrorLayer, http::StatusCode, response::IntoResponse,
     BoxError, Json, Router,
 };
 use serde_json::json;
@@ -12,7 +10,7 @@ use tower::timeout::TimeoutLayer;
 use tower::ServiceBuilder;
 pub use trace::add_trace_middleware;
 
-pub fn add_middleware<S>(router: Router<S>, include_auth: bool) -> Router<S>
+pub fn add_middleware<S>(router: Router<S>) -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
@@ -37,12 +35,6 @@ where
         .layer(TimeoutLayer::new(Duration::from_secs(3)))
         .layer(add_trace_middleware());
 
-    let router = if include_auth {
-        router.layer(middleware::from_fn(auth_middleware))
-    } else {
-        router
-    };
-
     router.layer(builder.into_inner())
 }
 #[cfg(test)]
@@ -65,8 +57,7 @@ mod tests {
                     tokio::time::sleep(Duration::from_secs(20)).await;
                     "This should timeout"
                 }),
-            ),
-            false,
+            )
         );
 
         let response = router
@@ -88,27 +79,4 @@ mod tests {
         assert_eq!(json["error"]["message"], "Request timed out");
     }
 
-    #[tokio::test]
-    async fn test_auth_middleware() {
-        let router = add_middleware(
-            Router::new().route(
-                "/protected",
-                axum::routing::get(|| async { "Protected resource" }),
-            ),
-            true,
-        );
-
-        // Simulate unauthorized request
-        let response = router
-            .oneshot(
-                Request::builder()
-                    .uri("/protected")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-    }
 }
