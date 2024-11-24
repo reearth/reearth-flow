@@ -27,7 +27,6 @@ google-cloud-storage = { workspace = true, optional = true }
 lru.workspace = true
 mockall.workspace = true
 redis.workspace = true
-rslock.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

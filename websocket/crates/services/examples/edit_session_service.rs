@@ -16,8 +16,8 @@ use flow_websocket_services::manage_project_edit_session::{
     ManageEditSessionService, SessionCommand,
 };
 use std::sync::Arc;
-use tokio::sync::mpsc;
-use tracing::{debug, error, info};
+use tokio::sync::broadcast;
+use tracing::info;
 use yrs::{Doc, Text, Transact};
 
 ///export REDIS_URL="redis://default:my_redis_password@localhost:6379/0"
@@ -39,12 +39,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize Redis connection pool
     let manager = RedisConnectionManager::new(&*redis_url)?;
     let redis_pool = Pool::builder().build(manager).await?;
-
-    #[cfg(feature = "local-storage")]
-    debug!("local-storage feature is enabled");
-    #[cfg(feature = "gcs-storage")]
-    debug!("gcs-storage feature is enabled");
-
     // Initialize storage
     #[cfg(feature = "local-storage")]
     #[allow(unused_variables)]
@@ -56,25 +50,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let session_repo = ProjectRedisRepository::new(redis_pool.clone());
     let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
-    let project_id = "project_123".to_string();
-
     // Create service
     let service = ManageEditSessionService::new(
         Arc::new(session_repo),
-        Arc::new(storage),
+        Arc::new(storage.clone()),
         Arc::new(redis_data_manager),
+        Arc::new(storage.clone()),
+        Arc::new(storage),
     );
 
+    let project_id = "project_123".to_string();
+
     // Create channel for commands
-    let (tx, rx) = mpsc::channel(32);
+    let (tx, rx) = broadcast::channel(32);
     let service_clone = service.clone();
 
     // Spawn service processing task
-    let process_handle = tokio::spawn(async move {
-        if let Err(e) = service_clone.process(rx).await {
-            error!("Service processing error: {:?}", e);
-        }
-    });
+    let process_handle = tokio::spawn(async move { service_clone.process(rx).await });
 
     // Create test user
     let test_user = User {
@@ -85,31 +77,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Simulate session lifecycle
-    debug!("Starting session simulation");
+    info!("Starting session simulation");
 
     tx.send(SessionCommand::AddTask {
         project_id: project_id.clone(),
-    })
-    .await?;
+    })?;
+
+    info!("Starting session");
 
     // Start session
     tx.send(SessionCommand::Start {
         project_id: project_id.clone(),
         user: test_user.clone(),
-    })
-    .await?;
+    })?;
+
+    info!("Checking status");
 
     // Check status
     tx.send(SessionCommand::CheckStatus {
         project_id: project_id.clone(),
-    })
-    .await?;
+    })?;
+
+    info!("Listing all snapshots versions");
 
     // List snapshots
     tx.send(SessionCommand::ListAllSnapshotsVersions {
         project_id: project_id.clone(),
-    })
-    .await?;
+    })?;
+
+    info!("Creating Y.js document and update");
 
     // Create Y.js document and update
     let doc = Doc::new();
@@ -120,13 +116,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         txn.encode_update_v2()
     };
 
+    info!("Pushing update with Y.js data");
+
     // Push update with Y.js data
     tx.send(SessionCommand::MergeUpdates {
         project_id: project_id.clone(),
         data: yjs_update,
         updated_by: Some(test_user.id.clone()),
-    })
-    .await?;
+    })?;
+
+    info!("Creating second update");
 
     // Create second update
     let yjs_update2 = {
@@ -135,32 +134,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         txn.encode_update_v2()
     };
 
+    info!("Pushing second update");
+
     // Push second update
     tx.send(SessionCommand::MergeUpdates {
         project_id: project_id.clone(),
         data: yjs_update2,
         updated_by: Some(test_user.id.clone()),
-    })
-    .await?;
+    })?;
+
+    info!("Checking status again after merge");
 
     // Check status again after merge
     tx.send(SessionCommand::CheckStatus {
         project_id: project_id.clone(),
-    })
-    .await?;
+    })?;
+
+    info!("Ending session");
 
     // End session
     tx.send(SessionCommand::End {
         project_id: project_id.clone(),
         user: test_user.clone(),
-    })
-    .await?;
+    })?;
+
+    info!("Removing task");
 
     // Remove task
     tx.send(SessionCommand::RemoveTask {
         project_id: project_id.clone(),
-    })
-    .await?;
+    })?;
 
     // // Complete session
     // tx.send(SessionCommand::Complete {
