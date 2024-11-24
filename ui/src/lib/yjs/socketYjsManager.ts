@@ -65,7 +65,7 @@ export class SocketYjsManager {
       this.setupWebSocketListeners();
       this.setupDocListeners();
 
-      console.log("Attempting WebSocket connection to:", wsUrl.href);
+      console.log("Attempting WebSocket connection to:", wsUrl.origin + wsUrl.pathname);
     } catch (error) {
       console.error("Failed to setup WebSocket:", error);
       throw error;
