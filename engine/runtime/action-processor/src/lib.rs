@@ -5,6 +5,7 @@ pub(crate) mod file;
 pub(crate) mod geometry;
 pub mod mapping;
 pub(crate) mod noop;
+pub(crate) mod wasm;
 pub(crate) mod xml;
 
 #[cfg(test)]
