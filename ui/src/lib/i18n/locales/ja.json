@@ -225,6 +225,7 @@
   "Member has been successfully added to the workspace.": "メンバーがワークスペースに正常に追加されました。",
   "Member Removed": "メンバー削除",
   "Member has been successfully removed from the workspace.": "メンバーがワークスペースから正常に削除されました。",
+  "Connection Error": "",
   "Empty workflow detected": "空のワークフローが検出されました",
   "You cannot create a deployment without a workflow.": "ワークフローがないとデプロイメントを作成できません。",
   "Reload": "リロード"

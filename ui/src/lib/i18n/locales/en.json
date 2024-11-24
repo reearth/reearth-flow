@@ -225,6 +225,7 @@
   "Member has been successfully added to the workspace.": "",
   "Member Removed": "",
   "Member has been successfully removed from the workspace.": "",
+  "Connection Error": "",
   "Empty workflow detected": "",
   "You cannot create a deployment without a workflow.": "",
   "Reload": ""

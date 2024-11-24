@@ -225,6 +225,7 @@
   "Member has been successfully added to the workspace.": "El miembro ha sido agregado exitosamente al espacio de trabajo.",
   "Member Removed": "Miembro eliminado",
   "Member has been successfully removed from the workspace.": "El miembro ha sido eliminado exitosamente del espacio de trabajo.",
+  "Connection Error": "",
   "Empty workflow detected": "Se detectó un flujo de trabajo vacío",
   "You cannot create a deployment without a workflow.": "No puedes crear un despliegue sin un flujo de trabajo.",
   "Reload": "Recargar"
