@@ -71,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let room_id = "room123";
 
     let url = Url::parse(&format!(
-        "ws://127.0.0.1:8080/{room_id}?user_id={user_id}&project_id={project_id}",
+        "ws://127.0.0.1:8080/{room_id}?user_id={user_id}&project_id={project_id}&token=nyaan",
         room_id = room_id,
         user_id = user_id,
         project_id = project_id

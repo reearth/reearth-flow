@@ -148,87 +148,146 @@ where
         &self,
         result: Result<SessionCommand, broadcast::error::RecvError>,
     ) -> Result<(), ProjectServiceError> {
+        debug!("Handling command: {:?}", result);
+        
         match result {
-            Ok(command) => match command {
-                SessionCommand::Start { project_id, user } => {
-                    self.handle_session_start(&project_id, user).await?;
-                }
-                SessionCommand::End { project_id, user } => {
-                    self.handle_session_end(&project_id, user).await?;
-                }
-                SessionCommand::Complete { project_id, user } => {
-                    if let Some(mut session) = self.get_latest_session(&project_id).await? {
-                        self.complete_job_if_met_requirements(&mut session).await?;
+            Ok(command) => {
+                debug!("Processing command: {:?}", command);
+                match command {
+                    SessionCommand::Start { project_id, user } => {
+                        debug!("Starting session for project: {}, user: {:?}", project_id, user);
+                        let result = self.handle_session_start(&project_id, user).await;
+                        debug!("Session start result: {:?}", result);
+                        result?;
+                    }
+                    SessionCommand::End { project_id, user } => {
+                        debug!("Ending session for project: {}, user: {:?}", project_id, user);
+                        let result = self.handle_session_end(&project_id, user).await;
+                        debug!("Session end result: {:?}", result);
+                        result?;
+                    }
+                    SessionCommand::Complete { project_id, user } => {
+                        debug!("Completing session for project: {}, user: {:?}", project_id, user);
+                        if let Some(mut session) = self.get_latest_session(&project_id).await? {
+                            debug!("Found latest session: {:?}", session);
+                            let result = self.complete_job_if_met_requirements(&mut session).await;
+                            debug!("Job completion result: {:?}", result);
+                            result?;
+                            debug!(
+                                "Job completed by user: {} for project: {}",
+                                user.id, project_id
+                            );
+                        } else {
+                            debug!("No session found for project: {}", project_id);
+                        }
+                    }
+                    SessionCommand::MergeUpdates {
+                        project_id,
+                        data,
+                        updated_by,
+                    } => {
                         debug!(
-                            "Job completed by user: {} for project: {}",
-                            user.id, project_id
+                            "Merging updates for project: {}, updated by: {:?}, data length: {}",
+                            project_id,
+                            updated_by,
+                            data.len()
+                        );
+                        let result = self.project_service
+                            .merge_updates(&project_id, data, updated_by)
+                            .await;
+                        debug!("Merge updates result: {:?}", result);
+                        result?;
+                    }
+                    SessionCommand::CheckStatus { project_id } => {
+                        debug!("Checking session status for project: {}", project_id);
+                    }
+                    SessionCommand::AddTask { project_id } => {
+                        debug!("Adding task for project: {}", project_id);
+                        let result = self.add_task(&project_id).await;
+                        debug!("Add task result: {:?}", result);
+                        result?;
+                    }
+                    SessionCommand::RemoveTask { project_id } => {
+                        debug!("Removing task for project: {}", project_id);
+                        let result = self.remove_task(&project_id).await;
+                        debug!("Remove task result: {:?}", result);
+                        result?;
+                    }
+                    SessionCommand::ListAllSnapshotsVersions { project_id } => {
+                        debug!("Listing snapshots versions for project: {}", project_id);
+                        let versions = self
+                            .project_service
+                            .list_all_snapshots_versions(&project_id)
+                            .await?;
+                        debug!(
+                            "Retrieved {} snapshots versions for project {}: {:?}",
+                            versions.len(),
+                            project_id,
+                            versions
                         );
                     }
+                    // Workspace related commands
+                    SessionCommand::CreateWorkspace { workspace } => {
+                        debug!("Creating workspace: {:?}", workspace);
+                        let result = self.project_service.create_workspace(workspace.clone()).await;
+                        debug!("Create workspace result for {}: {:?}", workspace.id, result);
+                        result?;
+                    }
+                    SessionCommand::DeleteWorkspace { workspace_id } => {
+                        debug!("Deleting workspace: {}", workspace_id);
+                        let result = self.project_service.delete_workspace(&workspace_id).await;
+                        debug!("Delete workspace result: {:?}", result);
+                        result?;
+                    }
+                    SessionCommand::UpdateWorkspace { workspace } => {
+                        debug!("Updating workspace: {:?}", workspace);
+                        let result = self.project_service.update_workspace(workspace.clone()).await;
+                        debug!("Update workspace result for {}: {:?}", workspace.id, result);
+                        result?;
+                    }
+                    SessionCommand::ListWorkspaceProjectsIds { workspace_id } => {
+                        debug!("Listing projects for workspace: {}", workspace_id);
+                        let projects = self
+                            .project_service
+                            .list_workspace_projects_ids(&workspace_id)
+                            .await?;
+                        debug!(
+                            "Retrieved {} projects for workspace {}: {:?}",
+                            projects.len(),
+                            workspace_id,
+                            projects
+                        );
+                    }
+                    // Project related commands
+                    SessionCommand::CreateProject { project } => {
+                        debug!("Creating project: {:?}", project);
+                        let result = self.project_service.create_project(project.clone()).await;
+                        debug!("Create project result for {}: {:?}", project.id, result);
+                        result?;
+                    }
+                    SessionCommand::DeleteProject { project_id } => {
+                        debug!("Deleting project: {}", project_id);
+                        let result = self.project_service.delete_project(&project_id).await;
+                        debug!("Delete project result: {:?}", result);
+                        result?;
+                    }
+                    SessionCommand::UpdateProject { project } => {
+                        debug!("Updating project: {:?}", project);
+                        let result = self.project_service.update_project(project.clone()).await;
+                        debug!("Update project result for {}: {:?}", project.id, result);
+                        result?;
+                    }
                 }
-                SessionCommand::MergeUpdates {
-                    project_id,
-                    data,
-                    updated_by,
-                } => {
-                    self.project_service
-                        .merge_updates(&project_id, data, updated_by)
-                        .await?;
-                }
-                SessionCommand::CheckStatus { project_id } => {
-                    debug!("Checking session status for project: {}", project_id);
-                }
-                SessionCommand::AddTask { project_id } => {
-                    self.add_task(&project_id).await?;
-                }
-                SessionCommand::RemoveTask { project_id } => {
-                    self.remove_task(&project_id).await?;
-                }
-                SessionCommand::ListAllSnapshotsVersions { project_id } => {
-                    let versions = self
-                        .project_service
-                        .list_all_snapshots_versions(&project_id)
-                        .await?;
-                    debug!(
-                        "Snapshots versions for project {}: {:?}",
-                        project_id, versions
-                    );
-                }
-                // Workspace related commands
-                SessionCommand::CreateWorkspace { workspace } => {
-                    self.project_service.create_workspace(workspace).await?;
-                }
-                SessionCommand::DeleteWorkspace { workspace_id } => {
-                    self.project_service.delete_workspace(&workspace_id).await?;
-                }
-                SessionCommand::UpdateWorkspace { workspace } => {
-                    self.project_service.update_workspace(workspace).await?;
-                }
-                SessionCommand::ListWorkspaceProjectsIds { workspace_id } => {
-                    let projects = self
-                        .project_service
-                        .list_workspace_projects_ids(&workspace_id)
-                        .await?;
-                    debug!("Projects for workspace {}: {:?}", workspace_id, projects);
-                }
-                // Project related commands
-                SessionCommand::CreateProject { project } => {
-                    self.project_service.create_project(project).await?;
-                }
-                SessionCommand::DeleteProject { project_id } => {
-                    self.project_service.delete_project(&project_id).await?;
-                }
-                SessionCommand::UpdateProject { project } => {
-                    self.project_service.update_project(project).await?;
-                }
-            },
+            }
             Err(broadcast::error::RecvError::Closed) => {
-                debug!("Command channel closed");
+                debug!("Command channel closed, waiting before retry");
                 sleep(Duration::from_secs(1)).await;
             }
             Err(broadcast::error::RecvError::Lagged(n)) => {
-                debug!("Receiver lagged behind by {} messages", n);
+                debug!("Receiver lagged behind by {} messages, some commands may have been dropped", n);
             }
         }
+        debug!("Command handling completed successfully");
         Ok(())
     }
 

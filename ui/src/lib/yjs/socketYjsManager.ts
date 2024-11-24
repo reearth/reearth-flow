@@ -209,19 +209,22 @@ export class SocketYjsManager {
     this.socketReady = true;
   }
 
-  protected async onPeerUpdate(data: { update: ArrayBuffer | Uint8Array }) {
-    const update =
-      data.update instanceof ArrayBuffer
-        ? new Uint8Array(data.update)
-        : data.update;
-    Y.applyUpdate(this.doc, update, "peer");
+  protected onPeerUpdate(data: { update: ArrayBuffer | Uint8Array }) {
+    const update = data.update instanceof ArrayBuffer
+      ? new Uint8Array(data.update)
+      : data.update;
+  
+    const currentState = Y.encodeStateAsUpdateV2(this.doc);
+    const diffUpdate = Y.diffUpdateV2(update, currentState);
+    Y.applyUpdateV2(this.doc, diffUpdate, 'peer');
     this.onUpdateHandlers.forEach((handler) => handler(update));
   }
 
   async syncData() {
     await this.isReady();
 
-    const stateVector = Y.encodeStateVector(this.doc);
+    const currentState = Y.encodeStateAsUpdateV2(this.doc);
+    const stateVector = Y.encodeStateVectorFromUpdateV2(currentState);
     if (this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(stateVector);
     }
@@ -250,19 +253,22 @@ export class SocketYjsManager {
 
   protected onDocUpdate(update: Uint8Array, origin: unknown) {
     if (origin === this.doc.clientID && this.ws.readyState === WebSocket.OPEN) {
+      const stateVector = Y.encodeStateVectorFromUpdateV2(update);
+      const diffUpdate = Y.diffUpdateV2(update, stateVector);
+      
       this.sendFlowMessage({
         event: {
           tag: "Emit",
-          content: { data: "" },
+          content: { data: "" }
         },
         session_command: {
           tag: "MergeUpdates",
           content: {
             project_id: this.projectId || "",
-            data: new Uint8Array(update),
-            updated_by: this.doc.clientID.toString(),
-          },
-        },
+            data: new Uint8Array(diffUpdate),
+            updated_by: this.doc.clientID.toString()
+          }
+        }
       });
     }
   }
