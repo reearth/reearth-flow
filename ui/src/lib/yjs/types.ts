@@ -11,17 +11,25 @@ export type YJsonValue =
 
 export type FlowMessage = {
   event: {
-    tag: 'Create' | 'Join' | 'Leave' | 'Emit';
+    tag: "Create" | "Join" | "Leave" | "Emit";
     content: {
       room_id?: string;
       data?: string;
     };
   };
   session_command?: SessionCommand;
-}
+};
 
 export type SessionCommand = {
-  tag: 'Start' | 'End' | 'Complete' | 'CheckStatus' | 'AddTask' | 'RemoveTask' | 'ListAllSnapshotsVersions' | 'MergeUpdates';
+  tag:
+    | "Start"
+    | "End"
+    | "Complete"
+    | "CheckStatus"
+    | "AddTask"
+    | "RemoveTask"
+    | "ListAllSnapshotsVersions"
+    | "MergeUpdates";
   content: {
     project_id: string;
     user?: User;

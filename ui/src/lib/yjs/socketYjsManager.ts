@@ -1,8 +1,8 @@
-import * as Y from 'yjs';
+import * as Y from "yjs";
 
-import { sleep } from '../utils';
+import { sleep } from "../utils";
 
-import type { FlowMessage } from './types';
+import type { FlowMessage } from "./types";
 
 export type AccessTokenProvider = () => Promise<string> | string;
 
@@ -51,23 +51,23 @@ export class SocketYjsManager {
     try {
       const token = await this.accessTokenProvider();
       const wsUrl = new URL(data.url);
-      wsUrl.protocol = wsUrl.protocol.replace('http', 'ws');
+      wsUrl.protocol = wsUrl.protocol.replace("http", "ws");
       wsUrl.pathname = `/${data.roomId}`;
-      
+
       // Add query parameters for authentication
-      wsUrl.searchParams.set('user_id', this.doc.clientID.toString());
-      wsUrl.searchParams.set('project_id', data.projectId);
-      wsUrl.searchParams.set('token', token); // Pass token as query param since we can't set headers
+      wsUrl.searchParams.set("user_id", this.doc.clientID.toString());
+      wsUrl.searchParams.set("project_id", data.projectId);
+      wsUrl.searchParams.set("token", token); // Pass token as query param since we can't set headers
 
       this.ws = new WebSocket(wsUrl.href);
-      this.ws.binaryType = 'arraybuffer';
-      
+      this.ws.binaryType = "arraybuffer";
+
       this.setupWebSocketListeners();
       this.setupDocListeners();
 
-      console.log('Attempting WebSocket connection to:', wsUrl.href);
+      console.log("Attempting WebSocket connection to:", wsUrl.href);
     } catch (error) {
-      console.error('Failed to setup WebSocket:', error);
+      console.error("Failed to setup WebSocket:", error);
       throw error;
     }
   }
@@ -80,8 +80,9 @@ export class SocketYjsManager {
 
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-      
+      const delay =
+        this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+
       this.reconnectTimer = setTimeout(async () => {
         try {
           if (this.ws) {
@@ -91,26 +92,26 @@ export class SocketYjsManager {
             await this.setupSocket({
               url: baseUrl,
               roomId,
-              projectId: this.projectId || '',
-              accessTokenProvider: this.accessTokenProvider || (() => ''),
+              projectId: this.projectId || "",
+              accessTokenProvider: this.accessTokenProvider || (() => ""),
             });
           }
         } catch (error) {
-          console.error('Reconnection failed:', error);
+          console.error("Reconnection failed:", error);
         }
       }, delay);
     }
   }
 
   private setupWebSocketListeners() {
-    this.ws.addEventListener('open', this.onConnectionEstablished);
-    this.ws.addEventListener('close', this.onConnectionDisconnect);
-    this.ws.addEventListener('error', this.onConnectionError);
-    this.ws.addEventListener('message', this.handleMessage);
+    this.ws.addEventListener("open", this.onConnectionEstablished);
+    this.ws.addEventListener("close", this.onConnectionDisconnect);
+    this.ws.addEventListener("error", this.onConnectionError);
+    this.ws.addEventListener("message", this.handleMessage);
   }
 
   private setupDocListeners() {
-    this.doc.on('update', this.onDocUpdate);
+    this.doc.on("update", this.onDocUpdate);
   }
 
   protected onConnectionEstablished() {
@@ -126,14 +127,14 @@ export class SocketYjsManager {
   }
 
   protected onConnectionError(error: Event) {
-    console.error('WebSocket error:', error);
+    console.error("WebSocket error:", error);
     this.reconnect();
   }
 
   protected async onAuthenticateRequest() {
     const token = await this.accessTokenProvider?.();
     if (token && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type: 'authenticate', token }));
+      this.ws.send(JSON.stringify({ type: "authenticate", token }));
     }
   }
 
@@ -143,17 +144,17 @@ export class SocketYjsManager {
         // Handle binary message (Yjs update)
         const update = new Uint8Array(event.data);
         await this.onPeerUpdate({ update });
-      } else if (typeof event.data === 'string') {
+      } else if (typeof event.data === "string") {
         // Handle text message
         const data = JSON.parse(event.data);
-        if (data.type === 'authenticate') {
+        if (data.type === "authenticate") {
           await this.onAuthenticateRequest();
-        } else if (data.type === 'ready') {
+        } else if (data.type === "ready") {
           this.onReady();
         }
       }
     } catch (error) {
-      console.error('Error handling message:', error);
+      console.error("Error handling message:", error);
     }
   }
 
@@ -161,40 +162,40 @@ export class SocketYjsManager {
     try {
       await this.sendFlowMessage({
         event: {
-          tag: 'Create',
-          content: { room_id: this.doc.clientID.toString() }
-        }
+          tag: "Create",
+          content: { room_id: this.doc.clientID.toString() },
+        },
       });
 
       await this.sendFlowMessage({
         event: {
-          tag: 'Join',
-          content: { room_id: this.doc.clientID.toString() }
-        }
+          tag: "Join",
+          content: { room_id: this.doc.clientID.toString() },
+        },
       });
 
       await this.sendFlowMessage({
         event: {
-          tag: 'Emit',
-          content: { data: '' }
+          tag: "Emit",
+          content: { data: "" },
         },
         session_command: {
-          tag: 'Start',
+          tag: "Start",
           content: {
-            project_id: this.projectId || '',
+            project_id: this.projectId || "",
             user: {
               id: this.doc.clientID.toString(),
               tenant_id: this.projectId,
-              name: 'defaultName',
-              email: 'defaultEmail@example.com'
-            }
-          }
-        }
+              name: "defaultName",
+              email: "defaultEmail@example.com",
+            },
+          },
+        },
       });
 
       await this.syncData();
     } catch (error) {
-      console.error('Failed to initialize room:', error);
+      console.error("Failed to initialize room:", error);
     }
   }
 
@@ -209,11 +210,12 @@ export class SocketYjsManager {
   }
 
   protected async onPeerUpdate(data: { update: ArrayBuffer | Uint8Array }) {
-    const update = data.update instanceof ArrayBuffer 
-      ? new Uint8Array(data.update) 
-      : data.update;
-    Y.applyUpdate(this.doc, update, 'peer');
-    this.onUpdateHandlers.forEach(handler => handler(update));
+    const update =
+      data.update instanceof ArrayBuffer
+        ? new Uint8Array(data.update)
+        : data.update;
+    Y.applyUpdate(this.doc, update, "peer");
+    this.onUpdateHandlers.forEach((handler) => handler(update));
   }
 
   async syncData() {
@@ -233,7 +235,7 @@ export class SocketYjsManager {
   private async sendFlowMessage(message: FlowMessage): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.ws.readyState !== WebSocket.OPEN) {
-        reject(new Error('WebSocket is not connected'));
+        reject(new Error("WebSocket is not connected"));
         return;
       }
 
@@ -250,17 +252,17 @@ export class SocketYjsManager {
     if (origin === this.doc.clientID && this.ws.readyState === WebSocket.OPEN) {
       this.sendFlowMessage({
         event: {
-          tag: 'Emit',
-          content: { data: '' }
+          tag: "Emit",
+          content: { data: "" },
         },
         session_command: {
-          tag: 'MergeUpdates',
+          tag: "MergeUpdates",
           content: {
-            project_id: this.projectId || '',
+            project_id: this.projectId || "",
             data: new Uint8Array(update),
-            updated_by: this.doc.clientID.toString()
-          }
-        }
+            updated_by: this.doc.clientID.toString(),
+          },
+        },
       });
     }
   }
@@ -277,21 +279,21 @@ export class SocketYjsManager {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.sendFlowMessage({
         event: {
-          tag: 'Emit',
-          content: { data: '' }
+          tag: "Emit",
+          content: { data: "" },
         },
         session_command: {
-          tag: 'End',
+          tag: "End",
           content: {
-            project_id: this.projectId || '',
+            project_id: this.projectId || "",
             user: {
               id: this.doc.clientID.toString(),
               tenant_id: this.projectId,
-              name: 'defaultName',
-              email: 'defaultEmail@example.com'
-            }
-          }
-        }
+              name: "defaultName",
+              email: "defaultEmail@example.com",
+            },
+          },
+        },
       }).finally(() => {
         this.ws.close();
       });
