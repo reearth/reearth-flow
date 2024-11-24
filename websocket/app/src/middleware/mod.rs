@@ -1,7 +1,7 @@
 mod trace;
 use axum::{
-    error_handling::HandleErrorLayer, http::StatusCode, response::IntoResponse,
-    BoxError, Json, Router,
+    error_handling::HandleErrorLayer, http::StatusCode, response::IntoResponse, BoxError, Json,
+    Router,
 };
 use serde_json::json;
 
@@ -50,15 +50,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_timeout_handling() {
-        let router = add_middleware(
-            Router::new().route(
-                "/timeout",
-                axum::routing::get(|| async {
-                    tokio::time::sleep(Duration::from_secs(20)).await;
-                    "This should timeout"
-                }),
-            )
-        );
+        let router = add_middleware(Router::new().route(
+            "/timeout",
+            axum::routing::get(|| async {
+                tokio::time::sleep(Duration::from_secs(20)).await;
+                "This should timeout"
+            }),
+        ));
 
         let response = router
             .oneshot(
@@ -78,5 +76,4 @@ mod tests {
         let json: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json["error"]["message"], "Request timed out");
     }
-
 }

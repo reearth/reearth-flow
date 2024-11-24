@@ -23,7 +23,15 @@ pub async fn handle_upgrade(
 ) -> Response {
     let user = User::new(query.user_id().to_string(), None, None);
     ws.on_upgrade(move |socket| {
-        handle_socket(socket, addr, query.token().to_string(), room_id, state, query.project_id(), user)
+        handle_socket(
+            socket,
+            addr,
+            query.token().to_string(),
+            room_id,
+            state,
+            query.project_id(),
+            user,
+        )
     })
     .into_response()
 }
