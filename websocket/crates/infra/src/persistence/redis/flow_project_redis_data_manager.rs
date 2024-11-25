@@ -94,8 +94,8 @@ impl FlowProjectRedisDataManager {
         debug!("Update data: {:?}", update_data);
 
         let data_in_redis = self.get_state_in_redis(project_id).await?;
-        debug!("State updates in redis--------------");
-        debug!("State updates in redis: {:?}", data_in_redis);
+        debug!("State data in redis--------------");
+        debug!("State data in redis: {:?}", data_in_redis);
 
         let (new_merged_update, new_updates_by) = self
             .update_manager

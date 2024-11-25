@@ -5,7 +5,6 @@ use tokio_tungstenite::{connect_async_with_config, tungstenite::http::Request};
 use tracing::error;
 use tracing::info;
 use url::Url;
-// Add these struct definitions at the top
 #[derive(Serialize)]
 struct Event<T> {
     event: EventData<T>,
