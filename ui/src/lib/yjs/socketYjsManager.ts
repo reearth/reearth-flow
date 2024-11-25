@@ -2,21 +2,9 @@ import * as Y from "yjs";
 
 import { sleep } from "../utils";
 
-import type { FlowMessage } from "./types";
+import { createBinaryMessage, MessageType, type FlowMessage } from "./types";
 
 export type AccessTokenProvider = () => Promise<string> | string;
-
-enum MessageType {
-  UPDATE = 1,
-  SYNC = 2,
-}
-
-function createBinaryMessage(type: MessageType, data: Uint8Array): Uint8Array {
-  const message = new Uint8Array(data.length + 1);
-  message[0] = type;
-  message.set(data, 1);
-  return message;
-}
 
 export class SocketYjsManager {
   protected ws!: WebSocket;
