@@ -193,7 +193,7 @@ export class SocketYjsManager {
         },
         session_command: {
           tag: "Start",
-          content: {},
+          content: { project_id: this.projectId },
         },
       });
 
