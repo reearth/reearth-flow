@@ -25,10 +25,10 @@ regex.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tempfile.workspace = true
 wasmer.workspace = true
 wasmer-wasix.workspace = true
 

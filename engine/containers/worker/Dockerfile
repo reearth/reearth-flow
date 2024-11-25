@@ -49,7 +49,7 @@ RUN \
     apt-get update && \
     apt-get install -y \
     ca-certificates \
-    libxml2 \
+    libxml2 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker /bin
