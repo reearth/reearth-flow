@@ -163,7 +163,7 @@ impl UpdateManager {
                     Err(e) => return Err(FlowProjectRedisDataManagerError::from(e)),
                 }
 
-                let client_state_vector = StateVector::decode_v1(&state_vector)?;
+                let client_state_vector = StateVector::decode_v2(&state_vector)?;
 
                 let diff = txn.encode_state_as_update_v2(&client_state_vector);
                 Ok(diff)
