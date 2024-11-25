@@ -12,8 +12,8 @@ use flow_websocket_infra::{
     },
     types::user::User,
 };
-use flow_websocket_services::manage_project_edit_session::{
-    ManageEditSessionService, SessionCommand,
+use flow_websocket_services::{
+    manage_project_edit_session::ManageEditSessionService, SessionCommand,
 };
 use std::sync::Arc;
 use tokio::sync::broadcast;

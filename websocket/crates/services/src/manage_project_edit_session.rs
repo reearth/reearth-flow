@@ -1,3 +1,4 @@
+use super::SessionCommand;
 use chrono::Utc;
 use flow_websocket_infra::persistence::editing_session::ProjectEditingSession;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
@@ -6,11 +7,8 @@ use flow_websocket_infra::persistence::repository::{
     ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
     WorkspaceImpl,
 };
-use flow_websocket_infra::types::project::Project;
 use flow_websocket_infra::types::user::User;
-use flow_websocket_infra::types::workspace::Workspace;
 use mockall::automock;
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::broadcast;
@@ -39,64 +37,6 @@ where
 {
     pub project_service: ProjectService<R, S, M, P, W>,
     tasks: Arc<Mutex<HashMap<String, ManageProjectEditSessionTaskData>>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SessionCommand {
-    Start {
-        project_id: String,
-        user: User,
-    },
-    End {
-        project_id: String,
-        user: User,
-    },
-    Complete {
-        project_id: String,
-        user: User,
-    },
-    CheckStatus {
-        project_id: String,
-    },
-    AddTask {
-        project_id: String,
-    },
-    RemoveTask {
-        project_id: String,
-    },
-    ListAllSnapshotsVersions {
-        project_id: String,
-    },
-    MergeUpdates {
-        project_id: String,
-        data: Vec<u8>,
-        updated_by: Option<String>,
-    },
-    ProcessStateVector {
-        project_id: String,
-        state_vector: Vec<u8>,
-    },
-    CreateWorkspace {
-        workspace: Workspace,
-    },
-    DeleteWorkspace {
-        workspace_id: String,
-    },
-    UpdateWorkspace {
-        workspace: Workspace,
-    },
-    ListWorkspaceProjectsIds {
-        workspace_id: String,
-    },
-    CreateProject {
-        project: Project,
-    },
-    DeleteProject {
-        project_id: String,
-    },
-    UpdateProject {
-        project: Project,
-    },
 }
 
 #[automock]

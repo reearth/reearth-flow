@@ -5,6 +5,8 @@ mod room_handler;
 mod socket_handler;
 mod types;
 
+pub use types::MessageType;
+
 use crate::handlers::socket_handler::handle_socket;
 use crate::state::AppState;
 use axum::extract::{ws::WebSocketUpgrade, ConnectInfo, Path, Query, State};
@@ -29,7 +31,6 @@ pub async fn handle_upgrade(
             query.token().to_string(),
             room_id,
             state,
-            query.project_id(),
             user,
         )
     })

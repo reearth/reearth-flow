@@ -6,5 +6,6 @@ mod room;
 pub mod state;
 pub use config::Config;
 mod routes;
+pub use handlers::MessageType;
 pub use middleware::add_middleware;
 pub use routes::create_router;
