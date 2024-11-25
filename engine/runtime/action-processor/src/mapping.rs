@@ -4,8 +4,7 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use crate::{
-    attribute, echo::EchoProcessorFactory, feature, file, geometry, noop::NoopProcessorFactory,
-    wasm, xml,
+    attribute, echo::EchoProcessorFactory, feature, file, geometry, noop::NoopProcessorFactory, xml,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -23,7 +22,6 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
     mapping.extend(attribute::mapping::ACTION_FACTORY_MAPPINGS.clone());
     mapping.extend(feature::mapping::ACTION_FACTORY_MAPPINGS.clone());
     mapping.extend(geometry::mapping::ACTION_FACTORY_MAPPINGS.clone());
-    mapping.extend(wasm::mapping::ACTION_FACTORY_MAPPINGS.clone());
     mapping.extend(xml::mapping::ACTION_FACTORY_MAPPINGS.clone());
     mapping.extend(file::mapping::ACTION_FACTORY_MAPPINGS.clone());
     mapping
