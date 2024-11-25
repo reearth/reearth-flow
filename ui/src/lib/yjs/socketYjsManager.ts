@@ -193,15 +193,7 @@ export class SocketYjsManager {
         },
         session_command: {
           tag: "Start",
-          content: {
-            project_id: this.projectId || "",
-            user: {
-              id: this.doc.clientID.toString(),
-              tenant_id: this.projectId,
-              name: "defaultName",
-              email: "defaultEmail@example.com",
-            },
-          },
+          content: {},
         },
       });
 
@@ -292,15 +284,7 @@ export class SocketYjsManager {
         },
         session_command: {
           tag: "End",
-          content: {
-            project_id: this.projectId || "",
-            user: {
-              id: this.doc.clientID.toString(),
-              tenant_id: this.projectId,
-              name: "defaultName",
-              email: "defaultEmail@example.com",
-            },
-          },
+          content: {},
         },
       }).finally(() => {
         this.ws.close();

@@ -31,9 +31,7 @@ export type SessionCommand = {
     | "ListAllSnapshotsVersions"
     | "MergeUpdates";
   content: {
-    project_id: string;
     user?: User;
     data?: Uint8Array;
-    updated_by?: string;
   };
 };
