@@ -6,6 +6,18 @@ import type { FlowMessage } from "./types";
 
 export type AccessTokenProvider = () => Promise<string> | string;
 
+enum MessageType {
+  UPDATE = 1,
+  SYNC = 2,
+}
+
+function createBinaryMessage(type: MessageType, data: Uint8Array): Uint8Array {
+  const message = new Uint8Array(data.length + 1);
+  message[0] = type;
+  message.set(data, 1);
+  return message;
+}
+
 export class SocketYjsManager {
   protected ws!: WebSocket;
   protected doc: Y.Doc;
@@ -225,8 +237,10 @@ export class SocketYjsManager {
 
     const currentState = Y.encodeStateAsUpdateV2(this.doc);
     const stateVector = Y.encodeStateVectorFromUpdateV2(currentState);
+    
     if (this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(stateVector);
+      const syncMessage = createBinaryMessage(MessageType.SYNC, stateVector);
+      this.ws.send(syncMessage);
     }
 
     if (!this.firstSyncComplete) {
@@ -256,20 +270,8 @@ export class SocketYjsManager {
       const stateVector = Y.encodeStateVectorFromUpdateV2(update);
       const diffUpdate = Y.diffUpdateV2(update, stateVector);
       
-      this.sendFlowMessage({
-        event: {
-          tag: "Emit",
-          content: { data: "" }
-        },
-        session_command: {
-          tag: "MergeUpdates",
-          content: {
-            project_id: this.projectId || "",
-            data: new Uint8Array(diffUpdate),
-            updated_by: this.doc.clientID.toString()
-          }
-        }
-      });
+      const updateMessage = createBinaryMessage(MessageType.UPDATE, diffUpdate);
+      this.ws.send(updateMessage);
     }
   }
 
