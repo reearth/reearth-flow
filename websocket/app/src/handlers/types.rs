@@ -40,3 +40,39 @@ impl WebSocketQuery {
         &self.token
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MessageType(u8);
+
+impl MessageType {
+    pub const UPDATE: MessageType = MessageType(1);
+    pub const SYNC: MessageType = MessageType(2);
+
+    pub fn from_byte(byte: u8) -> Option<Self> {
+        match byte {
+            1 => Some(Self::UPDATE),
+            2 => Some(Self::SYNC),
+            _ => None,
+        }
+    }
+
+    pub fn _as_byte(&self) -> u8 {
+        self.0
+    }
+
+    pub fn _is_update(&self) -> bool {
+        *self == Self::UPDATE
+    }
+
+    pub fn _is_sync(&self) -> bool {
+        *self == Self::SYNC
+    }
+}
+
+pub fn parse_message(data: &[u8]) -> Option<(MessageType, &[u8])> {
+    if data.is_empty() {
+        return None;
+    }
+
+    MessageType::from_byte(data[0]).map(|msg_type| (msg_type, &data[1..]))
+}

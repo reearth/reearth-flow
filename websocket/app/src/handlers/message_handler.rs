@@ -3,11 +3,12 @@ use axum::extract::ws::Message;
 use flow_websocket_infra::types::user::User;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use std::{net::SocketAddr, sync::Arc};
-use tracing::{debug, trace};
+use tracing::{debug, trace, warn};
 
-use super::{room_handler::handle_room_event, types::FlowMessage};
-
-const STATE_VECTOR_LENGTH: usize = 8;
+use super::{
+    room_handler::handle_room_event,
+    types::{parse_message, FlowMessage, MessageType},
+};
 
 pub async fn handle_message(
     msg: Message,
@@ -30,19 +31,30 @@ pub async fn handle_message(
         }
         Message::Binary(d) => {
             trace!("{} sent {} bytes: {:?}", addr, d.len(), d);
-            if d.len() >= STATE_VECTOR_LENGTH {
-                if let Some(project_id) = project_id {
-                    state.command_tx.send(SessionCommand::MergeUpdates {
-                        project_id: project_id.clone(),
-                        data: d,
-                        updated_by: Some(user.id.clone()),
-                    })?;
+
+            if let Some(project_id) = project_id {
+                if let Some((msg_type, payload)) = parse_message(&d) {
+                    match msg_type {
+                        MessageType::UPDATE => {
+                            state.command_tx.send(SessionCommand::MergeUpdates {
+                                project_id: project_id.clone(),
+                                data: payload.to_vec(),
+                                updated_by: Some(user.id.clone()),
+                            })?;
+                        }
+                        MessageType::SYNC => {
+                            state.command_tx.send(SessionCommand::ProcessStateVector {
+                                project_id: project_id.clone(),
+                                state_vector: payload.to_vec(),
+                            })?;
+                        }
+                        _ => {
+                            warn!("Unsupported message type: {:?}", msg_type);
+                        }
+                    }
+                } else {
+                    warn!("Invalid binary message format from {}", addr);
                 }
-            } else if let Some(project_id) = project_id {
-                state.command_tx.send(SessionCommand::ProcessStateVector {
-                    project_id: project_id.clone(),
-                    state_vector: d,
-                })?;
             }
             Ok(None)
         }
