@@ -76,16 +76,14 @@ fn create_binary_message(msg_type: MessageType, data: Vec<u8>) -> Vec<u8> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    let project_id = "test_project";
     let user_id = "test_user";
     let room_id = "room123";
     let auth_token = "nyaan";
 
     let url = Url::parse(&format!(
-        "ws://127.0.0.1:8080/{room_id}?user_id={user_id}&project_id={project_id}&token={token}",
+        "ws://127.0.0.1:8080/{room_id}?user_id={user_id}&token={token}",
         room_id = room_id,
         user_id = user_id,
-        project_id = project_id,
         token = auth_token
     ))?;
 
@@ -144,7 +142,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     tenant_id: "test_tenant".to_string(),
     // };
 
-    let project_id = "test_project".to_string();
+    let project_id = "test_project3".to_string();
     let user = User::new(
         user_id.to_string(),
         None, // email
