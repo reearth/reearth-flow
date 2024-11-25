@@ -3,10 +3,10 @@ use axum::extract::ws::Message;
 use flow_websocket_infra::types::user::User;
 use flow_websocket_services::manage_project_edit_session::SessionCommand;
 use std::{net::SocketAddr, sync::Arc};
-use tracing::{debug, trace, warn};
+use tracing::{debug, warn};
 
 use super::{
-    room_handler::handle_room_event,
+    room_handler::{handle_room_event, handle_session_command},
     types::{parse_message, FlowMessage, MessageType},
 };
 
@@ -23,14 +23,14 @@ pub async fn handle_message(
             let msg: FlowMessage = serde_json::from_str(&t)?;
 
             if let Some(command) = msg.session_command {
-                state.command_tx.send(command)?;
+                handle_session_command(command, project_id, &user, &state).await?;
             } else {
                 handle_room_event(&msg.event, room_id, &state, &user).await?;
             }
             Ok(None)
         }
         Message::Binary(d) => {
-            trace!("{} sent {} bytes: {:?}", addr, d.len(), d);
+            debug!("{} sent {} bytes: {:?}", addr, d.len(), d);
 
             if let Some(project_id) = project_id {
                 if let Some((msg_type, payload)) = parse_message(&d) {
