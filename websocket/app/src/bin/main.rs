@@ -1,4 +1,7 @@
+use axum::http::{self, HeaderValue};
 use std::{net::SocketAddr, sync::Arc};
+use tower_http::cors::CorsLayer;
+use tracing::error;
 
 use app::create_router;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -29,7 +32,43 @@ async fn main() -> std::io::Result<()> {
             .await
             .expect("Failed to create AppState"),
     );
-    let app = create_router(state);
+
+    // Add CORS configuration
+    let cors = CorsLayer::new()
+        .allow_origin(
+            config
+                .allowed_origins
+                .iter()
+                .filter_map(|origin| {
+                    origin
+                        .parse::<HeaderValue>()
+                        .map_err(|e| {
+                            error!("Invalid origin {}: {}", origin, e);
+                            e
+                        })
+                        .ok()
+                })
+                .collect::<Vec<_>>(),
+        )
+        .allow_methods([
+            http::Method::GET,
+            http::Method::POST,
+            http::Method::PUT,
+            http::Method::DELETE,
+            http::Method::OPTIONS,
+        ])
+        .allow_headers([
+            http::header::CONTENT_TYPE,
+            http::header::AUTHORIZATION,
+            http::header::UPGRADE,
+            http::header::CONNECTION,
+            http::header::SEC_WEBSOCKET_KEY,
+            http::header::SEC_WEBSOCKET_VERSION,
+            http::header::SEC_WEBSOCKET_PROTOCOL,
+        ])
+        .allow_credentials(true);
+
+    let app = create_router(state).layer(cors);
     let addr = format!("{}:{}", config.host, config.port);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());

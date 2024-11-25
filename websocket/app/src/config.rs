@@ -1,9 +1,11 @@
 use serde::Deserialize;
+use std::env;
 use std::fs;
 use tracing::{
     info,
     log::{error, warn},
 };
+use url::Url;
 
 const DEFAULT_REDIS_URL: &str = "redis://localhost:6379/0";
 const DEFAULT_HOST: &str = "127.0.0.1";
@@ -18,6 +20,8 @@ pub struct Config {
     pub redis_url: String,
     #[serde(default = "default_env")]
     pub environment: String,
+    #[serde(default = "default_allowed_origins")]
+    pub allowed_origins: Vec<String>,
 }
 
 fn default_host() -> String {
@@ -34,6 +38,10 @@ fn default_redis_url() -> String {
 
 fn default_env() -> String {
     "development".to_string()
+}
+
+fn default_allowed_origins() -> Vec<String> {
+    vec!["http://localhost:3000".to_string()]
 }
 
 impl Config {
@@ -81,11 +89,44 @@ impl Config {
 
 impl Default for Config {
     fn default() -> Self {
+        let allowed_origins = env::var("ALLOW_ORIGIN")
+            .map(|origins| {
+                let origins: Vec<String> = origins
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .filter(|s| {
+                        let is_valid = Url::parse(s).is_ok();
+                        if !is_valid {
+                            warn!("Invalid origin URL ignored: {}", s);
+                        }
+                        is_valid
+                    })
+                    .collect();
+
+                info!("Configured CORS allowed origins: {:?}", origins);
+
+                if origins.is_empty() {
+                    warn!("No valid origins found in ALLOW_ORIGIN, using defaults");
+                    default_allowed_origins()
+                } else {
+                    origins
+                }
+            })
+            .unwrap_or_else(|_| {
+                info!(
+                    "ALLOW_ORIGIN not set, using default origins: {:?}",
+                    default_allowed_origins()
+                );
+                default_allowed_origins()
+            });
+
         Config {
             host: default_host(),
             port: default_port(),
             redis_url: default_redis_url(),
             environment: default_env(),
+            allowed_origins,
         }
     }
 }
