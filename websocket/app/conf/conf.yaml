@@ -3,15 +3,24 @@ development:
   port: 8080
   redis_url: "redis://localhost:6379/0"
   environment: "development"
+  allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
 
 test:
   host: "127.0.0.1"
   port: 8080
   redis_url: "redis://:my_redis_password@localhost:6379/0"
   environment: "test"
+  allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
 
 production:
   host: "0.0.0.0"
   port: 80
   redis_url: "redis://prod-redis:6379/0"
   environment: "production"
+  allowed_origins:
+    - "https://your-production-domain.com"
+    - "https://app.your-production-domain.com"
