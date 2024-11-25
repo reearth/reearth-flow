@@ -1,4 +1,5 @@
 use app::MessageType;
+use flow_websocket_infra::types::user::User;
 use futures_util::{SinkExt, StreamExt};
 use serde::Serialize;
 use tokio_tungstenite::tungstenite::http::Request;
@@ -25,15 +26,35 @@ struct FlowMessage {
 
 #[derive(Serialize)]
 enum SessionCommand {
-    Start {},
-    End {},
-    Complete {},
-    CheckStatus {},
-    AddTask {},
-    RemoveTask {},
-    ListAllSnapshotsVersions {},
-    MergeUpdates { data: Vec<u8> },
-    //ProcessStateVector { state_vector: Vec<u8> },
+    Start {
+        project_id: String,
+        user: User,
+    },
+    End {
+        project_id: String,
+        user: User,
+    },
+    Complete {
+        project_id: String,
+        user: User,
+    },
+    CheckStatus {
+        project_id: String,
+    },
+    AddTask {
+        project_id: String,
+    },
+    RemoveTask {
+        project_id: String,
+    },
+    ListAllSnapshotsVersions {
+        project_id: String,
+    },
+    MergeUpdates {
+        project_id: String,
+        data: Vec<u8>,
+        updated_by: Option<String>,
+    },
 }
 
 // #[derive(Serialize, Clone)]
@@ -123,10 +144,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     tenant_id: "test_tenant".to_string(),
     // };
 
-    send_command(&mut write, SessionCommand::AddTask {}).await?;
+    let project_id = "test_project".to_string();
+    let user = User::new(
+        user_id.to_string(),
+        None, // email
+        None, // name
+    );
+
+    send_command(
+        &mut write,
+        SessionCommand::AddTask {
+            project_id: project_id.clone(),
+        },
+    )
+    .await?;
     info!("AddTask command sent");
 
-    send_command(&mut write, SessionCommand::Start {}).await?;
+    send_command(
+        &mut write,
+        SessionCommand::Start {
+            project_id: project_id.clone(),
+            user: user.clone(),
+        },
+    )
+    .await?;
     info!("Start command sent");
 
     let doc = Doc::new();
@@ -165,29 +206,58 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let update_data = {
         let mut txn = doc.transact_mut();
         text.push(&mut txn, "Hello from merge update!");
-        txn.encode_update_v2()
+        let update = txn.encode_update_v2();
+        create_binary_message(MessageType::Update, update)
     };
+
+    write.send(Message::Binary(update_data)).await?;
+    info!("MergeUpdates command sent with YJS update");
 
     send_command(
         &mut write,
-        SessionCommand::MergeUpdates { data: update_data },
+        SessionCommand::Complete {
+            project_id: project_id.clone(),
+            user: user.clone(),
+        },
     )
     .await?;
-    info!("MergeUpdates command sent with YJS update");
-
-    send_command(&mut write, SessionCommand::Complete {}).await?;
     info!("Complete command sent");
 
-    send_command(&mut write, SessionCommand::CheckStatus {}).await?;
+    send_command(
+        &mut write,
+        SessionCommand::CheckStatus {
+            project_id: project_id.clone(),
+        },
+    )
+    .await?;
     info!("CheckStatus command sent");
 
-    send_command(&mut write, SessionCommand::ListAllSnapshotsVersions {}).await?;
+    send_command(
+        &mut write,
+        SessionCommand::ListAllSnapshotsVersions {
+            project_id: project_id.clone(),
+        },
+    )
+    .await?;
     info!("ListAllSnapshotsVersions command sent");
 
-    send_command(&mut write, SessionCommand::End {}).await?;
+    send_command(
+        &mut write,
+        SessionCommand::End {
+            project_id: project_id.clone(),
+            user: user.clone(),
+        },
+    )
+    .await?;
     info!("End command sent");
 
-    send_command(&mut write, SessionCommand::RemoveTask {}).await?;
+    send_command(
+        &mut write,
+        SessionCommand::RemoveTask {
+            project_id: project_id.clone(),
+        },
+    )
+    .await?;
     info!("RemoveTask command sent");
 
     while let Some(msg) = read.next().await {
