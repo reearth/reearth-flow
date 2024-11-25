@@ -5,7 +5,7 @@ use indoc::indoc;
 use reearth_flow_runtime::node::{NodeKind, RouterFactory};
 
 use crate::{
-    factory::{BUILTIN_ACTION_FACTORIES, PLATEAU_ACTION_FACTORIES},
+    factory::{BUILTIN_ACTION_FACTORIES, PLATEAU_ACTION_FACTORIES, WASM_ACTION_FACTORIES},
     utils::create_action_schema,
 };
 
@@ -37,6 +37,12 @@ impl DocActionCliCommand {
             .map(|kind| create_action_schema(kind, false))
             .collect::<Vec<_>>();
         actions.extend(plateau_actions);
+        let wasm_actions = WASM_ACTION_FACTORIES
+            .clone()
+            .values()
+            .map(|kind| create_action_schema(kind, false))
+            .collect::<Vec<_>>();
+        actions.extend(wasm_actions);
         actions.sort_by(|a, b| a.name.cmp(&b.name));
         println!("# Actions");
         actions.iter().for_each(|action| {
