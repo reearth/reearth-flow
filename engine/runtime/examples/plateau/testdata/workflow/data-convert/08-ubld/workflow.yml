@@ -1,0 +1,129 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: c5f20714-1b35-408a-a203-aada363b4179
+name: "DataConvert-08-ubld-workflow"
+entryGraphId: 49aefc85-168d-4190-b7e2-dc0d58ee44e3
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../../../config/schema.txt
+  targetPackages:
+    - ubld
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+  outputPath:
+graphs:
+  - !include ../../../graphs/attribute_reader.yml
+  - !include ../../../graphs/folder_and_file_path_reader.yml
+  - id: 49aefc85-168d-4190-b7e2-dc0d58ee44e3
+    name: entry_point
+    nodes:
+      - id: d5fa7732-ef20-45ec-a331-e6d57571354b
+        name: AttributeReader
+        type: subGraph
+        subGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
+
+      - id: e1a0388f-78a3-4aec-b3e1-d6ffc9065dc9
+        name: AttributeMapperFilePath
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: code
+              valueAttribute: meshCode
+            - attribute: type
+              valueAttribute: package
+            - attribute: maxLod
+              valueAttribute: maxLod
+            - attribute: length
+              expr: |
+                env.get("__value")["package"].len()
+            - attribute: file
+              expr: |
+                file::extract_filename(env.get("__value").cityGmlPath)
+
+      - id: c8d0f9dd-8f3d-46e0-8608-dfa22801a3d2
+        name: FileWriterTsvFilePath
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "maxLod.tsv")
+
+      - id: 254d6287-7649-4647-9ab5-0c1c423f356a
+        name: FeatureReaderByCityGml
+        type: action
+        action: FeatureReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value").cityGmlPath
+
+      - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        name: AttributeMapperUbld
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: meshcode
+              valueAttribute: meshCode
+            - attribute: city_code
+              valueAttribute: cityCode
+            - attribute: city_name
+              valueAttribute: cityName
+            - attribute: feature_type
+              valueAttribute: gmlName
+            - attribute: gml_id
+              valueAttribute: gmlId
+
+      - id: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        name: VerticalReprojectorUbld
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        name: Cesium3DTilesWriterByUbld
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: true
+          output: |
+             file::join_path(env.get("outputPath"), "ubld_lod1-4")
+
+    edges:
+      - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
+        from: d5fa7732-ef20-45ec-a331-e6d57571354b
+        to: e1a0388f-78a3-4aec-b3e1-d6ffc9065dc9
+        fromPort: filePath
+        toPort: default
+      - id: 284b02d9-8051-4614-a03c-583274c700f8
+        from: e1a0388f-78a3-4aec-b3e1-d6ffc9065dc9
+        to: c8d0f9dd-8f3d-46e0-8608-dfa22801a3d2
+        fromPort: default
+        toPort: default
+      - id: a4751655-5956-4e27-a976-e35f8914ad31
+        from: d5fa7732-ef20-45ec-a331-e6d57571354b
+        to: 254d6287-7649-4647-9ab5-0c1c423f356a
+        fromPort: filePath
+        toPort: default
+      - id: 86ec56d6-cefb-48ca-a72d-0c57a33d198a
+        from: 254d6287-7649-4647-9ab5-0c1c423f356a
+        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        fromPort: default
+        toPort: default
+      - id: 703fbdd0-516f-4201-b2ad-5575ab684fbc
+        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        fromPort: default
+        toPort: default
+      - id: e862f11a-88a6-4c1b-a743-ba80253039df
+        from: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        fromPort: default
+        toPort: default

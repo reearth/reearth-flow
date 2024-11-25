@@ -8,7 +8,10 @@ use reearth_flow_types::Feature;
 use thiserror::Error;
 use tokio::sync::RwLock;
 
-use crate::node::EdgeId;
+use crate::node::{EdgeId, Port};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FeatureWriterKey(pub(crate) Port, pub(crate) Port);
 
 #[derive(Debug, Error)]
 pub enum FeatureWriterError {

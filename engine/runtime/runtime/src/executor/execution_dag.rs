@@ -14,7 +14,7 @@ use crate::{
     errors::ExecutionError,
     event::EventHub,
     executor_operation::ExecutorOperation,
-    feature_store::{create_feature_writer, FeatureWriter},
+    feature_store::{create_feature_writer, FeatureWriter, FeatureWriterKey},
     forwarder::SenderWithPortMapping,
     node::{GraphId, NodeHandle, Port},
 };
@@ -27,7 +27,7 @@ pub struct NodeType {
     pub kind: Option<NodeKind>,
 }
 
-type SharedFeatureWriter = Arc<Mutex<Option<Box<dyn FeatureWriter>>>>;
+type SharedFeatureWriter = Arc<Mutex<Box<dyn FeatureWriter>>>;
 
 #[derive(Clone)]
 pub struct EdgeType {
@@ -61,8 +61,10 @@ impl ExecutionDag {
     ) -> Result<Self, ExecutionError> {
         let graph_id = builder_dag.id;
         // We only create record writer once for every output port. Every `HashMap` in this `Vec` tracks if a node's output ports already have the record writer created.
-        let mut all_feature_writers =
-            vec![HashMap::<Port, SharedFeatureWriter>::new(); builder_dag.graph().node_count()];
+        let mut all_feature_writers = vec![
+            HashMap::<Port, Vec<SharedFeatureWriter>>::new();
+            builder_dag.graph().node_count()
+        ];
         // We only create channel once for every pair of nodes.
         let mut channels = HashMap::<
             (petgraph::graph::NodeIndex, petgraph::graph::NodeIndex),
@@ -81,19 +83,24 @@ impl ExecutionDag {
             let edge_kind = edge.edge_kind.clone();
 
             // Create or get feature writer.
-            let feature_writer =
-                match all_feature_writers[source_node_index.index()].entry(input_port.clone()) {
-                    Entry::Vacant(entry) => {
-                        let feature_writer = Some(create_feature_writer(
-                            edge_id,
-                            Arc::clone(&state),
-                            feature_flush_threshold,
-                        ));
-                        let feature_writer = Arc::new(Mutex::new(feature_writer));
-                        entry.insert(feature_writer).clone()
-                    }
-                    Entry::Occupied(entry) => Arc::clone(entry.get()),
-                };
+            let feature_writer = match all_feature_writers[source_node_index.index()]
+                .entry(input_port.clone())
+            {
+                Entry::Vacant(entry) => {
+                    let feature_writer =
+                        create_feature_writer(edge_id, Arc::clone(&state), feature_flush_threshold);
+                    let feature_writer = Arc::new(Mutex::new(feature_writer));
+                    entry.insert(vec![feature_writer.clone()]);
+                    feature_writer
+                }
+                Entry::Occupied(mut entry) => {
+                    let feature_writer =
+                        create_feature_writer(edge_id, Arc::clone(&state), feature_flush_threshold);
+                    let feature_writer = Arc::new(Mutex::new(feature_writer));
+                    entry.get_mut().push(feature_writer.clone());
+                    feature_writer
+                }
+            };
 
             // Create or get channel.
             let (sender, receiver) = match channels.entry((source_node_index, target_node_index)) {
@@ -190,26 +197,26 @@ impl ExecutionDag {
     }
 
     pub async fn collect_record_writers(
-        &mut self,
+        &self,
         node_index: petgraph::graph::NodeIndex,
-    ) -> HashMap<Port, Box<dyn FeatureWriter>> {
-        let edge_indexes = self
-            .graph
-            .edges(node_index)
-            .map(|edge| edge.id())
-            .collect::<Vec<_>>();
-
-        let mut feature_writers = HashMap::new();
-        for edge_index in edge_indexes {
-            let edge = self
+    ) -> HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>> {
+        let mut feature_writers = HashMap::<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>::new();
+        for edge in self.graph.edges(node_index) {
+            let weight = edge.weight();
+            let writer_key =
+                FeatureWriterKey(weight.input_port.clone(), weight.output_port.clone());
+            let edge_type = self
                 .graph
-                .edge_weight_mut(edge_index)
+                .edge_weight(edge.id())
                 .expect("We don't modify graph structure, only modify the edge weight");
-
-            if let Entry::Vacant(entry) = feature_writers.entry(edge.input_port.clone()) {
-                // This interior mutability is to work around `Arc`. Other parts of this function is correctly marked `mut`.
-                if let Some(record_writer) = edge.feature_writer.lock().await.take() {
-                    entry.insert(record_writer);
+            match feature_writers.entry(writer_key) {
+                Entry::Vacant(entry) => {
+                    let record_writer = edge_type.feature_writer.lock().await;
+                    entry.insert(vec![record_writer.clone()]);
+                }
+                Entry::Occupied(mut entry) => {
+                    let record_writer = edge_type.feature_writer.lock().await;
+                    entry.get_mut().push(record_writer.clone());
                 }
             }
         }
