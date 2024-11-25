@@ -164,9 +164,7 @@ impl RedisDataManagerImpl for FlowProjectRedisDataManager {
     type Error = FlowProjectRedisDataManagerError;
 
     async fn get_current_state(&self, project_id: &str) -> Result<Option<Vec<u8>>, Self::Error> {
-        let state_key = self.key_manager.state_key(project_id)?;
-        let current_state: Option<Vec<u8>> = self.redis_pool.get().await?.get(state_key).await?;
-        Ok(current_state)
+        self.update_manager.get_current_state(project_id).await
     }
 
     async fn get_state_updates_by(&self, project_id: &str) -> Result<Option<String>, Self::Error> {
@@ -244,6 +242,16 @@ impl RedisDataManagerImpl for FlowProjectRedisDataManager {
             .get(self.key_manager.active_editing_session_id_key(project_id))
             .await?;
         Ok(result)
+    }
+
+    async fn process_state_vector(
+        &self,
+        project_id: &str,
+        state_vector: Vec<u8>,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        self.update_manager
+            .handle_state_vector(project_id, state_vector)
+            .await
     }
 }
 

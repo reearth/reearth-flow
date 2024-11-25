@@ -5,9 +5,10 @@ use super::{
 };
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
+use redis::AsyncCommands;
 use std::sync::Arc;
 use tracing::debug;
-use yrs::{updates::decoder::Decode, Doc, Transact, Update};
+use yrs::{updates::decoder::Decode, Doc, ReadTxn, StateVector, Transact, Update};
 
 type RedisStreamResult = Vec<(String, Vec<(String, Vec<(String, Vec<u8>)>)>)>;
 
@@ -132,5 +133,54 @@ impl UpdateManager {
 
         debug!("Final merged state: {:?}", optimized_merged_state);
         Ok((optimized_merged_state, updates_by))
+    }
+
+    pub async fn get_current_state(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
+        let state_key = self.key_manager.state_key(project_id)?;
+        let current_state: Option<Vec<u8>> = self.redis_pool.get().await?.get(state_key).await?;
+        Ok(current_state)
+    }
+
+    pub async fn handle_state_vector(
+        &self,
+        project_id: &str,
+        state_vector: Vec<u8>,
+    ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
+        let current_state = self.get_current_state(project_id).await?;
+
+        if let Some(server_state) = current_state {
+            let diff_update = tokio::task::spawn_blocking(move || {
+                let doc = Doc::new();
+                let mut txn = doc.transact_mut();
+
+                match Update::decode_v2(&server_state) {
+                    Ok(update) => {
+                        txn.apply_update(update)?;
+                    }
+                    Err(e) => return Err(FlowProjectRedisDataManagerError::from(e)),
+                }
+
+                let client_state_vector = StateVector::decode_v1(&state_vector)?;
+
+                let diff = txn.encode_state_as_update_v2(&client_state_vector);
+                Ok(diff)
+            })
+            .await
+            .map_err(FlowProjectRedisDataManagerError::from)??;
+
+            if !diff_update.is_empty() {
+                debug!("Generated diff update of size: {}", diff_update.len());
+                Ok(Some(diff_update))
+            } else {
+                debug!("No updates needed for client");
+                Ok(None)
+            }
+        } else {
+            debug!("No server state exists yet");
+            Ok(None)
+        }
     }
 }

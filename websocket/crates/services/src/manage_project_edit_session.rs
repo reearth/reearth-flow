@@ -72,6 +72,10 @@ pub enum SessionCommand {
         data: Vec<u8>,
         updated_by: Option<String>,
     },
+    ProcessStateVector {
+        project_id: String,
+        state_vector: Vec<u8>,
+    },
     CreateWorkspace {
         workspace: Workspace,
     },
@@ -172,6 +176,14 @@ where
                 } => {
                     self.project_service
                         .merge_updates(&project_id, data, updated_by)
+                        .await?;
+                }
+                SessionCommand::ProcessStateVector {
+                    project_id,
+                    state_vector,
+                } => {
+                    self.project_service
+                        .process_state_vector(&project_id, state_vector)
                         .await?;
                 }
                 SessionCommand::CheckStatus { project_id } => {

@@ -7,6 +7,8 @@ use tracing::{debug, trace};
 
 use super::{room_handler::handle_room_event, types::FlowMessage};
 
+const STATE_VECTOR_LENGTH: usize = 8;
+
 pub async fn handle_message(
     msg: Message,
     addr: SocketAddr,
@@ -28,7 +30,7 @@ pub async fn handle_message(
         }
         Message::Binary(d) => {
             trace!("{} sent {} bytes: {:?}", addr, d.len(), d);
-            if d.len() >= 3 {
+            if d.len() >= STATE_VECTOR_LENGTH {
                 if let Some(project_id) = project_id {
                     state.command_tx.send(SessionCommand::MergeUpdates {
                         project_id: project_id.clone(),
@@ -36,6 +38,11 @@ pub async fn handle_message(
                         updated_by: Some(user.id.clone()),
                     })?;
                 }
+            } else if let Some(project_id) = project_id {
+                state.command_tx.send(SessionCommand::ProcessStateVector {
+                    project_id: project_id.clone(),
+                    state_vector: d,
+                })?;
             }
             Ok(None)
         }
