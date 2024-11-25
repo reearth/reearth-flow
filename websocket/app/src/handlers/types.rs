@@ -69,10 +69,19 @@ impl MessageType {
     }
 }
 
+/// Parses a binary message according to the Flow protocol format:
+/// - Byte 0: Message type (1 = UPDATE, 2 = SYNC)
+/// - Bytes 1+: Message payload
+///
+/// Returns None if the input is empty or has an invalid message type.
+/// Returns Some((message_type, payload)) on successful parsing.
 pub fn parse_message(data: &[u8]) -> Option<(MessageType, &[u8])> {
-    if data.is_empty() {
-        return None;
-    }
+    // Ensure we have at least one byte for the message type
+    let type_byte = *data.first()?;
 
-    MessageType::from_byte(data[0]).map(|msg_type| (msg_type, &data[1..]))
+    // Parse and validate message type
+    let msg_type = MessageType::from_byte(type_byte)?;
+
+    // Return message type and remaining payload
+    Some((msg_type, &data[1..]))
 }
