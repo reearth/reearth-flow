@@ -5580,14 +5580,11 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "tempfile",
  "thiserror 2.0.3",
  "tokio",
  "tracing",
  "url",
  "uuid",
- "wasmer",
- "wasmer-wasix",
 ]
 
 [[package]]
@@ -5681,6 +5678,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "reearth-flow-action-wasm-processor"
+version = "0.0.2"
+dependencies = [
+ "bytes",
+ "chrono",
+ "itertools 0.13.0",
+ "once_cell",
+ "reearth-flow-common",
+ "reearth-flow-eval-expr",
+ "reearth-flow-geometry",
+ "reearth-flow-runtime",
+ "reearth-flow-storage",
+ "reearth-flow-types",
+ "regex",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.3",
+ "tokio",
+ "tracing",
+ "wasmer",
+ "wasmer-wasix",
+]
+
+[[package]]
 name = "reearth-flow-cli"
 version = "0.0.2"
 dependencies = [
@@ -5697,6 +5720,7 @@ dependencies = [
  "reearth-flow-action-processor",
  "reearth-flow-action-sink",
  "reearth-flow-action-source",
+ "reearth-flow-action-wasm-processor",
  "reearth-flow-common",
  "reearth-flow-runner",
  "reearth-flow-runtime",
@@ -5941,6 +5965,7 @@ dependencies = [
  "reearth-flow-action-processor",
  "reearth-flow-action-sink",
  "reearth-flow-action-source",
+ "reearth-flow-action-wasm-processor",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-runner",

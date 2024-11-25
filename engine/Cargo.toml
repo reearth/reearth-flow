@@ -47,6 +47,7 @@ lto = "fat"
 [workspace.dependencies]
 reearth-flow-action-log = { path = "runtime/action-log" }
 reearth-flow-action-plateau-processor = { path = "runtime/action-plateau-processor" }
+reearth-flow-action-wasm-processor = { path = "runtime/action-wasm-processor" }
 reearth-flow-action-processor = { path = "runtime/action-processor" }
 reearth-flow-action-sink = { path = "runtime/action-sink" }
 reearth-flow-action-source = { path = "runtime/action-source" }
@@ -60,6 +61,7 @@ reearth-flow-state = { path = "runtime/state" }
 reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
+
 
 nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.5.2", features = ["serde", "serde_json"] }
 nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.5.2" }
