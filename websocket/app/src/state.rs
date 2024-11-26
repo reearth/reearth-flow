@@ -11,13 +11,10 @@ use flow_websocket_infra::persistence::ProjectGcsRepository;
 #[allow(unused_imports)]
 use flow_websocket_infra::persistence::ProjectLocalRepository;
 use flow_websocket_services::manage_project_edit_session::ManageEditSessionService;
-use flow_websocket_services::SessionCommand;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::broadcast;
 use tokio::sync::Mutex;
-use tracing::debug;
-use tracing::error;
+use tracing::{debug, error};
 
 #[cfg(feature = "gcs-storage")]
 #[cfg(not(feature = "local-storage"))]
@@ -34,7 +31,6 @@ type SessionService = ManageEditSessionService<
     ProjectStorageRepository,
 >;
 
-const CHANNEL_BUFFER_SIZE: usize = 32;
 #[cfg(feature = "local-storage")]
 const DEFAULT_LOCAL_STORAGE_PATH: &str = "./local_storage";
 
@@ -44,8 +40,7 @@ pub struct AppState {
     pub redis_pool: Pool<RedisConnectionManager>,
     pub storage: Arc<ProjectStorageRepository>,
     pub session_repo: Arc<ProjectRedisRepository>,
-    pub service: Arc<SessionService>,
-    pub command_tx: broadcast::Sender<SessionCommand>,
+    pub session_service: Arc<SessionService>,
 }
 
 impl AppState {
@@ -72,11 +67,9 @@ impl AppState {
         let storage = Arc::new(ProjectStorageRepository::new(gcs_bucket).await?);
 
         let session_repo = Arc::new(ProjectRedisRepository::new(redis_pool.clone()));
-
         let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
-        let (tx, rx) = broadcast::channel(CHANNEL_BUFFER_SIZE);
-        let service = Arc::new(ManageEditSessionService::new(
+        let session_service = Arc::new(ManageEditSessionService::new(
             session_repo.clone(),
             storage.clone(),
             Arc::new(redis_data_manager),
@@ -84,23 +77,19 @@ impl AppState {
             storage.clone(),
         ));
 
-        let service_clone = service.clone();
-        tokio::spawn(async move { service_clone.process(rx).await });
+        // 启动后台任务
+        session_service.clone().start_background_tasks().await;
 
         Ok(AppState {
             rooms: Arc::new(Mutex::new(HashMap::new())),
             redis_pool,
             storage,
             session_repo,
-            service,
-            command_tx: tx,
+            session_service,
         })
     }
 
     /// Creates a new room with the given ID.
-    ///
-    /// # Errors
-    /// Returns `TryLockError` if the rooms mutex is poisoned or locked.
     pub async fn make_room(&self, room_id: String) -> Result<(), tokio::sync::TryLockError> {
         let mut rooms = self.rooms.try_lock()?;
         rooms.insert(room_id, Room::new());
@@ -108,9 +97,6 @@ impl AppState {
     }
 
     /// Deletes a room with the given ID.
-    ///
-    /// # Errors
-    /// Returns `TryLockError` if the rooms mutex is poisoned or locked.
     pub async fn delete_room(&self, id: String) -> Result<(), tokio::sync::TryLockError> {
         let mut rooms = self.rooms.try_lock()?;
         rooms.remove(&id);

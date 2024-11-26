@@ -42,4 +42,6 @@ pub enum WsError {
     Room(#[from] crate::room::RoomError),
     #[error(transparent)]
     Axum(#[from] axum::Error),
+    #[error(transparent)]
+    SessionService(#[from] flow_websocket_services::ProjectServiceError),
 }

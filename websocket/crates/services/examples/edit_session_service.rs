@@ -1,199 +1,185 @@
-use bb8::Pool;
-use bb8_redis::RedisConnectionManager;
-#[cfg(feature = "gcs-storage")]
-use flow_websocket_infra::persistence::ProjectGcsRepository;
-#[cfg(feature = "local-storage")]
-use flow_websocket_infra::persistence::ProjectLocalRepository;
-use flow_websocket_infra::{
-    generate_id,
-    persistence::{
-        project_repository::ProjectRedisRepository,
-        redis::flow_project_redis_data_manager::FlowProjectRedisDataManager,
-    },
-    types::user::User,
-};
-use flow_websocket_services::{
-    manage_project_edit_session::ManageEditSessionService, SessionCommand,
-};
-use std::sync::Arc;
-use tokio::sync::broadcast;
-use tracing::info;
-use yrs::{updates::encoder::Encode, Doc, ReadTxn, Text, Transact};
+// use bb8::Pool;
+// use bb8_redis::RedisConnectionManager;
+// #[cfg(feature = "gcs-storage")]
+// use flow_websocket_infra::persistence::ProjectGcsRepository;
+// #[cfg(feature = "local-storage")]
+// use flow_websocket_infra::persistence::ProjectLocalRepository;
+// use flow_websocket_infra::{
+//     generate_id,
+//     persistence::{
+//         project_repository::ProjectRedisRepository,
+//         redis::flow_project_redis_data_manager::FlowProjectRedisDataManager,
+//     },
+//     types::user::User,
+// };
+// use flow_websocket_services::manage_project_edit_session::{
+//     ManageEditSessionService, SessionCommand,
+// };
+// use std::sync::Arc;
+// use tokio::sync::broadcast;
+// use tracing::info;
+// use yrs::{Doc, Text, Transact};
 
-///export REDIS_URL="redis://default:my_redis_password@localhost:6379/0"
-///RUST_LOG=debug cargo run --example edit_session_service  --features local-storage
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize tracing
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+// ///export REDIS_URL="redis://default:my_redis_password@localhost:6379/0"
+// ///RUST_LOG=debug cargo run --example edit_session_service  --features local-storage
+// #[tokio::main]
+// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//     // Initialize tracing
+//     tracing_subscriber::fmt()
+//         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+//         .init();
 
-    info!("Starting edit session service example");
+//     info!("Starting edit session service example");
 
-    let redis_url =
-        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string());
-    // let redis_url =
-    //     std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://:my_redis_password@localhost:6379/0".to_string());
+//     let redis_url =
+//         std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_string());
+//     // let redis_url =
+//     //     std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://:my_redis_password@localhost:6379/0".to_string());
 
-    // Initialize Redis connection pool
-    let manager = RedisConnectionManager::new(&*redis_url)?;
-    let redis_pool = Pool::builder().build(manager).await?;
-    // Initialize storage
-    #[cfg(feature = "local-storage")]
-    #[allow(unused_variables)]
-    let storage = ProjectLocalRepository::new("./local_storage".into()).await?;
-    #[cfg(feature = "gcs-storage")]
-    #[allow(unused_variables)]
-    let storage = ProjectGcsRepository::new("your-gcs-bucket".to_string()).await?;
+//     // Initialize Redis connection pool
+//     let manager = RedisConnectionManager::new(&*redis_url)?;
+//     let redis_pool = Pool::builder().build(manager).await?;
+//     // Initialize storage
+//     #[cfg(feature = "local-storage")]
+//     #[allow(unused_variables)]
+//     let storage = ProjectLocalRepository::new("./local_storage".into()).await?;
+//     #[cfg(feature = "gcs-storage")]
+//     #[allow(unused_variables)]
+//     let storage = ProjectGcsRepository::new("your-gcs-bucket".to_string()).await?;
 
-    let session_repo = ProjectRedisRepository::new(redis_pool.clone());
-    let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
+//     let session_repo = ProjectRedisRepository::new(redis_pool.clone());
+//     let redis_data_manager = FlowProjectRedisDataManager::new(&redis_url).await?;
 
-    // Create service
-    let service = ManageEditSessionService::new(
-        Arc::new(session_repo),
-        Arc::new(storage.clone()),
-        Arc::new(redis_data_manager),
-        Arc::new(storage.clone()),
-        Arc::new(storage),
-    );
+//     // Create service
+//     let service = ManageEditSessionService::new(
+//         Arc::new(session_repo),
+//         Arc::new(storage.clone()),
+//         Arc::new(redis_data_manager),
+//         Arc::new(storage.clone()),
+//         Arc::new(storage),
+//     );
 
-    let project_id = "project_123".to_string();
+//     let project_id = "project_123".to_string();
 
-    // Create channel for commands
-    let (tx, rx) = broadcast::channel(32);
-    let service_clone = service.clone();
+//     // Create channel for commands
+//     let (tx, rx) = broadcast::channel(32);
+//     let service_clone = service.clone();
 
-    // Spawn service processing task
-    let process_handle = tokio::spawn(async move { service_clone.process(rx).await });
+//     // Spawn service processing task
+//     let process_handle = tokio::spawn(async move { service_clone.process(rx).await });
 
-    // Create test user
-    let test_user = User {
-        id: generate_id!("user"),
-        email: Some("test.user@example.com".to_string()),
-        name: Some("Test User".to_string()),
-        tenant_id: generate_id!("tenant"),
-    };
+//     // Create test user
+//     let test_user = User {
+//         id: generate_id!("user"),
+//         email: Some("test.user@example.com".to_string()),
+//         name: Some("Test User".to_string()),
+//         tenant_id: generate_id!("tenant"),
+//     };
 
-    // Simulate session lifecycle
-    info!("Starting session simulation");
+//     // Simulate session lifecycle
+//     info!("Starting session simulation");
 
-    tx.send(SessionCommand::AddTask {
-        project_id: project_id.clone(),
-    })?;
+//     tx.send(SessionCommand::AddTask {
+//         project_id: project_id.clone(),
+//     })?;
 
-    info!("Starting session");
+//     info!("Starting session");
 
-    // Start session
-    tx.send(SessionCommand::Start {
-        project_id: project_id.clone(),
-        user: test_user.clone(),
-    })?;
+//     // Start session
+//     tx.send(SessionCommand::Start {
+//         project_id: project_id.clone(),
+//         user: test_user.clone(),
+//     })?;
 
-    info!("Checking status");
+//     info!("Checking status");
 
-    // Check status
-    tx.send(SessionCommand::CheckStatus {
-        project_id: project_id.clone(),
-    })?;
+//     // Check status
+//     tx.send(SessionCommand::CheckStatus {
+//         project_id: project_id.clone(),
+//     })?;
 
-    info!("Listing all snapshots versions");
+//     info!("Listing all snapshots versions");
 
-    // List snapshots
-    tx.send(SessionCommand::ListAllSnapshotsVersions {
-        project_id: project_id.clone(),
-    })?;
+//     // List snapshots
+//     tx.send(SessionCommand::ListAllSnapshotsVersions {
+//         project_id: project_id.clone(),
+//     })?;
 
-    info!("Creating Y.js document and update");
+//     info!("Creating Y.js document and update");
 
-    // Create Y.js document and update
-    let doc = Doc::new();
-    let text = doc.get_or_insert_text("test");
-    let yjs_update = {
-        let mut txn = doc.transact_mut();
-        text.push(&mut txn, "Hello, YJS!");
-        txn.encode_update_v2()
-    };
+//     // Create Y.js document and update
+//     let doc = Doc::new();
+//     let text = doc.get_or_insert_text("test");
+//     let yjs_update = {
+//         let mut txn = doc.transact_mut();
+//         text.push(&mut txn, "Hello, YJS!");
+//         txn.encode_update_v2()
+//     };
 
-    info!("Pushing update with Y.js data");
+//     info!("Pushing update with Y.js data");
 
-    // Push update with Y.js data
-    tx.send(SessionCommand::MergeUpdates {
-        project_id: project_id.clone(),
-        data: yjs_update,
-        updated_by: Some(test_user.id.clone()),
-    })?;
+//     // Push update with Y.js data
+//     tx.send(SessionCommand::MergeUpdates {
+//         project_id: project_id.clone(),
+//         data: yjs_update,
+//         updated_by: Some(test_user.id.clone()),
+//     })?;
 
-    info!("Creating second update");
+//     info!("Creating second update");
 
-    // Create second update
-    let yjs_update2 = {
-        let mut txn = doc.transact_mut();
-        text.push(&mut txn, " More text!");
-        txn.encode_update_v2()
-    };
+//     // Create second update
+//     let yjs_update2 = {
+//         let mut txn = doc.transact_mut();
+//         text.push(&mut txn, " More text!");
+//         txn.encode_update_v2()
+//     };
 
-    info!("Pushing second update");
+//     info!("Pushing second update");
 
-    // Push second update
-    tx.send(SessionCommand::MergeUpdates {
-        project_id: project_id.clone(),
-        data: yjs_update2,
-        updated_by: Some(test_user.id.clone()),
-    })?;
+//     // Push second update
+//     tx.send(SessionCommand::MergeUpdates {
+//         project_id: project_id.clone(),
+//         data: yjs_update2,
+//         updated_by: Some(test_user.id.clone()),
+//     })?;
 
-    info!("Checking status again after merge");
+//     info!("Checking status again after merge");
 
-    // Check status again after merge
-    tx.send(SessionCommand::CheckStatus {
-        project_id: project_id.clone(),
-    })?;
+//     // Check status again after merge
+//     tx.send(SessionCommand::CheckStatus {
+//         project_id: project_id.clone(),
+//     })?;
 
-    info!("Ending session");
+//     info!("Ending session");
 
-    info!("Processing state vector");
-    info!("--------------------------------");
-    info!("Processing state vector");
-    let doc2 = Doc::new();
-    let state_vector = {
-        let txn = doc2.transact();
-        txn.state_vector().encode_v2()
-    };
+//     // End session
+//     tx.send(SessionCommand::End {
+//         project_id: project_id.clone(),
+//         user: test_user.clone(),
+//     })?;
 
-    tx.send(SessionCommand::ProcessStateVector {
-        project_id: project_id.clone(),
-        state_vector,
-    })?;
+//     info!("Removing task");
 
-    info!("Ending session");
-    info!("--------------------------------");
+//     // Remove task
+//     tx.send(SessionCommand::RemoveTask {
+//         project_id: project_id.clone(),
+//     })?;
 
-    // End session
-    tx.send(SessionCommand::End {
-        project_id: project_id.clone(),
-    })?;
+//     // // Complete session
+//     // tx.send(SessionCommand::Complete {
+//     //     project_id,
+//     //     user: test_user,
+//     // })
+//     // .await?;
 
-    info!("Removing task");
+//     // Drop sender to terminate service
+//     drop(tx);
 
-    // Remove task
-    tx.send(SessionCommand::RemoveTask {
-        project_id: project_id.clone(),
-    })?;
+//     // Wait for service to complete
+//     process_handle.await?;
 
-    // // Complete session
-    // tx.send(SessionCommand::Complete {
-    //     project_id,
-    //     user: test_user,
-    // })
-    // .await?;
+//     info!("Edit session service example completed");
+//     Ok(())
+// }
 
-    // Drop sender to terminate service
-    drop(tx);
-
-    // Wait for service to complete
-    process_handle.await?;
-
-    info!("Edit session service example completed");
-    Ok(())
-}
+fn main() {}

@@ -35,7 +35,7 @@ pub async fn handle_session_command(
     conn_state: &ConnectionState,
     user: &User,
     state: &Arc<AppState>,
-) -> Result<(), WsError> {
+) -> Result<Option<Vec<u8>>, WsError> {
     let mut project_id = conn_state.current_project_id.lock().await;
 
     let command = match command {
@@ -53,7 +53,7 @@ pub async fn handle_session_command(
                 *project_id = None;
                 SessionCommand::End { project_id: pid }
             } else {
-                return Ok(());
+                return Ok(None);
             }
         }
         cmd => {
@@ -113,12 +113,12 @@ pub async fn handle_session_command(
                     SessionCommand::UpdateProject { project } => {
                         SessionCommand::UpdateProject { project }
                     }
-                    _ => return Ok(()),
+                    _ => return Ok(None),
                 }
             }
         }
     };
 
-    state.command_tx.send(command).map_err(WsError::from)?;
-    Ok(())
+    let result = state.session_service.handle_command(command).await?;
+    Ok(result)
 }
