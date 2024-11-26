@@ -102,6 +102,18 @@ where
         Ok(())
     }
 
+    pub async fn process_state_vector(
+        &self,
+        project_id: &str,
+        state_vector: Vec<u8>,
+    ) -> Result<Option<Vec<u8>>, ProjectServiceError> {
+        let ret = self
+            .redis_data_manager
+            .process_state_vector(project_id, state_vector)
+            .await?;
+        Ok(ret)
+    }
+
     pub async fn get_or_create_editing_session(
         &self,
         project_id: &str,

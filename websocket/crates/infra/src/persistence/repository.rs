@@ -46,6 +46,11 @@ pub trait RedisDataManagerImpl {
         update_data: Vec<u8>,
         updated_by: Option<String>,
     ) -> Result<(Vec<u8>, Vec<String>), Self::Error>;
+    async fn process_state_vector(
+        &self,
+        project_id: &str,
+        state_vector: Vec<u8>,
+    ) -> Result<Option<Vec<u8>>, Self::Error>;
     async fn clear_data(
         &self,
         project_id: &str,

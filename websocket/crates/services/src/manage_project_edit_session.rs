@@ -1,3 +1,4 @@
+use super::SessionCommand;
 use chrono::Utc;
 use flow_websocket_infra::persistence::editing_session::ProjectEditingSession;
 use flow_websocket_infra::persistence::project_repository::ProjectRepositoryError;
@@ -6,11 +7,8 @@ use flow_websocket_infra::persistence::repository::{
     ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
     WorkspaceImpl,
 };
-use flow_websocket_infra::types::project::Project;
 use flow_websocket_infra::types::user::User;
-use flow_websocket_infra::types::workspace::Workspace;
 use mockall::automock;
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::broadcast;
@@ -39,60 +37,6 @@ where
 {
     pub project_service: ProjectService<R, S, M, P, W>,
     tasks: Arc<Mutex<HashMap<String, ManageProjectEditSessionTaskData>>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SessionCommand {
-    Start {
-        project_id: String,
-        user: User,
-    },
-    End {
-        project_id: String,
-        user: User,
-    },
-    Complete {
-        project_id: String,
-        user: User,
-    },
-    CheckStatus {
-        project_id: String,
-    },
-    AddTask {
-        project_id: String,
-    },
-    RemoveTask {
-        project_id: String,
-    },
-    ListAllSnapshotsVersions {
-        project_id: String,
-    },
-    MergeUpdates {
-        project_id: String,
-        data: Vec<u8>,
-        updated_by: Option<String>,
-    },
-    CreateWorkspace {
-        workspace: Workspace,
-    },
-    DeleteWorkspace {
-        workspace_id: String,
-    },
-    UpdateWorkspace {
-        workspace: Workspace,
-    },
-    ListWorkspaceProjectsIds {
-        workspace_id: String,
-    },
-    CreateProject {
-        project: Project,
-    },
-    DeleteProject {
-        project_id: String,
-    },
-    UpdateProject {
-        project: Project,
-    },
 }
 
 #[automock]
@@ -147,14 +91,16 @@ where
     async fn handle_command(
         &self,
         result: Result<SessionCommand, broadcast::error::RecvError>,
-    ) -> Result<(), ProjectServiceError> {
+    ) -> Result<Option<Vec<u8>>, ProjectServiceError> {
         match result {
             Ok(command) => match command {
                 SessionCommand::Start { project_id, user } => {
                     self.handle_session_start(&project_id, user).await?;
+                    Ok(None)
                 }
-                SessionCommand::End { project_id, user } => {
-                    self.handle_session_end(&project_id, user).await?;
+                SessionCommand::End { project_id } => {
+                    self.handle_session_end(&project_id).await?;
+                    Ok(None)
                 }
                 SessionCommand::Complete { project_id, user } => {
                     if let Some(mut session) = self.get_latest_session(&project_id).await? {
@@ -164,6 +110,7 @@ where
                             user.id, project_id
                         );
                     }
+                    Ok(None)
                 }
                 SessionCommand::MergeUpdates {
                     project_id,
@@ -173,15 +120,30 @@ where
                     self.project_service
                         .merge_updates(&project_id, data, updated_by)
                         .await?;
+                    Ok(None)
+                }
+                SessionCommand::ProcessStateVector {
+                    project_id,
+                    state_vector,
+                } => {
+                    let updates = self
+                        .project_service
+                        .process_state_vector(&project_id, state_vector)
+                        .await?;
+                    debug!("Processed state vector for project: {}", project_id);
+                    Ok(updates)
                 }
                 SessionCommand::CheckStatus { project_id } => {
                     debug!("Checking session status for project: {}", project_id);
+                    Ok(None)
                 }
                 SessionCommand::AddTask { project_id } => {
                     self.add_task(&project_id).await?;
+                    Ok(None)
                 }
                 SessionCommand::RemoveTask { project_id } => {
                     self.remove_task(&project_id).await?;
+                    Ok(None)
                 }
                 SessionCommand::ListAllSnapshotsVersions { project_id } => {
                     let versions = self
@@ -192,16 +154,20 @@ where
                         "Snapshots versions for project {}: {:?}",
                         project_id, versions
                     );
+                    Ok(None)
                 }
                 // Workspace related commands
                 SessionCommand::CreateWorkspace { workspace } => {
                     self.project_service.create_workspace(workspace).await?;
+                    Ok(None)
                 }
                 SessionCommand::DeleteWorkspace { workspace_id } => {
                     self.project_service.delete_workspace(&workspace_id).await?;
+                    Ok(None)
                 }
                 SessionCommand::UpdateWorkspace { workspace } => {
                     self.project_service.update_workspace(workspace).await?;
+                    Ok(None)
                 }
                 SessionCommand::ListWorkspaceProjectsIds { workspace_id } => {
                     let projects = self
@@ -209,27 +175,32 @@ where
                         .list_workspace_projects_ids(&workspace_id)
                         .await?;
                     debug!("Projects for workspace {}: {:?}", workspace_id, projects);
+                    Ok(None)
                 }
                 // Project related commands
                 SessionCommand::CreateProject { project } => {
                     self.project_service.create_project(project).await?;
+                    Ok(None)
                 }
                 SessionCommand::DeleteProject { project_id } => {
                     self.project_service.delete_project(&project_id).await?;
+                    Ok(None)
                 }
                 SessionCommand::UpdateProject { project } => {
                     self.project_service.update_project(project).await?;
+                    Ok(None)
                 }
             },
             Err(broadcast::error::RecvError::Closed) => {
                 debug!("Command channel closed");
                 sleep(Duration::from_secs(1)).await;
+                Ok(None)
             }
             Err(broadcast::error::RecvError::Lagged(n)) => {
                 debug!("Receiver lagged behind by {} messages", n);
+                Ok(None)
             }
         }
-        Ok(())
     }
 
     async fn check_tasks_conditions(&self) -> Result<(), ProjectServiceError> {
@@ -269,11 +240,7 @@ where
         Ok(())
     }
 
-    async fn handle_session_end(
-        &self,
-        project_id: &str,
-        _user: User,
-    ) -> Result<(), ProjectServiceError> {
+    async fn handle_session_end(&self, project_id: &str) -> Result<(), ProjectServiceError> {
         if let Some(task_data) = self.get_task_data(project_id).await {
             self.update_client_count(&task_data, false).await;
 
