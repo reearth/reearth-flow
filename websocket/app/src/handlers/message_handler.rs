@@ -38,6 +38,7 @@ pub async fn handle_message(
         Message::Binary(d) => {
             debug!("{} sent {} bytes: {:?}", addr, d.len(), d);
             if let Some(response) = process_binary_message(d, conn_state, &user, &state).await? {
+                debug!("Sending response to client {addr} {:?}", response);
                 conn_state.send_message(response).await?;
             }
         }
