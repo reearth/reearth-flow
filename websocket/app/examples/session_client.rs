@@ -24,8 +24,9 @@ struct FlowMessage {
     session_command: Option<SessionCommand>,
 }
 
-#[derive(Serialize)]
-enum SessionCommand {
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "tag", content = "content")]
+pub enum SessionCommand {
     Start {
         project_id: String,
         user: User,
@@ -54,6 +55,10 @@ enum SessionCommand {
         project_id: String,
         data: Vec<u8>,
         updated_by: Option<String>,
+    },
+    ProcessStateVector {
+        project_id: String,
+        state_vector: Vec<u8>,
     },
 }
 

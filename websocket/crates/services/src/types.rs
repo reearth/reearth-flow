@@ -5,6 +5,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "tag", content = "content")]
 pub enum SessionCommand {
     Start {
         project_id: String,
