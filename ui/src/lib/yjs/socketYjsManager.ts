@@ -305,22 +305,18 @@ export class SocketYjsManager {
 
   protected onDocUpdate(update: Uint8Array, origin: unknown) {
     if (origin === this.doc.clientID && this.ws.readyState === WebSocket.OPEN) {
-      console.log("Sending doc update:", {
-        type: "UPDATE",
-        updateLength: update.length,
-        rawUpdate: Array.from(update), // 转换为普通数组以便查看
-        origin,
-        clientId: this.doc.clientID
-      });
-      
-      const updateMessage = createBinaryMessage(MessageType.UPDATE, update);
-      console.log("Final binary message:", {
-        messageLength: updateMessage.length,
-        messageType: updateMessage[0],
-        rawMessage: Array.from(updateMessage)
-      });
-      
-      this.ws.send(updateMessage);
+        console.log("Received doc update:", {
+            updateLength: update.length,
+            rawUpdate: Array.from(update)
+        });
+        
+        const updateMessage = createBinaryMessage(MessageType.UPDATE, update);
+        console.log("Sending update message:", {
+            messageLength: updateMessage.length,
+            messageType: updateMessage[0]
+        });
+        
+        this.ws.send(updateMessage);
     }
   }
 
@@ -374,21 +370,8 @@ export class SocketYjsManager {
 }
 
 function createBinaryMessage(type: MessageType, data: Uint8Array): Uint8Array {
-    console.log("Creating binary message:", {
-        type,
-        dataLength: data.length,
-        rawData: Array.from(data)
-    });
-    
     const message = new Uint8Array(data.length + 1);
     message[0] = type;
     message.set(data, 1);
-    
-    console.log("Created message:", {
-        messageLength: message.length,
-        messageType: message[0],
-        rawMessage: Array.from(message)
-    });
-    
     return message;
 }
