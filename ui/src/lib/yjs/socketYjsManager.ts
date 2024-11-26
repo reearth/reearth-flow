@@ -181,7 +181,28 @@ export class SocketYjsManager {
         },
         session_command: {
           tag: "Start",
-          content: { project_id: this.projectId },
+          content: { 
+            project_id: this.projectId,
+            user: {
+              id: this.doc.clientID.toString(),
+              name: "",
+              email: "",
+              tenant_id: "123"
+            }
+          },
+        },
+      });
+
+      await this.sendFlowMessage({
+        event: {
+          tag: "Emit",
+          content: { data: "" },
+        },
+        session_command: {
+          tag: "AddTask",
+          content: { 
+            project_id: this.projectId,
+          },
         },
       });
 
@@ -237,9 +258,17 @@ export class SocketYjsManager {
       }
 
       try {
-        this.ws.send(JSON.stringify(message));
+        const messageStr = JSON.stringify(message);
+        console.log("Sending message:", {
+          type: message.event.tag,
+          sessionCommand: message.session_command?.tag,
+          content: message,
+          rawMessage: messageStr
+        });
+        this.ws.send(messageStr);
         resolve();
       } catch (error) {
+        console.error("Failed to send message:", error);
         reject(error);
       }
     });
@@ -256,26 +285,48 @@ export class SocketYjsManager {
     this.onUpdateHandlers.push(handler);
   }
 
-  destroy() {
+  protected async destroy() {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
     }
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.sendFlowMessage({
-        event: {
-          tag: "Emit",
-          content: { data: "" },
-        },
-        session_command: {
-          tag: "End",
-          content: {},
-        },
-      }).finally(() => {
+      console.log("Starting cleanup process...");
+      try {
+        await this.sendFlowMessage({
+          event: {
+            tag: "Emit",
+            content: { 
+              data: "",
+              user: { 
+                id: this.doc.clientID.toString(),
+                name: "",
+                email: ""
+              }
+            },
+          },
+          session_command: {
+            tag: "End",
+            content: { 
+              project_id: this.projectId,
+              user: { 
+                id: this.doc.clientID.toString(),
+                name: "",
+                email: ""
+              }
+            },
+          },
+        });
+        console.log("Cleanup message sent successfully");
+      } catch (error) {
+        console.error("Failed to send cleanup message:", error);
+      } finally {
         this.ws.close();
-      });
+        console.log("WebSocket connection closed");
+      }
     }
     this.doc.destroy();
+    console.log("Document destroyed");
   }
 }
 

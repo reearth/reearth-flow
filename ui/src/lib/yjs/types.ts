@@ -15,6 +15,7 @@ export type FlowMessage = {
     content: {
       room_id?: string;
       data?: string;
+      user?: User;
     };
   };
   session_command?: SessionCommand;
