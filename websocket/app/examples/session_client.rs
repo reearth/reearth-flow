@@ -236,6 +236,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
     info!("CheckStatus command sent");
 
+    let doc = Doc::new();
+
+    let state_vector = {
+        let txn = doc.transact();
+        let state_vector = txn.state_vector();
+        let encode = state_vector.encode_v2();
+        create_binary_message(MessageType::Sync, encode)
+    };
+
+    write.send(Message::Binary(state_vector)).await?;
+
     send_command(
         &mut write,
         SessionCommand::ListAllSnapshotsVersions {
