@@ -12,13 +12,13 @@ use flow_websocket_infra::{
     },
     types::user::User,
 };
-use flow_websocket_services::manage_project_edit_session::{
-    ManageEditSessionService, SessionCommand,
+use flow_websocket_services::{
+    manage_project_edit_session::ManageEditSessionService, SessionCommand,
 };
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tracing::info;
-use yrs::{Doc, Text, Transact};
+use yrs::{updates::encoder::Encode, Doc, ReadTxn, Text, Transact};
 
 ///export REDIS_URL="redis://default:my_redis_password@localhost:6379/0"
 ///RUST_LOG=debug cargo run --example edit_session_service  --features local-storage
@@ -152,10 +152,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Ending session");
 
+    info!("Processing state vector");
+    info!("--------------------------------");
+    info!("Processing state vector");
+    let doc2 = Doc::new();
+    let state_vector = {
+        let txn = doc2.transact();
+        txn.state_vector().encode_v2()
+    };
+
+    tx.send(SessionCommand::ProcessStateVector {
+        project_id: project_id.clone(),
+        state_vector,
+    })?;
+
+    info!("Ending session");
+    info!("--------------------------------");
+
     // End session
     tx.send(SessionCommand::End {
         project_id: project_id.clone(),
-        user: test_user.clone(),
     })?;
 
     info!("Removing task");

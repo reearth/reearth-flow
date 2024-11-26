@@ -1,7 +1,7 @@
 use flow_websocket_infra::persistence::{
     gcs::gcs_client::GcsError, redis::errors::FlowProjectRedisDataManagerError,
 };
-use flow_websocket_services::manage_project_edit_session::SessionCommand;
+use flow_websocket_services::SessionCommand;
 use thiserror::Error;
 use tokio::sync::broadcast;
 
@@ -40,4 +40,6 @@ pub enum WsError {
     GcsStorage(#[from] GcsError),
     #[error(transparent)]
     Room(#[from] crate::room::RoomError),
+    #[error(transparent)]
+    Axum(#[from] axum::Error),
 }

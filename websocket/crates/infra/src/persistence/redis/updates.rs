@@ -5,9 +5,10 @@ use super::{
 };
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
+use redis::AsyncCommands;
 use std::sync::Arc;
 use tracing::debug;
-use yrs::{updates::decoder::Decode, Doc, Transact, Update};
+use yrs::{updates::decoder::Decode, Doc, ReadTxn, StateVector, Transact, Update};
 
 type RedisStreamResult = Vec<(String, Vec<(String, Vec<(String, Vec<u8>)>)>)>;
 
@@ -30,26 +31,22 @@ impl UpdateManager {
     pub async fn get_merged_update_from_stream(
         &self,
         project_id: &str,
-    ) -> Result<Option<(Vec<u8>, Vec<String>)>, FlowProjectRedisDataManagerError> {
+    ) -> Result<Option<(Vec<Vec<u8>>, Vec<String>)>, FlowProjectRedisDataManagerError> {
         let updates = self.get_flow_updates_from_stream(project_id).await?;
         if updates.is_empty() {
             return Ok(None);
         }
 
-        let doc = Doc::new();
-        let mut txn = doc.transact_mut();
+        let mut datas = Vec::new();
         let mut updates_by = Vec::new();
 
         for u in updates {
-            debug!("Processing update: {:?}", u);
             if let Some(updated_by) = u.updated_by {
                 updates_by.push(updated_by);
             }
-            if !u.update.is_empty() {
-                let _ = txn.apply_update(Update::decode_v2(&u.update)?);
-            }
+            datas.push(u.update);
         }
-        Ok(Some((txn.encode_update_v2(), updates_by)))
+        Ok(Some((datas, updates_by)))
     }
 
     pub async fn get_update_stream_items(
@@ -101,110 +98,89 @@ impl UpdateManager {
         redis_data: Option<Vec<u8>>,
         new_update_by: Option<String>,
     ) -> Result<(Vec<u8>, Vec<String>), FlowProjectRedisDataManagerError> {
-        debug!(
-            "Starting merge_updates_internal for project_id: {}, has_redis_data: {}, new_update_by: {:?}",
-            project_id,
-            redis_data.is_some(),
-            new_update_by
-        );
-    
-        let (stream_update, stream_updates_by) = match self.get_merged_update_from_stream(project_id).await {
-            Ok(Some((update, updates_by))) => {
-                debug!(
-                    "Retrieved stream update for project {}: size={}, updates_by={:?}",
-                    project_id,
-                    update.len(),
-                    updates_by
-                );
-                (update, updates_by)
+        let stream_updates = self.get_merged_update_from_stream(project_id).await?;
+
+        let updates_by = match &stream_updates {
+            Some((_, by)) => {
+                let mut updates_by = by.clone();
+                if let Some(new_update_by) = new_update_by {
+                    updates_by.push(new_update_by);
+                }
+                updates_by
             }
-            Ok(None) => {
-                debug!("No existing stream updates found for project {}", project_id);
-                Default::default()
-            }
-            Err(e) => {
-                debug!(
-                    "Error getting merged update from stream for project {}: {:?}",
-                    project_id, e
-                );
-                return Err(e);
-            }
+            None => new_update_by.map(|u| vec![u]).unwrap_or_default(),
         };
-    
-        let redis_update = redis_data.unwrap_or_default();
-        debug!(
-            "Redis update size for project {}: {}",
-            project_id,
-            redis_update.len()
-        );
-    
-        debug!(
-            "Spawning blocking task to merge updates for project {}",
-            project_id
-        );
-        let optimized_merged_state = tokio::task::spawn_blocking(move || {
-            debug!("Starting merge operation in blocking task");
-            let doc = Doc::new();
-            let mut txn = doc.transact_mut();
-    
-            if !redis_update.is_empty() {
-                debug!("Applying redis update of size {}", redis_update.len());
-                match Update::decode_v2(&redis_update) {
-                    Ok(update) => {
-                        if let Err(e) = txn.apply_update(update) {
-                            debug!("Error applying redis update: {:?}", e);
-                            return Err(FlowProjectRedisDataManagerError::from(e));
-                        }
-                    }
-                    Err(e) => {
-                        debug!("Error decoding redis update: {:?}", e);
-                        return Err(FlowProjectRedisDataManagerError::from(e));
+
+        let optimized_merged_state = tokio::task::spawn_blocking(
+            move || -> Result<Vec<u8>, FlowProjectRedisDataManagerError> {
+                let doc = Doc::new();
+                let mut txn = doc.transact_mut();
+
+                if let Some(redis_update) = redis_data {
+                    txn.apply_update(Update::decode_v2(&redis_update)?)?;
+                }
+
+                if let Some((updates, _)) = stream_updates {
+                    for update in updates {
+                        txn.apply_update(Update::decode_v2(&update)?)?;
                     }
                 }
-            }
-    
-            if !stream_update.is_empty() {
-                debug!("Applying stream update of size {}", stream_update.len());
-                match Update::decode_v2(&stream_update) {
-                    Ok(update) => {
-                        if let Err(e) = txn.apply_update(update) {
-                            debug!("Error applying stream update: {:?}", e);
-                            return Err(FlowProjectRedisDataManagerError::from(e));
-                        }
-                    }
-                    Err(e) => {
-                        debug!("Error decoding stream update: {:?}", e);
-                        return Err(FlowProjectRedisDataManagerError::from(e));
-                    }
-                }
-            }
-    
-            let result = txn.encode_update_v2();
-            debug!("Successfully encoded merged update of size {}", result.len());
-            Ok(result)
-        })
-        .await
-        .map_err(|e| {
-            debug!("Join error from blocking task: {:?}", e);
-            FlowProjectRedisDataManagerError::from(e)
-        })??;
-    
-        let mut updates_by = stream_updates_by;
-        if let Some(new_update_by) = new_update_by {
-            debug!(
-                "Adding new update attribution for project {}: {}",
-                project_id, new_update_by
-            );
-            updates_by.push(new_update_by);
-        }
-    
-        debug!(
-            "Completed merge_updates_internal for project {}: final_size={}, updates_by={:?}",
-            project_id,
-            optimized_merged_state.len(),
-            updates_by
-        );
-    
+
+                Ok(txn.encode_update_v2())
+            },
+        )
+        .await??;
+
+        debug!("Final merged state: {:?}", optimized_merged_state);
         Ok((optimized_merged_state, updates_by))
+    }
+
+    pub async fn get_current_state(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
+        let state_key = self.key_manager.state_key(project_id)?;
+        let current_state: Option<Vec<u8>> = self.redis_pool.get().await?.get(state_key).await?;
+        Ok(current_state)
+    }
+
+    pub async fn handle_state_vector(
+        &self,
+        project_id: &str,
+        state_vector: Vec<u8>,
+    ) -> Result<Option<Vec<u8>>, FlowProjectRedisDataManagerError> {
+        let current_state = self.get_current_state(project_id).await?;
+
+        if let Some(server_state) = current_state {
+            let diff_update = tokio::task::spawn_blocking(move || {
+                let doc = Doc::new();
+                let mut txn = doc.transact_mut();
+
+                match Update::decode_v2(&server_state) {
+                    Ok(update) => {
+                        txn.apply_update(update)?;
+                    }
+                    Err(e) => return Err(FlowProjectRedisDataManagerError::from(e)),
+                }
+
+                let client_state_vector = StateVector::decode_v2(&state_vector)?;
+
+                let diff = txn.encode_state_as_update_v2(&client_state_vector);
+                Ok(diff)
+            })
+            .await
+            .map_err(FlowProjectRedisDataManagerError::from)??;
+
+            if !diff_update.is_empty() {
+                debug!("Generated diff update of size: {}", diff_update.len());
+                Ok(Some(diff_update))
+            } else {
+                debug!("No updates needed for client");
+                Ok(None)
+            }
+        } else {
+            debug!("No server state exists yet");
+            Ok(None)
+        }
     }
 }

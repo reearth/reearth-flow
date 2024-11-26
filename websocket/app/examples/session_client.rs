@@ -1,10 +1,13 @@
+use app::MessageType;
+use flow_websocket_infra::types::user::User;
 use futures_util::{SinkExt, StreamExt};
 use serde::Serialize;
 use tokio_tungstenite::tungstenite::http::Request;
 use tokio_tungstenite::{connect_async_with_config, tungstenite::Message};
 use tracing::{error, info};
 use url::Url;
-use yrs::{Doc, Text, Transact};
+use yrs::ReadTxn;
+use yrs::{updates::encoder::Encode, Doc, Text, Transact};
 
 #[derive(Serialize)]
 #[serde(tag = "tag", content = "content")]
@@ -21,8 +24,9 @@ struct FlowMessage {
     session_command: Option<SessionCommand>,
 }
 
-#[derive(Serialize)]
-enum SessionCommand {
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "tag", content = "content")]
+pub enum SessionCommand {
     Start {
         project_id: String,
         user: User,
@@ -47,37 +51,47 @@ enum SessionCommand {
     ListAllSnapshotsVersions {
         project_id: String,
     },
+    #[warn(dead_code)]
     MergeUpdates {
         project_id: String,
         data: Vec<u8>,
         updated_by: Option<String>,
     },
+    ProcessStateVector {
+        project_id: String,
+        state_vector: Vec<u8>,
+    },
 }
 
-#[derive(Serialize, Clone)]
-struct User {
-    id: String,
-    email: Option<String>,
-    name: Option<String>,
-    tenant_id: String,
+// #[derive(Serialize, Clone)]
+// struct User {
+//     id: String,
+//     email: Option<String>,
+//     name: Option<String>,
+//     tenant_id: String,
+// }
+
+fn create_binary_message(msg_type: MessageType, data: Vec<u8>) -> Vec<u8> {
+    let mut message = Vec::with_capacity(data.len() + 1);
+    message.push(msg_type._as_byte());
+    message.extend_from_slice(&data);
+    message
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    let project_id = "test_project";
     let user_id = "test_user";
     let room_id = "room123";
+    let auth_token = "nyaan";
 
     let url = Url::parse(&format!(
-        "ws://127.0.0.1:8080/{room_id}?user_id={user_id}&project_id={project_id}&token=nyaan",
+        "ws://127.0.0.1:8080/{room_id}?user_id={user_id}&token={token}",
         room_id = room_id,
         user_id = user_id,
-        project_id = project_id
+        token = auth_token
     ))?;
-
-    let auth_token = "your_auth_token_here";
 
     let request = Request::builder()
         .uri(url.as_str())
@@ -86,7 +100,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .header("Upgrade", "websocket")
         .header("Sec-WebSocket-Version", "13")
         .header("Sec-WebSocket-Key", generate_key())
-        .header("Authorization", format!("Bearer {}", auth_token))
         .body(())?;
 
     let (ws_stream, _) = connect_async_with_config(request, None, false).await?;
@@ -128,17 +141,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    let test_user = User {
-        id: user_id.to_string(),
-        email: Some("test.user@example.com".to_string()),
-        name: Some("Test User".to_string()),
-        tenant_id: "test_tenant".to_string(),
-    };
+    // let test_user = User {
+    //     id: user_id.to_string(),
+    //     email: Some("test.user@example.com".to_string()),
+    //     name: Some("Test User".to_string()),
+    //     tenant_id: "test_tenant".to_string(),
+    // };
+
+    let project_id = "test_project3".to_string();
+    let user = User::new(
+        user_id.to_string(),
+        None, // email
+        None, // name
+    );
 
     send_command(
         &mut write,
         SessionCommand::AddTask {
-            project_id: project_id.to_string(),
+            project_id: project_id.clone(),
         },
     )
     .await?;
@@ -147,8 +167,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     send_command(
         &mut write,
         SessionCommand::Start {
-            project_id: project_id.to_string(),
-            user: test_user.clone(),
+            project_id: project_id.clone(),
+            user: user.clone(),
         },
     )
     .await?;
@@ -157,10 +177,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let doc = Doc::new();
     let text = doc.get_or_insert_text("test");
 
+    let state_vector = {
+        let txn = doc.transact();
+        let state_vector = txn.state_vector();
+        let encode = state_vector.encode_v2();
+        create_binary_message(MessageType::Sync, encode)
+    };
+
+    write.send(Message::Binary(state_vector)).await?;
+    info!("State vector sent");
+
     let update1 = {
         let mut txn = doc.transact_mut();
         text.push(&mut txn, "Hello, YJS!");
-        txn.encode_update_v2()
+        let update = txn.encode_update_v2();
+        create_binary_message(MessageType::Update, update)
     };
 
     write.send(Message::Binary(update1)).await?;
@@ -169,7 +200,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let update2 = {
         let mut txn = doc.transact_mut();
         text.push(&mut txn, " More text!");
-        txn.encode_update_v2()
+        let update = txn.encode_update_v2();
+        create_binary_message(MessageType::Update, update)
     };
 
     write.send(Message::Binary(update2)).await?;
@@ -178,25 +210,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let update_data = {
         let mut txn = doc.transact_mut();
         text.push(&mut txn, "Hello from merge update!");
-        txn.encode_update_v2()
+        let update = txn.encode_update_v2();
+        create_binary_message(MessageType::Update, update)
     };
 
-    send_command(
-        &mut write,
-        SessionCommand::MergeUpdates {
-            project_id: project_id.to_string(),
-            data: update_data,
-            updated_by: Some(user_id.to_string()),
-        },
-    )
-    .await?;
+    write.send(Message::Binary(update_data)).await?;
     info!("MergeUpdates command sent with YJS update");
 
     send_command(
         &mut write,
         SessionCommand::Complete {
-            project_id: project_id.to_string(),
-            user: test_user.clone(),
+            project_id: project_id.clone(),
+            user: user.clone(),
         },
     )
     .await?;
@@ -205,7 +230,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     send_command(
         &mut write,
         SessionCommand::CheckStatus {
-            project_id: project_id.to_string(),
+            project_id: project_id.clone(),
         },
     )
     .await?;
@@ -214,7 +239,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     send_command(
         &mut write,
         SessionCommand::ListAllSnapshotsVersions {
-            project_id: project_id.to_string(),
+            project_id: project_id.clone(),
         },
     )
     .await?;
@@ -223,8 +248,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     send_command(
         &mut write,
         SessionCommand::End {
-            project_id: project_id.to_string(),
-            user: test_user.clone(),
+            project_id: project_id.clone(),
+            user: user.clone(),
         },
     )
     .await?;
@@ -233,7 +258,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     send_command(
         &mut write,
         SessionCommand::RemoveTask {
-            project_id: project_id.to_string(),
+            project_id: project_id.clone(),
         },
     )
     .await?;
