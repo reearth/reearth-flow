@@ -15,6 +15,7 @@ reearth-flow-action-log.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
 reearth-flow-geometry.workspace = true
+reearth-flow-gltf.workspace = true
 reearth-flow-runtime.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true

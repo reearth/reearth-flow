@@ -54,6 +54,7 @@ reearth-flow-action-wasm-processor = { path = "runtime/action-wasm-processor" }
 reearth-flow-common = { path = "runtime/common" }
 reearth-flow-eval-expr = { path = "runtime/eval-expr" }
 reearth-flow-geometry = { path = "runtime/geometry" }
+reearth-flow-gltf = { path = "runtime/gltf" }
 reearth-flow-macros = { path = "runtime/macros" }
 reearth-flow-runner = { path = "runtime/runner" }
 reearth-flow-runtime = { path = "runtime/runtime" }

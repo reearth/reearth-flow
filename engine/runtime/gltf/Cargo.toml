@@ -1,6 +1,6 @@
 [package]
-description = "Re:Earth Flow Action Wasm Processor"
-name = "reearth-flow-action-wasm-processor"
+description = "Re:Earth Flow GLTF library"
+name = "reearth-flow-gltf"
 
 authors.workspace = true
 edition.workspace = true
@@ -18,7 +18,13 @@ reearth-flow-runtime.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
+nusamai-citygml.workspace = true
+nusamai-gltf.workspace = true
+
+ahash.workspace = true
+byteorder.workspace = true
 chrono.workspace = true
+indexmap.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
 regex.workspace = true
@@ -29,5 +35,3 @@ tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-wasmer.workspace = true
-wasmer-wasix.workspace = true

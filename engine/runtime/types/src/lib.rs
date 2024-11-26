@@ -7,6 +7,7 @@ pub mod feature;
 pub mod file;
 pub mod geometry;
 pub mod lod;
+pub mod material;
 pub mod metadata;
 pub mod workflow;
 
