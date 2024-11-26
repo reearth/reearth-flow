@@ -78,7 +78,6 @@ pub mod csv;
 pub mod dir;
 pub mod fs;
 pub mod future;
-pub mod gltf;
 pub mod image;
 pub mod json;
 pub mod serde;

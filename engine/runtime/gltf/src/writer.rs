@@ -4,8 +4,9 @@ use ahash::{HashMap, HashSet};
 use byteorder::{ByteOrder, LittleEndian};
 use indexmap::IndexSet;
 use nusamai_gltf::nusamai_gltf_json::extensions::mesh::ext_mesh_features;
+use reearth_flow_types::material;
 
-use super::{material, metadata::MetadataEncoder};
+use crate::metadata::MetadataEncoder;
 
 #[derive(Default)]
 pub struct PrimitiveInfo {
@@ -22,7 +23,7 @@ pub fn write_gltf_glb<W: Write>(
     primitives: Primitives,
     num_features: usize,
     metadata_encoder: MetadataEncoder,
-) -> Result<(), crate::errors::SinkError> {
+) -> crate::errors::Result<()> {
     use nusamai_gltf::nusamai_gltf_json::*;
 
     // The buffer for the BIN part
@@ -56,7 +57,7 @@ pub fn write_gltf_glb<W: Write>(
             LittleEndian::write_u32_into(&[x, y, z, nx, ny, nz, u, v, feature_id], &mut buf);
             bin_content
                 .write_all(&buf)
-                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+                .map_err(crate::errors::Error::writer)?;
             vertices_count += 1;
         }
 
@@ -133,7 +134,7 @@ pub fn write_gltf_glb<W: Write>(
             for idx in &primitive.indices {
                 bin_content
                     .write_all(&idx.to_le_bytes())
-                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+                    .map_err(crate::errors::Error::writer)?;
                 indices_count += 1;
             }
 
@@ -209,9 +210,9 @@ pub fn write_gltf_glb<W: Write>(
         .into_iter()
         .map(|img| {
             img.to_gltf(&mut gltf_buffer_views, &mut bin_content)
-                .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+                .map_err(crate::errors::Error::writer)
         })
-        .collect::<Result<Vec<Image>, crate::errors::SinkError>>()?;
+        .collect::<Result<Vec<Image>, crate::errors::Error>>()?;
 
     let mut gltf_meshes = vec![];
     if !gltf_primitives.is_empty() {
@@ -287,7 +288,7 @@ pub fn write_gltf_glb<W: Write>(
         bin: Some(bin_content.into()),
     }
     .to_writer_with_alignment(writer, 8)
-    .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+    .map_err(crate::errors::Error::writer)?;
 
     Ok(())
 }

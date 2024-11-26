@@ -14,43 +14,14 @@ with:
   extractDmGeometryAsXmlFragment: false
   outputPath:
 graphs:
-  - !include ../../../graphs/attribute_reader.yml
   - !include ../../../graphs/folder_and_file_path_reader.yml
   - id: 49aefc85-168d-4190-b7e2-dc0d58ee44e3
     name: entry_point
     nodes:
       - id: d5fa7732-ef20-45ec-a331-e6d57571354b
-        name: AttributeReader
+        name: FolderAndfilePathReader
         type: subGraph
-        subGraphId: 64931277-3a82-4a1c-88bc-9b54fe172518
-
-      - id: e1a0388f-78a3-4aec-b3e1-d6ffc9065dc9
-        name: AttributeMapperFilePath
-        type: action
-        action: AttributeMapper
-        with:
-          mappers:
-            - attribute: code
-              valueAttribute: meshCode
-            - attribute: type
-              valueAttribute: package
-            - attribute: maxLod
-              valueAttribute: maxLod
-            - attribute: length
-              expr: |
-                env.get("__value")["package"].len()
-            - attribute: file
-              expr: |
-                file::extract_filename(env.get("__value").cityGmlPath)
-
-      - id: c8d0f9dd-8f3d-46e0-8608-dfa22801a3d2
-        name: FileWriterTsvFilePath
-        type: action
-        action: FileWriter
-        with:
-          format: tsv
-          output: |
-            file::join_path(env.get("outputPath"), "maxLod.tsv")
+        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
       - id: 254d6287-7649-4647-9ab5-0c1c423f356a
         name: FeatureReaderByCityGml
@@ -97,20 +68,10 @@ graphs:
              file::join_path(env.get("outputPath"), "ubld_lod1-4")
 
     edges:
-      - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
-        from: d5fa7732-ef20-45ec-a331-e6d57571354b
-        to: e1a0388f-78a3-4aec-b3e1-d6ffc9065dc9
-        fromPort: filePath
-        toPort: default
-      - id: 284b02d9-8051-4614-a03c-583274c700f8
-        from: e1a0388f-78a3-4aec-b3e1-d6ffc9065dc9
-        to: c8d0f9dd-8f3d-46e0-8608-dfa22801a3d2
-        fromPort: default
-        toPort: default
       - id: a4751655-5956-4e27-a976-e35f8914ad31
         from: d5fa7732-ef20-45ec-a331-e6d57571354b
         to: 254d6287-7649-4647-9ab5-0c1c423f356a
-        fromPort: filePath
+        fromPort: default
         toPort: default
       - id: 86ec56d6-cefb-48ca-a72d-0c57a33d198a
         from: 254d6287-7649-4647-9ab5-0c1c423f356a

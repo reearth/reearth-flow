@@ -1,17 +1,53 @@
-//! Material mangement
-
 use std::{hash::Hash, path::Path};
 
 use indexmap::IndexSet;
+use nusamai_citygml::Color;
 use nusamai_gltf::nusamai_gltf_json::{BufferView, MimeType};
 use serde::{Deserialize, Serialize};
 use url::Url;
+
+/// (CityGML's X3DMaterial)
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct X3DMaterial {
+    pub diffuse_color: Color,
+    pub specular_color: Color,
+    pub ambient_intensity: f64,
+}
+
+impl From<nusamai_plateau::models::appearance::X3DMaterial> for X3DMaterial {
+    fn from(src: nusamai_plateau::models::appearance::X3DMaterial) -> Self {
+        Self {
+            diffuse_color: src.diffuse_color.unwrap_or(Color::new(0.8, 0.8, 0.8)),
+            specular_color: src.specular_color.unwrap_or(Color::new(1., 1., 1.)),
+            ambient_intensity: src.ambient_intensity.unwrap_or(0.2),
+        }
+    }
+}
+
+impl From<nusamai_plateau::appearance::Material> for X3DMaterial {
+    fn from(src: nusamai_plateau::appearance::Material) -> Self {
+        Self {
+            diffuse_color: src.diffuse_color,
+            specular_color: src.specular_color,
+            ambient_intensity: src.ambient_intensity,
+        }
+    }
+}
+
+impl Default for X3DMaterial {
+    fn default() -> Self {
+        Self {
+            diffuse_color: Color::new(0.8, 0.8, 0.8),
+            specular_color: Color::new(1., 1., 1.),
+            ambient_intensity: 0.2,
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Clone, PartialEq, Deserialize)]
 pub struct Material {
     pub base_color: [f32; 4],
     pub base_texture: Option<Texture>,
-    // NOTE: Adjust the hash implementation if you add more fields
 }
 
 impl Eq for Material {}
@@ -20,6 +56,15 @@ impl Hash for Material {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.base_color.iter().for_each(|c| c.to_bits().hash(state));
         self.base_texture.hash(state);
+    }
+}
+
+impl Default for Material {
+    fn default() -> Self {
+        Self {
+            base_color: [1.0, 1.0, 1.0, 1.0],
+            base_texture: None,
+        }
     }
 }
 
@@ -93,6 +138,14 @@ impl Texture {
                 source: Some(image_index as u32),
                 ..Default::default()
             }
+        }
+    }
+}
+
+impl From<nusamai_plateau::appearance::Texture> for Texture {
+    fn from(texture: nusamai_plateau::appearance::Texture) -> Self {
+        Self {
+            uri: texture.image_url,
         }
     }
 }

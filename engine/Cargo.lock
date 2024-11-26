@@ -5624,6 +5624,7 @@ dependencies = [
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",
+ "reearth-flow-gltf",
  "reearth-flow-runtime",
  "reearth-flow-state",
  "reearth-flow-storage",
@@ -5681,7 +5682,6 @@ dependencies = [
 name = "reearth-flow-action-wasm-processor"
 version = "0.0.2"
 dependencies = [
- "bytes",
  "chrono",
  "itertools 0.13.0",
  "once_cell",
@@ -5835,6 +5835,34 @@ dependencies = [
  "serde_json",
  "strum_macros",
  "thiserror 2.0.3",
+]
+
+[[package]]
+name = "reearth-flow-gltf"
+version = "0.0.2"
+dependencies = [
+ "ahash 0.8.11",
+ "byteorder",
+ "chrono",
+ "indexmap 2.6.0",
+ "itertools 0.13.0",
+ "nusamai-citygml",
+ "nusamai-gltf",
+ "once_cell",
+ "reearth-flow-common",
+ "reearth-flow-eval-expr",
+ "reearth-flow-geometry",
+ "reearth-flow-runtime",
+ "reearth-flow-storage",
+ "reearth-flow-types",
+ "regex",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.3",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

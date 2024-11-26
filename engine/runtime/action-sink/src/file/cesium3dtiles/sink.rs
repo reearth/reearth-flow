@@ -27,27 +27,25 @@ use nusamai_citygml::schema::Schema;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::prelude::*;
 use reearth_flow_common::{
-    gltf::calculate_normal,
     texture::{apply_downsample_factor, get_texture_downsample_scale_of_polygon},
     uri::Uri,
 };
+use reearth_flow_gltf::calculate_normal;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
-use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::Expr;
 use reearth_flow_types::Feature;
+use reearth_flow_types::{geometry as geometry_types, material};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tempfile::tempdir;
 use url::Url;
 
-use super::gltf::write_gltf_glb;
 use super::tiling::{TileContent, TileTree};
 use super::{
-    gltf, material, metadata,
     slice::{slice_to_tiles, SlicedFeature},
     tiling,
 };
@@ -434,9 +432,9 @@ fn tile_writing_stage(
             };
 
             let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default(); // [x, y, z, u, v, feature_id]
-            let mut primitives: gltf::Primitives = Default::default();
+            let mut primitives: reearth_flow_gltf::Primitives = Default::default();
 
-            let mut metadata_encoder = metadata::MetadataEncoder::new(schema);
+            let mut metadata_encoder = reearth_flow_gltf::MetadataEncoder::new(schema);
 
             let packer = Mutex::new(AtlasPacker::default());
 
@@ -743,14 +741,15 @@ fn tile_writing_stage(
             let writer = BufWriter::new(&mut buffer);
             let content_path = content.content_path.clone();
             contents.lock().unwrap().push(content);
-            write_gltf_glb(
+            reearth_flow_gltf::write_gltf_glb(
                 writer,
                 translation,
                 vertices,
                 primitives,
                 features.len(),
                 metadata_encoder,
-            )?;
+            )
+            .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
             let storage = ctx
                 .storage_resolver
