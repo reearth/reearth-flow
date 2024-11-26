@@ -226,9 +226,24 @@ export class SocketYjsManager {
     const update = data.update instanceof ArrayBuffer
       ? new Uint8Array(data.update)
       : data.update;
+    
+    console.log("Received peer update:", {
+        updateLength: update.length,
+        rawUpdate: Array.from(update)
+    });
   
     const currentState = Y.encodeStateAsUpdateV2(this.doc);
+    console.log("Current state before diff:", {
+        stateLength: currentState.length,
+        rawState: Array.from(currentState)
+    });
+    
     const diffUpdate = Y.diffUpdateV2(update, currentState);
+    console.log("Diff update:", {
+        diffLength: diffUpdate.length,
+        rawDiff: Array.from(diffUpdate)
+    });
+    
     Y.applyUpdateV2(this.doc, diffUpdate, 'peer');
     this.onUpdateHandlers.forEach((handler) => handler(update));
   }
@@ -237,10 +252,24 @@ export class SocketYjsManager {
     await this.isReady();
 
     const currentState = Y.encodeStateAsUpdateV2(this.doc);
+    console.log("Current state:", {
+        stateLength: currentState.length,
+        rawState: Array.from(currentState)
+    });
+    
     const stateVector = Y.encodeStateVectorFromUpdateV2(currentState);
+    console.log("State vector:", {
+        vectorLength: stateVector.length,
+        rawVector: Array.from(stateVector)
+    });
     
     if (this.ws.readyState === WebSocket.OPEN) {
       const syncMessage = createBinaryMessage(MessageType.SYNC, stateVector);
+      console.log("Sending sync message:", {
+        messageLength: syncMessage.length,
+        messageType: syncMessage[0],
+        rawMessage: Array.from(syncMessage)
+      });
       this.ws.send(syncMessage);
     }
 
@@ -276,7 +305,21 @@ export class SocketYjsManager {
 
   protected onDocUpdate(update: Uint8Array, origin: unknown) {
     if (origin === this.doc.clientID && this.ws.readyState === WebSocket.OPEN) {
+      console.log("Sending doc update:", {
+        type: "UPDATE",
+        updateLength: update.length,
+        rawUpdate: Array.from(update), // 转换为普通数组以便查看
+        origin,
+        clientId: this.doc.clientID
+      });
+      
       const updateMessage = createBinaryMessage(MessageType.UPDATE, update);
+      console.log("Final binary message:", {
+        messageLength: updateMessage.length,
+        messageType: updateMessage[0],
+        rawMessage: Array.from(updateMessage)
+      });
+      
       this.ws.send(updateMessage);
     }
   }
@@ -331,8 +374,21 @@ export class SocketYjsManager {
 }
 
 function createBinaryMessage(type: MessageType, data: Uint8Array): Uint8Array {
-  const message = new Uint8Array(data.length + 1);
-  message[0] = type;
-  message.set(data, 1);
-  return message;
+    console.log("Creating binary message:", {
+        type,
+        dataLength: data.length,
+        rawData: Array.from(data)
+    });
+    
+    const message = new Uint8Array(data.length + 1);
+    message[0] = type;
+    message.set(data, 1);
+    
+    console.log("Created message:", {
+        messageLength: message.length,
+        messageType: message[0],
+        rawMessage: Array.from(message)
+    });
+    
+    return message;
 }
