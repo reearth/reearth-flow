@@ -1,6 +1,6 @@
 [package]
-description = "Re:Earth Flow Action Processor"
-name = "reearth-flow-action-processor"
+description = "Re:Earth Flow GLTF library"
+name = "reearth-flow-gltf"
 
 authors.workspace = true
 edition.workspace = true
@@ -11,42 +11,27 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-reearth-flow-action-log.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
 reearth-flow-geometry.workspace = true
 reearth-flow-runtime.workspace = true
-reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
 nusamai-citygml.workspace = true
-nusamai-plateau.workspace = true
-nusamai-projection.workspace = true
+nusamai-gltf.workspace = true
 
-Inflector.workspace = true
-approx.workspace = true
-async-trait.workspace = true
+ahash.workspace = true
+byteorder.workspace = true
 chrono.workspace = true
-csv.workspace = true
+indexmap.workspace = true
 itertools.workspace = true
-num-traits.workspace = true
 once_cell.workspace = true
-parking_lot.workspace = true
-petgraph.workspace = true
-quick-xml.workspace = true
-rayon.workspace = true
 regex.workspace = true
-rhai.workspace = true
-rstar.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-url.workspace = true
-uuid.workspace = true
-
-[dev-dependencies]
-bytes.workspace = true

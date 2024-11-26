@@ -8,7 +8,7 @@ use crate::channels::ProcessorChannelForwarder;
 use crate::errors::ExecutionError;
 use crate::event::{Event, EventHub};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
-use crate::feature_store::FeatureWriter;
+use crate::feature_store::{FeatureWriter, FeatureWriterKey};
 use crate::node::{NodeHandle, Port};
 
 #[derive(Debug)]
@@ -40,7 +40,7 @@ impl SenderWithPortMapping {
 #[derive(Debug)]
 pub struct ChannelManager {
     owner: NodeHandle,
-    feature_writers: HashMap<Port, Box<dyn FeatureWriter>>,
+    feature_writers: HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>,
     senders: Vec<SenderWithPortMapping>,
     runtime: Arc<Handle>,
     event_hub: EventHub,
@@ -49,18 +49,41 @@ pub struct ChannelManager {
 impl ChannelManager {
     #[inline]
     pub fn send_op(&mut self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
-        if let Some(writer) = self.feature_writers.get(&ctx.port) {
-            let edge_id = writer.edge_id();
-            let feature_id = ctx.feature.id;
-            let mut writer = writer.clone();
-            let feature = ctx.feature.clone();
-            self.runtime.spawn(async move {
-                let _ = writer.write(&feature).await;
-            });
-            self.event_hub.send(Event::EdgePassThrough {
-                feature_id,
-                edge_id,
-            });
+        let sender_ports: HashMap<Port, Vec<Port>> = {
+            let mut sender_port = HashMap::new();
+            for sender in &self.senders {
+                for (port, ports) in &sender.port_mapping {
+                    sender_port.entry(port.clone()).or_insert_with(Vec::new);
+                    sender_port.get_mut(port).unwrap().extend(ports.clone());
+                }
+            }
+            sender_port
+        };
+        if let Some(sender_ports) = sender_ports.get(&ctx.port) {
+            for port in sender_ports {
+                if let Some(writers) = self
+                    .feature_writers
+                    .get(&FeatureWriterKey(ctx.port.clone(), port.clone()))
+                {
+                    for writer in writers {
+                        let edge_id = writer.edge_id();
+                        let feature_id = ctx.feature.id;
+                        let mut writer = writer.clone();
+                        let feature = ctx.feature.clone();
+                        let event_hub = self.event_hub.clone();
+                        self.runtime.spawn(async move {
+                            let result = writer.write(&feature).await;
+                            if let Err(e) = result {
+                                event_hub.error_log(None, format!("Failed to write feature: {e}"));
+                            }
+                        });
+                        self.event_hub.send(Event::EdgePassThrough {
+                            feature_id,
+                            edge_id,
+                        });
+                    }
+                }
+            }
         }
 
         if let Some((last_sender, senders)) = self.senders.split_last() {
@@ -83,9 +106,14 @@ impl ChannelManager {
     }
 
     pub fn send_terminate(&self, ctx: NodeContext) -> Result<(), ExecutionError> {
-        let writers = self.feature_writers.values().cloned().collect::<Vec<_>>();
+        let all_writers = self
+            .feature_writers
+            .values()
+            .flatten()
+            .cloned()
+            .collect::<Vec<_>>();
         self.runtime.block_on(async {
-            for writer in writers {
+            for writer in all_writers {
                 let result = writer.flush().await;
                 if let Err(e) = result {
                     self.event_hub
@@ -102,7 +130,7 @@ impl ChannelManager {
 
     pub fn new(
         owner: NodeHandle,
-        feature_writers: HashMap<Port, Box<dyn FeatureWriter>>,
+        feature_writers: HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>,
         senders: Vec<SenderWithPortMapping>,
         runtime: Arc<Handle>,
         event_hub: EventHub,

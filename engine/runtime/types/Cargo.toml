@@ -17,6 +17,7 @@ reearth-flow-geometry.workspace = true
 
 flatgeom.workspace = true
 nusamai-citygml.workspace = true
+nusamai-gltf.workspace = true
 nusamai-plateau.workspace = true
 nusamai-projection.workspace = true
 
@@ -30,7 +31,6 @@ hashbrown.workspace = true
 image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
-nusamai-gltf.workspace = true
 nutype.workspace = true
 once_cell.workspace = true
 rhai.workspace = true
