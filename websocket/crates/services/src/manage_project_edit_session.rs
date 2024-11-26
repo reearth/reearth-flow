@@ -98,8 +98,8 @@ where
                     self.handle_session_start(&project_id, user).await?;
                     Ok(None)
                 }
-                SessionCommand::End { project_id, user } => {
-                    self.handle_session_end(&project_id, user).await?;
+                SessionCommand::End { project_id } => {
+                    self.handle_session_end(&project_id).await?;
                     Ok(None)
                 }
                 SessionCommand::Complete { project_id, user } => {
@@ -240,11 +240,7 @@ where
         Ok(())
     }
 
-    async fn handle_session_end(
-        &self,
-        project_id: &str,
-        _user: User,
-    ) -> Result<(), ProjectServiceError> {
+    async fn handle_session_end(&self, project_id: &str) -> Result<(), ProjectServiceError> {
         if let Some(task_data) = self.get_task_data(project_id).await {
             self.update_client_count(&task_data, false).await;
 

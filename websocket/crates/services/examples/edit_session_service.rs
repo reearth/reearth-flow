@@ -172,7 +172,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // End session
     tx.send(SessionCommand::End {
         project_id: project_id.clone(),
-        user: test_user.clone(),
     })?;
 
     info!("Removing task");

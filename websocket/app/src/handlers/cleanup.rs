@@ -29,7 +29,6 @@ pub fn perform_cleanup(
             if let Some(project_id) = project_id {
                 if let Err(e) = state.command_tx.send(SessionCommand::End {
                     project_id: project_id.clone(),
-                    user: user.clone(),
                 }) {
                     debug!("Failed to send End command: {:?}", e);
                 }

@@ -51,6 +51,7 @@ pub enum SessionCommand {
     ListAllSnapshotsVersions {
         project_id: String,
     },
+    #[warn(dead_code)]
     MergeUpdates {
         project_id: String,
         data: Vec<u8>,

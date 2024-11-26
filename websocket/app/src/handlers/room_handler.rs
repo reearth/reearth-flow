@@ -51,10 +51,7 @@ pub async fn handle_session_command(
         SessionCommand::End { .. } => {
             if let Some(pid) = project_id.clone() {
                 *project_id = None;
-                SessionCommand::End {
-                    project_id: pid,
-                    user: user.clone(),
-                }
+                SessionCommand::End { project_id: pid }
             } else {
                 return Ok(());
             }

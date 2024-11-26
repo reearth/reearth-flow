@@ -13,7 +13,6 @@ pub enum SessionCommand {
     },
     End {
         project_id: String,
-        user: User,
     },
     Complete {
         project_id: String,
