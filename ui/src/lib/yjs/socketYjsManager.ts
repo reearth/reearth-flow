@@ -2,7 +2,7 @@ import * as Y from "yjs";
 
 import { sleep } from "../utils";
 
-import { createBinaryMessage, MessageType, type FlowMessage } from "./types";
+import { MessageType, type FlowMessage } from "./types";
 
 export type AccessTokenProvider = () => Promise<string> | string;
 
@@ -247,10 +247,7 @@ export class SocketYjsManager {
 
   protected onDocUpdate(update: Uint8Array, origin: unknown) {
     if (origin === this.doc.clientID && this.ws.readyState === WebSocket.OPEN) {
-      const stateVector = Y.encodeStateVectorFromUpdateV2(update);
-      const diffUpdate = Y.diffUpdateV2(update, stateVector);
-      
-      const updateMessage = createBinaryMessage(MessageType.UPDATE, diffUpdate);
+      const updateMessage = createBinaryMessage(MessageType.UPDATE, update);
       this.ws.send(updateMessage);
     }
   }
@@ -280,4 +277,11 @@ export class SocketYjsManager {
     }
     this.doc.destroy();
   }
+}
+
+function createBinaryMessage(type: MessageType, data: Uint8Array): Uint8Array {
+  const message = new Uint8Array(data.length + 1);
+  message[0] = type;
+  message.set(data, 1);
+  return message;
 }
