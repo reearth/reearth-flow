@@ -1,7 +1,8 @@
 use flow_websocket_infra::types::user::User;
-use flow_websocket_services::SessionCommand;
+use flow_websocket_services::{ProjectServiceError, SessionCommand};
 
-use crate::{errors::WsError, state::AppState};
+use crate::errors::RoomError;
+use crate::state::AppState;
 use std::sync::Arc;
 
 use super::socket_handler::ConnectionState;
@@ -12,7 +13,7 @@ pub async fn handle_room_event(
     room_id: &str,
     state: &Arc<AppState>,
     user: &User,
-) -> Result<(), WsError> {
+) -> Result<(), RoomError> {
     match event {
         Event::Create { room_id } => {
             state.make_room(room_id.clone()).await?;
@@ -35,7 +36,7 @@ pub async fn handle_session_command(
     conn_state: &ConnectionState,
     user: &User,
     state: &Arc<AppState>,
-) -> Result<Option<Vec<u8>>, WsError> {
+) -> Result<Option<Vec<u8>>, ProjectServiceError> {
     let mut project_id = conn_state.current_project_id.lock().await;
 
     let command = match command {

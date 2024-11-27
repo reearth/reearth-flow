@@ -1,5 +1,5 @@
 use super::room::Room;
-use crate::errors::WsError;
+use crate::errors::{AppStateError, RoomError};
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
 use flow_websocket_infra::persistence::project_repository::ProjectRedisRepository;
@@ -44,7 +44,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub async fn new(redis_url: String) -> Result<Self, WsError> {
+    pub async fn new(redis_url: String) -> Result<Self, AppStateError> {
         // Initialize Redis connection pool
         let manager = RedisConnectionManager::new(&*redis_url)?;
         let redis_pool = Pool::builder().build(manager).await?;
@@ -111,18 +111,18 @@ impl AppState {
     }
 
     /// Adds a user to a specific room
-    pub async fn join(&self, room_id: &str, user_id: &str) -> Result<(), WsError> {
+    pub async fn join(&self, room_id: &str, user_id: &str) -> Result<(), RoomError> {
         let mut rooms = self.rooms.try_lock()?;
         let room = rooms
             .get_mut(room_id)
-            .ok_or_else(|| WsError::RoomNotFound(room_id.to_string()))?;
+            .ok_or(RoomError::RoomNotFound(room_id.to_string()))?;
         room.join(user_id.to_string()).await?;
         debug!("User {} joined room {}", user_id, room_id);
         Ok(())
     }
 
     /// Removes a user from a specific room
-    pub async fn leave(&self, room_id: &str, user_id: &str) -> Result<(), WsError> {
+    pub async fn leave(&self, room_id: &str, user_id: &str) -> Result<(), RoomError> {
         if let Ok(mut rooms) = self.rooms.try_lock() {
             if let Some(room) = rooms.get_mut(room_id) {
                 room.leave(user_id.to_string()).await?;
@@ -150,7 +150,7 @@ impl AppState {
     }
 
     /// Handles room timeout by cleaning up
-    pub async fn cleanup_rooms(&self, reason: &str) -> Result<(), WsError> {
+    pub async fn cleanup_rooms(&self, reason: &str) -> Result<(), RoomError> {
         debug!("Cleaning up rooms due to {}", reason);
         let mut rooms = self.rooms.try_lock()?;
         rooms.clear();

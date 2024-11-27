@@ -1,7 +1,7 @@
-use crate::{errors::WsError, state::AppState};
+use crate::{errors::MessageHandlerError, state::AppState};
 use axum::extract::ws::Message;
 use flow_websocket_infra::types::user::User;
-use flow_websocket_services::SessionCommand;
+use flow_websocket_services::{ProjectServiceError, SessionCommand};
 use std::{net::SocketAddr, sync::Arc};
 use tracing::debug;
 
@@ -18,7 +18,7 @@ pub async fn handle_message(
     conn_state: &ConnectionState,
     state: Arc<AppState>,
     user: User,
-) -> Result<(), WsError> {
+) -> Result<(), MessageHandlerError> {
     match msg {
         Message::Text(t) => {
             let msg: FlowMessage = serde_json::from_str(&t)?;
@@ -59,7 +59,7 @@ async fn process_binary_message(
     conn_state: &ConnectionState,
     user: &User,
     state: &Arc<AppState>,
-) -> Result<Option<Message>, WsError> {
+) -> Result<Option<Message>, ProjectServiceError> {
     if let Some((msg_type, payload)) = parse_message(&data) {
         let project_id = conn_state.current_project_id.lock().await.clone();
         if let Some(pid) = project_id {

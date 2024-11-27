@@ -1,4 +1,3 @@
-use crate::errors::WsError;
 use crate::handlers::message_handler::handle_message;
 use crate::state::AppState;
 use axum::extract::ws::{Message, WebSocket};
@@ -23,7 +22,7 @@ pub struct ConnectionState {
 }
 
 impl ConnectionState {
-    pub async fn send_message(&self, message: Message) -> Result<(), WsError> {
+    pub async fn send_message(&self, message: Message) -> Result<(), axum::Error> {
         let mut sender = self.sender.lock().await;
         sender.send(message).await?;
         Ok(())

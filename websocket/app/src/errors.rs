@@ -1,47 +1,48 @@
-use flow_websocket_infra::persistence::{
-    gcs::gcs_client::GcsError, redis::errors::FlowProjectRedisDataManagerError,
-};
-use flow_websocket_services::SessionCommand;
 use thiserror::Error;
 use tokio::sync::broadcast;
 
-#[derive(Debug, Error)]
-pub enum WsError {
-    #[error("Room not found: {0}")]
-    RoomNotFound(String),
-    #[error("Failed to join room: {0}")]
-    JoinError(String),
+#[derive(Error, Debug)]
+pub enum RoomError {
+    #[error("User {0} already exists in the room")]
+    UserAlreadyExists(String),
+    #[error("User {0} not found in the room")]
+    UserNotFound(String),
+    #[error("Failed to broadcast message: {0}")]
+    BroadcastError(#[from] broadcast::error::SendError<String>),
     #[error(transparent)]
     LockError(#[from] tokio::sync::TryLockError),
-    #[error(transparent)]
-    BroadcastError(#[from] tokio::sync::broadcast::error::SendError<String>),
-    #[error(transparent)]
-    BroadcastSessionError(#[from] broadcast::error::SendError<SessionCommand>),
-    #[error("JSON parsing error: {0}")]
-    JsonError(#[from] serde_json::Error),
+    #[error("Room not found: {0}")]
+    RoomNotFound(String),
+}
+
+#[derive(Error, Debug)]
+pub enum AppStateError {
     #[error(transparent)]
     Redis(#[from] redis::RedisError),
     #[error(transparent)]
-    UpdateDecode(#[from] yrs::encoding::read::Error),
+    LockError(#[from] tokio::sync::TryLockError),
     #[error(transparent)]
-    AwarenessUpdate(#[from] yrs::sync::awareness::Error),
-    #[error(transparent)]
-    MpscSendError(#[from] tokio::sync::mpsc::error::SendError<SessionCommand>),
-    #[error(transparent)]
-    Pool(#[from] FlowProjectRedisDataManagerError),
+    Gcs(#[from] flow_websocket_infra::persistence::gcs::gcs_client::GcsError),
     #[cfg(feature = "local-storage")]
     #[error(transparent)]
     LocalStorage(#[from] flow_websocket_infra::persistence::local_storage::LocalStorageError),
     #[cfg(feature = "local-storage")]
     #[error(transparent)]
     Io(#[from] std::io::Error),
-    #[cfg(feature = "gcs-storage")]
     #[error(transparent)]
-    GcsStorage(#[from] GcsError),
+    RedisDataManager(
+        #[from] flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError,
+    ),
+}
+
+#[derive(Error, Debug)]
+pub enum MessageHandlerError {
     #[error(transparent)]
-    Room(#[from] crate::room::RoomError),
+    Json(#[from] serde_json::Error),
+    #[error(transparent)]
+    ProjectService(#[from] flow_websocket_services::ProjectServiceError),
     #[error(transparent)]
     Axum(#[from] axum::Error),
     #[error(transparent)]
-    SessionService(#[from] flow_websocket_services::ProjectServiceError),
+    Room(#[from] RoomError),
 }
