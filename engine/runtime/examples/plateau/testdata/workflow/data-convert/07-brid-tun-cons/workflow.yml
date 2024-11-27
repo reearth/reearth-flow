@@ -103,15 +103,13 @@ graphs:
           reprojectorType: jgd2011ToWgs84
 
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
-        name: Cesium3DTilesWriterByBrid
+        name: GltfWriterByBrid
         type: action
-        action: Cesium3DTilesWriter
+        action: GltfWriter
         with:
-          minZoom: 15
-          maxZoom: 18
           attachTexture: true
           output: |
-             file::join_path(env.get("outputPath"), "brid_lod0-3")
+             file::join_path(env.get("outputPath"), "brid")
 
     edges:
       - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
