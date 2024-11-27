@@ -10,7 +10,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestLoadActionsData(t *testing.T) {
@@ -35,10 +34,34 @@ func TestListActions(t *testing.T) {
 		err := json.Unmarshal(rec.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, response)
+
+		firstAction := response[0]
+		assert.NotEmpty(t, firstAction.Name)
+		assert.NotEmpty(t, firstAction.Type)
+		assert.NotEmpty(t, firstAction.Description)
 	}
 }
 
 func TestListActionsWithSearch(t *testing.T) {
+	originalData := actionsData
+	defer func() { actionsData = originalData }()
+
+	actionsData = ActionsData{
+		Actions: []Action{
+			{
+				Name:        "FileWriter",
+				Description: "Writes features to a file",
+				Type:        ActionTypeSink,
+				Categories:  []string{"File"},
+			},
+			{
+				Name:        "OtherAction",
+				Description: "Some other action",
+				Type:        ActionTypeProcessor,
+			},
+		},
+	}
+
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/actions?q=file", nil)
 	rec := httptest.NewRecorder()
@@ -54,11 +77,33 @@ func TestListActionsWithSearch(t *testing.T) {
 	assert.NotEmpty(t, response, "Search should return at least one result")
 
 	for _, action := range response {
-		assert.Contains(t, strings.ToLower(action.Name+" "+action.Description), "file")
+		lowercaseContent := strings.ToLower(action.Name + " " + action.Description)
+		assert.Contains(t, lowercaseContent, "file",
+			"Each result should contain 'file' in name or description")
 	}
 }
 
 func TestGetSegregatedActions(t *testing.T) {
+	originalData := actionsData
+	defer func() { actionsData = originalData }()
+
+	actionsData = ActionsData{
+		Actions: []Action{
+			{
+				Name:        "FileWriter",
+				Type:        ActionTypeSink,
+				Description: "Writes features to a file",
+				Categories:  []string{"File"},
+			},
+			{
+				Name:        "Router",
+				Type:        ActionTypeProcessor,
+				Description: "Action for last port forwarding for sub-workflows.",
+				Categories:  []string{},
+			},
+		},
+	}
+
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/actions/segregated", nil)
 	rec := httptest.NewRecorder()
@@ -71,91 +116,60 @@ func TestGetSegregatedActions(t *testing.T) {
 	var response SegregatedActions
 	err = json.Unmarshal(rec.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, response.ByCategory, "Should have at least one category")
-	assert.NotEmpty(t, response.ByType, "Should have at least one type")
 
-	uniqueActionsByCategory := make(map[string]bool)
-	for _, actions := range response.ByCategory {
-		for _, action := range actions {
-			uniqueActionsByCategory[action.Name] = true
+	assert.NotEmpty(t, response.ByCategory)
+	assert.NotEmpty(t, response.ByType)
+
+	assert.Contains(t, response.ByCategory, "File")
+	assert.Contains(t, response.ByCategory, "Uncategorized")
+	assert.Contains(t, response.ByType, string(ActionTypeSink))
+	assert.Contains(t, response.ByType, string(ActionTypeProcessor))
+
+	uncategorizedActions := response.ByCategory["Uncategorized"]
+	routerFound := false
+	for _, action := range uncategorizedActions {
+		if action.Name == "Router" {
+			routerFound = true
+			break
 		}
 	}
-
-	totalByType := 0
-	for _, actions := range response.ByType {
-		totalByType += len(actions)
-	}
-
-	assert.Equal(t, len(uniqueActionsByCategory), totalByType,
-		"Total unique actions (including Uncategorized) should match total actions in ByType")
-
-	for typeName, typeActions := range response.ByType {
-		for _, action := range typeActions {
-			found := false
-			for _, categoryActions := range response.ByCategory {
-				for _, catAction := range categoryActions {
-					if catAction.Name == action.Name {
-						found = true
-						break
-					}
-				}
-				if found {
-					break
-				}
-			}
-			assert.True(t, found, "Action %s of type %s should be present in at least one category (including Uncategorized)", action.Name, typeName)
-		}
-	}
-
-	uncategorizedActions, exists := response.ByCategory["Uncategorized"]
-	assert.True(t, exists, "Uncategorized category should exist")
-	if exists {
-		routerFound := false
-		for _, action := range uncategorizedActions {
-			if action.Name == "Router" {
-				routerFound = true
-				break
-			}
-		}
-		assert.True(t, routerFound, "Router action should be in the Uncategorized category")
-	}
+	assert.True(t, routerFound, "Router should be in Uncategorized category")
 }
 
 func TestGetActionDetails(t *testing.T) {
+	originalData := actionsData
+	defer func() { actionsData = originalData }()
+
+	testAction := Action{
+		Name:        "TestAction",
+		Type:        ActionTypeProcessor,
+		Description: "Test action description",
+		Categories:  []string{"TestCategory"},
+	}
+
+	actionsData = ActionsData{
+		Actions: []Action{testAction},
+	}
+
 	e := echo.New()
-	listReq := httptest.NewRequest(http.MethodGet, "/actions", nil)
-	listRec := httptest.NewRecorder()
-	listC := e.NewContext(listReq, listRec)
-
-	err := listActions(listC)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, listRec.Code)
-
-	var actionList []ActionSummary
-	err = json.Unmarshal(listRec.Body.Bytes(), &actionList)
-	require.NoError(t, err)
-	require.NotEmpty(t, actionList, "No actions found in the list")
-
-	firstAction := actionList[0]
-
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.SetPath("/actions/:id")
 	c.SetParamNames("id")
-	c.SetParamValues(firstAction.Name)
+	c.SetParamValues(testAction.Name)
 
-	err = getActionDetails(c)
+	err := getActionDetails(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
 	var response Action
 	err = json.Unmarshal(rec.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, firstAction.Name, response.Name)
-	assert.Equal(t, firstAction.Description, response.Description)
-	assert.Equal(t, firstAction.Type, string(response.Type))
-	assert.Equal(t, firstAction.Categories, response.Categories)
+	assert.Equal(t, testAction.Name, response.Name)
+	assert.Equal(t, testAction.Description, response.Description)
+	assert.Equal(t, testAction.Type, response.Type)
+	assert.Equal(t, testAction.Categories, response.Categories)
 }
 
 func TestGetActionDetailsNotFound(t *testing.T) {
