@@ -7,5 +7,7 @@
   "devMode": "${FLOW_DEV_MODE}",
   "documentationUrl": "${FLOW_DOCUMENTATION_URL}",
   "tosUrl": "${FLOW_TOS_URL}",
-  "version": "${FLOW_VERSION}"
+  "version": "${FLOW_VERSION}",
+  "websocket": "${FLOW_WEBSOCKET}",
+  "websocketToken": "${FLOW_WEBSOCKET_TOKEN}",
 }
