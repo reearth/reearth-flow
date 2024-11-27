@@ -110,6 +110,12 @@ impl Coordinate3D<f64> {
         self.y = y;
         self.z = z;
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        self.x += x;
+        self.y += y;
+        self.z += z;
+    }
 }
 
 impl<T: CoordNum, Z: CoordNum> From<Point<T, Z>> for Coordinate<T, Z> {

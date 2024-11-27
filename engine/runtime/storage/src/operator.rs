@@ -30,10 +30,10 @@ pub(crate) fn build_operator<B: Builder>(builder: B) -> Result<Operator> {
             TimeoutLayer::new()
                 // Return timeout error if the operation failed to finish in
                 // 10s
-                .with_timeout(Duration::from_secs(10))
+                .with_timeout(Duration::from_secs(30))
                 // Return timeout error if the operation failed to finish in
                 // 5s
-                .with_io_timeout(Duration::from_secs(5)),
+                .with_io_timeout(Duration::from_secs(20)),
         )
         // Add retry
         .layer(RetryLayer::new().with_jitter())

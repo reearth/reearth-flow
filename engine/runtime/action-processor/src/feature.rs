@@ -8,3 +8,4 @@ pub(crate) mod reader;
 pub(crate) mod rhai;
 pub(crate) mod sorter;
 pub(crate) mod transformer;
+pub(crate) mod type_filter;

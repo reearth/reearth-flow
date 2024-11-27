@@ -99,6 +99,10 @@ pub(super) enum GeometryProcessorError {
     GeometryLodFilterFactory(String),
     #[error("GeometryLodFilter error: {0}")]
     GeometryLodFilter(String),
+    #[error("Offsetter Factory error: {0}")]
+    OffsetterFactory(String),
+    #[error("Offsetter error: {0}")]
+    Offsetter(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

@@ -220,6 +220,13 @@ impl Polygon3D<f64> {
             interior.transform_inplace(jgd2wgs);
         }
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        self.exterior.transform_offset(x, y, z);
+        for interior in &mut self.interiors {
+            interior.transform_offset(x, y, z);
+        }
+    }
 }
 
 pub fn validate_self_intersection<T: GeoFloat, Z: GeoFloat>(polygon: &Polygon<T, Z>) -> Validation {
