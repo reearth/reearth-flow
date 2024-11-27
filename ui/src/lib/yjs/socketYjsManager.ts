@@ -111,7 +111,7 @@ export class SocketYjsManager {
   }
 
   private setupDocListeners() {
-    this.doc.on("update", this.onDocUpdate);
+    this.doc.on("updateV2", this.onDocUpdate);
   }
 
   protected onConnectionEstablished() {
@@ -305,6 +305,7 @@ export class SocketYjsManager {
 
   protected onDocUpdate(update: Uint8Array, origin: unknown) {
     if (origin === this.doc.clientID && this.ws.readyState === WebSocket.OPEN) {
+      console.log("Received doc update from self doc:", this.doc);
         console.log("Received doc update:", {
             updateLength: update.length,
             rawUpdate: Array.from(update)
@@ -314,6 +315,9 @@ export class SocketYjsManager {
         console.log("Sending update message:", {
             messageLength: updateMessage.length,
             messageType: updateMessage[0]
+        });
+        console.log("Raw update message:", {
+          rawMessage: Array.from(updateMessage)
         });
         
         this.ws.send(updateMessage);
