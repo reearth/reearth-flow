@@ -23,13 +23,13 @@ Available environments:
 [source,bash]
 ----
 # Test environment
-export APP_ENV="test" && cargo run --features local-storage main.rs
+export APP_ENV="test" && cargo run --features local-storage 
 
 # Development environment
-export APP_ENV="development" && cargo run --features local-storage main.rs
+export APP_ENV="development" && cargo run --features local-storage 
 
 # Production environment
-export APP_ENV="production" && cargo run --features local-storage main.rs
+export APP_ENV="production" && cargo run --features local-storage 
 ----
 
 NOTE: Make sure to set the appropriate environment variable before running the application.

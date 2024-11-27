@@ -1,12 +1,12 @@
 development:
   host: "127.0.0.1"
-  port: 8080
+  port: 8081
   redis_url: "redis://localhost:6379/0"
   environment: "development"
 
 test:
   host: "127.0.0.1"
-  port: 8080
+  port: 8081
   redis_url: "redis://:my_redis_password@localhost:6379/0"
   environment: "test"
 

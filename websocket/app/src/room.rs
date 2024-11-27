@@ -2,18 +2,9 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use yrs::Doc;
 
-use thiserror::Error;
 use tokio::sync::{broadcast, Mutex};
 
-#[derive(Error, Debug)]
-pub enum RoomError {
-    #[error("User {0} already exists in the room")]
-    UserAlreadyExists(String),
-    #[error("User {0} not found in the room")]
-    UserNotFound(String),
-    #[error("Failed to broadcast message: {0}")]
-    BroadcastError(#[from] broadcast::error::SendError<String>),
-}
+use crate::errors::RoomError;
 
 pub struct Room {
     users: Arc<Mutex<HashSet<String>>>,

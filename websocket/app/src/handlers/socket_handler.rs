@@ -1,4 +1,3 @@
-use crate::errors::WsError;
 use crate::handlers::message_handler::handle_message;
 use crate::state::AppState;
 use axum::extract::ws::{Message, WebSocket};
@@ -23,7 +22,7 @@ pub struct ConnectionState {
 }
 
 impl ConnectionState {
-    pub async fn send_message(&self, message: Message) -> Result<(), WsError> {
+    pub async fn send_message(&self, message: Message) -> Result<(), axum::Error> {
         let mut sender = self.sender.lock().await;
         sender.send(message).await?;
         Ok(())
@@ -73,7 +72,7 @@ pub async fn handle_socket(
         let cleanup_tx = cleanup_tx.clone();
         let current_project_id = current_project_id.clone();
 
-        Arc::new(move || {
+        move || {
             let is_cleaning_up = is_cleaning_up.clone();
             let room_id = room_id.clone();
             let user = user.clone();
@@ -84,12 +83,14 @@ pub async fn handle_socket(
             tokio::spawn(async move {
                 let mut project_id_lock = current_project_id.lock().await;
                 let project_id = project_id_lock.take();
-                perform_cleanup(is_cleaning_up, room_id, user, project_id, state, cleanup_tx);
+                let cleanup_fn =
+                    perform_cleanup(is_cleaning_up, room_id, user, project_id, state, cleanup_tx);
+                cleanup_fn();
             });
-        }) as Arc<dyn Fn() + Send + Sync>
+        }
     };
 
-    let heartbeat_task = start_heartbeat(sender, addr, move || cleanup());
+    let heartbeat_task = start_heartbeat(sender, addr, cleanup);
 
     while let Some(msg) = receiver.next().await {
         match msg {

@@ -87,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auth_token = "nyaan";
 
     let url = Url::parse(&format!(
-        "ws://127.0.0.1:8080/{room_id}?user_id={user_id}&token={token}",
+        "ws://127.0.0.1:8081/{room_id}?user_id={user_id}&token={token}",
         room_id = room_id,
         user_id = user_id,
         token = auth_token
@@ -235,6 +235,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
     info!("CheckStatus command sent");
+
+    let doc = Doc::new();
+
+    let state_vector = {
+        let txn = doc.transact();
+        let state_vector = txn.state_vector();
+        let encode = state_vector.encode_v2();
+        create_binary_message(MessageType::Sync, encode)
+    };
+
+    write.send(Message::Binary(state_vector)).await?;
 
     send_command(
         &mut write,
