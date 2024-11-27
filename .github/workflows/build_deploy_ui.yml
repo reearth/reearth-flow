@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
     env:
-      IMAGE_NAME: reearth/reearth-flow-ui
+      IMAGE_NAME: reearth/reearth-flow-web
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -115,10 +115,10 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.name == 'nightly' }}
     env:
-      IMAGE: reearth/reearth-flow-ui:nightly
-      IMAGE_GCP: us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-ui:nightly
+      IMAGE: reearth/reearth-flow-web:nightly
+      IMAGE_GCP: us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-web:nightly
       GCP_REGION: us-central1
-      CLOUD_RUN_SERVICE: reearth-flow-ui
+      CLOUD_RUN_SERVICE: reearth-flow-web
     steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
