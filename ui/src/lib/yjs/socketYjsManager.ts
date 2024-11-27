@@ -247,10 +247,11 @@ export class SocketYjsManager {
     Y.applyUpdateV2(this.doc, diffUpdate, 'peer');
     this.onUpdateHandlers.forEach((handler) => handler(update));
   }
+
   async syncData() {
     await this.isReady();
 
-    const stateVector = Y.encodeStateAsUpdateV2(this.doc);
+    const stateVector = Y.encodeStateVector(this.doc);
     console.log("State vector:", {
         vectorLength: stateVector.length,
         rawVector: Array.from(stateVector)
