@@ -9,5 +9,5 @@
   "tosUrl": "${FLOW_TOS_URL}",
   "version": "${FLOW_VERSION}",
   "websocket": "${FLOW_WEBSOCKET}",
-  "websocketToken": "${FLOW_WEBSOCKET_TOKEN}",
+  "websocketToken": "${FLOW_WEBSOCKET_TOKEN}"
 }
