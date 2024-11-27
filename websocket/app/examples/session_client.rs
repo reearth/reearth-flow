@@ -87,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auth_token = "nyaan";
 
     let url = Url::parse(&format!(
-        "ws://127.0.0.1:8080/{room_id}?user_id={user_id}&token={token}",
+        "ws://127.0.0.1:8081/{room_id}?user_id={user_id}&token={token}",
         room_id = room_id,
         user_id = user_id,
         token = auth_token

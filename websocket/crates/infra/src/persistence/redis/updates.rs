@@ -114,19 +114,26 @@ impl UpdateManager {
         let optimized_merged_state = tokio::task::spawn_blocking(
             move || -> Result<Vec<u8>, FlowProjectRedisDataManagerError> {
                 let doc = Doc::new();
+
                 let mut txn = doc.transact_mut();
+                debug!("Initial transaction: {:?}", txn.state_vector());
 
                 if let Some(redis_update) = redis_data {
                     txn.apply_update(Update::decode_v2(&redis_update)?)?;
                 }
-
+                let state_vector = txn.state_vector();
                 if let Some((updates, _)) = stream_updates {
                     for update in updates {
+                        debug!("Applying stream update: {:?}", update);
+                        debug!("Decoded update: {:?}", Update::decode_v2(&update));
+                        debug!("Encoded update: {:?}", update.len());
+                        debug!("--------------------------------");
                         txn.apply_update(Update::decode_v2(&update)?)?;
+                        debug!("After applying stream update: {:?}", txn.state_vector());
                     }
                 }
 
-                Ok(txn.encode_update_v2())
+                Ok(txn.encode_state_as_update_v2(&state_vector))
             },
         )
         .await??;
@@ -163,7 +170,8 @@ impl UpdateManager {
                     Err(e) => return Err(FlowProjectRedisDataManagerError::from(e)),
                 }
 
-                let client_state_vector = StateVector::decode_v2(&state_vector)?;
+                let client_state_vector = StateVector::decode_v2(&state_vector)
+                    .or_else(|_| StateVector::decode_v1(&state_vector))?;
 
                 let diff = txn.encode_state_as_update_v2(&client_state_vector);
                 Ok(diff)
@@ -182,5 +190,17 @@ impl UpdateManager {
             debug!("No server state exists yet");
             Ok(None)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decode_update() {
+        let update = vec![1, 206, 210, 227, 131, 15, 22];
+        let decoded = StateVector::decode_v1(&update).unwrap();
+        println!("{:?}", decoded);
     }
 }

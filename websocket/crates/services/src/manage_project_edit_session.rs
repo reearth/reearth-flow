@@ -190,12 +190,7 @@ where
                 if let Ok(()) = self
                     .end_editing_session_if_conditions_met(&mut session, data)
                     .await
-                {
-                    debug!(
-                        "Session ended by condition check for project: {}",
-                        project_id
-                    );
-                }
+                {}
             }
         }
         Ok(())
