@@ -247,35 +247,28 @@ export class SocketYjsManager {
     Y.applyUpdateV2(this.doc, diffUpdate, 'peer');
     this.onUpdateHandlers.forEach((handler) => handler(update));
   }
-
   async syncData() {
     await this.isReady();
 
-    const currentState = Y.encodeStateAsUpdateV2(this.doc);
-    console.log("Current state:", {
-        stateLength: currentState.length,
-        rawState: Array.from(currentState)
-    });
-    
-    const stateVector = Y.encodeStateVectorFromUpdateV2(currentState);
+    const stateVector = Y.encodeStateAsUpdateV2(this.doc);
     console.log("State vector:", {
         vectorLength: stateVector.length,
         rawVector: Array.from(stateVector)
     });
     
     if (this.ws.readyState === WebSocket.OPEN) {
-      const syncMessage = createBinaryMessage(MessageType.SYNC, stateVector);
-      console.log("Sending sync message:", {
-        messageLength: syncMessage.length,
-        messageType: syncMessage[0],
-        rawMessage: Array.from(syncMessage)
-      });
-      this.ws.send(syncMessage);
+        const syncMessage = createBinaryMessage(MessageType.SYNC, stateVector);
+        console.log("Sending sync message:", {
+            messageLength: syncMessage.length,
+            messageType: syncMessage[0],
+            rawMessage: Array.from(syncMessage)
+        });
+        this.ws.send(syncMessage);
     }
 
     if (!this.firstSyncComplete) {
-      this.firstSyncComplete = true;
-      queueMicrotask(() => this.syncData());
+        this.firstSyncComplete = true;
+        queueMicrotask(() => this.syncData());
     }
   }
 
