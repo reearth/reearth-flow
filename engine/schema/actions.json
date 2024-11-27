@@ -1885,6 +1885,43 @@
       ]
     },
     {
+      "name": "GltfWriter",
+      "type": "sink",
+      "description": "Writes features to a Gltf",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GltfWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "attachTexture": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "HoleCounter",
       "type": "processor",
       "description": "Counts the number of holes in a geometry and adds it as an attribute.",

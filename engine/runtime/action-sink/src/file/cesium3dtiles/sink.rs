@@ -743,7 +743,7 @@ fn tile_writing_stage(
             contents.lock().unwrap().push(content);
             reearth_flow_gltf::write_gltf_glb(
                 writer,
-                translation,
+                Some(translation),
                 vertices,
                 primitives,
                 features.len(),

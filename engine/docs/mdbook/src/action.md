@@ -1873,6 +1873,44 @@ Filter geometry by value
 ### Category
 * Geometry
 
+## GltfWriter
+### Type
+* sink
+### Description
+Writes features to a Gltf
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GltfWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "attachTexture": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "output": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
 ## HoleCounter
 ### Type
 * processor
