@@ -19,7 +19,7 @@ use crate::project::ProjectService;
 use crate::{types::ManageProjectEditSessionTaskData, ProjectServiceError};
 
 const MAX_EMPTY_SESSION_DURATION: Duration = Duration::from_secs(10);
-const JOB_COMPLETION_DELAY: Duration = Duration::from_secs(5);
+const JOB_COMPLETION_DELAY: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Clone)]
 pub struct ManageEditSessionService<R, S, M, P, W>
