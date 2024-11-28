@@ -8,40 +8,75 @@ import (
 )
 
 func TestCreateProject(t *testing.T) {
-	e := StartServer(t, &config.Config{
-		Origins: []string{"https://example.com"},
-		AuthSrv: config.AuthSrvConfig{
-			Disabled: true,
-		},
-	},
-		true, baseSeeder)
+	t.Run("success", func(t *testing.T) {
+		e := StartServer(t, &config.Config{
+			Origins: []string{"https://example.com"},
+			AuthSrv: config.AuthSrvConfig{
+				Disabled: true,
+			},
+		}, true, baseSeeder, true)
 
-	requestBody := GraphQLRequest{
-		OperationName: "CreateProject",
-		Query:         "mutation CreateProject($workspaceId: ID!, $name: String!, $description: String!) {\n createProject(\n input: {workspaceId: $workspaceId, name: $name, description: $description}\n ) {\n project {\n id\n name\n description\n __typename\n }\n __typename\n }\n}",
-		Variables: map[string]any{
-			"name":        "test",
-			"description": "abc",
-			"workspaceId": wID.String(),
-		},
-	}
+		requestBody := GraphQLRequest{
+			OperationName: "CreateProject",
+			Query:         "mutation CreateProject($workspaceId: ID!, $name: String!, $description: String!) {\n createProject(\n input: {workspaceId: $workspaceId, name: $name, description: $description}\n ) {\n project {\n id\n name\n description\n __typename\n }\n __typename\n }\n}",
+			Variables: map[string]any{
+				"name":        "test",
+				"description": "abc",
+				"workspaceId": wID.String(),
+			},
+		}
 
-	e.POST("/api/graphql").
-		WithHeader("Origin", "https://example.com").
-		WithHeader("authorization", "Bearer test").
-		// WithHeader("authorization", "Bearer test").
-		WithHeader("X-Reearth-Debug-User", uID.String()).
-		WithHeader("Content-Type", "application/json").
-		WithJSON(requestBody).
-		Expect().
-		Status(http.StatusOK).
-		JSON().
-		Object().
-		Value("data").Object().
-		Value("createProject").Object().
-		Value("project").Object().
-		HasValue("name", "test").
-		HasValue("description", "abc")
+		e.POST("/api/graphql").
+			WithHeader("Origin", "https://example.com").
+			WithHeader("authorization", "Bearer test").
+			WithHeader("X-Reearth-Debug-User", uID.String()).
+			WithHeader("Content-Type", "application/json").
+			WithJSON(requestBody).
+			Expect().
+			Status(http.StatusOK).
+			JSON().
+			Object().
+			Value("data").Object().
+			Value("createProject").Object().
+			Value("project").Object().
+			HasValue("name", "test").
+			HasValue("description", "abc")
+	})
+
+	t.Run("permission_denied", func(t *testing.T) {
+		e := StartServer(t, &config.Config{
+			Origins: []string{"https://example.com"},
+			AuthSrv: config.AuthSrvConfig{
+				Disabled: true,
+			},
+		}, true, baseSeeder, false)
+
+		requestBody := GraphQLRequest{
+			OperationName: "CreateProject",
+			Query:         "mutation CreateProject($workspaceId: ID!, $name: String!, $description: String!) {\n createProject(\n input: {workspaceId: $workspaceId, name: $name, description: $description}\n ) {\n project {\n id\n name\n description\n __typename\n }\n __typename\n }\n}",
+			Variables: map[string]any{
+				"name":        "test",
+				"description": "abc",
+				"workspaceId": wID.String(),
+			},
+		}
+
+		e.POST("/api/graphql").
+			WithHeader("Origin", "https://example.com").
+			WithHeader("authorization", "Bearer test").
+			WithHeader("X-Reearth-Debug-User", uID.String()).
+			WithHeader("Content-Type", "application/json").
+			WithJSON(requestBody).
+			Expect().
+			Status(http.StatusOK).
+			JSON().
+			Object().
+			Value("errors").Array().
+			Value(0).
+			Object().
+			Value("message").String().
+			Contains("permission denied")
+	})
 }
 
 func TestRunProject(t *testing.T) {
@@ -51,7 +86,7 @@ func TestRunProject(t *testing.T) {
 			Disabled: true,
 		},
 	},
-		true, baseSeeder)
+		true, baseSeeder, true)
 
 	requestBody := GraphQLRequest{
 		OperationName: "RunProject",
