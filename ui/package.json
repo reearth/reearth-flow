@@ -80,7 +80,6 @@
     "react-resizable-panels": "2.1.6",
     "react-yjs": "2.0.1",
     "use-resize-observer": "9.1.0",
-    "y-websocket": "2.0.4",
     "yaml": "2.6.0",
     "yjs": "13.6.20"
   },
