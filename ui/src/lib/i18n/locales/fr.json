@@ -227,5 +227,6 @@
   "Member has been successfully removed from the workspace.": "Le membre a été supprimé avec succès de l'espace de travail.",
   "Empty workflow detected": "Flux de travail vide détecté",
   "You cannot create a deployment without a workflow.": "Vous ne pouvez pas créer de déploiement sans flux de travail.",
-  "Reload": "Recharger"
+  "Reload": "Recharger",
+  "Subworkflow": ""
 }

@@ -8,7 +8,6 @@ import {
   XYPosition,
 } from "@xyflow/react";
 import { MouseEvent, memo } from "react";
-
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import {
@@ -18,13 +17,12 @@ import {
   nodeTypes,
 } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
+import { useLocker } from "../../useInteractionLocker";
 
 import "@xyflow/react/dist/style.css";
 
 const gridSize = 30;
-
 const snapGrid: SnapGrid = [gridSize, gridSize];
-
 const proOptions: ProOptions = { hideAttribution: true };
 
 type Props = {
@@ -71,8 +69,20 @@ const Canvas: React.FC<Props> = ({
     onNodePickerOpen,
   });
 
+  const { interactionLockedNodes } = useLocker();
+
+  const isNodeDraggable = (nodeId: string) =>
+    !interactionLockedNodes.some((lockedNode) => lockedNode.id === nodeId);
+
+  const updatedNodes = nodes.map((node) => ({
+    ...node,
+    draggable: isNodeDraggable(node.id),
+  }));
+
   return (
     <ReactFlow
+      nodes={updatedNodes}
+      edges={edges}
       // minZoom={0.7}
       // maxZoom={1}
       // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
@@ -102,12 +112,9 @@ const Canvas: React.FC<Props> = ({
       zoomOnDoubleClick={!canvasLock}
       connectOnClick={!canvasLock}
       // Locking props END
-
       snapGrid={snapGrid}
       selectionMode={SelectionMode["Partial"]}
-      nodes={nodes}
       nodeTypes={nodeTypes}
-      edges={edges}
       edgeTypes={edgeTypes}
       defaultEdgeOptions={defaultEdgeOptions}
       connectionLineComponent={CustomConnectionLine}

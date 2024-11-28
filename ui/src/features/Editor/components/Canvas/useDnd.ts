@@ -10,7 +10,7 @@ import {
   type Node,
   type NodeType,
 } from "@flow/types";
-import { randomID } from "@flow/utils";
+import { randomID, randomIDshort } from "@flow/utils";
 
 import { baseBatchNode } from "./components/Nodes/BatchNode";
 import { baseNoteNode } from "./components/Nodes/NoteNode";
@@ -71,13 +71,14 @@ export default ({
 
       if (nodeTypes.includes(d as NodeType)) {
         console.log("actionName is a NodeType", d);
+        console.log("nodetype = " + nodeTypes);
 
         newNode = {
           ...newNode,
           type: d,
           data: {
             ...newNode.data,
-            name: d,
+            name: d + "-" + randomIDshort(),
           },
         };
 
