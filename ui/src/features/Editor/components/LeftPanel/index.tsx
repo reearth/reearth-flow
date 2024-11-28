@@ -15,7 +15,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { memo, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
-import { UserNavigation } from "@flow/features/TopNavigation/components";
+import { UserNavigation } from "@flow/features/WorkspaceTopNavigation/components";
 import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { Node } from "@flow/types";
