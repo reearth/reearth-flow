@@ -106,9 +106,6 @@ const LeftPanel: React.FC<Props> = ({
                 id: n.id,
                 name: n.data.name ?? "untitled",
                 icon: isNodeLocked(n.id) ? Lock : Note,
-                style: isNodeLocked(n.id)
-                  ? { color: "red", cursor: "not-allowed" }
-                  : undefined, // 잠긴 노드는 회색 및 커서 변경
                 children: {
                   id: n.id,
                   name: n.data.content ?? "untitled",
@@ -175,7 +172,7 @@ const LeftPanel: React.FC<Props> = ({
     }
   }
 
-  var idContainer = "";
+  let idContainer = "";
 
   const tabs: {
     id: Tab;
