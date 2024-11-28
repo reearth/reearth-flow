@@ -565,40 +565,6 @@ Writes features to a file
 ### Category
 * File
 
-## CityGmlGeometryLodFilter
-### Type
-* processor
-### Description
-Filters CityGML geometries by LOD
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CityGmlGeometryLodFilter",
-  "type": "object",
-  "required": [
-    "lods"
-  ],
-  "properties": {
-    "lods": {
-      "type": "array",
-      "items": {
-        "type": "integer",
-        "format": "uint8",
-        "minimum": 0.0
-      }
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-* rejected
-### Category
-* Geometry
-
 ## Clipper
 ### Type
 * processor
@@ -1185,6 +1151,38 @@ Transforms features by expressions
 * default
 ### Output Ports
 * default
+### Category
+* Feature
+
+## FeatureTypeFilter
+### Type
+* processor
+### Description
+Filters features by feature type
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureTypeFilter",
+  "type": "object",
+  "required": [
+    "targetTypes"
+  ],
+  "properties": {
+    "targetTypes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* unfiltered
 ### Category
 * Feature
 
@@ -1873,6 +1871,44 @@ Filter geometry by value
 ### Category
 * Geometry
 
+## GltfWriter
+### Type
+* sink
+### Description
+Writes features to a Gltf
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GltfWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "attachTexture": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "output": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
 ## HoleCounter
 ### Type
 * processor
@@ -2103,6 +2139,49 @@ noop sink
 ### Output Ports
 ### Category
 * Noop
+
+## Offsetter
+### Type
+* processor
+### Description
+Adds offsets to the feature's coordinates.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OffsetterParam",
+  "type": "object",
+  "properties": {
+    "offsetX": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "offsetY": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "offsetZ": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
 
 ## OrientationExtractor
 ### Type

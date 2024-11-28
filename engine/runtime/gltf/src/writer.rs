@@ -18,7 +18,7 @@ pub type Primitives = HashMap<material::Material, PrimitiveInfo>;
 
 pub fn write_gltf_glb<W: Write>(
     writer: W,
-    translation: [f64; 3],
+    translation: Option<[f64; 3]>,
     vertices: impl IntoIterator<Item = [u32; 9]>,
     primitives: Primitives,
     num_features: usize,
@@ -263,7 +263,7 @@ pub fn write_gltf_glb<W: Write>(
         }],
         nodes: vec![Node {
             mesh: (!primitives.is_empty()).then_some(0),
-            translation,
+            translation: translation.unwrap_or_default(),
             ..Default::default()
         }],
         meshes: gltf_meshes,

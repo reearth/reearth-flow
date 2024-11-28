@@ -239,6 +239,12 @@ impl MultiLineString3D<f64> {
             line_string.transform_inplace(jgd2wgs);
         }
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        for line_string in &mut self.0 {
+            line_string.transform_offset(x, y, z);
+        }
+    }
 }
 
 #[cfg(test)]

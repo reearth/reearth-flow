@@ -43,6 +43,7 @@ csv.workspace = true
 earcut.workspace = true
 flate2.workspace = true
 geojson.workspace = true
+glam.workspace = true
 hashbrown.workspace = true
 image.workspace = true
 indexmap.workspace = true

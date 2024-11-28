@@ -6,16 +6,16 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 use super::{
     area_on_area_overlayer::AreaOnAreaOverlayerFactory, bounds_extractor::BoundsExtractorFactory,
     bufferer::BuffererFactory, center_point_replacer::CenterPointReplacerFactory,
-    city_gml_geometry_lod_filter::CityGmlGeometryLodFilterFactory, clipper::ClipperFactory,
-    closed_curve_filter::ClosedCurveFilterFactory, coercer::GeometryCoercerFactory,
-    coordinate_system_setter::CoordinateSystemSetterFactory,
+    clipper::ClipperFactory, closed_curve_filter::ClosedCurveFilterFactory,
+    coercer::GeometryCoercerFactory, coordinate_system_setter::CoordinateSystemSetterFactory,
     dimension_filter::DimensionFilterFactory, dissolver::GeometryDissolverFactory,
     elevation_extractor::ElevationExtractorFactory, extractor::GeometryExtractorFactory,
     extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
     hole_extractor::HoleExtractorFactory, horizontal_reprojector::HorizontalReprojectorFactory,
     line_on_line_overlayer::LineOnLineOverlayerFactory, lod_filter::GeometryLodFilterFactory,
-    orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
-    refiner::RefinerFactory, replacer::GeometryReplacerFactory, splitter::GeometrySplitterFactory,
+    offsetter::OffsetterFactory, orientation_extractor::OrientationExtractorFactory,
+    planarity_filter::PlanarityFilterFactory, refiner::RefinerFactory,
+    replacer::GeometryReplacerFactory, splitter::GeometrySplitterFactory,
     three_dimension_box_replacer::ThreeDimensionBoxReplacerFactory,
     three_dimension_rotator::ThreeDimensionRotatorFactory,
     two_dimension_forcer::TwoDimensionForcerFactory, validator::GeometryValidatorFactory,
@@ -56,8 +56,8 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<ElevationExtractorFactory>::default(),
         Box::<GeometryDissolverFactory>::default(),
         Box::<DimensionFilterFactory>::default(),
-        Box::<CityGmlGeometryLodFilterFactory>::default(),
         Box::<GeometryLodFilterFactory>::default(),
+        Box::<OffsetterFactory>::default(),
     ];
     factories
         .into_iter()

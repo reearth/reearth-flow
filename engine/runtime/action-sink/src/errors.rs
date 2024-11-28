@@ -18,6 +18,10 @@ pub enum SinkError {
     MvtWriterFactory(String),
     #[error("Mvt Writer error: {0}")]
     MvtWriter(String),
+    #[error("Gltf Writer Factory error: {0}")]
+    GltfWriterFactory(String),
+    #[error("Gltf Writer error: {0}")]
+    GltfWriter(String),
 }
 
 impl SinkError {
@@ -27,6 +31,10 @@ impl SinkError {
 
     pub fn cesium3dtiles_writer<T: ToString>(message: T) -> Self {
         Self::Cesium3DTilesWriter(message.to_string())
+    }
+
+    pub fn gltf_writer<T: ToString>(message: T) -> Self {
+        Self::GltfWriter(message.to_string())
     }
 }
 

@@ -63,10 +63,10 @@ reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.5.2", features = ["serde", "serde_json"] }
-nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.5.2" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.5.2", features = ["serde"] }
-nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.5.2" }
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.6.0", features = ["serde", "serde_json"] }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.6.0" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.6.0", features = ["serde"] }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.6.0" }
 
 Inflector = "0.11.4"
 ahash = "0.8.11"
@@ -103,6 +103,7 @@ geo = "0.29.2"
 geo-buffer = "0.2.0"
 geo-types = "0.7.14"
 geojson = "0.24.1"
+glam = "0.29.2"
 hashbrown = { version = "0.15.1", features = ["serde"] }
 home = "0.5.9"
 image = { version = "0.25.5", default-features = false, features = ["jpeg", "png", "rayon", "tiff", "webp"] }

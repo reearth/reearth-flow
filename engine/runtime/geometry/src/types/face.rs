@@ -40,4 +40,8 @@ impl Face3D<f64> {
     pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
         self.0.iter_mut().for_each(|c| c.transform_inplace(jgd2wgs));
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        self.0.iter_mut().for_each(|c| c.transform_offset(x, y, z));
+    }
 }

@@ -91,14 +91,14 @@ pub(super) enum GeometryProcessorError {
     DimensionFilterFactory(String),
     #[error("DimensionFilter error: {0}")]
     DimensionFilter(String),
-    #[error("CityGmlGeometryLodFilter Factory error: {0}")]
-    CityGmlGeometryLodFilterFactory(String),
-    #[error("CityGmlGeometryLodFilter error: {0}")]
-    CityGmlGeometryLodFilter(String),
     #[error("GeometryLodFilter Factory error: {0}")]
     GeometryLodFilterFactory(String),
     #[error("GeometryLodFilter error: {0}")]
     GeometryLodFilter(String),
+    #[error("Offsetter Factory error: {0}")]
+    OffsetterFactory(String),
+    #[error("Offsetter error: {0}")]
+    Offsetter(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

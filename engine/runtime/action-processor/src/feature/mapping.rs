@@ -7,6 +7,7 @@ use super::{
     counter::FeatureCounterFactory, filter::FeatureFilterFactory,
     list_exploder::ListExploderFactory, merger::FeatureMergerFactory, reader::FeatureReaderFactory,
     rhai::RhaiCallerFactory, sorter::FeatureSorterFactory, transformer::FeatureTransformerFactory,
+    type_filter::FeatureTypeFilterFactory,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -19,6 +20,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<FeatureReaderFactory>::default(),
         Box::<RhaiCallerFactory>::default(),
         Box::<ListExploderFactory>::default(),
+        Box::<FeatureTypeFilterFactory>::default(),
     ];
     factories
         .into_iter()

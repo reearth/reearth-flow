@@ -203,6 +203,12 @@ impl CityGmlGeometry {
             .iter_mut()
             .for_each(|feature| feature.transform_inplace(jgd2wgs));
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        self.gml_geometries
+            .iter_mut()
+            .for_each(|feature| feature.transform_offset(x, y, z));
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -263,6 +269,12 @@ impl GmlGeometry {
         self.polygons
             .iter_mut()
             .for_each(|poly| poly.transform_inplace(jgd2wgs));
+    }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        self.polygons
+            .iter_mut()
+            .for_each(|poly| poly.transform_offset(x, y, z));
     }
 }
 

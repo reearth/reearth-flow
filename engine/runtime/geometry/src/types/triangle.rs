@@ -145,4 +145,10 @@ impl Triangle3D<f64> {
         self.1.transform_inplace(jgd2wgs);
         self.2.transform_inplace(jgd2wgs);
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        self.0.transform_offset(x, y, z);
+        self.1.transform_offset(x, y, z);
+        self.2.transform_offset(x, y, z);
+    }
 }

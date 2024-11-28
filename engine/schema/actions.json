@@ -569,40 +569,6 @@
       ]
     },
     {
-      "name": "CityGmlGeometryLodFilter",
-      "type": "processor",
-      "description": "Filters CityGML geometries by LOD",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CityGmlGeometryLodFilter",
-        "type": "object",
-        "required": [
-          "lods"
-        ],
-        "properties": {
-          "lods": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "uint8",
-              "minimum": 0.0
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default",
-        "rejected"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
       "name": "Clipper",
       "type": "processor",
       "description": "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately",
@@ -1194,6 +1160,38 @@
       ],
       "outputPorts": [
         "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FeatureTypeFilter",
+      "type": "processor",
+      "description": "Filters features by feature type",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureTypeFilter",
+        "type": "object",
+        "required": [
+          "targetTypes"
+        ],
+        "properties": {
+          "targetTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "unfiltered"
       ],
       "categories": [
         "Feature"
@@ -1885,6 +1883,43 @@
       ]
     },
     {
+      "name": "GltfWriter",
+      "type": "sink",
+      "description": "Writes features to a Gltf",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GltfWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "attachTexture": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "HoleCounter",
       "type": "processor",
       "description": "Counts the number of holes in a geometry and adds it as an attribute.",
@@ -2117,6 +2152,49 @@
       "outputPorts": [],
       "categories": [
         "Noop"
+      ]
+    },
+    {
+      "name": "Offsetter",
+      "type": "processor",
+      "description": "Adds offsets to the feature's coordinates.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "OffsetterParam",
+        "type": "object",
+        "properties": {
+          "offsetX": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "offsetY": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "offsetZ": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
       ]
     },
     {
