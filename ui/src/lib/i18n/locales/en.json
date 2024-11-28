@@ -227,5 +227,6 @@
   "Member has been successfully removed from the workspace.": "",
   "Empty workflow detected": "",
   "You cannot create a deployment without a workflow.": "",
-  "Reload": ""
+  "Reload": "",
+  "Subworkflow": ""
 }
