@@ -63,6 +63,12 @@ impl LineString3D<f64> {
             coord.transform_inplace(jgd2wgs);
         }
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        for coord in &mut self.0 {
+            coord.transform_offset(x, y, z);
+        }
+    }
 }
 
 #[derive(Debug)]

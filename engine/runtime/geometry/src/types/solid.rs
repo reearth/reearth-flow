@@ -66,4 +66,16 @@ impl Solid3D<f64> {
             .iter_mut()
             .for_each(|f| f.transform_inplace(jgd2wgs));
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        self.bottom
+            .iter_mut()
+            .for_each(|f| f.transform_offset(x, y, z));
+        self.top
+            .iter_mut()
+            .for_each(|f| f.transform_offset(x, y, z));
+        self.sides
+            .iter_mut()
+            .for_each(|f| f.transform_offset(x, y, z));
+    }
 }

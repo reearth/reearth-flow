@@ -1188,6 +1188,38 @@ Transforms features by expressions
 ### Category
 * Feature
 
+## FeatureTypeFilter
+### Type
+* processor
+### Description
+Filters features by feature type
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureTypeFilter",
+  "type": "object",
+  "required": [
+    "targetTypes"
+  ],
+  "properties": {
+    "targetTypes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* unfiltered
+### Category
+* Feature
+
 ## FilePathExtractor
 ### Type
 * source
@@ -2141,6 +2173,49 @@ noop sink
 ### Output Ports
 ### Category
 * Noop
+
+## Offsetter
+### Type
+* processor
+### Description
+Adds offsets to the feature's coordinates.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OffsetterParam",
+  "type": "object",
+  "properties": {
+    "offsetX": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "offsetY": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "offsetZ": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
 
 ## OrientationExtractor
 ### Type

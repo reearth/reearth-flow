@@ -14,8 +14,9 @@ use super::{
     extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
     hole_extractor::HoleExtractorFactory, horizontal_reprojector::HorizontalReprojectorFactory,
     line_on_line_overlayer::LineOnLineOverlayerFactory, lod_filter::GeometryLodFilterFactory,
-    orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
-    refiner::RefinerFactory, replacer::GeometryReplacerFactory, splitter::GeometrySplitterFactory,
+    offsetter::OffsetterFactory, orientation_extractor::OrientationExtractorFactory,
+    planarity_filter::PlanarityFilterFactory, refiner::RefinerFactory,
+    replacer::GeometryReplacerFactory, splitter::GeometrySplitterFactory,
     three_dimension_box_replacer::ThreeDimensionBoxReplacerFactory,
     three_dimension_rotator::ThreeDimensionRotatorFactory,
     two_dimension_forcer::TwoDimensionForcerFactory, validator::GeometryValidatorFactory,
@@ -58,6 +59,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<DimensionFilterFactory>::default(),
         Box::<CityGmlGeometryLodFilterFactory>::default(),
         Box::<GeometryLodFilterFactory>::default(),
+        Box::<OffsetterFactory>::default(),
     ];
     factories
         .into_iter()

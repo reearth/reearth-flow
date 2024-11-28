@@ -32,6 +32,14 @@ graphs:
           dataset: |
             env.get("__value").cityGmlPath
 
+      - id: 0feb3175-9723-4c06-9d55-0b57490660d5
+        name: FeatureTypeFilterByUndergroundBuilding
+        type: action
+        action: FeatureTypeFilter
+        with:
+          targetTypes:
+            - "uro:UndergroundBuilding"
+
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         name: AttributeMapperUbld
         type: action
@@ -49,6 +57,13 @@ graphs:
             - attribute: gml_id
               valueAttribute: gmlId
 
+      - id: 92b4dc62-675d-4365-a012-20ad1980bb98
+        name: Offsetter
+        type: action
+        action: Offsetter
+        with:
+          offsetZ: 4.0
+
       - id: 928e21d9-fc30-4876-ba03-41338cfa47ed
         name: VerticalReprojectorUbld
         type: action
@@ -65,7 +80,7 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-             file::join_path(env.get("outputPath"), "ubld_lod1-4")
+             file::join_path(env.get("outputPath"), "ubld")
 
     edges:
       - id: a4751655-5956-4e27-a976-e35f8914ad31
@@ -75,11 +90,21 @@ graphs:
         toPort: default
       - id: 86ec56d6-cefb-48ca-a72d-0c57a33d198a
         from: 254d6287-7649-4647-9ab5-0c1c423f356a
+        to: 0feb3175-9723-4c06-9d55-0b57490660d5
+        fromPort: default
+        toPort: default
+      - id: afc70bd9-8467-4997-ad1a-bab3a0593278
+        from: 0feb3175-9723-4c06-9d55-0b57490660d5
         to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         fromPort: default
         toPort: default
-      - id: 703fbdd0-516f-4201-b2ad-5575ab684fbc
+      - id: 6b857fe4-c6c1-4ed3-ac6e-f7eef19c9248
         from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 92b4dc62-675d-4365-a012-20ad1980bb98
+        fromPort: default
+        toPort: default
+      - id: 703fbdd0-516f-4201-b2ad-5575ab684fbc
+        from: 92b4dc62-675d-4365-a012-20ad1980bb98
         to: 928e21d9-fc30-4876-ba03-41338cfa47ed
         fromPort: default
         toPort: default

@@ -490,12 +490,16 @@ fn tile_writing_stage(
             let features = features
                 .iter()
                 .filter(|feature| {
-                    metadata_encoder
-                        .add_feature(&typename, &feature.attributes)
-                        .is_ok()
+                    let result = metadata_encoder.add_feature(&typename, &feature.attributes);
+                    if let Err(e) = result {
+                        ctx.event_hub
+                            .error_log(None, format!("Failed to add feature with error = {:?}", e));
+                        false
+                    } else {
+                        true
+                    }
                 })
                 .collect::<Vec<_>>();
-
             // A unique ID used when planning the atlas layout
             //  and when obtaining the UV coordinates after the layout has been completed
             let generate_texture_id = |z, x, y, feature_id, poly_count| {

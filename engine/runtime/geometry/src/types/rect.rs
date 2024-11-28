@@ -236,6 +236,11 @@ impl Rect3D<f64> {
         self.min.transform_inplace(jgd2wgs);
         self.max.transform_inplace(jgd2wgs);
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        self.min.transform_offset(x, y, z);
+        self.max.transform_offset(x, y, z);
+    }
 }
 
 #[cfg(test)]

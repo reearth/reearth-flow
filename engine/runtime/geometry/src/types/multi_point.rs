@@ -227,6 +227,12 @@ impl MultiPoint3D<f64> {
             point.transform_inplace(jgd2wgs);
         }
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        for point in &mut self.0 {
+            point.transform_offset(x, y, z);
+        }
+    }
 }
 
 #[cfg(test)]
