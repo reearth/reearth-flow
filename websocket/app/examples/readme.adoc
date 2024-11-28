@@ -7,3 +7,8 @@ RUST_LOG=info cargo run --package app --example room_client
 ----
 RUST_LOG=info cargo run --package app --example session_client
 ----
+
+[source,bash]
+----
+RUST_LOG=info cargo run --package app --example sync
+----
