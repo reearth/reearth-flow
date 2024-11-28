@@ -6,10 +6,10 @@ use tokio_tungstenite::tungstenite::http::Request;
 use tokio_tungstenite::{connect_async_with_config, tungstenite::Message};
 use tracing::{error, info};
 use url::Url;
-use yrs::ReadTxn;
-use yrs::{updates::encoder::Encode, Doc, Text, Transact};
+use yrs::updates::decoder::Decode;
+use yrs::{updates::encoder::Encode, Doc, GetString, ReadTxn, Text, Transact};
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(tag = "tag", content = "content")]
 enum Event {
     Create { room_id: String },
@@ -63,14 +63,6 @@ pub enum SessionCommand {
     },
 }
 
-// #[derive(Serialize, Clone)]
-// struct User {
-//     id: String,
-//     email: Option<String>,
-//     name: Option<String>,
-//     tenant_id: String,
-// }
-
 fn create_binary_message(msg_type: MessageType, data: Vec<u8>) -> Vec<u8> {
     let mut message = Vec::with_capacity(data.len() + 1);
     message.push(msg_type._as_byte());
@@ -108,6 +100,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (mut write, mut read) = ws_stream.split();
     let room_id = "room123".to_string();
 
+    let doc = Doc::new();
+    let text = doc.get_or_insert_text("test");
+
     send_event(
         &mut write,
         Event::Create {
@@ -141,19 +136,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    // let test_user = User {
-    //     id: user_id.to_string(),
-    //     email: Some("test.user@example.com".to_string()),
-    //     name: Some("Test User".to_string()),
-    //     tenant_id: "test_tenant".to_string(),
-    // };
-
     let project_id = "test_project3".to_string();
-    let user = User::new(
-        user_id.to_string(),
-        None, // email
-        None, // name
-    );
+    let user = User::new(user_id.to_string(), None, None);
 
     send_command(
         &mut write,
@@ -174,9 +158,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
     info!("Start command sent");
 
-    let doc = Doc::new();
-    let text = doc.get_or_insert_text("test");
-
     let state_vector = {
         let txn = doc.transact();
         let state_vector = txn.state_vector();
@@ -194,8 +175,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         create_binary_message(MessageType::Update, update)
     };
 
-    write.send(Message::Binary(update1)).await?;
-    info!("First YJS update sent");
+    write.send(Message::Binary(update1.clone())).await?;
+    info!("First YJS update sent: {} bytes", update1.len());
 
     let update2 = {
         let mut txn = doc.transact_mut();
@@ -204,8 +185,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         create_binary_message(MessageType::Update, update)
     };
 
-    write.send(Message::Binary(update2)).await?;
-    info!("Second YJS update sent");
+    write.send(Message::Binary(update2.clone())).await?;
+    info!("Second YJS update sent: {} bytes", update2.len());
 
     let update_data = {
         let mut txn = doc.transact_mut();
@@ -214,8 +195,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         create_binary_message(MessageType::Update, update)
     };
 
-    write.send(Message::Binary(update_data)).await?;
-    info!("MergeUpdates command sent with YJS update");
+    write.send(Message::Binary(update_data.clone())).await?;
+    info!(
+        "MergeUpdates command sent with YJS update: {} bytes",
+        update_data.len()
+    );
+
+    // Verify the document state after updates
+    {
+        let txn = doc.transact();
+        let content = text.get_string(&txn);
+        info!("Current document content: {}", content);
+
+        let diff = text.diff(&txn, |_| None::<()>);
+        info!("Document changes: {:?}", diff);
+
+        let state_vector = txn.state_vector();
+        info!("Current state vector: {:?}", state_vector);
+    }
 
     send_command(
         &mut write,
@@ -235,17 +232,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
     info!("CheckStatus command sent");
-
-    let doc = Doc::new();
-
-    let state_vector = {
-        let txn = doc.transact();
-        let state_vector = txn.state_vector();
-        let encode = state_vector.encode_v2();
-        create_binary_message(MessageType::Sync, encode)
-    };
-
-    write.send(Message::Binary(state_vector)).await?;
 
     send_command(
         &mut write,
@@ -277,19 +263,86 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     while let Some(msg) = read.next().await {
         match msg {
-            Ok(msg) => {
-                info!("Received: {:?}", msg);
-                if msg.is_close() {
+            Ok(msg) => match msg {
+                Message::Binary(data) => {
+                    info!("Received binary data of length: {}", data.len());
+
+                    match yrs::StateVector::decode_v2(&data) {
+                        Ok(sv) => {
+                            info!("Successfully decoded as state vector: {:?}", sv);
+                            let local_sv = doc.transact().state_vector();
+                            info!("Current local state vector before sync: {:?}", local_sv);
+
+                            if sv != local_sv {
+                                info!(
+                                    "State vector mismatch - local: {:?}, remote: {:?}",
+                                    local_sv, sv
+                                );
+
+                                let update = {
+                                    let txn = doc.transact();
+                                    txn.encode_state_as_update_v2(&sv)
+                                };
+                                let msg = create_binary_message(MessageType::Update, update);
+                                write.send(Message::Binary(msg)).await?;
+                                info!("Sent state difference update");
+
+                                let new_sv = doc.transact().state_vector();
+                                info!("Local state vector after sending update: {:?}", new_sv);
+
+                                let content = text.get_string(&doc.transact());
+                                info!("Current document content: {}", content);
+                            }
+                        }
+                        Err(_) => match yrs::Update::decode_v2(&data) {
+                            Ok(update) => {
+                                let mut txn = doc.transact_mut();
+                                match txn.apply_update(update) {
+                                    Ok(()) => {
+                                        let content = text.get_string(&txn);
+                                        info!("Successfully applied update. Content: {}", content);
+
+                                        let diff = text.diff(&txn, |_| None::<()>);
+                                        info!("Update resulted in changes: {:?}", diff);
+
+                                        let new_sv = txn.state_vector();
+                                        info!("New state vector after update: {:?}", new_sv);
+                                    }
+                                    Err(e) => {
+                                        error!("Failed to apply update: {:?}", e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                error!("Failed to decode as update: {:?}", e);
+                                info!("Raw binary data: {:?}", data);
+                            }
+                        },
+                    }
+                }
+                Message::Ping(data) => {
+                    info!("Received ping message: {:?}", data);
+                }
+                Message::Text(text) => {
+                    info!("Received text message: {}", text);
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+                        info!("Parsed JSON: {}", serde_json::to_string_pretty(&json)?);
+                    }
+                }
+                Message::Close(frame) => {
+                    info!("Received close frame: {:?}", frame);
                     break;
                 }
-            }
+                _ => {
+                    info!("Received other message type: {:?}", msg);
+                }
+            },
             Err(e) => {
                 error!("Error: {}", e);
                 break;
             }
         }
     }
-
     Ok(())
 }
 
@@ -312,6 +365,7 @@ async fn send_event(
         .send(Message::Text(serde_json::to_string(&message)?))
         .await?;
 
+    info!("Event sent: {:?}", message.event);
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     Ok(())
 }
@@ -329,13 +383,14 @@ async fn send_command(
         event: Event::Emit {
             data: String::new(),
         },
-        session_command: Some(command),
+        session_command: Some(command.clone()),
     };
 
     writer
         .send(Message::Text(serde_json::to_string(&message)?))
         .await?;
 
+    info!("Command sent: {:?}", command);
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     Ok(())
 }
