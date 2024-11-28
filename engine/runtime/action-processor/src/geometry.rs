@@ -2,7 +2,6 @@ pub(crate) mod area_on_area_overlayer;
 pub(crate) mod bounds_extractor;
 pub(crate) mod bufferer;
 pub(crate) mod center_point_replacer;
-pub(crate) mod city_gml_geometry_lod_filter;
 pub(crate) mod clipper;
 pub(crate) mod closed_curve_filter;
 pub(crate) mod coercer;
