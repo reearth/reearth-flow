@@ -112,6 +112,9 @@ impl Coordinate3D<f64> {
     }
 
     pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        if x.is_nan() || y.is_nan() || z.is_nan() {
+            return;
+        }
         self.x += x;
         self.y += y;
         self.z += z;
