@@ -91,10 +91,6 @@ pub(super) enum GeometryProcessorError {
     DimensionFilterFactory(String),
     #[error("DimensionFilter error: {0}")]
     DimensionFilter(String),
-    #[error("CityGmlGeometryLodFilter Factory error: {0}")]
-    CityGmlGeometryLodFilterFactory(String),
-    #[error("CityGmlGeometryLodFilter error: {0}")]
-    CityGmlGeometryLodFilter(String),
     #[error("GeometryLodFilter Factory error: {0}")]
     GeometryLodFilterFactory(String),
     #[error("GeometryLodFilter error: {0}")]

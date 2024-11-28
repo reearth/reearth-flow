@@ -565,40 +565,6 @@ Writes features to a file
 ### Category
 * File
 
-## CityGmlGeometryLodFilter
-### Type
-* processor
-### Description
-Filters CityGML geometries by LOD
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CityGmlGeometryLodFilter",
-  "type": "object",
-  "required": [
-    "lods"
-  ],
-  "properties": {
-    "lods": {
-      "type": "array",
-      "items": {
-        "type": "integer",
-        "format": "uint8",
-        "minimum": 0.0
-      }
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-* rejected
-### Category
-* Geometry
-
 ## Clipper
 ### Type
 * processor
