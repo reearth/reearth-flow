@@ -10,10 +10,9 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
-	cerbosClient "github.com/reearth/reearthx/cerbos/client"
 )
 
-func UsecaseMiddleware(r *repo.Container, g *gateway.Container, ar *accountrepo.Container, ag *accountgateway.Container, permissionChecker *cerbosClient.PermissionChecker, config interactor.ContainerConfig) echo.MiddlewareFunc {
+func UsecaseMiddleware(r *repo.Container, g *gateway.Container, ar *accountrepo.Container, ag *accountgateway.Container, permissionChecker gateway.PermissionChecker, config interactor.ContainerConfig) echo.MiddlewareFunc {
 	return ContextMiddleware(func(ctx context.Context) context.Context {
 		repos := r
 

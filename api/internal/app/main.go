@@ -74,7 +74,7 @@ type ServerConfig struct {
 	AccountRepos      *accountrepo.Container
 	Gateways          *gateway.Container
 	AccountGateways   *accountgateway.Container
-	PermissionChecker *cerbosClient.PermissionChecker
+	PermissionChecker gateway.PermissionChecker
 }
 
 func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {
