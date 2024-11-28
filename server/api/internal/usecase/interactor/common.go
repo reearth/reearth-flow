@@ -15,7 +15,6 @@ import (
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountinteractor"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
-	cerbosClient "github.com/reearth/reearthx/cerbos/client"
 )
 
 type ContainerConfig struct {
@@ -27,7 +26,7 @@ type ContainerConfig struct {
 
 func NewContainer(r *repo.Container, g *gateway.Container,
 	ar *accountrepo.Container, ag *accountgateway.Container,
-	permissionChecker *cerbosClient.PermissionChecker,
+	permissionChecker gateway.PermissionChecker,
 	config ContainerConfig,
 ) interfaces.Container {
 	job := NewJob(r, g)

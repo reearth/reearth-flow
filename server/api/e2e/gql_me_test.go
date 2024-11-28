@@ -14,7 +14,7 @@ func TestMe(t *testing.T) {
 			Disabled: true,
 		},
 	},
-		true, baseSeeder)
+		true, baseSeeder, true)
 
 	requestBody := GraphQLRequest{
 		OperationName: "GetMe",

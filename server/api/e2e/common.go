@@ -29,8 +29,8 @@ func init() {
 	mongotest.Env = "REEARTH_FLOW_DB"
 }
 
-func StartServer(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder) *httpexpect.Expect {
-	e, _, _ := StartServerAndRepos(t, cfg, useMongo, seeder)
+func StartServer(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool) *httpexpect.Expect {
+	e, _, _ := StartServerAndRepos(t, cfg, useMongo, seeder, allowPermission)
 	return e
 }
 
@@ -60,13 +60,13 @@ func initGateway() *gateway.Container {
 	}
 }
 
-func StartServerAndRepos(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder) (*httpexpect.Expect, *repo.Container, *gateway.Container) {
+func StartServerAndRepos(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool) (*httpexpect.Expect, *repo.Container, *gateway.Container) {
 	repos := initRepos(t, useMongo, seeder)
 	gateways := initGateway()
-	return StartServerWithRepos(t, cfg, repos, gateways), repos, gateways
+	return StartServerWithRepos(t, cfg, repos, gateways, allowPermission), repos, gateways
 }
 
-func StartServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Container, gateways *gateway.Container) *httpexpect.Expect {
+func StartServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Container, gateways *gateway.Container, allowPermission bool) *httpexpect.Expect {
 	t.Helper()
 
 	if testing.Short() {
@@ -80,12 +80,17 @@ func StartServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Containe
 		t.Fatalf("server failed to listen: %v", err)
 	}
 
+	// mockPermissionChecker
+	mockPermissionChecker := gateway.NewMockPermissionChecker()
+	mockPermissionChecker.Allow = allowPermission
+
 	srv := app.NewServer(ctx, &app.ServerConfig{
-		Config:       cfg,
-		Repos:        repos,
-		Gateways:     gateways,
-		Debug:        true,
-		AccountRepos: repos.AccountRepos(),
+		Config:            cfg,
+		Repos:             repos,
+		Gateways:          gateways,
+		Debug:             true,
+		AccountRepos:      repos.AccountRepos(),
+		PermissionChecker: mockPermissionChecker,
 	})
 
 	ch := make(chan error)
