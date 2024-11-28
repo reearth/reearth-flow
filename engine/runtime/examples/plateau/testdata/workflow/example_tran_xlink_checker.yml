@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: c026d8d7-b535-4a22-937f-5d6c4b39e8b4
+name: "ExampleTranXLinkChecker"
+entryGraphId: ff2593bf-a36c-46c3-88ac-eba42dd8f59a
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../config/schema.txt
+  targetPackages:
+    - tran
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+graphs:
+  - !include ../graphs/folder_and_file_path_reader.yml
+  - id: ff2593bf-a36c-46c3-88ac-eba42dd8f59a
+    name: entry_point
+    nodes:
+      - id: 555d0352-ca9a-4e49-a94b-b96f238f2cfc
+        name: FolderAndfilePathReader
+        type: subGraph
+        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+
+      - id: 2596b371-cb37-4856-8f6f-a4096f76f391
+        name: PLATEAU.TranXLinkChecker-l-tran-03
+        type: action
+        action: PLATEAU.TranXLinkChecker
+
+      - id: 30a42dee-474c-4283-b34b-3c54e16bd2b6
+        name: Echo
+        type: action
+        action: EchoSink
+
+    edges:
+      - id: 3f6eadb8-9092-425b-a41c-100c24ec6e5c
+        from: 555d0352-ca9a-4e49-a94b-b96f238f2cfc
+        to: 2596b371-cb37-4856-8f6f-a4096f76f391
+        fromPort: default
+        toPort: default
+      - id: 078aa49c-ddd5-44fc-9110-10edeb894cb6
+        from: 2596b371-cb37-4856-8f6f-a4096f76f391
+        to: 30a42dee-474c-4283-b34b-3c54e16bd2b6
+        fromPort: default
+        toPort: default
