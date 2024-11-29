@@ -36,6 +36,7 @@ jobs:
           remove-cached-tools: 'true'
       - uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: "1.82"
           components: clippy, rustfmt
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
