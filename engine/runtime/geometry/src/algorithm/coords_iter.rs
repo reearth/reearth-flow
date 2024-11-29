@@ -40,8 +40,16 @@ pub trait CoordsIter {
 // └──────────────────────────┘
 
 impl<T: CoordNum, Z: CoordNum> CoordsIter for Point<T, Z> {
-    type Iter<'a>  = iter::Once<Coordinate<T, Z>> where T: 'a, Z: 'a;
-    type ExteriorIter<'a> = Self::Iter<'a> where T: 'a, Z: 'a;
+    type Iter<'a>
+        = iter::Once<Coordinate<T, Z>>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = Self::Iter<'a>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -64,10 +72,16 @@ impl<T: CoordNum, Z: CoordNum> CoordsIter for Point<T, Z> {
 // └─────────────────────────┘
 
 impl<T: CoordNum, Z: CoordNum> CoordsIter for Line<T, Z> {
-    type Iter<'a> = iter::Chain<iter::Once<Coordinate<T, Z>>, iter::Once<Coordinate<T, Z>>>
-    where T: 'a, Z: 'a;
-    type ExteriorIter<'a> = Self::Iter<'a>
-    where T: 'a, Z: 'a;
+    type Iter<'a>
+        = iter::Chain<iter::Once<Coordinate<T, Z>>, iter::Once<Coordinate<T, Z>>>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = Self::Iter<'a>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -92,10 +106,16 @@ impl<T: CoordNum, Z: CoordNum> CoordsIter for Line<T, Z> {
 type LineStringIter<'a, T, Z> = iter::Copied<slice::Iter<'a, Coordinate<T, Z>>>;
 
 impl<T: CoordNum, Z: CoordNum> CoordsIter for LineString<T, Z> {
-    type Iter<'a> = LineStringIter<'a, T, Z>
-    where T: 'a, Z: 'a;
-    type ExteriorIter<'a> = Self::Iter<'a>
-    where T: 'a, Z: 'a;
+    type Iter<'a>
+        = LineStringIter<'a, T, Z>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = Self::Iter<'a>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -123,10 +143,16 @@ type PolygonIter<'a, T, Z> = iter::Chain<
 >;
 
 impl<T: CoordNum, Z: CoordNum> CoordsIter for Polygon<T, Z> {
-    type Iter<'a> = PolygonIter<'a, T, Z>
-    where T: 'a, Z: 'a;
-    type ExteriorIter<'a> = LineStringIter<'a, T, Z>
-    where T: 'a, Z: 'a;
+    type Iter<'a>
+        = PolygonIter<'a, T, Z>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = LineStringIter<'a, T, Z>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -156,10 +182,16 @@ impl<T: CoordNum, Z: CoordNum> CoordsIter for Polygon<T, Z> {
 // └───────────────────────────────┘
 
 impl<T: CoordNum, Z: CoordNum> CoordsIter for MultiPoint<T, Z> {
-    type Iter<'a> = iter::Flatten<MapCoordsIter<'a, T, slice::Iter<'a, Point<T, Z>>, Point<T, Z>>>
-    where T: 'a, Z: 'a;
-    type ExteriorIter<'a> = Self::Iter<'a>
-    where T: 'a, Z: 'a;
+    type Iter<'a>
+        = iter::Flatten<MapCoordsIter<'a, T, slice::Iter<'a, Point<T, Z>>, Point<T, Z>>>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = Self::Iter<'a>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -182,11 +214,16 @@ impl<T: CoordNum, Z: CoordNum> CoordsIter for MultiPoint<T, Z> {
 // └────────────────────────────────────┘
 
 impl<T: CoordNum, Z: CoordNum> CoordsIter for MultiLineString<T, Z> {
-    type Iter<'a> =
-        iter::Flatten<MapCoordsIter<'a, T, slice::Iter<'a, LineString<T, Z>>, LineString<T, Z>>>
-    where T: 'a, Z: 'a;
-    type ExteriorIter<'a> = Self::Iter<'a>
-    where T: 'a, Z: 'a;
+    type Iter<'a>
+        = iter::Flatten<MapCoordsIter<'a, T, slice::Iter<'a, LineString<T, Z>>, LineString<T, Z>>>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = Self::Iter<'a>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -212,11 +249,16 @@ impl<T: CoordNum, Z: CoordNum> CoordsIter for MultiLineString<T, Z> {
 // └─────────────────────────────────┘
 
 impl<T: CoordNum, Z: CoordNum> CoordsIter for MultiPolygon<T, Z> {
-    type Iter<'a> = iter::Flatten<MapCoordsIter<'a, T, slice::Iter<'a, Polygon<T, Z>>, Polygon<T, Z>>>
-    where T: 'a, Z: 'a;
-    type ExteriorIter<'a> =
-        iter::Flatten<MapExteriorCoordsIter<'a, T, slice::Iter<'a, Polygon<T, Z>>, Polygon<T, Z>>>
-    where T: 'a, Z: 'a;
+    type Iter<'a>
+        = iter::Flatten<MapCoordsIter<'a, T, slice::Iter<'a, Polygon<T, Z>>, Polygon<T, Z>>>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = iter::Flatten<MapExteriorCoordsIter<'a, T, slice::Iter<'a, Polygon<T, Z>>, Polygon<T, Z>>>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -239,10 +281,16 @@ impl<T: CoordNum, Z: CoordNum> CoordsIter for MultiPolygon<T, Z> {
 // └───────────────────────────────────────┘
 
 impl<T: CoordNum, Z: CoordNum> CoordsIter for GeometryCollection<T, Z> {
-    type Iter<'a> = Box<dyn Iterator<Item = Coordinate<T, Z>> + 'a>
-    where T: 'a, Z: 'a;
-    type ExteriorIter<'a> = Box<dyn Iterator<Item = Coordinate<T, Z>> + 'a>
-    where T: 'a, Z: 'a;
+    type Iter<'a>
+        = Box<dyn Iterator<Item = Coordinate<T, Z>> + 'a>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = Box<dyn Iterator<Item = Coordinate<T, Z>> + 'a>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -274,10 +322,16 @@ type RectIter<T, Z> = iter::Chain<
 >;
 
 impl<T: CoordNum, Z: CoordNum> CoordsIter for Rect<T, Z> {
-    type Iter<'a> = RectIter<T, Z>
-    where T: 'a, Z: 'a;
-    type ExteriorIter<'a> = Self::Iter<'a>
-    where T: 'a, Z: 'a;
+    type Iter<'a>
+        = RectIter<T, Z>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = Self::Iter<'a>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -299,10 +353,16 @@ impl<T: CoordNum, Z: CoordNum> CoordsIter for Rect<T, Z> {
 // └─────────────────────────────┘
 
 impl<T: CoordNum, Z: CoordNum> CoordsIter for Triangle<T, Z> {
-    type Iter<'a> = iter::Chain<CoordinateChainOnce<T, Z>, iter::Once<Coordinate<T, Z>>>
-    where T: 'a, Z: 'a;
-    type ExteriorIter<'a> = Self::Iter<'a>
-    where T: 'a, Z: 'a;
+    type Iter<'a>
+        = iter::Chain<CoordinateChainOnce<T, Z>, iter::Once<Coordinate<T, Z>>>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = Self::Iter<'a>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -327,10 +387,16 @@ impl<T: CoordNum, Z: CoordNum> CoordsIter for Triangle<T, Z> {
 // └─────────────────────────────┘
 
 impl<T: CoordNum, Z: CoordNum> CoordsIter for Geometry<T, Z> {
-    type Iter<'a> = GeometryCoordsIter<'a, T, Z>
-    where T: 'a, Z: 'a;
-    type ExteriorIter<'a> = GeometryExteriorCoordsIter<'a, T, Z>
-    where T: 'a, Z: 'a;
+    type Iter<'a>
+        = GeometryCoordsIter<'a, T, Z>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = GeometryExteriorCoordsIter<'a, T, Z>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -392,8 +458,16 @@ impl<T: CoordNum, Z: CoordNum> CoordsIter for Geometry<T, Z> {
 // └──────────────────────────┘
 
 impl<const N: usize, T: CoordNum, Z: CoordNum> CoordsIter for [Coordinate<T, Z>; N] {
-    type Iter<'a> = iter::Copied<slice::Iter<'a, Coordinate<T, Z>>> where T: 'a, Z: 'a;
-    type ExteriorIter<'a> = Self::Iter<'a> where T: 'a, Z: 'a;
+    type Iter<'a>
+        = iter::Copied<slice::Iter<'a, Coordinate<T, Z>>>
+    where
+        T: 'a,
+        Z: 'a;
+    type ExteriorIter<'a>
+        = Self::Iter<'a>
+    where
+        T: 'a,
+        Z: 'a;
     type ScalarXY = T;
     type ScalarZ = Z;
 
@@ -415,8 +489,16 @@ impl<const N: usize, T: CoordNum, Z: CoordNum> CoordsIter for [Coordinate<T, Z>;
 // └──────────────────────────┘
 
 impl<'a, T: CoordNum, Z: CoordNum> CoordsIter for &'a [Coordinate<T, Z>] {
-    type Iter<'b> = iter::Copied<slice::Iter<'b, Coordinate<T, Z>>> where T: 'b, 'a: 'b;
-    type ExteriorIter<'b> = Self::Iter<'b> where T: 'b, 'a: 'b;
+    type Iter<'b>
+        = iter::Copied<slice::Iter<'b, Coordinate<T, Z>>>
+    where
+        T: 'b,
+        'a: 'b;
+    type ExteriorIter<'b>
+        = Self::Iter<'b>
+    where
+        T: 'b,
+        'a: 'b;
     type ScalarXY = T;
     type ScalarZ = Z;
 
