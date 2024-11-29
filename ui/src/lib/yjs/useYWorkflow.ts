@@ -139,9 +139,37 @@ export default ({
       handleWorkflowIdChange,
     ],
   );
+
+  const handleWorkflowRename = useCallback(
+    (id: string, name: string) =>
+      undoTrackerActionWrapper(() => {
+        if (!name.trim()) {
+          throw new Error("Workflow name cannot be empty");
+        }
+
+        // Update local state
+        setWorkflows((w) => w.map((w) => (w.id === id ? { ...w, name } : w)));
+
+        // Update subworkflow node in main workflow if this is a subworkflow
+        const mainWorkflow = yWorkflows.get(0);
+        const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray;
+
+        for (const node of mainWorkflowNodes) {
+          if (node.id === id) {
+            node.data = {
+              ...node.data,
+              name,
+            };
+          }
+        }
+      }),
+    [undoTrackerActionWrapper, yWorkflows, setWorkflows],
+  );
+
   return {
     currentYWorkflow,
     handleWorkflowAdd,
     handleWorkflowsRemove,
+    handleWorkflowRename,
   };
 };

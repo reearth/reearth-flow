@@ -32,6 +32,7 @@ export default () => {
     handleEdgesUpdate,
     handleWorkflowRedo,
     handleWorkflowUndo,
+    handleWorkflowRename,
   } = useYjsStore({
     workflowId: currentWorkflowId,
     handleWorkflowIdChange,
@@ -168,5 +169,6 @@ export default () => {
     handleEdgeHover,
     handleWorkflowRedo,
     handleWorkflowUndo,
+    handleWorkflowRename,
   };
 };

@@ -32,6 +32,7 @@ export default function Editor() {
     handleEdgeHover,
     handleWorkflowRedo,
     handleWorkflowUndo,
+    handleWorkflowRename,
   } = useHooks();
 
   return (
@@ -75,6 +76,7 @@ export default function Editor() {
             onOpen={handlePanelOpen}
             onWorkflowClose={handleWorkflowClose}
             onWorkflowChange={handleWorkflowChange}
+            onWorkflowRename={handleWorkflowRename}
           />
         </div>
         <RightPanel selected={locallyLockedNode} />
