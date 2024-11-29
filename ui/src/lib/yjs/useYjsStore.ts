@@ -42,7 +42,11 @@ export default ({
       const yDoc = new Y.Doc();
       const { websocket } = config();
       if (workflowId && websocket && currentProject) {
-        yWebSocketRef.current = new WebsocketProvider(websocket, `${currentProject?.id}:${workflowId}`, yDoc);
+        yWebSocketRef.current = new WebsocketProvider(
+          websocket,
+          `${currentProject?.id}:${workflowId}`,
+          yDoc,
+        );
       }
 
       const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
