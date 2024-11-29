@@ -1,3 +1,7 @@
+import { Array as YArray, UndoManager as YUndoManager } from "yjs";
+
+import { YWorkflow } from "@flow/lib/yjs/utils";
+
 import {
   BottomPanel,
   Canvas,
@@ -7,7 +11,18 @@ import {
 } from "./components";
 import useHooks from "./hooks";
 
-export default function Editor() {
+type Props = {
+  yWorkflows: YArray<YWorkflow>;
+  undoManager: YUndoManager | null;
+  undoTrackerActionWrapper: (callback: () => void) => void;
+};
+
+export default function Editor({
+  yWorkflows,
+  undoManager,
+  undoTrackerActionWrapper,
+}: Props) {
+  console.log("workflows", yWorkflows);
   const {
     currentWorkflowId,
     openWorkflows,
@@ -33,7 +48,7 @@ export default function Editor() {
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
-  } = useHooks();
+  } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
 
   return (
     <div className="flex h-screen flex-col">

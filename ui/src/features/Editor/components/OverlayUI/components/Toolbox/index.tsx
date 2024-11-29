@@ -3,9 +3,9 @@ import {
   ArrowArcRight,
   Database,
   Disc,
+  Graph,
   Lightning,
   Note,
-  Plus,
   RectangleDashed,
 } from "@phosphor-icons/react";
 import { memo, type DragEvent } from "react";
@@ -64,7 +64,7 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
     {
       id: "subworkflow",
       name: t("Subworkflow Node"),
-      icon: <Plus weight="light" />,
+      icon: <Graph weight="thin" />,
     },
   ];
 
