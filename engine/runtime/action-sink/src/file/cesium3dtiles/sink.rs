@@ -27,27 +27,25 @@ use nusamai_citygml::schema::Schema;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::prelude::*;
 use reearth_flow_common::{
-    gltf::calculate_normal,
     texture::{apply_downsample_factor, get_texture_downsample_scale_of_polygon},
     uri::Uri,
 };
+use reearth_flow_gltf::calculate_normal;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
-use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::Expr;
 use reearth_flow_types::Feature;
+use reearth_flow_types::{geometry as geometry_types, material};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tempfile::tempdir;
 use url::Url;
 
-use super::gltf::write_gltf_glb;
 use super::tiling::{TileContent, TileTree};
 use super::{
-    gltf, material, metadata,
     slice::{slice_to_tiles, SlicedFeature},
     tiling,
 };
@@ -89,7 +87,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
         _action: String,
         with: Option<HashMap<String, JsonValue>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params: Cesium3DTilesWriterParam = if let Some(with) = with {
+        let params: Cesium3DTilesWriterParam = if let Some(with) = with.clone() {
             let value: serde_json::Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::Cesium3DTilesWriterFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -116,6 +114,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{:?}", e)))?;
 
         let sink = Cesium3DTilesWriter {
+            global_params: with,
             buffer: HashMap::new(),
             params: Cesium3DTilesWriterCompiledParam {
                 output: template_ast,
@@ -130,6 +129,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
+    pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }
@@ -170,7 +170,7 @@ impl Sink for Cesium3DTilesWriter {
         }
         let feature = ctx.feature;
         let output = self.params.output.clone();
-        let scope = feature.new_scope(ctx.expr_engine.clone());
+        let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
@@ -432,9 +432,9 @@ fn tile_writing_stage(
             };
 
             let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default(); // [x, y, z, u, v, feature_id]
-            let mut primitives: gltf::Primitives = Default::default();
+            let mut primitives: reearth_flow_gltf::Primitives = Default::default();
 
-            let mut metadata_encoder = metadata::MetadataEncoder::new(schema);
+            let mut metadata_encoder = reearth_flow_gltf::MetadataEncoder::new(schema);
 
             let packer = Mutex::new(AtlasPacker::default());
 
@@ -490,12 +490,16 @@ fn tile_writing_stage(
             let features = features
                 .iter()
                 .filter(|feature| {
-                    metadata_encoder
-                        .add_feature(&typename, &feature.attributes)
-                        .is_ok()
+                    let result = metadata_encoder.add_feature(&typename, &feature.attributes);
+                    if let Err(e) = result {
+                        ctx.event_hub
+                            .error_log(None, format!("Failed to add feature with error = {:?}", e));
+                        false
+                    } else {
+                        true
+                    }
                 })
                 .collect::<Vec<_>>();
-
             // A unique ID used when planning the atlas layout
             //  and when obtaining the UV coordinates after the layout has been completed
             let generate_texture_id = |z, x, y, feature_id, poly_count| {
@@ -741,14 +745,15 @@ fn tile_writing_stage(
             let writer = BufWriter::new(&mut buffer);
             let content_path = content.content_path.clone();
             contents.lock().unwrap().push(content);
-            write_gltf_glb(
+            reearth_flow_gltf::write_gltf_glb(
                 writer,
-                translation,
+                Some(translation),
                 vertices,
                 primitives,
                 features.len(),
                 metadata_encoder,
-            )?;
+            )
+            .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
             let storage = ctx
                 .storage_resolver

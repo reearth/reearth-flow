@@ -52,7 +52,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: StatisticsCalculatorParam = if let Some(with) = with {
+        let params: StatisticsCalculatorParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::StatisticsCalculatorFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -89,6 +89,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
             aggregate_attribute: params.aggregate_attribute,
             calculations,
             aggregate_buffer: HashMap::new(),
+            global_params: with,
         };
         Ok(Box::new(process))
     }
@@ -100,6 +101,7 @@ pub struct StatisticsCalculator {
     aggregate_attribute: Option<Attribute>,
     calculations: Vec<CompiledCalculation>,
     aggregate_buffer: HashMap<Attribute, HashMap<String, i64>>,
+    global_params: Option<HashMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Clone)]
@@ -131,7 +133,7 @@ impl Processor for StatisticsCalculator {
     ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
-        let scope = feature.new_scope(expr_engine.clone());
+        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         let aggregate = self
             .aggregate_attribute
             .clone()

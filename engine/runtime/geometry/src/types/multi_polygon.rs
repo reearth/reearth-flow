@@ -305,4 +305,10 @@ impl MultiPolygon3D<f64> {
             poly.transform_inplace(jgd2wgs);
         }
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        for poly in self.0.iter_mut() {
+            poly.transform_offset(x, y, z);
+        }
+    }
 }

@@ -250,6 +250,26 @@ impl Geometry3D<f64> {
             }
         }
     }
+
+    pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
+        match self {
+            Self::Point(p) => p.transform_offset(x, y, z),
+            Self::Line(l) => l.transform_offset(x, y, z),
+            Self::LineString(ls) => ls.transform_offset(x, y, z),
+            Self::Polygon(poly) => poly.transform_offset(x, y, z),
+            Self::MultiPoint(mpoint) => mpoint.transform_offset(x, y, z),
+            Self::MultiLineString(mls) => mls.transform_offset(x, y, z),
+            Self::MultiPolygon(mpoly) => mpoly.transform_offset(x, y, z),
+            Self::Rect(rect) => rect.transform_offset(x, y, z),
+            Self::Triangle(triangle) => triangle.transform_offset(x, y, z),
+            Self::Solid(solid) => solid.transform_offset(x, y, z),
+            Self::GeometryCollection(gc) => {
+                for g in gc {
+                    g.transform_offset(x, y, z);
+                }
+            }
+        }
+    }
 }
 
 impl From<Geometry3D<f64>> for Geometry2D<f64> {

@@ -5,3 +5,4 @@ pub mod project;
 pub use error::ProjectServiceError;
 pub mod types;
 pub use types::ManageProjectEditSessionTaskData;
+pub use types::SessionCommand;

@@ -565,40 +565,6 @@ Writes features to a file
 ### Category
 * File
 
-## CityGmlGeometryLodFilter
-### Type
-* processor
-### Description
-Filters CityGML geometries by LOD
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CityGmlGeometryLodFilter",
-  "type": "object",
-  "required": [
-    "lods"
-  ],
-  "properties": {
-    "lods": {
-      "type": "array",
-      "items": {
-        "type": "integer",
-        "format": "uint8",
-        "minimum": 0.0
-      }
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-* rejected
-### Category
-* Geometry
-
 ## Clipper
 ### Type
 * processor
@@ -1188,6 +1154,38 @@ Transforms features by expressions
 ### Category
 * Feature
 
+## FeatureTypeFilter
+### Type
+* processor
+### Description
+Filters features by feature type
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureTypeFilter",
+  "type": "object",
+  "required": [
+    "targetTypes"
+  ],
+  "properties": {
+    "targetTypes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* unfiltered
+### Category
+* Feature
+
 ## FilePathExtractor
 ### Type
 * source
@@ -1727,6 +1725,45 @@ Filter geometry by type
 ### Category
 * Geometry
 
+## GeometryLodFilter
+### Type
+* processor
+### Description
+Filter geometry by lod
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeometryLodFilterParam",
+  "type": "object",
+  "properties": {
+    "maxLod": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "minLod": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint8",
+      "minimum": 0.0
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* unfiltered
+### Category
+* Geometry
+
 ## GeometryReplacer
 ### Type
 * processor
@@ -1833,6 +1870,44 @@ Filter geometry by value
 * cityGml
 ### Category
 * Geometry
+
+## GltfWriter
+### Type
+* sink
+### Description
+Writes features to a Gltf
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GltfWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "attachTexture": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "output": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
 
 ## HoleCounter
 ### Type
@@ -2064,6 +2139,49 @@ noop sink
 ### Output Ports
 ### Category
 * Noop
+
+## Offsetter
+### Type
+* processor
+### Description
+Adds offsets to the feature's coordinates.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OffsetterParam",
+  "type": "object",
+  "properties": {
+    "offsetX": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "offsetY": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "offsetZ": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
 
 ## OrientationExtractor
 ### Type
@@ -2589,6 +2707,56 @@ Reprojects the geometry of a feature to a specified coordinate system
 * default
 ### Category
 * Geometry
+
+## WasmRuntimeExecutor
+### Type
+* processor
+### Description
+Compiles scripts into .wasm and runs at the wasm runtime
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WasmRuntimeExecutorParam",
+  "type": "object",
+  "required": [
+    "processorType",
+    "programmingLanguage",
+    "sourceCodeFilePath"
+  ],
+  "properties": {
+    "processorType": {
+      "$ref": "#/definitions/ProcessorType"
+    },
+    "programmingLanguage": {
+      "$ref": "#/definitions/ProgrammingLanguage"
+    },
+    "sourceCodeFilePath": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "ProcessorType": {
+      "type": "string",
+      "enum": [
+        "Attribute"
+      ]
+    },
+    "ProgrammingLanguage": {
+      "type": "string",
+      "enum": [
+        "Python"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Wasm
 
 ## XMLFragmenter
 ### Type

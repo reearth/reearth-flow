@@ -24,6 +24,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v4.1
+        with:
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+          remove-swapfile: 'true'
+          remove-cached-tools: 'true'
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -36,6 +46,14 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: taplo-cli,cargo-make
+      - name: Install Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Install py2wasm
+        run: |
+          python -m pip install --upgrade pip
+          pip install py2wasm
       - name: check
         run: cargo make check
       - name: rustfmt

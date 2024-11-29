@@ -7,7 +7,7 @@ use crate::{
     echo::EchoSinkFactory,
     file::{
         cesium3dtiles::sink::Cesium3DTilesSinkFactory, geojson::GeoJsonWriterFactory,
-        mvt::sink::MVTSinkFactory, writer::FileWriterSinkFactory,
+        gltf::GltfWriterSinkFactory, mvt::sink::MVTSinkFactory, writer::FileWriterSinkFactory,
     },
     noop::NoopSinkFactory,
 };
@@ -20,6 +20,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<NoopSinkFactory>::default(),
         Box::<GeoJsonWriterFactory>::default(),
         Box::<MVTSinkFactory>::default(),
+        Box::<GltfWriterSinkFactory>::default(),
     ];
     factories
         .into_iter()

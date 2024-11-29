@@ -1,4 +1,31 @@
-use rslock::{LockError, LockGuard, LockManager};
+use redis::{Client, RedisError};
+use thiserror::Error;
+use uuid::Uuid;
+
+pub struct LockGuard {
+    #[allow(dead_code)]
+    redis_client: Client,
+    key: String,
+    token: String,
+}
+
+#[derive(Error, Debug)]
+pub enum LockError {
+    #[error("Redis error: {0}")]
+    Redis(#[from] RedisError),
+    #[error("Resource is already locked")]
+    AlreadyLocked,
+    #[error("Failed to create Redis client: {0}")]
+    ClientCreation(String),
+}
+
+// Release lock using Lua script to ensure atomic delete with explicit return type
+const SCRIPT: &str = r"
+    if redis.call('get', KEYS[1]) == ARGV[1] then
+        return redis.call('del', KEYS[1])
+    else
+        return 0
+    end";
 
 macro_rules! define_lock_method {
     ($name:ident, $($lock_key:expr),+) => {
@@ -20,13 +47,14 @@ macro_rules! define_lock_method {
 
 #[derive(Clone)]
 pub struct FlowProjectLock {
-    lock_manager: LockManager,
+    redis_client: Client,
 }
 
 impl FlowProjectLock {
-    pub fn new(redis_url: &str) -> Self {
-        let lock_manager = LockManager::new(vec![redis_url]);
-        Self { lock_manager }
+    pub fn new(redis_url: &str) -> Result<Self, LockError> {
+        let redis_client =
+            Client::open(redis_url).map_err(|e| LockError::ClientCreation(e.to_string()))?;
+        Ok(Self { redis_client })
     }
 
     async fn with_lock<F, T>(
@@ -39,14 +67,37 @@ impl FlowProjectLock {
         F: FnOnce(&LockGuard) -> T + Send,
         T: Send,
     {
-        let resource_bytes: Vec<u8> = resources.join(":").into_bytes();
-        let lock = self
-            .lock_manager
-            .lock(&resource_bytes, duration_ms as usize)
+        let key = resources.join(":");
+        let token = Uuid::new_v4().to_string();
+        let mut conn = self.redis_client.get_multiplexed_async_connection().await?;
+
+        // Try to acquire lock using SET NX with expiration
+        let acquired: bool = redis::cmd("SET")
+            .arg(&key)
+            .arg(&token)
+            .arg("NX")
+            .arg("PX")
+            .arg(duration_ms)
+            .query_async(&mut conn)
             .await?;
-        let guard = LockGuard { lock };
+
+        if !acquired {
+            return Err(LockError::AlreadyLocked);
+        }
+
+        let guard = LockGuard {
+            redis_client: self.redis_client.clone(),
+            key,
+            token,
+        };
+
         let result = callback(&guard);
-        self.lock_manager.unlock(&guard.lock).await;
+
+        let _: i32 = redis::Script::new(SCRIPT)
+            .key(&guard.key)
+            .arg(&guard.token)
+            .invoke_async(&mut conn)
+            .await?;
 
         Ok(result)
     }

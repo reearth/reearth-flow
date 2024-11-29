@@ -569,40 +569,6 @@
       ]
     },
     {
-      "name": "CityGmlGeometryLodFilter",
-      "type": "processor",
-      "description": "Filters CityGML geometries by LOD",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CityGmlGeometryLodFilter",
-        "type": "object",
-        "required": [
-          "lods"
-        ],
-        "properties": {
-          "lods": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "uint8",
-              "minimum": 0.0
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default",
-        "rejected"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
       "name": "Clipper",
       "type": "processor",
       "description": "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately",
@@ -1200,6 +1166,38 @@
       ]
     },
     {
+      "name": "FeatureTypeFilter",
+      "type": "processor",
+      "description": "Filters features by feature type",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureTypeFilter",
+        "type": "object",
+        "required": [
+          "targetTypes"
+        ],
+        "properties": {
+          "targetTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "unfiltered"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "FilePathExtractor",
       "type": "source",
       "description": "Extracts files from a directory or an archive",
@@ -1735,6 +1733,45 @@
       ]
     },
     {
+      "name": "GeometryLodFilter",
+      "type": "processor",
+      "description": "Filter geometry by lod",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryLodFilterParam",
+        "type": "object",
+        "properties": {
+          "maxLod": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "minLod": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "unfiltered"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "GeometryReplacer",
       "type": "processor",
       "description": "Replaces the geometry of a feature with a new geometry.",
@@ -1843,6 +1880,43 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "GltfWriter",
+      "type": "sink",
+      "description": "Writes features to a Gltf",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GltfWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "attachTexture": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
       ]
     },
     {
@@ -2078,6 +2152,49 @@
       "outputPorts": [],
       "categories": [
         "Noop"
+      ]
+    },
+    {
+      "name": "Offsetter",
+      "type": "processor",
+      "description": "Adds offsets to the feature's coordinates.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "OffsetterParam",
+        "type": "object",
+        "properties": {
+          "offsetX": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "offsetY": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "offsetZ": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
       ]
     },
     {
@@ -2629,6 +2746,56 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "WasmRuntimeExecutor",
+      "type": "processor",
+      "description": "Compiles scripts into .wasm and runs at the wasm runtime",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "WasmRuntimeExecutorParam",
+        "type": "object",
+        "required": [
+          "processorType",
+          "programmingLanguage",
+          "sourceCodeFilePath"
+        ],
+        "properties": {
+          "processorType": {
+            "$ref": "#/definitions/ProcessorType"
+          },
+          "programmingLanguage": {
+            "$ref": "#/definitions/ProgrammingLanguage"
+          },
+          "sourceCodeFilePath": {
+            "type": "string"
+          }
+        },
+        "definitions": {
+          "ProcessorType": {
+            "type": "string",
+            "enum": [
+              "Attribute"
+            ]
+          },
+          "ProgrammingLanguage": {
+            "type": "string",
+            "enum": [
+              "Python"
+            ]
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Wasm"
       ]
     },
     {

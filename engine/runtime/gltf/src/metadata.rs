@@ -46,9 +46,9 @@ impl<'a> MetadataEncoder<'a> {
         &mut self,
         typename: &str,
         attributes: &HashMap<String, AttributeValue>,
-    ) -> Result<usize, ()> {
+    ) -> crate::errors::Result<usize> {
         let Some(TypeDef::Feature(feature_def)) = self.original_schema.types.get(typename) else {
-            return Err(());
+            return Err(crate::errors::Error::metadata("Feature type not found"));
         };
 
         let typename = typename.replace(':', "_");
@@ -145,7 +145,10 @@ impl From<&FeatureTypeDef> for Class {
 }
 
 impl Class {
-    fn add_feature(&mut self, attributes: &HashMap<String, AttributeValue>) -> Result<usize, ()> {
+    fn add_feature(
+        &mut self,
+        attributes: &HashMap<String, AttributeValue>,
+    ) -> crate::errors::Result<usize> {
         // Encode id
         if let Some(id) = attributes.get("gmlId") {
             if let Some(prop) = self.properties.get_mut("id") {

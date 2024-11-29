@@ -1,0 +1,37 @@
+[package]
+description = "Re:Earth Flow GLTF library"
+name = "reearth-flow-gltf"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+reearth-flow-common.workspace = true
+reearth-flow-eval-expr.workspace = true
+reearth-flow-geometry.workspace = true
+reearth-flow-runtime.workspace = true
+reearth-flow-storage.workspace = true
+reearth-flow-types.workspace = true
+
+nusamai-citygml.workspace = true
+nusamai-gltf.workspace = true
+
+ahash.workspace = true
+byteorder.workspace = true
+chrono.workspace = true
+indexmap.workspace = true
+itertools.workspace = true
+once_cell.workspace = true
+regex.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true

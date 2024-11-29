@@ -4,46 +4,114 @@ use flow_websocket_infra::persistence::project_repository::ProjectRepositoryErro
 use flow_websocket_infra::persistence::redis::errors::FlowProjectRedisDataManagerError;
 use flow_websocket_infra::persistence::repository::{
     ProjectEditingSessionImpl, ProjectImpl, ProjectSnapshotImpl, RedisDataManagerImpl,
+    WorkspaceImpl,
 };
 use flow_websocket_infra::types::project::Project;
 use flow_websocket_infra::types::snapshot::ProjectSnapshot;
 use flow_websocket_infra::types::user::User;
+use flow_websocket_infra::types::workspace::Workspace;
 use std::sync::Arc;
 use tracing::debug;
 
 #[derive(Debug, Clone)]
-pub struct ProjectService<E, S, R> {
+pub struct ProjectService<E, S, R, P, W> {
     pub session_repository: Arc<E>,
     pub snapshot_repository: Arc<S>,
     pub redis_data_manager: Arc<R>,
+    pub project_repository: Arc<P>,
+    pub workspace_repository: Arc<W>,
 }
 
-impl<E, S, R> ProjectService<E, S, R>
+impl<E, S, R, P, W> ProjectService<E, S, R, P, W>
 where
-    E: ProjectEditingSessionImpl<Error = ProjectRepositoryError>
-        + ProjectImpl<Error = ProjectRepositoryError>
-        + Send
-        + Sync,
+    E: ProjectEditingSessionImpl<Error = ProjectRepositoryError> + Send + Sync,
     S: ProjectSnapshotImpl<Error = ProjectRepositoryError> + Send + Sync,
     R: RedisDataManagerImpl<Error = FlowProjectRedisDataManagerError> + Send + Sync,
+    P: ProjectImpl<Error = ProjectRepositoryError> + Send + Sync,
+    W: WorkspaceImpl<Error = ProjectRepositoryError> + Send + Sync,
 {
     pub fn new(
         session_repository: Arc<E>,
         snapshot_repository: Arc<S>,
         redis_data_manager: Arc<R>,
+        project_repository: Arc<P>,
+        workspace_repository: Arc<W>,
     ) -> Self {
         Self {
             session_repository,
             snapshot_repository,
             redis_data_manager,
+            project_repository,
+            workspace_repository,
         }
     }
 
-    pub async fn get_project(
+    pub async fn create_project(&self, project: Project) -> Result<(), ProjectServiceError> {
+        Ok(self.project_repository.create_project(project).await?)
+    }
+
+    pub async fn delete_project(&self, project_id: &str) -> Result<(), ProjectServiceError> {
+        Ok(self.project_repository.delete_project(project_id).await?)
+    }
+
+    pub async fn update_project(&self, project: Project) -> Result<(), ProjectServiceError> {
+        Ok(self.project_repository.update_project(project).await?)
+    }
+
+    pub async fn create_workspace(&self, workspace: Workspace) -> Result<(), ProjectServiceError> {
+        Ok(self
+            .workspace_repository
+            .create_workspace(workspace)
+            .await?)
+    }
+
+    pub async fn delete_workspace(&self, workspace_id: &str) -> Result<(), ProjectServiceError> {
+        Ok(self
+            .workspace_repository
+            .delete_workspace(workspace_id)
+            .await?)
+    }
+
+    pub async fn update_workspace(&self, workspace: Workspace) -> Result<(), ProjectServiceError> {
+        Ok(self
+            .workspace_repository
+            .update_workspace(workspace)
+            .await?)
+    }
+
+    pub async fn list_workspace_projects_ids(
+        &self,
+        workspace_id: &str,
+    ) -> Result<Vec<String>, ProjectServiceError> {
+        Ok(self
+            .workspace_repository
+            .list_workspace_projects_ids(workspace_id)
+            .await?)
+    }
+
+    /// Merge all updates in the stream
+    pub async fn merge_updates(
         &self,
         project_id: &str,
-    ) -> Result<Option<Project>, ProjectServiceError> {
-        Ok(self.session_repository.get_project(project_id).await?)
+        data: Vec<u8>,
+        updates_by: Option<String>,
+    ) -> Result<(), ProjectServiceError> {
+        self.redis_data_manager
+            .merge_updates(project_id, data, updates_by)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn process_state_vector(
+        &self,
+        project_id: &str,
+        state_vector: Vec<u8>,
+    ) -> Result<Option<Vec<u8>>, ProjectServiceError> {
+        let ret = self
+            .redis_data_manager
+            .process_state_vector(project_id, state_vector)
+            .await?;
+        Ok(ret)
     }
 
     pub async fn get_or_create_editing_session(
@@ -88,18 +156,6 @@ where
             .await?)
     }
 
-    pub async fn push_update_to_redis_stream(
-        &self,
-        project_id: &str,
-        update: Vec<u8>,
-        updated_by: Option<String>,
-    ) -> Result<(), ProjectServiceError> {
-        Ok(self
-            .redis_data_manager
-            .push_update(project_id, update, updated_by)
-            .await?)
-    }
-
     pub async fn end_session(
         &self,
         snapshot_name: String,
@@ -119,11 +175,10 @@ where
     pub async fn get_current_state(
         &self,
         project_id: &str,
-        session_id: Option<&str>,
     ) -> Result<Option<Vec<u8>>, ProjectServiceError> {
         Ok(self
             .redis_data_manager
-            .get_current_state(project_id, session_id)
+            .get_current_state(project_id)
             .await?)
     }
 

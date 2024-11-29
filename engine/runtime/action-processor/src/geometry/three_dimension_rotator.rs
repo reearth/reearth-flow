@@ -50,7 +50,7 @@ impl ProcessorFactory for ThreeDimensionRotatorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: ThreeDimensionRotatorParam = if let Some(with) = with {
+        let params: ThreeDimensionRotatorParam = if let Some(with) = with.clone() {
             let value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::ThreeDimensionRotatorFactory(format!(
                     "Failed to serialize `with` parameter: {}",
@@ -100,6 +100,7 @@ impl ProcessorFactory for ThreeDimensionRotatorFactory {
                 GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{:?}", e))
             })?;
         Ok(Box::new(ThreeDimensionRotator {
+            global_params: with,
             angle_degree,
             origin_x,
             origin_y,
@@ -125,6 +126,7 @@ pub struct ThreeDimensionRotatorParam {
 
 #[derive(Debug, Clone)]
 pub struct ThreeDimensionRotator {
+    global_params: Option<HashMap<String, serde_json::Value>>,
     angle_degree: rhai::AST,
     origin_x: rhai::AST,
     origin_y: rhai::AST,
@@ -141,7 +143,7 @@ impl Processor for ThreeDimensionRotator {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let scope = feature.new_scope(ctx.expr_engine.clone());
+        let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
         let angle_degree = scope.eval_ast::<f64>(&self.angle_degree)?;
         let origin_x = scope.eval_ast::<f64>(&self.origin_x)?;
         let origin_y = scope.eval_ast::<f64>(&self.origin_y)?;

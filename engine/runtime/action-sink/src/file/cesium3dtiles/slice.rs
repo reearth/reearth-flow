@@ -5,10 +5,13 @@ use std::collections::{HashMap, HashSet};
 use flatgeom::{MultiPolygon, Polygon, Polygon2, Polygon3};
 use indexmap::IndexSet;
 use itertools::Itertools;
-use reearth_flow_types::{AttributeValue, Feature, GeometryType};
+use reearth_flow_types::{
+    material::{self, Material},
+    AttributeValue, Feature, GeometryType,
+};
 use serde::{Deserialize, Serialize};
 
-use super::{material::Material, material::Texture, tiling, tiling::zxy_from_lng_lat};
+use super::{tiling, tiling::zxy_from_lng_lat};
 
 pub type TileZXYName = (u8, u32, u32);
 
@@ -40,7 +43,7 @@ pub fn slice_to_tiles<E>(
 
     let mut sliced_tiles: HashMap<(u8, u32, u32), SlicedFeature> = HashMap::new();
     let mut materials: IndexSet<Material> = IndexSet::new();
-    let default_material = reearth_flow_types::Material::default();
+    let default_material = reearth_flow_types::material::X3DMaterial::default();
 
     let (lng_center, lat_center, approx_dx, approx_dy, approx_dh) = {
         let vertice = city_gml.max_min_vertice();
@@ -99,8 +102,8 @@ pub fn slice_to_tiles<E>(
                         let orig_tex = poly_tex.and_then(|idx| city_gml.textures.get(idx as usize));
                         Material {
                             base_color: orig_mat.diffuse_color.into(),
-                            base_texture: orig_tex.map(|tex| Texture {
-                                uri: tex.uri.clone().into(),
+                            base_texture: orig_tex.map(|tex| material::Texture {
+                                uri: tex.uri.clone(),
                             }),
                         }
                     } else {

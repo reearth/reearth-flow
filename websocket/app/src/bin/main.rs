@@ -4,6 +4,8 @@ use app::create_router;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use {app::state::AppState, app::Config};
 
+const CONFIG_FILE_PATH: &str = "./conf/conf.yaml";
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     // Load environment variables from .env file if it exists
@@ -17,11 +19,13 @@ async fn main() -> std::io::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    let env = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
+
     // Load configuration from environment
-    let config = Config::from_env();
+    let config = Config::from_file(CONFIG_FILE_PATH, &env);
 
     let state: Arc<AppState> = Arc::new(
-        AppState::new(Some(config.redis_url.clone()))
+        AppState::new(config.redis_url.clone())
             .await
             .expect("Failed to create AppState"),
     );

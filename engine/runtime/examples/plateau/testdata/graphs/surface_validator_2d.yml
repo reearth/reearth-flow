@@ -40,7 +40,7 @@ nodes:
     with:
       conditions:
         - expr: |
-            env.get("__value").outerOrientation != "clockwise"
+            env.get("__value").outerOrientation != "counter_clockwise"
           outputPort: inCorrectOrientation
 
   - id: 6a005159-a30d-4a30-8cca-ebea4e89c351
