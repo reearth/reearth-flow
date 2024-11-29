@@ -40,9 +40,9 @@ export default ({
   const [{ yWorkflows, currentUserClientId, undoTrackerActionWrapper }] =
     useState(() => {
       const yDoc = new Y.Doc();
-      const { websocket, websocketToken } = config();
-      if (workflowId && websocket && websocketToken) {
-        yWebSocketRef.current = new WebsocketProvider(websocket, workflowId, yDoc);
+      const { websocket } = config();
+      if (workflowId && websocket && currentProject) {
+        yWebSocketRef.current = new WebsocketProvider(websocket, `${currentProject?.id}:${workflowId}`, yDoc);
       }
 
       const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
