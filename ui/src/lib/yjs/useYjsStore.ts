@@ -1,3 +1,4 @@
+import { useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useY } from "react-yjs";
 import { WebsocketProvider } from "y-websocket";
@@ -32,6 +33,10 @@ export default ({
   const [currentProject] = useCurrentProject();
   const { createDeployment, useUpdateDeployment } = useDeployment();
 
+  const { projectId }: { projectId: string } = useParams({
+    strict: false,
+  });
+
   const yWebSocketRef = useRef<WebsocketProvider | null>(null);
   useEffect(() => () => yWebSocketRef.current?.destroy(), []);
 
@@ -41,10 +46,10 @@ export default ({
     useState(() => {
       const yDoc = new Y.Doc();
       const { websocket } = config();
-      if (workflowId && websocket && currentProject) {
+      if (workflowId && websocket && projectId) {
         yWebSocketRef.current = new WebsocketProvider(
           websocket,
-          `${currentProject?.id}:${workflowId}`,
+          `${projectId}:${workflowId}`,
           yDoc,
         );
       }
