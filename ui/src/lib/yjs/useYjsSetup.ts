@@ -36,9 +36,6 @@ export default ({ workflowId }: { workflowId?: string }) => {
       );
 
       yWebSocketProvider.once("sync", () => {
-        console.log("yDoc synchronized");
-
-        // Initialize workflows if not present
         if (yWorkflows.length === 0) {
           yDoc.transact(() => {
             const yWorkflow = yWorkflowBuilder("main", "Main Workflow");

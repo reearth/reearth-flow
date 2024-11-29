@@ -22,7 +22,6 @@ export default function Editor({
   undoManager,
   undoTrackerActionWrapper,
 }: Props) {
-  console.log("workflows", yWorkflows);
   const {
     currentWorkflowId,
     openWorkflows,
