@@ -8,6 +8,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_types::GeometryValue;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -79,7 +80,11 @@ impl ProcessorFactory for GeometryLodFilterFactory {
             .into());
         }
 
-        let process = GeometryLodFilter { max_lod, min_lod };
+        let process = GeometryLodFilter {
+            max_lod: params.max_lod,
+            min_lod: params.min_lod,
+            target_lods: params.target_lods,
+        };
         Ok(Box::new(process))
     }
 }
@@ -87,14 +92,16 @@ impl ProcessorFactory for GeometryLodFilterFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryLodFilterParam {
-    pub max_lod: Option<u8>,
-    pub min_lod: Option<u8>,
+    max_lod: Option<u8>,
+    min_lod: Option<u8>,
+    target_lods: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct GeometryLodFilter {
-    pub max_lod: u8,
-    pub min_lod: u8,
+    max_lod: Option<u8>,
+    min_lod: Option<u8>,
+    target_lods: Option<Vec<u8>>,
 }
 
 impl Processor for GeometryLodFilter {
@@ -103,6 +110,40 @@ impl Processor for GeometryLodFilter {
         ctx: ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        if let Some(target_lods) = &self.target_lods {
+            let feature = &ctx.feature;
+            if let Some(geometry) = feature.geometry.value.as_citygml_geometry() {
+                let mut geometry = geometry.clone();
+                geometry.gml_geometries.retain(|g| {
+                    if let Some(lod) = g.lod {
+                        target_lods.contains(&lod)
+                    } else {
+                        false
+                    }
+                });
+                if geometry.gml_geometries.is_empty() {
+                    fw.send(
+                        ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()),
+                    );
+                    return Ok(());
+                }
+                let mut feature = feature.clone();
+                feature.geometry.value = GeometryValue::CityGmlGeometry(geometry);
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                return Ok(());
+            } else {
+                ctx.event_hub.info_log(
+                    None,
+                    format!("Feature {} does not have a citygml geometry", feature.id),
+                );
+                fw.send(
+                    ctx.new_with_feature_and_port(ctx.feature.clone(), UNFILTERED_PORT.clone()),
+                );
+                return Ok(());
+            }
+        }
+        let max_lod = self.max_lod.unwrap_or(4);
+        let min_lod = self.min_lod.unwrap_or(0);
         let Some(lod) = &ctx.feature.metadata.lod else {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), UNFILTERED_PORT.clone()));
             return Ok(());
@@ -115,7 +156,7 @@ impl Processor for GeometryLodFilter {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), UNFILTERED_PORT.clone()));
             return Ok(());
         };
-        if highest_lod <= self.max_lod && lowest_lod >= self.min_lod {
+        if highest_lod <= max_lod && lowest_lod >= min_lod {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
             return Ok(());
         }
@@ -147,8 +188,9 @@ mod tests {
     #[test]
     fn test_min_lod_default_port() {
         let mut filter = GeometryLodFilter {
-            max_lod: 2,
-            min_lod: 1,
+            max_lod: Some(2),
+            min_lod: Some(1),
+            target_lods: None,
         };
         let mut fw = Box::new(MockProcessorChannelForwarder::default());
         let mut feature = Feature::default();
@@ -164,8 +206,9 @@ mod tests {
     #[test]
     fn test_max_lod_default_port() {
         let mut filter = GeometryLodFilter {
-            max_lod: 3,
-            min_lod: 1,
+            max_lod: Some(3),
+            min_lod: Some(1),
+            target_lods: None,
         };
         let mut fw = Box::new(MockProcessorChannelForwarder::default());
         let mut feature = Feature::default();
@@ -182,8 +225,9 @@ mod tests {
     #[test]
     fn test_min_lod_unfilter_port() {
         let mut filter = GeometryLodFilter {
-            max_lod: 3,
-            min_lod: 2,
+            max_lod: Some(3),
+            min_lod: Some(2),
+            target_lods: None,
         };
         let mut fw = Box::new(MockProcessorChannelForwarder::default());
         let mut feature = Feature::default();
@@ -200,8 +244,9 @@ mod tests {
     #[test]
     fn test_max_lod_unfilter_port() {
         let mut filter = GeometryLodFilter {
-            max_lod: 3,
-            min_lod: 2,
+            max_lod: Some(3),
+            min_lod: Some(2),
+            target_lods: None,
         };
         let mut fw = Box::new(MockProcessorChannelForwarder::default());
         let mut feature = Feature::default();
