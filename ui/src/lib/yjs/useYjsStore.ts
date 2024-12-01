@@ -1,10 +1,7 @@
-import { useParams } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import { useY } from "react-yjs";
-import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
-import { config } from "@flow/config";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useCurrentProject } from "@flow/stores";
 import type { Edge, Node, Workflow } from "@flow/types";
@@ -18,13 +15,19 @@ import useWorkflowTabs from "./useWorkflowTabs";
 import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
-import { yWorkflowBuilder, type YWorkflow } from "./utils";
+import { YWorkflow } from "./utils";
 
 export default ({
   workflowId,
+  yWorkflows,
+  undoManager,
+  undoTrackerActionWrapper,
   handleWorkflowIdChange,
 }: {
   workflowId?: string;
+  yWorkflows: Y.Array<YWorkflow>;
+  undoManager: Y.UndoManager | null;
+  undoTrackerActionWrapper: (callback: () => void) => void;
   handleWorkflowIdChange: (id?: string) => void;
 }) => {
   const { toast } = useToast();
@@ -32,54 +35,6 @@ export default ({
 
   const [currentProject] = useCurrentProject();
   const { createDeployment, useUpdateDeployment } = useDeployment();
-
-  const { projectId }: { projectId: string } = useParams({
-    strict: false,
-  });
-
-  const yWebSocketRef = useRef<WebsocketProvider | null>(null);
-  useEffect(() => () => yWebSocketRef.current?.destroy(), []);
-
-  const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
-
-  const [{ yWorkflows, currentUserClientId, undoTrackerActionWrapper }] =
-    useState(() => {
-      const yDoc = new Y.Doc();
-      const { websocket } = config();
-      if (workflowId && websocket && projectId) {
-        yWebSocketRef.current = new WebsocketProvider(
-          websocket,
-          `${projectId}:${workflowId}`,
-          yDoc,
-        );
-      }
-
-      const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-      const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
-      yWorkflows.push([yWorkflow]);
-
-      const currentUserClientId = yDoc.clientID;
-
-      // NOTE: any changes to the yDoc should be wrapped in a transact
-      const undoTrackerActionWrapper = (callback: () => void) =>
-        yDoc.transact(callback, currentUserClientId);
-
-      return { yWorkflows, currentUserClientId, undoTrackerActionWrapper };
-    });
-
-  useEffect(() => {
-    if (yWorkflows) {
-      const manager = new Y.UndoManager(yWorkflows, {
-        trackedOrigins: new Set([currentUserClientId]), // Only track local changes
-        captureTimeout: 200, // default is 500. 200ms is a good balance between performance and user experience
-      });
-      setUndoManager(manager);
-
-      return () => {
-        manager.destroy(); // Clean up UndoManager on component unmount
-      };
-    }
-  }, [yWorkflows, currentUserClientId]);
 
   const handleWorkflowUndo = useCallback(() => {
     if (undoManager?.undoStack && undoManager.undoStack.length > 0) {
@@ -122,10 +77,10 @@ export default ({
   });
 
   const nodes = useY(
-    currentYWorkflow?.get("nodes") ?? new Y.Array<Node>(),
+    currentYWorkflow.get("nodes") ?? new Y.Array<Node>(),
   ) as Node[];
   const edges = useY(
-    currentYWorkflow?.get("edges") ?? new Y.Array<Edge>(),
+    currentYWorkflow.get("edges") ?? new Y.Array<Edge>(),
   ) as Edge[];
 
   const handleWorkflowDeployment = useCallback(

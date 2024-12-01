@@ -1,8 +1,10 @@
 import { XYPosition } from "@xyflow/react";
 import { MouseEvent, useCallback, useState } from "react";
+import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { useShortcuts } from "@flow/hooks";
 import { useYjsStore } from "@flow/lib/yjs";
+import { YWorkflow } from "@flow/lib/yjs/utils";
 import { useCurrentWorkflowId } from "@flow/stores";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 import { cancellableDebounce } from "@flow/utils";
@@ -10,7 +12,15 @@ import { cancellableDebounce } from "@flow/utils";
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useNodeLocker from "./useNodeLocker";
 
-export default () => {
+export default ({
+  yWorkflows,
+  undoManager,
+  undoTrackerActionWrapper,
+}: {
+  yWorkflows: YArray<YWorkflow>;
+  undoManager: YUndoManager | null;
+  undoTrackerActionWrapper: (callback: () => void) => void;
+}) => {
   const [currentWorkflowId, setCurrentWorkflowId] = useCurrentWorkflowId();
 
   const handleWorkflowIdChange = useCallback(
@@ -35,6 +45,9 @@ export default () => {
     handleWorkflowRename,
   } = useYjsStore({
     workflowId: currentWorkflowId,
+    yWorkflows,
+    undoManager,
+    undoTrackerActionWrapper,
     handleWorkflowIdChange,
   });
 
