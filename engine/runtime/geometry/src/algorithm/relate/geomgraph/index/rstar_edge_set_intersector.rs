@@ -41,7 +41,7 @@ where
     }
 }
 
-impl<'a, T, Z> rstar::RTreeObject for Segment<'a, T, Z>
+impl<T, Z> rstar::RTreeObject for Segment<'_, T, Z>
 where
     T: GeoFloat + rstar::RTreeNum,
     Z: GeoFloat + rstar::RTreeNum,

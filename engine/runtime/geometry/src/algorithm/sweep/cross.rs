@@ -12,7 +12,7 @@ pub trait Cross: Sized + Debug {
     fn line(&self) -> LineOrPoint<Self::ScalarXY, Self::ScalarZ>;
 }
 
-impl<'a, T: Cross> Cross for &'a T {
+impl<T: Cross> Cross for &T {
     type ScalarXY = T::ScalarXY;
     type ScalarZ = T::ScalarZ;
 

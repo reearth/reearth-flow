@@ -6,7 +6,7 @@ use opentelemetry::trace::TracerProvider;
 use opentelemetry_otlp::{MetricExporter, WithExportConfig};
 use opentelemetry_sdk::{
     metrics::{MeterProviderBuilder, PeriodicReader, SdkMeterProvider},
-    trace::{Config, Tracer},
+    trace::Tracer,
 };
 
 static OTEL_COLLECTOR_ENDPOINT: Lazy<Mutex<Option<String>>> =
@@ -68,17 +68,14 @@ pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
 pub fn init_tracing(service_name: String) -> Result<Tracer> {
     let tracer = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
         Some(endpoint) => opentelemetry_sdk::trace::TracerProvider::builder()
-            .with_config(
-                Config::default()
-                    .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
-                    .with_id_generator(opentelemetry_sdk::trace::RandomIdGenerator::default())
-                    .with_resource(opentelemetry_sdk::Resource::new(vec![
-                        opentelemetry::KeyValue::new(
-                            opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                            service_name.clone(),
-                        ),
-                    ])),
-            )
+            .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
+            .with_id_generator(opentelemetry_sdk::trace::RandomIdGenerator::default())
+            .with_resource(opentelemetry_sdk::Resource::new(vec![
+                opentelemetry::KeyValue::new(
+                    opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                    service_name.clone(),
+                ),
+            ]))
             .with_batch_exporter(
                 opentelemetry_otlp::SpanExporter::builder()
                     .with_tonic()
@@ -92,17 +89,14 @@ pub fn init_tracing(service_name: String) -> Result<Tracer> {
             .build(),
         None => opentelemetry_sdk::trace::TracerProvider::builder()
             .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
-            .with_config(
-                Config::default()
-                    .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
-                    .with_id_generator(opentelemetry_sdk::trace::RandomIdGenerator::default())
-                    .with_resource(opentelemetry_sdk::Resource::new(vec![
-                        opentelemetry::KeyValue::new(
-                            opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                            service_name.clone(),
-                        ),
-                    ])),
-            )
+            .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
+            .with_id_generator(opentelemetry_sdk::trace::RandomIdGenerator::default())
+            .with_resource(opentelemetry_sdk::Resource::new(vec![
+                opentelemetry::KeyValue::new(
+                    opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                    service_name.clone(),
+                ),
+            ]))
             .build(),
     };
     Ok(tracer.tracer(service_name.clone()))
