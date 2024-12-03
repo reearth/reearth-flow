@@ -1,6 +1,7 @@
 use nusamai_citygml::GeometryRef;
 use nusamai_citygml::{object::ObjectStereotype, GeometryType, Value};
 use nusamai_plateau::Entity;
+use reearth_flow_geometry::types::line_string::LineString3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 
 use crate::error::Error;
@@ -43,7 +44,19 @@ impl TryFrom<Entity> for Geometry {
                     geometry_feature.polygons.extend(polygons);
                     Some(geometry_feature)
                 }
-                GeometryType::Curve => unimplemented!(),
+                GeometryType::Curve => {
+                    let mut linestrings = Vec::<LineString3D<f64>>::new();
+                    for idx_linestring in geoms
+                        .multilinestring
+                        .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
+                    {
+                        let linestring = idx_linestring.transform(|c| geoms.vertices[*c as usize]);
+                        linestrings.push(linestring.into());
+                    }
+                    let mut geometry_feature = GmlGeometry::from(geometry.clone());
+                    geometry_feature.line_strings.extend(linestrings);
+                    Some(geometry_feature)
+                }
                 GeometryType::Point => unimplemented!(),
             }
         };
