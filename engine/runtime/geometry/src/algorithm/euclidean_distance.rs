@@ -26,7 +26,6 @@ use super::intersects::Intersects;
 use super::GeoNum;
 
 /// Returns the distance between two geometries.
-
 pub trait EuclideanDistance<Rhs = Self> {
     fn euclidean_distance(&self, rhs: &Rhs) -> f64;
 }
