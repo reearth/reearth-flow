@@ -271,22 +271,30 @@ impl GmlGeometry {
         self.polygons
             .iter_mut()
             .for_each(|poly| poly.transform_inplace(jgd2wgs));
+        self.line_strings
+            .iter_mut()
+            .for_each(|line| line.transform_inplace(jgd2wgs));
     }
 
     pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
         self.polygons
             .iter_mut()
             .for_each(|poly| poly.transform_offset(x, y, z));
+        self.line_strings
+            .iter_mut()
+            .for_each(|line| line.transform_offset(x, y, z));
     }
 }
 
 impl From<GmlGeometry> for Vec<geojson::Value> {
     fn from(feature: GmlGeometry) -> Self {
-        feature
+        let mut values = feature
             .polygons
             .into_iter()
             .map(|poly| poly.into())
-            .collect()
+            .collect::<Vec<_>>();
+        values.extend(feature.line_strings.into_iter().map(|line| line.into()));
+        values
     }
 }
 
