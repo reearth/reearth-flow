@@ -1,0 +1,90 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 08c6ab83-f903-492e-9c58-e36678e39b00
+name: "DataConvert-10-wtr-workflow"
+entryGraphId: d43daf2e-69f9-44fb-a67d-ad974960fd1a
+with:
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
+  schemaJson: !include ../../../config/schema.txt
+  targetPackages:
+    - wtr
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
+  outputPath:
+graphs:
+  - !include ../../../graphs/folder_and_file_path_reader.yml
+  - id: d43daf2e-69f9-44fb-a67d-ad974960fd1a
+    name: entry_point
+    nodes:
+      - id: d5fa7732-ef20-45ec-a331-e6d57571354b
+        name: FolderAndfilePathReader
+        type: subGraph
+        subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+
+      - id: 254d6287-7649-4647-9ab5-0c1c423f356a
+        name: FeatureReaderByCityGml
+        type: action
+        action: FeatureReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value").cityGmlPath
+
+      - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        name: AttributeMapperwtr
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: meshcode
+              valueAttribute: meshCode
+            - attribute: city_code
+              valueAttribute: cityCode
+            - attribute: city_name
+              valueAttribute: cityName
+            - attribute: feature_type
+              valueAttribute: gmlName
+            - attribute: gml_id
+              valueAttribute: gmlId
+
+      - id: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        name: VerticalReprojectorwtr
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        name: Cesium3DTilesWriterBywtr
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: true
+          output: |
+             file::join_path(env.get("outputPath"), "wtr")
+
+    edges:
+      - id: a4751655-5956-4e27-a976-e35f8914ad31
+        from: d5fa7732-ef20-45ec-a331-e6d57571354b
+        to: 254d6287-7649-4647-9ab5-0c1c423f356a
+        fromPort: default
+        toPort: default
+      - id: 86ec56d6-cefb-48ca-a72d-0c57a33d198a
+        from: 254d6287-7649-4647-9ab5-0c1c423f356a
+        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        fromPort: default
+        toPort: default
+      - id: 6b857fe4-c6c1-4ed3-ac6e-f7eef19c9248
+        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        fromPort: default
+        toPort: default
+      - id: e862f11a-88a6-4c1b-a743-ba80253039df
+        from: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        fromPort: default
+        toPort: default
