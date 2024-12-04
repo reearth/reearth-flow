@@ -384,7 +384,7 @@ impl DagSchemas {
         &'a self,
         node_id: NodeId,
         port: &'a Port,
-    ) -> impl Iterator<Item = (&SchemaNodeType, Port)> {
+    ) -> impl Iterator<Item = (&'a SchemaNodeType, Port)> {
         self.graph
             .edges(*self.node_index_by_node_id(node_id).unwrap())
             .filter_map(move |edge| {

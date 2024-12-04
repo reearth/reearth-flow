@@ -164,7 +164,7 @@ pub struct Iter<'a, T: CoordNum> {
     end: usize,
 }
 
-impl<'a, T: CoordNum> Iterator for Iter<'a, T> {
+impl<T: CoordNum> Iterator for Iter<'_, T> {
     type Item = Polygon<T>;
 
     fn next(&mut self) -> Option<Self::Item> {

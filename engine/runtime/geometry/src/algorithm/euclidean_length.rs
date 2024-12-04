@@ -9,7 +9,6 @@ use crate::{
 };
 
 /// Calculation of the length
-
 pub trait EuclideanLength<T, RHS = Self> {
     fn euclidean_length(&self) -> T;
 }

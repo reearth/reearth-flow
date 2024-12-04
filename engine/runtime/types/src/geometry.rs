@@ -3,6 +3,7 @@ use std::hash::Hash;
 
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use reearth_flow_geometry::types::coordnum::CoordNum;
+use reearth_flow_geometry::types::line_string::LineString3D;
 use reearth_flow_geometry::types::traits::Elevation;
 
 use nusamai_projection::crs::EpsgCode;
@@ -255,6 +256,7 @@ pub struct GmlGeometry {
     pub pos: u32,
     pub len: u32,
     pub polygons: Vec<Polygon3D<f64>>,
+    pub line_strings: Vec<LineString3D<f64>>,
     pub feature_id: Option<String>,
     pub feature_type: Option<String>,
     pub composite_surfaces: Vec<GmlGeometry>,
@@ -269,22 +271,30 @@ impl GmlGeometry {
         self.polygons
             .iter_mut()
             .for_each(|poly| poly.transform_inplace(jgd2wgs));
+        self.line_strings
+            .iter_mut()
+            .for_each(|line| line.transform_inplace(jgd2wgs));
     }
 
     pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
         self.polygons
             .iter_mut()
             .for_each(|poly| poly.transform_offset(x, y, z));
+        self.line_strings
+            .iter_mut()
+            .for_each(|line| line.transform_offset(x, y, z));
     }
 }
 
 impl From<GmlGeometry> for Vec<geojson::Value> {
     fn from(feature: GmlGeometry) -> Self {
-        feature
+        let mut values = feature
             .polygons
             .into_iter()
             .map(|poly| poly.into())
-            .collect()
+            .collect::<Vec<_>>();
+        values.extend(feature.line_strings.into_iter().map(|line| line.into()));
+        values
     }
 }
 
@@ -381,6 +391,7 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
             pos: geometry.pos,
             len: geometry.len,
             polygons: Vec::new(),
+            line_strings: Vec::new(),
             feature_id: geometry.feature_id,
             feature_type: geometry.feature_type,
             composite_surfaces: Vec::new(),
