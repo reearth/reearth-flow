@@ -9,6 +9,7 @@ type Me {
   id: ID!
   name: String!
   email: String!
+  lang: Lang!
   myWorkspaceId: ID!
   auths: [String!]!
   workspaces: [Workspace!]!
@@ -19,6 +20,7 @@ type Me {
 
 input SignupInput {
   userId: ID
+  lang: Lang
   workspaceId: ID
   secret: String
 }
@@ -28,6 +30,7 @@ input UpdateMeInput {
   email: String
   password: String
   passwordConfirmation: String
+  lang: Lang
 }
 
 input RemoveMyAuthInput {
