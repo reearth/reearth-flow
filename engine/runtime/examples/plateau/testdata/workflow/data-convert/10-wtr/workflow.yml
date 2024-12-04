@@ -32,6 +32,14 @@ graphs:
           dataset: |
             env.get("__value").cityGmlPath
 
+      - id: 612d546f-e4e4-4bbe-9f4e-d47313347f00
+        name: GeometryLodFilterByLod0
+        type: action
+        action: GeometryLodFilter
+        with:
+          target_lods:
+            - 0
+
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         name: AttributeMapperwtr
         type: action
@@ -49,21 +57,16 @@ graphs:
             - attribute: gml_id
               valueAttribute: gmlId
 
-      - id: 928e21d9-fc30-4876-ba03-41338cfa47ed
-        name: VerticalReprojectorwtr
-        type: action
-        action: VerticalReprojector
-        with:
-          reprojectorType: jgd2011ToWgs84
-
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
-        name: Cesium3DTilesWriterBywtr
+        name: MvtWriter
         type: action
-        action: Cesium3DTilesWriter
+        action: MVTWriter
         with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
+          format: mvt
+          layerName: |
+            "WaterBody"
+          minZoom: 8
+          maxZoom: 16
           output: |
              file::join_path(env.get("outputPath"), "wtr")
 
@@ -75,16 +78,16 @@ graphs:
         toPort: default
       - id: 86ec56d6-cefb-48ca-a72d-0c57a33d198a
         from: 254d6287-7649-4647-9ab5-0c1c423f356a
-        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 612d546f-e4e4-4bbe-9f4e-d47313347f00
         fromPort: default
         toPort: default
       - id: 6b857fe4-c6c1-4ed3-ac6e-f7eef19c9248
-        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        to: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        from: 612d546f-e4e4-4bbe-9f4e-d47313347f00
+        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         fromPort: default
         toPort: default
       - id: e862f11a-88a6-4c1b-a743-ba80253039df
-        from: 928e21d9-fc30-4876-ba03-41338cfa47ed
+        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         fromPort: default
         toPort: default
