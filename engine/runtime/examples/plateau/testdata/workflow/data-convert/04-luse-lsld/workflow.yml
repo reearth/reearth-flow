@@ -104,7 +104,8 @@ graphs:
         action: MVTWriter
         with:
           format: mvt
-          layerName: luse
+          layerName: |
+            "luse"
           minZoom: 8
           maxZoom: 16
           output: |
