@@ -54,6 +54,7 @@
   "Renaming workflow failed. Please try again later.": "重命名工作流失败。请稍后再试。",
   "Main Workflow": "主工作流",
   "Set Workflow name": "设置工作流名称",
+  "Close canvas": "关闭画布",
   "Keyboard shortcuts": "键盘快捷键",
   "General shortcuts": "常规快捷键",
   "Open the keyboard shortcuts dialog": "打开键盘快捷键对话框",
@@ -102,7 +103,6 @@
   "Workspace": "工作区",
   "General Settings": "常规设置",
   "Member Settings": "成员设置",
-  "Integration Settings": "集成设置",
   "Runs": "运行",
   "New Run": "新运行",
   "Running: ": "运行中: ",
@@ -195,6 +195,7 @@
   "Terms of Service": "服务条款",
   "Documentation": "文档",
   "Log out": "登出",
+  "Select Language": "选择语言",
   "User Name": "用户名",
   "Email": "电子邮件",
   "Password": "密码",
@@ -230,6 +231,5 @@
   "Member has been successfully removed from the workspace.": "成员已成功从工作区中移除。",
   "Empty workflow detected": "检测到空工作流",
   "You cannot create a deployment without a workflow.": "没有工作流，您无法创建部署。",
-  "Reload": "重新加载",
-  "Select Language": "选择语言"
+  "Reload": "重新加载"
 }

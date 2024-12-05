@@ -32,16 +32,18 @@ export default ({
   );
 
   const {
-    openWorkflows,
     nodes,
     edges,
+    openWorkflows,
+    selectedNodes,
     handleWorkflowDeployment,
-    handleWorkflowAdd,
+    handleWorkflowOpen,
     handleWorkflowClose,
+    handleWorkflowAdd,
     handleNodesUpdate,
     handleEdgesUpdate,
-    handleWorkflowRedo,
     handleWorkflowUndo,
+    handleWorkflowRedo,
     handleWorkflowRename,
   } = useYjsStore({
     workflowId: currentWorkflowId,
@@ -52,7 +54,18 @@ export default ({
   });
 
   const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
-    { handleNodesUpdate },
+    { selectedNodes, handleNodesUpdate },
+  );
+
+  const handleNodeDoubleClick = useCallback(
+    (_e: MouseEvent, node: Node) => {
+      if (node.type === "subworkflow") {
+        handleWorkflowOpen(node.id);
+      } else {
+        handleNodeLocking(node.id);
+      }
+    },
+    [handleWorkflowOpen, handleNodeLocking],
   );
 
   const { handleCopy, handlePaste } = useCanvasCopyPaste({
@@ -175,7 +188,7 @@ export default ({
     handleWorkflowChange: handleWorkflowIdChange,
     handleNodesUpdate,
     handleNodeHover,
-    handleNodeLocking,
+    handleNodeDoubleClick,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesUpdate,

@@ -2,26 +2,21 @@ import { XYPosition } from "@xyflow/react";
 import { Dispatch, SetStateAction, useCallback } from "react";
 import { Array as YArray } from "yjs";
 
-import type { Node } from "@flow/types";
+import type { Edge, Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
 import { YNodesArray, YWorkflow, yWorkflowBuilder } from "./utils";
 
 export default ({
   yWorkflows,
-  workflows,
+  rawWorkflows,
   currentWorkflowIndex,
   undoTrackerActionWrapper,
   setWorkflows,
   setOpenWorkflowIds,
-  handleWorkflowIdChange,
-  handleWorkflowOpen,
 }: {
   yWorkflows: YArray<YWorkflow>;
-  workflows: {
-    id: string;
-    name: string;
-  }[];
+  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
   currentWorkflowIndex: number;
   undoTrackerActionWrapper: (callback: () => void) => void;
   setWorkflows: Dispatch<
@@ -33,15 +28,13 @@ export default ({
     >
   >;
   setOpenWorkflowIds: Dispatch<SetStateAction<string[]>>;
-  handleWorkflowIdChange: (id?: string) => void;
-  handleWorkflowOpen: (workflowId: string) => void;
 }) => {
   const currentYWorkflow = yWorkflows.get(currentWorkflowIndex);
 
   const handleWorkflowAdd = useCallback(
     (position?: XYPosition) =>
       undoTrackerActionWrapper(() => {
-        const workflowId = yWorkflows.length.toString() + "-workflow";
+        const workflowId = randomID();
         const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
 
         const newEntranceNode: Node = {
@@ -52,8 +45,6 @@ export default ({
             name: `New Entrance node`,
             outputs: ["target"],
             status: "idle",
-            // locked: false,
-            // onLock: onNodeLocking,
           },
         };
 
@@ -65,8 +56,6 @@ export default ({
             name: `New Exit node`,
             inputs: ["source"],
             status: "idle",
-            // locked: false,
-            // onLock: onNodeLocking,
           },
         };
 
@@ -85,44 +74,54 @@ export default ({
             status: "idle",
             inputs: ["source"],
             outputs: ["target"],
-            onDoubleClick: handleWorkflowOpen,
           },
         };
-        const mainWorkflow = yWorkflows.get(0);
 
-        const mainWorkflowNodes = mainWorkflow?.get("nodes") as
+        const parentWorkflow = yWorkflows.get(currentWorkflowIndex ?? 0);
+
+        const parentWorkflowNodes = parentWorkflow?.get("nodes") as
           | YNodesArray
           | undefined;
-        mainWorkflowNodes?.push([newSubworkflowNode]);
+        parentWorkflowNodes?.push([newSubworkflowNode]);
 
         yWorkflows.push([newYWorkflow]);
         setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
         setOpenWorkflowIds((ids) => [...ids, workflowId]);
-
-        handleWorkflowIdChange(workflowId);
       }),
     [
       yWorkflows,
+      currentWorkflowIndex,
       undoTrackerActionWrapper,
       setOpenWorkflowIds,
       setWorkflows,
-      handleWorkflowOpen,
-      handleWorkflowIdChange,
     ],
   );
 
   const handleWorkflowsRemove = useCallback(
-    (workflowIds: string[]) =>
+    (nodeIds: string[]) =>
       undoTrackerActionWrapper(() => {
-        workflowIds.forEach((wid) => {
-          if (wid === "main") return;
-          const index = workflows.findIndex((w) => w.id === wid);
-          if (index === -1) return;
-          if (index === currentWorkflowIndex) {
-            handleWorkflowIdChange("main");
-          }
-          yWorkflows.delete(index);
-        });
+        const workflowIds: string[] = [];
+
+        const removeNodes = (nodeIds: string[]) => {
+          nodeIds.forEach((nid) => {
+            if (nid === "main") return;
+
+            const index = rawWorkflows.findIndex((w) => w.id === nid);
+            if (index === -1) return;
+
+            // Loop over workflow at current index and remove any subworkflow nodes
+            (rawWorkflows[index].nodes as Node[]).forEach((node) => {
+              if (node.type === "subworkflow") {
+                removeNodes([node.id]);
+              }
+            });
+
+            workflowIds.push(nid);
+            yWorkflows.delete(index);
+          });
+        };
+
+        removeNodes(nodeIds);
 
         setWorkflows((w) => w.filter((w) => !workflowIds.includes(w.id)));
         setOpenWorkflowIds((ids) =>
@@ -130,13 +129,11 @@ export default ({
         );
       }),
     [
-      workflows,
+      rawWorkflows,
       yWorkflows,
-      currentWorkflowIndex,
       undoTrackerActionWrapper,
       setWorkflows,
       setOpenWorkflowIds,
-      handleWorkflowIdChange,
     ],
   );
 

@@ -19,7 +19,6 @@ type Props = {
   };
   nodes: Node[];
   onNodesChange: (nodes: Node[]) => void;
-  onNodeLocking: (nodeId: string) => void;
   onClose: () => void;
 };
 
@@ -27,7 +26,6 @@ const NodePickerDialog: React.FC<Props> = ({
   openedActionType,
   nodes,
   onNodesChange,
-  onNodeLocking,
   onClose,
 }) => {
   const t = useT();
@@ -77,7 +75,6 @@ const NodePickerDialog: React.FC<Props> = ({
           outputs: [...action.outputPorts],
           status: "idle",
           locked: false,
-          onDoubleClick: onNodeLocking,
         },
       };
       onNodesChange(nodes.concat(newNode));

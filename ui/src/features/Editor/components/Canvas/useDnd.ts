@@ -19,7 +19,6 @@ type Props = {
   nodes: Node[];
   onWorkflowAdd: (position?: XYPosition) => void;
   onNodesChange: (nodes: Node[]) => void;
-  onNodeLocking: (nodeId: string) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
@@ -29,7 +28,6 @@ export default ({
   nodes,
   onWorkflowAdd,
   onNodesChange,
-  onNodeLocking,
   onNodePickerOpen,
 }: Props) => {
   const { screenToFlowPosition } = useReactFlow();
@@ -65,7 +63,6 @@ export default ({
         data: {
           status: "idle",
           locked: false,
-          onDoubleClick: onNodeLocking,
         },
       };
 
@@ -114,7 +111,6 @@ export default ({
       nodes,
       api,
       onWorkflowAdd,
-      onNodeLocking,
       screenToFlowPosition,
       onNodesChange,
       onNodePickerOpen,

@@ -54,6 +54,7 @@
   "Renaming workflow failed. Please try again later.": "ワークフローの名前変更に失敗しました。後でもう一度お試しください。",
   "Main Workflow": "メインワークフロー",
   "Set Workflow name": "ワークフロー名を設定",
+  "Close canvas": "キャンバスを閉じる",
   "Keyboard shortcuts": "ショートカット",
   "General shortcuts": "一般ショートカット",
   "Open the keyboard shortcuts dialog": "キーボードショートカットダイアログを開く",
@@ -102,7 +103,6 @@
   "Workspace": "ワークスペース",
   "General Settings": "一般",
   "Member Settings": "メンバー",
-  "Integration Settings": "インテグレーション",
   "Runs": "ラン",
   "New Run": "新しいラン",
   "Running: ": "実行中",
@@ -195,6 +195,7 @@
   "Terms of Service": "利用規約",
   "Documentation": "ドキュメント",
   "Log out": "ログアウト",
+  "Select Language": "言語を選択",
   "User Name": "ユーザー名",
   "Email": "メール",
   "Password": "パスワード",
@@ -230,6 +231,5 @@
   "Member has been successfully removed from the workspace.": "メンバーがワークスペースから正常に削除されました。",
   "Empty workflow detected": "空のワークフローが検出されました",
   "You cannot create a deployment without a workflow.": "ワークフローがないとデプロイメントを作成できません。",
-  "Reload": "リロード",
-  "Select Language": "言語を選択"
+  "Reload": "リロード"
 }

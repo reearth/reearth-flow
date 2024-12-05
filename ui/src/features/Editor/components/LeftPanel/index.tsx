@@ -24,7 +24,6 @@ type Props = {
   isOpen: boolean;
   onOpen: (panel?: "left" | "right" | "bottom") => void;
   onNodesChange: (nodes: Node[]) => void;
-  onNodeLocking: (nodeId: string) => void;
 };
 
 const LeftPanel: React.FC<Props> = ({
@@ -32,7 +31,6 @@ const LeftPanel: React.FC<Props> = ({
   isOpen,
   onOpen,
   onNodesChange,
-  onNodeLocking,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
@@ -100,13 +98,7 @@ const LeftPanel: React.FC<Props> = ({
       id: "actions-list",
       title: t("Actions list"),
       icon: <Lightning className="size-5" weight="thin" />,
-      component: (
-        <ActionsList
-          nodes={nodes}
-          onNodesChange={onNodesChange}
-          onNodeLocking={onNodeLocking}
-        />
-      ),
+      component: <ActionsList nodes={nodes} onNodesChange={onNodesChange} />,
     },
     {
       id: "resources",

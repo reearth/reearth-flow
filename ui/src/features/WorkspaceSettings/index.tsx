@@ -1,4 +1,4 @@
-import { PlugsConnected, Toolbox, UsersThree } from "@phosphor-icons/react";
+import { Toolbox, UsersThree } from "@phosphor-icons/react";
 import { useRouterState } from "@tanstack/react-router";
 
 import { useT } from "@flow/lib/i18n";
@@ -7,7 +7,7 @@ import { RouteOption } from "../WorkspaceLeftPanel";
 
 import {
   GeneralSettings,
-  IntegrationsSettings,
+  // IntegrationsSettings,
   MembersSettings,
 } from "./components";
 
@@ -43,12 +43,12 @@ const WorkspaceSettings: React.FC = () => {
       icon: <UsersThree weight="light" />,
       component: <MembersSettings />,
     },
-    {
-      id: "integrations",
-      name: t("Integrations"),
-      icon: <PlugsConnected weight="light" />,
-      component: <IntegrationsSettings />,
-    },
+    // {
+    //   id: "integrations",
+    //   name: t("Integrations"),
+    //   icon: <PlugsConnected weight="light" />,
+    //   component: <IntegrationsSettings />,
+    // },
   ];
 
   return (

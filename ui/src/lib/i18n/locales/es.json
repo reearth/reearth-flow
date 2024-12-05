@@ -54,6 +54,7 @@
   "Renaming workflow failed. Please try again later.": "Renombrar el flujo de trabajo falló. Por favor, inténtalo de nuevo más tarde.",
   "Main Workflow": "Flujo de trabajo principal",
   "Set Workflow name": "Establecer nombre del flujo de trabajo",
+  "Close canvas": "Cerrar lienzo",
   "Keyboard shortcuts": "Atajos de teclado",
   "General shortcuts": "",
   "Open the keyboard shortcuts dialog": "Abrir el diálogo de atajos de teclado",
@@ -102,7 +103,6 @@
   "Workspace": "Espacio de trabajo",
   "General Settings": "Configuración general",
   "Member Settings": "Configuración de miembros",
-  "Integration Settings": "Configuración de integración",
   "Runs": "Ejecuciones",
   "New Run": "Nueva ejecución",
   "Running: ": "Ejecutando: ",
@@ -195,6 +195,7 @@
   "Terms of Service": "Términos de servicio",
   "Documentation": "Documentación",
   "Log out": "Cerrar sesión",
+  "Select Language": "Seleccionar idioma",
   "User Name": "Nombre de usuario",
   "Email": "Correo electrónico",
   "Password": "Contraseña",
@@ -230,6 +231,5 @@
   "Member has been successfully removed from the workspace.": "El miembro ha sido eliminado exitosamente del espacio de trabajo.",
   "Empty workflow detected": "Se detectó un flujo de trabajo vacío",
   "You cannot create a deployment without a workflow.": "No puedes crear un despliegue sin un flujo de trabajo.",
-  "Reload": "Recargar",
-  "Select Language": "Seleccionar idioma"
+  "Reload": "Recargar"
 }

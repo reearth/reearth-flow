@@ -39,7 +39,7 @@ export default function Editor({
     handleWorkflowChange,
     handleNodesUpdate,
     handleNodeHover,
-    handleNodeLocking,
+    handleNodeDoubleClick,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesUpdate,
@@ -57,7 +57,6 @@ export default function Editor({
           isOpen={openPanel === "left" && !locallyLockedNode}
           onOpen={handlePanelOpen}
           onNodesChange={handleNodesUpdate}
-          onNodeLocking={handleNodeLocking}
         />
         <div className="flex flex-1 flex-col">
           <OverlayUI
@@ -68,7 +67,6 @@ export default function Editor({
             onWorkflowUndo={handleWorkflowUndo}
             onWorkflowRedo={handleWorkflowRedo}
             onNodesChange={handleNodesUpdate}
-            onNodeLocking={handleNodeLocking}
             onNodePickerClose={handleNodePickerClose}>
             <Canvas
               nodes={nodes}
@@ -77,7 +75,7 @@ export default function Editor({
               onWorkflowAdd={handleWorkflowAdd}
               onNodesUpdate={handleNodesUpdate}
               onNodeHover={handleNodeHover}
-              onNodeLocking={handleNodeLocking}
+              onNodeDoubleClick={handleNodeDoubleClick}
               onNodePickerOpen={handleNodePickerOpen}
               onEdgesUpdate={handleEdgesUpdate}
               onEdgeHover={handleEdgeHover}
