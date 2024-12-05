@@ -1,6 +1,6 @@
 import { XYPosition } from "@xyflow/react";
 import { debounce } from "lodash-es";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
@@ -31,8 +31,10 @@ const NodePickerDialog: React.FC<Props> = ({
   const t = useT();
   const { useGetActionsSegregated } = useAction();
   const { actions: rawActions } = useGetActionsSegregated();
-
   const [actions, setActions] = useState<Action[] | undefined>();
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     if (rawActions && openedActionType?.nodeType)
@@ -40,6 +42,19 @@ const NodePickerDialog: React.FC<Props> = ({
   }, [rawActions, openedActionType.nodeType]);
 
   const [selected, setSelected] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (actions?.length) {
+      setSelected(actions[selectedIndex]?.name);
+      const selectedItem = itemRefs.current[selectedIndex];
+      if (selectedItem && containerRef.current) {
+        selectedItem.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }
+    }
+  }, [selectedIndex, actions]);
 
   const [handleSingleClick, handleDoubleClick] = useDoubleClick(
     (name?: string) => {
@@ -86,7 +101,7 @@ const NodePickerDialog: React.FC<Props> = ({
       ),
     [],
   );
-  // Don't worry too much about this implementation. It's only placeholder till we get an actual one using API
+
   const handleSearch = debounce((filter: string) => {
     if (!filter) {
       setActions(rawActions?.byType[openedActionType.nodeType]);
@@ -100,6 +115,33 @@ const NodePickerDialog: React.FC<Props> = ({
     setActions(filteredActions);
   }, 200);
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleDoubleClick(selected);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((prevIndex) =>
+          prevIndex === 0 ? prevIndex : prevIndex - 1,
+        );
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((prevIndex) =>
+          prevIndex === (actions?.length || 1) - 1 ? prevIndex : prevIndex + 1,
+        );
+      }
+    },
+    [handleDoubleClick, selected, actions],
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [actions, selected, handleKeyDown]);
+
   return (
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
@@ -110,11 +152,12 @@ const NodePickerDialog: React.FC<Props> = ({
           autoFocus
           onChange={(e) => handleSearch(e.target.value)}
         />
-        <div className="max-h-[50vh] overflow-scroll">
+        <div ref={containerRef} className="max-h-[50vh] overflow-scroll">
           {actions?.map((action, idx) => (
             <Fragment key={action.name}>
               <ActionItem
-                className="m-1"
+                ref={(el) => (itemRefs.current[idx] = el)}
+                className={"m-1"}
                 action={action}
                 selected={selected === action.name}
                 onSingleClick={handleSingleClick}
