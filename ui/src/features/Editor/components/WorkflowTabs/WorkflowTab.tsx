@@ -1,5 +1,4 @@
 import { X } from "@phosphor-icons/react";
-import { useState } from "react";
 
 import { Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -30,12 +29,11 @@ const WorkflowTab: React.FC<Props> = ({
   onSubmit,
 }) => {
   const t = useT();
-  const [closeHover, setCloseHover] = useState(false);
-
   const isEditing = editId === id;
+
   return (
     <div
-      className={`relative flex h-4/5 w-[150px] items-center justify-center rounded ${currentWorkflowId === id ? "bg-node-entrance/70 text-accent-foreground" : "hover:bg-node-entrance/30"} group cursor-pointer`}
+      className={`relative flex h-4/5 w-[150px] items-center justify-center rounded ${currentWorkflowId === id ? "bg-node-entrance/70 text-accent-foreground hover:bg-node-entrance/80" : "bg-node-entrance/20 hover:bg-node-entrance/30"} group cursor-pointer`}
       onClick={() => onWorkflowChange(id)}
       onDoubleClick={() => onDoubleClick(id, name)}
       key={id}>
@@ -58,17 +56,14 @@ const WorkflowTab: React.FC<Props> = ({
       {!isEditing && (
         <div className="absolute right-0 flex h-full justify-end rounded">
           <div
-            className={`flex h-full items-center justify-self-end overflow-hidden rounded px-1 hover:bg-node-exit ${closeHover ? "w-[150px] transition-all delay-200" : "w-[20px]"}`}
-            onMouseEnter={() => setCloseHover(true)}
-            onMouseLeave={() => setCloseHover(false)}
+            className="group flex h-full w-[20px] items-center justify-self-end overflow-hidden rounded px-1 hover:w-[150px] hover:bg-primary hover:transition-all hover:delay-200"
             onClick={onWorkflowClose(id)}>
             <div className="flex-1 overflow-hidden">
-              <p
-                className={`rounded-l text-center text-xs transition-all delay-200 dark:font-extralight ${closeHover ? "opacity-100" : "opacity-0"}`}>
+              <p className="rounded-l text-center text-xs opacity-0 transition-all delay-200 group-hover:opacity-100 dark:font-extralight">
                 {t("Close canvas")}
               </p>
             </div>
-            <X className="size-[12px]" weight="bold" />
+            <X className="size-[12px] opacity-0 group-hover:opacity-100" />
           </div>
         </div>
       )}
