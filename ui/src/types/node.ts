@@ -20,8 +20,7 @@ export type NodeData = {
   status?: Status;
   params?: NodeParam[];
   locked?: boolean | undefined;
-  // transformer
-  transformerId?: string;
+
   // batch & note nodes
   content?: string;
   width?: number;

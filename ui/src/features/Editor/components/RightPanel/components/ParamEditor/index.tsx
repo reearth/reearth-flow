@@ -40,7 +40,7 @@ const actionButtonClasses = "border h-[25px]";
 const ParamEditor: React.FC<Props> = ({
   nodeId,
   nodeMeta,
-  nodeType,
+  // nodeType,
   // nodeParameters = [{ id: "param1", name: "Param 1", value: "Value 1", type: "string"}],
 }) => {
   const t = useT();
@@ -132,12 +132,6 @@ const ParamEditor: React.FC<Props> = ({
                 <Label htmlFor="outputs">Outputs</Label>
                 <p className="ml-2">{nodeMeta.outputs?.join(", ") ?? "N/A"}</p>
               </div>
-              {nodeType === "transformer" && (
-                <div className="space-y-1">
-                  <Label htmlFor="transformerId">TransformerId</Label>
-                  <p className="ml-2">{nodeMeta.transformerId ?? "N/A"}</p>
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -135,8 +135,6 @@ export default ({
         });
 
         // Check if dropped node is intersecting with edge's middle
-        // console.log("labelX", labelX, "labelY", labelY);
-        // console.log("droppedNode", droppedNode);
         if (
           isNodeIntersecting(
             droppedNode,

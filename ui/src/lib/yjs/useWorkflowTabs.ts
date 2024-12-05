@@ -49,16 +49,21 @@ export default ({
 
   const handleWorkflowClose = useCallback(
     (workflowId: string) => {
-      setOpenWorkflowIds((ids) => ids.filter((id) => id !== workflowId));
-      if (workflowId !== "main") {
-        handleWorkflowIdChange("main");
-      }
+      setOpenWorkflowIds((ids) => {
+        const index = ids.findIndex((id) => id === workflowId);
+        const filteredIds = ids.filter((id) => id !== workflowId);
+        if (workflowId !== "main" && index === currentWorkflowIndex) {
+          handleWorkflowIdChange(ids[index - 1]);
+        }
+        return filteredIds;
+      });
     },
-    [handleWorkflowIdChange],
+    [currentWorkflowIndex, handleWorkflowIdChange],
   );
 
+  console.log("rawWorkflows", rawWorkflows);
+
   return {
-    workflows,
     openWorkflows,
     currentWorkflowIndex,
     setWorkflows,

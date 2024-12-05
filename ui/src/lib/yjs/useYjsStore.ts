@@ -51,7 +51,6 @@ export default ({
   const rawWorkflows = useY(yWorkflows);
 
   const {
-    workflows,
     openWorkflows,
     currentWorkflowIndex,
     setWorkflows,
@@ -67,12 +66,11 @@ export default ({
     handleWorkflowRename,
   } = useYWorkflow({
     yWorkflows,
-    workflows,
+    rawWorkflows,
     currentWorkflowIndex,
     undoTrackerActionWrapper,
     setWorkflows,
     setOpenWorkflowIds,
-    handleWorkflowIdChange,
   });
 
   const nodes = useY(
