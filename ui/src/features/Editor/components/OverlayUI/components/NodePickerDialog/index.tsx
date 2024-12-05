@@ -120,14 +120,16 @@ const NodePickerDialog: React.FC<Props> = ({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      e.preventDefault();
       if (e.key === "Enter") {
+        e.preventDefault();
         handleDoubleClick(selected);
       } else if (e.key === "ArrowUp") {
+        e.preventDefault();
         setSelectedIndex((prevIndex) =>
           prevIndex === 0 ? prevIndex : prevIndex - 1,
         );
       } else if (e.key === "ArrowDown") {
+        e.preventDefault();
         setSelectedIndex((prevIndex) =>
           prevIndex === (actions?.length || 1) - 1 ? prevIndex : prevIndex + 1,
         );
