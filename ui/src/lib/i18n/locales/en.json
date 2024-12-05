@@ -103,7 +103,6 @@
   "Workspace": "",
   "General Settings": "",
   "Member Settings": "",
-  "Integration Settings": "",
   "Runs": "",
   "New Run": "",
   "Running: ": "",
@@ -196,6 +195,7 @@
   "Terms of Service": "",
   "Documentation": "",
   "Log out": "",
+  "Select Language": "",
   "User Name": "User Name",
   "Email": "Email",
   "Password": "Password",
@@ -231,6 +231,5 @@
   "Member has been successfully removed from the workspace.": "",
   "Empty workflow detected": "",
   "You cannot create a deployment without a workflow.": "",
-  "Reload": "",
-  "Select Language": ""
+  "Reload": ""
 }
