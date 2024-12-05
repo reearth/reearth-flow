@@ -230,5 +230,6 @@
   "Member has been successfully removed from the workspace.": "成员已成功从工作区中移除。",
   "Empty workflow detected": "检测到空工作流",
   "You cannot create a deployment without a workflow.": "没有工作流，您无法创建部署。",
-  "Reload": "重新加载"
+  "Reload": "重新加载",
+  "Select Language": "选择语言"
 }

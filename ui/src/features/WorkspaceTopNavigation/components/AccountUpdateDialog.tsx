@@ -11,12 +11,22 @@ import {
   DialogTitle,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@flow/components";
 // import { ThemeToggle } from "@flow/features/ThemeToggle";
 import { useUser } from "@flow/lib/gql";
-import { useT } from "@flow/lib/i18n";
+import { AvailableLanguage, localesWithLabel, useT } from "@flow/lib/i18n";
+import i18n from "@flow/lib/i18n/i18n";
 
-type Errors = "failed" | "passwordNotSame" | "passwordFailed";
+type Errors =
+  | "failed"
+  | "passwordNotSame"
+  | "passwordFailed"
+  | "langUpdateFailed";
 
 type Props = {
   isOpen: boolean;
@@ -35,6 +45,9 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   >();
   const [showError, setShowError] = useState<Errors | undefined>(undefined);
   const [loading, setLoading] = useState(false);
+  // For some users me.lang maybe lang: "und". Therefore, we can default to i18n.language.
+  const language = me?.lang && me.lang !== "und" ? me?.lang : i18n.language;
+  const [selectedLang, setSelectedLang] = useState<string>(language);
 
   const handleUpdateMe = async () => {
     setLoading(true);
@@ -60,6 +73,16 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
       }
     }
 
+    if (selectedLang) {
+      const input = { name, lang: selectedLang };
+      const { me: user } = await updateMe(input);
+      if (!user) {
+        setShowError("langUpdateFailed");
+        setLoading(false);
+        return;
+      }
+    }
+
     const input = { name, email };
     const { me: user } = await updateMe(input);
     if (!user) {
@@ -69,6 +92,12 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
     }
     setLoading(false);
   };
+  const handleLanguageChange = (lang: string) => {
+    setSelectedLang(lang);
+  };
+  const currentLanguageLabel =
+    localesWithLabel[i18n.language as AvailableLanguage] ||
+    t("Select Language");
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => onOpenChange(o)}>
@@ -127,6 +156,21 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
             <Label htmlFor="theme">{t("Theme")}</Label>
             <ThemeToggle />
           </DialogContentSection> */}
+          <DialogContentSection className="flex-1">
+            <Label htmlFor="language-selector">{t("Select Language")}</Label>
+            <Select onValueChange={handleLanguageChange}>
+              <SelectTrigger>
+                <SelectValue placeholder={currentLanguageLabel} />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(localesWithLabel).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </DialogContentSection>
         </DialogContentWrapper>
         <div
           className={`text-xs text-destructive ${showError ? "opacity-70" : "opacity-0"}`}>
