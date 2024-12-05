@@ -15,7 +15,6 @@ export default ({
   setWorkflows,
   setOpenWorkflowIds,
   handleWorkflowIdChange,
-  handleWorkflowOpen,
 }: {
   yWorkflows: YArray<YWorkflow>;
   workflows: {
@@ -34,7 +33,6 @@ export default ({
   >;
   setOpenWorkflowIds: Dispatch<SetStateAction<string[]>>;
   handleWorkflowIdChange: (id?: string) => void;
-  handleWorkflowOpen: (workflowId: string) => void;
 }) => {
   const currentYWorkflow = yWorkflows.get(currentWorkflowIndex);
 
@@ -85,15 +83,15 @@ export default ({
             status: "idle",
             inputs: ["source"],
             outputs: ["target"],
-            onDoubleClick: handleWorkflowOpen,
           },
         };
-        const mainWorkflow = yWorkflows.get(0);
 
-        const mainWorkflowNodes = mainWorkflow?.get("nodes") as
+        const parentWorkflow = yWorkflows.get(currentWorkflowIndex ?? 0);
+
+        const parentWorkflowNodes = parentWorkflow?.get("nodes") as
           | YNodesArray
           | undefined;
-        mainWorkflowNodes?.push([newSubworkflowNode]);
+        parentWorkflowNodes?.push([newSubworkflowNode]);
 
         yWorkflows.push([newYWorkflow]);
         setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
@@ -103,10 +101,10 @@ export default ({
       }),
     [
       yWorkflows,
+      currentWorkflowIndex,
       undoTrackerActionWrapper,
       setOpenWorkflowIds,
       setWorkflows,
-      handleWorkflowOpen,
       handleWorkflowIdChange,
     ],
   );
