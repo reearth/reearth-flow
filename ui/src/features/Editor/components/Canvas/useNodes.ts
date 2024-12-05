@@ -23,7 +23,6 @@ type Props = {
   onWorkflowAdd: (position?: XYPosition) => void;
   onNodesChange: (newNodes: Node[]) => void;
   onEdgesChange: (edges: Edge[]) => void;
-  onNodeLocking: (nodeId: string) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
@@ -33,7 +32,6 @@ export default ({
   onWorkflowAdd,
   onNodesChange,
   onEdgesChange,
-  onNodeLocking,
   onNodePickerOpen,
 }: Props) => {
   const { isNodeIntersecting } = useReactFlow();
@@ -43,7 +41,6 @@ export default ({
     nodes,
     onWorkflowAdd,
     onNodesChange,
-    onNodeLocking,
     onNodePickerOpen,
   });
 

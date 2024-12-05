@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useY } from "react-yjs";
 import * as Y from "yjs";
 
@@ -82,6 +82,8 @@ export default ({
     currentYWorkflow.get("edges") ?? new Y.Array<Edge>(),
   ) as Edge[];
 
+  const selectedNodes = useMemo(() => nodes.filter((n) => n.selected), [nodes]);
+
   const handleWorkflowDeployment = useCallback(
     async (deploymentId?: string, description?: string) => {
       const {
@@ -157,6 +159,7 @@ export default ({
     nodes,
     edges,
     openWorkflows,
+    selectedNodes,
     handleWorkflowDeployment,
     handleWorkflowOpen,
     handleWorkflowClose,
