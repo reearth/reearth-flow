@@ -216,6 +216,7 @@ export type Me = {
   auths: Array<Scalars['String']['output']>;
   email: Scalars['String']['output'];
   id: Scalars['ID']['output'];
+  lang: Scalars['Lang']['output'];
   myWorkspace?: Maybe<Workspace>;
   myWorkspaceId: Scalars['ID']['output'];
   name: Scalars['String']['output'];
@@ -516,6 +517,7 @@ export type RunProjectPayload = {
 };
 
 export type SignupInput = {
+  lang?: InputMaybe<Scalars['Lang']['input']>;
   secret?: InputMaybe<Scalars['String']['input']>;
   userId?: InputMaybe<Scalars['ID']['input']>;
   workspaceId?: InputMaybe<Scalars['ID']['input']>;
@@ -535,6 +537,7 @@ export type UpdateDeploymentInput = {
 
 export type UpdateMeInput = {
   email?: InputMaybe<Scalars['String']['input']>;
+  lang?: InputMaybe<Scalars['Lang']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   password?: InputMaybe<Scalars['String']['input']>;
   passwordConfirmation?: InputMaybe<Scalars['String']['input']>;
@@ -722,7 +725,7 @@ export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typ
 export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetMeQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string } | null };
+export type GetMeQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string, lang: any } | null };
 
 export type SearchUserQueryVariables = Exact<{
   email: Scalars['String']['input'];
@@ -736,7 +739,7 @@ export type UpdateMeMutationVariables = Exact<{
 }>;
 
 
-export type UpdateMeMutation = { __typename?: 'Mutation', updateMe?: { __typename?: 'UpdateMePayload', me: { __typename?: 'Me', id: string, name: string, email: string } } | null };
+export type UpdateMeMutation = { __typename?: 'Mutation', updateMe?: { __typename?: 'UpdateMePayload', me: { __typename?: 'Me', id: string, name: string, email: string, lang: any } } | null };
 
 export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
 
@@ -979,6 +982,7 @@ export const GetMeDocument = gql`
     name
     email
     myWorkspaceId
+    lang
   }
 }
     `;
@@ -998,6 +1002,7 @@ export const UpdateMeDocument = gql`
       id
       name
       email
+      lang
     }
   }
 }
