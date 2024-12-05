@@ -54,6 +54,7 @@
   "Renaming workflow failed. Please try again later.": "Échec du renommage du flux de travail. Veuillez réessayer plus tard.",
   "Main Workflow": "Flux de travail principal",
   "Set Workflow name": "Définir le nom du flux de travail",
+  "Close canvas": "Fermer le canevas",
   "Keyboard shortcuts": "Raccourcis clavier",
   "General shortcuts": "",
   "Open the keyboard shortcuts dialog": "Ouvrir la boîte de dialogue des raccourcis clavier",

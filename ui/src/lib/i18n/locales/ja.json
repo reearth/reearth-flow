@@ -54,6 +54,7 @@
   "Renaming workflow failed. Please try again later.": "ワークフローの名前変更に失敗しました。後でもう一度お試しください。",
   "Main Workflow": "メインワークフロー",
   "Set Workflow name": "ワークフロー名を設定",
+  "Close canvas": "キャンバスを閉じる",
   "Keyboard shortcuts": "ショートカット",
   "General shortcuts": "一般ショートカット",
   "Open the keyboard shortcuts dialog": "キーボードショートカットダイアログを開く",
