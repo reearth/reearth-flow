@@ -61,8 +61,6 @@ export default ({
     [currentWorkflowIndex, handleWorkflowIdChange],
   );
 
-  console.log("rawWorkflows", rawWorkflows);
-
   return {
     openWorkflows,
     currentWorkflowIndex,
