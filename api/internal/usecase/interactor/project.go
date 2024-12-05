@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -17,25 +19,27 @@ import (
 
 type Project struct {
 	common
-	assetRepo     repo.Asset
-	workflowRepo  repo.Workflow
-	projectRepo   repo.Project
-	userRepo      accountrepo.User
-	workspaceRepo accountrepo.Workspace
-	transaction   usecasex.Transaction
-	file          gateway.File
-	batch         gateway.Batch
+	assetRepo         repo.Asset
+	workflowRepo      repo.Workflow
+	projectRepo       repo.Project
+	userRepo          accountrepo.User
+	workspaceRepo     accountrepo.Workspace
+	transaction       usecasex.Transaction
+	file              gateway.File
+	batch             gateway.Batch
+	permissionChecker gateway.PermissionChecker
 }
 
-func NewProject(r *repo.Container, gr *gateway.Container) interfaces.Project {
+func NewProject(r *repo.Container, gr *gateway.Container, permissionChecker gateway.PermissionChecker) interfaces.Project {
 	return &Project{
-		assetRepo:     r.Asset,
-		workflowRepo:  r.Workflow,
-		projectRepo:   r.Project,
-		userRepo:      r.User,
-		workspaceRepo: r.Workspace,
-		transaction:   r.Transaction,
-		file:          gr.File,
+		assetRepo:         r.Asset,
+		workflowRepo:      r.Workflow,
+		projectRepo:       r.Project,
+		userRepo:          r.User,
+		workspaceRepo:     r.Workspace,
+		transaction:       r.Transaction,
+		file:              gr.File,
+		permissionChecker: permissionChecker,
 	}
 }
 
@@ -48,6 +52,15 @@ func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
+	authInfo := adapter.GetAuthInfo(ctx)
+	hasPermission, err := i.permissionChecker.CheckPermission(ctx, authInfo, rbac.ResourceProject, rbac.ActionEdit)
+	if err != nil {
+		return nil, err
+	}
+	if !hasPermission {
+		return nil, fmt.Errorf("permission denied")
+	}
+
 	if err := i.CanWriteWorkspace(p.WorkspaceID, operator); err != nil {
 		return nil, err
 	}
