@@ -48,7 +48,10 @@ impl<'a> MetadataEncoder<'a> {
         attributes: &HashMap<String, AttributeValue>,
     ) -> crate::errors::Result<usize> {
         let Some(TypeDef::Feature(feature_def)) = self.original_schema.types.get(typename) else {
-            return Err(crate::errors::Error::metadata(format!("Feature type not found: {}", typename)));
+            return Err(crate::errors::Error::metadata(format!(
+                "Feature type not found: {}",
+                typename
+            )));
         };
 
         let typename = typename.replace(':', "_");
