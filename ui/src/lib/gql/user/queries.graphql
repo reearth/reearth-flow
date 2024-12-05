@@ -4,6 +4,7 @@ query GetMe {
     name
     email
     myWorkspaceId
+    lang
   }
 }
 
@@ -21,6 +22,7 @@ mutation UpdateMe($input: UpdateMeInput!) {
       id
       name
       email
+      lang
     }
   }
 }

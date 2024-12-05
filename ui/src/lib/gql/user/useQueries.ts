@@ -22,6 +22,7 @@ export const useQueries = () => {
           name: me.name,
           email: me.email,
           myWorkspaceId: me.myWorkspaceId,
+          lang: me.lang,
         };
       },
       staleTime: Infinity,
@@ -46,11 +47,12 @@ export const useQueries = () => {
     mutationFn: async (input: UpdateMeInput) => {
       const data = await graphQLContext?.UpdateMe({ input });
       if (data?.updateMe?.me) {
-        const { id, name, email } = data.updateMe.me;
+        const { id, name, email, lang } = data.updateMe.me;
         return {
           id,
           name,
           email,
+          lang,
         };
       }
     },

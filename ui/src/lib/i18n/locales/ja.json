@@ -231,5 +231,6 @@
   "Member has been successfully removed from the workspace.": "メンバーがワークスペースから正常に削除されました。",
   "Empty workflow detected": "空のワークフローが検出されました",
   "You cannot create a deployment without a workflow.": "ワークフローがないとデプロイメントを作成できません。",
-  "Reload": "リロード"
+  "Reload": "リロード",
+  "Select Language": "言語を選択"
 }
