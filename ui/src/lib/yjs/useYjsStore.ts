@@ -73,7 +73,6 @@ export default ({
     setWorkflows,
     setOpenWorkflowIds,
     handleWorkflowIdChange,
-    handleWorkflowOpen,
   });
 
   const nodes = useY(
@@ -159,6 +158,7 @@ export default ({
     edges,
     openWorkflows,
     handleWorkflowDeployment,
+    handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
     handleNodesUpdate,

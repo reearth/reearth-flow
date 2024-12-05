@@ -20,7 +20,6 @@ export type NodeData = {
   status?: Status;
   params?: NodeParam[];
   locked?: boolean | undefined;
-  onDoubleClick?: (nodeId: string) => void;
   // transformer
   transformerId?: string;
   // batch & note nodes

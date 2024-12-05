@@ -17,31 +17,12 @@ export const baseBatchNode = {
 const minSize = { width: 250, height: 150 };
 
 const BatchNode: React.FC<BatchNodeProps> = ({ data, selected }) => {
-  // const BatchNode: React.FC<NodeProps<NodeData>> = ({ data, selected, ...props }) => {
   const [_width, _setWidth] = useState(data.width ?? initialSize.width);
   const [_height, _setHeight] = useState(data.height ?? initialSize.height);
-  // const onChange = useCallback(
-  //   (evt: any) => {
-  //     console.log("EVT", evt.target.value);
-  //     console.log("data", data);
-  //   },
-  //   [data],
-  // );
-  // console.log(width, height);
 
-  // console.log("ADS props: ", props);
   return (
     <>
       {selected && (
-        // <NodeResizeControl
-        //   minWidth={width < minSize.width ? minSize.width : width}
-        //   minHeight={height < minSize.height ? minSize.height : height}
-        //   onResize={r => {
-        //     // setWidth(props.xPos + r.x);
-        //     // setHeight(props.yPos + r.y);
-        //     console.log("ADS: ", r);
-        //   }}
-        // />
         <NodeResizer
           lineStyle={{
             background: "none",

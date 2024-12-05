@@ -24,7 +24,6 @@ type OverlayUIProps = {
     description?: string,
   ) => Promise<void>;
   onNodesChange: (nodes: Node[]) => void;
-  onNodeLocking: (nodeId: string) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
@@ -37,7 +36,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   nodes,
   onWorkflowDeployment,
   onNodesChange,
-  onNodeLocking,
   onNodePickerClose,
   onWorkflowUndo,
   onWorkflowRedo,
@@ -64,7 +62,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           openedActionType={nodePickerOpen}
           nodes={nodes}
           onNodesChange={onNodesChange}
-          onNodeLocking={onNodeLocking}
           onClose={onNodePickerClose}
         />
       )}
