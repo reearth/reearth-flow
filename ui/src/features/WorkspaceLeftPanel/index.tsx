@@ -25,7 +25,7 @@ const LeftPanel: React.FC = () => {
   const route: RouteOption = getRoute(pathname);
 
   return (
-    <div className="flex w-[250px] flex-col justify-between gap-[8px] border-r bg-secondary">
+    <div className="flex w-[280px] flex-col justify-between gap-[8px] border-r bg-secondary">
       <div className="flex flex-1 flex-col">
         <RunsSection route={route} />
         <EndSection route={route} />
