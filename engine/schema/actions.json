@@ -1083,6 +1083,9 @@
           "Attribute": {
             "type": "string"
           },
+          "Expr": {
+            "type": "string"
+          },
           "Order": {
             "type": "string",
             "enum": [
@@ -1093,12 +1096,28 @@
           "SortBy": {
             "type": "object",
             "required": [
-              "attribute",
               "order"
             ],
             "properties": {
               "attribute": {
-                "$ref": "#/definitions/Attribute"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "attributeValue": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "order": {
                 "$ref": "#/definitions/Order"
