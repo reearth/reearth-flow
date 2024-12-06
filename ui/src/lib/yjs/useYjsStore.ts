@@ -37,17 +37,18 @@ export default ({
   const { createDeployment, useUpdateDeployment } = useDeployment();
 
   const handleWorkflowUndo = useCallback(() => {
-    if (undoManager?.undoStack && undoManager.undoStack.length > 0) {
+    const stackLength = undoManager?.undoStack?.length ?? 0;
+    if (stackLength > 0) {
       undoManager?.undo();
     }
   }, [undoManager]);
 
   const handleWorkflowRedo = useCallback(() => {
-    if (undoManager?.redoStack && undoManager.redoStack.length > 0) {
+    const stackLength = undoManager?.redoStack?.length ?? 0;
+    if (stackLength > 0) {
       undoManager?.redo();
     }
   }, [undoManager]);
-
   const canUndo = useMemo(() => {
     const stackLength = undoManager?.undoStack?.length ?? 0;
     return stackLength > 0;
