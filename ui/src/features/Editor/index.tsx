@@ -32,6 +32,8 @@ export default function Editor({
     hoveredDetails,
     nodePickerOpen,
     openPanel,
+    canUndo,
+    canRedo,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handlePanelOpen,
@@ -64,6 +66,8 @@ export default function Editor({
             hoveredDetails={hoveredDetails}
             nodePickerOpen={nodePickerOpen}
             nodes={nodes}
+            canUndo={canUndo}
+            canRedo={canRedo}
             onWorkflowDeployment={handleWorkflowDeployment}
             onWorkflowUndo={handleWorkflowUndo}
             onWorkflowRedo={handleWorkflowRedo}

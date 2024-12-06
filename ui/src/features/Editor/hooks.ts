@@ -48,6 +48,8 @@ export default ({
     handleWorkflowUndo,
     handleWorkflowRedo,
     handleWorkflowRename,
+    canUndo,
+    canRedo,
   } = useYjsStore({
     workflowId: currentWorkflowId,
     yWorkflows,
@@ -200,5 +202,7 @@ export default ({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
+    canUndo,
+    canRedo,
   };
 };
