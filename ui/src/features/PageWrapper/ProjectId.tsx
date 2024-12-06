@@ -27,7 +27,7 @@ const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
     if (isEqual(currentProject, project)) return;
 
     setCurrentProject(project);
-  }, [project, setCurrentProject, currentProject, currentWorkspace]);
+  }, [project, currentProject, currentWorkspace, setCurrentProject]);
 
   return isLoading ? (
     <Loading />

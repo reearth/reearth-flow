@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
 
+import { ScrollArea } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 import { Workflow } from "@flow/types";
@@ -69,34 +70,36 @@ const WorkflowTabs: React.FC<Props> = ({
   };
 
   return (
-    <div className="w-[75vw]">
+    <div className="max-w-[calc(100vw-360px)]">
       <div className="flex h-[29px] flex-1 items-center gap-1">
         <div
-          className={`flex h-4/5 w-[135px] cursor-pointer items-center justify-center rounded px-[6px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent text-accent-foreground" : "bg-card hover:bg-popover"}`}
+          className={`group flex h-4/5 w-[135px] shrink-0 cursor-pointer items-center justify-center rounded px-[6px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent" : "bg-card hover:bg-popover"}`}
           onClick={() => onWorkflowChange(mainWorkflow?.id)}>
           <p
-            className={`select-none truncate text-center text-xs dark:font-extralight ${currentWorkflowId === mainWorkflow?.id && "text-accent-foreground"}`}>
+            className={`select-none truncate text-center text-xs group-hover:text-white dark:font-extralight ${currentWorkflowId !== mainWorkflow?.id && "text-accent-foreground"}`}>
             {t("Main Workflow")}
           </p>
         </div>
-        <div className="flex h-full items-center gap-1 overflow-auto">
-          {subWorkflows &&
-            subWorkflows.length > 0 &&
-            subWorkflows.map((sw) => (
-              <WorkflowTab
-                currentWorkflowId={currentWorkflowId}
-                editId={editId}
-                id={sw.id}
-                key={sw.id}
-                name={sw.name}
-                setName={setName}
-                onWorkflowChange={onWorkflowChange}
-                onWorkflowClose={handleWorkflowClose}
-                onDoubleClick={handleDoubleClick}
-                onSubmit={handleSubmit}
-              />
-            ))}
-        </div>
+        <ScrollArea className="h-full flex-1">
+          <div className="flex h-full items-center gap-1 overflow-auto">
+            {subWorkflows &&
+              subWorkflows.length > 0 &&
+              subWorkflows.map((sw) => (
+                <WorkflowTab
+                  currentWorkflowId={currentWorkflowId}
+                  editId={editId}
+                  id={sw.id}
+                  key={sw.id}
+                  name={sw.name}
+                  setName={setName}
+                  onWorkflowChange={onWorkflowChange}
+                  onWorkflowClose={handleWorkflowClose}
+                  onDoubleClick={handleDoubleClick}
+                  onSubmit={handleSubmit}
+                />
+              ))}
+          </div>
+        </ScrollArea>
       </div>
     </div>
   );

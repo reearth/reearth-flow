@@ -153,7 +153,7 @@ export const Default = () => {
         </pre>
       )}
       <div className="rounded border p-2">
-        <SchemaForm schema={schema} />
+        <SchemaForm schema={schema} onSubmit={() => console.log("submitted")} />
       </div>
     </div>
   );

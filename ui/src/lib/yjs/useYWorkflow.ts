@@ -2,6 +2,7 @@ import { XYPosition } from "@xyflow/react";
 import { Dispatch, SetStateAction, useCallback } from "react";
 import { Array as YArray } from "yjs";
 
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import type { Edge, Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
@@ -104,7 +105,7 @@ export default ({
 
         const removeNodes = (nodeIds: string[]) => {
           nodeIds.forEach((nid) => {
-            if (nid === "main") return;
+            if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
 
             const index = rawWorkflows.findIndex((w) => w.id === nid);
             if (index === -1) return;

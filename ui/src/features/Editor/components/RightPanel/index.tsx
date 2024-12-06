@@ -8,9 +8,10 @@ import { ParamEditor } from "./components";
 
 type Props = {
   selected?: Node;
+  onParamsSubmit: (nodeId: string, data: any) => void;
 };
 
-const RightPanel: React.FC<Props> = ({ selected }) => {
+const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
   // This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
   // to unlock the node when user wants to close the right panel. - @KaWaite
   const handleClick = useCallback((e: MouseEvent) => {
@@ -56,7 +57,8 @@ const RightPanel: React.FC<Props> = ({ selected }) => {
             <ParamEditor
               nodeId={selected.id}
               nodeMeta={selected.data}
-              nodeType="transformer"
+              nodeType={selected.type}
+              onSubmit={onParamsSubmit}
             />
           )}
         </div>

@@ -7,6 +7,7 @@ import {
   ProjectIdWrapper,
   WorkspaceIdWrapper,
 } from "@flow/features/PageWrapper";
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useFullscreen, useShortcuts } from "@flow/hooks";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 // import { useShortcut } from "@flow/hooks/useShortcut";
@@ -49,7 +50,7 @@ const EditorComponent = () => {
   ]);
 
   const { state, isSynced, undoManager } = useYjsSetup({
-    workflowId: "main",
+    workflowId: DEFAULT_ENTRY_GRAPH_ID,
   });
 
   return !state || !isSynced ? (

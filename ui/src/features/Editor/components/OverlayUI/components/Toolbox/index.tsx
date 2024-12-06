@@ -96,8 +96,32 @@ const Toolbox: React.FC<Props> = ({ canUndo, canRedo, onRedo, onUndo }) => {
     root.render(
       <div className="flex size-12 rounded bg-secondary">
         <div
-          className={`flex w-full justify-center rounded align-middle  ${nodeType === "reader" ? "bg-node-reader/60" : nodeType === "writer" ? "bg-node-writer/60" : nodeType === "subworkflow" ? "bg-node-entrance" : "bg-node-transformer/60"}`}>
-          <Lightning className="self-center" />
+          className={`
+          flex w-full justify-center rounded align-middle 
+          ${
+            nodeType === "reader"
+              ? "bg-node-reader/60"
+              : nodeType === "writer"
+                ? "bg-node-writer/60"
+                : nodeType === "subworkflow"
+                  ? "bg-node-entrance"
+                  : nodeType === "note" || nodeType === "batch"
+                    ? "bg-primary"
+                    : "bg-node-transformer/60"
+          }`}>
+          {nodeType === "reader" ? (
+            <Database className="self-center" />
+          ) : nodeType === "writer" ? (
+            <Disc className="self-center" />
+          ) : nodeType === "subworkflow" ? (
+            <Graph className="self-center" />
+          ) : nodeType === "batch" ? (
+            <RectangleDashed className="self-center" />
+          ) : nodeType === "note" ? (
+            <Note className="self-center" />
+          ) : (
+            <Lightning className="self-center" />
+          )}
         </div>
       </div>,
     );

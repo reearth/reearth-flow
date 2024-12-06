@@ -33,7 +33,7 @@ const WorkflowTab: React.FC<Props> = ({
 
   return (
     <div
-      className={`relative flex h-4/5 w-[150px] items-center justify-center rounded ${currentWorkflowId === id ? "bg-node-entrance/70 text-accent-foreground hover:bg-node-entrance/80" : "bg-node-entrance/20 hover:bg-node-entrance/30"} group cursor-pointer`}
+      className={`relative flex h-4/5 w-[150px] shrink-0 items-center justify-center rounded ${currentWorkflowId === id ? "bg-node-entrance/70 hover:bg-node-entrance/80" : "bg-node-entrance/20 hover:bg-node-entrance/30"} group cursor-pointer`}
       onClick={() => onWorkflowChange(id)}
       onDoubleClick={() => onDoubleClick(id, name)}
       key={id}>
@@ -49,14 +49,14 @@ const WorkflowTab: React.FC<Props> = ({
         />
       ) : (
         <p
-          className={`ml-[15px] mr-[19px] select-none truncate text-center text-xs group-hover:text-accent-foreground dark:font-extralight ${currentWorkflowId === id && "text-accent-foreground"}`}>
+          className={`ml-[15px] mr-[19px] select-none truncate text-center text-xs group-hover:text-white dark:font-extralight ${currentWorkflowId !== id && "text-accent-foreground"}`}>
           {name}
         </p>
       )}
       {!isEditing && (
         <div className="absolute right-0 flex h-full justify-end rounded">
           <div
-            className="group flex h-full w-[20px] items-center justify-self-end overflow-hidden rounded px-1 hover:w-[150px] hover:bg-primary hover:transition-all hover:delay-200"
+            className="group flex h-full w-[20px] items-center justify-self-end overflow-hidden rounded px-1 hover:w-[150px] hover:bg-node-exit hover:transition-all hover:delay-200"
             onClick={onWorkflowClose(id)}>
             <div className="flex-1 overflow-hidden">
               <p className="rounded-l text-center text-xs opacity-0 transition-all delay-200 group-hover:opacity-100 dark:font-extralight">

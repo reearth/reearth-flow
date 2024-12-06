@@ -2,10 +2,10 @@ import { XYPosition } from "@xyflow/react";
 import { MouseEvent, useCallback, useState } from "react";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useShortcuts } from "@flow/hooks";
 import { useYjsStore } from "@flow/lib/yjs";
 import { YWorkflow } from "@flow/lib/yjs/utils";
-import { useCurrentWorkflowId } from "@flow/stores";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 import { cancellableDebounce } from "@flow/utils";
 
@@ -21,7 +21,9 @@ export default ({
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
-  const [currentWorkflowId, setCurrentWorkflowId] = useCurrentWorkflowId();
+  const [currentWorkflowId, setCurrentWorkflowId] = useState<
+    string | undefined
+  >(DEFAULT_ENTRY_GRAPH_ID);
 
   const handleWorkflowIdChange = useCallback(
     (id?: string) => {
@@ -41,6 +43,7 @@ export default ({
     handleWorkflowClose,
     handleWorkflowAdd,
     handleNodesUpdate,
+    handleNodeParamsUpdate,
     handleEdgesUpdate,
     handleWorkflowUndo,
     handleWorkflowRedo,
@@ -189,6 +192,7 @@ export default ({
     handleWorkflowClose,
     handleWorkflowChange: handleWorkflowIdChange,
     handleNodesUpdate,
+    handleNodeParamsUpdate,
     handleNodeHover,
     handleNodeDoubleClick,
     handleNodePickerOpen,

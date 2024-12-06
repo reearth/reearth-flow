@@ -153,7 +153,7 @@ export default ({
     ],
   );
 
-  const { handleNodesUpdate } = useYNode({
+  const { handleNodesUpdate, handleNodeParamsUpdate } = useYNode({
     currentYWorkflow,
     undoTrackerActionWrapper,
     handleWorkflowsRemove,
@@ -174,6 +174,7 @@ export default ({
     handleWorkflowClose,
     handleWorkflowAdd,
     handleNodesUpdate,
+    handleNodeParamsUpdate,
     handleEdgesUpdate,
     handleWorkflowUndo,
     handleWorkflowRedo,

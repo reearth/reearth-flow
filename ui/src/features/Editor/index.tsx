@@ -40,6 +40,7 @@ export default function Editor({
     handleWorkflowClose,
     handleWorkflowChange,
     handleNodesUpdate,
+    handleNodeParamsUpdate,
     handleNodeHover,
     handleNodeDoubleClick,
     handleNodePickerOpen,
@@ -95,7 +96,10 @@ export default function Editor({
             onWorkflowRename={handleWorkflowRename}
           />
         </div>
-        <RightPanel selected={locallyLockedNode} />
+        <RightPanel
+          selected={locallyLockedNode}
+          onParamsSubmit={handleNodeParamsUpdate}
+        />
       </div>
     </div>
   );
