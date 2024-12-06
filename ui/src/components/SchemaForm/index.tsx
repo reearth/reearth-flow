@@ -13,6 +13,7 @@ import { ThemedForm } from "./ThemedForm";
 
 type SchemaFormProps = {
   schema?: RJSFSchema;
+  defaultFormData?: any;
   onChange?: (data: any) => void;
   onError?: (errors: any[]) => void;
   onSubmit: (data: any) => void;
@@ -20,6 +21,7 @@ type SchemaFormProps = {
 
 const SchemaForm: React.FC<SchemaFormProps> = ({
   schema,
+  defaultFormData,
   onChange,
   onError,
   onSubmit,
@@ -43,6 +45,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   return schema ? (
     <ThemedForm
       schema={schema}
+      formData={defaultFormData}
       validator={validator}
       onChange={handleChange}
       onSubmit={handleSubmit}

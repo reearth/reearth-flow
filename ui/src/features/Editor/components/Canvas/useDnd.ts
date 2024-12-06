@@ -60,6 +60,7 @@ export default ({
       let newNode: Node = {
         id: randomID(),
         position,
+        type: d,
         data: {
           name: d,
           status: "idle",
@@ -68,8 +69,6 @@ export default ({
       };
 
       if (nodeTypes.includes(d as NodeType)) {
-        console.log("actionName is a NodeType", d);
-
         newNode = {
           ...newNode,
           type: d,
@@ -104,6 +103,8 @@ export default ({
           },
         };
       }
+
+      console.log("newNode", newNode);
 
       onNodesChange(nodes.concat(newNode));
     },

@@ -40,9 +40,7 @@ const ParamEditor: React.FC<Props> = ({
   const { useGetActionById } = useAction();
   const { action } = useGetActionById(nodeMeta.name);
 
-  const handleSubmit = (data: any) => {
-    onSubmit(nodeId, data);
-  };
+  const handleSubmit = (data: any) => onSubmit(nodeId, data);
 
   return (
     <div>
@@ -72,7 +70,11 @@ const ParamEditor: React.FC<Props> = ({
         <TabsContent value="params">
           <div className="rounded border bg-card p-3">
             {action && (
-              <SchemaForm schema={action.parameter} onSubmit={handleSubmit} />
+              <SchemaForm
+                schema={action.parameter}
+                defaultFormData={nodeMeta.params}
+                onSubmit={handleSubmit}
+              />
             )}
           </div>
         </TabsContent>

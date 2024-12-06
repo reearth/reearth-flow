@@ -16,7 +16,8 @@ export const convertNodes = (nodes?: Node[]) => {
         id,
         name: data.name,
         type,
-        // data, // TODO: conversion of data.params to with
+        action: data.name, // TODO: Need to assign the action name/id since name will be user customizable
+        with: data.params,
       };
       if (type === "subworkflow") {
         n.subGraphId = id;

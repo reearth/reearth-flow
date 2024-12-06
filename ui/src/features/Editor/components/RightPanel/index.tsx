@@ -57,7 +57,7 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
             <ParamEditor
               nodeId={selected.id}
               nodeMeta={selected.data}
-              nodeType="transformer"
+              nodeType={selected.type}
               onSubmit={onParamsSubmit}
             />
           )}
