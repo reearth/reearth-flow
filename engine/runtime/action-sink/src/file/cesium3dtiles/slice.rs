@@ -102,9 +102,21 @@ pub fn slice_to_tiles<E>(
                         let orig_tex = poly_tex.and_then(|idx| city_gml.textures.get(idx as usize));
                         Material {
                             base_color: orig_mat.diffuse_color.into(),
-                            base_texture: orig_tex.map(|tex| material::Texture {
-                                uri: tex.uri.clone(),
-                            }),
+                            base_texture: orig_tex
+                                .map(|tex| material::Texture {
+                                    uri: tex.uri.clone(),
+                                })
+                                .and_then(|tex| {
+                                    if let Ok(file_path) = tex.uri.to_file_path() {
+                                        if file_path.exists() {
+                                            Some(tex)
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                }),
                         }
                     } else {
                         Material {
