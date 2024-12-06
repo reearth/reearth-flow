@@ -48,6 +48,16 @@ export default ({
     }
   }, [undoManager]);
 
+  const canUndo = useMemo(() => {
+    const stackLength = undoManager?.undoStack?.length ?? 0;
+    return stackLength > 0;
+  }, [undoManager?.undoStack?.length]);
+
+  const canRedo = useMemo(() => {
+    const stackLength = undoManager?.redoStack?.length ?? 0;
+    return stackLength > 0;
+  }, [undoManager?.redoStack?.length]);
+
   const rawWorkflows = useY(yWorkflows);
 
   const {
@@ -166,6 +176,8 @@ export default ({
     handleEdgesUpdate,
     handleWorkflowUndo,
     handleWorkflowRedo,
+    canUndo,
+    canRedo,
     handleWorkflowRename,
   };
 };
