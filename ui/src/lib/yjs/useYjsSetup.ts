@@ -4,6 +4,7 @@ import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 
 import { YWorkflow, yWorkflowBuilder } from "./utils";
 
@@ -38,7 +39,10 @@ export default ({ workflowId }: { workflowId?: string }) => {
       yWebSocketProvider.once("sync", () => {
         if (yWorkflows.length === 0) {
           yDoc.transact(() => {
-            const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
+            const yWorkflow = yWorkflowBuilder(
+              DEFAULT_ENTRY_GRAPH_ID,
+              "Main Workflow",
+            );
             yWorkflows.push([yWorkflow]);
           });
         }

@@ -21,7 +21,7 @@ const BaseActionButtons: React.FC<{
           className={`flex h-4/5 min-w-[140px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-popover hover:text-popover-foreground ${
             (!selectedId && idx === 0) || selectedId === content.id
               ? "bg-popover text-popover-foreground"
-              : ""
+              : "bg-card"
           }`}
           onClick={() => onSelection?.(content.id)}>
           {content.icon}
