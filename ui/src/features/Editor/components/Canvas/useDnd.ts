@@ -61,6 +61,7 @@ export default ({
         id: randomID(),
         position,
         data: {
+          name: d,
           status: "idle",
           locked: false,
         },
@@ -74,7 +75,6 @@ export default ({
           type: d,
           data: {
             ...newNode.data,
-            name: d,
           },
         };
 

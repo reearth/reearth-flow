@@ -1,13 +1,4 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  CornersIn,
-  CornersOut,
-  FrameCorners,
-  MagnifyingGlassMinus,
-  MagnifyingGlassPlus,
-} from "@phosphor-icons/react";
-import { useReactFlow } from "@xyflow/react";
+import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
 import { memo } from "react";
 
 import {
@@ -23,7 +14,6 @@ import {
   TabsTrigger,
   SchemaForm,
 } from "@flow/components";
-import { useFullscreen } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import type { NodeData } from "@flow/types";
@@ -33,6 +23,7 @@ type Props = {
   nodeMeta: NodeData;
   nodeType: string;
   nodeParameters?: unknown; // TODO: define type
+  onSubmit: (nodeId: string, data: any) => void;
 };
 
 const actionButtonClasses = "border h-[25px]";
@@ -42,19 +33,16 @@ const ParamEditor: React.FC<Props> = ({
   nodeMeta,
   // nodeType,
   // nodeParameters = [{ id: "param1", name: "Param 1", value: "Value 1", type: "string"}],
+  onSubmit,
 }) => {
   const t = useT();
-  const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const { isFullscreen, handleFullscreenToggle } = useFullscreen();
 
   const { useGetActionById } = useAction();
+  const { action } = useGetActionById(nodeMeta.name);
 
-  // For action nodes, nodeMeta.name is always defined. Only actions can open
-  // the ParamsEditor, so this is for the TS error to go away
-  const { action } = useGetActionById(nodeMeta.name ?? "");
-
-  const handleFitView = () =>
-    fitView({ nodes: [{ id: nodeId }], duration: 400 });
+  const handleSubmit = (data: any) => {
+    onSubmit(nodeId, data);
+  };
 
   return (
     <div>
@@ -71,34 +59,6 @@ const ParamEditor: React.FC<Props> = ({
             tooltipText="Next selection"
           />
         </div>
-        <div className="flex gap-2">
-          <IconButton
-            className={actionButtonClasses}
-            icon={isFullscreen ? <CornersIn /> : <CornersOut />}
-            tooltipText={
-              isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")
-            }
-            onClick={handleFullscreenToggle}
-          />
-          <IconButton
-            className={actionButtonClasses}
-            icon={<FrameCorners className="w-[14px]" />}
-            tooltipText="Fit view to selection"
-            onClick={handleFitView}
-          />
-          <IconButton
-            className={actionButtonClasses}
-            icon={<MagnifyingGlassMinus />}
-            tooltipText="Zoom out"
-            onClick={() => zoomOut({ duration: 400 })}
-          />
-          <IconButton
-            className={actionButtonClasses}
-            icon={<MagnifyingGlassPlus />}
-            tooltipText="Zoom in"
-            onClick={() => zoomIn({ duration: 400 })}
-          />
-        </div>
       </div>
       <Tabs defaultValue="params" className="w-full">
         <TabsList className="flex">
@@ -111,7 +71,9 @@ const ParamEditor: React.FC<Props> = ({
         </TabsList>
         <TabsContent value="params">
           <div className="rounded border bg-card p-3">
-            {action && <SchemaForm schema={action.parameter} />}
+            {action && (
+              <SchemaForm schema={action.parameter} onSubmit={handleSubmit} />
+            )}
           </div>
         </TabsContent>
         <TabsContent value="data">

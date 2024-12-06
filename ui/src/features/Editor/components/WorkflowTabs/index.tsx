@@ -70,7 +70,7 @@ const WorkflowTabs: React.FC<Props> = ({
   };
 
   return (
-    <div className="w-[75vw]">
+    <div className="max-w-[calc(100vw-360px)]">
       <div className="flex h-[29px] flex-1 items-center gap-1">
         <div
           className={`group flex h-4/5 w-[135px] shrink-0 cursor-pointer items-center justify-center rounded px-[6px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent" : "bg-card hover:bg-popover"}`}

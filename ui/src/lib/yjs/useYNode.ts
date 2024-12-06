@@ -39,8 +39,36 @@ export default ({
       }),
     [currentYWorkflow, undoTrackerActionWrapper, handleWorkflowsRemove],
   );
+
+  const handleNodeParamsUpdate = useCallback(
+    (nodeId: string, params: any) => {
+      undoTrackerActionWrapper(() => {
+        const yNodes = currentYWorkflow?.get("nodes") as
+          | YNodesArray
+          | undefined;
+        if (!yNodes) return;
+
+        const nodes = yNodes.toJSON() as Node[];
+
+        const nodeIndex = nodes.findIndex((n) => n.id === nodeId);
+        const node = nodes[nodeIndex];
+
+        if (!node) return;
+
+        const updatedNode: Node = { ...node, data: { ...node.data, params } };
+        const newNodes = [...nodes];
+        newNodes.splice(nodeIndex, 1, updatedNode);
+
+        yNodes.delete(0, nodes.length);
+        yNodes.insert(0, newNodes);
+      });
+    },
+    [currentYWorkflow, undoTrackerActionWrapper],
+  );
+
   return {
     handleNodesUpdate,
+    handleNodeParamsUpdate,
   };
 };
 
