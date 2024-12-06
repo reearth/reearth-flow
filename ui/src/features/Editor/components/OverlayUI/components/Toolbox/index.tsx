@@ -27,12 +27,13 @@ type CanvasAction = "undo" | "redo";
 type Action = ToolboxItem<CanvasAction>;
 
 type Props = {
-  undoDisabled?: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
   onRedo?: () => void;
   onUndo?: () => void;
 };
 
-const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
+const Toolbox: React.FC<Props> = ({ canUndo, canRedo, onRedo, onUndo }) => {
   const t = useT();
 
   const availableTools: Tool[] = [
@@ -134,6 +135,7 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
               tooltipPosition="right"
               tooltipText={action.name}
               icon={action.icon}
+              disabled={action.id === "undo" ? !canUndo : !canRedo}
               onClick={() =>
                 action.id === "redo"
                   ? onRedo?.()
