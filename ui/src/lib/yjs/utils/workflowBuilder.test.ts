@@ -35,7 +35,12 @@ describe("yWorkflowBuilder", () => {
     const name = "My Workflow";
 
     const nodes: Node[] = [
-      { id: "node-1", position: { x: 0, y: 0 }, data: { name: "Node 1" } },
+      {
+        id: "node-1",
+        type: "transformer",
+        position: { x: 0, y: 0 },
+        data: { name: "Node 1" },
+      },
     ];
     const edges: Edge[] = [
       { id: "edge-1", source: "node-1", target: "node-2" },
