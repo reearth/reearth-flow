@@ -2769,7 +2769,8 @@ Compiles scripts into .wasm and runs at the wasm runtime
     "ProcessorType": {
       "type": "string",
       "enum": [
-        "Attribute"
+        "Attribute",
+        "AttributeWithXML"
       ]
     },
     "ProgrammingLanguage": {
