@@ -24,6 +24,7 @@ func (r *mutationResolver) Signup(ctx context.Context, input gqlmodel.SignupInpu
 		Name:        au.Name,
 		Secret:      input.Secret,
 		User: accountinterfaces.SignupUserParam{
+			Lang:        input.Lang,
 			UserID:      gqlmodel.ToIDRef[accountdomain.User](input.UserID),
 			WorkspaceID: gqlmodel.ToIDRef[accountdomain.Workspace](input.WorkspaceID),
 		},
@@ -39,6 +40,7 @@ func (r *mutationResolver) UpdateMe(ctx context.Context, input gqlmodel.UpdateMe
 	res, err := usecases(ctx).User.UpdateMe(ctx, accountinterfaces.UpdateMeParam{
 		Name:                 input.Name,
 		Email:                input.Email,
+		Lang:                 input.Lang,
 		Password:             input.Password,
 		PasswordConfirmation: input.PasswordConfirmation,
 	}, getAcOperator(ctx))

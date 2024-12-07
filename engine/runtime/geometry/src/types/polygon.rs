@@ -391,7 +391,7 @@ impl<'a> From<NPolygon2<'a>> for Polygon2D<f64> {
     }
 }
 
-impl<'a> From<Polygon2D<f64>> for NPolygon2<'a> {
+impl From<Polygon2D<f64>> for NPolygon2<'_> {
     #[inline]
     fn from(poly: Polygon2D<f64>) -> Self {
         let interiors: Vec<NLineString2> = poly
@@ -409,7 +409,7 @@ impl<'a> From<Polygon2D<f64>> for NPolygon2<'a> {
     }
 }
 
-impl<'a> From<Polygon3D<f64>> for NPolygon2<'a> {
+impl From<Polygon3D<f64>> for NPolygon2<'_> {
     #[inline]
     fn from(poly: Polygon3D<f64>) -> Self {
         let interiors: Vec<NLineString2> = poly
@@ -435,7 +435,7 @@ impl<'a> From<NPolygon3<'a>> for Polygon3D<f64> {
     }
 }
 
-impl<'a> From<Polygon3D<f64>> for NPolygon3<'a> {
+impl From<Polygon3D<f64>> for NPolygon3<'_> {
     #[inline]
     fn from(poly: Polygon3D<f64>) -> Self {
         let interiors: Vec<NLineString3> = poly
@@ -536,7 +536,7 @@ pub struct Iter<'a, T: CoordNum> {
     pos: usize,
 }
 
-impl<'a, T: CoordNum> Iterator for Iter<'a, T> {
+impl<T: CoordNum> Iterator for Iter<'_, T> {
     type Item = LineString<T, T>;
 
     fn next(&mut self) -> Option<Self::Item> {

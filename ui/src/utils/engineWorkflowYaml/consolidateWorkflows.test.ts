@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import type { Workflow, EngineReadyGraph } from "@flow/types";
 
 import { randomID } from "../randomID";
@@ -22,12 +23,22 @@ describe("consolidateWorkflows", () => {
 
   it("should correctly consolidate workflows with a main workflow", () => {
     const mockWorkflows: Workflow[] = [
-      { id: "main", name: "Main Workflow", nodes: [], edges: [] },
+      {
+        id: DEFAULT_ENTRY_GRAPH_ID,
+        name: "Main Workflow",
+        nodes: [],
+        edges: [],
+      },
       { id: "sub1", name: "Sub Workflow 1", nodes: [], edges: [] },
     ];
 
     const mockSubGraphs: EngineReadyGraph[] = [
-      { id: "main", name: "Main Workflow", nodes: [], edges: [] },
+      {
+        id: DEFAULT_ENTRY_GRAPH_ID,
+        name: "Main Workflow",
+        nodes: [],
+        edges: [],
+      },
       { id: "sub1", name: "Sub Workflow 1", nodes: [], edges: [] },
     ];
 
@@ -39,7 +50,7 @@ describe("consolidateWorkflows", () => {
     expect(result).toEqual({
       id: "random-id-123",
       name: "somename",
-      entryGraphId: "main",
+      entryGraphId: DEFAULT_ENTRY_GRAPH_ID,
       graphs: mockSubGraphs,
     });
 

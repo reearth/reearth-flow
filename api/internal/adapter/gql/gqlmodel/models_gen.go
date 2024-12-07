@@ -10,6 +10,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/reearth/reearthx/usecasex"
+	"golang.org/x/text/language"
 )
 
 type Node interface {
@@ -186,6 +187,7 @@ type Me struct {
 	ID            ID           `json:"id"`
 	Name          string       `json:"name"`
 	Email         string       `json:"email"`
+	Lang          language.Tag `json:"lang"`
 	MyWorkspaceID ID           `json:"myWorkspaceId"`
 	Auths         []string     `json:"auths"`
 	Workspaces    []*Workspace `json:"workspaces"`
@@ -280,9 +282,10 @@ type RunProjectPayload struct {
 }
 
 type SignupInput struct {
-	UserID      *ID     `json:"userId,omitempty"`
-	WorkspaceID *ID     `json:"workspaceId,omitempty"`
-	Secret      *string `json:"secret,omitempty"`
+	UserID      *ID           `json:"userId,omitempty"`
+	Lang        *language.Tag `json:"lang,omitempty"`
+	WorkspaceID *ID           `json:"workspaceId,omitempty"`
+	Secret      *string       `json:"secret,omitempty"`
 }
 
 type SignupPayload struct {
@@ -297,10 +300,11 @@ type UpdateDeploymentInput struct {
 }
 
 type UpdateMeInput struct {
-	Name                 *string `json:"name,omitempty"`
-	Email                *string `json:"email,omitempty"`
-	Password             *string `json:"password,omitempty"`
-	PasswordConfirmation *string `json:"passwordConfirmation,omitempty"`
+	Name                 *string       `json:"name,omitempty"`
+	Email                *string       `json:"email,omitempty"`
+	Password             *string       `json:"password,omitempty"`
+	PasswordConfirmation *string       `json:"passwordConfirmation,omitempty"`
+	Lang                 *language.Tag `json:"lang,omitempty"`
 }
 
 type UpdateMePayload struct {

@@ -1,17 +1,29 @@
 import { XYPosition } from "@xyflow/react";
 import { MouseEvent, useCallback, useState } from "react";
+import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useShortcuts } from "@flow/hooks";
 import { useYjsStore } from "@flow/lib/yjs";
-import { useCurrentWorkflowId } from "@flow/stores";
+import { YWorkflow } from "@flow/lib/yjs/utils";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 import { cancellableDebounce } from "@flow/utils";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useNodeLocker from "./useNodeLocker";
 
-export default () => {
-  const [currentWorkflowId, setCurrentWorkflowId] = useCurrentWorkflowId();
+export default ({
+  yWorkflows,
+  undoManager,
+  undoTrackerActionWrapper,
+}: {
+  yWorkflows: YArray<YWorkflow>;
+  undoManager: YUndoManager | null;
+  undoTrackerActionWrapper: (callback: () => void) => void;
+}) => {
+  const [currentWorkflowId, setCurrentWorkflowId] = useState<
+    string | undefined
+  >(DEFAULT_ENTRY_GRAPH_ID);
 
   const handleWorkflowIdChange = useCallback(
     (id?: string) => {
@@ -22,24 +34,43 @@ export default () => {
   );
 
   const {
-    openWorkflows,
     nodes,
     edges,
+    openWorkflows,
+    selectedNodes,
     handleWorkflowDeployment,
-    handleWorkflowAdd,
+    handleWorkflowOpen,
     handleWorkflowClose,
+    handleWorkflowAdd,
     handleNodesUpdate,
+    handleNodeParamsUpdate,
     handleEdgesUpdate,
-    handleWorkflowRedo,
     handleWorkflowUndo,
+    handleWorkflowRedo,
     handleWorkflowRename,
+    canUndo,
+    canRedo,
   } = useYjsStore({
     workflowId: currentWorkflowId,
+    yWorkflows,
+    undoManager,
+    undoTrackerActionWrapper,
     handleWorkflowIdChange,
   });
 
   const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
-    { handleNodesUpdate },
+    { selectedNodes, handleNodesUpdate },
+  );
+
+  const handleNodeDoubleClick = useCallback(
+    (_e: MouseEvent, node: Node) => {
+      if (node.type === "subworkflow") {
+        handleWorkflowOpen(node.id);
+      } else {
+        handleNodeLocking(node.id);
+      }
+    },
+    [handleWorkflowOpen, handleNodeLocking],
   );
 
   const { handleCopy, handlePaste } = useCanvasCopyPaste({
@@ -161,8 +192,9 @@ export default () => {
     handleWorkflowClose,
     handleWorkflowChange: handleWorkflowIdChange,
     handleNodesUpdate,
+    handleNodeParamsUpdate,
     handleNodeHover,
-    handleNodeLocking,
+    handleNodeDoubleClick,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesUpdate,
@@ -170,5 +202,7 @@ export default () => {
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
+    canUndo,
+    canRedo,
   };
 };

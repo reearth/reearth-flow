@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { Edge, Node } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
@@ -20,7 +21,7 @@ export default ({
   );
 
   const [openWorkflowIds, setOpenWorkflowIds] = useState<string[]>(
-    workflows.filter((w) => w.id === "main").map((w) => w.id),
+    workflows.filter((w) => w.id === DEFAULT_ENTRY_GRAPH_ID).map((w) => w.id),
   );
 
   const currentWorkflowIndex = useMemo(
@@ -49,16 +50,22 @@ export default ({
 
   const handleWorkflowClose = useCallback(
     (workflowId: string) => {
-      setOpenWorkflowIds((ids) => ids.filter((id) => id !== workflowId));
-      if (workflowId !== "main") {
-        handleWorkflowIdChange("main");
-      }
+      setOpenWorkflowIds((ids) => {
+        const index = ids.findIndex((id) => id === workflowId);
+        const filteredIds = ids.filter((id) => id !== workflowId);
+        if (
+          workflowId !== DEFAULT_ENTRY_GRAPH_ID &&
+          index === currentWorkflowIndex
+        ) {
+          handleWorkflowIdChange(ids[index - 1]);
+        }
+        return filteredIds;
+      });
     },
-    [handleWorkflowIdChange],
+    [currentWorkflowIndex, handleWorkflowIdChange],
   );
 
   return {
-    workflows,
     openWorkflows,
     currentWorkflowIndex,
     setWorkflows,

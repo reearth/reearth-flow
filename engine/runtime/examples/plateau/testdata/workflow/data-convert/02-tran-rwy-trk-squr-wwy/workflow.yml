@@ -80,7 +80,7 @@ graphs:
         action: GeometryLodFilter
         with:
           maxLod: 3
-          minLod: 0
+          minLod: 1
 
       - id: 0274320c-6aad-4ea2-b4cc-b2d7fe7071d8
         name: AttributeMapperLod0-2Tran

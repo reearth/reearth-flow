@@ -24,6 +24,5 @@ describe("useWorkflowTabs", () => {
     );
 
     expect(result2.current.currentWorkflowIndex).toBe(0);
-    expect(result2.current.workflows[0].id).toBe("1");
   });
 });

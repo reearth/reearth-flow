@@ -14,15 +14,13 @@ type NodeParam = {
 };
 
 export type NodeData = {
-  name?: string;
+  name: string;
   inputs?: string[];
   outputs?: string[];
   status?: Status;
   params?: NodeParam[];
   locked?: boolean | undefined;
-  onDoubleClick?: (nodeId: string) => void;
-  // transformer
-  transformerId?: string;
+
   // batch & note nodes
   content?: string;
   width?: number;
@@ -48,7 +46,7 @@ export const nodeTypes = [
 
 export type NodeType = (typeof nodeTypes)[number];
 
-export type Node = ReactFlowNode<NodeData>;
+export type Node = Omit<ReactFlowNode<NodeData>, "type"> & { type: string };
 
 export type NodeTypes = Record<
   NodeType,

@@ -38,7 +38,7 @@ struct Fixtures;
 struct WorkflowFiles;
 
 pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir, Error> {
-    env::set_var("ACTION_LOG_DISABLE", "true");
+    env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
     let storage_resolver = Arc::new(StorageResolver::new());
     let storage = storage_resolver
         .resolve(&Uri::for_test("ram:///fixture/"))

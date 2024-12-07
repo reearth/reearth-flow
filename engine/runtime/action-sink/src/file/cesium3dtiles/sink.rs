@@ -131,7 +131,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
-    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
+    pub(super) buffer: HashMap<(Uri, String), Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -157,6 +157,11 @@ impl Sink for Cesium3DTilesWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
+        let Some(feature_type) = &ctx.feature.feature_type() else {
+            return Err(
+                SinkError::Cesium3DTilesWriter("Failed to get feature type".to_string()).into(),
+            );
+        };
         let geometry = &ctx.feature.geometry;
         if geometry.is_empty() {
             return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
@@ -175,12 +180,22 @@ impl Sink for Cesium3DTilesWriter {
             .eval_ast::<String>(&output)
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
         let output = Uri::from_str(path.as_str())?;
-        let buffer = self.buffer.entry(output).or_default();
+        let buffer = self
+            .buffer
+            .entry((output, feature_type.clone()))
+            .or_default();
         buffer.push(feature);
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        for (output, buffer) in &self.buffer {
+        let mut features = HashMap::<Uri, Vec<(String, Vec<Feature>)>>::new();
+        for ((output, feature_type), buffer) in &self.buffer {
+            features
+                .entry(output.clone())
+                .or_default()
+                .push((feature_type.clone(), buffer.clone()));
+        }
+        for (output, buffer) in &features {
             self.write(ctx.as_context(), buffer, output)?;
         }
         Ok(())
@@ -191,21 +206,27 @@ impl Cesium3DTilesWriter {
     pub fn write(
         &self,
         ctx: Context,
-        upstream: &[Feature],
+        upstream: &Vec<(String, Vec<Feature>)>,
         output: &Uri,
     ) -> crate::errors::Result<()> {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
-        let Some(first) = upstream.first() else {
-            return Ok(());
-        };
-        let schema: nusamai_citygml::schema::Schema = first.into();
+        let mut features = Vec::new();
+        let mut schema: nusamai_citygml::schema::Schema = Default::default();
+        for (feature_type, upstream) in upstream {
+            let Some(feature) = upstream.first() else {
+                continue;
+            };
+            let typedef: nusamai_citygml::schema::TypeDef = feature.into();
+            schema.types.insert(feature_type.clone(), typedef);
+            features.extend(upstream.clone().into_iter());
+        }
         std::thread::scope(|scope| {
             let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
             let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
             scope.spawn(|| {
                 let result = geometry_slicing_stage(
-                    upstream,
+                    &features,
                     tile_id_conv,
                     sender_sliced,
                     self.params.min_zoom,

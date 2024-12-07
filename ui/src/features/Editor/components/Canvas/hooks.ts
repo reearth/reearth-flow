@@ -12,7 +12,6 @@ type Props = {
   onWorkflowAdd: (position?: XYPosition) => void;
   onNodesUpdate: (newNodes: Node[]) => void;
   onEdgesUpdate: (newEdges: Edge[]) => void;
-  onNodeLocking: (nodeId: string) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
@@ -37,7 +36,6 @@ export default ({
   nodes,
   edges,
   onWorkflowAdd,
-  onNodeLocking,
   onNodesUpdate,
   onEdgesUpdate,
   onNodePickerOpen,
@@ -54,7 +52,6 @@ export default ({
     onWorkflowAdd,
     onNodesChange: onNodesUpdate,
     onEdgesChange: onEdgesUpdate,
-    onNodeLocking,
     onNodePickerOpen,
   });
 

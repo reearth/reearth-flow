@@ -80,7 +80,7 @@ const BottomPanel: React.FC<Props> = ({
       <Contents isOpen={isOpen} selectedId={selectedId} />
       <div
         id="bottom-edge"
-        className="mx-2 flex h-[29px] shrink-0 items-center justify-between gap-2 bg-secondary">
+        className="mx-1 flex h-[29px] shrink-0 items-center justify-between gap-2 bg-secondary">
         <WorkflowTabs
           currentWorkflowId={currentWorkflowId}
           openWorkflows={openWorkflows}

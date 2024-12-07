@@ -28,14 +28,9 @@ type Ordering = "default" | "categorically" | "byType";
 type Props = {
   nodes: Node[];
   onNodesChange: (nodes: Node[]) => void;
-  onNodeLocking: (nodeId: string) => void;
 };
 
-const ActionsList: React.FC<Props> = ({
-  nodes,
-  onNodesChange,
-  onNodeLocking,
-}) => {
+const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
   const t = useT();
   const { useGetActions, useGetActionsSegregated } = useAction();
 
@@ -101,7 +96,6 @@ const ActionsList: React.FC<Props> = ({
           outputs: [...action.outputPorts],
           status: "idle",
           locked: false,
-          onDoubleClick: onNodeLocking,
         },
       };
       onNodesChange(nodes.concat(newNode));
