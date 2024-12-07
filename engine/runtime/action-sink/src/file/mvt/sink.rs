@@ -7,7 +7,11 @@ use std::sync::Arc;
 use std::vec;
 
 use flate2::{write::ZlibEncoder, Compression};
+use flatgeom::LineString2;
+use flatgeom::MultiLineString as NMultiLineString;
+use flatgeom::MultiLineString2;
 use flatgeom::MultiPolygon as NMultiPolygon;
+use flatgeom::MultiPolygon2;
 use itertools::Itertools;
 use prost::Message;
 use rayon::iter::ParallelBridge;
@@ -261,7 +265,28 @@ fn geometry_slicing_stage(
             |(z, x, y, typename), mpoly| {
                 let feature = super::slice::SlicedFeature {
                     typename,
-                    geometry: mpoly,
+                    multi_polygons: mpoly,
+                    multi_line_strings: MultiLineString2::new(),
+                    properties: feature.attributes.clone(),
+                };
+                let bytes =
+                    bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
+                        crate::errors::SinkError::MvtWriter(format!(
+                            "Failed to serialize a sliced feature: {:?}",
+                            err
+                        ))
+                    })?;
+                let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+                if sender_sliced.send((tile_id, bytes)).is_err() {
+                    return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
+                };
+                Ok(())
+            },
+            |(z, x, y, typename), line_strings| {
+                let feature = super::slice::SlicedFeature {
+                    typename,
+                    multi_polygons: MultiPolygon2::new(),
+                    multi_line_strings: line_strings,
                     properties: feature.attributes.clone(),
                 };
                 let bytes =
@@ -397,7 +422,7 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> crate::errors
                 ))
             })?;
 
-        let mpoly = feature.geometry;
+        let mpoly = feature.multi_polygons;
         let mut int_mpoly = NMultiPolygon::<[i16; 2]>::new();
 
         for poly in &mpoly {
@@ -448,6 +473,22 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> crate::errors
             }
         }
 
+        let mut int_line_string = NMultiLineString::<[i16; 2]>::new();
+        let mline_string = feature.multi_line_strings;
+
+        let mut int_line_string_buf = Vec::new();
+        for line_string in &mline_string {
+            int_line_string_buf.clear();
+            int_line_string_buf.extend(line_string.into_iter().map(|[x, y]| {
+                let x = (x * extent as f64 + 0.5) as i16;
+                let y = (y * extent as f64 + 0.5) as i16;
+                [x, y]
+            }));
+            int_line_string.add_linestring(&LineString2::from_raw(
+                int_line_string_buf.drain(..).collect(),
+            ));
+        }
+
         // encode geometry
         let mut geom_enc = GeometryEncoder::new();
         for poly in &int_mpoly {
@@ -459,6 +500,13 @@ fn make_tile(default_detail: i32, serialized_feats: &[Vec<u8>]) -> crate::errors
                         geom_enc.add_ring(&interior);
                     }
                 }
+            }
+        }
+
+        for line_string in &int_line_string {
+            let area = line_string.signed_ring_area();
+            if area as i32 != 0 {
+                geom_enc.add_linestring(&line_string);
             }
         }
         let geometry = geom_enc.into_vec();

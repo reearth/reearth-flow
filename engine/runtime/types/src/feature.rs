@@ -135,6 +135,13 @@ impl From<&Feature> for nusamai_citygml::schema::Schema {
         let Some(feature_type) = v.feature_type() else {
             return schema;
         };
+        schema.types.insert(feature_type, v.into());
+        schema
+    }
+}
+
+impl From<&Feature> for nusamai_citygml::schema::TypeDef {
+    fn from(v: &Feature) -> Self {
         let mut attributes = nusamai_citygml::schema::Map::default();
         for (k, v) in v
             .attributes
@@ -143,14 +150,10 @@ impl From<&Feature> for nusamai_citygml::schema::Schema {
         {
             attributes.insert(k.to_string(), v.clone().into());
         }
-        schema.types.insert(
-            feature_type,
-            nusamai_citygml::schema::TypeDef::Feature(nusamai_citygml::schema::FeatureTypeDef {
-                attributes,
-                additional_attributes: true,
-            }),
-        );
-        schema
+        nusamai_citygml::schema::TypeDef::Feature(nusamai_citygml::schema::FeatureTypeDef {
+            attributes,
+            additional_attributes: true,
+        })
     }
 }
 
@@ -350,6 +353,14 @@ impl Feature {
                 .collect::<serde_json::Map<_, _>>(),
         );
         scope.set("__value", value);
+        scope.set(
+            "__feature_type",
+            serde_json::Value::String(self.feature_type().unwrap_or_default()),
+        );
+        scope.set(
+            "__feature_id",
+            serde_json::Value::String(self.feature_id().unwrap_or_default()),
+        );
         if let Some(with) = with {
             for (k, v) in with {
                 scope.set(k, v.clone());

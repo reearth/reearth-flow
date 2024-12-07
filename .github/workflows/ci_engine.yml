@@ -13,7 +13,7 @@ env:
   RUSTUP_MAX_RETRIES: 10
   # Don't emit giant backtraces in the CI logs.
   RUST_BACKTRACE: short
-  ACTION_LOG_DISABLE: true
+  FLOW_RUNTIME_ACTION_LOG_DISABLE: true
 
 defaults:
   run:

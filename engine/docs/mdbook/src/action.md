@@ -1075,6 +1075,9 @@ Sorts features by attributes
     "Attribute": {
       "type": "string"
     },
+    "Expr": {
+      "type": "string"
+    },
     "Order": {
       "type": "string",
       "enum": [
@@ -1085,12 +1088,28 @@ Sorts features by attributes
     "SortBy": {
       "type": "object",
       "required": [
-        "attribute",
         "order"
       ],
       "properties": {
         "attribute": {
-          "$ref": "#/definitions/Attribute"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attributeValue": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "order": {
           "$ref": "#/definitions/Order"

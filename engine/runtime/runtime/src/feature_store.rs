@@ -1,14 +1,22 @@
-use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::{collections::VecDeque, env};
 
+use once_cell::sync::Lazy;
 use reearth_flow_state::State;
 use reearth_flow_types::Feature;
 use thiserror::Error;
 use tokio::sync::RwLock;
 
 use crate::node::{EdgeId, Port};
+
+static FEATURE_WRITER_DISABLE: Lazy<bool> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_FEATURE_WRITER_DISABLE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(false)
+});
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FeatureWriterKey(pub(crate) Port, pub(crate) Port);
@@ -89,6 +97,9 @@ impl FeatureWriter for PrimaryKeyLookupFeatureWriter {
     }
 
     async fn write(&mut self, feature: &Feature) -> Result<(), FeatureWriterError> {
+        if *FEATURE_WRITER_DISABLE {
+            return Ok(());
+        }
         let item: serde_json::Value = feature.clone().into();
         self.thread_counter
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -111,6 +122,9 @@ impl FeatureWriter for PrimaryKeyLookupFeatureWriter {
     }
 
     async fn flush(&self) -> Result<(), FeatureWriterError> {
+        if *FEATURE_WRITER_DISABLE {
+            return Ok(());
+        }
         while self
             .thread_counter
             .load(std::sync::atomic::Ordering::Relaxed)

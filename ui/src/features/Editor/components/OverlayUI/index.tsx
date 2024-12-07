@@ -19,12 +19,13 @@ type OverlayUIProps = {
     nodeType: ActionNodeType;
   };
   nodes: Node[];
+  canUndo: boolean;
+  canRedo: boolean;
   onWorkflowDeployment: (
     deploymentId?: string,
     description?: string,
   ) => Promise<void>;
   onNodesChange: (nodes: Node[]) => void;
-  onNodeLocking: (nodeId: string) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
@@ -35,9 +36,10 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   hoveredDetails,
   nodePickerOpen,
   nodes,
+  canUndo,
+  canRedo,
   onWorkflowDeployment,
   onNodesChange,
-  onNodeLocking,
   onNodePickerClose,
   onWorkflowUndo,
   onWorkflowRedo,
@@ -51,7 +53,12 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {/* {devMode && <DevTools />} */}
         {canvas}
         <Breadcrumb />
-        <Toolbox onRedo={onWorkflowRedo} onUndo={onWorkflowUndo} />
+        <Toolbox
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onRedo={onWorkflowRedo}
+          onUndo={onWorkflowUndo}
+        />
         <ActionBar
           allowedToDeploy={allowedToDeploy}
           onWorkflowDeployment={onWorkflowDeployment}
@@ -64,7 +71,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           openedActionType={nodePickerOpen}
           nodes={nodes}
           onNodesChange={onNodesChange}
-          onNodeLocking={onNodeLocking}
           onClose={onNodePickerClose}
         />
       )}

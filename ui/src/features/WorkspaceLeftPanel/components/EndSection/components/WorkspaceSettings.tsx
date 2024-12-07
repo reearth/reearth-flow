@@ -1,4 +1,4 @@
-import { PlugsConnected, Toolbox, UsersThree } from "@phosphor-icons/react";
+import { Toolbox, UsersThree } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { RouteOption } from "@flow/features/WorkspaceLeftPanel";
@@ -37,7 +37,7 @@ const WorkspaceSettings: React.FC<Props> = ({ selected }) => {
         <UsersThree weight="light" />
         <p className="dark:font-extralight">{t("Member Settings")}</p>
       </div>
-      <div
+      {/* <div
         className={`-mx-2 flex flex-1 cursor-pointer items-center gap-2 rounded px-2 py-1 ${selected === "integrations" && "bg-accent"} hover:bg-accent`}
         onClick={() =>
           navigate({
@@ -46,7 +46,7 @@ const WorkspaceSettings: React.FC<Props> = ({ selected }) => {
         }>
         <PlugsConnected weight="light" />
         <p className="dark:font-extralight">{t("Integration Settings")}</p>
-      </div>
+      </div> */}
     </div>
   );
 };

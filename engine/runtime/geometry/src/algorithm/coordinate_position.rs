@@ -47,7 +47,7 @@ pub trait CoordinatePosition {
     );
 }
 
-impl<'a, T: GeoNum, Z: GeoNum> CoordinatePosition for GeometryCow<'a, T, Z> {
+impl<T: GeoNum, Z: GeoNum> CoordinatePosition for GeometryCow<'_, T, Z> {
     type ScalarXY = T;
     type ScalarZ = Z;
     crate::geometry_cow_delegate_impl! {

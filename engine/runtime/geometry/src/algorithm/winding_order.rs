@@ -18,7 +18,7 @@ pub struct Points<'a, T: CoordNum + 'a, Z: CoordNum + 'a>(
     pub(crate) EitherIter<PointsIter<'a, T, Z>, Rev<PointsIter<'a, T, Z>>>,
 );
 
-impl<'a, T, Z> Iterator for Points<'a, T, Z>
+impl<T, Z> Iterator for Points<'_, T, Z>
 where
     T: CoordNum,
     Z: CoordNum,
@@ -36,7 +36,7 @@ where
     }
 }
 
-impl<'a, T, Z> ExactSizeIterator for Points<'a, T, Z>
+impl<T, Z> ExactSizeIterator for Points<'_, T, Z>
 where
     T: CoordNum,
     Z: CoordNum,

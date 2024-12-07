@@ -1,3 +1,7 @@
+import { Array as YArray, UndoManager as YUndoManager } from "yjs";
+
+import { YWorkflow } from "@flow/lib/yjs/utils";
+
 import {
   BottomPanel,
   Canvas,
@@ -7,7 +11,17 @@ import {
 } from "./components";
 import useHooks from "./hooks";
 
-export default function Editor() {
+type Props = {
+  yWorkflows: YArray<YWorkflow>;
+  undoManager: YUndoManager | null;
+  undoTrackerActionWrapper: (callback: () => void) => void;
+};
+
+export default function Editor({
+  yWorkflows,
+  undoManager,
+  undoTrackerActionWrapper,
+}: Props) {
   const {
     currentWorkflowId,
     openWorkflows,
@@ -18,14 +32,17 @@ export default function Editor() {
     hoveredDetails,
     nodePickerOpen,
     openPanel,
+    canUndo,
+    canRedo,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange,
     handleNodesUpdate,
+    handleNodeParamsUpdate,
     handleNodeHover,
-    handleNodeLocking,
+    handleNodeDoubleClick,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesUpdate,
@@ -33,7 +50,7 @@ export default function Editor() {
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
-  } = useHooks();
+  } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
 
   return (
     <div className="flex h-screen flex-col">
@@ -43,18 +60,18 @@ export default function Editor() {
           isOpen={openPanel === "left" && !locallyLockedNode}
           onOpen={handlePanelOpen}
           onNodesChange={handleNodesUpdate}
-          onNodeLocking={handleNodeLocking}
         />
         <div className="flex flex-1 flex-col">
           <OverlayUI
             hoveredDetails={hoveredDetails}
             nodePickerOpen={nodePickerOpen}
             nodes={nodes}
+            canUndo={canUndo}
+            canRedo={canRedo}
             onWorkflowDeployment={handleWorkflowDeployment}
             onWorkflowUndo={handleWorkflowUndo}
             onWorkflowRedo={handleWorkflowRedo}
             onNodesChange={handleNodesUpdate}
-            onNodeLocking={handleNodeLocking}
             onNodePickerClose={handleNodePickerClose}>
             <Canvas
               nodes={nodes}
@@ -63,7 +80,7 @@ export default function Editor() {
               onWorkflowAdd={handleWorkflowAdd}
               onNodesUpdate={handleNodesUpdate}
               onNodeHover={handleNodeHover}
-              onNodeLocking={handleNodeLocking}
+              onNodeDoubleClick={handleNodeDoubleClick}
               onNodePickerOpen={handleNodePickerOpen}
               onEdgesUpdate={handleEdgesUpdate}
               onEdgeHover={handleEdgeHover}
@@ -79,7 +96,10 @@ export default function Editor() {
             onWorkflowRename={handleWorkflowRename}
           />
         </div>
-        <RightPanel selected={locallyLockedNode} />
+        <RightPanel
+          selected={locallyLockedNode}
+          onParamsSubmit={handleNodeParamsUpdate}
+        />
       </div>
     </div>
   );

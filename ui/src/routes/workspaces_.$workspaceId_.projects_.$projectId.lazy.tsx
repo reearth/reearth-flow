@@ -1,12 +1,15 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 
+import { Loading } from "@flow/components";
 import Editor from "@flow/features/Editor";
 import {
   ProjectIdWrapper,
   WorkspaceIdWrapper,
 } from "@flow/features/PageWrapper";
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useFullscreen, useShortcuts } from "@flow/hooks";
+import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 // import { useShortcut } from "@flow/hooks/useShortcut";
 
 export const Route = createLazyFileRoute(
@@ -46,5 +49,17 @@ const EditorComponent = () => {
     },
   ]);
 
-  return <Editor />;
+  const { state, isSynced, undoManager } = useYjsSetup({
+    workflowId: DEFAULT_ENTRY_GRAPH_ID,
+  });
+
+  return !state || !isSynced ? (
+    <Loading />
+  ) : (
+    <Editor
+      yWorkflows={state.yWorkflows}
+      undoManager={undoManager}
+      undoTrackerActionWrapper={state.undoTrackerActionWrapper}
+    />
+  );
 };

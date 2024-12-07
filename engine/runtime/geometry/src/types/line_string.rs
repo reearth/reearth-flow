@@ -110,13 +110,13 @@ where
     }
 }
 
-impl<'a, T: CoordNum, Z: CoordNum> ExactSizeIterator for PointsIter<'a, T, Z> {
+impl<T: CoordNum, Z: CoordNum> ExactSizeIterator for PointsIter<'_, T, Z> {
     fn len(&self) -> usize {
         self.0.len()
     }
 }
 
-impl<'a, T: CoordNum, Z: CoordNum> DoubleEndedIterator for PointsIter<'a, T, Z> {
+impl<T: CoordNum, Z: CoordNum> DoubleEndedIterator for PointsIter<'_, T, Z> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.next_back().map(|c| Point::from(*c))
     }
@@ -138,13 +138,13 @@ impl<'a, T: CoordNum, Z: CoordNum> Iterator for CoordinatesIter<'a, T, Z> {
     }
 }
 
-impl<'a, T: CoordNum, Z: CoordNum> ExactSizeIterator for CoordinatesIter<'a, T, Z> {
+impl<T: CoordNum, Z: CoordNum> ExactSizeIterator for CoordinatesIter<'_, T, Z> {
     fn len(&self) -> usize {
         self.0.len()
     }
 }
 
-impl<'a, T: CoordNum, Z: CoordNum> DoubleEndedIterator for CoordinatesIter<'a, T, Z> {
+impl<T: CoordNum, Z: CoordNum> DoubleEndedIterator for CoordinatesIter<'_, T, Z> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.next_back()
     }
@@ -316,7 +316,7 @@ impl<'a> From<NLineString2<'a>> for LineString2D<f64> {
     }
 }
 
-impl<'a> From<LineString3D<f64>> for NLineString2<'a> {
+impl From<LineString3D<f64>> for NLineString2<'_> {
     #[inline]
     fn from(coords: LineString3D<f64>) -> Self {
         let mut line_string = NLineString2::new();
@@ -339,7 +339,7 @@ impl<'a> From<NLineString3<'a>> for LineString3D<f64> {
     }
 }
 
-impl<'a> From<LineString2D<f64>> for NLineString2<'a> {
+impl From<LineString2D<f64>> for NLineString2<'_> {
     #[inline]
     fn from(coords: LineString2D<f64>) -> Self {
         let mut line_string = NLineString2::new();
@@ -350,7 +350,7 @@ impl<'a> From<LineString2D<f64>> for NLineString2<'a> {
     }
 }
 
-impl<'a> From<LineString3D<f64>> for NLineString3<'a> {
+impl From<LineString3D<f64>> for NLineString3<'_> {
     #[inline]
     fn from(coords: LineString3D<f64>) -> Self {
         let mut line_string = NLineString3::new();

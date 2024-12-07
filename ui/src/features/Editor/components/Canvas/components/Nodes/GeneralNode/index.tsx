@@ -34,21 +34,19 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   selected,
   id,
 }) => {
-  const { name, status, inputs, outputs, locked, onDoubleClick } = data;
+  const { name, status, inputs, outputs, locked } = data;
 
   const [hardSelect, setHardSelect] = useState<boolean>(!!locked);
 
   const [_, handleDoubleClick] = useDoubleClick(undefined, () => {
     setHardSelect(!hardSelect);
-    onDoubleClick?.(id);
   });
 
   useEffect(() => {
     if (!selected && hardSelect) {
       setHardSelect(false);
-      onDoubleClick?.(id);
     }
-  }, [id, selected, hardSelect, onDoubleClick]);
+  }, [id, selected, hardSelect]);
 
   const metaProps = getPropsFrom(status);
 

@@ -3,9 +3,9 @@ import {
   ArrowArcRight,
   Database,
   Disc,
+  Graph,
   Lightning,
   Note,
-  Plus,
   RectangleDashed,
 } from "@phosphor-icons/react";
 import { memo, type DragEvent } from "react";
@@ -27,12 +27,13 @@ type CanvasAction = "undo" | "redo";
 type Action = ToolboxItem<CanvasAction>;
 
 type Props = {
-  undoDisabled?: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
   onRedo?: () => void;
   onUndo?: () => void;
 };
 
-const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
+const Toolbox: React.FC<Props> = ({ canUndo, canRedo, onRedo, onUndo }) => {
   const t = useT();
 
   const availableTools: Tool[] = [
@@ -64,7 +65,7 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
     {
       id: "subworkflow",
       name: t("Subworkflow Node"),
-      icon: <Plus weight="light" />,
+      icon: <Graph weight="thin" />,
     },
   ];
 
@@ -95,8 +96,32 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
     root.render(
       <div className="flex size-12 rounded bg-secondary">
         <div
-          className={`flex w-full justify-center rounded align-middle  ${nodeType === "reader" ? "bg-node-reader/60" : nodeType === "writer" ? "bg-node-writer/60" : nodeType === "subworkflow" ? "bg-node-entrance" : "bg-node-transformer/60"}`}>
-          <Lightning className="self-center" />
+          className={`
+          flex w-full justify-center rounded align-middle 
+          ${
+            nodeType === "reader"
+              ? "bg-node-reader/60"
+              : nodeType === "writer"
+                ? "bg-node-writer/60"
+                : nodeType === "subworkflow"
+                  ? "bg-node-entrance"
+                  : nodeType === "note" || nodeType === "batch"
+                    ? "bg-primary"
+                    : "bg-node-transformer/60"
+          }`}>
+          {nodeType === "reader" ? (
+            <Database className="self-center" />
+          ) : nodeType === "writer" ? (
+            <Disc className="self-center" />
+          ) : nodeType === "subworkflow" ? (
+            <Graph className="self-center" />
+          ) : nodeType === "batch" ? (
+            <RectangleDashed className="self-center" />
+          ) : nodeType === "note" ? (
+            <Note className="self-center" />
+          ) : (
+            <Lightning className="self-center" />
+          )}
         </div>
       </div>,
     );
@@ -134,6 +159,7 @@ const Toolbox: React.FC<Props> = ({ onRedo, onUndo }) => {
               tooltipPosition="right"
               tooltipText={action.name}
               icon={action.icon}
+              disabled={action.id === "undo" ? !canUndo : !canRedo}
               onClick={() =>
                 action.id === "redo"
                   ? onRedo?.()
