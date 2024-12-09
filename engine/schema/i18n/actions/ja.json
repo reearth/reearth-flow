@@ -1,0 +1,304 @@
+{
+  "actions": [
+    {
+      "name": "AreaOnAreaOverlayer",
+      "description": "あるエリアの上に別のエリアを重ね合わせる"
+    },
+    {
+      "name": "AttributeAggregator",
+      "description": "属性に基づいてフィーチャをグルーピングする"
+    },
+    {
+      "name": "AttributeDuplicateFilter",
+      "description": "重複した属性を持つフィーチャをフィルタリングする"
+    },
+    {
+      "name": "AttributeFilePathInfoExtractor",
+      "description": "属性からファイルパス情報を抽出する"
+    },
+    {
+      "name": "AttributeManager",
+      "description": "属性を管理する"
+    },
+    {
+      "name": "AttributeMapper",
+      "description": "属性をマッピングする"
+    },
+    {
+      "name": "BoundsExtractor",
+      "description": "境界を抽出する"
+    },
+    {
+      "name": "Bufferer",
+      "description": "ジオメトリの周囲にバッファを作成する"
+    },
+    {
+      "name": "BulkAttributeRenamer",
+      "description": "属性名にプレフィックス／サフィックスを追加・削除、またはテキスト置換して一括でリネームする"
+    },
+    {
+      "name": "CenterPointReplacer",
+      "description": "フィーチャのジオメトリを、フィーチャのバウンディングボックス中央や質量中心、またはフィーチャ領域内に確実に収まる点で置き換える"
+    },
+    {
+      "name": "Cesium3DTilesWriter",
+      "description": "フィーチャをファイルに書き出す"
+    },
+    {
+      "name": "Clipper",
+      "description": "クリッパーフィーチャを用いて候補フィーチャを分割し、内部または外部の部分を別々に出力する"
+    },
+    {
+      "name": "ClosedCurveFilter",
+      "description": "曲線が閉ループになっているか確認する"
+    },
+    {
+      "name": "CoordinateSystemSetter",
+      "description": "フィーチャの座標系を設定する"
+    },
+    {
+      "name": "DimensionFilter",
+      "description": "フィーチャを次元に基づいてフィルタリングする"
+    },
+    {
+      "name": "EchoProcessor",
+      "description": "フィーチャをエコー出力する"
+    },
+    {
+      "name": "EchoSink",
+      "description": "フィーチャをエコー出力する"
+    },
+    {
+      "name": "ElevationExtractor",
+      "description": "フィーチャの最初のZ座標値を抽出し、属性として格納する"
+    },
+    {
+      "name": "Extruder",
+      "description": "ポリゴンを一定の距離で押し出す（エクストルード）"
+    },
+    {
+      "name": "FeatureCounter",
+      "description": "フィーチャ数をカウントする"
+    },
+    {
+      "name": "FeatureCreator",
+      "description": "式に基づいてフィーチャを作成する"
+    },
+    {
+      "name": "FeatureFilter",
+      "description": "条件に基づいてフィーチャをフィルタリングする"
+    },
+    {
+      "name": "FeatureMerger",
+      "description": "属性に基づいてフィーチャをマージする"
+    },
+    {
+      "name": "FeatureReader",
+      "description": "条件に基づいてフィーチャをフィルタリングする"
+    },
+    {
+      "name": "FeatureSorter",
+      "description": "フィーチャを属性でソートする"
+    },
+    {
+      "name": "FeatureTransformer",
+      "description": "式を用いてフィーチャを変換する"
+    },
+    {
+      "name": "FeatureTypeFilter",
+      "description": "フィーチャタイプに基づいてフィーチャをフィルタリングする"
+    },
+    {
+      "name": "FilePathExtractor",
+      "description": "ディレクトリまたはアーカイブからファイルを抽出する"
+    },
+    {
+      "name": "FilePropertyExtractor",
+      "description": "ファイルからプロパティを抽出する"
+    },
+    {
+      "name": "FileReader",
+      "description": "ファイルからフィーチャを読み込む"
+    },
+    {
+      "name": "FileWriter",
+      "description": "フィーチャをファイルに書き出す"
+    },
+    {
+      "name": "GeoJsonWriter",
+      "description": "フィーチャをGeoJSONファイルに書き出す"
+    },
+    {
+      "name": "GeometryCoercer",
+      "description": "フィーチャのジオメトリを特定のジオメトリタイプに強制変換する"
+    },
+    {
+      "name": "GeometryDissolver",
+      "description": "ジオメトリをディゾルブ（結合）する"
+    },
+    {
+      "name": "GeometryExtractor",
+      "description": "フィーチャからジオメトリを抽出し、属性として追加する"
+    },
+    {
+      "name": "GeometryFilter",
+      "description": "ジオメトリをタイプに基づいてフィルタリングする"
+    },
+    {
+      "name": "GeometryLodFilter",
+      "description": "LOD（詳細レベル）に基づいてジオメトリをフィルタリングする"
+    },
+    {
+      "name": "GeometryReplacer",
+      "description": "フィーチャのジオメトリを新しいジオメトリで置き換える"
+    },
+    {
+      "name": "GeometrySplitter",
+      "description": "ジオメトリをタイプ別に分割する"
+    },
+    {
+      "name": "GeometryValidator",
+      "description": "フィーチャのジオメトリを検証する"
+    },
+    {
+      "name": "GeometryValueFilter",
+      "description": "値に基づいてジオメトリをフィルタリングする"
+    },
+    {
+      "name": "GltfWriter",
+      "description": "フィーチャをGltfファイルに書き出す"
+    },
+    {
+      "name": "HoleCounter",
+      "description": "ジオメトリ内の穴の数をカウントし、属性として追加する"
+    },
+    {
+      "name": "HoleExtractor",
+      "description": "ジオメトリ内の穴を抽出し、属性として追加する"
+    },
+    {
+      "name": "HorizontalReprojector",
+      "description": "フィーチャのジオメトリを指定された座標系に水平再投影する"
+    },
+    {
+      "name": "LineOnLineOverlayer",
+      "description": "交点を点フィーチャに変換し、元の交差したラインの属性リストを結合して含めることができる"
+    },
+    {
+      "name": "ListExploder",
+      "description": "リスト属性を複数の要素に分解する"
+    },
+    {
+      "name": "MVTWriter",
+      "description": "フィーチャをファイルに書き出す"
+    },
+    {
+      "name": "NoopProcessor",
+      "description": "フィーチャに対して何も処理しない"
+    },
+    {
+      "name": "NoopSink",
+      "description": "最終的な処理を行わない"
+    },
+    {
+      "name": "Offsetter",
+      "description": "フィーチャの座標にオフセットを加える"
+    },
+    {
+      "name": "OrientationExtractor",
+      "description": "フィーチャのジオメトリの方向を抽出し、属性として追加する"
+    },
+    {
+      "name": "PLATEAU.AttributeFlattener",
+      "description": "建物フィーチャを作成するために属性をフラット化する"
+    },
+    {
+      "name": "PLATEAU.BuildingInstallationGeometryTypeExtractor",
+      "description": "建物インスタレーションジオメトリタイプ（BuildingInstallationGeometryType）を抽出する"
+    },
+    {
+      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "description": "必要な属性の存在や都市コードの正しさを確認し、建物利用属性を検証する。問題があればlBldgErrorおよびcodeErrorポートを通じてエラーを出力する。"
+    },
+    {
+      "name": "PLATEAU.DictionariesInitiator",
+      "description": "PLATEAU用の辞書を初期化する"
+    },
+    {
+      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "description": "CityGMLフィーチャの定義域を検証する"
+    },
+    {
+      "name": "PLATEAU.MaxLodExtractor",
+      "description": "maxLodを抽出する"
+    },
+    {
+      "name": "PLATEAU.TranXLinkChecker",
+      "description": "TranのXlinkをチェックする"
+    },
+    {
+      "name": "PLATEAU.UDXFolderExtractor",
+      "description": "cityGMLパスからUDXフォルダを抽出する"
+    },
+    {
+      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "description": "PLATEAUで一致しないxlinkを検出する"
+    },
+    {
+      "name": "PLATEAU.XMLAttributeExtractor",
+      "description": "スキーマ定義に基づいてXML断片から属性を抽出する"
+    },
+    {
+      "name": "PlanarityFilter",
+      "description": "タイプに基づいてジオメトリをフィルタリングする"
+    },
+    {
+      "name": "Refiner",
+      "description": "ジオメトリを精緻化する"
+    },
+    {
+      "name": "RhaiCaller",
+      "description": "Rhaiスクリプトを呼び出す"
+    },
+    {
+      "name": "Router",
+      "description": "サブワークフローで最後のポートを転送するアクション"
+    },
+    {
+      "name": "StatisticsCalculator",
+      "description": "フィーチャの統計情報を計算する"
+    },
+    {
+      "name": "ThreeDimensionBoxReplacer",
+      "description": "3次元ボックスをポリゴンで置き換える"
+    },
+    {
+      "name": "ThreeDimensionRotator",
+      "description": "3次元ボックスをポリゴンで置き換える"
+    },
+    {
+      "name": "TwoDimensionForcer",
+      "description": "ジオメトリを2次元に強制する"
+    },
+    {
+      "name": "VertexRemover",
+      "description": "フィーチャのジオメトリから特定の頂点を削除する"
+    },
+    {
+      "name": "VerticalReprojector",
+      "description": "フィーチャのジオメトリを指定された座標系に垂直再投影する"
+    },
+    {
+      "name": "WasmRuntimeExecutor",
+      "description": "スクリプトを.wasmにコンパイルし、wasmランタイムで実行する"
+    },
+    {
+      "name": "XMLFragmenter",
+      "description": "XMLを分割する"
+    },
+    {
+      "name": "XMLValidator",
+      "description": "XMLコンテンツを検証する"
+    }
+  ]
+}

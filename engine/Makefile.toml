@@ -61,16 +61,38 @@ git ls-files |grep -E '.rs$' |(! xargs grep 'todo!')
 [tasks.doc-action]
 script = ['''
 #!/usr/bin/env bash -eux
-rm -rf ./schema/actions.json
-rm -rf ./docs/mdbook/src/action.md
+FILES=(
+  "./schema/actions.json"
+  "./schema/actions_en.json"
+  "./schema/actions_es.json"
+  "./schema/actions_fr.json"
+  "./schema/actions_ja.json"
+  "./schema/actions_zh.json"
+  "./docs/mdbook/src/action.md"
+)
+
+for f in "${FILES[@]}"; do
+  rm -rf "$f"
+done
+
 cargo run --package reearth-flow-cli -- schema-action > ./schema/actions.json
+
+LANGS=(en es fr ja zh)
+
+for lang in "${LANGS[@]}"; do
+  cargo run --package reearth-flow-cli \
+    -- schema-action \
+    --language-file-path "$PWD/schema/i18n/actions/${lang}.json" \
+    > "./schema/actions_${lang}.json"
+done
+
 cargo run --package reearth-flow-cli -- doc-action > ./docs/mdbook/src/action.md
 ''']
 
 [tasks.doc-workflow]
 script = ['''
 #!/usr/bin/env bash -eux
-rm -rf ../schema/workflow.json
+rm -rf ./schema/workflow.json
 cargo run --package reearth-flow-cli -- schema-workflow > ./schema/workflow.json
 ''']
 

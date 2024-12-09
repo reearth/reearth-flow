@@ -1,0 +1,304 @@
+{
+  "actions": [
+    {
+      "name": "AreaOnAreaOverlayer",
+      "description": "在一个区域上叠加另一个区域"
+    },
+    {
+      "name": "AttributeAggregator",
+      "description": "根据属性对实体进行分组"
+    },
+    {
+      "name": "AttributeDuplicateFilter",
+      "description": "筛选具有重复属性的实体"
+    },
+    {
+      "name": "AttributeFilePathInfoExtractor",
+      "description": "从属性中提取文件路径信息"
+    },
+    {
+      "name": "AttributeManager",
+      "description": "管理属性"
+    },
+    {
+      "name": "AttributeMapper",
+      "description": "分配属性"
+    },
+    {
+      "name": "BoundsExtractor",
+      "description": "提取边界"
+    },
+    {
+      "name": "Bufferer",
+      "description": "在几何图形周围创建缓冲区"
+    },
+    {
+      "name": "BulkAttributeRenamer",
+      "description": "通过添加/删除前缀或后缀，或替换文本来重命名属性"
+    },
+    {
+      "name": "CenterPointReplacer",
+      "description": "将实体的几何形状替换为位于其包围盒中心、质心或实体区域内部的点。"
+    },
+    {
+      "name": "Cesium3DTilesWriter",
+      "description": "将实体写入文件"
+    },
+    {
+      "name": "Clipper",
+      "description": "使用裁剪实体来分割候选实体，使内部或外部部分分别输出"
+    },
+    {
+      "name": "ClosedCurveFilter",
+      "description": "检查曲线是否形成闭合回路"
+    },
+    {
+      "name": "CoordinateSystemSetter",
+      "description": "设置实体的坐标系"
+    },
+    {
+      "name": "DimensionFilter",
+      "description": "根据实体的维度进行筛选"
+    },
+    {
+      "name": "EchoProcessor",
+      "description": "重复实体"
+    },
+    {
+      "name": "EchoSink",
+      "description": "重复实体"
+    },
+    {
+      "name": "ElevationExtractor",
+      "description": "提取实体的第一个z坐标值并存储为一个属性"
+    },
+    {
+      "name": "Extruder",
+      "description": "沿一定距离拉伸多边形"
+    },
+    {
+      "name": "FeatureCounter",
+      "description": "统计实体数量"
+    },
+    {
+      "name": "FeatureCreator",
+      "description": "根据表达式创建实体"
+    },
+    {
+      "name": "FeatureFilter",
+      "description": "根据条件筛选实体"
+    },
+    {
+      "name": "FeatureMerger",
+      "description": "根据属性合并实体"
+    },
+    {
+      "name": "FeatureReader",
+      "description": "根据条件筛选实体"
+    },
+    {
+      "name": "FeatureSorter",
+      "description": "根据属性对实体排序"
+    },
+    {
+      "name": "FeatureTransformer",
+      "description": "通过表达式转换实体"
+    },
+    {
+      "name": "FeatureTypeFilter",
+      "description": "根据类型筛选实体"
+    },
+    {
+      "name": "FilePathExtractor",
+      "description": "从目录或归档文件中提取文件"
+    },
+    {
+      "name": "FilePropertyExtractor",
+      "description": "提取文件的属性"
+    },
+    {
+      "name": "FileReader",
+      "description": "从文件中读取实体"
+    },
+    {
+      "name": "FileWriter",
+      "description": "将实体写入文件"
+    },
+    {
+      "name": "GeoJsonWriter",
+      "description": "将实体写入 GeoJSON 文件"
+    },
+    {
+      "name": "GeometryCoercer",
+      "description": "强制将实体几何转换为特定几何类型"
+    },
+    {
+      "name": "GeometryDissolver",
+      "description": "溶解几何体"
+    },
+    {
+      "name": "GeometryExtractor",
+      "description": "提取实体的几何并作为属性添加"
+    },
+    {
+      "name": "GeometryFilter",
+      "description": "根据类型筛选几何"
+    },
+    {
+      "name": "GeometryLodFilter",
+      "description": "根据细节级别（LOD）筛选几何"
+    },
+    {
+      "name": "GeometryReplacer",
+      "description": "用新几何替换实体的几何"
+    },
+    {
+      "name": "GeometrySplitter",
+      "description": "根据类型分割几何"
+    },
+    {
+      "name": "GeometryValidator",
+      "description": "验证实体的几何"
+    },
+    {
+      "name": "GeometryValueFilter",
+      "description": "根据值筛选几何"
+    },
+    {
+      "name": "GltfWriter",
+      "description": "将实体写入Gltf文件"
+    },
+    {
+      "name": "HoleCounter",
+      "description": "统计几何中的孔数量并作为属性添加"
+    },
+    {
+      "name": "HoleExtractor",
+      "description": "提取几何中的孔并作为属性添加"
+    },
+    {
+      "name": "HorizontalReprojector",
+      "description": "将实体的几何重投影到指定坐标系"
+    },
+    {
+      "name": "LineOnLineOverlayer",
+      "description": "交点转换为点实体，并可包含原始相交线段组合的属性列表"
+    },
+    {
+      "name": "ListExploder",
+      "description": "将列表类型的属性拆分为多个元素"
+    },
+    {
+      "name": "MVTWriter",
+      "description": "将实体写入文件"
+    },
+    {
+      "name": "NoopProcessor",
+      "description": "对实体不执行任何操作"
+    },
+    {
+      "name": "NoopSink",
+      "description": "不执行任何最终操作"
+    },
+    {
+      "name": "Offsetter",
+      "description": "为实体的坐标添加偏移"
+    },
+    {
+      "name": "OrientationExtractor",
+      "description": "提取实体几何的方向并作为属性添加"
+    },
+    {
+      "name": "PLATEAU.AttributeFlattener",
+      "description": "扁平化属性以创建建筑实体"
+    },
+    {
+      "name": "PLATEAU.BuildingInstallationGeometryTypeExtractor",
+      "description": "提取建筑安装几何类型（BuildingInstallationGeometryType）"
+    },
+    {
+      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "description": "此处理器通过检查所需属性的存在和城市代码的正确性来验证建筑用途属性。如果发现问题，将通过lBldgError和codeError端口输出错误。"
+    },
+    {
+      "name": "PLATEAU.DictionariesInitiator",
+      "description": "为PLATEAU初始化字典"
+    },
+    {
+      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "description": "验证CityGML实体的定义域"
+    },
+    {
+      "name": "PLATEAU.MaxLodExtractor",
+      "description": "提取maxLod"
+    },
+    {
+      "name": "PLATEAU.TranXLinkChecker",
+      "description": "检查Tran的Xlink"
+    },
+    {
+      "name": "PLATEAU.UDXFolderExtractor",
+      "description": "从cityGML路径中提取UDX文件夹"
+    },
+    {
+      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "description": "检测PLATEAU中不匹配的xlink"
+    },
+    {
+      "name": "PLATEAU.XMLAttributeExtractor",
+      "description": "根据模式定义从XML片段中提取属性"
+    },
+    {
+      "name": "PlanarityFilter",
+      "description": "根据类型筛选几何"
+    },
+    {
+      "name": "Refiner",
+      "description": "优化几何"
+    },
+    {
+      "name": "RhaiCaller",
+      "description": "调用Rhai脚本"
+    },
+    {
+      "name": "Router",
+      "description": "用于子工作流中最后一个端口转发的操作"
+    },
+    {
+      "name": "StatisticsCalculator",
+      "description": "计算实体的统计信息"
+    },
+    {
+      "name": "ThreeDimensionBoxReplacer",
+      "description": "用多边形替换三维盒子"
+    },
+    {
+      "name": "ThreeDimensionRotator",
+      "description": "用多边形替换三维盒子"
+    },
+    {
+      "name": "TwoDimensionForcer",
+      "description": "将几何强制为二维"
+    },
+    {
+      "name": "VertexRemover",
+      "description": "从实体的几何中删除特定的顶点"
+    },
+    {
+      "name": "VerticalReprojector",
+      "description": "将实体的几何重投影到指定坐标系"
+    },
+    {
+      "name": "WasmRuntimeExecutor",
+      "description": "将脚本编译为.wasm并在wasm运行环境中执行"
+    },
+    {
+      "name": "XMLFragmenter",
+      "description": "分割XML"
+    },
+    {
+      "name": "XMLValidator",
+      "description": "验证XML内容"
+    }
+  ]
+}

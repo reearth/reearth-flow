@@ -1,0 +1,2944 @@
+{
+  "actions": [
+    {
+      "name": "AreaOnAreaOverlayer",
+      "type": "processor",
+      "description": "あるエリアの上に別のエリアを重ね合わせる",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AreaOnAreaOverlayerParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
+        "remnants",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "AttributeAggregator",
+      "type": "processor",
+      "description": "属性に基づいてフィーチャをグルーピングする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeAggregatorParam",
+        "type": "object",
+        "required": [
+          "aggregateAttributes",
+          "calculationAttribute",
+          "method"
+        ],
+        "properties": {
+          "aggregateAttributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/AggregateAttribute"
+            }
+          },
+          "calculation": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "calculationAttribute": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "calculationValue": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "method": {
+            "$ref": "#/definitions/Method"
+          }
+        },
+        "definitions": {
+          "AggregateAttribute": {
+            "type": "object",
+            "required": [
+              "newAttribute"
+            ],
+            "properties": {
+              "attribute": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "attributeValue": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "newAttribute": {
+                "$ref": "#/definitions/Attribute"
+              }
+            }
+          },
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          },
+          "Method": {
+            "type": "string",
+            "enum": [
+              "max",
+              "min",
+              "count"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "AttributeDuplicateFilter",
+      "type": "processor",
+      "description": "重複した属性を持つフィーチャをフィルタリングする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeDuplicateFilterParam",
+        "type": "object",
+        "required": [
+          "filterBy"
+        ],
+        "properties": {
+          "filterBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "AttributeFilePathInfoExtractor",
+      "type": "processor",
+      "description": "属性からファイルパス情報を抽出する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeFilePathInfoExtractor",
+        "type": "object",
+        "required": [
+          "attribute"
+        ],
+        "properties": {
+          "attribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "AttributeManager",
+      "type": "processor",
+      "description": "属性を管理する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeManagerParam",
+        "type": "object",
+        "required": [
+          "operations"
+        ],
+        "properties": {
+          "operations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Operation"
+            }
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "Method": {
+            "type": "string",
+            "enum": [
+              "convert",
+              "create",
+              "rename",
+              "remove"
+            ]
+          },
+          "Operation": {
+            "type": "object",
+            "required": [
+              "attribute",
+              "method"
+            ],
+            "properties": {
+              "attribute": {
+                "type": "string"
+              },
+              "method": {
+                "$ref": "#/definitions/Method"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "AttributeMapper",
+      "type": "processor",
+      "description": "属性をマッピングする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeMapperParam",
+        "type": "object",
+        "required": [
+          "mappers"
+        ],
+        "properties": {
+          "mappers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Mapper"
+            }
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "Mapper": {
+            "type": "object",
+            "properties": {
+              "attribute": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "childAttribute": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "expr": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "multipleExpr": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parentAttribute": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "valueAttribute": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "BoundsExtractor",
+      "type": "processor",
+      "description": "境界を抽出する",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "Bufferer",
+      "type": "processor",
+      "description": "ジオメトリの周囲にバッファを作成する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Bufferer",
+        "type": "object",
+        "required": [
+          "bufferType",
+          "distance",
+          "interpolationAngle"
+        ],
+        "properties": {
+          "bufferType": {
+            "$ref": "#/definitions/BufferType"
+          },
+          "distance": {
+            "type": "number",
+            "format": "double"
+          },
+          "interpolationAngle": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "definitions": {
+          "BufferType": {
+            "type": "string",
+            "enum": [
+              "area2d"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "BulkAttributeRenamer",
+      "type": "processor",
+      "description": "属性名にプレフィックス／サフィックスを追加・削除、またはテキスト置換して一括でリネームする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BulkAttributeRenamerParam",
+        "type": "object",
+        "required": [
+          "renameAction",
+          "renameType",
+          "renameValue"
+        ],
+        "properties": {
+          "renameAction": {
+            "$ref": "#/definitions/RenameAction"
+          },
+          "renameType": {
+            "$ref": "#/definitions/RenameType"
+          },
+          "renameValue": {
+            "type": "string"
+          },
+          "selectedAttributes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "textToFind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "RenameAction": {
+            "type": "string",
+            "enum": [
+              "AddPrefix",
+              "AddSuffix",
+              "RemovePrefix",
+              "RemoveSuffix",
+              "StringReplace"
+            ]
+          },
+          "RenameType": {
+            "type": "string",
+            "enum": [
+              "All",
+              "Selected"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "CenterPointReplacer",
+      "type": "processor",
+      "description": "フィーチャのジオメトリを、フィーチャのバウンディングボックス中央や質量中心、またはフィーチャ領域内に確実に収まる点で置き換える",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "point",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "Cesium3DTilesWriter",
+      "type": "sink",
+      "description": "フィーチャをファイルに書き出す",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Cesium3DTilesWriterParam",
+        "type": "object",
+        "required": [
+          "maxZoom",
+          "minZoom",
+          "output"
+        ],
+        "properties": {
+          "attachTexture": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "maxZoom": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "minZoom": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "Clipper",
+      "type": "processor",
+      "description": "クリッパーフィーチャを用いて候補フィーチャを分割し、内部または外部の部分を別々に出力する",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "clipper",
+        "candidate"
+      ],
+      "outputPorts": [
+        "inside",
+        "outside",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "ClosedCurveFilter",
+      "type": "processor",
+      "description": "曲線が閉ループになっているか確認する",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "closed",
+        "open",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "CoordinateSystemSetter",
+      "type": "processor",
+      "description": "フィーチャの座標系を設定する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CoordinateSystemSetter",
+        "type": "object",
+        "required": [
+          "epsgCode"
+        ],
+        "properties": {
+          "epsgCode": {
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "DimensionFilter",
+      "type": "processor",
+      "description": "フィーチャを次元に基づいてフィルタリングする",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "2d",
+        "3d",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "EchoProcessor",
+      "type": "processor",
+      "description": "フィーチャをエコー出力する",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Debug"
+      ]
+    },
+    {
+      "name": "EchoSink",
+      "type": "sink",
+      "description": "フィーチャをエコー出力する",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "Debug"
+      ]
+    },
+    {
+      "name": "ElevationExtractor",
+      "type": "processor",
+      "description": "フィーチャの最初のZ座標値を抽出し、属性として格納する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ElevationExtractorParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "Extruder",
+      "type": "processor",
+      "description": "ポリゴンを一定の距離で押し出す（エクストルード）",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ExtruderParam",
+        "type": "object",
+        "required": [
+          "distance"
+        ],
+        "properties": {
+          "distance": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "FeatureCounter",
+      "type": "processor",
+      "description": "フィーチャ数をカウントする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureCounterParam",
+        "type": "object",
+        "required": [
+          "countStart",
+          "outputAttribute"
+        ],
+        "properties": {
+          "countStart": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "outputAttribute": {
+            "type": "string"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FeatureCreator",
+      "type": "source",
+      "description": "式に基づいてフィーチャを作成する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureCreator",
+        "type": "object",
+        "required": [
+          "creator"
+        ],
+        "properties": {
+          "creator": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FeatureFilter",
+      "type": "processor",
+      "description": "条件に基づいてフィーチャをフィルタリングする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureFilterParam",
+        "type": "object",
+        "required": [
+          "conditions"
+        ],
+        "properties": {
+          "conditions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Condition"
+            }
+          }
+        },
+        "definitions": {
+          "Condition": {
+            "type": "object",
+            "required": [
+              "expr",
+              "outputPort"
+            ],
+            "properties": {
+              "expr": {
+                "$ref": "#/definitions/Expr"
+              },
+              "outputPort": {
+                "$ref": "#/definitions/Port"
+              }
+            }
+          },
+          "Expr": {
+            "type": "string"
+          },
+          "Port": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "unfiltered"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FeatureMerger",
+      "type": "processor",
+      "description": "属性に基づいてフィーチャをマージする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureMergerParam",
+        "type": "object",
+        "properties": {
+          "completeGrouped": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "requestorAttribute": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "requestorAttributeValue": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "supplierAttribute": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "supplierAttributeValue": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "requestor",
+        "supplier"
+      ],
+      "outputPorts": [
+        "merged",
+        "unmerged"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FeatureReader",
+      "type": "processor",
+      "description": "条件に基づいてフィーチャをフィルタリングする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureReaderParam",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "flatten": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "citygml"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              "offset": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint",
+                "minimum": 0.0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              },
+              "offset": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint",
+                "minimum": 0.0
+              }
+            }
+          }
+        ],
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FeatureSorter",
+      "type": "processor",
+      "description": "フィーチャを属性でソートする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureSorterParam",
+        "type": "object",
+        "required": [
+          "sortBy"
+        ],
+        "properties": {
+          "sortBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/SortBy"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          },
+          "Order": {
+            "type": "string",
+            "enum": [
+              "ascending",
+              "descending"
+            ]
+          },
+          "SortBy": {
+            "type": "object",
+            "required": [
+              "order"
+            ],
+            "properties": {
+              "attribute": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "attributeValue": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "order": {
+                "$ref": "#/definitions/Order"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FeatureTransformer",
+      "type": "processor",
+      "description": "式を用いてフィーチャを変換する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureTransformerParam",
+        "type": "object",
+        "required": [
+          "transformers"
+        ],
+        "properties": {
+          "transformers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Transform"
+            }
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "Transform": {
+            "type": "object",
+            "required": [
+              "expr"
+            ],
+            "properties": {
+              "expr": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FeatureTypeFilter",
+      "type": "processor",
+      "description": "フィーチャタイプに基づいてフィーチャをフィルタリングする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureTypeFilter",
+        "type": "object",
+        "required": [
+          "targetTypes"
+        ],
+        "properties": {
+          "targetTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "unfiltered"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FilePathExtractor",
+      "type": "source",
+      "description": "ディレクトリまたはアーカイブからファイルを抽出する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FilePathExtractor",
+        "type": "object",
+        "required": [
+          "extractArchive",
+          "sourceDataset"
+        ],
+        "properties": {
+          "extractArchive": {
+            "type": "boolean"
+          },
+          "sourceDataset": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "FilePropertyExtractor",
+      "type": "processor",
+      "description": "ファイルからプロパティを抽出する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FilePropertyExtractor",
+        "type": "object",
+        "required": [
+          "filePathAttribute"
+        ],
+        "properties": {
+          "filePathAttribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "FileReader",
+      "type": "source",
+      "description": "ファイルからフィーチャを読み込む",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FileReader",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              "offset": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint",
+                "minimum": 0.0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              },
+              "offset": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint",
+                "minimum": 0.0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "json"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "flatten": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "citygml"
+                ]
+              }
+            }
+          }
+        ],
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "FileWriter",
+      "type": "sink",
+      "description": "フィーチャをファイルに書き出す",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FileWriterParam",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "converter": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "json"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "excel"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              },
+              "sheetName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        ],
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "GeoJsonWriter",
+      "type": "sink",
+      "description": "フィーチャをGeoJSONファイルに書き出す",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeoJsonWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "GeometryCoercer",
+      "type": "processor",
+      "description": "フィーチャのジオメトリを特定のジオメトリタイプに強制変換する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryCoercer",
+        "type": "object",
+        "required": [
+          "coercerType"
+        ],
+        "properties": {
+          "coercerType": {
+            "$ref": "#/definitions/CoercerType"
+          }
+        },
+        "definitions": {
+          "CoercerType": {
+            "type": "string",
+            "enum": [
+              "lineString"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryDissolver",
+      "type": "processor",
+      "description": "ジオメトリをディゾルブ（結合）する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryDissolverParam",
+        "type": "object",
+        "properties": {
+          "completeGrouped": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryExtractor",
+      "type": "processor",
+      "description": "フィーチャからジオメトリを抽出し、属性として追加する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryExtractor",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryFilter",
+      "type": "processor",
+      "description": "ジオメトリをタイプに基づいてフィルタリングする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryFilterParam",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "none"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "multiple"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "geometryType"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "unfiltered",
+        "none",
+        "contains",
+        "point",
+        "line",
+        "lineString",
+        "polygon",
+        "multiPoint",
+        "multiLineString",
+        "multiPolygon",
+        "rect",
+        "triangle",
+        "solid",
+        "geometryCollection",
+        "solid",
+        "multiSurface",
+        "compositeSurface",
+        "surface",
+        "triangle",
+        "multiCurve",
+        "curve",
+        "multiPoint",
+        "point",
+        "tin"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryLodFilter",
+      "type": "processor",
+      "description": "LOD（詳細レベル）に基づいてジオメトリをフィルタリングする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryLodFilterParam",
+        "type": "object",
+        "properties": {
+          "maxLod": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "minLod": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "targetLods": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "unfiltered"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryReplacer",
+      "type": "processor",
+      "description": "フィーチャのジオメトリを新しいジオメトリで置き換える",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryReplacer",
+        "type": "object",
+        "required": [
+          "sourceAttribute"
+        ],
+        "properties": {
+          "sourceAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometrySplitter",
+      "type": "processor",
+      "description": "ジオメトリをタイプ別に分割する",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryValidator",
+      "type": "processor",
+      "description": "フィーチャのジオメトリを検証する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryValidator",
+        "type": "object",
+        "required": [
+          "validationTypes"
+        ],
+        "properties": {
+          "validationTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ValidationType"
+            }
+          }
+        },
+        "definitions": {
+          "ValidationType": {
+            "type": "string",
+            "enum": [
+              "duplicatePoints",
+              "corruptGeometry",
+              "selfIntersection"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "success",
+        "failed",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryValueFilter",
+      "type": "processor",
+      "description": "値に基づいてジオメトリをフィルタリングする",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "none",
+        "geometry2d",
+        "geometry3d",
+        "cityGml"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GltfWriter",
+      "type": "sink",
+      "description": "フィーチャをGltfファイルに書き出す",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GltfWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "attachTexture": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "HoleCounter",
+      "type": "processor",
+      "description": "ジオメトリ内の穴の数をカウントし、属性として追加する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "HoleCounterParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "HoleExtractor",
+      "type": "processor",
+      "description": "ジオメトリ内の穴を抽出し、属性として追加する",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "outershell",
+        "hole",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "HorizontalReprojector",
+      "type": "processor",
+      "description": "フィーチャのジオメトリを指定された座標系に水平再投影する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "HorizontalReprojectorParam",
+        "type": "object",
+        "properties": {
+          "epsgCode": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "LineOnLineOverlayer",
+      "type": "processor",
+      "description": "交点を点フィーチャに変換し、元の交差したラインの属性リストを結合して含めることができる",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "LineOnLineOverlayerParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "point",
+        "line",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "ListExploder",
+      "type": "processor",
+      "description": "リスト属性を複数の要素に分解する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ListExploder",
+        "type": "object",
+        "required": [
+          "sourceAttribute"
+        ],
+        "properties": {
+          "sourceAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "MVTWriter",
+      "type": "sink",
+      "description": "フィーチャをファイルに書き出す",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "MVTWriterParam",
+        "type": "object",
+        "required": [
+          "layerName",
+          "maxZoom",
+          "minZoom",
+          "output"
+        ],
+        "properties": {
+          "layerName": {
+            "$ref": "#/definitions/Expr"
+          },
+          "maxZoom": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "minZoom": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "NoopProcessor",
+      "type": "processor",
+      "description": "フィーチャに対して何も処理しない",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Noop"
+      ]
+    },
+    {
+      "name": "NoopSink",
+      "type": "sink",
+      "description": "最終的な処理を行わない",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "Noop"
+      ]
+    },
+    {
+      "name": "Offsetter",
+      "type": "processor",
+      "description": "フィーチャの座標にオフセットを加える",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "OffsetterParam",
+        "type": "object",
+        "properties": {
+          "offsetX": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "offsetY": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "offsetZ": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "OrientationExtractor",
+      "type": "processor",
+      "description": "フィーチャのジオメトリの方向を抽出し、属性として追加する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "OrientationExtractorParam",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "outputAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "PLATEAU.AttributeFlattener",
+      "type": "processor",
+      "description": "建物フィーチャを作成するために属性をフラット化する",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU.BuildingInstallationGeometryTypeExtractor",
+      "type": "processor",
+      "description": "建物インスタレーションジオメトリタイプ（BuildingInstallationGeometryType）を抽出する",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "type": "processor",
+      "description": "必要な属性の存在や都市コードの正しさを確認し、建物利用属性を検証する。問題があればlBldgErrorおよびcodeErrorポートを通じてエラーを出力する。",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "lBldgError",
+        "codeError",
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU.DictionariesInitiator",
+      "type": "processor",
+      "description": "PLATEAU用の辞書を初期化する",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "type": "processor",
+      "description": "CityGMLフィーチャの定義域を検証する",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU.MaxLodExtractor",
+      "type": "processor",
+      "description": "maxLodを抽出する",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU.TranXLinkChecker",
+      "type": "processor",
+      "description": "TranのXlinkをチェックする",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU.UDXFolderExtractor",
+      "type": "processor",
+      "description": "cityGMLパスからUDXフォルダを抽出する",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "type": "processor",
+      "description": "PLATEAUで一致しないxlinkを検出する",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "summary",
+        "unMatchedXlinkFrom",
+        "unMatchedXlinkTo"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU.XMLAttributeExtractor",
+      "type": "processor",
+      "description": "スキーマ定義に基づいてXML断片から属性を抽出する",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "attributeFeature",
+        "summary",
+        "filePath"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PlanarityFilter",
+      "type": "processor",
+      "description": "タイプに基づいてジオメトリをフィルタリングする",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "planarity",
+        "notplanarity"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "Refiner",
+      "type": "processor",
+      "description": "ジオメトリを精緻化する",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "remain"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "RhaiCaller",
+      "type": "processor",
+      "description": "Rhaiスクリプトを呼び出す",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "RhaiCallerParam",
+        "type": "object",
+        "required": [
+          "isTarget",
+          "process"
+        ],
+        "properties": {
+          "isTarget": {
+            "$ref": "#/definitions/Expr"
+          },
+          "process": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "Router",
+      "type": "processor",
+      "description": "サブワークフローで最後のポートを転送するアクション",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Router",
+        "type": "object",
+        "required": [
+          "routingPort"
+        ],
+        "properties": {
+          "routingPort": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": []
+    },
+    {
+      "name": "StatisticsCalculator",
+      "type": "processor",
+      "description": "フィーチャの統計情報を計算する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "StatisticsCalculatorParam",
+        "type": "object",
+        "required": [
+          "calculations"
+        ],
+        "properties": {
+          "aggregateAttribute": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aggregateName": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "calculations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Calculation"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Calculation": {
+            "type": "object",
+            "required": [
+              "expr",
+              "newAttribute"
+            ],
+            "properties": {
+              "expr": {
+                "$ref": "#/definitions/Expr"
+              },
+              "newAttribute": {
+                "$ref": "#/definitions/Attribute"
+              }
+            }
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "complete"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "ThreeDimensionBoxReplacer",
+      "type": "processor",
+      "description": "3次元ボックスをポリゴンで置き換える",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ThreeDimensionBoxReplacer",
+        "type": "object",
+        "required": [
+          "maxX",
+          "maxY",
+          "maxZ",
+          "minX",
+          "minY",
+          "minZ"
+        ],
+        "properties": {
+          "maxX": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "maxY": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "maxZ": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "minX": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "minY": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "minZ": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "ThreeDimensionRotator",
+      "type": "processor",
+      "description": "3次元ボックスをポリゴンで置き換える",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ThreeDimensionRotatorParam",
+        "type": "object",
+        "required": [
+          "angleDegree",
+          "directionX",
+          "directionY",
+          "directionZ",
+          "originX",
+          "originY",
+          "originZ"
+        ],
+        "properties": {
+          "angleDegree": {
+            "$ref": "#/definitions/Expr"
+          },
+          "directionX": {
+            "$ref": "#/definitions/Expr"
+          },
+          "directionY": {
+            "$ref": "#/definitions/Expr"
+          },
+          "directionZ": {
+            "$ref": "#/definitions/Expr"
+          },
+          "originX": {
+            "$ref": "#/definitions/Expr"
+          },
+          "originY": {
+            "$ref": "#/definitions/Expr"
+          },
+          "originZ": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "TwoDimensionForcer",
+      "type": "processor",
+      "description": "ジオメトリを2次元に強制する",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "VertexRemover",
+      "type": "processor",
+      "description": "フィーチャのジオメトリから特定の頂点を削除する",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "VerticalReprojector",
+      "type": "processor",
+      "description": "フィーチャのジオメトリを指定された座標系に垂直再投影する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "VerticalReprojectorParam",
+        "type": "object",
+        "required": [
+          "reprojectorType"
+        ],
+        "properties": {
+          "reprojectorType": {
+            "$ref": "#/definitions/VerticalReprojectorType"
+          }
+        },
+        "definitions": {
+          "VerticalReprojectorType": {
+            "type": "string",
+            "enum": [
+              "jgd2011ToWgs84"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "WasmRuntimeExecutor",
+      "type": "processor",
+      "description": "スクリプトを.wasmにコンパイルし、wasmランタイムで実行する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "WasmRuntimeExecutorParam",
+        "type": "object",
+        "required": [
+          "processorType",
+          "programmingLanguage",
+          "sourceCodeFilePath"
+        ],
+        "properties": {
+          "processorType": {
+            "$ref": "#/definitions/ProcessorType"
+          },
+          "programmingLanguage": {
+            "$ref": "#/definitions/ProgrammingLanguage"
+          },
+          "sourceCodeFilePath": {
+            "type": "string"
+          }
+        },
+        "definitions": {
+          "ProcessorType": {
+            "type": "string",
+            "enum": [
+              "Attribute"
+            ]
+          },
+          "ProgrammingLanguage": {
+            "type": "string",
+            "enum": [
+              "Python"
+            ]
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Wasm"
+      ]
+    },
+    {
+      "name": "XMLFragmenter",
+      "type": "processor",
+      "description": "XMLを分割する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "XmlFragmenterParam",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "attribute",
+              "elementsToExclude",
+              "elementsToMatch",
+              "source"
+            ],
+            "properties": {
+              "attribute": {
+                "$ref": "#/definitions/Attribute"
+              },
+              "elementsToExclude": {
+                "$ref": "#/definitions/Expr"
+              },
+              "elementsToMatch": {
+                "$ref": "#/definitions/Expr"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "url"
+                ]
+              }
+            }
+          }
+        ],
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "XML"
+      ]
+    },
+    {
+      "name": "XMLValidator",
+      "type": "processor",
+      "description": "XMLコンテンツを検証する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "XmlValidatorParam",
+        "type": "object",
+        "required": [
+          "attribute",
+          "inputType",
+          "validationType"
+        ],
+        "properties": {
+          "attribute": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "inputType": {
+            "$ref": "#/definitions/XmlInputType"
+          },
+          "validationType": {
+            "$ref": "#/definitions/ValidationType"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "ValidationType": {
+            "type": "string",
+            "enum": [
+              "syntax",
+              "syntaxAndNamespace",
+              "syntaxAndSchema"
+            ]
+          },
+          "XmlInputType": {
+            "type": "string",
+            "enum": [
+              "file",
+              "text"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "success",
+        "failed"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    }
+  ]
+}
