@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use reearth_flow_runtime::node::NodeKind;
 use serde::{Deserialize, Serialize};
 
@@ -39,11 +41,24 @@ impl ActionSchema {
     }
 }
 
-pub(crate) fn create_action_schema(kind: &NodeKind, builtin: bool) -> ActionSchema {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct I18nSchema {
+    pub name: String,
+    pub description: String,
+}
+
+pub(crate) fn create_action_schema(
+    kind: &NodeKind,
+    builtin: bool,
+    i18n: &HashMap<String, I18nSchema>,
+) -> ActionSchema {
     let (name, description, parameter, input_ports, output_ports, categories) = match kind {
         NodeKind::Source(factory) => (
             factory.name().to_string(),
-            factory.description().to_string(),
+            i18n.get(&factory.name().to_string())
+                .map(|schema| schema.description.clone())
+                .unwrap_or(factory.description().to_string()),
             factory
                 .parameter_schema()
                 .map_or(serde_json::Value::Null, |schema| {
@@ -59,7 +74,9 @@ pub(crate) fn create_action_schema(kind: &NodeKind, builtin: bool) -> ActionSche
         ),
         NodeKind::Processor(factory) => (
             factory.name().to_string(),
-            factory.description().to_string(),
+            i18n.get(&factory.name().to_string())
+                .map(|schema| schema.description.clone())
+                .unwrap_or(factory.description().to_string()),
             factory
                 .parameter_schema()
                 .map_or(serde_json::Value::Null, |schema| {
@@ -79,7 +96,9 @@ pub(crate) fn create_action_schema(kind: &NodeKind, builtin: bool) -> ActionSche
         ),
         NodeKind::Sink(factory) => (
             factory.name().to_string(),
-            factory.description().to_string(),
+            i18n.get(&factory.name().to_string())
+                .map(|schema| schema.description.clone())
+                .unwrap_or(factory.description().to_string()),
             factory
                 .parameter_schema()
                 .map_or(serde_json::Value::Null, |schema| {

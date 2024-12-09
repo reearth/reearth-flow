@@ -1,0 +1,304 @@
+{
+  "actions": [
+    {
+      "name": "AreaOnAreaOverlayer",
+      "description": "Overlays an area on another area"
+    },
+    {
+      "name": "AttributeAggregator",
+      "description": "Aggregates features by attributes"
+    },
+    {
+      "name": "AttributeDuplicateFilter",
+      "description": "Filters features by duplicate attributes"
+    },
+    {
+      "name": "AttributeFilePathInfoExtractor",
+      "description": "Extracts file path information from attributes"
+    },
+    {
+      "name": "AttributeManager",
+      "description": "Manages attributes"
+    },
+    {
+      "name": "AttributeMapper",
+      "description": "Maps attributes"
+    },
+    {
+      "name": "BoundsExtractor",
+      "description": "Bounds Extractor"
+    },
+    {
+      "name": "Bufferer",
+      "description": "Buffers a geometry"
+    },
+    {
+      "name": "BulkAttributeRenamer",
+      "description": "Renames attributes by adding/removing prefixes or suffixes, or replacing text"
+    },
+    {
+      "name": "CenterPointReplacer",
+      "description": "Replaces the geometry of the feature with a point that is either in the center of the feature's bounding box, at the center of mass of the feature, or somewhere guaranteed to be inside the feature's area."
+    },
+    {
+      "name": "Cesium3DTilesWriter",
+      "description": "Writes features to a file"
+    },
+    {
+      "name": "Clipper",
+      "description": "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately"
+    },
+    {
+      "name": "ClosedCurveFilter",
+      "description": "Checks if curves form closed loops"
+    },
+    {
+      "name": "CoordinateSystemSetter",
+      "description": "Sets the coordinate system of a feature"
+    },
+    {
+      "name": "DimensionFilter",
+      "description": "Filters the dimension of features"
+    },
+    {
+      "name": "EchoProcessor",
+      "description": "Echo features"
+    },
+    {
+      "name": "EchoSink",
+      "description": "Echo features"
+    },
+    {
+      "name": "ElevationExtractor",
+      "description": "Extracts a feature’s first z coordinate value, storing it in an attribute."
+    },
+    {
+      "name": "Extruder",
+      "description": "Extrudes a polygon by a distance"
+    },
+    {
+      "name": "FeatureCounter",
+      "description": "Counts features"
+    },
+    {
+      "name": "FeatureCreator",
+      "description": "Creates features from expressions"
+    },
+    {
+      "name": "FeatureFilter",
+      "description": "Filters features based on conditions"
+    },
+    {
+      "name": "FeatureMerger",
+      "description": "Merges features by attributes"
+    },
+    {
+      "name": "FeatureReader",
+      "description": "Filters features based on conditions"
+    },
+    {
+      "name": "FeatureSorter",
+      "description": "Sorts features by attributes"
+    },
+    {
+      "name": "FeatureTransformer",
+      "description": "Transforms features by expressions"
+    },
+    {
+      "name": "FeatureTypeFilter",
+      "description": "Filters features by feature type"
+    },
+    {
+      "name": "FilePathExtractor",
+      "description": "Extracts files from a directory or an archive"
+    },
+    {
+      "name": "FilePropertyExtractor",
+      "description": "Extracts properties from a file"
+    },
+    {
+      "name": "FileReader",
+      "description": "Reads features from a file"
+    },
+    {
+      "name": "FileWriter",
+      "description": "Writes features to a file"
+    },
+    {
+      "name": "GeoJsonWriter",
+      "description": "Writes features to a geojson file"
+    },
+    {
+      "name": "GeometryCoercer",
+      "description": "Coerces the geometry of a feature to a specific geometry"
+    },
+    {
+      "name": "GeometryDissolver",
+      "description": "Dissolve geometries"
+    },
+    {
+      "name": "GeometryExtractor",
+      "description": "Extracts geometry from a feature and adds it as an attribute."
+    },
+    {
+      "name": "GeometryFilter",
+      "description": "Filter geometry by type"
+    },
+    {
+      "name": "GeometryLodFilter",
+      "description": "Filter geometry by lod"
+    },
+    {
+      "name": "GeometryReplacer",
+      "description": "Replaces the geometry of a feature with a new geometry."
+    },
+    {
+      "name": "GeometrySplitter",
+      "description": "Split geometry by type"
+    },
+    {
+      "name": "GeometryValidator",
+      "description": "Validates the geometry of a feature"
+    },
+    {
+      "name": "GeometryValueFilter",
+      "description": "Filter geometry by value"
+    },
+    {
+      "name": "GltfWriter",
+      "description": "Writes features to a Gltf"
+    },
+    {
+      "name": "HoleCounter",
+      "description": "Counts the number of holes in a geometry and adds it as an attribute."
+    },
+    {
+      "name": "HoleExtractor",
+      "description": "Extracts holes in a geometry and adds it as an attribute."
+    },
+    {
+      "name": "HorizontalReprojector",
+      "description": "Reprojects the geometry of a feature to a specified coordinate system"
+    },
+    {
+      "name": "LineOnLineOverlayer",
+      "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines."
+    },
+    {
+      "name": "ListExploder",
+      "description": "Explodes list attributes"
+    },
+    {
+      "name": "MVTWriter",
+      "description": "Writes features to a file"
+    },
+    {
+      "name": "NoopProcessor",
+      "description": "Noop features"
+    },
+    {
+      "name": "NoopSink",
+      "description": "noop sink"
+    },
+    {
+      "name": "Offsetter",
+      "description": "Adds offsets to the feature's coordinates."
+    },
+    {
+      "name": "OrientationExtractor",
+      "description": "Extracts the orientation of a geometry from a feature and adds it as an attribute."
+    },
+    {
+      "name": "PLATEAU.AttributeFlattener",
+      "description": "Flatten attributes for building feature"
+    },
+    {
+      "name": "PLATEAU.BuildingInstallationGeometryTypeExtractor",
+      "description": "Extracts BuildingInstallationGeometryType"
+    },
+    {
+      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found."
+    },
+    {
+      "name": "PLATEAU.DictionariesInitiator",
+      "description": "Initializes dictionaries for PLATEAU"
+    },
+    {
+      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "description": "Validates domain of definition of CityGML features"
+    },
+    {
+      "name": "PLATEAU.MaxLodExtractor",
+      "description": "Extracts maxLod"
+    },
+    {
+      "name": "PLATEAU.TranXLinkChecker",
+      "description": "Check Xlink for Tran"
+    },
+    {
+      "name": "PLATEAU.UDXFolderExtractor",
+      "description": "Extracts UDX folders from cityGML path"
+    },
+    {
+      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "description": "Detect unmatched xlink for PLATEAU"
+    },
+    {
+      "name": "PLATEAU.XMLAttributeExtractor",
+      "description": "Extracts attributes from XML fragments based on a schema definition"
+    },
+    {
+      "name": "PlanarityFilter",
+      "description": "Filter geometry by type"
+    },
+    {
+      "name": "Refiner",
+      "description": "Geometry Refiner"
+    },
+    {
+      "name": "RhaiCaller",
+      "description": "Calls Rhai script"
+    },
+    {
+      "name": "Router",
+      "description": "Action for last port forwarding for sub-workflows."
+    },
+    {
+      "name": "StatisticsCalculator",
+      "description": "Calculates statistics of features"
+    },
+    {
+      "name": "ThreeDimensionBoxReplacer",
+      "description": "Replaces a three Dimension box with a polygon."
+    },
+    {
+      "name": "ThreeDimensionRotator",
+      "description": "Replaces a three Dimension box with a polygon."
+    },
+    {
+      "name": "TwoDimensionForcer",
+      "description": "Forces a geometry to be two dimensional."
+    },
+    {
+      "name": "VertexRemover",
+      "description": "Removes specific vertices from a feature’s geometry"
+    },
+    {
+      "name": "VerticalReprojector",
+      "description": "Reprojects the geometry of a feature to a specified coordinate system"
+    },
+    {
+      "name": "WasmRuntimeExecutor",
+      "description": "Compiles scripts into .wasm and runs at the wasm runtime"
+    },
+    {
+      "name": "XMLFragmenter",
+      "description": "Fragment XML"
+    },
+    {
+      "name": "XMLValidator",
+      "description": "Validates XML content"
+    }
+  ]
+}

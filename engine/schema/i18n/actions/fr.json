@@ -1,0 +1,304 @@
+{
+  "actions": [
+    {
+      "name": "AreaOnAreaOverlayer",
+      "description": "Superpose une zone sur une autre zone"
+    },
+    {
+      "name": "AttributeAggregator",
+      "description": "Regroupe les entités selon leurs attributs"
+    },
+    {
+      "name": "AttributeDuplicateFilter",
+      "description": "Filtre les entités possédant des attributs dupliqués"
+    },
+    {
+      "name": "AttributeFilePathInfoExtractor",
+      "description": "Extrait des informations de chemins de fichier à partir des attributs"
+    },
+    {
+      "name": "AttributeManager",
+      "description": "Gère les attributs"
+    },
+    {
+      "name": "AttributeMapper",
+      "description": "Assigne des attributs"
+    },
+    {
+      "name": "BoundsExtractor",
+      "description": "Extrait les limites"
+    },
+    {
+      "name": "Bufferer",
+      "description": "Crée un tampon autour d'une géométrie"
+    },
+    {
+      "name": "BulkAttributeRenamer",
+      "description": "Renomme des attributs en ajoutant/supprimant des préfixes ou suffixes, ou en remplaçant du texte"
+    },
+    {
+      "name": "CenterPointReplacer",
+      "description": "Remplace la géométrie de l'entité par un point situé au centre de sa boîte englobante, à son centre de masse, ou à l'intérieur de son aire."
+    },
+    {
+      "name": "Cesium3DTilesWriter",
+      "description": "Écrit les entités dans un fichier"
+    },
+    {
+      "name": "Clipper",
+      "description": "Divise les entités candidates à l'aide d'entités de découpage, de sorte que les parties intérieures ou extérieures soient produites séparément"
+    },
+    {
+      "name": "ClosedCurveFilter",
+      "description": "Vérifie si les courbes forment des boucles fermées"
+    },
+    {
+      "name": "CoordinateSystemSetter",
+      "description": "Définit le système de coordonnées d'une entité"
+    },
+    {
+      "name": "DimensionFilter",
+      "description": "Filtre les entités en fonction de leur dimension"
+    },
+    {
+      "name": "EchoProcessor",
+      "description": "Répète les entités"
+    },
+    {
+      "name": "EchoSink",
+      "description": "Répète les entités"
+    },
+    {
+      "name": "ElevationExtractor",
+      "description": "Extrait la première valeur de la coordonnée z d'une entité et la stocke dans un attribut."
+    },
+    {
+      "name": "Extruder",
+      "description": "Extrue un polygone sur une certaine distance"
+    },
+    {
+      "name": "FeatureCounter",
+      "description": "Compte les entités"
+    },
+    {
+      "name": "FeatureCreator",
+      "description": "Crée des entités à partir d'expressions"
+    },
+    {
+      "name": "FeatureFilter",
+      "description": "Filtre les entités selon des conditions"
+    },
+    {
+      "name": "FeatureMerger",
+      "description": "Fusionne des entités selon leurs attributs"
+    },
+    {
+      "name": "FeatureReader",
+      "description": "Filtre les entités selon des conditions"
+    },
+    {
+      "name": "FeatureSorter",
+      "description": "Trie les entités par attributs"
+    },
+    {
+      "name": "FeatureTransformer",
+      "description": "Transforme les entités à l'aide d'expressions"
+    },
+    {
+      "name": "FeatureTypeFilter",
+      "description": "Filtre les entités par type"
+    },
+    {
+      "name": "FilePathExtractor",
+      "description": "Extrait des fichiers d'un répertoire ou d'une archive"
+    },
+    {
+      "name": "FilePropertyExtractor",
+      "description": "Extrait les propriétés d'un fichier"
+    },
+    {
+      "name": "FileReader",
+      "description": "Lit des entités depuis un fichier"
+    },
+    {
+      "name": "FileWriter",
+      "description": "Écrit des entités dans un fichier"
+    },
+    {
+      "name": "GeoJsonWriter",
+      "description": "Écrit des entités dans un fichier GeoJSON"
+    },
+    {
+      "name": "GeometryCoercer",
+      "description": "Force la géométrie d'une entité à une géométrie spécifique"
+    },
+    {
+      "name": "GeometryDissolver",
+      "description": "Dissout des géométries"
+    },
+    {
+      "name": "GeometryExtractor",
+      "description": "Extrait la géométrie d'une entité et l'ajoute comme attribut."
+    },
+    {
+      "name": "GeometryFilter",
+      "description": "Filtre la géométrie par type"
+    },
+    {
+      "name": "GeometryLodFilter",
+      "description": "Filtre la géométrie par niveau de détail (lod)"
+    },
+    {
+      "name": "GeometryReplacer",
+      "description": "Remplace la géométrie d'une entité par une nouvelle géométrie."
+    },
+    {
+      "name": "GeometrySplitter",
+      "description": "Divise la géométrie par type"
+    },
+    {
+      "name": "GeometryValidator",
+      "description": "Valide la géométrie d'une entité"
+    },
+    {
+      "name": "GeometryValueFilter",
+      "description": "Filtre la géométrie par valeur"
+    },
+    {
+      "name": "GltfWriter",
+      "description": "Écrit des entités dans un fichier Gltf"
+    },
+    {
+      "name": "HoleCounter",
+      "description": "Compte le nombre de trous dans une géométrie et l'ajoute comme attribut."
+    },
+    {
+      "name": "HoleExtractor",
+      "description": "Extrait les trous dans une géométrie et les ajoute comme attribut."
+    },
+    {
+      "name": "HorizontalReprojector",
+      "description": "Reprojette la géométrie d'une entité dans un système de coordonnées spécifié"
+    },
+    {
+      "name": "LineOnLineOverlayer",
+      "description": "Les points d'intersection deviennent des entités ponctuelles pouvant contenir la liste combinée des attributs des lignes d'origine intersectées."
+    },
+    {
+      "name": "ListExploder",
+      "description": "Explose les attributs de type liste en plusieurs éléments"
+    },
+    {
+      "name": "MVTWriter",
+      "description": "Écrit des entités dans un fichier"
+    },
+    {
+      "name": "NoopProcessor",
+      "description": "N'effectue aucune opération sur les entités"
+    },
+    {
+      "name": "NoopSink",
+      "description": "N'effectue aucune opération finale"
+    },
+    {
+      "name": "Offsetter",
+      "description": "Ajoute des décalages aux coordonnées de l'entité."
+    },
+    {
+      "name": "OrientationExtractor",
+      "description": "Extrait l'orientation de la géométrie d'une entité et l'ajoute comme attribut."
+    },
+    {
+      "name": "PLATEAU.AttributeFlattener",
+      "description": "Aplati les attributs pour créer une entité de bâtiment"
+    },
+    {
+      "name": "PLATEAU.BuildingInstallationGeometryTypeExtractor",
+      "description": "Extrait le type de géométrie de l'installation d'un bâtiment (BuildingInstallationGeometryType)"
+    },
+    {
+      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "description": "Ce processeur valide les attributs d'usage des bâtiments en vérifiant la présence d'attributs requis et la justesse des codes de ville. En cas de problème, il génère des erreurs via les ports lBldgError et codeError."
+    },
+    {
+      "name": "PLATEAU.DictionariesInitiator",
+      "description": "Initialise des dictionnaires pour PLATEAU"
+    },
+    {
+      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "description": "Valide le domaine de définition des entités CityGML"
+    },
+    {
+      "name": "PLATEAU.MaxLodExtractor",
+      "description": "Extrait maxLod"
+    },
+    {
+      "name": "PLATEAU.TranXLinkChecker",
+      "description": "Vérifie Xlink pour Tran"
+    },
+    {
+      "name": "PLATEAU.UDXFolderExtractor",
+      "description": "Extrait les dossiers UDX du chemin cityGML"
+    },
+    {
+      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "description": "Détecte les xlinks non correspondants pour PLATEAU"
+    },
+    {
+      "name": "PLATEAU.XMLAttributeExtractor",
+      "description": "Extrait les attributs de fragments XML en fonction d'une définition de schéma"
+    },
+    {
+      "name": "PlanarityFilter",
+      "description": "Filtre la géométrie par type"
+    },
+    {
+      "name": "Refiner",
+      "description": "Affine la géométrie"
+    },
+    {
+      "name": "RhaiCaller",
+      "description": "Appelle un script Rhai"
+    },
+    {
+      "name": "Router",
+      "description": "Action pour le renvoi du dernier port dans les sous-flux de travail."
+    },
+    {
+      "name": "StatisticsCalculator",
+      "description": "Calcule des statistiques sur les entités"
+    },
+    {
+      "name": "ThreeDimensionBoxReplacer",
+      "description": "Remplace un boîtier tridimensionnel par un polygone."
+    },
+    {
+      "name": "ThreeDimensionRotator",
+      "description": "Remplace un boîtier tridimensionnel par un polygone."
+    },
+    {
+      "name": "TwoDimensionForcer",
+      "description": "Force une géométrie à être bidimensionnelle."
+    },
+    {
+      "name": "VertexRemover",
+      "description": "Supprime des sommets spécifiques de la géométrie d'une entité"
+    },
+    {
+      "name": "VerticalReprojector",
+      "description": "Reprojette la géométrie d'une entité dans un système de coordonnées spécifié"
+    },
+    {
+      "name": "WasmRuntimeExecutor",
+      "description": "Compile des scripts en .wasm et les exécute dans un environnement d'exécution wasm"
+    },
+    {
+      "name": "XMLFragmenter",
+      "description": "Fragmente du XML"
+    },
+    {
+      "name": "XMLValidator",
+      "description": "Valide le contenu XML"
+    }
+  ]
+}
