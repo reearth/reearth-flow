@@ -16,8 +16,11 @@ export default () => {
       // Check if dragged node isn't already a child to the group
       if (!draggedNode.parentId) {
         const updatedNode = { ...draggedNode, parentId: hoveredNode.id };
-        const posX = getInternalNode(updatedNode.id)?.position.x;
-        const posY = getInternalNode(updatedNode.id)?.position.y;
+        const posX =
+          getInternalNode(updatedNode.id)?.position.x || updatedNode.position.x;
+        const posY =
+          getInternalNode(updatedNode.id)?.position.y || updatedNode.position.y;
+
         if (posX && posY) {
           updatedNode.position = {
             x: posX - hoveredNode.position.x,
@@ -27,6 +30,8 @@ export default () => {
         const newNodes: Node[] = nodes.filter((n) => n.id !== updatedNode.id);
         newNodes.push(updatedNode);
         onNodesChange(newNodes);
+      } else {
+        onNodesChange(nodes);
       }
     },
     [getInternalNode],
@@ -58,6 +63,8 @@ export default () => {
             return n;
           }),
         );
+      } else {
+        onNodesChange(nodes);
       }
     },
     [getInternalNode],
