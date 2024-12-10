@@ -13,9 +13,9 @@ export default ({
   rawWorkflows: Record<string, string | Node[] | Edge[]>[];
   handleCurrentWorkflowIdChange: (id?: string) => void;
 }) => {
-  // This works as a semi-static base for the rest of the state in this hook
-  // Without this state, performance drops due to the state updating on every
-  // change to a node (which is a lot)
+  // This works as a semi-static base for the rest of the state in this hook.
+  // Without this state (aka using rawWorkflows directly), performance drops
+  // due to the state updating on every change to a node (which is a lot)
   const [workflows, setWorkflows] = useState<{ id: string; name: string }[]>(
     rawWorkflows.filter(isDefined).map((w2) => ({
       id: w2.id as string,
@@ -36,7 +36,10 @@ export default ({
     id: string;
     name: string;
   }[] = useMemo(
-    () => workflows.filter((w) => openWorkflowIds.includes(w.id)),
+    () =>
+      openWorkflowIds
+        .map((owi) => workflows.find((w) => owi === w.id))
+        .filter(isDefined),
     [workflows, openWorkflowIds],
   );
 

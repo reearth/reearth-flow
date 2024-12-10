@@ -95,6 +95,7 @@ export default ({
         parentWorkflowNodes?.push([newSubworkflowNode]);
 
         yWorkflows.push([newYWorkflow]);
+        setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
         setOpenWorkflowIds((ids) => [...ids, workflowId]);
       }),
     [
@@ -103,6 +104,7 @@ export default ({
       rawWorkflows,
       api,
       undoTrackerActionWrapper,
+      setWorkflows,
       setOpenWorkflowIds,
     ],
   );
