@@ -12,6 +12,8 @@ import { useT } from "@flow/lib/i18n";
 import type { Action, ActionNodeType, Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
+import useBatch from "../../../Canvas/useBatch";
+
 type Props = {
   openedActionType: {
     position: XYPosition;
@@ -35,7 +37,8 @@ const NodePickerDialog: React.FC<Props> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-
+  // Perhaps not the best way to do it, but it works. It feels unnecessary to do lots of prop drilling and useBatch is only used in useNodes.
+  const { handleNodeDropInBatch } = useBatch();
   useEffect(() => {
     if (rawActions && openedActionType?.nodeType)
       setActions(rawActions?.byType[openedActionType.nodeType]);
@@ -56,6 +59,26 @@ const NodePickerDialog: React.FC<Props> = ({
     }
   }, [selectedIndex, actions]);
 
+  const isPointInNode = (point: XYPosition, node: Node): boolean => {
+    if (!node.measured) return false;
+    return (
+      point.x >= node.position.x &&
+      point.x <= node.position.x + (node.measured.width ?? 0) &&
+      point.y >= node.position.y &&
+      point.y <= node.position.y + (node.measured.height ?? 0)
+    );
+  };
+
+  // Filter through the list of nodes to check for a batch node is present at the current position
+  const findBatchNodeAtPosition = (
+    position: XYPosition,
+    nodes: Node[],
+  ): Node | undefined => {
+    return nodes.find(
+      (node) => node.type === "batch" && isPointInNode(position, node),
+    );
+  };
+
   const [handleSingleClick, handleDoubleClick] = useDoubleClick(
     (name?: string) => {
       setSelected((prevName) => (prevName === name ? undefined : name));
@@ -69,6 +92,12 @@ const NodePickerDialog: React.FC<Props> = ({
         id: randomID(),
         type: action.type,
         position: openedActionType.position,
+        // Needs measured, but at time of creation we don't know size yet.
+        // 150x25 is base-size of GeneralNode.
+        measured: {
+          width: 150,
+          height: 25,
+        },
         data: {
           name: action.name,
           inputs: [...action.inputPorts],
@@ -77,7 +106,18 @@ const NodePickerDialog: React.FC<Props> = ({
           locked: false,
         },
       };
-      onNodesChange(nodes.concat(newNode));
+      const newNodes = [...nodes, newNode];
+
+      const batchNode = findBatchNodeAtPosition(
+        openedActionType.position,
+        nodes,
+      );
+
+      if (batchNode) {
+        handleNodeDropInBatch(newNode, newNodes, onNodesChange);
+      } else {
+        onNodesChange(newNodes);
+      }
       onClose();
     },
   );
