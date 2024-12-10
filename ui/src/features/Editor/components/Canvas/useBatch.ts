@@ -7,12 +7,7 @@ export default () => {
   const { getInternalNode, isNodeIntersecting } = useReactFlow();
 
   const handleAddToBatch = useCallback(
-    (
-      draggedNode: Node,
-      hoveredNode: Node,
-      nodes: Node[],
-      onNodesChange: (nodes: Node[]) => void,
-    ) => {
+    (draggedNode: Node, hoveredNode: Node, nodes: Node[]) => {
       // Check if dragged node isn't already a child to the group
       if (!draggedNode.parentId) {
         const updatedNode = { ...draggedNode, parentId: hoveredNode.id };
@@ -29,21 +24,16 @@ export default () => {
         }
         const newNodes: Node[] = nodes.filter((n) => n.id !== updatedNode.id);
         newNodes.push(updatedNode);
-        onNodesChange(newNodes);
+        return newNodes;
       } else {
-        onNodesChange(nodes);
+        return nodes;
       }
     },
     [getInternalNode],
   );
 
   const handleRemoveFromBatch = useCallback(
-    (
-      draggedNode: Node,
-      hoveredNode: Node,
-      nodes: Node[],
-      onNodesChange: (nodes: Node[]) => void,
-    ) => {
+    (draggedNode: Node, hoveredNode: Node, nodes: Node[]) => {
       // Check if dragged node is a child to the group
       if (draggedNode.parentId === hoveredNode.id) {
         draggedNode.parentId = undefined;
@@ -55,27 +45,24 @@ export default () => {
             y: posY + hoveredNode.position.y,
           };
         }
-        onNodesChange(
-          nodes.map((n) => {
-            if (n.id === draggedNode.id) {
-              n = draggedNode;
-            }
-            return n;
-          }),
-        );
+
+        return nodes.map((n) => {
+          if (n.id === draggedNode.id) {
+            n = draggedNode;
+          }
+          return n;
+        });
       } else {
-        onNodesChange(nodes);
+        return nodes;
       }
     },
     [getInternalNode],
   );
 
   const handleNodeDropInBatch = useCallback(
-    (
-      droppedNode: Node,
-      nodes: Node[],
-      onNodesChange: (nodes: Node[]) => void,
-    ) => {
+    (droppedNode: Node, nodes: Node[]) => {
+      let newNodes: Node[] = nodes;
+
       nodes.forEach((nd) => {
         if (nd.type === "batch") {
           //safety check to make sure there's a height and width
@@ -88,13 +75,14 @@ export default () => {
 
             // Check if the dragged node is inside the group
             if (isNodeIntersecting(droppedNode, rec, false)) {
-              handleAddToBatch(droppedNode, nd, nodes, onNodesChange);
+              newNodes = handleAddToBatch(droppedNode, nd, newNodes);
             } else {
-              handleRemoveFromBatch(droppedNode, nd, nodes, onNodesChange);
+              newNodes = handleRemoveFromBatch(droppedNode, nd, newNodes);
             }
           }
         }
       });
+      return newNodes;
     },
     [handleAddToBatch, handleRemoveFromBatch, isNodeIntersecting],
   );

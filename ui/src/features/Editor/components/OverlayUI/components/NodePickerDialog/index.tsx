@@ -86,7 +86,9 @@ const NodePickerDialog: React.FC<Props> = ({
         },
       };
       const newNodes = [...nodes, newNode];
-      handleNodeDropInBatch(newNode, newNodes, onNodesChange);
+
+      onNodesChange(handleNodeDropInBatch(newNode, newNodes));
+
       onClose();
     },
   );
