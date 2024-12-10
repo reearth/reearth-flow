@@ -59,26 +59,6 @@ const NodePickerDialog: React.FC<Props> = ({
     }
   }, [selectedIndex, actions]);
 
-  const isPointInNode = (point: XYPosition, node: Node): boolean => {
-    if (!node.measured) return false;
-    return (
-      point.x >= node.position.x &&
-      point.x <= node.position.x + (node.measured.width ?? 0) &&
-      point.y >= node.position.y &&
-      point.y <= node.position.y + (node.measured.height ?? 0)
-    );
-  };
-
-  // Filter through the list of nodes to check for a batch node is present at the current position
-  const findBatchNodeAtPosition = (
-    position: XYPosition,
-    nodes: Node[],
-  ): Node | undefined => {
-    return nodes.find(
-      (node) => node.type === "batch" && isPointInNode(position, node),
-    );
-  };
-
   const [handleSingleClick, handleDoubleClick] = useDoubleClick(
     (name?: string) => {
       setSelected((prevName) => (prevName === name ? undefined : name));
@@ -107,17 +87,7 @@ const NodePickerDialog: React.FC<Props> = ({
         },
       };
       const newNodes = [...nodes, newNode];
-
-      const batchNode = findBatchNodeAtPosition(
-        openedActionType.position,
-        nodes,
-      );
-
-      if (batchNode) {
-        handleNodeDropInBatch(newNode, newNodes, onNodesChange);
-      } else {
-        onNodesChange(newNodes);
-      }
+      handleNodeDropInBatch(newNode, newNodes, onNodesChange);
       onClose();
     },
   );
