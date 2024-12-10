@@ -37,7 +37,6 @@ const NodePickerDialog: React.FC<Props> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  // Perhaps not the best way to do it, but it works. It feels unnecessary to do lots of prop drilling and useBatch is only used in useNodes.
   const { handleNodeDropInBatch } = useBatch();
   useEffect(() => {
     if (rawActions && openedActionType?.nodeType)
