@@ -12,6 +12,8 @@ import { useT } from "@flow/lib/i18n";
 import type { Action, ActionNodeType, Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
+import useBatch from "../../../Canvas/useBatch";
+
 type Props = {
   openedActionType: {
     position: XYPosition;
@@ -35,7 +37,7 @@ const NodePickerDialog: React.FC<Props> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-
+  const { handleNodeDropInBatch } = useBatch();
   useEffect(() => {
     if (rawActions && openedActionType?.nodeType)
       setActions(rawActions?.byType[openedActionType.nodeType]);
@@ -69,6 +71,12 @@ const NodePickerDialog: React.FC<Props> = ({
         id: randomID(),
         type: action.type,
         position: openedActionType.position,
+        // Needs measured, but at time of creation we don't know size yet.
+        // 150x25 is base-size of GeneralNode.
+        measured: {
+          width: 150,
+          height: 25,
+        },
         data: {
           name: action.name,
           inputs: [...action.inputPorts],
@@ -77,7 +85,8 @@ const NodePickerDialog: React.FC<Props> = ({
           locked: false,
         },
       };
-      onNodesChange(nodes.concat(newNode));
+      const newNodes = [...nodes, newNode];
+      handleNodeDropInBatch(newNode, newNodes, onNodesChange);
       onClose();
     },
   );
