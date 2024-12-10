@@ -78,7 +78,7 @@ const NodePickerDialog: React.FC<Props> = ({
           height: 25,
         },
         data: {
-          name: action.name,
+          officialName: action.name,
           inputs: [...action.inputPorts],
           outputs: [...action.outputPorts],
           status: "idle",

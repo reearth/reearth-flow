@@ -10,18 +10,18 @@ export const convertNodes = (nodes?: Node[]) => {
   if (!nodes) return [];
   const convertedNodes: EngineReadyNode[] = nodes
     ?.map(({ id, type, data }) => {
-      if (!id || !type || !data.name) return undefined;
+      if (!id || !type || !data.officialName) return undefined;
 
       const n: EngineReadyNode = {
         id,
-        name: data.name,
+        name: data.officialName,
         type,
       };
       if (data.params) {
         n.with = data.params;
       }
       if (type === "transformer") {
-        n.action = data.name; // TODO: Need to assign the action name/id since name will be user customizable
+        n.action = data.officialName; // TODO: Need to assign the action name/id since name will be user customizable
       }
       if (type === "subworkflow") {
         n.subGraphId = id;

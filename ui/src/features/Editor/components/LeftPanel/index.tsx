@@ -49,14 +49,14 @@ const LeftPanel: React.FC<Props> = ({
       ?.filter((n) => n.type === "reader")
       .map((n) => ({
         id: n.id,
-        name: n.data.name ?? "untitled",
+        name: n.data.customName || n.data.officialName || "untitled",
         icon: Database,
       })) ?? []),
     ...(nodes
       ?.filter((n) => n.type === "writer")
       .map((n) => ({
         id: n.id,
-        name: n.data.name ?? "untitled",
+        name: n.data.customName || n.data.officialName || "untitled",
         icon: Disc,
       })) ?? []),
     {
@@ -67,7 +67,7 @@ const LeftPanel: React.FC<Props> = ({
         ?.filter((n) => n.type === "transformer")
         .map((n) => ({
           id: n.id,
-          name: n.data.name ?? "untitled",
+          name: n.data.customName || n.data.officialName || "untitled",
           // icon: Disc,
         })),
     },

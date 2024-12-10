@@ -91,7 +91,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
           y: window.innerHeight / 2,
         }),
         data: {
-          name: action.name,
+          officialName: action.name,
           inputs: [...action.inputPorts],
           outputs: [...action.outputPorts],
           status: "idle",
