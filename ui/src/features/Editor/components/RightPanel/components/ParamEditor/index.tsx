@@ -38,7 +38,7 @@ const ParamEditor: React.FC<Props> = ({
   const t = useT();
 
   const { useGetActionById } = useAction();
-  const { action } = useGetActionById(nodeMeta.name);
+  const { action } = useGetActionById(nodeMeta.officialName);
 
   const handleSubmit = (data: any) => onSubmit(nodeId, data);
 
@@ -86,7 +86,9 @@ const ParamEditor: React.FC<Props> = ({
             <CardContent className="space-y-2">
               <div className="space-y-1">
                 <Label htmlFor="transformerId">Node</Label>
-                <p className="ml-2">{nodeMeta.name}</p>
+                <p className="ml-2">
+                  {nodeMeta.customName || nodeMeta.officialName}
+                </p>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="inputs">Inputs</Label>

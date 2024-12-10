@@ -5,14 +5,17 @@ import { Edge, Node } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 export default ({
-  workflowId,
+  currentWorkflowId,
   rawWorkflows,
-  handleWorkflowIdChange,
+  handleCurrentWorkflowIdChange,
 }: {
-  workflowId?: string;
+  currentWorkflowId: string;
   rawWorkflows: Record<string, string | Node[] | Edge[]>[];
-  handleWorkflowIdChange: (id?: string) => void;
+  handleCurrentWorkflowIdChange: (id?: string) => void;
 }) => {
+  // This works as a semi-static base for the rest of the state in this hook.
+  // Without this state (aka using rawWorkflows directly), performance drops
+  // due to the state updating on every change to a node (which is a lot)
   const [workflows, setWorkflows] = useState<{ id: string; name: string }[]>(
     rawWorkflows.filter(isDefined).map((w2) => ({
       id: w2.id as string,
@@ -20,32 +23,35 @@ export default ({
     })),
   );
 
-  const [openWorkflowIds, setOpenWorkflowIds] = useState<string[]>(
-    workflows.filter((w) => w.id === DEFAULT_ENTRY_GRAPH_ID).map((w) => w.id),
-  );
+  const [openWorkflowIds, setOpenWorkflowIds] = useState<string[]>([
+    DEFAULT_ENTRY_GRAPH_ID,
+  ]);
 
   const currentWorkflowIndex = useMemo(
-    () => workflows.findIndex((w) => w.id === workflowId),
-    [workflowId, workflows],
+    () => workflows.findIndex((w) => w.id === currentWorkflowId),
+    [currentWorkflowId, workflows],
   );
 
   const openWorkflows: {
     id: string;
     name: string;
   }[] = useMemo(
-    () => workflows.filter((w) => openWorkflowIds.includes(w.id)),
+    () =>
+      openWorkflowIds
+        .map((owi) => workflows.find((w) => owi === w.id))
+        .filter(isDefined),
     [workflows, openWorkflowIds],
   );
 
   const handleWorkflowOpen = useCallback(
     (workflowId: string) => {
       setOpenWorkflowIds((ids) => {
-        handleWorkflowIdChange(workflowId);
+        handleCurrentWorkflowIdChange(workflowId);
         if (ids.includes(workflowId)) return ids;
         return [...ids, workflowId];
       });
     },
-    [handleWorkflowIdChange],
+    [handleCurrentWorkflowIdChange],
   );
 
   const handleWorkflowClose = useCallback(
@@ -53,16 +59,19 @@ export default ({
       setOpenWorkflowIds((ids) => {
         const index = ids.findIndex((id) => id === workflowId);
         const filteredIds = ids.filter((id) => id !== workflowId);
+        const currentWorkflowIndex = openWorkflowIds.findIndex(
+          (wid) => wid === currentWorkflowId,
+        );
         if (
           workflowId !== DEFAULT_ENTRY_GRAPH_ID &&
           index === currentWorkflowIndex
         ) {
-          handleWorkflowIdChange(ids[index - 1]);
+          handleCurrentWorkflowIdChange(ids[index - 1]);
         }
         return filteredIds;
       });
     },
-    [currentWorkflowIndex, handleWorkflowIdChange],
+    [openWorkflowIds, currentWorkflowId, handleCurrentWorkflowIdChange],
   );
 
   return {

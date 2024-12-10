@@ -10,7 +10,7 @@ import { Contents } from "./components/Contents";
 import useHooks from "./hooks";
 
 type Props = {
-  currentWorkflowId?: string;
+  currentWorkflowId: string;
   openWorkflows: {
     id: string;
     name: string;
