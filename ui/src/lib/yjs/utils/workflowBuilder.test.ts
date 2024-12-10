@@ -39,7 +39,7 @@ describe("yWorkflowBuilder", () => {
         id: "node-1",
         type: "transformer",
         position: { x: 0, y: 0 },
-        data: { name: "Node 1" },
+        data: { officialName: "Node 1" },
       },
     ];
     const edges: Edge[] = [
