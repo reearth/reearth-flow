@@ -12,14 +12,14 @@ describe("useWorkflowTabs", () => {
     const yWorkflow = yWorkflowBuilder("1", "Workflow-1");
     yWorkflows.push([yWorkflow]);
 
-    const workflowId = "1";
+    const currentWorkflowId = "1";
     const { result: result1 } = renderHook(() => useY(yWorkflows));
 
     const { result: result2 } = renderHook(() =>
       useWorkflowTabs({
-        workflowId,
+        currentWorkflowId,
         rawWorkflows: result1.current,
-        handleWorkflowIdChange: vi.fn(),
+        handleCurrentWorkflowIdChange: vi.fn(),
       }),
     );
 

@@ -2,23 +2,26 @@ import { XYPosition } from "@xyflow/react";
 import { Dispatch, SetStateAction, useCallback } from "react";
 import { Array as YArray } from "yjs";
 
+import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import type { Edge, Node } from "@flow/types";
+import type { Action, Edge, Node } from "@flow/types";
 import { randomID } from "@flow/utils";
+
+import { fetcher } from "../fetch/transformers/useFetch";
 
 import { YNodesArray, YWorkflow, yWorkflowBuilder } from "./utils";
 
 export default ({
   yWorkflows,
   rawWorkflows,
-  currentWorkflowIndex,
+  currentWorkflowId,
   undoTrackerActionWrapper,
   setWorkflows,
   setOpenWorkflowIds,
 }: {
   yWorkflows: YArray<YWorkflow>;
   rawWorkflows: Record<string, string | Node[] | Edge[]>[];
-  currentWorkflowIndex: number;
+  currentWorkflowId: string;
   undoTrackerActionWrapper: (callback: () => void) => void;
   setWorkflows: Dispatch<
     SetStateAction<
@@ -30,11 +33,14 @@ export default ({
   >;
   setOpenWorkflowIds: Dispatch<SetStateAction<string[]>>;
 }) => {
-  const currentYWorkflow = yWorkflows.get(currentWorkflowIndex);
+  const { api } = config();
+  const currentYWorkflow = yWorkflows.get(
+    rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
+  );
 
   const handleWorkflowAdd = useCallback(
     (position?: XYPosition) =>
-      undoTrackerActionWrapper(() => {
+      undoTrackerActionWrapper(async () => {
         const workflowId = randomID();
         const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
 
@@ -49,13 +55,15 @@ export default ({
           },
         };
 
+        const routerNode = await fetcher<Action>(`${api}/actions/Router`);
+
         const newExitNode: Node = {
           id: randomID(),
-          type: "exit",
+          type: routerNode.type,
           position: { x: 1000, y: 200 },
           data: {
-            name: `New Exit node`,
-            inputs: ["source"],
+            name: routerNode.name,
+            inputs: routerNode.inputPorts,
             status: "idle",
           },
         };
@@ -65,7 +73,6 @@ export default ({
           newExitNode,
         ]);
 
-        // Update main workflow
         const newSubworkflowNode: Node = {
           id: workflowId,
           type: "subworkflow",
@@ -74,11 +81,13 @@ export default ({
             name: workflowName,
             status: "idle",
             inputs: ["source"],
-            outputs: ["target"],
+            outputs: routerNode.outputPorts,
           },
         };
 
-        const parentWorkflow = yWorkflows.get(currentWorkflowIndex ?? 0);
+        const parentWorkflow = yWorkflows.get(
+          rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
+        );
 
         const parentWorkflowNodes = parentWorkflow?.get("nodes") as
           | YNodesArray
@@ -86,15 +95,15 @@ export default ({
         parentWorkflowNodes?.push([newSubworkflowNode]);
 
         yWorkflows.push([newYWorkflow]);
-        setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
         setOpenWorkflowIds((ids) => [...ids, workflowId]);
       }),
     [
       yWorkflows,
-      currentWorkflowIndex,
+      currentWorkflowId,
+      rawWorkflows,
+      api,
       undoTrackerActionWrapper,
       setOpenWorkflowIds,
-      setWorkflows,
     ],
   );
 
