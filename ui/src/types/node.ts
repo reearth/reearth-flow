@@ -14,7 +14,8 @@ type NodeParam = {
 };
 
 export type NodeData = {
-  name: string;
+  officialName: string;
+  customName?: string;
   inputs?: string[];
   outputs?: string[];
   status?: Status;
@@ -42,6 +43,8 @@ export const nodeTypes = [
   "batch",
   "note",
   "subworkflow",
+  "entrance",
+  "exit",
 ] as const;
 
 export type NodeType = (typeof nodeTypes)[number];
@@ -52,6 +55,7 @@ export type NodeTypes = Record<
   NodeType,
   ComponentType<
     NodeProps & {
+      coolName: string;
       data: NodeData;
       type: NodeType;
     }

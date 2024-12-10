@@ -70,7 +70,7 @@ const NodePickerDialog: React.FC<Props> = ({
         type: action.type,
         position: openedActionType.position,
         data: {
-          name: action.name,
+          officialName: action.name,
           inputs: [...action.inputPorts],
           outputs: [...action.outputPorts],
           status: "idle",

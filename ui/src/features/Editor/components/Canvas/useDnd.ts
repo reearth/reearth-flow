@@ -68,7 +68,7 @@ export default ({
         position,
         type: d,
         data: {
-          name: d,
+          officialName: d,
           status: "idle",
           locked: false,
         },
@@ -109,7 +109,7 @@ export default ({
           },
           data: {
             ...newNode.data,
-            name: action.name,
+            officialName: action.name,
             inputs: [...action.inputPorts],
             outputs: [...action.outputPorts],
           },

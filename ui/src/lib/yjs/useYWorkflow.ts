@@ -49,7 +49,7 @@ export default ({
           type: "entrance",
           position: { x: 200, y: 200 },
           data: {
-            name: `New Entrance node`,
+            officialName: `New Entrance node`,
             outputs: ["target"],
             status: "idle",
           },
@@ -62,7 +62,7 @@ export default ({
           type: routerNode.type,
           position: { x: 1000, y: 200 },
           data: {
-            name: routerNode.name,
+            officialName: routerNode.name,
             inputs: routerNode.inputPorts,
             status: "idle",
           },
@@ -78,7 +78,7 @@ export default ({
           type: "subworkflow",
           position: position ?? { x: 600, y: 200 },
           data: {
-            name: workflowName,
+            officialName: workflowName,
             status: "idle",
             inputs: ["source"],
             outputs: routerNode.outputPorts,
@@ -167,7 +167,7 @@ export default ({
           if (node.id === id) {
             node.data = {
               ...node.data,
-              name,
+              customName: name,
             };
           }
         }
