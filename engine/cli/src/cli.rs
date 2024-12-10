@@ -51,7 +51,9 @@ impl CliCommand {
         match subcommand.as_str() {
             "run" => RunCliCommand::parse_cli_args(submatches).map(CliCommand::Run),
             "dot" => DotCliCommand::parse_cli_args(submatches).map(CliCommand::Dot),
-            "schema-action" => Ok(CliCommand::SchemaAction(SchemaActionCliCommand)),
+            "schema-action" => Ok(CliCommand::SchemaAction(
+                SchemaActionCliCommand::parse_cli_args(submatches)?,
+            )),
             "schema-workflow" => Ok(CliCommand::SchemaWorkflow(SchemaWorkflowCliCommand)),
             "doc-action" => Ok(CliCommand::DocAction(DocActionCliCommand)),
             _ => Err(crate::errors::Error::unknown_command(subcommand)),

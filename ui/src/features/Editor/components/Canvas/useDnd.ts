@@ -20,6 +20,11 @@ type Props = {
   onWorkflowAdd: (position?: XYPosition) => void;
   onNodesChange: (nodes: Node[]) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
+  handleNodeDropInBatch: (
+    droppedNode: Node,
+    nodes: Node[],
+    onNodesChange: (nodes: Node[]) => void,
+  ) => void;
 };
 
 // This is used for drag and drop functionality in to the canvas
@@ -29,6 +34,7 @@ export default ({
   onWorkflowAdd,
   onNodesChange,
   onNodePickerOpen,
+  handleNodeDropInBatch,
 }: Props) => {
   const { screenToFlowPosition } = useReactFlow();
   const { api } = config();
@@ -95,6 +101,12 @@ export default ({
         newNode = {
           ...newNode,
           type: action.type,
+          // Needs measured, but at time of creation we don't know size yet.
+          // 150x25 is base-size of GeneralNode.
+          measured: {
+            width: 150,
+            height: 25,
+          },
           data: {
             ...newNode.data,
             name: action.name,
@@ -104,15 +116,20 @@ export default ({
         };
       }
 
-      console.log("newNode", newNode);
+      const newNodes = [...nodes, newNode];
 
-      onNodesChange(nodes.concat(newNode));
+      if (d !== "batch") {
+        handleNodeDropInBatch(newNode, newNodes, onNodesChange);
+      } else {
+        onNodesChange(newNodes);
+      }
     },
     [
       nodes,
       api,
-      onWorkflowAdd,
       screenToFlowPosition,
+      handleNodeDropInBatch,
+      onWorkflowAdd,
       onNodesChange,
       onNodePickerOpen,
     ],

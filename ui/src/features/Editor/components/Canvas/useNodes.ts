@@ -42,6 +42,7 @@ export default ({
     onWorkflowAdd,
     onNodesChange,
     onNodePickerOpen,
+    handleNodeDropInBatch,
   });
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(

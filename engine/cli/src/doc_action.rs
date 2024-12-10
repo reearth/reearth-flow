@@ -21,6 +21,7 @@ pub struct DocActionCliCommand;
 impl DocActionCliCommand {
     pub fn execute(&self) -> crate::Result<()> {
         let mut builtin_action_factories = HashMap::new();
+        let i18n = HashMap::new();
         builtin_action_factories.extend(BUILTIN_ACTION_FACTORIES.clone());
         builtin_action_factories.insert(
             "Router".to_string(),
@@ -29,18 +30,18 @@ impl DocActionCliCommand {
         let mut actions = builtin_action_factories
             .clone()
             .values()
-            .map(|kind| create_action_schema(kind, true))
+            .map(|kind| create_action_schema(kind, true, &i18n))
             .collect::<Vec<_>>();
         let plateau_actions = PLATEAU_ACTION_FACTORIES
             .clone()
             .values()
-            .map(|kind| create_action_schema(kind, false))
+            .map(|kind| create_action_schema(kind, false, &i18n))
             .collect::<Vec<_>>();
         actions.extend(plateau_actions);
         let wasm_actions = WASM_ACTION_FACTORIES
             .clone()
             .values()
-            .map(|kind| create_action_schema(kind, false))
+            .map(|kind| create_action_schema(kind, false, &i18n))
             .collect::<Vec<_>>();
         actions.extend(wasm_actions);
         actions.sort_by(|a, b| a.name.cmp(&b.name));
