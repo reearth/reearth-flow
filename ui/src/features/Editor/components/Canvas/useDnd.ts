@@ -20,11 +20,7 @@ type Props = {
   onWorkflowAdd: (position?: XYPosition) => void;
   onNodesChange: (nodes: Node[]) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
-  handleNodeDropInBatch: (
-    droppedNode: Node,
-    nodes: Node[],
-    onNodesChange: (nodes: Node[]) => void,
-  ) => void;
+  handleNodeDropInBatch: (droppedNode: Node, nodes: Node[]) => Node[];
 };
 
 // This is used for drag and drop functionality in to the canvas
@@ -119,7 +115,7 @@ export default ({
       const newNodes = [...nodes, newNode];
 
       if (d !== "batch") {
-        handleNodeDropInBatch(newNode, newNodes, onNodesChange);
+        onNodesChange(handleNodeDropInBatch(newNode, newNodes));
       } else {
         onNodesChange(newNodes);
       }
