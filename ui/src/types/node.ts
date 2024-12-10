@@ -21,7 +21,9 @@ export type NodeData = {
   status?: Status;
   params?: NodeParam[];
   locked?: boolean | undefined;
-
+  // subworkflow nodes
+  pseudoInputs?: string[];
+  pseudoOutputs?: string[];
   // batch & note nodes
   content?: string;
   width?: number;
