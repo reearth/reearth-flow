@@ -1,6 +1,13 @@
 id: 64931277-3a82-4a1c-88bc-9b54fe172518
 name: AttributeReader
 nodes:
+  - id: 0008377a-995f-43f9-a83c-59dc58963501
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
   - id: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
     name: FolderAndfilePathReader
     type: subGraph
@@ -42,25 +49,30 @@ nodes:
   - id: 3d103429-37b0-4645-b1f3-6f14305ad913
     name: FilePathRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: filePath
 
   - id: fed5f2f2-7663-481e-b177-3f215fc40241
     name: AttributeFeatureRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: attributeFeature
 
   - id: 213f5f78-c7ad-473b-8364-a757855998c4
     name: SummaryRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: summary
 
 edges:
+  - id: d220129a-2061-4d69-9265-b10edb181b90
+    from: 0008377a-995f-43f9-a83c-59dc58963501
+    to: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
+    fromPort: default
+    toPort: default
   - id: afa36141-5b6a-4d2b-8a75-bf184f961378
     from: 2c0ed3fa-62b2-433e-a354-1a6dd13738fe
     to: cc7d973e-a2eb-4db9-9879-a27154098001

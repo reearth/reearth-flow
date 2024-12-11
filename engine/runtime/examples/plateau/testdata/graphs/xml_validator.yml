@@ -1,6 +1,13 @@
 id: 2c753ffc-cc90-4f4a-b5ee-f5d7853dbac6
 name: PLATEAU3.XMLValidator
 nodes:
+  - id: 1c0e21d1-cc12-48bd-b761-d5e943f5006f
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
   - id: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
     name: XMLValidatorSuntaxAndNamespace
     type: action
@@ -55,25 +62,30 @@ nodes:
   - id: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
     name: SummaryRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: summary
 
   - id: abd4320c-aa7c-445a-af78-4c4f1f9a35c7
     name: InvalidRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: invalid
 
   - id: 3c0724c6-263e-43b9-8532-e46c7584323a
     name: NotWellFormedRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: not_well_formed
 
 edges:
+  - id: f9ede89b-a599-4b07-bbc2-e2c1399ae91f
+    from: 1c0e21d1-cc12-48bd-b761-d5e943f5006f
+    to: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
+    fromPort: default
+    toPort: default
   - id: 433e7166-48de-4479-9039-63acdab6d3fa
     from: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
     to: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f

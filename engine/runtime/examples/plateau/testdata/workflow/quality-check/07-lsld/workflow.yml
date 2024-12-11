@@ -20,6 +20,18 @@ graphs:
   - id: 4e05c71c-9065-4479-a7c9-d1301678c20a
     name: entry_point
     nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath")
+              },
+            ]
+
       - id: f04d8a32-6ac7-4509-8cfc-6d5a318e8dd6
         name: FolderAndfilePathReader
         type: subGraph
@@ -233,6 +245,11 @@ graphs:
             file::join_path(env.get("outputPath"), "検査結果一覧.tsv")
 
     edges:
+      - id: dcc64e2f-c90e-4775-b81c-04c5622f2fc9
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: f04d8a32-6ac7-4509-8cfc-6d5a318e8dd6
+        fromPort: default
+        toPort: default
       - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
         from: f04d8a32-6ac7-4509-8cfc-6d5a318e8dd6
         to: aa4c813c-c7b4-4e86-8513-e5d7829ec70f

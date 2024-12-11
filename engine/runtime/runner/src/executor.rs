@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     executor::dag_executor::DagExecutor,
     executor_operation::ExecutorOptions,
     kvs::KvStore,
-    node::{NodeKind, RouterFactory},
+    node::{NodeKind, SYSTEM_ACTION_FACTORY_MAPPINGS},
     shutdown::ShutdownReceiver,
 };
 use reearth_flow_state::State;
@@ -30,10 +30,7 @@ impl Executor {
         executor_options: ExecutorOptions,
     ) -> Result<DagExecutor, Error> {
         let mut factories = factories.clone();
-        factories.insert(
-            "Router".to_string(),
-            NodeKind::Processor(Box::<RouterFactory>::default()),
-        );
+        factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
         let executor = DagExecutor::new(
             expr_engine,
             storage_resolver,

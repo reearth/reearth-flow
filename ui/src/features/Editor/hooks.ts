@@ -38,10 +38,12 @@ export default ({
     edges,
     openWorkflows,
     selectedNodes,
+    rawWorkflows,
     handleWorkflowDeployment,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
+    handleWorkflowUpdate,
     handleNodesUpdate,
     handleNodeParamsUpdate,
     handleEdgesUpdate,
@@ -76,6 +78,8 @@ export default ({
   const { handleCopy, handlePaste } = useCanvasCopyPaste({
     nodes,
     edges,
+    rawWorkflows,
+    handleWorkflowUpdate,
     handleNodesUpdate,
     handleEdgesUpdate,
   });

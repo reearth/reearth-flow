@@ -109,6 +109,21 @@ export default ({
     ],
   );
 
+  const handleWorkflowUpdate = useCallback(
+    (workflowId: string, nodes?: Node[], edges?: Edge[]) => {
+      const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
+      const newYWorkflow = yWorkflowBuilder(
+        workflowId,
+        workflowName,
+        nodes,
+        edges,
+      );
+      yWorkflows.push([newYWorkflow]);
+      setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
+    },
+    [setWorkflows, yWorkflows],
+  );
+
   const handleWorkflowsRemove = useCallback(
     (nodeIds: string[]) =>
       undoTrackerActionWrapper(() => {
@@ -178,6 +193,7 @@ export default ({
   return {
     currentYWorkflow,
     handleWorkflowAdd,
+    handleWorkflowUpdate,
     handleWorkflowsRemove,
     handleWorkflowRename,
   };

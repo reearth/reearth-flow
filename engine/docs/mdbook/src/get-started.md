@@ -88,7 +88,7 @@ graphs:
   - id: cd896e30-7f0e-4c12-90ed-9471ff6049bf
     name: Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: default
   edges:

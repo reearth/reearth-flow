@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use clap::Command;
 use indoc::indoc;
-use reearth_flow_runtime::node::{NodeKind, RouterFactory};
+use reearth_flow_runtime::node::SYSTEM_ACTION_FACTORY_MAPPINGS;
 
 use crate::{
     factory::{BUILTIN_ACTION_FACTORIES, PLATEAU_ACTION_FACTORIES, WASM_ACTION_FACTORIES},
@@ -23,10 +23,7 @@ impl DocActionCliCommand {
         let mut builtin_action_factories = HashMap::new();
         let i18n = HashMap::new();
         builtin_action_factories.extend(BUILTIN_ACTION_FACTORIES.clone());
-        builtin_action_factories.insert(
-            "Router".to_string(),
-            NodeKind::Processor(Box::<RouterFactory>::default()),
-        );
+        builtin_action_factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
         let mut actions = builtin_action_factories
             .clone()
             .values()

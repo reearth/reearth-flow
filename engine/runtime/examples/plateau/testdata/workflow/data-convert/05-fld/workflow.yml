@@ -23,6 +23,18 @@ graphs:
   - id: 45580b09-63a4-471a-92eb-1241660bddfb
     name: entry_point
     nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath")
+              },
+            ]
+
       - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         name: AttributeReader
         type: subGraph
@@ -166,6 +178,11 @@ graphs:
              file::join_path(env.get("outputPath"), "tran_lod3")
 
     edges:
+      - id: 170c8fdc-1667-4884-8da4-3eccb625cf47
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        fromPort: default
+        toPort: default
       - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
         from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         to: fc649773-af86-49bd-9629-149f9ac4166b

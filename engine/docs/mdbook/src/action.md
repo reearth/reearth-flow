@@ -817,6 +817,44 @@ Creates features from expressions
 ### Category
 * Feature
 
+## FeatureFilePathExtractor
+### Type
+* processor
+### Description
+Extracts features by file path
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureFilePathExtractorParam",
+  "type": "object",
+  "required": [
+    "extractArchive",
+    "sourceDataset"
+  ],
+  "properties": {
+    "extractArchive": {
+      "type": "boolean"
+    },
+    "sourceDataset": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* unfiltered
+### Category
+* Feature
+
 ## FeatureFilter
 ### Type
 * processor
@@ -2018,6 +2056,34 @@ Reprojects the geometry of a feature to a specified coordinate system
 ### Category
 * Geometry
 
+## InputRouter
+### Type
+* processor
+### Description
+Action for first port forwarding for sub-workflows.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InputRouter",
+  "type": "object",
+  "required": [
+    "routingPort"
+  ],
+  "properties": {
+    "routingPort": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* routingPort
+### Output Ports
+* default
+### Category
+* System
+
 ## LineOnLineOverlayer
 ### Type
 * processor
@@ -2246,6 +2312,34 @@ Extracts the orientation of a geometry from a feature and adds it as an attribut
 ### Category
 * Geometry
 
+## OutputRouter
+### Type
+* processor
+### Description
+Action for last port forwarding for sub-workflows.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OutputRouter",
+  "type": "object",
+  "required": [
+    "routingPort"
+  ],
+  "properties": {
+    "routingPort": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* routingPort
+### Category
+* System
+
 ## PLATEAU.AttributeFlattener
 ### Type
 * processor
@@ -2461,32 +2555,6 @@ Calls Rhai script
 * default
 ### Category
 * Feature
-
-## Router
-### Type
-* processor
-### Description
-Action for last port forwarding for sub-workflows.
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Router",
-  "type": "object",
-  "required": [
-    "routingPort"
-  ],
-  "properties": {
-    "routingPort": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-### Category
 
 ## StatisticsCalculator
 ### Type
