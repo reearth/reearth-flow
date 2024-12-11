@@ -2086,9 +2086,7 @@
         }
       },
       "builtin": true,
-      "inputPorts": [
-        "routingPort"
-      ],
+      "inputPorts": [],
       "outputPorts": [
         "default"
       ],
@@ -2347,9 +2345,7 @@
       "inputPorts": [
         "default"
       ],
-      "outputPorts": [
-        "routingPort"
-      ],
+      "outputPorts": [],
       "categories": [
         "System"
       ]
