@@ -44,26 +44,32 @@ export default ({
         const workflowId = randomID();
         const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
 
+        const inputRouter = await fetcher<Action>(`${api}/actions/InputRouter`);
+
         const newEntranceNode: Node = {
           id: randomID(),
-          type: "entrance",
+          type: inputRouter.type,
           position: { x: 200, y: 200 },
           data: {
-            officialName: `New Entrance node`,
-            outputs: ["target"],
+            officialName: inputRouter.name,
+            inputs: inputRouter.inputPorts,
+            outputs: inputRouter.outputPorts,
             status: "idle",
           },
         };
 
-        const routerNode = await fetcher<Action>(`${api}/actions/Router`);
+        const outputRouter = await fetcher<Action>(
+          `${api}/actions/OutputRouter`,
+        );
 
         const newExitNode: Node = {
           id: randomID(),
-          type: routerNode.type,
+          type: outputRouter.type,
           position: { x: 1000, y: 200 },
           data: {
-            officialName: routerNode.name,
-            inputs: routerNode.inputPorts,
+            officialName: outputRouter.name,
+            inputs: outputRouter.inputPorts,
+            outputs: outputRouter.outputPorts,
             status: "idle",
           },
         };
@@ -80,8 +86,8 @@ export default ({
           data: {
             officialName: workflowName,
             status: "idle",
-            inputs: ["source"],
-            outputs: routerNode.outputPorts,
+            inputs: inputRouter.inputPorts,
+            outputs: outputRouter.outputPorts,
           },
         };
 
