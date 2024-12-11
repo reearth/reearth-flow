@@ -506,6 +506,7 @@ impl DagSchemas {
                 else {
                     continue;
                 };
+                // Because it is an Input Router of another subgraph
                 if pre_subgraph_node.is_some() {
                     continue;
                 }
@@ -557,7 +558,16 @@ impl DagSchemas {
                 let Some(with) = &old_node.with else {
                     continue;
                 };
+                let post_subgraph_nodes = &mut subgraph
+                    .graph
+                    .neighbors_directed(old, Direction::Outgoing)
+                    .detach();
+                let post_subgraph_node = post_subgraph_nodes.next_node(&subgraph.graph);
                 if old_node.node.action() != OUTPUT_ROUTING_ACTION {
+                    continue;
+                }
+                // Because it is an Output Router of another subgraph
+                if post_subgraph_node.is_some() {
                     continue;
                 }
                 let Some(serde_json::Value::String(routing_port)) = with.get(ROUTING_PARAM_KEY)
