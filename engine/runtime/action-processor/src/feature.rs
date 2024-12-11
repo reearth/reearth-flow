@@ -1,5 +1,6 @@
 pub(crate) mod counter;
 pub(crate) mod errors;
+pub(crate) mod file_path_extractor;
 pub(crate) mod filter;
 pub(crate) mod list_exploder;
 pub(crate) mod mapping;

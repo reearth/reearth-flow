@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs::File, io::BufReader};
 
 use clap::{Arg, ArgMatches, Command};
-use reearth_flow_runtime::node::{NodeKind, RouterFactory};
+use reearth_flow_runtime::node::SYSTEM_ACTION_FACTORY_MAPPINGS;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -65,10 +65,7 @@ impl SchemaActionCliCommand {
         };
         let mut builtin_action_factories = HashMap::new();
         builtin_action_factories.extend(BUILTIN_ACTION_FACTORIES.clone());
-        builtin_action_factories.insert(
-            "Router".to_string(),
-            NodeKind::Processor(Box::<RouterFactory>::default()),
-        );
+        builtin_action_factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
         let mut actions = builtin_action_factories
             .clone()
             .values()

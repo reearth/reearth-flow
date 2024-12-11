@@ -1,10 +1,7 @@
 use std::{collections::HashMap, io};
 
 use clap::{Arg, ArgMatches, Command};
-use reearth_flow_runtime::{
-    dag_schemas::DagSchemas,
-    node::{NodeKind, RouterFactory},
-};
+use reearth_flow_runtime::{dag_schemas::DagSchemas, node::SYSTEM_ACTION_FACTORY_MAPPINGS};
 use reearth_flow_types::Workflow;
 use tracing::debug;
 
@@ -59,10 +56,7 @@ impl DotCliCommand {
         };
         let mut factories = HashMap::new();
         factories.extend(ALL_ACTION_FACTORIES.clone());
-        factories.insert(
-            "Router".to_string(),
-            NodeKind::Processor(Box::<RouterFactory>::default()),
-        );
+        factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
         let workflow = Workflow::try_from(json.as_str()).map_err(crate::errors::Error::run)?;
         let dag =
             DagSchemas::from_graphs(workflow.entry_graph_id, workflow.graphs, factories, None);

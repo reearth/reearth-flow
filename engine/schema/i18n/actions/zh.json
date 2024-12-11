@@ -261,7 +261,11 @@
       "description": "调用Rhai脚本"
     },
     {
-      "name": "Router",
+      "name": "InputRouter",
+      "description": "用于子工作流中最初一个端口转发的操作"
+    },
+    {
+      "name": "OutputRouter",
       "description": "用于子工作流中最后一个端口转发的操作"
     },
     {

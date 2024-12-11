@@ -177,4 +177,5 @@ uuid = { version = "1.11.0", features = [
 walkdir = "2.5.0"
 wasmer = "5.0.2"
 wasmer-wasix = "0.32.0"
+zip = "2.2.1"
 zstd = "0.13.2"

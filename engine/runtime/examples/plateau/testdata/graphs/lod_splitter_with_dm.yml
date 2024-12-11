@@ -1,6 +1,13 @@
 id: 7e98d856-1438-4148-bdcb-91747ef2e405
 name: PLATEAU3.LodSplitterWithDM
 nodes:
+  - id: 5848465e-828f-4646-874e-e2f182b73714
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
     type: action
@@ -48,39 +55,44 @@ nodes:
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3320
     name: Lod0Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: lod0
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3321
     name: Lod1Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: lod1
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3322
     name: Lod2Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: lod2
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3323
     name: Lod3Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: lod3
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3324
     name: Lod4Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: lod4
 
 edges:
+  - id: fcc0d596-9169-4289-9f35-07c8cbec6f10
+    from: 5848465e-828f-4646-874e-e2f182b73714
+    to: 278ab965-ce22-473d-98c6-c7b381c38679
+    fromPort: default
+    toPort: default
   - id: 1386a662-cf02-4475-a5d2-3668a50a56b7
     from: 278ab965-ce22-473d-98c6-c7b381c38679
     to: 1787b15c-19b5-4386-a0ff-f0e58f477d07

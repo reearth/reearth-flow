@@ -261,7 +261,11 @@
       "description": "Appelle un script Rhai"
     },
     {
-      "name": "Router",
+      "name": "InputRouter",
+      "description": "Action pour le renvoi du premier port dans les sous-flux de travail."
+    },
+    {
+      "name": "OutputRouter",
       "description": "Action pour le renvoi du dernier port dans les sous-flux de travail."
     },
     {

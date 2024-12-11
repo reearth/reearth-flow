@@ -261,7 +261,11 @@
       "description": "Rhaiスクリプトを呼び出す"
     },
     {
-      "name": "Router",
+      "name": "InputRouter",
+      "description": "サブワークフローで最初のポートを転送するアクション"
+    },
+    {
+      "name": "OutputRouter",
       "description": "サブワークフローで最後のポートを転送するアクション"
     },
     {

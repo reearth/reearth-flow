@@ -18,7 +18,20 @@ use crate::executor_operation::{ExecutorContext, NodeContext};
 pub static DEFAULT_PORT: Lazy<Port> = Lazy::new(|| Port::new("default"));
 pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 pub static ROUTING_PARAM_KEY: &str = "routingPort";
+pub static INPUT_ROUTING_ACTION: &str = "InputRouter";
+pub static OUTPUT_ROUTING_ACTION: &str = "OutputRouter";
 pub static REMAIN_PORT: Lazy<Port> = Lazy::new(|| Port::new("remain"));
+
+pub static SYSTEM_ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+    let factories: Vec<Box<dyn ProcessorFactory>> = vec![
+        Box::<InputRouterFactory>::default(),
+        Box::<OutputRouterFactory>::default(),
+    ];
+    factories
+        .into_iter()
+        .map(|f| (f.name().to_string(), NodeKind::Processor(f)))
+        .collect::<HashMap<_, _>>()
+});
 
 pub(super) type GraphId = uuid::Uuid;
 
@@ -378,27 +391,31 @@ pub trait Sink: Send + Debug + SinkClone {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct RouterFactory;
+pub struct InputRouterFactory;
 
-impl ProcessorFactory for RouterFactory {
+impl ProcessorFactory for InputRouterFactory {
     fn name(&self) -> &str {
-        "Router"
+        INPUT_ROUTING_ACTION
     }
 
     fn description(&self) -> &str {
-        "Action for last port forwarding for sub-workflows."
+        "Action for first port forwarding for sub-workflows."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(Router))
+        Some(schemars::schema_for!(InputRouter))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["System"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![Port::new(ROUTING_PARAM_KEY)]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![]
+        vec![DEFAULT_PORT.clone()]
     }
 
     fn build(
@@ -408,7 +425,7 @@ impl ProcessorFactory for RouterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let process: Router = if let Some(with) = with {
+        let process: InputRouter = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(DeserializationError::Json)?;
             serde_json::from_value(value).map_err(DeserializationError::Json)?
         } else {
@@ -420,11 +437,93 @@ impl ProcessorFactory for RouterFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct Router {
+pub struct InputRouter {
     routing_port: String,
 }
 
-impl Processor for Router {
+impl Processor for InputRouter {
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &mut dyn ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let feature = ctx.feature;
+        fw.send(ExecutorContext::new(
+            feature,
+            DEFAULT_PORT.clone(),
+            Arc::clone(&ctx.expr_engine),
+            Arc::clone(&ctx.storage_resolver),
+            Arc::clone(&ctx.kv_store),
+            ctx.event_hub,
+        ));
+        Ok(())
+    }
+
+    fn finish(
+        &self,
+        _ctx: NodeContext,
+        _fw: &mut dyn ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        INPUT_ROUTING_ACTION
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct OutputRouterFactory;
+
+impl ProcessorFactory for OutputRouterFactory {
+    fn name(&self) -> &str {
+        OUTPUT_ROUTING_ACTION
+    }
+
+    fn description(&self) -> &str {
+        "Action for last port forwarding for sub-workflows."
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(OutputRouter))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["System"]
+    }
+
+    fn get_input_ports(&self) -> Vec<Port> {
+        vec![DEFAULT_PORT.clone()]
+    }
+
+    fn get_output_ports(&self) -> Vec<Port> {
+        vec![Port::new(ROUTING_PARAM_KEY)]
+    }
+
+    fn build(
+        &self,
+        _ctx: NodeContext,
+        _event_hub: EventHub,
+        _action: String,
+        with: Option<HashMap<String, Value>>,
+    ) -> Result<Box<dyn Processor>, BoxedError> {
+        let process: OutputRouter = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(DeserializationError::Json)?;
+            serde_json::from_value(value).map_err(DeserializationError::Json)?
+        } else {
+            return Err(DeserializationError::EmptyInput.into());
+        };
+        Ok(Box::new(process))
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputRouter {
+    routing_port: String,
+}
+
+impl Processor for OutputRouter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -451,6 +550,6 @@ impl Processor for Router {
     }
 
     fn name(&self) -> &str {
-        "Router"
+        OUTPUT_ROUTING_ACTION
     }
 }
