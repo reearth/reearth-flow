@@ -63,7 +63,7 @@ export default ({
         (idMap) => idMap.prevId === nn.parentId,
       )?.newId;
       if (newParentId) {
-        rbn.parentId = newParentId;
+        return { ...rbn, parentId: newParentId };
       }
       return rbn;
     });
