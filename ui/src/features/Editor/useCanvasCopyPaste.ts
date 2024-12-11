@@ -34,21 +34,46 @@ export default ({
 
     const pn = nodes.filter((n) => pnid.includes(n.id));
 
+    const idMapArray: { prevId: string; newId: string }[] = [];
+
     const newNodes: Node[] = [];
     for (const n of pn) {
+      // if NOT a child of a batch, offset position for user's benefit
+      const newPosition = n.parentId
+        ? { x: n.position.x, y: n.position.y }
+        : { x: n.position.x + 40, y: n.position.y + 20 };
       const newNode: Node = {
         ...n,
         id: randomID(),
-        position: { x: n.position.x + 40, y: n.position.y + 20 },
+        position: newPosition,
         selected: true, // select pasted nodes
       };
+
+      if (newNode.type === "batch") {
+        idMapArray.push({ prevId: n.id, newId: newNode.id });
+      }
+
       newNodes.push(newNode);
     }
 
+    // Update parentIds for nodes that are batched
+    const reBatchedNodes: Node[] = newNodes.map((nn) => {
+      const rbn = nn;
+      const newParentId = idMapArray.find(
+        (idMap) => idMap.prevId === nn.parentId,
+      )?.newId;
+      if (newParentId) {
+        rbn.parentId = newParentId;
+      }
+      return rbn;
+    });
+
     let newEdges: Edge[] = edges;
     for (const e of pe) {
-      const sourceNode = newNodes[pn?.findIndex((n) => n.id === e.source)];
-      const targetNode = newNodes[pn?.findIndex((n) => n.id === e.target)];
+      const sourceNode =
+        reBatchedNodes[pn?.findIndex((n) => n.id === e.source)];
+      const targetNode =
+        reBatchedNodes[pn?.findIndex((n) => n.id === e.target)];
 
       if (!sourceNode || !targetNode) continue;
 
@@ -63,14 +88,17 @@ export default ({
       );
     }
 
+    // Copy new nodes and edges. Since they are selected now,
+    // if the user pastes again, the new nodes and edges will
+    // be what is pasted with an appropriate offset position.
     copy({
-      nodeIds: newNodes.map((n) => n.id),
+      nodeIds: reBatchedNodes.map((n) => n.id),
       edges: newEdges.filter((e) => !edges.find((e2) => e2.id === e.id)),
     });
 
     handleNodesUpdate([
       ...nodes.map((n) => ({ ...n, selected: false })), // deselect all previously selected nodes
-      ...(newNodes || []),
+      ...reBatchedNodes,
     ]);
 
     handleEdgesUpdate(newEdges);
