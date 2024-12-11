@@ -4,10 +4,10 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
-    counter::FeatureCounterFactory, filter::FeatureFilterFactory,
-    list_exploder::ListExploderFactory, merger::FeatureMergerFactory, reader::FeatureReaderFactory,
-    rhai::RhaiCallerFactory, sorter::FeatureSorterFactory, transformer::FeatureTransformerFactory,
-    type_filter::FeatureTypeFilterFactory,
+    counter::FeatureCounterFactory, file_path_extractor::FeatureFilePathExtractorFactory,
+    filter::FeatureFilterFactory, list_exploder::ListExploderFactory, merger::FeatureMergerFactory,
+    reader::FeatureReaderFactory, rhai::RhaiCallerFactory, sorter::FeatureSorterFactory,
+    transformer::FeatureTransformerFactory, type_filter::FeatureTypeFilterFactory,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -21,6 +21,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<RhaiCallerFactory>::default(),
         Box::<ListExploderFactory>::default(),
         Box::<FeatureTypeFilterFactory>::default(),
+        Box::<FeatureFilePathExtractorFactory>::default(),
     ];
     factories
         .into_iter()

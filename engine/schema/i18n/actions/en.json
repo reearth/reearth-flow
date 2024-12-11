@@ -261,7 +261,11 @@
       "description": "Calls Rhai script"
     },
     {
-      "name": "Router",
+      "name": "InputRouter",
+      "description": "Action for first port forwarding for sub-workflows."
+    },
+    {
+      "name": "OutputRouter",
       "description": "Action for last port forwarding for sub-workflows."
     },
     {

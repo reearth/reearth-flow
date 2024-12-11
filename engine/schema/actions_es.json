@@ -829,6 +829,44 @@
       ]
     },
     {
+      "name": "FeatureFilePathExtractor",
+      "type": "processor",
+      "description": "Extracts features by file path",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureFilePathExtractorParam",
+        "type": "object",
+        "required": [
+          "extractArchive",
+          "sourceDataset"
+        ],
+        "properties": {
+          "extractArchive": {
+            "type": "boolean"
+          },
+          "sourceDataset": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "unfiltered"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "FeatureFilter",
       "type": "processor",
       "description": "Filtra entidades según condiciones",
@@ -2031,6 +2069,34 @@
       ]
     },
     {
+      "name": "InputRouter",
+      "type": "processor",
+      "description": "Acción para el reenvío del último puerto en sub-flujos de trabajo.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "InputRouter",
+        "type": "object",
+        "required": [
+          "routingPort"
+        ],
+        "properties": {
+          "routingPort": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "routingPort"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "System"
+      ]
+    },
+    {
       "name": "LineOnLineOverlayer",
       "type": "processor",
       "description": "Los puntos de intersección se convierten en entidades de puntos que pueden contener la lista combinada de atributos de las líneas originales intersectadas.",
@@ -2258,6 +2324,34 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "OutputRouter",
+      "type": "processor",
+      "description": "Acción para el reenvío del último puerto en sub-flujos de trabajo.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "OutputRouter",
+        "type": "object",
+        "required": [
+          "routingPort"
+        ],
+        "properties": {
+          "routingPort": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "routingPort"
+      ],
+      "categories": [
+        "System"
       ]
     },
     {
@@ -2499,30 +2593,6 @@
       "categories": [
         "Feature"
       ]
-    },
-    {
-      "name": "Router",
-      "type": "processor",
-      "description": "Acción para el reenvío del último puerto en sub-flujos de trabajo.",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Router",
-        "type": "object",
-        "required": [
-          "routingPort"
-        ],
-        "properties": {
-          "routingPort": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [],
-      "categories": []
     },
     {
       "name": "StatisticsCalculator",

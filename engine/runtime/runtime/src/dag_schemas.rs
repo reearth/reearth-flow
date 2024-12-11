@@ -9,7 +9,10 @@ use petgraph::Direction;
 
 use reearth_flow_types::workflow::{Graph, Node};
 
-use crate::node::{EdgeId, GraphId, NodeHandle, NodeId, NodeKind, Port, ROUTING_PARAM_KEY};
+use crate::node::{
+    EdgeId, GraphId, NodeHandle, NodeId, NodeKind, Port, INPUT_ROUTING_ACTION,
+    OUTPUT_ROUTING_ACTION, ROUTING_PARAM_KEY,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Endpoint {
@@ -464,8 +467,13 @@ impl DagSchemas {
                 main_graph.remove_edge(edge);
             }
             let mut new_node_map = Vec::new();
-            for (idx, node) in subgraph.graph.node_indices().enumerate() {
+            for node in subgraph.graph.node_indices() {
                 let node_type = &subgraph.graph[node];
+                let pre_subgraph_nodes = &mut subgraph
+                    .graph
+                    .neighbors_directed(node, Direction::Incoming)
+                    .detach();
+                let pre_subgraph_node = pre_subgraph_nodes.next_node(&subgraph.graph);
                 let mut with = HashMap::new();
                 if let Some(params) = &params {
                     params.iter().for_each(|(k, v)| {
@@ -477,6 +485,8 @@ impl DagSchemas {
                         with.insert(k.clone(), v.clone());
                     });
                 }
+                let node_params = node_type.with.clone();
+                let node_type_action = node_type.node.action();
                 let node_type = SchemaNodeType::new(
                     node_type.handle.id.clone(),
                     node_type.name.clone(),
@@ -485,23 +495,37 @@ impl DagSchemas {
                     Some(with),
                 );
                 let new_node = main_graph.add_node(node_type);
-                if idx == 0 {
-                    for (pre_node, edges) in &pre_node_indices {
-                        for (_, param) in edges {
-                            main_graph.add_edge(
-                                *pre_node,
-                                new_node,
-                                SchemaEdgeType::new(
-                                    param.id.clone(),
-                                    param.from.clone(),
-                                    param.to.clone(),
-                                    Some(SchemaEdgeKind::FromProcessor),
-                                ),
-                            );
+                new_node_map.push((node, new_node));
+                if node_type_action != INPUT_ROUTING_ACTION {
+                    continue;
+                }
+                let Some(with) = &node_params else {
+                    continue;
+                };
+                let Some(serde_json::Value::String(routing_port)) = with.get(ROUTING_PARAM_KEY)
+                else {
+                    continue;
+                };
+                if pre_subgraph_node.is_some() {
+                    continue;
+                }
+                for (pre_node, edges) in &pre_node_indices {
+                    for (_, param) in edges {
+                        if param.to != Port::new(routing_port.clone()) {
+                            continue;
                         }
+                        main_graph.add_edge(
+                            *pre_node,
+                            new_node,
+                            SchemaEdgeType::new(
+                                param.id.clone(),
+                                param.from.clone(),
+                                param.to.clone(),
+                                Some(SchemaEdgeKind::FromProcessor),
+                            ),
+                        );
                     }
                 }
-                new_node_map.push((node, new_node));
             }
             for edge in subgraph.graph.edge_indices() {
                 let (source, target) = subgraph.graph.edge_endpoints(edge).unwrap();
@@ -533,7 +557,11 @@ impl DagSchemas {
                 let Some(with) = &old_node.with else {
                     continue;
                 };
-                let Some(serde_json::Value::String(value)) = with.get(ROUTING_PARAM_KEY) else {
+                if old_node.node.action() != OUTPUT_ROUTING_ACTION {
+                    continue;
+                }
+                let Some(serde_json::Value::String(routing_port)) = with.get(ROUTING_PARAM_KEY)
+                else {
                     continue;
                 };
                 for next_node in next_node_indices.keys() {
@@ -541,7 +569,7 @@ impl DagSchemas {
                         .get(next_node)
                         .unwrap_or_else(|| panic!("next_node not found: {:?}", next_node))
                         .iter()
-                        .find(|old_edge| old_edge.from_port() == Port::new(value.clone()))
+                        .find(|old_edge| old_edge.from_port() == Port::new(routing_port.clone()))
                     else {
                         continue;
                     };

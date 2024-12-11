@@ -31,6 +31,10 @@ pub(crate) enum FeatureProcessorError {
     RhaiCallerFactory(String),
     #[error("RhaiCaller error: {0}")]
     RhaiCaller(String),
+    #[error("FeatureFilePathExtractorFactory error: {0}")]
+    FilePathExtractorFactory(String),
+    #[error("FeatureFilePathExtractor error: {0}")]
+    FilePathExtractor(String),
 }
 
 #[allow(dead_code)]

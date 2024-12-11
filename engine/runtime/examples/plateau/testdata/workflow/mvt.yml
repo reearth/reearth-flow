@@ -19,6 +19,18 @@ graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
     nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath")
+              },
+            ]
+
       - id: d3773442-1ba8-47c1-b7c1-0bafa23adec9
         name: AttributeReader01
         type: subGraph
@@ -45,6 +57,11 @@ graphs:
             env.get("outputPath")
 
     edges:
+      - id: ce902c43-fdc3-47a8-8587-4302f2fe8471
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        fromPort: default
+        toPort: default
       - id: ba7d8205-5997-4fa4-be0e-e8ba67a1a9dd
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
         to: 3c0bc9cd-284d-4553-83ae-f90365c5930c

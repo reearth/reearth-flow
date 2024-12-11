@@ -20,6 +20,18 @@ graphs:
   - id: 129b7659-ba08-4b3a-8f70-fac7e96d5ccf
     name: entry_point
     nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath")
+              },
+            ]
+
       - id: d3773442-1ba8-47c1-b7c1-0bafa23adec9
         name: FolderAndfilePathReader
         type: subGraph
@@ -492,6 +504,11 @@ graphs:
         action: NoopSink
 
     edges:
+      - id: 2a6ac2bc-15bf-4358-bb57-27dde30db767
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: d3773442-1ba8-47c1-b7c1-0bafa23adec9
+        fromPort: default
+        toPort: default
       - id: 2c9f5fa9-40bb-4692-b157-815f583172b6
         from: d3773442-1ba8-47c1-b7c1-0bafa23adec9
         to: 3c0bc9cd-284d-4553-83ae-f90365c5930c

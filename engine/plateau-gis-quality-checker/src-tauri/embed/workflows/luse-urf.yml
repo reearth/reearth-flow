@@ -58,31 +58,31 @@ graphs:
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3320
     name: Lod0Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: lod0
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3321
     name: Lod1Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: lod1
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3322
     name: Lod2Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: lod2
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3323
     name: Lod3Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: lod3
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3324
     name: Lod4Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: lod4
   edges:
@@ -174,7 +174,7 @@ graphs:
   - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     name: Router
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: default
   edges:
@@ -213,7 +213,7 @@ graphs:
   - id: 722b4540-d606-438f-b4cc-fd55eeaeeb42
     name: SurfaceRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: default
   - id: 8a1e6f15-67c6-45ae-a1dc-8e4ae3217574
@@ -250,7 +250,7 @@ graphs:
   - id: 516e430a-8416-4f21-98cc-8b421ea76ad6
     name: InCorrectOrientationRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: inCorrectOrientation
   - id: 7e02297a-3aa4-44a4-909b-c0a15aa2fd8c
@@ -416,7 +416,7 @@ graphs:
   - id: b0885dfa-5ad2-4927-9911-c17c49e6728d
     name: InvalidSurfaceRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: invalidSurface
   edges:

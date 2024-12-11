@@ -1,6 +1,13 @@
 id: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
 name: "PLATEAU.SurfaceValidator2D"
 nodes:
+  - id: 2e15ebbf-a54e-4f8a-9081-f844622b8910
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
   - id: 6a141be1-ee08-4cc4-9c0a-c3f8cad6679f
     name: Noop
     type: action
@@ -9,7 +16,7 @@ nodes:
   - id: 722b4540-d606-438f-b4cc-fd55eeaeeb42
     name: SurfaceRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: default
 
@@ -53,7 +60,7 @@ nodes:
   - id: 516e430a-8416-4f21-98cc-8b421ea76ad6
     name: InCorrectOrientationRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: inCorrectOrientation
 
@@ -250,11 +257,16 @@ nodes:
   - id: b0885dfa-5ad2-4927-9911-c17c49e6728d
     name: InvalidSurfaceRouter
     type: action
-    action: Router
+    action: OutputRouter
     with:
       routingPort: invalidSurface
 
 edges:
+  - id: 5a15cbd0-accf-4c9d-8dff-92481eabcaef
+    from: 2e15ebbf-a54e-4f8a-9081-f844622b8910
+    to: 6a141be1-ee08-4cc4-9c0a-c3f8cad6679f
+    fromPort: default
+    toPort: default
   - id: 1919452e-36db-4f28-9c60-679073fb85bf
     from: 6a141be1-ee08-4cc4-9c0a-c3f8cad6679f
     to: 722b4540-d606-438f-b4cc-fd55eeaeeb42
