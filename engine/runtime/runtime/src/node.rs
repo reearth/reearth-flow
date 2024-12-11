@@ -411,7 +411,7 @@ impl ProcessorFactory for InputRouterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![Port::new(ROUTING_PARAM_KEY)]
+        vec![]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -497,7 +497,7 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![Port::new(ROUTING_PARAM_KEY)]
+        vec![]
     }
 
     fn build(

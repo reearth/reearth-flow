@@ -2078,7 +2078,6 @@ Action for first port forwarding for sub-workflows.
 }
 ```
 ### Input Ports
-* routingPort
 ### Output Ports
 * default
 ### Category
@@ -2336,7 +2335,6 @@ Action for last port forwarding for sub-workflows.
 ### Input Ports
 * default
 ### Output Ports
-* routingPort
 ### Category
 * System
 
