@@ -11,6 +11,9 @@ pub(crate) async fn download_asset(
     asset: &Asset,
     download_path: &Uri,
 ) -> crate::errors::Result<()> {
+    if asset.is_empty() {
+        return Ok(());
+    }
     let uris = asset
         .files
         .iter()

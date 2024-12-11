@@ -23,6 +23,12 @@ pub struct Asset {
     pub files: Vec<String>,
 }
 
+impl Asset {
+    pub fn is_empty(&self) -> bool {
+        self.files.is_empty()
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetFile {
