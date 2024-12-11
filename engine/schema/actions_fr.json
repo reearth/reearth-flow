@@ -2071,7 +2071,7 @@
     {
       "name": "InputRouter",
       "type": "processor",
-      "description": "Action pour le renvoi du dernier port dans les sous-flux de travail.",
+      "description": "Action pour le renvoi du premier port dans les sous-flux de travail.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "InputRouter",
