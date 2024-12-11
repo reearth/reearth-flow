@@ -8,11 +8,19 @@ import { randomID } from "@flow/utils";
 export default ({
   nodes,
   edges,
+  rawWorkflows,
+  handleWorkflowUpdate,
   handleNodesUpdate,
   handleEdgesUpdate,
 }: {
   nodes: Node[];
   edges: Edge[];
+  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
+  handleWorkflowUpdate: (
+    workflowId: string,
+    nodes?: Node[],
+    edges?: Edge[],
+  ) => void;
   handleNodesUpdate: (newNodes: Node[]) => void;
   handleEdgesUpdate: (newEdges: Edge[]) => void;
 }) => {
@@ -34,7 +42,7 @@ export default ({
 
     const pn = nodes.filter((n) => pnid.includes(n.id));
 
-    const idMapArray: { prevId: string; newId: string }[] = [];
+    const parentIdMapArray: { prevId: string; newId: string }[] = [];
 
     const newNodes: Node[] = [];
     for (const n of pn) {
@@ -47,10 +55,24 @@ export default ({
         id: randomID(),
         position: newPosition,
         selected: true, // select pasted nodes
+        data: {
+          ...n.data,
+          name: n.data.name + "-copy",
+        },
       };
 
       if (newNode.type === "batch") {
-        idMapArray.push({ prevId: n.id, newId: newNode.id });
+        parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
+      } else if (newNode.type === "subworkflow") {
+        const newSubworkflowNodes = (rawWorkflows.find((w) => w.id === n.id)
+          ?.nodes ?? []) as Node[];
+        const newSubworkflowEdges = (rawWorkflows.find((w) => w.id === n.id)
+          ?.edges ?? []) as Edge[];
+        handleWorkflowUpdate(
+          newNode.id,
+          newSubworkflowNodes,
+          newSubworkflowEdges,
+        );
       }
 
       newNodes.push(newNode);
@@ -59,7 +81,7 @@ export default ({
     // Update parentIds for nodes that are batched
     const reBatchedNodes: Node[] = newNodes.map((nn) => {
       const rbn = nn;
-      const newParentId = idMapArray.find(
+      const newParentId = parentIdMapArray.find(
         (idMap) => idMap.prevId === nn.parentId,
       )?.newId;
       if (newParentId) {
@@ -102,7 +124,16 @@ export default ({
     ]);
 
     handleEdgesUpdate(newEdges);
-  }, [nodes, edges, copy, paste, handleNodesUpdate, handleEdgesUpdate]);
+  }, [
+    nodes,
+    edges,
+    rawWorkflows,
+    copy,
+    paste,
+    handleWorkflowUpdate,
+    handleNodesUpdate,
+    handleEdgesUpdate,
+  ]);
 
   return {
     handleCopy,

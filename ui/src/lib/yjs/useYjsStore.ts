@@ -73,6 +73,7 @@ export default ({
   const {
     currentYWorkflow,
     handleWorkflowAdd,
+    handleWorkflowUpdate,
     handleWorkflowsRemove,
     handleWorkflowRename,
   } = useYWorkflow({
@@ -169,10 +170,12 @@ export default ({
     edges,
     openWorkflows,
     selectedNodes,
+    rawWorkflows,
     handleWorkflowDeployment,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
+    handleWorkflowUpdate,
     handleNodesUpdate,
     handleNodeParamsUpdate,
     handleEdgesUpdate,

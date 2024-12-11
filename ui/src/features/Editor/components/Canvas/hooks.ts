@@ -1,12 +1,11 @@
 import { DefaultEdgeOptions, XYPosition } from "@xyflow/react";
 
-import type { ActionNodeType, Edge, Node, Workflow } from "@flow/types";
+import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import useEdges from "./useEdges";
 import useNodes from "./useNodes";
 
 type Props = {
-  workflow?: Workflow;
   nodes: Node[];
   edges: Edge[];
   onWorkflowAdd: (position?: XYPosition) => void;
