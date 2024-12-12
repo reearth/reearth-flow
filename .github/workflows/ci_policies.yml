@@ -26,6 +26,7 @@ jobs:
         working-directory: api
       - name: List generated policy files
         run: |
+          set -eo pipefail
           echo "Generated policy files in api/policies/:"
           ls -la policies/ || echo "No files found"
           if [ -d "policies" ] && [ "$(ls -A policies/)" ]; then
@@ -36,6 +37,7 @@ jobs:
             done
           else
             echo "No policy files were generated"
+            exit 1
           fi
         working-directory: api
       - name: Setup Cerbos
