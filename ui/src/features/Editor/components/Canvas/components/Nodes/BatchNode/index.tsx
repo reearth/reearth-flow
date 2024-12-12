@@ -48,20 +48,21 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
   }, [getNodes, id]);
 
   const handleOnEndResize = useCallback(() => {
-    const allNodes = getNodes().sort((a, b) => {
-      if (a.type === "batch") return -1;
-      if (b.type === "batch") return 1;
-      return 0;
-    });
-
+    const allNodes = getNodes();
     let updatedNodes = allNodes;
+    const initialParentCount = allNodes.filter((node) => node.parentId).length;
 
     const nonBatchNodes = allNodes.filter((node) => node.type !== "batch");
     nonBatchNodes.forEach((node) => {
       updatedNodes = handleNodeDropInBatch(node, updatedNodes);
     });
+    const finalParentCount = updatedNodes.filter(
+      (node) => node.parentId,
+    ).length;
 
-    setNodes(updatedNodes);
+    if (finalParentCount !== initialParentCount) {
+      setNodes(updatedNodes);
+    }
   }, [getNodes, setNodes, handleNodeDropInBatch]);
 
   const bounds = getChildNodesBoundary();
