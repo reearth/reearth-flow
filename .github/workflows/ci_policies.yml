@@ -18,8 +18,7 @@ jobs:
       - name: Generate policies
         run: |
           set -e
-          make gen-policies
-          if [ $? -ne 0 ]; then
+          if ! make gen-policies; then
             echo "Policy generation failed"
             exit 1
           fi
