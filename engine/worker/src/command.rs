@@ -1,7 +1,6 @@
 use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use google_cloud_pubsub::client::{Client, ClientConfig};
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
 use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
 use reearth_flow_runner::runner::AsyncRunner;
@@ -14,7 +13,7 @@ use crate::{
     asset::download_asset,
     event_handler::EventHandler,
     factory::ALL_ACTION_FACTORIES,
-    pubsub::{publisher::Publisher, CloudPubSub},
+    pubsub::{backend::PubSubBackend, publisher::Publisher},
     types::{
         job_complete_event::{JobCompleteEvent, JobResult},
         metadata::Metadata,
@@ -31,6 +30,7 @@ pub fn build_worker_command() -> Command {
         .arg(workflow_arg())
         .arg(asset_arg())
         .arg(worker_num_arg())
+        .arg(pubsub_backend_arg())
         .arg(vars_arg())
 }
 
@@ -61,13 +61,23 @@ fn worker_num_arg() -> Arg {
         .display_order(3)
 }
 
+fn pubsub_backend_arg() -> Arg {
+    Arg::new("pubsub_backend")
+        .long("pubsub-backend")
+        .help("PubSub backend")
+        .env("FLOW_WORKER_PUBSUB_BACKEND")
+        .required(false)
+        .default_value("google")
+        .display_order(4)
+}
+
 fn vars_arg() -> Arg {
     Arg::new("var")
         .long("var")
         .help("Workflow variables")
         .required(false)
         .action(ArgAction::Append)
-        .display_order(4)
+        .display_order(5)
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -76,6 +86,7 @@ pub struct RunWorkerCommand {
     metadata_path: Uri,
     vars: HashMap<String, String>,
     worker_num: usize,
+    pubsub_backend: String,
 }
 
 impl RunWorkerCommand {
@@ -89,6 +100,9 @@ impl RunWorkerCommand {
         let metadata_path =
             Uri::from_str(metadata_path.as_str()).map_err(crate::errors::Error::init)?;
         let worker_num = matches.remove_one::<usize>("worker_num").unwrap_or(100);
+        let pubsub_backend = matches
+            .remove_one::<String>("pubsub_backend")
+            .unwrap_or_else(|| "google".to_string());
         let vars = matches.remove_many::<String>("var");
         let vars = if let Some(vars) = vars {
             vars.into_iter()
@@ -109,6 +123,7 @@ impl RunWorkerCommand {
             metadata_path,
             vars,
             worker_num,
+            pubsub_backend,
         })
     }
 
@@ -123,10 +138,21 @@ impl RunWorkerCommand {
 
     async fn run(&self) -> crate::errors::Result<()> {
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
-        let (workflow, state, logger_factory, event_handler, meta) =
-            self.prepare(&storage_resolver).await?;
+        let (workflow, state, logger_factory, meta) = self.prepare(&storage_resolver).await?;
+
+        let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
+            .await
+            .map_err(crate::errors::Error::init)?;
+
+        let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match pubsub {
+            PubSubBackend::Google(pubsub) => {
+                Arc::new(EventHandler::new(workflow.id, meta.job_id, pubsub))
+            }
+            PubSubBackend::Noop(pubsub) => {
+                Arc::new(EventHandler::new(workflow.id, meta.job_id, pubsub))
+            }
+        };
         let workflow_id = workflow.id;
-        let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = Arc::new(event_handler);
         let result = AsyncRunner::run_with_event_handler(
             meta.job_id,
             workflow,
@@ -137,14 +163,6 @@ impl RunWorkerCommand {
             vec![handler],
         )
         .await;
-        let config = ClientConfig::default()
-            .with_auth()
-            .await
-            .map_err(crate::errors::Error::init)?;
-        let client = Client::new(config)
-            .await
-            .map_err(crate::errors::Error::init)?;
-        let pubsub = CloudPubSub::new(client);
         let job_result = match result {
             Ok(_) => {
                 self.cleanup(&meta, &storage_resolver).await?;
@@ -152,22 +170,22 @@ impl RunWorkerCommand {
             }
             Err(_) => JobResult::Failed,
         };
-        pubsub
-            .publish(JobCompleteEvent::new(workflow_id, meta.job_id, job_result))
+        let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
             .await
-            .map_err(crate::errors::Error::run)
+            .map_err(crate::errors::Error::init)?;
+        match pubsub {
+            PubSubBackend::Google(pubsub) => pubsub
+                .publish(JobCompleteEvent::new(workflow_id, meta.job_id, job_result))
+                .await
+                .map_err(crate::errors::Error::run),
+            PubSubBackend::Noop(_) => Ok(()),
+        }
     }
 
     async fn prepare(
         &self,
         storage_resolver: &Arc<StorageResolver>,
-    ) -> crate::errors::Result<(
-        Workflow,
-        Arc<State>,
-        Arc<LoggerFactory>,
-        EventHandler<CloudPubSub>,
-        Metadata,
-    )> {
+    ) -> crate::errors::Result<(Workflow, Arc<State>, Arc<LoggerFactory>, Metadata)> {
         let json = if self.workflow == "-" {
             io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?
         } else {
@@ -241,16 +259,7 @@ impl RunWorkerCommand {
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        let config = ClientConfig::default()
-            .with_auth()
-            .await
-            .map_err(crate::errors::Error::init)?;
-        let client = Client::new(config)
-            .await
-            .map_err(crate::errors::Error::init)?;
-
-        let event_handler = EventHandler::new(workflow.id, job_id, CloudPubSub::new(client));
-        Ok((workflow, state, logger_factory, event_handler, meta))
+        Ok((workflow, state, logger_factory, meta))
     }
 
     async fn cleanup(
