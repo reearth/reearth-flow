@@ -41,7 +41,10 @@ jobs:
       - name: Setup Cerbos
         uses: cerbos/cerbos-setup-action@v1
         with:
-          version: latest
+          version: '0.36.0'
       - name: Validate Cerbos policies
-        run: cerbos compile ./policies
+        run: |
+          set -eo pipefail
+          cerbos compile ./policies
+          echo "Policy validation successful"
         working-directory: api
