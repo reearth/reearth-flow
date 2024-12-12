@@ -14,6 +14,7 @@ import { createRoot } from "react-dom/client";
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { type NodeType } from "@flow/types";
+import { useCurrentWorkflowId } from "@flow/stores";
 
 type ToolboxItem<T> = {
   id: T;
@@ -36,7 +37,9 @@ type Props = {
 const Toolbox: React.FC<Props> = ({ canUndo, canRedo, onRedo, onUndo }) => {
   const t = useT();
 
-  const availableTools: Tool[] = [
+  const [workflowId] = useCurrentWorkflowId();
+  
+  const allTools: Tool[] = [
     {
       id: "reader",
       name: t("Reader Node"),
@@ -68,6 +71,11 @@ const Toolbox: React.FC<Props> = ({ canUndo, canRedo, onRedo, onUndo }) => {
       icon: <Graph weight="thin" />,
     },
   ];
+
+  const availableTools =
+    workflowId === "main"
+      ? allTools
+      : allTools.filter((tool) => tool.id !== "reader" && tool.id !== "writer");
 
   const availableActions: Action[] = [
     {
