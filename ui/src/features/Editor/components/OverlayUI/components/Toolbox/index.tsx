@@ -15,6 +15,7 @@ import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { type NodeType } from "@flow/types";
 import { useCurrentWorkflowId } from "@flow/stores";
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 
 type ToolboxItem<T> = {
   id: T;
@@ -73,7 +74,7 @@ const Toolbox: React.FC<Props> = ({ canUndo, canRedo, onRedo, onUndo }) => {
   ];
 
   const availableTools =
-    workflowId === "main"
+    workflowId === DEFAULT_ENTRY_GRAPH_ID
       ? allTools
       : allTools.filter((tool) => tool.id !== "reader" && tool.id !== "writer");
 
