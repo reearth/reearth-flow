@@ -77,12 +77,26 @@ graphs:
 
 #### `workerAssetPath`
 * The path to the assets local directory.
+``` yaml
+  env.get("workerAssetPath")
+```
 
 #### `workerArtifactPath`
 * The path to the artifacts local directory.
+``` yaml
+  env.get("workerArtifactPath")
+```
 
 ### PubSub
 #### Topics
-* environment variables: FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC (default: flow-edge-pass-through-topic)
-* environment variables: FLOW_WORKER_LOG_STREAM_TOPIC (default: flow-log-stream-topic)
-* environment variables: FLOW_WORKER_JOB_COMPLETE_TOPIC (default: flow-job-complete-topic)
+* flow-edge-pass-through-topic
+* flow-log-stream-topic
+* flow-job-complete-topic
+
+### Runtime Environment Variables
+| Name                                      | Description                                                                  | Default                      |
+| ----------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------- |
+| FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC | PubSub topic name for the event that occurs when the Feature passes the edge | flow-edge-pass-through-topic |
+| FLOW_WORKER_LOG_STREAM_TOPIC              | Topic name of the event that occurs when the log comes into the log stream   | flow-log-stream-topic        |
+| FLOW_WORKER_JOB_COMPLETE_TOPIC            | Topic name of the event that will occur when the job is completed            | flow-job-complete-topic      |
+| FLOW_WORKER_ENABLE_JSON_LOG               | Enable log format to JSON format                                             | false                        |
