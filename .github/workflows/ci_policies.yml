@@ -17,7 +17,12 @@ jobs:
           cache: false
       - name: Generate policies
         run: |
+          set -e
           make gen-policies
+          if [ $? -ne 0 ]; then
+            echo "Policy generation failed"
+            exit 1
+          fi
         working-directory: api
       - name: List generated policy files
         run: |
