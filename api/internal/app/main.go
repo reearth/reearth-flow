@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 
@@ -48,7 +49,16 @@ func Start(debug bool, version string) {
 	repos, gateways, acRepos, acGateways := initReposAndGateways(ctx, conf, debug)
 
 	// PermissionChecker
+	if conf.DashboardHost == "" {
+		log.Fatalf("dashboard host configuration is required")
+	}
+	if _, err := url.Parse(conf.DashboardHost); err != nil {
+		log.Fatalf("invalid dashboard host URL: %v", err)
+	}
 	permissionChecker := cerbosClient.NewPermissionChecker(rbac.ServiceName, conf.DashboardHost)
+	if permissionChecker == nil {
+		log.Fatalf("failed to initialize permission checker")
+	}
 
 	// Start web server
 	NewServer(ctx, &ServerConfig{
