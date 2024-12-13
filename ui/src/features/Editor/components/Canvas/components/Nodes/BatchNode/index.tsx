@@ -4,7 +4,22 @@ import { memo, useState } from "react";
 
 import { Node } from "@flow/types";
 
-export type BatchNodeProps = NodeProps<Node>;
+type BatchNodeParams = {
+  type?: "batch";
+  name?: string;
+  color?: {
+    titleColor?: string;
+    transparency?: number;
+    backgroundColor?: string;
+    borderColor?: string;
+  };
+  size?: {
+    height?: number;
+    width?: number;
+  };
+};
+
+export type BatchNodeProps = NodeProps<Node> & {};
 
 export const initialSize = { width: 300, height: 200 };
 
@@ -19,6 +34,8 @@ const minSize = { width: 250, height: 150 };
 const BatchNode: React.FC<BatchNodeProps> = ({ data, selected }) => {
   const [_width, _setWidth] = useState(data.width ?? initialSize.width);
   const [_height, _setHeight] = useState(data.height ?? initialSize.height);
+
+  const params = data.params as unknown as BatchNodeParams | undefined;
 
   return (
     <>
@@ -37,6 +54,8 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected }) => {
             borderRadius: "80%",
             zIndex: 0,
           }}
+          // TODO: Implement size change from the form
+          // TODO: Implement color changes from the form
           minWidth={minSize.width}
           minHeight={minSize.height}
           onResize={(r) => {
@@ -51,7 +70,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected }) => {
         <div
           className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1 ${selected ? "border-border" : "border-transparent"}`}>
           <RectangleDashed />
-          <p>{data.name}</p>
+          <p>{params?.name ? params.name : data.name}</p>
         </div>
       </div>
     </>

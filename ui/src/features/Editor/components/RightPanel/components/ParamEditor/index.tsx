@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
+import { RJSFSchema } from "@rjsf/utils/lib/types";
 import { memo } from "react";
 
 import {
@@ -16,31 +17,85 @@ import {
 } from "@flow/components";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
-import type { NodeData } from "@flow/types";
+import { Node } from "@flow/types";
 
 type Props = {
-  nodeId: string;
-  nodeMeta: NodeData;
-  nodeType: string;
-  nodeParameters?: unknown; // TODO: define type
+  node: Node;
   onSubmit: (nodeId: string, data: any) => void;
 };
 
 const actionButtonClasses = "border h-[25px]";
 
-const ParamEditor: React.FC<Props> = ({
-  nodeId,
-  nodeMeta,
-  // nodeType,
-  // nodeParameters = [{ id: "param1", name: "Param 1", value: "Value 1", type: "string"}],
-  onSubmit,
-}) => {
+const ParamEditor: React.FC<Props> = ({ onSubmit, node }) => {
   const t = useT();
 
+  const { id: nodeId, data: nodeMeta, type: nodeType } = node;
+
   const { useGetActionById } = useAction();
-  const { action } = useGetActionById(nodeMeta.name);
+  const { action: schema } = useGetActionById(nodeMeta.name);
 
   const handleSubmit = (data: any) => onSubmit(nodeId, data);
+
+  // TODO: Till the backend for the batch node is ready, let's use this type
+  // TODO: Implemented with just en lang
+  const batchNodeSchema: RJSFSchema = {
+    type: "object",
+    properties: {
+      type: {
+        type: "string",
+        const: "batch",
+        title: "Type",
+        readOnly: true,
+      },
+      name: { type: "string", title: "Name", $id: "name" },
+      color: {
+        type: "object",
+        title: "Color (RGBA hex)",
+        properties: {
+          titleColor: {
+            type: "string",
+            title: "Title Color",
+          },
+          transparency: {
+            type: "number",
+            title: "Transparency",
+          },
+          backgroundColor: {
+            type: "string",
+            title: "Background Color",
+          },
+          borderColor: {
+            type: "string",
+            title: "Border Color",
+          },
+        },
+      },
+      size: {
+        type: "object",
+        title: "Size",
+        properties: {
+          height: { type: "number", title: "Height" },
+          width: { type: "number", title: "Width" },
+        },
+      },
+    },
+    required: ["name"],
+  };
+
+  const batchNodeParams = {
+    type: "batch",
+    name: nodeMeta.name,
+    color: {
+      // titleColor: "#000000",
+      // transparency: 1,
+      // backgroundColor: "#ffffff",
+      // borderColor: "#000000",
+    },
+    size: {
+      height: node.height,
+      width: node.width,
+    },
+  };
 
   return (
     <div>
@@ -69,9 +124,16 @@ const ParamEditor: React.FC<Props> = ({
         </TabsList>
         <TabsContent value="params">
           <div className="rounded border bg-card p-3">
-            {action && (
+            {nodeType == "batch" && (
               <SchemaForm
-                schema={action.parameter}
+                schema={batchNodeSchema}
+                defaultFormData={{ ...nodeMeta.params, ...batchNodeParams }}
+                onSubmit={handleSubmit}
+              />
+            )}
+            {schema && (
+              <SchemaForm
+                schema={schema.parameter}
                 defaultFormData={nodeMeta.params}
                 onSubmit={handleSubmit}
               />
