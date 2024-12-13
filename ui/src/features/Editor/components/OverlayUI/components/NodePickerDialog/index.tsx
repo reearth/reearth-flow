@@ -4,10 +4,8 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
-import { config } from "@flow/config";
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
-import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
 import type { Action, ActionNodeType, Node } from "@flow/types";
 
@@ -65,7 +63,7 @@ const NodePickerDialog: React.FC<Props> = ({
       setSelected((prevName) => (prevName === name ? undefined : name));
     },
     async (name?: string) => {
-      const action = await fetcher<Action>(`${config().api}/actions/${name}`);
+      const action = actions?.find((a) => a.name === name);
       if (!action) return;
 
       const newNode = await createNode({

@@ -14,19 +14,55 @@ type CreateNodeOptions = {
   action?: Action;
 };
 
+const createBaseNode = ({ position, type }: CreateNodeOptions): Node => ({
+  id: randomID(),
+  position,
+  type,
+  data: {
+    name: type,
+    status: "idle",
+    locked: false,
+  },
+});
+
+const createSpecializedNode = ({
+  position,
+  type,
+}: CreateNodeOptions): Node | null => {
+  const node = createBaseNode({ position, type });
+
+  switch (type) {
+    case "batch":
+      return { ...node, ...baseBatchNode };
+    case "note":
+      return {
+        ...node,
+        data: { ...node.data, ...baseNoteNode },
+      };
+    default:
+      return null;
+  }
+};
+
+const createNodeFromAction = (action: Action, position: XYPosition): Node => ({
+  ...createBaseNode({ position, type: action.type }),
+  // Needs measured, but at time of creation we don't know size yet.
+  // 150x25 is base-size of GeneralNode.
+  measured: {
+    width: 150,
+    height: 25,
+  },
+  data: {
+    name: action.name,
+    inputs: action.inputPorts ?? [],
+    outputs: action.outputPorts ?? [],
+    status: "idle",
+    locked: false,
+  },
+});
+
 export const useCreateNode = () => {
   const { api } = config();
-
-  const createBaseNode = ({ position, type }: CreateNodeOptions): Node => ({
-    id: randomID(),
-    position,
-    type,
-    data: {
-      name: type,
-      status: "idle",
-      locked: false,
-    },
-  });
 
   const createActionNode = async (
     name: string,
@@ -34,42 +70,7 @@ export const useCreateNode = () => {
   ): Promise<Node | null> => {
     const action = await fetcher<Action>(`${api}/actions/${name}`);
     if (!action) return null;
-
-    return {
-      ...createBaseNode({ position, type: action.type }),
-      // Needs measured, but at time of creation we don't know size yet.
-      // 150x25 is base-size of GeneralNode.
-      measured: {
-        width: 150,
-        height: 25,
-      },
-      data: {
-        name: action.name,
-        inputs: [...action.inputPorts],
-        outputs: [...action.outputPorts],
-        status: "idle",
-        locked: false,
-      },
-    };
-  };
-  // for Batch or Note Nodes
-  const createSpecializedNode = ({
-    position,
-    type,
-  }: CreateNodeOptions): Node | null => {
-    const node = createBaseNode({ position, type });
-
-    switch (type) {
-      case "batch":
-        return { ...node, ...baseBatchNode };
-      case "note":
-        return {
-          ...node,
-          data: { ...node.data, ...baseNoteNode },
-        };
-      default:
-        return null;
-    }
+    return createNodeFromAction(action, position);
   };
 
   const createNode = async ({
@@ -78,17 +79,9 @@ export const useCreateNode = () => {
     action,
   }: CreateNodeOptions): Promise<Node | null> => {
     if (action) {
-      return {
-        ...createBaseNode({ position, type: action.type }),
-        data: {
-          name: action.name,
-          inputs: [...action.inputPorts],
-          outputs: [...action.outputPorts],
-          status: "idle",
-          locked: false,
-        },
-      };
+      return createNodeFromAction(action, position);
     }
+
     if (nodeTypes.includes(type as NodeType)) {
       return createSpecializedNode({ position, type });
     }
@@ -101,3 +94,5 @@ export const useCreateNode = () => {
     createActionNode,
   };
 };
+
+export { createBaseNode, createSpecializedNode, createNodeFromAction };
