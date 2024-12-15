@@ -3639,9 +3639,9 @@ __metadata:
     "@radix-ui/react-tabs": "npm:1.1.1"
     "@radix-ui/react-toast": "npm:1.2.2"
     "@radix-ui/react-tooltip": "npm:1.1.3"
-    "@rjsf/core": "npm:5.22.3"
-    "@rjsf/utils": "npm:5.22.3"
-    "@rjsf/validator-ajv8": "npm:5.22.3"
+    "@rjsf/core": "npm:5.23.2"
+    "@rjsf/utils": "npm:5.23.2"
+    "@rjsf/validator-ajv8": "npm:5.23.2"
     "@storybook/addon-essentials": "npm:8.4.2"
     "@storybook/addon-interactions": "npm:8.4.2"
     "@storybook/addon-links": "npm:8.4.2"
@@ -3719,9 +3719,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rjsf/core@npm:5.22.3":
-  version: 5.22.3
-  resolution: "@rjsf/core@npm:5.22.3"
+"@rjsf/core@npm:5.23.2":
+  version: 5.23.2
+  resolution: "@rjsf/core@npm:5.23.2"
   dependencies:
     lodash: "npm:^4.17.21"
     lodash-es: "npm:^4.17.21"
@@ -3729,15 +3729,15 @@ __metadata:
     nanoid: "npm:^3.3.7"
     prop-types: "npm:^15.8.1"
   peerDependencies:
-    "@rjsf/utils": ^5.22.x
+    "@rjsf/utils": ^5.23.x
     react: ^16.14.0 || >=17
-  checksum: 10c0/bb4bcd2fca7ac4bcfccfc9ba62666db9c20f8b71b8d0b9cefc7c2f07204303ffc42c61e8c1b4fb1bd4eac743429fbd062c527d0f1f8267d13268eb0422f9ea62
+  checksum: 10c0/e738dfc4b02d0c020df46c0281b7a98d3c9c4520e986fdc0c7e531ab6e0d1167a0f286849c08b77fb6a03c0196afe0957afe95ed5c020839e5e30fe042956b88
   languageName: node
   linkType: hard
 
-"@rjsf/utils@npm:5.22.3":
-  version: 5.22.3
-  resolution: "@rjsf/utils@npm:5.22.3"
+"@rjsf/utils@npm:5.23.2":
+  version: 5.23.2
+  resolution: "@rjsf/utils@npm:5.23.2"
   dependencies:
     json-schema-merge-allof: "npm:^0.8.1"
     jsonpointer: "npm:^5.0.1"
@@ -3746,21 +3746,21 @@ __metadata:
     react-is: "npm:^18.2.0"
   peerDependencies:
     react: ^16.14.0 || >=17
-  checksum: 10c0/58b2baae8762decfeeb0a8a7e74a69a16140dc48e2fed533f7c7b11165b7356ef0faeef107f7ebacf4ff326e53c5873ed1ef582a48c14b5124bedd0518be47c6
+  checksum: 10c0/fe09e10c6927415444af39d2cfae8968a3f60987094ac448526ce23e5fb48dd397922c99436c99735ab6487077ad0ea29bcde1bc3f890a4d94cd535e4889512f
   languageName: node
   linkType: hard
 
-"@rjsf/validator-ajv8@npm:5.22.3":
-  version: 5.22.3
-  resolution: "@rjsf/validator-ajv8@npm:5.22.3"
+"@rjsf/validator-ajv8@npm:5.23.2":
+  version: 5.23.2
+  resolution: "@rjsf/validator-ajv8@npm:5.23.2"
   dependencies:
     ajv: "npm:^8.12.0"
     ajv-formats: "npm:^2.1.1"
     lodash: "npm:^4.17.21"
     lodash-es: "npm:^4.17.21"
   peerDependencies:
-    "@rjsf/utils": ^5.22.x
-  checksum: 10c0/d52e1c9f0981206172eee9d3419a2af69d46ae25404839608c63885e490ab357b62d64665d18e9d7c7ccd0277de5cd8436453870be22d6f4ae677accb6e0a200
+    "@rjsf/utils": ^5.23.x
+  checksum: 10c0/3993fb7da2bac7683f58f924fa005ba141b67144156aab08eadf3726866a88dce2c76824ca52c2b12350e4f3f0317bfe261301c86ba6fbfe8f7e2f42c9c453e5
   languageName: node
   linkType: hard
 
