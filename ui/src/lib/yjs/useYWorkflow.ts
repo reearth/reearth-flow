@@ -3,7 +3,10 @@ import { Dispatch, SetStateAction, useCallback } from "react";
 import { Array as YArray } from "yjs";
 
 import { config } from "@flow/config";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import {
+  DEFAULT_ENTRY_GRAPH_ID,
+  DEFAULT_ROUTING_PORT,
+} from "@flow/global-constants";
 import type { Action, Edge, Node } from "@flow/types";
 import { randomID } from "@flow/utils";
 
@@ -46,15 +49,17 @@ export default ({
 
         const inputRouter = await fetcher<Action>(`${api}/actions/InputRouter`);
 
-        const newEntranceNode: Node = {
+        const newInputNode: Node = {
           id: randomID(),
           type: inputRouter.type,
           position: { x: 200, y: 200 },
           data: {
             officialName: inputRouter.name,
-            inputs: inputRouter.inputPorts,
             outputs: inputRouter.outputPorts,
             status: "idle",
+            params: {
+              routingPort: DEFAULT_ROUTING_PORT,
+            },
           },
         };
 
@@ -62,21 +67,23 @@ export default ({
           `${api}/actions/OutputRouter`,
         );
 
-        const newExitNode: Node = {
+        const newOutputNode: Node = {
           id: randomID(),
           type: outputRouter.type,
           position: { x: 1000, y: 200 },
           data: {
             officialName: outputRouter.name,
             inputs: outputRouter.inputPorts,
-            outputs: outputRouter.outputPorts,
             status: "idle",
+            params: {
+              routingPort: DEFAULT_ROUTING_PORT,
+            },
           },
         };
 
         const newYWorkflow = yWorkflowBuilder(workflowId, workflowName, [
-          newEntranceNode,
-          newExitNode,
+          newInputNode,
+          newOutputNode,
         ]);
 
         const newSubworkflowNode: Node = {
@@ -86,8 +93,8 @@ export default ({
           data: {
             officialName: workflowName,
             status: "idle",
-            inputs: inputRouter.inputPorts,
-            outputs: outputRouter.outputPorts,
+            pseudoInputs: [DEFAULT_ROUTING_PORT],
+            pseudoOutputs: [DEFAULT_ROUTING_PORT],
           },
         };
 

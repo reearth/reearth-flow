@@ -3,15 +3,10 @@ import { ComponentType } from "react";
 
 import type { Status } from "./shared";
 
-type ParamValueType = string | number | boolean | object | null;
+// type ParamValueType = string | number | boolean | object | null;
 
 // type NodeParam<T extends ParamValueType> = {
-type NodeParam = {
-  id: string;
-  name: string;
-  // type: string; perhaps we don't need this
-  value: ParamValueType;
-};
+type NodeParam = Record<string, any>;
 
 export type NodeData = {
   officialName: string;
@@ -19,7 +14,7 @@ export type NodeData = {
   inputs?: string[];
   outputs?: string[];
   status?: Status;
-  params?: NodeParam[];
+  params?: NodeParam;
   locked?: boolean | undefined;
   // subworkflow nodes
   pseudoInputs?: string[];
