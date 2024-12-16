@@ -58,7 +58,7 @@ graphs:
       - id: 278ab965-ce22-473d-98c6-c7b381c38679
         name: UnmatchedXlinkDetector
         type: action
-        action: PLATEAU.UnmatchedXlinkDetector
+        action: PLATEAU3.UnmatchedXlinkDetector
         with:
           attribute: cityGmlPath
 
@@ -139,7 +139,7 @@ graphs:
       - id: 439adabe-d55c-4c58-972f-e4cd27a54d22
         name: BuildingInstallationGeometryTypeExtractor
         type: action
-        action: PLATEAU.BuildingInstallationGeometryTypeExtractor
+        action: PLATEAU3.BuildingInstallationGeometryTypeExtractor
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: FeatureFilterByBuildingInstallationGeometryType
@@ -327,9 +327,9 @@ graphs:
 
       ## i-ur l-bldg-04,05 city code error
       - id: 94382791-5b1e-403f-bbff-c326612f8f24
-        name: PLATEAU.BuildingUsageAttributeValidator
+        name: PLATEAU3.BuildingUsageAttributeValidator
         type: action
-        action: PLATEAU.BuildingUsageAttributeValidator
+        action: PLATEAU3.BuildingUsageAttributeValidator
 
       - id: b0a6c73a-f0be-40e1-a575-aba47f28a16a
         name: AttributeMapper-city-code-error

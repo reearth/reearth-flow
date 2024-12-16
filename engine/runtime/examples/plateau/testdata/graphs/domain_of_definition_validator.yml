@@ -20,9 +20,9 @@ nodes:
             }
 
   - id: 747d2fa3-2527-4324-b630-92fba84a548c
-    name: PLATEAU.DomainOfDefinitionValidator01
+    name: PLATEAU3.DomainOfDefinitionValidator01
     type: action
-    action: PLATEAU.DomainOfDefinitionValidator
+    action: PLATEAU3.DomainOfDefinitionValidator
 
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilterByFlag

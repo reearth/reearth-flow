@@ -58,7 +58,7 @@ pub struct UdxFolderExtractorFactory;
 
 impl ProcessorFactory for UdxFolderExtractorFactory {
     fn name(&self) -> &str {
-        "PLATEAU.UDXFolderExtractor"
+        "PLATEAU3.UDXFolderExtractor"
     }
 
     fn description(&self) -> &str {

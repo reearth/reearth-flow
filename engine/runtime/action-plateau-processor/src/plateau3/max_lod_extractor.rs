@@ -21,7 +21,7 @@ pub struct MaxLodExtractorFactory;
 
 impl ProcessorFactory for MaxLodExtractorFactory {
     fn name(&self) -> &str {
-        "PLATEAU.MaxLodExtractor"
+        "PLATEAU3.MaxLodExtractor"
     }
 
     fn description(&self) -> &str {

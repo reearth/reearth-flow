@@ -405,7 +405,7 @@ pub struct XmlAttributeExtractorFactory;
 
 impl ProcessorFactory for XmlAttributeExtractorFactory {
     fn name(&self) -> &str {
-        "PLATEAU.XMLAttributeExtractor"
+        "PLATEAU3.XMLAttributeExtractor"
     }
 
     fn description(&self) -> &str {

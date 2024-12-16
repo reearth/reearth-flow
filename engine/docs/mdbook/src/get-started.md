@@ -61,9 +61,9 @@ graphs:
           env.get("__value").extension == "gml"
         outputPort: default
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cc
-    name: PLATEAU.UDXFolderExtractor-01
+    name: PLATEAU3.UDXFolderExtractor-01
     type: action
-    action: PLATEAU.UDXFolderExtractor
+    action: PLATEAU3.UDXFolderExtractor
     with:
       cityGmlPath: |
         env.get("__value")["path"]
@@ -127,7 +127,7 @@ graphs:
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: unmatchedXlinkDetector
     type: action
-    action: PLATEAU.UnmatchedXlinkDetector
+    action: PLATEAU3.UnmatchedXlinkDetector
     with:
       attribute: cityGmlPath
   - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c

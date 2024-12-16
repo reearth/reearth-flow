@@ -2351,7 +2351,7 @@
       ]
     },
     {
-      "name": "PLATEAU.AttributeFlattener",
+      "name": "PLATEAU3.AttributeFlattener",
       "type": "processor",
       "description": "Aplati les attributs pour créer une entité de bâtiment",
       "parameter": null,
@@ -2367,7 +2367,7 @@
       ]
     },
     {
-      "name": "PLATEAU.BuildingInstallationGeometryTypeExtractor",
+      "name": "PLATEAU3.BuildingInstallationGeometryTypeExtractor",
       "type": "processor",
       "description": "Extrait le type de géométrie de l'installation d'un bâtiment (BuildingInstallationGeometryType)",
       "parameter": null,
@@ -2383,7 +2383,7 @@
       ]
     },
     {
-      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "name": "PLATEAU3.BuildingUsageAttributeValidator",
       "type": "processor",
       "description": "Ce processeur valide les attributs d'usage des bâtiments en vérifiant la présence d'attributs requis et la justesse des codes de ville. En cas de problème, il génère des erreurs via les ports lBldgError et codeError.",
       "parameter": null,
@@ -2401,7 +2401,7 @@
       ]
     },
     {
-      "name": "PLATEAU.DictionariesInitiator",
+      "name": "PLATEAU3.DictionariesInitiator",
       "type": "processor",
       "description": "Initialise des dictionnaires pour PLATEAU",
       "parameter": null,
@@ -2418,7 +2418,7 @@
       ]
     },
     {
-      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "name": "PLATEAU3.DomainOfDefinitionValidator",
       "type": "processor",
       "description": "Valide le domaine de définition des entités CityGML",
       "parameter": null,
@@ -2435,7 +2435,7 @@
       ]
     },
     {
-      "name": "PLATEAU.MaxLodExtractor",
+      "name": "PLATEAU3.MaxLodExtractor",
       "type": "processor",
       "description": "Extrait maxLod",
       "parameter": null,
@@ -2451,7 +2451,7 @@
       ]
     },
     {
-      "name": "PLATEAU.TranXLinkChecker",
+      "name": "PLATEAU3.TranXLinkChecker",
       "type": "processor",
       "description": "Vérifie Xlink pour Tran",
       "parameter": null,
@@ -2467,7 +2467,7 @@
       ]
     },
     {
-      "name": "PLATEAU.UDXFolderExtractor",
+      "name": "PLATEAU3.UDXFolderExtractor",
       "type": "processor",
       "description": "Extrait les dossiers UDX du chemin cityGML",
       "parameter": null,
@@ -2484,7 +2484,7 @@
       ]
     },
     {
-      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "name": "PLATEAU3.UnmatchedXlinkDetector",
       "type": "processor",
       "description": "Détecte les xlinks non correspondants pour PLATEAU",
       "parameter": null,
@@ -2502,7 +2502,7 @@
       ]
     },
     {
-      "name": "PLATEAU.XMLAttributeExtractor",
+      "name": "PLATEAU3.XMLAttributeExtractor",
       "type": "processor",
       "description": "Extrait les attributs de fragments XML en fonction d'une définition de schéma",
       "parameter": null,

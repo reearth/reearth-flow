@@ -63,9 +63,9 @@ graphs:
           filePathAttribute: path
 
       - id: b16c4701-3b21-48f3-8b09-cf2fc6a51f1e
-        name: PLATEAU.UDXFolderExtractor
+        name: PLATEAU3.UDXFolderExtractor
         type: action
-        action: PLATEAU.UDXFolderExtractor
+        action: PLATEAU3.UDXFolderExtractor
         with:
           cityGmlPath: |
             env.get("__value").path
@@ -109,7 +109,7 @@ graphs:
               outputPort: default
 
       - id: 2b51486a-7258-42a6-ac9d-41a4f9a48624
-        name: PLATEAU.DomainOfDefinitionValidator
+        name: PLATEAU3.DomainOfDefinitionValidator
         type: subGraph
         subGraphId: b7396083-17d0-47dd-be86-83caf6c5ac63
 
