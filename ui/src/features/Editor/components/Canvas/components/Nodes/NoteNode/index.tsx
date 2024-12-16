@@ -6,15 +6,15 @@ import { Node } from "@flow/types";
 
 export type NoteNodeProps = NodeProps<Node>;
 
-export const initialSize = { width: 300 };
+export const initialSize = { width: 300, height: 200 };
 
 export const baseNoteNode = {
   type: "note",
   content: "New Note",
+  style: { width: initialSize.width + "px", height: initialSize.height + "px" },
   width: 300,
   height: 200,
 };
-
 const minSize = { width: 250, height: 150 };
 
 const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
@@ -54,9 +54,8 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
           <p>{data.name}</p>
         </div>
         <textarea
-          className="nowheel size-full resize-none bg-transparent text-xs focus-visible:outline-none"
           defaultValue={data.content}
-          onMouseDown={(e) => e.stopPropagation()}
+          className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none"
         />
       </div>
     </>
