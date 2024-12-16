@@ -1,5 +1,5 @@
 id: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
-name: "PLATEAU.SurfaceValidator2D"
+name: "PLATEAU3.SurfaceValidator2D"
 nodes:
   - id: 2e15ebbf-a54e-4f8a-9081-f844622b8910
     name: InputRouter

@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: a7fc8f35-b84f-496b-a2cb-65be3bfec285
-name: "PLATEAU.XMLValidator"
+name: "PLATEAU3.XMLValidator"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   cityGmlPath:
@@ -48,15 +48,15 @@ graphs:
               outputPort: default
 
       - id: 6b810200-1499-41df-99a2-40f970623826
-        name: PLATEAU.UDXFolderExtractor_01
+        name: PLATEAU3.UDXFolderExtractor_01
         type: action
-        action: PLATEAU.UDXFolderExtractor
+        action: PLATEAU3.UDXFolderExtractor
         with:
           cityGmlPath: |
             env.get("__value").path
 
       - id: 7946c8f9-0939-46c5-98ae-0e635ff28017
-        name: PLATEAU.XMLValidator_01
+        name: PLATEAU3.XMLValidator_01
         type: subGraph
         subGraphId: 2c753ffc-cc90-4f4a-b5ee-f5d7853dbac6
 
