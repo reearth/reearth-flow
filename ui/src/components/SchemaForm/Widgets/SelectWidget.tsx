@@ -1,14 +1,11 @@
 import { ChevronDownIcon } from "@radix-ui/react-icons";
 import {
-  ariaDescribedByIds,
   FormContextType,
-  // enumOptionsIndexForValue,
-  // enumOptionsValueForIndex,
   RJSFSchema,
   StrictRJSFSchema,
   WidgetProps,
 } from "@rjsf/utils";
-// import { ChangeEvent, FocusEvent } from "react";
+import { useState } from "react";
 
 import {
   DropdownMenu,
@@ -24,97 +21,63 @@ const SelectWidget = <
 >({
   id,
   options,
-  // required,
-  // disabled,
-  // readonly,
-  // value,
-  // multiple,
-  // autofocus,
-  // onChange,
-  // onBlur,
-  // onFocus,
+  disabled,
+  readonly,
+  value,
+  onChange,
+  onBlur,
+  onFocus,
   placeholder,
-  // rawErrors = [],
+  rawErrors = [],
 }: WidgetProps<T, S, F>) => {
-  const {
-    enumOptions,
-    enumDisabled,
-    // emptyValue: optEmptyValue
-  } = options;
+  const { enumOptions, enumDisabled } = options;
+  const [selectedLabel, setSelectedLabel] = useState(placeholder);
 
-  // const emptyValue = multiple ? [] : "";
+  const getCurrentLabel = () => {
+    const option = enumOptions?.find((opt: any) => opt.value === value);
+    return option ? option.label : placeholder;
+  };
 
-  // function getValue(event: FocusEvent | ChangeEvent | any, multiple?: boolean) {
-  //   if (multiple) {
-  //     return [].slice
-  //       .call(event.target.options as any)
-  //       .filter((o: any) => o.selected)
-  //       .map((o: any) => o.value);
-  //   } else {
-  //     return event.target.value;
-  //   }
-  // }
-  // const selectedIndexes = enumOptionsIndexForValue<S>(
-  //   value,
-  //   enumOptions,
-  //   multiple,
-  // );
+  const handleSelect = (value: any, label: string) => {
+    setSelectedLabel(label);
+    onChange(value);
+  };
+
+  const handleBlur = () => {
+    if (onBlur) {
+      onBlur(id, value);
+    }
+  };
+
+  const handleFocus = () => {
+    if (onFocus) {
+      onFocus(id, value);
+    }
+  };
 
   return (
-    <DropdownMenu
-      modal={true}
-      // id={id}
-      // name={id}
-      // value={
-      //   typeof selectedIndexes === "undefined" ? emptyValue : selectedIndexes
-      // }
-      // required={required}
-      // multiple={multiple}
-      // disabled={disabled || readonly}
-      // autoFocus={autofocus}
-      // className={rawErrors.length > 0 ? "text-destructive" : ""}
-      // onBlur={
-      //   onBlur &&
-      //   ((event: FocusEvent) => {
-      //     const newValue = getValue(event, multiple);
-      //     onBlur(
-      //       id,
-      //       enumOptionsValueForIndex<S>(newValue, enumOptions, optEmptyValue),
-      //     );
-      //   })
-      // }
-      // onFocus={
-      //   onFocus &&
-      //   ((event: FocusEvent) => {
-      //     const newValue = getValue(event, multiple);
-      //     onFocus(
-      //       id,
-      //       enumOptionsValueForIndex<S>(newValue, enumOptions, optEmptyValue),
-      //     );
-      //   })
-      // }
-      // onChange={(event: ChangeEvent) => {
-      //   const newValue = getValue(event, multiple);
-      //   onChange(
-      //     enumOptionsValueForIndex<S>(newValue, enumOptions, optEmptyValue),
-      //   );
-      // }}
-      aria-describedby={ariaDescribedByIds<T>(id)}>
-      <DropdownMenuTrigger className="flex h-8 items-center rounded border bg-background px-1 hover:bg-accent">
-        <p> {placeholder}</p>
-        <ChevronDownIcon />
+    <DropdownMenu modal={true}>
+      <DropdownMenuTrigger
+        className={`flex h-8 w-full items-center justify-between rounded border bg-background px-3 hover:bg-accent ${
+          rawErrors.length > 0 ? "border-destructive" : ""
+        }`}
+        disabled={disabled || readonly}
+        onBlur={handleBlur}
+        onFocus={handleFocus}>
+        <span className={`${value ? "" : "text-muted-foreground"}`}>
+          {selectedLabel || getCurrentLabel()}
+        </span>
+        <ChevronDownIcon className="size-4" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="overflow-auto" align="center">
-        {(enumOptions as any).map(({ value, label }: any, i: number) => {
-          const disabled: any =
-            Array.isArray(enumDisabled) &&
-            (enumDisabled as any).indexOf(value) != -1;
+      <DropdownMenuContent className="max-h-60 overflow-auto" align="start">
+        {enumOptions?.map(({ value: optionValue, label }: any, i: number) => {
+          const isDisabled = enumDisabled?.includes(optionValue);
           return (
             <DropdownMenuItem
               key={i}
-              id={label}
-              // value={String(i)}
-              disabled={disabled}>
+              disabled={isDisabled}
+              onSelect={() => handleSelect(optionValue, label)}
+              className={`${value === optionValue ? "bg-accent" : ""}`}>
               {label}
             </DropdownMenuItem>
           );
