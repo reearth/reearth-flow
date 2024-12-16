@@ -209,43 +209,43 @@
       "description": "提取实体几何的方向并作为属性添加"
     },
     {
-      "name": "PLATEAU.AttributeFlattener",
+      "name": "PLATEAU3.AttributeFlattener",
       "description": "扁平化属性以创建建筑实体"
     },
     {
-      "name": "PLATEAU.BuildingInstallationGeometryTypeExtractor",
+      "name": "PLATEAU3.BuildingInstallationGeometryTypeExtractor",
       "description": "提取建筑安装几何类型（BuildingInstallationGeometryType）"
     },
     {
-      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "name": "PLATEAU3.BuildingUsageAttributeValidator",
       "description": "此处理器通过检查所需属性的存在和城市代码的正确性来验证建筑用途属性。如果发现问题，将通过lBldgError和codeError端口输出错误。"
     },
     {
-      "name": "PLATEAU.DictionariesInitiator",
+      "name": "PLATEAU3.DictionariesInitiator",
       "description": "为PLATEAU初始化字典"
     },
     {
-      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "name": "PLATEAU3.DomainOfDefinitionValidator",
       "description": "验证CityGML实体的定义域"
     },
     {
-      "name": "PLATEAU.MaxLodExtractor",
+      "name": "PLATEAU3.MaxLodExtractor",
       "description": "提取maxLod"
     },
     {
-      "name": "PLATEAU.TranXLinkChecker",
+      "name": "PLATEAU3.TranXLinkChecker",
       "description": "检查Tran的Xlink"
     },
     {
-      "name": "PLATEAU.UDXFolderExtractor",
+      "name": "PLATEAU3.UDXFolderExtractor",
       "description": "从cityGML路径中提取UDX文件夹"
     },
     {
-      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "name": "PLATEAU3.UnmatchedXlinkDetector",
       "description": "检测PLATEAU中不匹配的xlink"
     },
     {
-      "name": "PLATEAU.XMLAttributeExtractor",
+      "name": "PLATEAU3.XMLAttributeExtractor",
       "description": "根据模式定义从XML片段中提取属性"
     },
     {

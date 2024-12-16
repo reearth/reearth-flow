@@ -209,43 +209,43 @@
       "description": "Extrae la orientación de una geometría de una entidad y la agrega como un atributo."
     },
     {
-      "name": "PLATEAU.AttributeFlattener",
+      "name": "PLATEAU3.AttributeFlattener",
       "description": "Aplana los atributos para crear una entidad de edificio"
     },
     {
-      "name": "PLATEAU.BuildingInstallationGeometryTypeExtractor",
+      "name": "PLATEAU3.BuildingInstallationGeometryTypeExtractor",
       "description": "Extrae el tipo de geometría de la instalación de un edificio (BuildingInstallationGeometryType)"
     },
     {
-      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "name": "PLATEAU3.BuildingUsageAttributeValidator",
       "description": "Este procesador valida los atributos de uso de edificios comprobando la presencia de atributos requeridos y garantizando la corrección de los códigos de ciudad. Si se encuentran problemas, produce errores a través de los puertos lBldgError y codeError."
     },
     {
-      "name": "PLATEAU.DictionariesInitiator",
+      "name": "PLATEAU3.DictionariesInitiator",
       "description": "Inicializa diccionarios para PLATEAU"
     },
     {
-      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "name": "PLATEAU3.DomainOfDefinitionValidator",
       "description": "Valida el dominio de definición de las entidades CityGML"
     },
     {
-      "name": "PLATEAU.MaxLodExtractor",
+      "name": "PLATEAU3.MaxLodExtractor",
       "description": "Extrae maxLod"
     },
     {
-      "name": "PLATEAU.TranXLinkChecker",
+      "name": "PLATEAU3.TranXLinkChecker",
       "description": "Comprueba Xlink para Tran"
     },
     {
-      "name": "PLATEAU.UDXFolderExtractor",
+      "name": "PLATEAU3.UDXFolderExtractor",
       "description": "Extrae carpetas UDX desde la ruta cityGML"
     },
     {
-      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "name": "PLATEAU3.UnmatchedXlinkDetector",
       "description": "Detecta xlinks no coincidentes para PLATEAU"
     },
     {
-      "name": "PLATEAU.XMLAttributeExtractor",
+      "name": "PLATEAU3.XMLAttributeExtractor",
       "description": "Extrae atributos de fragmentos XML basándose en una definición de esquema"
     },
     {

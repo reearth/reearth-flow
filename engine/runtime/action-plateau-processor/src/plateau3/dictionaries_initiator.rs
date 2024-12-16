@@ -32,7 +32,7 @@ pub struct DictionariesInitiatorFactory;
 
 impl ProcessorFactory for DictionariesInitiatorFactory {
     fn name(&self) -> &str {
-        "PLATEAU.DictionariesInitiator"
+        "PLATEAU3.DictionariesInitiator"
     }
 
     fn description(&self) -> &str {

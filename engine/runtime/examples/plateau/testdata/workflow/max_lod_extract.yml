@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: a7fc8f35-b84f-496b-a2cb-65be3bfec285
-name: "PLATEAU.MaxLodExtractor"
+name: "PLATEAU3.MaxLodExtractor"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   cityGmlPath:
@@ -43,7 +43,7 @@ graphs:
       - id: d3773442-1ba8-47c1-b7c1-0bafa23adec6
         name: maxLodExtractor
         type: action
-        action: PLATEAU.MaxLodExtractor
+        action: PLATEAU3.MaxLodExtractor
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: fileWriter

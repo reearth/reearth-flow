@@ -76,7 +76,7 @@ graphs:
       - id: 1bd42875-4b8c-4439-82dc-9554d9946b07
         name: AttributeFlattener
         type: action
-        action: PLATEAU.AttributeFlattener
+        action: PLATEAU3.AttributeFlattener
 
       - id: 928e21d9-fc30-4876-ba03-41338cfa47ed
         name: VerticalReprojector
