@@ -59,7 +59,7 @@ const ParamEditor: React.FC<Props> = ({
         </div>
       </div>
       <Tabs defaultValue="params" className="w-full">
-        <TabsList className="flex">
+        <TabsList className="flex gap-2">
           <TabsTrigger className="flex-1" value="params">
             {t("Parameters")}
           </TabsTrigger>
