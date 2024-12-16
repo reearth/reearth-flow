@@ -7,19 +7,22 @@ import { Node } from "@flow/types";
 export type NoteNodeProps = NodeProps<Node>;
 
 export const initialSize = { width: 300, height: 200 };
+const minSize = { width: 250, height: 150 };
 
 export const baseNoteNode = {
   type: "note",
   content: "New Note",
-  style: { width: initialSize.width + "px", height: initialSize.height + "px" },
-  width: 300,
-  height: 200,
+  style: {
+    width: `${initialSize.width}px`,
+    height: `${initialSize.height}px`,
+    minWidth: `${minSize.width}px`,
+    minHeight: `${minSize.height}px`,
+  },
 };
-const minSize = { width: 250, height: 150 };
 
 const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
   const [_width, _setWidth] = useState(data.width ?? initialSize.width);
-  const [_height, _setHeight] = useState(data.height);
+  const [_height, _setHeight] = useState(data.height ?? initialSize.height);
 
   return (
     <>
@@ -41,13 +44,16 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
           minWidth={minSize.width}
           minHeight={minSize.height}
           onResize={(r) => {
-            // setWidth(props.xPos + r.x);
-            // setHeight(props.yPos + r.y);
             console.log("ADS: ", r);
           }}
         />
       )}
-      <div className={`z-0 h-full rounded-sm bg-secondary/50 p-2`}>
+      <div
+        className="z-0 h-full rounded-sm bg-secondary/50 p-2"
+        style={{
+          minWidth: minSize.width,
+          minHeight: minSize.height,
+        }}>
         <div
           className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1 ${props.selected ? "border-border" : "border-transparent"}`}>
           <Note />
