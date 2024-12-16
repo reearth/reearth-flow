@@ -54,12 +54,7 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
         }}>
         <div className="size-full py-4 pl-4 pr-2">
           {selected && (
-            <ParamEditor
-              nodeId={selected.id}
-              nodeMeta={selected.data}
-              nodeType={selected.type}
-              onSubmit={onParamsSubmit}
-            />
+            <ParamEditor node={selected} onSubmit={onParamsSubmit} />
           )}
         </div>
       </div>
