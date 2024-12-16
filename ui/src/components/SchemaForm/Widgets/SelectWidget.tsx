@@ -43,17 +43,8 @@ const SelectWidget = <
     onChange(value);
   };
 
-  const handleBlur = () => {
-    if (onBlur) {
-      onBlur(id, value);
-    }
-  };
-
-  const handleFocus = () => {
-    if (onFocus) {
-      onFocus(id, value);
-    }
-  };
+  const handleBlur = () => onBlur?.(id, value);
+  const handleFocus = () => onFocus?.(id, value);
 
   return (
     <DropdownMenu modal={true}>
