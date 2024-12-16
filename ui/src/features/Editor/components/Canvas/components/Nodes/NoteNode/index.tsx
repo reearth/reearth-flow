@@ -51,7 +51,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
         <div
           className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1 ${props.selected ? "border-border" : "border-transparent"}`}>
           <Note />
-          <p>{data.name}</p>
+          <p>{data.customName ?? data.officialName}</p>
         </div>
         <textarea
           defaultValue={data.content}
