@@ -133,7 +133,7 @@ rand = "0.8.5"
 rayon = "1.10.0"
 regex = "1.11.1"
 reqwest = { version = "0.12.9", default-features = false, features = ["blocking", "rustls-tls"] }
-rhai = { version = "1.20.0", features = ["internals", "metadata", "serde", "sync"] }
+rhai = { version = "1.20.1", features = ["internals", "metadata", "serde", "sync"] }
 rmp-serde = "1.3.0"
 robust = "1.1.0"
 rstar = "0.12.2"
