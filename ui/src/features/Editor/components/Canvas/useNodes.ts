@@ -79,9 +79,40 @@ export default ({
     [edges, nodes, onEdgesChange],
   );
 
+  // Smart handle selection for node drop on edge
+  const getMatchingHandle = (
+    sourceHandles: string[],
+    targetHandles: string[],
+    currentHandle: string | null,
+  ): string => {
+    // If there's a current handle and it exists in both arrays, use it
+    if (
+      currentHandle &&
+      sourceHandles.includes(currentHandle) &&
+      targetHandles.includes(currentHandle)
+    ) {
+      return currentHandle;
+    }
+
+    // Look for matching handles between source and target
+    const matchingHandle = sourceHandles.find((h) => targetHandles.includes(h));
+    if (matchingHandle) {
+      return matchingHandle;
+    }
+
+    // Default to first available or 'default'
+    return sourceHandles[0] || "default";
+  };
+
   const handleNodeDropOnEdge = useCallback(
     (droppedNode: Node) => {
-      if (!droppedNode.data.inputs || !droppedNode.data.outputs) return;
+      // Validate node has both inputs and outputs
+      if (
+        !droppedNode.data.inputs?.length ||
+        !droppedNode.data.outputs?.length
+      ) {
+        return;
+      }
 
       let edgeCreationComplete = false;
 
@@ -101,6 +132,14 @@ export default ({
         const sourceNode = nodes.find((n) => n.id === e.source);
         const targetNode = nodes.find((n) => n.id === e.target);
         if (!sourceNode || !targetNode) return;
+
+        // Validate nodes have required inputs/outputs
+        if (
+          !sourceNode.data.outputs?.length ||
+          !targetNode.data.inputs?.length
+        ) {
+          return;
+        }
 
         let sourceNodeXYPosition: XYPosition = sourceNode.position;
         let targetNodeXYPosition: XYPosition = targetNode.position;
@@ -145,23 +184,33 @@ export default ({
         ) {
           // remove previous edge
           let newEdges = edges.filter((ed) => ed.id !== e.id);
+
+          // Select best matching handles
+          const targetHandle = getMatchingHandle(
+            droppedNode.data.inputs,
+            sourceNode.data.outputs,
+            e.sourceHandle ?? null,
+          );
+
+          const sourceHandle = getMatchingHandle(
+            droppedNode.data.outputs,
+            targetNode.data.inputs,
+            e.targetHandle ?? null,
+          );
+
           // create new connection between original source node and dragged node
           const newConnectionA: Connection = {
             source: e.source,
             sourceHandle: e.sourceHandle ?? null,
             target: droppedNode.id,
-            targetHandle:
-              droppedNode.handles?.find((h) => h.type === "target")?.type ??
-              null,
+            targetHandle,
           };
           newEdges = addEdge(newConnectionA, newEdges);
 
           // create new connection between dragged node and original target node
           const newConnectionB: Connection = {
             source: droppedNode.id,
-            sourceHandle:
-              droppedNode.handles?.find((h) => h.type === "source")?.type ??
-              null,
+            sourceHandle,
             target: e.target,
             targetHandle: e.targetHandle ?? null,
           };
