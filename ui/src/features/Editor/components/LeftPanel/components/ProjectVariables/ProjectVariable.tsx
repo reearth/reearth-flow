@@ -8,9 +8,9 @@ type Props = {
 const ProjectVariable: React.FC<Props> = ({ className, variable }) => {
   return (
     <div className={`flex items-center rounded p-1 ${className}`}>
-      <p className="flex-1 truncate text-sm">{variable.key}</p>
+      <p className="flex-1 truncate text-sm">{variable.name}</p>
       <p className="flex-1 truncate text-sm dark:font-extralight">
-        {JSON.stringify(variable.value)}
+        {JSON.stringify(variable.definition)}
       </p>
     </div>
   );

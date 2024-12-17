@@ -2,24 +2,32 @@ import { ProjectVar } from "@flow/types";
 
 export const projectVariables: ProjectVar[] = [
   {
-    key: "project_name",
-    value: "My Projectjlasjdflakjsdflkjsadflkjasdflkjasdlkjafsdlk",
+    id: "asdfasfsdasdffsdf",
+    name: "project_name",
+    definition: "My Projectjlasjdflakjsdflkjsadflkjasdflkjasdlkjafsdlk",
     type: "string",
+    required: true,
   },
   {
-    key: "project_id",
-    value: 5558687687888887,
+    id: "asdfasf3333sdfsdf",
+    name: "project_id",
+    definition: 5558687687888887,
     type: "number",
+    required: false,
   },
   {
-    key: "is_active",
-    value: true,
+    id: "asdfasf234234sdfsdf",
+    name: "is_active",
+    definition: true,
     type: "boolean",
+    required: false,
   },
   {
-    key: "tags",
-    value: ["tag1", "tag2"],
+    id: "asdfas132131fsdfsdf",
+    name: "tags",
+    definition: ["tag1", "tag2"],
     type: "array",
+    required: true,
   },
   // {
   //   key: "config",

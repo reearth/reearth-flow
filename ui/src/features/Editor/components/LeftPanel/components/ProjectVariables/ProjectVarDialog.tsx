@@ -50,13 +50,23 @@ const ProjectVarDialog: React.FC<Props> = ({
         const newProjectVars = [...pvs];
         newProjectVars.splice(selectedIndex + 1, 0, {
           id: randomID(10),
-          key: "",
-          value: "",
+          name: "",
+          definition: "",
           type: "string",
+          required: false,
         });
         return newProjectVars;
       }
-      return [...pvs, { id: randomID(10), key: "", value: "", type: "string" }];
+      return [
+        ...pvs,
+        {
+          id: randomID(10),
+          name: "",
+          definition: "",
+          type: "string",
+          required: false,
+        },
+      ];
     });
   };
 
@@ -141,25 +151,25 @@ const ProjectVarDialog: React.FC<Props> = ({
                         <DotsSixVertical />
                       </div>
                       <Input
-                        value={variable.key}
+                        value={variable.name}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           setProjectVariables((pvs) => {
                             const newPvs = [...pvs];
                             const newValue = e.target.value;
-                            newPvs[idx].key = newValue.split(/\s+/).join(""); // Don't allow white space in the key
+                            newPvs[idx].name = newValue.split(/\s+/).join(""); // Don't allow white space in the name
                             return newPvs;
                           });
                         }}
                       />
                       <Input
                         type="text"
-                        value={variable.value}
+                        value={variable.definition}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           setProjectVariables((pvs) => {
                             const newPvs = [...pvs];
-                            newPvs[idx].value = e.target.value;
+                            newPvs[idx].definition = e.target.value;
                             return newPvs;
                           });
                         }}

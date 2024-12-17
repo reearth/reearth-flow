@@ -7,7 +7,8 @@ export type VarType = TextVar | NumberVar | BooleanVar | ArrayVar;
 
 export type ProjectVar = {
   id: string;
-  key: string;
-  value: any;
-  type: VarType;
+  name: string;
+  required: boolean;
+  definition: any;
+  type: VarType; // TODO: use ParameterType
 };

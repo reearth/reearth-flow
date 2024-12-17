@@ -20,7 +20,6 @@ const ProjectVariables: React.FC = () => {
   const handleDialogClose = () => setIsOpen(false);
 
   const handleSubmit = (newProjectVars: ProjectVar[]) => {
-    console.log("Updated", newProjectVars);
     setCurrentProjectVars(newProjectVars);
     handleDialogClose();
   };
@@ -37,7 +36,7 @@ const ProjectVariables: React.FC = () => {
             <div className="flex flex-col gap-1 overflow-y-auto">
               {currentProjectVars.map((variable, idx) => (
                 <ProjectVariable
-                  key={variable.key + idx}
+                  key={variable.name + idx}
                   className={`${idx % 2 !== 0 ? "bg-card" : "bg-primary"}`}
                   variable={variable}
                 />
