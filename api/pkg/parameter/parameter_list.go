@@ -1,8 +1,9 @@
 package parameter
 
 import (
-	"github.com/reearth/reearth-flow/api/pkg/id"
 	"sort"
+
+	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
 type ParameterList []*Parameter
