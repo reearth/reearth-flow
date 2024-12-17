@@ -1,4 +1,4 @@
-import { ProjectVar } from "@flow/features/Editor/components/LeftPanel/components/ProjectVariables/ProjectVariable";
+import { ProjectVar } from "@flow/types";
 
 export const projectVariables: ProjectVar[] = [
   {
@@ -13,17 +13,17 @@ export const projectVariables: ProjectVar[] = [
   },
   {
     key: "is_active",
-    value: "true",
+    value: true,
     type: "boolean",
   },
   {
     key: "tags",
-    value: "['tag1', 'tag2']",
+    value: ["tag1", "tag2"],
     type: "array",
   },
-  {
-    key: "config",
-    value: '{"key": "value"}',
-    type: "object",
-  },
+  // {
+  //   key: "config",
+  //   value: '{"key": "value"}',
+  //   type: "object",
+  // },
 ];

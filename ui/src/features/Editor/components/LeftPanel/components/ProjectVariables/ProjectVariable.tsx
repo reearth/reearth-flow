@@ -1,10 +1,4 @@
-export type VarType = "string" | "number" | "boolean" | "array" | "object";
-
-export type ProjectVar = {
-  key: string;
-  value: any;
-  type: VarType;
-};
+import type { ProjectVar } from "@flow/types";
 
 type Props = {
   className?: string;
@@ -13,13 +7,12 @@ type Props = {
 
 const ProjectVariable: React.FC<Props> = ({ className, variable }) => {
   return (
-    <tr>
-      <td className={`rounded-l ${className}`}>{variable.key}</td>
-      <td
-        className={`text-wrap break-words rounded-r text-sm dark:font-extralight ${className}`}>
-        {variable.value}
-      </td>
-    </tr>
+    <div className={`flex items-center rounded p-1 ${className}`}>
+      <p className="flex-1 truncate text-sm">{variable.key}</p>
+      <p className="flex-1 truncate text-sm dark:font-extralight">
+        {JSON.stringify(variable.value)}
+      </p>
+    </div>
   );
 };
 
