@@ -11,17 +11,17 @@ import (
 
 func (r *mutationResolver) CreateProject(ctx context.Context, input gqlmodel.CreateProjectInput) (*gqlmodel.ProjectPayload, error) {
 	tid, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
-	if err != nil {
+	if (err != nil) {
 		return nil, err
 	}
 
 	res, err := usecases(ctx).Project.Create(ctx, interfaces.CreateProjectParam{
-		WorkspaceID: tid,
-		Name:        input.Name,
-		Description: input.Description,
 		Archived:    input.Archived,
+		Description: input.Description,
+		Name:        input.Name,
+		WorkspaceID: tid,
 	}, getOperator(ctx))
-	if err != nil {
+	if (err != nil) {
 		return nil, err
 	}
 
@@ -30,20 +30,20 @@ func (r *mutationResolver) CreateProject(ctx context.Context, input gqlmodel.Cre
 
 func (r *mutationResolver) UpdateProject(ctx context.Context, input gqlmodel.UpdateProjectInput) (*gqlmodel.ProjectPayload, error) {
 	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
-	if err != nil {
+	if (err != nil) {
 		return nil, err
 	}
 
 	res, err := usecases(ctx).Project.Update(ctx, interfaces.UpdateProjectParam{
-		ID:                pid,
-		Name:              input.Name,
-		Description:       input.Description,
 		Archived:          input.Archived,
-		IsBasicAuthActive: input.IsBasicAuthActive,
-		BasicAuthUsername: input.BasicAuthUsername,
 		BasicAuthPassword: input.BasicAuthPassword,
+		BasicAuthUsername: input.BasicAuthUsername,
+		Description:       input.Description,
+		ID:                pid,
+		IsBasicAuthActive: input.IsBasicAuthActive,
+		Name:              input.Name,
 	}, getOperator(ctx))
-	if err != nil {
+	if (err != nil) {
 		return nil, err
 	}
 
@@ -52,7 +52,7 @@ func (r *mutationResolver) UpdateProject(ctx context.Context, input gqlmodel.Upd
 
 func (r *mutationResolver) DeleteProject(ctx context.Context, input gqlmodel.DeleteProjectInput) (*gqlmodel.DeleteProjectPayload, error) {
 	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
-	if err != nil {
+	if (err != nil) {
 		return nil, err
 	}
 
@@ -65,12 +65,12 @@ func (r *mutationResolver) DeleteProject(ctx context.Context, input gqlmodel.Del
 
 func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunProjectInput) (*gqlmodel.RunProjectPayload, error) {
 	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
-	if err != nil {
+	if (err != nil) {
 		return nil, err
 	}
 
 	_, err = gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
-	if err != nil {
+	if (err != nil) {
 		return nil, err
 	}
 
@@ -78,7 +78,7 @@ func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunPro
 		ProjectID: pid,
 		Workflow:  gqlmodel.FromFile(&input.File),
 	}, getOperator(ctx))
-	if err != nil {
+	if (err != nil) {
 		return nil, err
 	}
 

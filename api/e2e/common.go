@@ -26,7 +26,7 @@ import (
 type Seeder func(ctx context.Context, r *repo.Container) error
 
 func init() {
-	mongotest.Env = "FLOW_DB"
+	mongotest.Env = "REEARTH_FLOW_DB"
 }
 
 func StartServer(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder) *httpexpect.Expect {

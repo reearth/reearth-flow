@@ -85,6 +85,14 @@ type CreateWorkspacePayload struct {
 	Workspace *Workspace `json:"workspace"`
 }
 
+type DeclareParameterInput struct {
+	Name     string        `json:"name"`
+	Type     ParameterType `json:"type"`
+	Required bool          `json:"required"`
+	Value    interface{}   `json:"value,omitempty"`
+	Index    *int          `json:"index,omitempty"`
+}
+
 type DeleteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
@@ -211,20 +219,33 @@ type Pagination struct {
 	Before *usecasex.Cursor `json:"before,omitempty"`
 }
 
+type Parameter struct {
+	ID        ID            `json:"id"`
+	ProjectID ID            `json:"projectId"`
+	Name      string        `json:"name"`
+	Type      ParameterType `json:"type"`
+	Required  bool          `json:"required"`
+	Value     interface{}   `json:"value"`
+	CreatedAt time.Time     `json:"createdAt"`
+	UpdatedAt time.Time     `json:"updatedAt"`
+	Index     int           `json:"index"`
+}
+
 type Project struct {
-	ID                ID          `json:"id"`
-	IsArchived        bool        `json:"isArchived"`
-	IsBasicAuthActive bool        `json:"isBasicAuthActive"`
-	BasicAuthUsername string      `json:"basicAuthUsername"`
-	BasicAuthPassword string      `json:"basicAuthPassword"`
-	CreatedAt         time.Time   `json:"createdAt"`
-	UpdatedAt         time.Time   `json:"updatedAt"`
-	Version           int         `json:"version"`
-	Name              string      `json:"name"`
-	Description       string      `json:"description"`
-	WorkspaceID       ID          `json:"workspaceId"`
-	Workspace         *Workspace  `json:"workspace,omitempty"`
-	Deployment        *Deployment `json:"deployment,omitempty"`
+	ID                ID           `json:"id"`
+	IsArchived        bool         `json:"isArchived"`
+	IsBasicAuthActive bool         `json:"isBasicAuthActive"`
+	BasicAuthUsername string       `json:"basicAuthUsername"`
+	BasicAuthPassword string       `json:"basicAuthPassword"`
+	CreatedAt         time.Time    `json:"createdAt"`
+	UpdatedAt         time.Time    `json:"updatedAt"`
+	Version           int          `json:"version"`
+	Name              string       `json:"name"`
+	Description       string       `json:"description"`
+	WorkspaceID       ID           `json:"workspaceId"`
+	Workspace         *Workspace   `json:"workspace,omitempty"`
+	Deployment        *Deployment  `json:"deployment,omitempty"`
+	Parameters        []*Parameter `json:"parameters"`
 }
 
 func (Project) IsNode()        {}
@@ -268,6 +289,10 @@ type RemoveMemberFromWorkspacePayload struct {
 
 type RemoveMyAuthInput struct {
 	Auth string `json:"auth"`
+}
+
+type RemoveParameterInput struct {
+	ParamID ID `json:"paramId"`
 }
 
 type RunProjectInput struct {
@@ -319,6 +344,15 @@ type UpdateMemberOfWorkspaceInput struct {
 
 type UpdateMemberOfWorkspacePayload struct {
 	Workspace *Workspace `json:"workspace"`
+}
+
+type UpdateParameterOrderInput struct {
+	ParamID  ID  `json:"paramId"`
+	NewIndex int `json:"newIndex"`
+}
+
+type UpdateParameterValueInput struct {
+	Value interface{} `json:"value"`
 }
 
 type UpdateProjectInput struct {
@@ -498,6 +532,73 @@ func (e *NodeType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e NodeType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type ParameterType string
+
+const (
+	ParameterTypeChoice             ParameterType = "CHOICE"
+	ParameterTypeColor              ParameterType = "COLOR"
+	ParameterTypeDatetime           ParameterType = "DATETIME"
+	ParameterTypeFileFolder         ParameterType = "FILE_FOLDER"
+	ParameterTypeMessage            ParameterType = "MESSAGE"
+	ParameterTypeNumber             ParameterType = "NUMBER"
+	ParameterTypePassword           ParameterType = "PASSWORD"
+	ParameterTypeText               ParameterType = "TEXT"
+	ParameterTypeYesNo              ParameterType = "YES_NO"
+	ParameterTypeAttributeName      ParameterType = "ATTRIBUTE_NAME"
+	ParameterTypeCoordinateSystem   ParameterType = "COORDINATE_SYSTEM"
+	ParameterTypeDatabaseConnection ParameterType = "DATABASE_CONNECTION"
+	ParameterTypeGeometry           ParameterType = "GEOMETRY"
+	ParameterTypeReprojectionFile   ParameterType = "REPROJECTION_FILE"
+	ParameterTypeWebConnection      ParameterType = "WEB_CONNECTION"
+)
+
+var AllParameterType = []ParameterType{
+	ParameterTypeChoice,
+	ParameterTypeColor,
+	ParameterTypeDatetime,
+	ParameterTypeFileFolder,
+	ParameterTypeMessage,
+	ParameterTypeNumber,
+	ParameterTypePassword,
+	ParameterTypeText,
+	ParameterTypeYesNo,
+	ParameterTypeAttributeName,
+	ParameterTypeCoordinateSystem,
+	ParameterTypeDatabaseConnection,
+	ParameterTypeGeometry,
+	ParameterTypeReprojectionFile,
+	ParameterTypeWebConnection,
+}
+
+func (e ParameterType) IsValid() bool {
+	switch e {
+	case ParameterTypeChoice, ParameterTypeColor, ParameterTypeDatetime, ParameterTypeFileFolder, ParameterTypeMessage, ParameterTypeNumber, ParameterTypePassword, ParameterTypeText, ParameterTypeYesNo, ParameterTypeAttributeName, ParameterTypeCoordinateSystem, ParameterTypeDatabaseConnection, ParameterTypeGeometry, ParameterTypeReprojectionFile, ParameterTypeWebConnection:
+		return true
+	}
+	return false
+}
+
+func (e ParameterType) String() string {
+	return string(e)
+}
+
+func (e *ParameterType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ParameterType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ParameterType", str)
+	}
+	return nil
+}
+
+func (e ParameterType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

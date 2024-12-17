@@ -1,27 +1,27 @@
 # Types
 
 type Deployment implements Node {
-  id: ID!
-  projectId: ID!
-  workspaceId: ID!
-  workflowUrl: String!
-  description: String!
-  version: String!
   createdAt: DateTime!
-  updatedAt: DateTime!
+  description: String!
+  id: ID!
   project: Project
+  projectId: ID!
+  updatedAt: DateTime!
+  version: String!
+  workflowUrl: String!
   workspace: Workspace
+  workspaceId: ID!
 }
 
 type Job implements Node {
-  id: ID!
-  deploymentId: ID!
-  workspaceId: ID!
-  status: JobStatus!
-  startedAt: DateTime!
   completedAt: DateTime
   deployment: Deployment
+  deploymentId: ID!
+  id: ID!
+  startedAt: DateTime!
+  status: JobStatus!
   workspace: Workspace
+  workspaceId: ID!
 }
 
 enum JobStatus {
