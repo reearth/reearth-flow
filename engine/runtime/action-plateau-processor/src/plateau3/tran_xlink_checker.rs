@@ -24,7 +24,7 @@ pub struct TranXLinkCheckerFactory;
 
 impl ProcessorFactory for TranXLinkCheckerFactory {
     fn name(&self) -> &str {
-        "PLATEAU.TranXLinkChecker"
+        "PLATEAU3.TranXLinkChecker"
     }
 
     fn description(&self) -> &str {

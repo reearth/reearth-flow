@@ -20,7 +20,7 @@ pub struct BuildingInstallationGeometryTypeExtractorFactory;
 
 impl ProcessorFactory for BuildingInstallationGeometryTypeExtractorFactory {
     fn name(&self) -> &str {
-        "PLATEAU.BuildingInstallationGeometryTypeExtractor"
+        "PLATEAU3.BuildingInstallationGeometryTypeExtractor"
     }
 
     fn description(&self) -> &str {

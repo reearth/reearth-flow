@@ -279,7 +279,7 @@ pub struct DomainOfDefinitionValidatorFactory;
 
 impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
     fn name(&self) -> &str {
-        "PLATEAU.DomainOfDefinitionValidator"
+        "PLATEAU3.DomainOfDefinitionValidator"
     }
 
     fn description(&self) -> &str {
