@@ -2,7 +2,11 @@ package gcpbatch
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"regexp"
+	"strings"
 
 	batch "cloud.google.com/go/batch/apiv1"
 	batchpb "cloud.google.com/go/batch/apiv1/batchpb"
@@ -14,9 +18,11 @@ import (
 )
 
 type BatchConfig struct {
-	ProjectID string
-	Region    string
-	ImageURI  string
+	BinaryPath string
+	ImageURI   string
+	ProjectID  string
+	Region     string
+	SAEmail    string
 }
 
 type BatchClient interface {
@@ -45,9 +51,24 @@ func NewBatch(ctx context.Context, config BatchConfig) (gateway.Batch, error) {
 }
 
 func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, projectID id.ProjectID) (string, error) {
-	jobName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", b.config.ProjectID, b.config.Region, jobID)
+	formattedJobID := formatJobID(jobID.String())
+
+	jobName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", b.config.ProjectID, b.config.Region, formattedJobID)
 	parent := fmt.Sprintf("projects/%s/locations/%s", b.config.ProjectID, b.config.Region)
-	workflowCommand := fmt.Sprintf("echo %q | /bin/reearth-flow run --workflow - --metadata-path %q", workflowsURL, metadataURL)
+
+	binaryPath := b.config.BinaryPath
+	if binaryPath == "" {
+		binaryPath = "reearth-flow-worker"
+	}
+
+	// Match the command line example format
+	workflowCommand := fmt.Sprintf(
+		"%s --workflow %q --metadata-path %q",
+		binaryPath,
+		workflowsURL,
+		metadataURL,
+	)
+
 	commands := []string{
 		"/bin/sh",
 		"-c",
@@ -96,12 +117,14 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		Instances: []*batchpb.AllocationPolicy_InstancePolicyOrTemplate{
 			instancePolicyOrTemplate,
 		},
+		ServiceAccount: &batchpb.ServiceAccount{
+			Email: b.config.SAEmail,
+		},
 	}
 
 	labels := map[string]string{
-		"workflow_url": workflowsURL,
-		"metadata_url": metadataURL,
-		"project_id":   projectID.String(),
+		"project_id":  projectID.String(),
+		"original_id": jobID.String(), // Store the original ID as a label
 	}
 
 	logsPolicy := &batchpb.LogsPolicy{
@@ -118,7 +141,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 
 	req := &batchpb.CreateJobRequest{
 		Parent: parent,
-		JobId:  jobID.String(),
+		JobId:  formattedJobID,
 		Job:    job,
 	}
 
@@ -209,4 +232,23 @@ func convertGCPStatusToGatewayStatus(gcpStatus batchpb.JobStatus_State) gateway.
 	default:
 		return gateway.JobStatusUnknown
 	}
+}
+
+func formatJobID(jobID string) string {
+	if regexp.MustCompile(`^[0-9]`).MatchString(jobID) {
+		jobID = "j-" + jobID
+	}
+
+	jobID = strings.ToLower(jobID)
+	jobID = regexp.MustCompile(`[^a-z0-9-]`).ReplaceAllString(jobID, "-")
+
+	jobID = strings.TrimSuffix(jobID, "-")
+
+	if len(jobID) > 63 {
+		hash := sha256.Sum256([]byte(jobID))
+		hashStr := hex.EncodeToString(hash[:])[:8]
+		jobID = jobID[:54] + "-" + hashStr
+	}
+
+	return jobID
 }

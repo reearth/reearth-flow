@@ -44,6 +44,7 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		AuthRequest: c.AuthRequest,
 		Config:      c.Config,
 		Deployment:  c.Deployment.Filtered(workspace),
+		Job:         c.Job.Filtered(workspace),
 		Lock:        c.Lock,
 		Workflow:    c.Workflow.Filtered(workspace),
 		Parameter:   c.Parameter,
