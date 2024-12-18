@@ -2086,9 +2086,7 @@
         }
       },
       "builtin": true,
-      "inputPorts": [
-        "routingPort"
-      ],
+      "inputPorts": [],
       "outputPorts": [
         "default"
       ],
@@ -2347,15 +2345,13 @@
       "inputPorts": [
         "default"
       ],
-      "outputPorts": [
-        "routingPort"
-      ],
+      "outputPorts": [],
       "categories": [
         "System"
       ]
     },
     {
-      "name": "PLATEAU.AttributeFlattener",
+      "name": "PLATEAU3.AttributeFlattener",
       "type": "processor",
       "description": "Flatten attributes for building feature",
       "parameter": null,
@@ -2371,7 +2367,7 @@
       ]
     },
     {
-      "name": "PLATEAU.BuildingInstallationGeometryTypeExtractor",
+      "name": "PLATEAU3.BuildingInstallationGeometryTypeExtractor",
       "type": "processor",
       "description": "Extracts BuildingInstallationGeometryType",
       "parameter": null,
@@ -2387,7 +2383,7 @@
       ]
     },
     {
-      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "name": "PLATEAU3.BuildingUsageAttributeValidator",
       "type": "processor",
       "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
       "parameter": null,
@@ -2405,7 +2401,7 @@
       ]
     },
     {
-      "name": "PLATEAU.DictionariesInitiator",
+      "name": "PLATEAU3.DictionariesInitiator",
       "type": "processor",
       "description": "Initializes dictionaries for PLATEAU",
       "parameter": null,
@@ -2422,7 +2418,7 @@
       ]
     },
     {
-      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "name": "PLATEAU3.DomainOfDefinitionValidator",
       "type": "processor",
       "description": "Validates domain of definition of CityGML features",
       "parameter": null,
@@ -2439,7 +2435,7 @@
       ]
     },
     {
-      "name": "PLATEAU.MaxLodExtractor",
+      "name": "PLATEAU3.MaxLodExtractor",
       "type": "processor",
       "description": "Extracts maxLod",
       "parameter": null,
@@ -2455,7 +2451,7 @@
       ]
     },
     {
-      "name": "PLATEAU.TranXLinkChecker",
+      "name": "PLATEAU3.TranXLinkChecker",
       "type": "processor",
       "description": "Check Xlink for Tran",
       "parameter": null,
@@ -2471,7 +2467,7 @@
       ]
     },
     {
-      "name": "PLATEAU.UDXFolderExtractor",
+      "name": "PLATEAU3.UDXFolderExtractor",
       "type": "processor",
       "description": "Extracts UDX folders from cityGML path",
       "parameter": null,
@@ -2488,7 +2484,7 @@
       ]
     },
     {
-      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "name": "PLATEAU3.UnmatchedXlinkDetector",
       "type": "processor",
       "description": "Detect unmatched xlink for PLATEAU",
       "parameter": null,
@@ -2506,7 +2502,7 @@
       ]
     },
     {
-      "name": "PLATEAU.XMLAttributeExtractor",
+      "name": "PLATEAU3.XMLAttributeExtractor",
       "type": "processor",
       "description": "Extracts attributes from XML fragments based on a schema definition",
       "parameter": null,

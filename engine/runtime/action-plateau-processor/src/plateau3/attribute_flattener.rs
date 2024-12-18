@@ -393,7 +393,7 @@ pub struct AttributeFlattenerFactory;
 
 impl ProcessorFactory for AttributeFlattenerFactory {
     fn name(&self) -> &str {
-        "PLATEAU.AttributeFlattener"
+        "PLATEAU3.AttributeFlattener"
     }
 
     fn description(&self) -> &str {

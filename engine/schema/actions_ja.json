@@ -2086,9 +2086,7 @@
         }
       },
       "builtin": true,
-      "inputPorts": [
-        "routingPort"
-      ],
+      "inputPorts": [],
       "outputPorts": [
         "default"
       ],
@@ -2347,15 +2345,13 @@
       "inputPorts": [
         "default"
       ],
-      "outputPorts": [
-        "routingPort"
-      ],
+      "outputPorts": [],
       "categories": [
         "System"
       ]
     },
     {
-      "name": "PLATEAU.AttributeFlattener",
+      "name": "PLATEAU3.AttributeFlattener",
       "type": "processor",
       "description": "建物フィーチャを作成するために属性をフラット化する",
       "parameter": null,
@@ -2371,7 +2367,7 @@
       ]
     },
     {
-      "name": "PLATEAU.BuildingInstallationGeometryTypeExtractor",
+      "name": "PLATEAU3.BuildingInstallationGeometryTypeExtractor",
       "type": "processor",
       "description": "建物インスタレーションジオメトリタイプ（BuildingInstallationGeometryType）を抽出する",
       "parameter": null,
@@ -2387,7 +2383,7 @@
       ]
     },
     {
-      "name": "PLATEAU.BuildingUsageAttributeValidator",
+      "name": "PLATEAU3.BuildingUsageAttributeValidator",
       "type": "processor",
       "description": "必要な属性の存在や都市コードの正しさを確認し、建物利用属性を検証する。問題があればlBldgErrorおよびcodeErrorポートを通じてエラーを出力する。",
       "parameter": null,
@@ -2405,7 +2401,7 @@
       ]
     },
     {
-      "name": "PLATEAU.DictionariesInitiator",
+      "name": "PLATEAU3.DictionariesInitiator",
       "type": "processor",
       "description": "PLATEAU用の辞書を初期化する",
       "parameter": null,
@@ -2422,7 +2418,7 @@
       ]
     },
     {
-      "name": "PLATEAU.DomainOfDefinitionValidator",
+      "name": "PLATEAU3.DomainOfDefinitionValidator",
       "type": "processor",
       "description": "CityGMLフィーチャの定義域を検証する",
       "parameter": null,
@@ -2439,7 +2435,7 @@
       ]
     },
     {
-      "name": "PLATEAU.MaxLodExtractor",
+      "name": "PLATEAU3.MaxLodExtractor",
       "type": "processor",
       "description": "maxLodを抽出する",
       "parameter": null,
@@ -2455,7 +2451,7 @@
       ]
     },
     {
-      "name": "PLATEAU.TranXLinkChecker",
+      "name": "PLATEAU3.TranXLinkChecker",
       "type": "processor",
       "description": "TranのXlinkをチェックする",
       "parameter": null,
@@ -2471,7 +2467,7 @@
       ]
     },
     {
-      "name": "PLATEAU.UDXFolderExtractor",
+      "name": "PLATEAU3.UDXFolderExtractor",
       "type": "processor",
       "description": "cityGMLパスからUDXフォルダを抽出する",
       "parameter": null,
@@ -2488,7 +2484,7 @@
       ]
     },
     {
-      "name": "PLATEAU.UnmatchedXlinkDetector",
+      "name": "PLATEAU3.UnmatchedXlinkDetector",
       "type": "processor",
       "description": "PLATEAUで一致しないxlinkを検出する",
       "parameter": null,
@@ -2506,7 +2502,7 @@
       ]
     },
     {
-      "name": "PLATEAU.XMLAttributeExtractor",
+      "name": "PLATEAU3.XMLAttributeExtractor",
       "type": "processor",
       "description": "スキーマ定義に基づいてXML断片から属性を抽出する",
       "parameter": null,

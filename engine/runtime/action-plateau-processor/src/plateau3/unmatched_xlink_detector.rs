@@ -108,7 +108,7 @@ pub struct UnmatchedXlinkDetectorFactory;
 
 impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
     fn name(&self) -> &str {
-        "PLATEAU.UnmatchedXlinkDetector"
+        "PLATEAU3.UnmatchedXlinkDetector"
     }
 
     fn description(&self) -> &str {

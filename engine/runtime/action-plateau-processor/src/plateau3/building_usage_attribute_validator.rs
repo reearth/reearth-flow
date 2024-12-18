@@ -43,7 +43,7 @@ pub struct BuildingUsageAttributeValidatorFactory;
 
 impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
     fn name(&self) -> &str {
-        "PLATEAU.BuildingUsageAttributeValidator"
+        "PLATEAU3.BuildingUsageAttributeValidator"
     }
 
     fn description(&self) -> &str {

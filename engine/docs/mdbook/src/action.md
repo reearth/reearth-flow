@@ -2078,7 +2078,6 @@ Action for first port forwarding for sub-workflows.
 }
 ```
 ### Input Ports
-* routingPort
 ### Output Ports
 * default
 ### Category
@@ -2336,11 +2335,10 @@ Action for last port forwarding for sub-workflows.
 ### Input Ports
 * default
 ### Output Ports
-* routingPort
 ### Category
 * System
 
-## PLATEAU.AttributeFlattener
+## PLATEAU3.AttributeFlattener
 ### Type
 * processor
 ### Description
@@ -2354,7 +2352,7 @@ Flatten attributes for building feature
 ### Category
 * PLATEAU
 
-## PLATEAU.BuildingInstallationGeometryTypeExtractor
+## PLATEAU3.BuildingInstallationGeometryTypeExtractor
 ### Type
 * processor
 ### Description
@@ -2368,7 +2366,7 @@ Extracts BuildingInstallationGeometryType
 ### Category
 * PLATEAU
 
-## PLATEAU.BuildingUsageAttributeValidator
+## PLATEAU3.BuildingUsageAttributeValidator
 ### Type
 * processor
 ### Description
@@ -2384,7 +2382,7 @@ This processor validates building usage attributes by checking for the presence 
 ### Category
 * PLATEAU
 
-## PLATEAU.DictionariesInitiator
+## PLATEAU3.DictionariesInitiator
 ### Type
 * processor
 ### Description
@@ -2399,7 +2397,7 @@ Initializes dictionaries for PLATEAU
 ### Category
 * PLATEAU
 
-## PLATEAU.DomainOfDefinitionValidator
+## PLATEAU3.DomainOfDefinitionValidator
 ### Type
 * processor
 ### Description
@@ -2414,7 +2412,7 @@ Validates domain of definition of CityGML features
 ### Category
 * PLATEAU
 
-## PLATEAU.MaxLodExtractor
+## PLATEAU3.MaxLodExtractor
 ### Type
 * processor
 ### Description
@@ -2428,7 +2426,7 @@ Extracts maxLod
 ### Category
 * PLATEAU
 
-## PLATEAU.TranXLinkChecker
+## PLATEAU3.TranXLinkChecker
 ### Type
 * processor
 ### Description
@@ -2442,7 +2440,7 @@ Check Xlink for Tran
 ### Category
 * PLATEAU
 
-## PLATEAU.UDXFolderExtractor
+## PLATEAU3.UDXFolderExtractor
 ### Type
 * processor
 ### Description
@@ -2457,7 +2455,7 @@ Extracts UDX folders from cityGML path
 ### Category
 * PLATEAU
 
-## PLATEAU.UnmatchedXlinkDetector
+## PLATEAU3.UnmatchedXlinkDetector
 ### Type
 * processor
 ### Description
@@ -2473,7 +2471,7 @@ Detect unmatched xlink for PLATEAU
 ### Category
 * PLATEAU
 
-## PLATEAU.XMLAttributeExtractor
+## PLATEAU3.XMLAttributeExtractor
 ### Type
 * processor
 ### Description

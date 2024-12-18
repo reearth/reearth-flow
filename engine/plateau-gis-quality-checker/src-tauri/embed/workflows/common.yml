@@ -137,9 +137,9 @@ graphs:
             meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("__value").cityGmlPath))
           }
   - id: 747d2fa3-2527-4324-b630-92fba84a548c
-    name: PLATEAU.DomainOfDefinitionValidator01
+    name: PLATEAU3.DomainOfDefinitionValidator01
     type: action
-    action: PLATEAU.DomainOfDefinitionValidator
+    action: PLATEAU3.DomainOfDefinitionValidator
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilter01
     type: action
@@ -303,9 +303,9 @@ graphs:
     with:
       filePathAttribute: path
   - id: b16c4701-3b21-48f3-8b09-cf2fc6a51f1e
-    name: PLATEAU.UDXFolderExtractor
+    name: PLATEAU3.UDXFolderExtractor
     type: action
-    action: PLATEAU.UDXFolderExtractor
+    action: PLATEAU3.UDXFolderExtractor
     with:
       cityGmlPath: |
         env.get("__value").path
@@ -345,7 +345,7 @@ graphs:
           env.get("__value").status == "VALID"
         outputPort: default
   - id: 2b51486a-7258-42a6-ac9d-41a4f9a48624
-    name: PLATEAU.DomainOfDefinitionValidator
+    name: PLATEAU3.DomainOfDefinitionValidator
     type: subGraph
     subGraphId: b7396083-17d0-47dd-be86-83caf6c5ac63
   - id: 67a54b1b-4e3c-4bd2-99a3-81a379187c09

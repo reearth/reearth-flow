@@ -81,7 +81,8 @@ export default ({
 
   const handleNodeDropOnEdge = useCallback(
     (droppedNode: Node) => {
-      if (!droppedNode.data.inputs || !droppedNode.data.outputs) return;
+      if (!droppedNode.data.outputs?.length || !droppedNode.data.inputs?.length)
+        return;
 
       let edgeCreationComplete = false;
 
