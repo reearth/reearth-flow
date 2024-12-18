@@ -179,6 +179,7 @@ type ComplexityRoot struct {
 		CreateDeployment          func(childComplexity int, input gqlmodel.CreateDeploymentInput) int
 		CreateProject             func(childComplexity int, input gqlmodel.CreateProjectInput) int
 		CreateWorkspace           func(childComplexity int, input gqlmodel.CreateWorkspaceInput) int
+		DeclareParameter          func(childComplexity int, projectID gqlmodel.ID, input gqlmodel.DeclareParameterInput) int
 		DeleteDeployment          func(childComplexity int, input gqlmodel.DeleteDeploymentInput) int
 		DeleteMe                  func(childComplexity int, input gqlmodel.DeleteMeInput) int
 		DeleteProject             func(childComplexity int, input gqlmodel.DeleteProjectInput) int
@@ -187,11 +188,14 @@ type ComplexityRoot struct {
 		RemoveAsset               func(childComplexity int, input gqlmodel.RemoveAssetInput) int
 		RemoveMemberFromWorkspace func(childComplexity int, input gqlmodel.RemoveMemberFromWorkspaceInput) int
 		RemoveMyAuth              func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
+		RemoveParameter           func(childComplexity int, input gqlmodel.RemoveParameterInput) int
 		RunProject                func(childComplexity int, input gqlmodel.RunProjectInput) int
 		Signup                    func(childComplexity int, input gqlmodel.SignupInput) int
 		UpdateDeployment          func(childComplexity int, input gqlmodel.UpdateDeploymentInput) int
 		UpdateMe                  func(childComplexity int, input gqlmodel.UpdateMeInput) int
 		UpdateMemberOfWorkspace   func(childComplexity int, input gqlmodel.UpdateMemberOfWorkspaceInput) int
+		UpdateParameterOrder      func(childComplexity int, projectID gqlmodel.ID, input gqlmodel.UpdateParameterOrderInput) int
+		UpdateParameterValue      func(childComplexity int, paramID gqlmodel.ID, input gqlmodel.UpdateParameterValueInput) int
 		UpdateProject             func(childComplexity int, input gqlmodel.UpdateProjectInput) int
 		UpdateWorkspace           func(childComplexity int, input gqlmodel.UpdateWorkspaceInput) int
 	}
@@ -201,6 +205,18 @@ type ComplexityRoot struct {
 		HasNextPage     func(childComplexity int) int
 		HasPreviousPage func(childComplexity int) int
 		StartCursor     func(childComplexity int) int
+	}
+
+	Parameter struct {
+		CreatedAt func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Index     func(childComplexity int) int
+		Name      func(childComplexity int) int
+		ProjectID func(childComplexity int) int
+		Required  func(childComplexity int) int
+		Type      func(childComplexity int) int
+		UpdatedAt func(childComplexity int) int
+		Value     func(childComplexity int) int
 	}
 
 	Project struct {
@@ -213,6 +229,7 @@ type ComplexityRoot struct {
 		IsArchived        func(childComplexity int) int
 		IsBasicAuthActive func(childComplexity int) int
 		Name              func(childComplexity int) int
+		Parameters        func(childComplexity int) int
 		UpdatedAt         func(childComplexity int) int
 		Version           func(childComplexity int) int
 		Workspace         func(childComplexity int) int
@@ -319,6 +336,10 @@ type MutationResolver interface {
 	UpdateDeployment(ctx context.Context, input gqlmodel.UpdateDeploymentInput) (*gqlmodel.DeploymentPayload, error)
 	DeleteDeployment(ctx context.Context, input gqlmodel.DeleteDeploymentInput) (*gqlmodel.DeleteDeploymentPayload, error)
 	ExecuteDeployment(ctx context.Context, input gqlmodel.ExecuteDeploymentInput) (*gqlmodel.JobPayload, error)
+	DeclareParameter(ctx context.Context, projectID gqlmodel.ID, input gqlmodel.DeclareParameterInput) (*gqlmodel.Parameter, error)
+	UpdateParameterValue(ctx context.Context, paramID gqlmodel.ID, input gqlmodel.UpdateParameterValueInput) (*gqlmodel.Parameter, error)
+	UpdateParameterOrder(ctx context.Context, projectID gqlmodel.ID, input gqlmodel.UpdateParameterOrderInput) ([]*gqlmodel.Parameter, error)
+	RemoveParameter(ctx context.Context, input gqlmodel.RemoveParameterInput) (bool, error)
 	CreateProject(ctx context.Context, input gqlmodel.CreateProjectInput) (*gqlmodel.ProjectPayload, error)
 	UpdateProject(ctx context.Context, input gqlmodel.UpdateProjectInput) (*gqlmodel.ProjectPayload, error)
 	DeleteProject(ctx context.Context, input gqlmodel.DeleteProjectInput) (*gqlmodel.DeleteProjectPayload, error)
@@ -337,6 +358,7 @@ type MutationResolver interface {
 type ProjectResolver interface {
 	Workspace(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Workspace, error)
 	Deployment(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Deployment, error)
+	Parameters(ctx context.Context, obj *gqlmodel.Project) ([]*gqlmodel.Parameter, error)
 }
 type QueryResolver interface {
 	Node(ctx context.Context, id gqlmodel.ID, typeArg gqlmodel.NodeType) (gqlmodel.Node, error)
@@ -863,6 +885,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CreateWorkspace(childComplexity, args["input"].(gqlmodel.CreateWorkspaceInput)), true
 
+	case "Mutation.declareParameter":
+		if e.complexity.Mutation.DeclareParameter == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_declareParameter_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeclareParameter(childComplexity, args["projectId"].(gqlmodel.ID), args["input"].(gqlmodel.DeclareParameterInput)), true
+
 	case "Mutation.deleteDeployment":
 		if e.complexity.Mutation.DeleteDeployment == nil {
 			break
@@ -959,6 +993,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RemoveMyAuth(childComplexity, args["input"].(gqlmodel.RemoveMyAuthInput)), true
 
+	case "Mutation.removeParameter":
+		if e.complexity.Mutation.RemoveParameter == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeParameter_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveParameter(childComplexity, args["input"].(gqlmodel.RemoveParameterInput)), true
+
 	case "Mutation.runProject":
 		if e.complexity.Mutation.RunProject == nil {
 			break
@@ -1019,6 +1065,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UpdateMemberOfWorkspace(childComplexity, args["input"].(gqlmodel.UpdateMemberOfWorkspaceInput)), true
 
+	case "Mutation.updateParameterOrder":
+		if e.complexity.Mutation.UpdateParameterOrder == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateParameterOrder_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateParameterOrder(childComplexity, args["projectId"].(gqlmodel.ID), args["input"].(gqlmodel.UpdateParameterOrderInput)), true
+
+	case "Mutation.updateParameterValue":
+		if e.complexity.Mutation.UpdateParameterValue == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateParameterValue_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateParameterValue(childComplexity, args["paramId"].(gqlmodel.ID), args["input"].(gqlmodel.UpdateParameterValueInput)), true
+
 	case "Mutation.updateProject":
 		if e.complexity.Mutation.UpdateProject == nil {
 			break
@@ -1070,6 +1140,69 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PageInfo.StartCursor(childComplexity), true
+
+	case "Parameter.createdAt":
+		if e.complexity.Parameter.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.Parameter.CreatedAt(childComplexity), true
+
+	case "Parameter.id":
+		if e.complexity.Parameter.ID == nil {
+			break
+		}
+
+		return e.complexity.Parameter.ID(childComplexity), true
+
+	case "Parameter.index":
+		if e.complexity.Parameter.Index == nil {
+			break
+		}
+
+		return e.complexity.Parameter.Index(childComplexity), true
+
+	case "Parameter.name":
+		if e.complexity.Parameter.Name == nil {
+			break
+		}
+
+		return e.complexity.Parameter.Name(childComplexity), true
+
+	case "Parameter.projectId":
+		if e.complexity.Parameter.ProjectID == nil {
+			break
+		}
+
+		return e.complexity.Parameter.ProjectID(childComplexity), true
+
+	case "Parameter.required":
+		if e.complexity.Parameter.Required == nil {
+			break
+		}
+
+		return e.complexity.Parameter.Required(childComplexity), true
+
+	case "Parameter.type":
+		if e.complexity.Parameter.Type == nil {
+			break
+		}
+
+		return e.complexity.Parameter.Type(childComplexity), true
+
+	case "Parameter.updatedAt":
+		if e.complexity.Parameter.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.Parameter.UpdatedAt(childComplexity), true
+
+	case "Parameter.value":
+		if e.complexity.Parameter.Value == nil {
+			break
+		}
+
+		return e.complexity.Parameter.Value(childComplexity), true
 
 	case "Project.basicAuthPassword":
 		if e.complexity.Project.BasicAuthPassword == nil {
@@ -1133,6 +1266,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Project.Name(childComplexity), true
+
+	case "Project.parameters":
+		if e.complexity.Project.Parameters == nil {
+			break
+		}
+
+		return e.complexity.Project.Parameters(childComplexity), true
 
 	case "Project.updatedAt":
 		if e.complexity.Project.UpdatedAt == nil {
@@ -1491,6 +1631,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateDeploymentInput,
 		ec.unmarshalInputCreateProjectInput,
 		ec.unmarshalInputCreateWorkspaceInput,
+		ec.unmarshalInputDeclareParameterInput,
 		ec.unmarshalInputDeleteDeploymentInput,
 		ec.unmarshalInputDeleteMeInput,
 		ec.unmarshalInputDeleteProjectInput,
@@ -1500,11 +1641,14 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRemoveAssetInput,
 		ec.unmarshalInputRemoveMemberFromWorkspaceInput,
 		ec.unmarshalInputRemoveMyAuthInput,
+		ec.unmarshalInputRemoveParameterInput,
 		ec.unmarshalInputRunProjectInput,
 		ec.unmarshalInputSignupInput,
 		ec.unmarshalInputUpdateDeploymentInput,
 		ec.unmarshalInputUpdateMeInput,
 		ec.unmarshalInputUpdateMemberOfWorkspaceInput,
+		ec.unmarshalInputUpdateParameterOrderInput,
+		ec.unmarshalInputUpdateParameterValueInput,
 		ec.unmarshalInputUpdateProjectInput,
 		ec.unmarshalInputUpdateWorkspaceInput,
 	)
@@ -1611,6 +1755,7 @@ scalar URL
 scalar Lang
 scalar FileSize
 scalar Cursor
+scalar JSON
 
 # Meta Type
 
@@ -1832,6 +1977,76 @@ extend type Mutation {
   executeDeployment(input: ExecuteDeploymentInput!): JobPayload
 }
 `, BuiltIn: false},
+	{Name: "../../../gql/parameter.graphql", Input: `type Parameter {
+    id: ID!
+    projectId: ID!
+    name: String!
+    type: ParameterType!
+    required: Boolean!
+    value: Any!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    index: Int! 
+}
+
+enum ParameterType {
+    CHOICE
+    COLOR
+    DATETIME
+    FILE_FOLDER
+    MESSAGE
+    NUMBER
+    PASSWORD
+    TEXT
+    YES_NO
+    ATTRIBUTE_NAME
+    COORDINATE_SYSTEM
+    DATABASE_CONNECTION
+    GEOMETRY
+    REPROJECTION_FILE
+    WEB_CONNECTION
+}
+
+input DeclareParameterInput {
+    name: String!
+    type: ParameterType!
+    required: Boolean!
+    value: Any
+    index: Int
+}
+
+input UpdateParameterValueInput {
+    value: Any!
+}
+
+input UpdateParameterOrderInput {
+    paramId: ID!
+    newIndex: Int!
+}
+
+input RemoveParameterInput {
+    paramId: ID!
+}
+
+extend type Mutation {
+    declareParameter(
+        projectId: ID!
+        input: DeclareParameterInput!
+    ): Parameter!
+
+    updateParameterValue(
+        paramId: ID!
+        input: UpdateParameterValueInput!
+    ): Parameter!
+
+     updateParameterOrder(
+        projectId: ID!
+        input: UpdateParameterOrderInput!
+    ): [Parameter!]! 
+
+    removeParameter(input: RemoveParameterInput!): Boolean!
+}
+`, BuiltIn: false},
 	{Name: "../../../gql/project.graphql", Input: `type Project implements Node {
   id: ID!
   isArchived: Boolean!
@@ -1846,6 +2061,7 @@ extend type Mutation {
   workspaceId: ID!
   workspace: Workspace
   deployment: Deployment
+  parameters: [Parameter!]!
 }
 
 # InputType
@@ -2171,6 +2387,30 @@ func (ec *executionContext) field_Mutation_createWorkspace_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_declareParameter_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["projectId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
+	var arg1 gqlmodel.DeclareParameterInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg1, err = ec.unmarshalNDeclareParameterInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeclareParameterInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_deleteDeployment_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -2291,6 +2531,21 @@ func (ec *executionContext) field_Mutation_removeMyAuth_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_removeParameter_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.RemoveParameterInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNRemoveParameterInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveParameterInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_runProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -2363,6 +2618,54 @@ func (ec *executionContext) field_Mutation_updateMemberOfWorkspace_args(ctx cont
 		}
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateParameterOrder_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["projectId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
+	var arg1 gqlmodel.UpdateParameterOrderInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg1, err = ec.unmarshalNUpdateParameterOrderInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateParameterOrderInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateParameterValue_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["paramId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("paramId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["paramId"] = arg0
+	var arg1 gqlmodel.UpdateParameterValueInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg1, err = ec.unmarshalNUpdateParameterValueInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateParameterValueInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg1
 	return args, nil
 }
 
@@ -4214,6 +4517,8 @@ func (ec *executionContext) fieldContext_Deployment_project(_ context.Context, f
 				return ec.fieldContext_Project_workspace(ctx, field)
 			case "deployment":
 				return ec.fieldContext_Project_deployment(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Project_parameters(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -6130,6 +6435,286 @@ func (ec *executionContext) fieldContext_Mutation_executeDeployment(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_declareParameter(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_declareParameter(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeclareParameter(rctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["input"].(gqlmodel.DeclareParameterInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.Parameter)
+	fc.Result = res
+	return ec.marshalNParameter2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameter(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_declareParameter(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Parameter_id(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Parameter_projectId(ctx, field)
+			case "name":
+				return ec.fieldContext_Parameter_name(ctx, field)
+			case "type":
+				return ec.fieldContext_Parameter_type(ctx, field)
+			case "required":
+				return ec.fieldContext_Parameter_required(ctx, field)
+			case "value":
+				return ec.fieldContext_Parameter_value(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Parameter_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Parameter_updatedAt(ctx, field)
+			case "index":
+				return ec.fieldContext_Parameter_index(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_declareParameter_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateParameterValue(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateParameterValue(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateParameterValue(rctx, fc.Args["paramId"].(gqlmodel.ID), fc.Args["input"].(gqlmodel.UpdateParameterValueInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.Parameter)
+	fc.Result = res
+	return ec.marshalNParameter2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameter(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateParameterValue(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Parameter_id(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Parameter_projectId(ctx, field)
+			case "name":
+				return ec.fieldContext_Parameter_name(ctx, field)
+			case "type":
+				return ec.fieldContext_Parameter_type(ctx, field)
+			case "required":
+				return ec.fieldContext_Parameter_required(ctx, field)
+			case "value":
+				return ec.fieldContext_Parameter_value(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Parameter_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Parameter_updatedAt(ctx, field)
+			case "index":
+				return ec.fieldContext_Parameter_index(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateParameterValue_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateParameterOrder(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateParameterOrder(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateParameterOrder(rctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["input"].(gqlmodel.UpdateParameterOrderInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlmodel.Parameter)
+	fc.Result = res
+	return ec.marshalNParameter2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateParameterOrder(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Parameter_id(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Parameter_projectId(ctx, field)
+			case "name":
+				return ec.fieldContext_Parameter_name(ctx, field)
+			case "type":
+				return ec.fieldContext_Parameter_type(ctx, field)
+			case "required":
+				return ec.fieldContext_Parameter_required(ctx, field)
+			case "value":
+				return ec.fieldContext_Parameter_value(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Parameter_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Parameter_updatedAt(ctx, field)
+			case "index":
+				return ec.fieldContext_Parameter_index(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateParameterOrder_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeParameter(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeParameter(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveParameter(rctx, fc.Args["input"].(gqlmodel.RemoveParameterInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeParameter(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeParameter_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_createProject(ctx, field)
 	if err != nil {
@@ -7088,6 +7673,402 @@ func (ec *executionContext) fieldContext_PageInfo_hasPreviousPage(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Parameter_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Parameter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Parameter_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Parameter_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Parameter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Parameter_projectId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Parameter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Parameter_projectId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Parameter_projectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Parameter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Parameter_name(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Parameter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Parameter_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Parameter_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Parameter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Parameter_type(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Parameter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Parameter_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ParameterType)
+	fc.Result = res
+	return ec.marshalNParameterType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Parameter_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Parameter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ParameterType does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Parameter_required(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Parameter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Parameter_required(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Required, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Parameter_required(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Parameter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Parameter_value(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Parameter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Parameter_value(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(interface{})
+	fc.Result = res
+	return ec.marshalNAny2interface(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Parameter_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Parameter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Any does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Parameter_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Parameter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Parameter_createdAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Parameter_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Parameter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Parameter_updatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Parameter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Parameter_updatedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UpdatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Parameter_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Parameter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Parameter_index(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Parameter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Parameter_index(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Index, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Parameter_index(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Parameter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_id(ctx, field)
 	if err != nil {
@@ -7690,6 +8671,70 @@ func (ec *executionContext) fieldContext_Project_deployment(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_parameters(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_parameters(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Project().Parameters(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlmodel.Parameter)
+	fc.Result = res
+	return ec.marshalNParameter2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_parameters(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Parameter_id(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Parameter_projectId(ctx, field)
+			case "name":
+				return ec.fieldContext_Parameter_name(ctx, field)
+			case "type":
+				return ec.fieldContext_Parameter_type(ctx, field)
+			case "required":
+				return ec.fieldContext_Parameter_required(ctx, field)
+			case "value":
+				return ec.fieldContext_Parameter_value(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Parameter_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Parameter_updatedAt(ctx, field)
+			case "index":
+				return ec.fieldContext_Parameter_index(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectConnection_edges(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectConnection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProjectConnection_edges(ctx, field)
 	if err != nil {
@@ -7805,6 +8850,8 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 				return ec.fieldContext_Project_workspace(ctx, field)
 			case "deployment":
 				return ec.fieldContext_Project_deployment(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Project_parameters(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -8016,6 +9063,8 @@ func (ec *executionContext) fieldContext_ProjectEdge_node(_ context.Context, fie
 				return ec.fieldContext_Project_workspace(ctx, field)
 			case "deployment":
 				return ec.fieldContext_Project_deployment(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Project_parameters(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -8088,6 +9137,8 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_workspace(ctx, field)
 			case "deployment":
 				return ec.fieldContext_Project_deployment(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Project_parameters(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
@@ -11859,6 +12910,61 @@ func (ec *executionContext) unmarshalInputCreateWorkspaceInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputDeclareParameterInput(ctx context.Context, obj interface{}) (gqlmodel.DeclareParameterInput, error) {
+	var it gqlmodel.DeclareParameterInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "type", "required", "value", "index"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNParameterType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "required":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("required"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Required = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalOAny2interface(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		case "index":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("index"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Index = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputDeleteDeploymentInput(ctx context.Context, obj interface{}) (gqlmodel.DeleteDeploymentInput, error) {
 	var it gqlmodel.DeleteDeploymentInput
 	asMap := map[string]interface{}{}
@@ -12130,6 +13236,33 @@ func (ec *executionContext) unmarshalInputRemoveMyAuthInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRemoveParameterInput(ctx context.Context, obj interface{}) (gqlmodel.RemoveParameterInput, error) {
+	var it gqlmodel.RemoveParameterInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"paramId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "paramId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("paramId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParamID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, obj interface{}) (gqlmodel.RunProjectInput, error) {
 	var it gqlmodel.RunProjectInput
 	asMap := map[string]interface{}{}
@@ -12350,6 +13483,67 @@ func (ec *executionContext) unmarshalInputUpdateMemberOfWorkspaceInput(ctx conte
 				return it, err
 			}
 			it.Role = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateParameterOrderInput(ctx context.Context, obj interface{}) (gqlmodel.UpdateParameterOrderInput, error) {
+	var it gqlmodel.UpdateParameterOrderInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"paramId", "newIndex"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "paramId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("paramId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParamID = data
+		case "newIndex":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("newIndex"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NewIndex = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateParameterValueInput(ctx context.Context, obj interface{}) (gqlmodel.UpdateParameterValueInput, error) {
+	var it gqlmodel.UpdateParameterValueInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"value"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalNAny2interface(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
 		}
 	}
 
@@ -13668,6 +14862,34 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_executeDeployment(ctx, field)
 			})
+		case "declareParameter":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_declareParameter(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateParameterValue":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateParameterValue(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateParameterOrder":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateParameterOrder(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeParameter":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeParameter(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createProject":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createProject(ctx, field)
@@ -13769,6 +14991,85 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "hasPreviousPage":
 			out.Values[i] = ec._PageInfo_hasPreviousPage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var parameterImplementors = []string{"Parameter"}
+
+func (ec *executionContext) _Parameter(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.Parameter) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, parameterImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Parameter")
+		case "id":
+			out.Values[i] = ec._Parameter_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "projectId":
+			out.Values[i] = ec._Parameter_projectId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._Parameter_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._Parameter_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "required":
+			out.Values[i] = ec._Parameter_required(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._Parameter_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._Parameter_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._Parameter_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "index":
+			out.Values[i] = ec._Parameter_index(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -13904,6 +15205,42 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 					}
 				}()
 				res = ec._Project_deployment(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "parameters":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Project_parameters(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -15188,6 +16525,27 @@ func (ec *executionContext) unmarshalNAddMemberToWorkspaceInput2githubᚗcomᚋr
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNAny2interface(ctx context.Context, v interface{}) (interface{}, error) {
+	res, err := graphql.UnmarshalAny(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAny2interface(ctx context.Context, sel ast.SelectionSet, v interface{}) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	res := graphql.MarshalAny(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) marshalNAsset2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐAsset(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Asset) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -15367,6 +16725,11 @@ func (ec *executionContext) marshalNDateTime2timeᚐTime(ctx context.Context, se
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNDeclareParameterInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeclareParameterInput(ctx context.Context, v interface{}) (gqlmodel.DeclareParameterInput, error) {
+	res, err := ec.unmarshalInputDeclareParameterInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNDeleteDeploymentInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeleteDeploymentInput(ctx context.Context, v interface{}) (gqlmodel.DeleteDeploymentInput, error) {
@@ -15797,6 +17160,74 @@ func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋreearthᚋreearth
 	return ec._PageInfo(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNParameter2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameter(ctx context.Context, sel ast.SelectionSet, v gqlmodel.Parameter) graphql.Marshaler {
+	return ec._Parameter(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNParameter2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Parameter) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNParameter2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameter(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNParameter2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameter(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Parameter) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Parameter(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNParameterType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx context.Context, v interface{}) (gqlmodel.ParameterType, error) {
+	var res gqlmodel.ParameterType
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNParameterType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx context.Context, sel ast.SelectionSet, v gqlmodel.ParameterType) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNProject2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProject(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Project) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -15928,6 +17359,11 @@ func (ec *executionContext) unmarshalNRemoveMyAuthInput2githubᚗcomᚋreearth�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNRemoveParameterInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveParameterInput(ctx context.Context, v interface{}) (gqlmodel.RemoveParameterInput, error) {
+	res, err := ec.unmarshalInputRemoveParameterInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNRole2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRole(ctx context.Context, v interface{}) (gqlmodel.Role, error) {
 	var res gqlmodel.Role
 	err := res.UnmarshalGQL(v)
@@ -16007,6 +17443,16 @@ func (ec *executionContext) unmarshalNUpdateMeInput2githubᚗcomᚋreearthᚋree
 
 func (ec *executionContext) unmarshalNUpdateMemberOfWorkspaceInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateMemberOfWorkspaceInput(ctx context.Context, v interface{}) (gqlmodel.UpdateMemberOfWorkspaceInput, error) {
 	res, err := ec.unmarshalInputUpdateMemberOfWorkspaceInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateParameterOrderInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateParameterOrderInput(ctx context.Context, v interface{}) (gqlmodel.UpdateParameterOrderInput, error) {
+	res, err := ec.unmarshalInputUpdateParameterOrderInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateParameterValueInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateParameterValueInput(ctx context.Context, v interface{}) (gqlmodel.UpdateParameterValueInput, error) {
+	res, err := ec.unmarshalInputUpdateParameterValueInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -16411,6 +17857,22 @@ func (ec *executionContext) marshalOAddMemberToWorkspacePayload2ᚖgithubᚗcom�
 		return graphql.Null
 	}
 	return ec._AddMemberToWorkspacePayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOAny2interface(ctx context.Context, v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalAny(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAny2interface(ctx context.Context, sel ast.SelectionSet, v interface{}) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalAny(v)
+	return res
 }
 
 func (ec *executionContext) marshalOAsset2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐAsset(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Asset) graphql.Marshaler {

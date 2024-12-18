@@ -1,17 +1,17 @@
 type Project implements Node {
+  basicAuthPassword: String!
+  basicAuthUsername: String!
+  createdAt: DateTime!
+  description: String!
   id: ID!
   isArchived: Boolean!
   isBasicAuthActive: Boolean!
-  basicAuthUsername: String!
-  basicAuthPassword: String!
-  createdAt: DateTime!
+  name: String!
+  parameters: [Parameter!]!
   updatedAt: DateTime!
   version: Int!
-  name: String!
-  description: String!
-  workspaceId: ID!
   workspace: Workspace
-  deployment: Deployment
+  workspaceId: ID!
 }
 
 # InputType
