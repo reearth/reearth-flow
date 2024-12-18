@@ -1,5 +1,5 @@
 import { X } from "@phosphor-icons/react";
-import { memo, MouseEvent, useCallback } from "react";
+import { memo, useCallback } from "react";
 
 import { IconButton } from "@flow/components";
 import { Node } from "@flow/types";
@@ -14,9 +14,7 @@ type Props = {
 const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
   // This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
   // to unlock the node when user wants to close the right panel. - @KaWaite
-  const handleClick = useCallback((e: MouseEvent) => {
-    e.stopPropagation();
-
+  const closePanel = useCallback(() => {
     // react-flow__pane is the classname of the div inside react-flow that has the click event
     // https://github.com/xyflow/xyflow/blob/71db83761c245493d44e74311e10cc6465bf8387/packages/react/src/container/Pane/index.tsx#L249
     const paneElement = document.getElementsByClassName("react-flow__pane")[0];
@@ -24,6 +22,17 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
     const clickEvent = new Event("click", { bubbles: true, cancelable: true });
     paneElement.dispatchEvent(clickEvent);
   }, []);
+
+  const handleParamsSubmit = useCallback(
+    (nodeId: string, data: any) => {
+      onParamsSubmit(nodeId, data);
+      // Ensures that the right panel closes after the submit button is clicked
+      setTimeout(() => {
+        closePanel();
+      }, 0);
+    },
+    [onParamsSubmit, closePanel],
+  );
 
   return (
     <>
@@ -39,7 +48,7 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
           <IconButton
             className="relative before:absolute before:inset-y-0 before:right-0 before:z-[-1] before:bg-success before:content-['']"
             icon={<X className="size-[30px]" weight="thin" />}
-            onClick={handleClick}
+            onClick={closePanel}
           />
         </div>
       </div>
@@ -58,7 +67,7 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
               nodeId={selected.id}
               nodeMeta={selected.data}
               nodeType={selected.type}
-              onSubmit={onParamsSubmit}
+              onSubmit={handleParamsSubmit}
             />
           )}
         </div>

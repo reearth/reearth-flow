@@ -41,7 +41,6 @@ const ParamEditor: React.FC<Props> = ({
   const { action } = useGetActionById(nodeMeta.name);
 
   const handleSubmit = (data: any) => onSubmit(nodeId, data);
-
   return (
     <div>
       <div className="mb-3 flex justify-between gap-4">
@@ -69,6 +68,7 @@ const ParamEditor: React.FC<Props> = ({
         </TabsList>
         <TabsContent value="params">
           <div className="rounded border bg-card p-3">
+            {!action?.parameter && <p>{t("No Parameters Available")}</p>}
             {action && (
               <SchemaForm
                 schema={action.parameter}
