@@ -17,6 +17,7 @@ type JobDocument struct {
 	Status       string
 	StartedAt    time.Time
 	CompletedAt  *time.Time
+	MetadataURL  string
 }
 
 type JobConsumer = Consumer[*JobDocument, *job.Job]
@@ -38,6 +39,7 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		Status:       string(j.Status()),
 		StartedAt:    j.StartedAt(),
 		CompletedAt:  j.CompletedAt(),
+		MetadataURL:  j.MetadataURL(),
 	}, jid
 }
 
@@ -60,7 +62,8 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		Deployment(did).
 		Workspace(wid).
 		Status(job.Status(d.Status)).
-		StartedAt(d.StartedAt)
+		StartedAt(d.StartedAt).
+		MetadataURL(d.MetadataURL)
 
 	if d.CompletedAt != nil {
 		j = j.CompletedAt(d.CompletedAt)

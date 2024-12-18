@@ -227,7 +227,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 	// }
 
 	jobID := id.NewJobID()
-	_, err = i.batch.SubmitJob(ctx, jobID, p.Workflow.Path, p.ProjectID)
+	_, err = i.batch.SubmitJob(ctx, jobID, p.Workflow.Path, "", p.ProjectID)
 	if err != nil {
 		return false, fmt.Errorf("failed to submit job: %v", err)
 	}

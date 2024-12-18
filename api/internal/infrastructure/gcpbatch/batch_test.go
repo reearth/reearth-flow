@@ -62,7 +62,7 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 	mockClient := new(mockBatchClient)
 	batchRepo := &BatchRepo{
 		client: mockClient,
-		config: Config{
+		config: BatchConfig{
 			ProjectID: "test-project",
 			Region:    "us-central1",
 			ImageURI:  "gcr.io/test-project/reearth-flow:latest",
@@ -72,12 +72,13 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 	jobID, _ := id.JobIDFrom("test-job-id")
 	projectID, _ := id.ProjectIDFrom("test-project-id")
 	workflowURL := "gs://test-bucket/test-workflow.yaml"
+	metadataURL := "gs://test-bucket/test-metadata.json"
 
 	expectedJobName := "projects/test-project/locations/us-central1/jobs/test-job-id"
 
 	mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).Return(&batchpb.Job{Name: expectedJobName}, nil)
 
-	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, projectID)
+	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, projectID)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedJobName, jobName)
@@ -89,7 +90,7 @@ func TestBatchRepo_GetJobStatus(t *testing.T) {
 	mockClient := new(mockBatchClient)
 	batchRepo := &BatchRepo{
 		client: mockClient,
-		config: Config{},
+		config: BatchConfig{},
 	}
 
 	jobName := "projects/test-project/locations/us-central1/jobs/test-job-id"
@@ -109,7 +110,7 @@ func TestBatchRepo_Close(t *testing.T) {
 	mockClient := new(mockBatchClient)
 	batchRepo := &BatchRepo{
 		client: mockClient,
-		config: Config{},
+		config: BatchConfig{},
 	}
 
 	mockClient.On("Close").Return(nil)

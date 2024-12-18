@@ -34,7 +34,7 @@ func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, string) {
 		ID:          did,
 		ProjectID:   d.Project().String(),
 		WorkspaceID: d.Workspace().String(),
-		WorkflowURL: d.WorkflowUrl(),
+		WorkflowURL: d.WorkflowURL(),
 		Description: d.Description(),
 		Version:     d.Version(),
 		UpdatedAt:   d.UpdatedAt(),

@@ -51,8 +51,8 @@ func (b *DeploymentBuilder) Workspace(workspace WorkspaceID) *DeploymentBuilder 
 	return b
 }
 
-func (b *DeploymentBuilder) WorkflowURL(workflowUrl string) *DeploymentBuilder {
-	b.d.workflowUrl = workflowUrl
+func (b *DeploymentBuilder) WorkflowURL(workflowURL string) *DeploymentBuilder {
+	b.d.workflowURL = workflowURL
 	return b
 }
 
