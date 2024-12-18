@@ -3639,7 +3639,7 @@ __metadata:
     "@types/lodash-es": "npm:4.17.12"
     "@types/react": "npm:18.3.12"
     "@types/react-dom": "npm:18.3.1"
-    "@types/uuid": "npm:^10.0.0"
+    "@types/uuid": "npm:10.0.0"
     "@vitejs/plugin-react": "npm:4.3.4"
     "@vitest/coverage-v8": "npm:2.1.8"
     "@xyflow/react": "npm:12.3.6"
@@ -3681,7 +3681,7 @@ __metadata:
     ts-node: "npm:10.9.2"
     typescript: "npm:5.6.3"
     use-resize-observer: "npm:9.1.0"
-    uuid: "npm:^11.0.3"
+    uuid: "npm:11.0.3"
     vite: "npm:5.4.11"
     vitest: "npm:2.1.8"
     y-websocket: "npm:2.0.4"
@@ -4900,7 +4900,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/uuid@npm:^10.0.0":
+"@types/uuid@npm:10.0.0":
   version: 10.0.0
   resolution: "@types/uuid@npm:10.0.0"
   checksum: 10c0/9a1404bf287164481cb9b97f6bb638f78f955be57c40c6513b7655160beb29df6f84c915aaf4089a1559c216557dc4d2f79b48d978742d3ae10b937420ddac60
@@ -13795,7 +13795,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"uuid@npm:^11.0.3":
+"uuid@npm:11.0.3":
   version: 11.0.3
   resolution: "uuid@npm:11.0.3"
   bin:
