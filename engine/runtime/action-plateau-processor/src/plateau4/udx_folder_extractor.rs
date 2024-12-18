@@ -343,7 +343,7 @@ fn gen_codelists_and_schemas_path(
                 .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?
             {
                 storage
-                    .copy_sync(dir.path().as_path(), dir_codelists.path().as_path())
+                    .copy_sync(dir.path().as_path(), dir_schemas.path().as_path())
                     .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?;
             }
         }
