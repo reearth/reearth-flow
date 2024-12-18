@@ -81,8 +81,18 @@ export default ({
 
   const handleNodeDropOnEdge = useCallback(
     (droppedNode: Node) => {
-      if (!droppedNode.data.outputs?.length || !droppedNode.data.inputs?.length)
+      if (
+        droppedNode.type === "subworkflow" &&
+        (!droppedNode.data.pseudoOutputs?.length ||
+          !droppedNode.data.pseudoInputs?.length)
+      ) {
         return;
+      } else if (
+        droppedNode.type !== "subworkflow" &&
+        (!droppedNode.data.outputs?.length || !droppedNode.data.inputs?.length)
+      ) {
+        return;
+      }
 
       let edgeCreationComplete = false;
 
