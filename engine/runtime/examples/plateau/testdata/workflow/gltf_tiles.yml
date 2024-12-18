@@ -4,14 +4,7 @@ name: "gltf_tiles"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   cityGmlPath:
-  cityCode:
-  codelistsPath:
-  schemasPath:
-  schemaJson: !include ../config/schema.txt
-  targetPackages:
-    - bldg
-  addNsprefixToFeatureTypes: true
-  extractDmGeometryAsXmlFragment: false
+  outputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -38,11 +31,10 @@ graphs:
             env.get("__value").cityGmlPath
 
       - id: 41d69f1f-2a4d-4bc1-a5d0-17569827357c
-        name: FileWriter
+        name: GltfWriter
         type: action
-        action: FileWriter
+        action: GltfWriter
         with:
-          format: gltf
           output: |
             env.get("outputPath")
 

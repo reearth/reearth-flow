@@ -43,9 +43,9 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
           }}
           minWidth={minSize.width}
           minHeight={minSize.height}
-          onResize={(r) => {
-            console.log("ADS: ", r);
-          }}
+          // onResize={(r) => {
+          //   console.log("ADS: ", r);
+          // }}
         />
       )}
       <div
@@ -61,6 +61,10 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
         </div>
         <textarea
           defaultValue={data.content}
+          style={{
+            minWidth: "inherit",
+            minHeight: "inherit",
+          }}
           className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none"
         />
       </div>
