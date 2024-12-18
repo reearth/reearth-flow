@@ -13,7 +13,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
-	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -226,23 +225,6 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	// Add detailed logging here
-	log.Debugfc(ctx, "Post-save values:\n"+
-		"Job ID: %v\n"+
-		"Job Metadata URL: %v\n"+
-		"Deployment Workflow URL: %v\n"+
-		"Deployment Project: %v",
-		j.ID(),
-		j.MetadataURL(),
-		d.WorkflowURL(),
-		d.Project())
-
-	if j.MetadataURL() == "" {
-		log.Errorfc(ctx, "Job Metadata URL is empty")
-	}
-	if d.WorkflowURL() == "" {
-		log.Errorfc(ctx, "Workflow URL is empty")
-	}
 	_, err = i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), d.Project())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed

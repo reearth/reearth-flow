@@ -8,7 +8,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
@@ -91,24 +90,12 @@ func (r *Job) CountByWorkspace(ctx context.Context, ws accountdomain.WorkspaceID
 }
 
 func (r *Job) Save(ctx context.Context, j *job.Job) error {
-	// Debug the input job
-	log.Debugfc(ctx, "Saving job - ID: ")
-
 	if !r.f.CanWrite(j.Workspace()) {
-		log.Errorfc(ctx, "Cannot write to workspace: %v", j.Workspace())
 		return repo.ErrOperationDenied
 	}
-
 	doc, id := mongodoc.NewJob(j)
 
-	// Debug the created document
-	log.Debugfc(ctx, "Created MongoDB document - ID: %v, DeploymentID: %v, WorkspaceID: %v, MetadataURL: %v",
-		doc.ID, doc.DeploymentID, doc.WorkspaceID, doc.MetadataURL)
-
 	err := r.client.SaveOne(ctx, id, doc)
-	if err != nil {
-		log.Errorfc(ctx, "Failed to save document: %v", err)
-	}
 	return err
 }
 

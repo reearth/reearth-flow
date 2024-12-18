@@ -59,7 +59,7 @@ func TestJobIDFrom(t *testing.T) {
 
 func TestMustJobID(t *testing.T) {
 	validUUID := "123e4567-e89b-12d3-a456-426614174000"
-	
+
 	t.Run("valid uuid", func(t *testing.T) {
 		assert.NotPanics(t, func() {
 			id := MustJobID(validUUID)
@@ -76,7 +76,7 @@ func TestMustJobID(t *testing.T) {
 
 func TestJobIDFromRef(t *testing.T) {
 	validUUID := "123e4567-e89b-12d3-a456-426614174000"
-	
+
 	t.Run("nil input", func(t *testing.T) {
 		assert.Nil(t, JobIDFromRef(nil))
 	})
@@ -167,7 +167,7 @@ func TestJobID_CloneRef(t *testing.T) {
 
 func TestJobIDListFrom(t *testing.T) {
 	validUUID := "123e4567-e89b-12d3-a456-426614174000"
-	
+
 	t.Run("nil input", func(t *testing.T) {
 		list, err := JobIDListFrom(nil)
 		assert.NoError(t, err)
