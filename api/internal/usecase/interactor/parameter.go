@@ -27,7 +27,7 @@ func NewParameter(r *repo.Container) interfaces.Parameter {
 	}
 }
 
-func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.DeclareParameterInput, operator *usecase.Operator) (*parameter.Parameter, error) {
+func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.DeclareParameterParam, operator *usecase.Operator) (*parameter.Parameter, error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func (i *Parameter) RemoveParameter(ctx context.Context, pid id.ParameterID, ope
 	return pid, nil
 }
 
-func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.UpdateParameterOrderInput, operator *usecase.Operator) (*parameter.ParameterList, error) {
+func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.UpdateParameterOrderParam, operator *usecase.Operator) (*parameter.ParameterList, error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -186,7 +186,7 @@ func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.U
 	return params, nil
 }
 
-func (i *Parameter) UpdateParameterValue(ctx context.Context, param interfaces.UpdateParameterValueInput, operator *usecase.Operator) (*parameter.Parameter, error) {
+func (i *Parameter) UpdateParameterValue(ctx context.Context, param interfaces.UpdateParameterValueParam, operator *usecase.Operator) (*parameter.Parameter, error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return nil, err

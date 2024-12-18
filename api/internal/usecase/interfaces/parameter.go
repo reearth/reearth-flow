@@ -8,7 +8,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 )
 
-type DeclareParameterInput struct {
+type DeclareParameterParam struct {
 	Index     *int // Optional, will be set to last position if nil
 	Name      string
 	ProjectID id.ProjectID
@@ -17,22 +17,22 @@ type DeclareParameterInput struct {
 	Value     interface{}
 }
 
-type UpdateParameterOrderInput struct {
+type UpdateParameterOrderParam struct {
 	NewIndex  int
 	ParamID   id.ParameterID
 	ProjectID id.ProjectID
 }
 
-type UpdateParameterValueInput struct {
+type UpdateParameterValueParam struct {
 	ParamID id.ParameterID
 	Value   interface{}
 }
 
 type Parameter interface {
-	DeclareParameter(context.Context, DeclareParameterInput, *usecase.Operator) (*parameter.Parameter, error)
+	DeclareParameter(context.Context, DeclareParameterParam, *usecase.Operator) (*parameter.Parameter, error)
 	Fetch(context.Context, id.ParameterIDList, *usecase.Operator) (*parameter.ParameterList, error)
 	FetchByProject(context.Context, id.ProjectID, *usecase.Operator) (*parameter.ParameterList, error)
 	RemoveParameter(context.Context, id.ParameterID, *usecase.Operator) (id.ParameterID, error)
-	UpdateParameterOrder(context.Context, UpdateParameterOrderInput, *usecase.Operator) (*parameter.ParameterList, error)
-	UpdateParameterValue(context.Context, UpdateParameterValueInput, *usecase.Operator) (*parameter.Parameter, error)
+	UpdateParameterOrder(context.Context, UpdateParameterOrderParam, *usecase.Operator) (*parameter.ParameterList, error)
+	UpdateParameterValue(context.Context, UpdateParameterValueParam, *usecase.Operator) (*parameter.Parameter, error)
 }

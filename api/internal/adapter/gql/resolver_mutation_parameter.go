@@ -14,7 +14,7 @@ func (r *mutationResolver) DeclareParameter(ctx context.Context, projectID gqlmo
 		return nil, err
 	}
 
-	res, err := usecases(ctx).Parameter.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	res, err := usecases(ctx).Parameter.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		Index:     input.Index,
 		Name:      input.Name,
 		ProjectID: pid,
@@ -35,7 +35,7 @@ func (r *mutationResolver) UpdateParameterValue(ctx context.Context, paramID gql
 		return nil, err
 	}
 
-	res, err := usecases(ctx).Parameter.UpdateParameterValue(ctx, interfaces.UpdateParameterValueInput{
+	res, err := usecases(ctx).Parameter.UpdateParameterValue(ctx, interfaces.UpdateParameterValueParam{
 		ParamID: pid,
 		Value:   input.Value,
 	}, getOperator(ctx))
@@ -57,7 +57,7 @@ func (r *mutationResolver) UpdateParameterOrder(ctx context.Context, projectID g
 		return nil, err
 	}
 
-	res, err := usecases(ctx).Parameter.UpdateParameterOrder(ctx, interfaces.UpdateParameterOrderInput{
+	res, err := usecases(ctx).Parameter.UpdateParameterOrder(ctx, interfaces.UpdateParameterOrderParam{
 		NewIndex:  input.NewIndex,
 		ParamID:   paramID,
 		ProjectID: pid,

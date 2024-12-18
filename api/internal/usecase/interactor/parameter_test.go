@@ -63,7 +63,7 @@ func TestParameter_DeclareParameter(t *testing.T) {
 	typ := parameter.TypeText
 	val := "initial value"
 	req := true
-	p, err := i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	p, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      name,
 		Type:      typ,
@@ -85,7 +85,7 @@ func TestParameter_DeclareParameter_NonexistentProject(t *testing.T) {
 
 	// Use a random project ID that doesn't exist
 	nonexistentPID := id.NewProjectID()
-	p, err := i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	p, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: nonexistentPID,
 		Name:      "param2",
 		Type:      parameter.TypeNumber,
@@ -99,7 +99,7 @@ func TestParameter_Fetch(t *testing.T) {
 	i, ctx, _, pid, op := setupParameterInteractor()
 
 	// Create a few parameters
-	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      "param1",
 		Type:      parameter.TypeText,
@@ -107,7 +107,7 @@ func TestParameter_Fetch(t *testing.T) {
 	}, op)
 	assert.NoError(t, err)
 
-	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      "param2",
 		Type:      parameter.TypeNumber,
@@ -125,7 +125,7 @@ func TestParameter_FetchByProject(t *testing.T) {
 	i, ctx, _, pid, op := setupParameterInteractor()
 
 	// Create parameters under the project
-	_, err := i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	_, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      "param1",
 		Type:      parameter.TypeText,
@@ -133,7 +133,7 @@ func TestParameter_FetchByProject(t *testing.T) {
 	}, op)
 	assert.NoError(t, err)
 
-	_, err = i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	_, err = i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      "param2",
 		Type:      parameter.TypeNumber,
@@ -151,7 +151,7 @@ func TestParameter_RemoveParameter(t *testing.T) {
 	i, ctx, _, pid, op := setupParameterInteractor()
 
 	// Create parameters for removal test
-	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      "param1",
 		Type:      parameter.TypeText,
@@ -159,7 +159,7 @@ func TestParameter_RemoveParameter(t *testing.T) {
 	}, op)
 	assert.NoError(t, err)
 
-	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      "param2",
 		Type:      parameter.TypeText,
@@ -184,7 +184,7 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 	i, ctx, _, pid, op := setupParameterInteractor()
 
 	// Create parameters in some order: param1 (0), param2 (1), param3 (2)
-	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      "param1",
 		Type:      parameter.TypeText,
@@ -192,7 +192,7 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 	}, op)
 	assert.NoError(t, err)
 
-	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      "param2",
 		Type:      parameter.TypeText,
@@ -200,7 +200,7 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 	}, op)
 	assert.NoError(t, err)
 
-	p3, err := i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	p3, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      "param3",
 		Type:      parameter.TypeText,
@@ -209,7 +209,7 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Move param3 to the front (index 0)
-	updatedParams, err := i.UpdateParameterOrder(ctx, interfaces.UpdateParameterOrderInput{
+	updatedParams, err := i.UpdateParameterOrder(ctx, interfaces.UpdateParameterOrderParam{
 		ProjectID: pid,
 		ParamID:   p3.ID(),
 		NewIndex:  0,
@@ -232,7 +232,7 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 func TestParameter_UpdateParameterValue(t *testing.T) {
 	i, ctx, _, pid, op := setupParameterInteractor()
 
-	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterInput{
+	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      "param1",
 		Type:      parameter.TypeText,
@@ -242,7 +242,7 @@ func TestParameter_UpdateParameterValue(t *testing.T) {
 
 	// Update param1's value
 	newVal := "new value"
-	updatedParam, err := i.UpdateParameterValue(ctx, interfaces.UpdateParameterValueInput{
+	updatedParam, err := i.UpdateParameterValue(ctx, interfaces.UpdateParameterValueParam{
 		ParamID: p1.ID(),
 		Value:   newVal,
 	}, op)
@@ -256,7 +256,7 @@ func TestParameter_UpdateParameterValue_NotFound(t *testing.T) {
 
 	// Try updating a parameter that does not exist
 	nonexistentParamID := id.NewParameterID()
-	updatedParam, err := i.UpdateParameterValue(ctx, interfaces.UpdateParameterValueInput{
+	updatedParam, err := i.UpdateParameterValue(ctx, interfaces.UpdateParameterValueParam{
 		ParamID: nonexistentParamID,
 		Value:   "something",
 	}, op)

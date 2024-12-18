@@ -7,7 +7,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearthx/mongox"
-	"github.com/reearth/reearthx/usecasex"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -53,7 +52,7 @@ func (r *Parameter) FindByIDs(ctx context.Context, ids id.ParameterIDList) (*par
 	return parameter.NewParameterList(res), nil
 }
 
-func (r *Parameter) FindByProject(ctx context.Context, pid id.ProjectID) (*parameter.ParameterList, *usecasex.PageInfo, error) {
+func (r *Parameter) FindByProject(ctx context.Context, pid id.ProjectID) (*parameter.ParameterList, error) {
 	filter := bson.M{"project": pid.String()}
 
 	opt := options.Find()
@@ -61,15 +60,15 @@ func (r *Parameter) FindByProject(ctx context.Context, pid id.ProjectID) (*param
 
 	res, err := r.find(ctx, filter, opt)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	pl := parameter.NewParameterList(res)
 	if pl == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 
-	return pl, nil, nil
+	return pl, nil
 }
 
 func (r *Parameter) Save(ctx context.Context, param *parameter.Parameter) error {
