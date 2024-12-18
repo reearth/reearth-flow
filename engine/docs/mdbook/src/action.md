@@ -2487,6 +2487,40 @@ Extracts attributes from XML fragments based on a schema definition
 ### Category
 * PLATEAU
 
+## PLATEAU4.UDXFolderExtractor
+### Type
+* processor
+### Description
+Extracts UDX folders from cityGML path
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UDXFolderExtractorParam",
+  "type": "object",
+  "required": [
+    "cityGmlPath"
+  ],
+  "properties": {
+    "cityGmlPath": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* PLATEAU
+
 ## PlanarityFilter
 ### Type
 * processor
