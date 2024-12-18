@@ -29,6 +29,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	return interfaces.Container{
 		Asset:      NewAsset(r, g),
 		Deployment: NewDeployment(r, g),
+		Job:        NewJob(r, g),
 		Parameter:  NewParameter(r),
 		Project:    NewProject(r, g),
 		Workspace:  accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),

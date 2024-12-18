@@ -28,7 +28,7 @@ func ToJob(j *job.Job) *Job {
 	}
 
 	return &Job{
-		ID:           IDFrom(j.ID()),
+		ID:           ID(j.ID().String()),
 		DeploymentID: IDFrom(j.Deployment()),
 		WorkspaceID:  IDFrom(j.Workspace()),
 		Status:       ToJobStatus(j.Status()),

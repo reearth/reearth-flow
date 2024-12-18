@@ -271,12 +271,13 @@ func (f *fileRepo) delete(ctx context.Context, filename string) error {
 
 func (f *fileRepo) generateMetadata(jobID string, assets []string) (*file.File, error) {
 	artifactBaseUrl := fmt.Sprintf("gs://%s/artifacts", f.bucketName)
+	assetBaseUrl := fmt.Sprintf("gs://%s/assets", f.bucketName)
 	created := time.Now()
 
 	metadata := &workflow.Metadata{
 		ArtifactBaseUrl: artifactBaseUrl,
 		Assets: workflow.Asset{
-			BaseUrl: artifactBaseUrl,
+			BaseUrl: assetBaseUrl,
 			Files:   assets,
 		},
 		JobID: jobID,
