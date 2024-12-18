@@ -160,6 +160,8 @@ export default ({
 
   const { handleNodesUpdate, handleNodeParamsUpdate } = useYNode({
     currentYWorkflow,
+    rawWorkflows,
+    yWorkflows,
     undoTrackerActionWrapper,
     handleWorkflowsRemove,
   });

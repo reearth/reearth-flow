@@ -49,8 +49,9 @@ export default ({
 
         const inputRouter = await fetcher<Action>(`${api}/actions/InputRouter`);
 
+        const inputNodeId = randomID();
         const newInputNode: Node = {
-          id: randomID(),
+          id: inputNodeId,
           type: inputRouter.type,
           position: { x: 200, y: 200 },
           data: {
@@ -67,8 +68,9 @@ export default ({
           `${api}/actions/OutputRouter`,
         );
 
+        const outputNodeId = randomID();
         const newOutputNode: Node = {
-          id: randomID(),
+          id: outputNodeId,
           type: outputRouter.type,
           position: { x: 1000, y: 200 },
           data: {
@@ -93,8 +95,12 @@ export default ({
           data: {
             officialName: workflowName,
             status: "idle",
-            pseudoInputs: [DEFAULT_ROUTING_PORT],
-            pseudoOutputs: [DEFAULT_ROUTING_PORT],
+            pseudoInputs: [
+              { nodeId: inputNodeId, portName: DEFAULT_ROUTING_PORT },
+            ],
+            pseudoOutputs: [
+              { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
+            ],
           },
         };
 

@@ -8,12 +8,12 @@ const SubworkflowNode: React.FC<Props> = (props) => {
   console.log("SubworkflowNode", props);
   const { data } = props;
   const uiInputs = useMemo(
-    () => data.pseudoInputs || data.inputs || [],
+    () => data.pseudoInputs?.map((pi) => pi.portName) || data.inputs || [],
     [data.pseudoInputs, data.inputs],
   );
 
   const uiOutputs = useMemo(
-    () => data.pseudoOutputs || data.outputs || [],
+    () => data.pseudoOutputs?.map((po) => po.portName) || data.outputs || [],
     [data.pseudoOutputs, data.outputs],
   );
   return (

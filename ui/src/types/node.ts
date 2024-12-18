@@ -8,6 +8,11 @@ import type { Status } from "./shared";
 // type NodeParam<T extends ParamValueType> = {
 type NodeParam = Record<string, any>;
 
+export type PseudoPort = {
+  nodeId: string;
+  portName: string;
+};
+
 export type NodeData = {
   officialName: string;
   customName?: string;
@@ -17,8 +22,8 @@ export type NodeData = {
   params?: NodeParam;
   locked?: boolean | undefined;
   // subworkflow nodes
-  pseudoInputs?: string[];
-  pseudoOutputs?: string[];
+  pseudoInputs?: PseudoPort[];
+  pseudoOutputs?: PseudoPort[];
   // batch & note nodes
   content?: string;
   width?: number;
