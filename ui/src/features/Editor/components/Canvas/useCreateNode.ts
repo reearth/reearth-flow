@@ -8,13 +8,19 @@ import { randomID } from "@flow/utils";
 import { baseBatchNode } from "./components/Nodes/BatchNode";
 import { baseNoteNode } from "./components/Nodes/NoteNode";
 
-type CreateNodeOptions = {
+type BaseNodeOptions = {
   position: XYPosition;
-  type: string;
-  action?: Action;
+  type: Action["type"];
 };
 
-const createBaseNode = ({ position, type }: CreateNodeOptions): Node => ({
+type CreateNodeFromActionOptions = {
+  position: XYPosition;
+  action: Action;
+};
+
+type CreateNodeOptions = BaseNodeOptions & { action?: Action };
+
+const createBaseNode = ({ position, type }: BaseNodeOptions): Node => ({
   id: randomID(),
   position,
   type,
@@ -28,7 +34,7 @@ const createBaseNode = ({ position, type }: CreateNodeOptions): Node => ({
 const createSpecializedNode = ({
   position,
   type,
-}: CreateNodeOptions): Node | null => {
+}: BaseNodeOptions): Node | null => {
   const node = createBaseNode({ position, type });
 
   switch (type) {
@@ -40,14 +46,15 @@ const createSpecializedNode = ({
         data: { ...node.data, ...baseNoteNode },
       };
     default:
-      return null;
+      return node;
   }
 };
 
-const createNodeFromAction = (action: Action, position: XYPosition): Node => ({
+const createNodeFromAction = ({
+  action,
+  position,
+}: CreateNodeFromActionOptions): Node => ({
   ...createBaseNode({ position, type: action.type }),
-  // Needs measured, but at time of creation we don't know size yet.
-  // 150x25 is base-size of GeneralNode.
   measured: {
     width: 150,
     height: 25,
@@ -70,7 +77,7 @@ export const useCreateNode = () => {
   ): Promise<Node | null> => {
     const action = await fetcher<Action>(`${api}/actions/${name}`);
     if (!action) return null;
-    return createNodeFromAction(action, position);
+    return createNodeFromAction({ action, position });
   };
 
   const createNode = async ({
@@ -79,7 +86,7 @@ export const useCreateNode = () => {
     action,
   }: CreateNodeOptions): Promise<Node | null> => {
     if (action) {
-      return createNodeFromAction(action, position);
+      return createNodeFromAction({ action, position });
     }
 
     if (nodeTypes.includes(type as NodeType)) {
