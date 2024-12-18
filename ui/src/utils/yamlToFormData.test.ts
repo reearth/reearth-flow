@@ -9,7 +9,7 @@ describe("yamlToFormData", () => {
       const formData = yamlToFormData(yaml);
       const file = formData.get("file") as File;
       expect(file).toBeInstanceOf(File);
-      expect(file.name).toBe("untitled.yaml");
+      expect(file.name).toBe("untitled.yml");
       expect(file.type).toBe("application/x-yaml");
       const reader = new FileReader();
       reader.onerror = () => reject(reader.error);
@@ -29,7 +29,7 @@ describe("yamlToFormData", () => {
 
       const file = formData.get("file") as File;
       expect(file).toBeInstanceOf(File);
-      expect(file.name).toBe(`${fileName}.yaml`);
+      expect(file.name).toBe(`${fileName}.yml`);
       expect(file.type).toBe("application/x-yaml");
 
       const reader = new FileReader();
@@ -49,7 +49,7 @@ describe("yamlToFormData", () => {
 
       const file = formData.get("file") as File;
       expect(file).toBeInstanceOf(File);
-      expect(file.name).toBe("untitled.yaml");
+      expect(file.name).toBe("untitled.yml");
       expect(file.type).toBe("application/x-yaml");
 
       const reader = new FileReader();

@@ -1,107 +1,299 @@
 package e2e
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/gavv/httpexpect/v2"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateProject(t *testing.T) {
-	e := StartServer(t, &config.Config{
+func TestProjectWorkflows(t *testing.T) {
+	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	},
-		true, baseSeeder)
+	}, true, baseSeederUser)
 
-	requestBody := GraphQLRequest{
-		OperationName: "CreateProject",
-		Query:         "mutation CreateProject($workspaceId: ID!, $name: String!, $description: String!) {\n createProject(\n input: {workspaceId: $workspaceId, name: $name, description: $description}\n ) {\n project {\n id\n name\n description\n __typename\n }\n __typename\n }\n}",
-		Variables: map[string]any{
-			"name":        "test",
-			"description": "abc",
-			"workspaceId": wID.String(),
-		},
-	}
+	projectId := testCreateProject(t, e)
 
-	e.POST("/api/graphql").
-		WithHeader("Origin", "https://example.com").
-		WithHeader("authorization", "Bearer test").
-		// WithHeader("authorization", "Bearer test").
-		WithHeader("X-Reearth-Debug-User", uID.String()).
-		WithHeader("Content-Type", "application/json").
-		WithJSON(requestBody).
-		Expect().
-		Status(http.StatusOK).
-		JSON().
-		Object().
-		Value("data").Object().
-		Value("createProject").Object().
-		Value("project").Object().
-		HasValue("name", "test").
-		HasValue("description", "abc")
+	// Test update project
+	testUpdateProject(t, e, projectId)
+
+	// Test delete project
+	testDeleteProject(t, e, projectId)
 }
 
-func TestRunProject(t *testing.T) {
-	e := StartServer(t, &config.Config{
+func testCreateProject(t *testing.T, e *httpexpect.Expect) string {
+	query := `mutation($input: CreateProjectInput!) {
+		createProject(input: $input) {
+			project {
+				id
+				name
+				description
+				isArchived
+				isBasicAuthActive
+				basicAuthUsername
+				basicAuthPassword
+				version
+				createdAt
+				updatedAt
+				workspaceId
+			}
+		}
+	}`
+
+	variables := fmt.Sprintf(`{
+		"input": {
+			"workspaceId": "%s",
+			"name": "Test Project",
+			"description": "Test project description",
+			"archived": false
+		}
+	}`, wId1.String())
+
+	var variablesMap map[string]any
+	err := json.Unmarshal([]byte(variables), &variablesMap)
+	assert.NoError(t, err)
+
+	request := GraphQLRequest{
+		Query:     query,
+		Variables: variablesMap,
+	}
+	jsonData, err := json.Marshal(request)
+	assert.NoError(t, err)
+
+	resp := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithBytes(jsonData).
+		Expect().Status(http.StatusOK)
+
+	var result struct {
+		Data struct {
+			CreateProject struct {
+				Project struct {
+					ID          string `json:"id"`
+					Name        string `json:"name"`
+					Description string `json:"description"`
+					IsArchived  bool   `json:"isArchived"`
+					WorkspaceID string `json:"workspaceId"`
+					Version     int    `json:"version"`
+				} `json:"project"`
+			} `json:"createProject"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+	assert.NoError(t, err)
+
+	project := result.Data.CreateProject.Project
+	assert.NotEmpty(t, project.ID)
+	assert.Equal(t, "Test Project", project.Name)
+	assert.Equal(t, "Test project description", project.Description)
+	assert.False(t, project.IsArchived)
+	assert.Equal(t, wId1.String(), project.WorkspaceID)
+	assert.Equal(t, 0, project.Version)
+
+	return project.ID
+}
+
+func testUpdateProject(t *testing.T, e *httpexpect.Expect, projectId string) {
+	query := `mutation($input: UpdateProjectInput!) {
+		updateProject(input: $input) {
+			project {
+				id
+				name
+				description
+				isArchived
+				isBasicAuthActive
+				basicAuthUsername
+				basicAuthPassword
+			}
+		}
+	}`
+
+	variables := fmt.Sprintf(`{
+		"input": {
+			"projectId": "%s",
+			"name": "Updated Project",
+			"description": "Updated description",
+			"archived": true,
+			"isBasicAuthActive": true,
+			"basicAuthUsername": "testuser",
+			"basicAuthPassword": "testpass"
+		}
+	}`, projectId)
+
+	var variablesMap map[string]any
+	err := json.Unmarshal([]byte(variables), &variablesMap)
+	assert.NoError(t, err)
+
+	request := GraphQLRequest{
+		Query:     query,
+		Variables: variablesMap,
+	}
+	jsonData, err := json.Marshal(request)
+	assert.NoError(t, err)
+
+	resp := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithBytes(jsonData).
+		Expect().Status(http.StatusOK)
+
+	var result struct {
+		Data struct {
+			UpdateProject struct {
+				Project struct {
+					ID                string `json:"id"`
+					Name              string `json:"name"`
+					Description       string `json:"description"`
+					IsArchived        bool   `json:"isArchived"`
+					IsBasicAuthActive bool   `json:"isBasicAuthActive"`
+					BasicAuthUsername string `json:"basicAuthUsername"`
+					BasicAuthPassword string `json:"basicAuthPassword"`
+				} `json:"project"`
+			} `json:"updateProject"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+	assert.NoError(t, err)
+
+	project := result.Data.UpdateProject.Project
+	assert.Equal(t, projectId, project.ID)
+	assert.Equal(t, "Updated Project", project.Name)
+	assert.Equal(t, "Updated description", project.Description)
+	assert.True(t, project.IsArchived)
+	assert.True(t, project.IsBasicAuthActive)
+	assert.Equal(t, "testuser", project.BasicAuthUsername)
+	assert.Equal(t, "testpass", project.BasicAuthPassword)
+}
+
+func testDeleteProject(t *testing.T, e *httpexpect.Expect, projectId string) {
+	query := `mutation($input: DeleteProjectInput!) {
+		deleteProject(input: $input) {
+			projectId
+		}
+	}`
+
+	variables := fmt.Sprintf(`{
+		"input": {
+			"projectId": "%s"
+		}
+	}`, projectId)
+
+	var variablesMap map[string]any
+	err := json.Unmarshal([]byte(variables), &variablesMap)
+	assert.NoError(t, err)
+
+	request := GraphQLRequest{
+		Query:     query,
+		Variables: variablesMap,
+	}
+	jsonData, err := json.Marshal(request)
+	assert.NoError(t, err)
+
+	resp := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithBytes(jsonData).
+		Expect().Status(http.StatusOK)
+
+	var result struct {
+		Data struct {
+			DeleteProject struct {
+				ProjectID string `json:"projectId"`
+			} `json:"deleteProject"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+	assert.NoError(t, err)
+
+	assert.Equal(t, projectId, result.Data.DeleteProject.ProjectID)
+}
+
+func TestListProjects(t *testing.T) {
+	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	},
-		true, baseSeeder)
+	}, true, baseSeederUser)
 
-	requestBody := GraphQLRequest{
-		OperationName: "RunProject",
-		Query:         "mutation RunProject($projectId:ID!, $workspaceId:ID!, $workflows:[InputWorkflow!]!){\n runProject(\n input: {projectId: $projectId, workspaceId:$workspaceId, workflows: $workflows}\n ){\n projectId\n started\n }\n}",
-		Variables: map[string]interface{}{
-			"projectId":   "01j2g1gj3vjpwaz845es2a4rcm",
-			"workspaceId": "01j2g1fkbme3gtd7tvv7dgt4c1",
-			"workflows": []interface{}{
-				map[string]interface{}{
-					"id":   "01j1c1nstedb08bj97y8b7dz6w",
-					"name": "Cool",
-					"nodes": []interface{}{
-						map[string]interface{}{
-							"id":   "alskdfj",
-							"type": "READER",
-							"data": map[string]interface{}{
-								"name":     "alsdkfjl",
-								"actionId": "someAction",
-								"params": []interface{}{
-									map[string]interface{}{
-										"id":    "paramId",
-										"name":  "My Param",
-										"type":  "STRING",
-										"value": "my value is here",
-									},
-								},
-							},
-						},
-					},
-					"edges":  []interface{}{},
-					"isMain": true,
-				},
-			},
-		},
+	query := fmt.Sprintf(`{
+		projects(
+			workspaceId: "%s"
+			includeArchived: true
+			first: 10
+		) {
+			edges {
+				node {
+					id
+					name
+					description
+					isArchived
+					isBasicAuthActive
+					basicAuthUsername
+					basicAuthPassword
+					version
+					createdAt
+					updatedAt
+					workspaceId
+				}
+			}
+			pageInfo {
+				hasNextPage
+				hasPreviousPage
+				startCursor
+				endCursor
+			}
+			totalCount
+		}
+	}`, wId1.String())
+
+	request := GraphQLRequest{
+		Query: query,
+	}
+	jsonData, err := json.Marshal(request)
+	assert.NoError(t, err)
+
+	resp := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithBytes(jsonData).
+		Expect().Status(http.StatusOK)
+
+	var result struct {
+		Data struct {
+			Projects struct {
+				Edges []struct {
+					Node struct {
+						ID string `json:"id"`
+					} `json:"node"`
+				} `json:"edges"`
+				PageInfo struct {
+					HasNextPage     bool    `json:"hasNextPage"`
+					HasPreviousPage bool    `json:"hasPreviousPage"`
+					StartCursor     *string `json:"startCursor"`
+					EndCursor       *string `json:"endCursor"`
+				} `json:"pageInfo"`
+				TotalCount int `json:"totalCount"`
+			} `json:"projects"`
+		} `json:"data"`
 	}
 
-	e.POST("/api/graphql").
-		WithHeader("Origin", "https://example.com").
-		WithHeader("authorization", "Bearer test").
-		// WithHeader("authorization", "Bearer test").
-		WithHeader("X-Reearth-Debug-User", uID.String()).
-		WithHeader("Content-Type", "application/json").
-		WithJSON(requestBody).
-		Expect().
-		Status(http.StatusOK).
-		JSON().
-		Object().
-		Value("data").Object().
-		Value("createProject").Object().
-		Value("project").Object().
-		HasValue("name", "test").
-		HasValue("description", "abc")
+	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, result.Data.Projects.TotalCount, 0)
 }

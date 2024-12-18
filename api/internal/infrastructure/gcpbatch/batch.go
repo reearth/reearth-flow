@@ -13,7 +13,7 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-type Config struct {
+type BatchConfig struct {
 	ProjectID string
 	Region    string
 	ImageURI  string
@@ -29,10 +29,10 @@ type BatchClient interface {
 
 type BatchRepo struct {
 	client BatchClient
-	config Config
+	config BatchConfig
 }
 
-func NewBatch(ctx context.Context, config Config) (gateway.Batch, error) {
+func NewBatch(ctx context.Context, config BatchConfig) (gateway.Batch, error) {
 	client, err := batch.NewClient(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create batch client: %v", err)
@@ -44,10 +44,10 @@ func NewBatch(ctx context.Context, config Config) (gateway.Batch, error) {
 	}, nil
 }
 
-func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL string, projectID id.ProjectID) (string, error) {
+func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, projectID id.ProjectID) (string, error) {
 	jobName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", b.config.ProjectID, b.config.Region, jobID)
 	parent := fmt.Sprintf("projects/%s/locations/%s", b.config.ProjectID, b.config.Region)
-	workflowCommand := fmt.Sprintf("echo %q | /bin/reearth-flow run --workflow -", workflowsURL)
+	workflowCommand := fmt.Sprintf("echo %q | /bin/reearth-flow run --workflow - --metadata-path %q", workflowsURL, metadataURL)
 	commands := []string{
 		"/bin/sh",
 		"-c",
@@ -63,7 +63,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL 
 		Executable: &batchpb.Runnable_Container_{
 			Container: runnableContainer,
 		},
-		DisplayName:      "Run reearth-flow workflow",
+		DisplayName:      "Run reearth-flow workflow with metadata",
 		IgnoreExitStatus: false,
 		Background:       false,
 		AlwaysRun:        false,
@@ -100,6 +100,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL 
 
 	labels := map[string]string{
 		"workflow_url": workflowsURL,
+		"metadata_url": metadataURL,
 		"project_id":   projectID.String(),
 	}
 

@@ -25,6 +25,7 @@ type Container struct {
 	Asset      Asset
 	Deployment Deployment
 	Job        Job
+	Parameter  Parameter
 	Project    Project
 	User       accountinterfaces.User
 	Workspace  accountinterfaces.Workspace

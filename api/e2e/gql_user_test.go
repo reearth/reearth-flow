@@ -102,7 +102,7 @@ func TestUpdateMe(t *testing.T) {
 			Disabled: true,
 		},
 	}, true, baseSeederUser)
-	query := `mutation { updateMe(input: {name: "updated",email:"hoge@test.com",lang: "ja",theme: DEFAULT,password: "Ajsownndww1",passwordConfirmation: "Ajsownndww1"}){ me{ id name email lang theme } }}`
+	query := `mutation { updateMe(input: {name: "updated", email: "hoge@test.com", lang: "ja", password: "Ajsownndww1", passwordConfirmation: "Ajsownndww1"}){ me { id name email lang auths myWorkspaceId } }}`
 	request := GraphQLRequest{
 		Query: query,
 	}
@@ -118,7 +118,7 @@ func TestUpdateMe(t *testing.T) {
 	o.Value("name").String().IsEqual("updated")
 	o.Value("email").String().IsEqual("hoge@test.com")
 	o.Value("lang").String().IsEqual("ja")
-	o.Value("theme").String().IsEqual("default")
+	o.Value("myWorkspaceId").String().IsEqual(wId1.String())
 }
 
 func TestRemoveMyAuth(t *testing.T) {
@@ -132,7 +132,7 @@ func TestRemoveMyAuth(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, &user.Auth{Provider: "reearth", Sub: "reearth|" + uId1.String()}, u.Auths().GetByProvider("reearth"))
 
-	query := `mutation { removeMyAuth(input: {auth: "reearth"}){ me{ id name email lang theme } }}`
+	query := `mutation { removeMyAuth(input: {auth: "reearth"}){ me { id name email lang auths } }}`
 	request := GraphQLRequest{
 		Query: query,
 	}

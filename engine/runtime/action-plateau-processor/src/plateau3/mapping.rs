@@ -15,7 +15,7 @@ use super::{
     xml_attribute_extractor::XmlAttributeExtractorFactory,
 };
 
-pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
         Box::<UdxFolderExtractorFactory>::default(),
         Box::<DomainOfDefinitionValidatorFactory>::default(),

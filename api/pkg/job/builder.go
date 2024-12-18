@@ -66,3 +66,8 @@ func (b *JobBuilder) CompletedAt(completedAt *time.Time) *JobBuilder {
 	b.j.completedAt = completedAt
 	return b
 }
+
+func (b *JobBuilder) MetadataURL(metadataURL string) *JobBuilder {
+	b.j.metadataURL = metadataURL
+	return b
+}

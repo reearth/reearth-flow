@@ -5,6 +5,7 @@ scalar URL
 scalar Lang
 scalar FileSize
 scalar Cursor
+scalar JSON
 
 # Meta Type
 
@@ -22,10 +23,10 @@ enum NodeType {
 # Pagination
 
 type PageInfo {
-  startCursor: Cursor
   endCursor: Cursor
   hasNextPage: Boolean!
   hasPreviousPage: Boolean!
+  startCursor: Cursor
 }
 
 input Pagination{
