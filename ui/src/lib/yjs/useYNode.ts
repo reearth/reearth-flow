@@ -31,12 +31,20 @@ export default ({
 
         if (isEqual(n, newNodes)) return;
 
+        // If one or more nodes are deleted
         if (newNodes.length < n.length) {
           const idsToBeRemoved = nodesToBeRemoved(n, newNodes).map((n) => n.id);
 
           if (idsToBeRemoved.length > 0) {
             handleWorkflowsRemove(idsToBeRemoved);
           }
+          // TODO:
+          // Currently here we are doing "cleanup" to
+          // remove the subworkflow nodes that are not used anymore.
+          // What we want is to have a cleanup function
+          // that does this removal but also to update
+          // any subworkflow nodes' pseudoInputs and pseudoOutputs
+          // that are effected by the removal of the subworkflow node. @KaWaite
         }
 
         yNodes.delete(0, n.length);
