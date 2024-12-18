@@ -57,7 +57,7 @@ export default ({
         selected: true, // select pasted nodes
         data: {
           ...n.data,
-          name: n.data.name + "-copy",
+          customName: n.data.customName + "-copy",
         },
       };
 

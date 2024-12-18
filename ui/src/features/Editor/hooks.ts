@@ -21,13 +21,13 @@ export default ({
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
-  const [currentWorkflowId, setCurrentWorkflowId] = useState<
-    string | undefined
-  >(DEFAULT_ENTRY_GRAPH_ID);
+  const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
+    DEFAULT_ENTRY_GRAPH_ID,
+  );
 
-  const handleWorkflowIdChange = useCallback(
+  const handleCurrentWorkflowIdChange = useCallback(
     (id?: string) => {
-      if (!id) return setCurrentWorkflowId(undefined);
+      if (!id) return setCurrentWorkflowId(DEFAULT_ENTRY_GRAPH_ID);
       setCurrentWorkflowId(id);
     },
     [setCurrentWorkflowId],
@@ -53,11 +53,11 @@ export default ({
     canUndo,
     canRedo,
   } = useYjsStore({
-    workflowId: currentWorkflowId,
+    currentWorkflowId,
     yWorkflows,
     undoManager,
     undoTrackerActionWrapper,
-    handleWorkflowIdChange,
+    handleCurrentWorkflowIdChange,
   });
 
   const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
@@ -194,7 +194,7 @@ export default ({
     handleWorkflowDeployment,
     handlePanelOpen,
     handleWorkflowClose,
-    handleWorkflowChange: handleWorkflowIdChange,
+    handleWorkflowChange: handleCurrentWorkflowIdChange,
     handleNodesUpdate,
     handleNodeParamsUpdate,
     handleNodeHover,

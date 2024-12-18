@@ -18,17 +18,17 @@ import useYWorkflow from "./useYWorkflow";
 import { YWorkflow } from "./utils";
 
 export default ({
-  workflowId,
+  currentWorkflowId,
   yWorkflows,
   undoManager,
   undoTrackerActionWrapper,
-  handleWorkflowIdChange,
+  handleCurrentWorkflowIdChange,
 }: {
-  workflowId?: string;
+  currentWorkflowId: string;
   yWorkflows: Y.Array<YWorkflow>;
   undoManager: Y.UndoManager | null;
   undoTrackerActionWrapper: (callback: () => void) => void;
-  handleWorkflowIdChange: (id?: string) => void;
+  handleCurrentWorkflowIdChange: (id?: string) => void;
 }) => {
   const { toast } = useToast();
   const t = useT();
@@ -49,6 +49,7 @@ export default ({
       undoManager?.redo();
     }
   }, [undoManager]);
+
   const canUndo = useMemo(() => {
     const stackLength = undoManager?.undoStack?.length ?? 0;
     return stackLength > 0;
@@ -63,12 +64,15 @@ export default ({
 
   const {
     openWorkflows,
-    currentWorkflowIndex,
     setWorkflows,
     setOpenWorkflowIds,
     handleWorkflowOpen,
     handleWorkflowClose,
-  } = useWorkflowTabs({ workflowId, rawWorkflows, handleWorkflowIdChange });
+  } = useWorkflowTabs({
+    currentWorkflowId,
+    rawWorkflows,
+    handleCurrentWorkflowIdChange,
+  });
 
   const {
     currentYWorkflow,
@@ -79,7 +83,7 @@ export default ({
   } = useYWorkflow({
     yWorkflows,
     rawWorkflows,
-    currentWorkflowIndex,
+    currentWorkflowId,
     undoTrackerActionWrapper,
     setWorkflows,
     setOpenWorkflowIds,
@@ -156,6 +160,8 @@ export default ({
 
   const { handleNodesUpdate, handleNodeParamsUpdate } = useYNode({
     currentYWorkflow,
+    rawWorkflows,
+    yWorkflows,
     undoTrackerActionWrapper,
     handleWorkflowsRemove,
   });
@@ -170,6 +176,8 @@ export default ({
     edges,
     openWorkflows,
     selectedNodes,
+    canUndo,
+    canRedo,
     rawWorkflows,
     handleWorkflowDeployment,
     handleWorkflowOpen,
@@ -181,8 +189,6 @@ export default ({
     handleEdgesUpdate,
     handleWorkflowUndo,
     handleWorkflowRedo,
-    canUndo,
-    canRedo,
     handleWorkflowRename,
   };
 };

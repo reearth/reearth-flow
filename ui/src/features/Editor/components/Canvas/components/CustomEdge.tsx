@@ -30,20 +30,27 @@ const CustomEdge: React.FC<CustomEdgeProps> = ({
     targetPosition,
   });
 
+  // TODO: Implement when intermediate data becomes available @KaWaite
+  const intermediateDataFeatureLength: number | undefined = undefined;
+
   return (
     <>
       <BaseEdge id={id} path={edgePath} {...props} />
       <EdgeLabelRenderer>
-        <div
-          style={{
-            position: "absolute",
-            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            pointerEvents: "all",
-          }}
-          className="nodrag nopan size-[12px] rounded bg-accent-foreground"
-          onClick={() => console.log("I AM JUST A NUMBER")}>
-          <p className="text-center align-middle text-[8px] text-black">4</p>
-        </div>
+        {intermediateDataFeatureLength && (
+          <div
+            style={{
+              position: "absolute",
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              pointerEvents: "all",
+            }}
+            className="nodrag nopan size-[12px] rounded bg-accent-foreground"
+            onClick={() => console.log("I AM JUST A NUMBER")}>
+            <p className="text-center align-middle text-[8px] text-black">
+              {intermediateDataFeatureLength}
+            </p>
+          </div>
+        )}
       </EdgeLabelRenderer>
     </>
   );

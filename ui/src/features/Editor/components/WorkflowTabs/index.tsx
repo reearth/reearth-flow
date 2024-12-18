@@ -8,7 +8,7 @@ import { Workflow } from "@flow/types";
 import WorkflowTab from "./WorkflowTab";
 
 type Props = {
-  currentWorkflowId?: string;
+  currentWorkflowId: string;
   openWorkflows: {
     id: string;
     name: string;

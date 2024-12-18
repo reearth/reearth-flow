@@ -34,7 +34,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   selected,
   id,
 }) => {
-  const { name, status, inputs, outputs, locked } = data;
+  const { officialName, customName, status, inputs, outputs, locked } = data;
 
   const [hardSelect, setHardSelect] = useState<boolean>(!!locked);
 
@@ -68,7 +68,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
         <div
           className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? (hardSelect ? "border-red-300" : "border-primary/50") : type === "subworkflow" ? "border-[#a21caf]/60" : "border-primary/20"}`}>
           <p className="self-center truncate text-[10px] dark:font-light">
-            {name}
+            {customName || officialName}
           </p>
           <div
             className={`size-[8px] self-center rounded ${metaProps.style}`}

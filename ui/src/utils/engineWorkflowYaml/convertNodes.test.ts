@@ -15,7 +15,7 @@ describe("convertNodes", () => {
         id: "1",
         type: "transformer",
         position: { x: 22, y: 22 },
-        data: { name: "Node 1" },
+        data: { officialName: "Node 1" },
       },
       { id: "2", type: "normal", position: { x: 22, y: 22 }, data: {} }, // Missing name
       { type: "normal", position: { x: 22, y: 22 }, data: { name: "Node 3" } }, // Missing id
@@ -35,13 +35,13 @@ describe("convertNodes", () => {
         id: "1",
         type: "subworkflow",
         position: { x: 22, y: 22 },
-        data: { name: "Subworkflow 1" },
+        data: { officialName: "Subworkflow 1" },
       },
       {
         id: "2",
         type: "transformer",
         position: { x: 22, y: 22 },
-        data: { name: "Normal Node" },
+        data: { officialName: "Normal Node" },
       },
     ];
 

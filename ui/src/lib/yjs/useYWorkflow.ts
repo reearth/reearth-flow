@@ -2,23 +2,29 @@ import { XYPosition } from "@xyflow/react";
 import { Dispatch, SetStateAction, useCallback } from "react";
 import { Array as YArray } from "yjs";
 
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import type { Edge, Node } from "@flow/types";
+import { config } from "@flow/config";
+import {
+  DEFAULT_ENTRY_GRAPH_ID,
+  DEFAULT_ROUTING_PORT,
+} from "@flow/global-constants";
+import type { Action, Edge, Node } from "@flow/types";
 import { randomID } from "@flow/utils";
+
+import { fetcher } from "../fetch/transformers/useFetch";
 
 import { YNodesArray, YWorkflow, yWorkflowBuilder } from "./utils";
 
 export default ({
   yWorkflows,
   rawWorkflows,
-  currentWorkflowIndex,
+  currentWorkflowId,
   undoTrackerActionWrapper,
   setWorkflows,
   setOpenWorkflowIds,
 }: {
   yWorkflows: YArray<YWorkflow>;
   rawWorkflows: Record<string, string | Node[] | Edge[]>[];
-  currentWorkflowIndex: number;
+  currentWorkflowId: string;
   undoTrackerActionWrapper: (callback: () => void) => void;
   setWorkflows: Dispatch<
     SetStateAction<
@@ -30,55 +36,77 @@ export default ({
   >;
   setOpenWorkflowIds: Dispatch<SetStateAction<string[]>>;
 }) => {
-  const currentYWorkflow = yWorkflows.get(currentWorkflowIndex);
+  const { api } = config();
+  const currentYWorkflow = yWorkflows.get(
+    rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
+  );
 
   const handleWorkflowAdd = useCallback(
     (position?: XYPosition) =>
-      undoTrackerActionWrapper(() => {
+      undoTrackerActionWrapper(async () => {
         const workflowId = randomID();
         const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
 
-        const newEntranceNode: Node = {
-          id: randomID(),
-          type: "entrance",
+        const inputRouter = await fetcher<Action>(`${api}/actions/InputRouter`);
+
+        const inputNodeId = randomID();
+        const newInputNode: Node = {
+          id: inputNodeId,
+          type: inputRouter.type,
           position: { x: 200, y: 200 },
           data: {
-            name: `New Entrance node`,
-            outputs: ["target"],
+            officialName: inputRouter.name,
+            outputs: inputRouter.outputPorts,
             status: "idle",
+            params: {
+              routingPort: DEFAULT_ROUTING_PORT,
+            },
           },
         };
 
-        const newExitNode: Node = {
-          id: randomID(),
-          type: "exit",
+        const outputRouter = await fetcher<Action>(
+          `${api}/actions/OutputRouter`,
+        );
+
+        const outputNodeId = randomID();
+        const newOutputNode: Node = {
+          id: outputNodeId,
+          type: outputRouter.type,
           position: { x: 1000, y: 200 },
           data: {
-            name: `New Exit node`,
-            inputs: ["source"],
+            officialName: outputRouter.name,
+            inputs: outputRouter.inputPorts,
             status: "idle",
+            params: {
+              routingPort: DEFAULT_ROUTING_PORT,
+            },
           },
         };
 
         const newYWorkflow = yWorkflowBuilder(workflowId, workflowName, [
-          newEntranceNode,
-          newExitNode,
+          newInputNode,
+          newOutputNode,
         ]);
 
-        // Update main workflow
         const newSubworkflowNode: Node = {
           id: workflowId,
           type: "subworkflow",
           position: position ?? { x: 600, y: 200 },
           data: {
-            name: workflowName,
+            officialName: workflowName,
             status: "idle",
-            inputs: ["source"],
-            outputs: ["target"],
+            pseudoInputs: [
+              { nodeId: inputNodeId, portName: DEFAULT_ROUTING_PORT },
+            ],
+            pseudoOutputs: [
+              { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
+            ],
           },
         };
 
-        const parentWorkflow = yWorkflows.get(currentWorkflowIndex ?? 0);
+        const parentWorkflow = yWorkflows.get(
+          rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
+        );
 
         const parentWorkflowNodes = parentWorkflow?.get("nodes") as
           | YNodesArray
@@ -91,10 +119,12 @@ export default ({
       }),
     [
       yWorkflows,
-      currentWorkflowIndex,
+      currentWorkflowId,
+      rawWorkflows,
+      api,
       undoTrackerActionWrapper,
-      setOpenWorkflowIds,
       setWorkflows,
+      setOpenWorkflowIds,
     ],
   );
 
@@ -171,7 +201,7 @@ export default ({
           if (node.id === id) {
             node.data = {
               ...node.data,
-              name,
+              customName: name,
             };
           }
         }

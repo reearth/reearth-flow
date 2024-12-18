@@ -36,13 +36,13 @@ describe("createSubGraphs", () => {
         id: "1",
         type: "transformer",
         position: { x: 22, y: 22 },
-        data: { name: "Node 1" },
+        data: { officialName: "Node 1" },
       },
       {
         id: "2",
         type: "transformer",
         position: { x: 22, y: 22 },
-        data: { name: "Node 2" },
+        data: { officialName: "Node 2" },
       },
     ];
     const mockEdges: Edge[] = [
@@ -97,7 +97,7 @@ describe("createSubGraphs", () => {
             id: "1",
             type: "transformer",
             position: { x: 22, y: 22 },
-            data: { name: "Node 1" },
+            data: { officialName: "Node 1" },
           },
         ],
         edges: [{ id: "edge1", source: "node1", target: "node2" }],
@@ -110,7 +110,7 @@ describe("createSubGraphs", () => {
             id: "2",
             type: "transformer",
             position: { x: 22, y: 22 },
-            data: { name: "Node 2" },
+            data: { officialName: "Node 2" },
           },
         ],
         edges: [{ id: "edge2", source: "node2", target: "node3" }],
@@ -121,7 +121,7 @@ describe("createSubGraphs", () => {
       nodes.map(
         (node): EngineReadyNode => ({
           id: node.id,
-          name: node.data.name ?? "undefined",
+          name: node.data.officialName ?? "undefined",
           type: node.type ?? "undefined",
         }),
       ),
