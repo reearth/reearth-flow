@@ -57,7 +57,7 @@ export default ({
         selected: true, // select pasted nodes
         data: {
           ...n.data,
-          customName: n.data.customName + "-copy",
+          // customName: n.data.customName + "-copy",
         },
       };
 
@@ -68,6 +68,7 @@ export default ({
           ?.nodes ?? []) as Node[];
         const newSubworkflowEdges = (rawWorkflows.find((w) => w.id === n.id)
           ?.edges ?? []) as Edge[];
+
         handleWorkflowUpdate(
           newNode.id,
           newSubworkflowNodes,

@@ -176,7 +176,7 @@ function updateParentYWorkflowNode(
       currentWorkflowId,
       yParentWorkflow,
       params,
-      previousPseudoInputs[toBeUpdatedPseudoInputIndex].portName,
+      previousPseudoInputs[toBeUpdatedPseudoInputIndex]?.portName,
       "target",
     );
 
@@ -207,7 +207,7 @@ function updateParentYWorkflowNode(
       currentWorkflowId,
       yParentWorkflow,
       params,
-      previousPseudoOutputs[toBeUpdatedPseudoOutputIndex].portName,
+      previousPseudoOutputs[toBeUpdatedPseudoOutputIndex]?.portName,
       "source",
     );
   }
@@ -236,6 +236,7 @@ function updateParentYWorkflowEdges(
   if (!yParentEdges) return;
 
   const parentEdges = yParentEdges.toJSON() as Edge[];
+  console.log("params", params);
 
   // Update the edges that are effected by the subworkflow node changes
   const updatedEdges = parentEdges.map((e) => {
