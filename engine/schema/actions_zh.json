@@ -2520,6 +2520,40 @@
       ]
     },
     {
+      "name": "PLATEAU4.UDXFolderExtractor",
+      "type": "processor",
+      "description": "Extracts UDX folders from cityGML path",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "UDXFolderExtractorParam",
+        "type": "object",
+        "required": [
+          "cityGmlPath"
+        ],
+        "properties": {
+          "cityGmlPath": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PlanarityFilter",
       "type": "processor",
       "description": "根据类型筛选几何",
