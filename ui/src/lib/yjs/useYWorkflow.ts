@@ -8,7 +8,7 @@ import {
   DEFAULT_ROUTING_PORT,
 } from "@flow/global-constants";
 import type { Action, Edge, Node } from "@flow/types";
-import { randomID } from "@flow/utils";
+import { generateUUID } from "@flow/utils";
 
 import { fetcher } from "../fetch/transformers/useFetch";
 
@@ -44,12 +44,12 @@ export default ({
   const handleWorkflowAdd = useCallback(
     (position?: XYPosition) =>
       undoTrackerActionWrapper(async () => {
-        const workflowId = randomID();
+        const workflowId = generateUUID();
         const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
 
         const inputRouter = await fetcher<Action>(`${api}/actions/InputRouter`);
 
-        const inputNodeId = randomID();
+        const inputNodeId = generateUUID();
         const newInputNode: Node = {
           id: inputNodeId,
           type: inputRouter.type,
@@ -68,7 +68,7 @@ export default ({
           `${api}/actions/OutputRouter`,
         );
 
-        const outputNodeId = randomID();
+        const outputNodeId = generateUUID();
         const newOutputNode: Node = {
           id: outputNodeId,
           type: outputRouter.type,

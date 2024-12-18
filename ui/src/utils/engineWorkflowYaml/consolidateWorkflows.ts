@@ -1,7 +1,7 @@
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import type { EngineReadyWorkflow, Workflow } from "@flow/types";
 
-import { randomID } from "../randomID";
+import { generateUUID } from "../generateUUID";
 
 import { createSubGraphs } from "./createSubGraphs";
 
@@ -17,7 +17,7 @@ export const consolidateWorkflows = (
   const subGraphs = createSubGraphs(workflows);
 
   const consolidatedWorkflow = {
-    id: randomID(),
+    id: generateUUID(),
     name,
     entryGraphId,
     // with // TODO: conversion of data.params to with

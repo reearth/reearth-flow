@@ -59,6 +59,7 @@
     "@tanstack/react-query": "5.62.7",
     "@tanstack/react-router": "1.90.0",
     "@tanstack/react-table": "8.20.6",
+    "@types/uuid": "^10.0.0",
     "@xyflow/react": "12.3.6",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -80,6 +81,7 @@
     "react-resizable-panels": "2.1.7",
     "react-yjs": "2.0.1",
     "use-resize-observer": "9.1.0",
+    "uuid": "^11.0.3",
     "y-websocket": "2.0.4",
     "yaml": "2.6.1",
     "yjs": "13.6.20"

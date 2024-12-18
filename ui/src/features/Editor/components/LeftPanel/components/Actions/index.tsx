@@ -19,7 +19,7 @@ import { useAction } from "@flow/lib/fetch";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
 import type { Action, ActionsSegregated, Node, Segregated } from "@flow/types";
-import { randomID } from "@flow/utils";
+import { generateUUID } from "@flow/utils";
 
 import ActionComponent from "./Action";
 
@@ -84,7 +84,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
       if (!action) return;
 
       const newNode: Node = {
-        id: randomID(),
+        id: generateUUID(),
         type: action.type,
         position: screenToFlowPosition({
           x: window.innerWidth / 2,
