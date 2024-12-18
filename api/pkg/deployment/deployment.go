@@ -8,7 +8,7 @@ type Deployment struct {
 	id          ID
 	project     ProjectID
 	workspace   WorkspaceID
-	workflowUrl string
+	workflowURL string
 	description string
 	version     string
 	updatedAt   time.Time
@@ -26,8 +26,8 @@ func (d *Deployment) Workspace() WorkspaceID {
 	return d.workspace
 }
 
-func (d *Deployment) WorkflowUrl() string {
-	return d.workflowUrl
+func (d *Deployment) WorkflowURL() string {
+	return d.workflowURL
 }
 
 func (d *Deployment) Description() string {
@@ -60,8 +60,8 @@ func (d *Deployment) SetWorkspace(workspace WorkspaceID) {
 	d.updatedAt = time.Now()
 }
 
-func (d *Deployment) SetWorkflowUrl(workflowUrl string) {
-	d.workflowUrl = workflowUrl
+func (d *Deployment) SetWorkflowURL(workflowURL string) {
+	d.workflowURL = workflowURL
 	d.updatedAt = time.Now()
 }
 
