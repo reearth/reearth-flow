@@ -4,15 +4,13 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
-import { config } from "@flow/config";
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
-import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
 import type { Action, ActionNodeType, Node } from "@flow/types";
-import { randomID } from "@flow/utils";
 
 import useBatch from "../../../Canvas/useBatch";
+import { useCreateNode } from "../../../Canvas/useCreateNode";
 
 type Props = {
   openedActionType: {
@@ -58,37 +56,24 @@ const NodePickerDialog: React.FC<Props> = ({
     }
   }, [selectedIndex, actions]);
 
+  const { createNode } = useCreateNode();
+
   const [handleSingleClick, handleDoubleClick] = useDoubleClick(
     (name?: string) => {
       setSelected((prevName) => (prevName === name ? undefined : name));
     },
     async (name?: string) => {
-      const { api } = config();
-      const action = await fetcher<Action>(`${api}/actions/${name}`);
-      if (!action) return;
+      if (!name) return;
 
-      const newNode: Node = {
-        id: randomID(),
-        type: action.type,
+      const newNode = await createNode({
         position: openedActionType.position,
-        // Needs measured, but at time of creation we don't know size yet.
-        // 150x25 is base-size of GeneralNode.
-        measured: {
-          width: 150,
-          height: 25,
-        },
-        data: {
-          name: action.name,
-          inputs: [...action.inputPorts],
-          outputs: [...action.outputPorts],
-          status: "idle",
-          locked: false,
-        },
-      };
+        type: name,
+      });
+
+      if (!newNode) return;
+
       const newNodes = [...nodes, newNode];
-
       onNodesChange(handleNodeDropInBatch(newNode, newNodes));
-
       onClose();
     },
   );
