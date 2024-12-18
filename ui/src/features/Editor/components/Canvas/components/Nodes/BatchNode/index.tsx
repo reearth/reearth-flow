@@ -42,6 +42,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
     });
 
     return {
+      // Add 8px padding to the maxX and maxY to show that node cannot be resized beyond the placement of child nodes
       width: Math.max(minSize.width, maxX + 8),
       height: Math.max(minSize.height, maxY + 8),
     };
@@ -64,7 +65,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
       setNodes(updatedNodes);
     }
   }, [getNodes, setNodes, handleNodeDropInBatch]);
-
+  // No need to memoize as we want to update because bounds will change on resize
   const bounds = getChildNodesBoundary();
 
   return (
