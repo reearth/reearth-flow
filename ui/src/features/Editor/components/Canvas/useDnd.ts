@@ -43,7 +43,7 @@ export default ({
         x: event.clientX,
         y: event.clientY,
       });
-
+      // Type can either be a node type or a action name
       const type = event.dataTransfer.getData("application/reactflow");
       if (!type) return;
 

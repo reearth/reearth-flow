@@ -8,19 +8,12 @@ import { randomID } from "@flow/utils";
 import { baseBatchNode } from "./components/Nodes/BatchNode";
 import { baseNoteNode } from "./components/Nodes/NoteNode";
 
-type BaseNodeOptions = {
+type CreateNodeOptions = {
   position: XYPosition;
-  type: Action["type"];
+  type: string;
 };
 
-type CreateNodeFromActionOptions = {
-  position: XYPosition;
-  action: Action;
-};
-
-type CreateNodeOptions = BaseNodeOptions & { action?: Action };
-
-const createBaseNode = ({ position, type }: BaseNodeOptions): Node => ({
+const createBaseNode = ({ position, type }: CreateNodeOptions): Node => ({
   id: randomID(),
   position,
   type,
@@ -34,7 +27,7 @@ const createBaseNode = ({ position, type }: BaseNodeOptions): Node => ({
 const createSpecializedNode = ({
   position,
   type,
-}: BaseNodeOptions): Node | null => {
+}: CreateNodeOptions): Node | null => {
   const node = createBaseNode({ position, type });
 
   switch (type) {
@@ -50,56 +43,44 @@ const createSpecializedNode = ({
   }
 };
 
-const createNodeFromAction = ({
-  action,
-  position,
-}: CreateNodeFromActionOptions): Node => ({
-  ...createBaseNode({ position, type: action.type }),
-  measured: {
-    width: 150,
-    height: 25,
-  },
-  data: {
-    name: action.name,
-    inputs: action.inputPorts ?? [],
-    outputs: action.outputPorts ?? [],
-    status: "idle",
-    locked: false,
-  },
-});
+const createActionNode = async (
+  name: string,
+  position: XYPosition,
+): Promise<Node | null> => {
+  const { api } = config();
+  const action = await fetcher<Action>(`${api}/actions/${name}`);
+  if (!action) return null;
+
+  return {
+    ...createBaseNode({ position, type: action.type }),
+    // Needs measured, but at time of creation we don't know size yet.
+    // 150x25 is base-size of GeneralNode.
+    measured: {
+      width: 150,
+      height: 25,
+    },
+    data: {
+      name: action.name,
+      inputs: [...action.inputPorts],
+      outputs: [...action.outputPorts],
+      status: "idle",
+      locked: false,
+    },
+  };
+};
 
 export const useCreateNode = () => {
-  const { api } = config();
-
-  const createActionNode = async (
-    name: string,
-    position: XYPosition,
-  ): Promise<Node | null> => {
-    const action = await fetcher<Action>(`${api}/actions/${name}`);
-    if (!action) return null;
-    return createNodeFromAction({ action, position });
-  };
-
   const createNode = async ({
     position,
     type,
-    action,
   }: CreateNodeOptions): Promise<Node | null> => {
-    if (action) {
-      return createNodeFromAction({ action, position });
-    }
-
     if (nodeTypes.includes(type as NodeType)) {
       return createSpecializedNode({ position, type });
     }
-
     return createActionNode(type, position);
   };
 
   return {
     createNode,
-    createActionNode,
   };
 };
-
-export { createBaseNode, createSpecializedNode, createNodeFromAction };

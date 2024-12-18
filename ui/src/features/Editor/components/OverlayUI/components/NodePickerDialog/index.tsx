@@ -63,13 +63,11 @@ const NodePickerDialog: React.FC<Props> = ({
       setSelected((prevName) => (prevName === name ? undefined : name));
     },
     async (name?: string) => {
-      const action = actions?.find((a) => a.name === name);
-      if (!action) return;
+      if (!name) return;
 
       const newNode = await createNode({
         position: openedActionType.position,
-        type: action.type,
-        action,
+        type: name,
       });
 
       if (!newNode) return;
