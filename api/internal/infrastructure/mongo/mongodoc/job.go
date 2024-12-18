@@ -6,6 +6,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearthx/log"
 	"golang.org/x/exp/slices"
 )
 
@@ -31,7 +32,11 @@ func NewJobConsumer(workspaces []accountdomain.WorkspaceID) *JobConsumer {
 func NewJob(j *job.Job) (*JobDocument, string) {
 	jid := j.ID().String()
 
-	return &JobDocument{
+	// Debug values before document creation
+	log.Printf("Creating JobDocument - Job ID: %v, Deployment: %v, Workspace: %v, MetadataURL: %v",
+		j.ID(), j.Deployment(), j.Workspace(), j.MetadataURL())
+
+	doc := &JobDocument{
 		ID:           jid,
 		DeploymentID: j.Deployment().String(),
 		WorkspaceID:  j.Workspace().String(),
@@ -40,7 +45,13 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		StartedAt:    j.StartedAt(),
 		CompletedAt:  j.CompletedAt(),
 		MetadataURL:  j.MetadataURL(),
-	}, jid
+	}
+
+	// Debug created document
+	log.Printf("Created JobDocument - ID: %v, DeploymentID: %v, WorkspaceID: %v, MetadataURL: %v",
+		doc.ID, doc.DeploymentID, doc.WorkspaceID, doc.MetadataURL)
+
+	return doc, jid
 }
 
 func (d *JobDocument) Model() (*job.Job, error) {

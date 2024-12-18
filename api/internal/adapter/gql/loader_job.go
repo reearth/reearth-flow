@@ -9,7 +9,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/usecasex"
-	"github.com/reearth/reearthx/util"
 )
 
 type JobLoader struct {
@@ -21,12 +20,16 @@ func NewJobLoader(usecase interfaces.Job) *JobLoader {
 }
 
 func (c *JobLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.Job, []error) {
-	ids2, err := util.TryMap(ids, gqlmodel.ToID[id.Job])
-	if err != nil {
-		return nil, []error{err}
+	jobIDs := make([]id.JobID, 0, len(ids))
+	for _, gid := range ids {
+		jid, err := id.JobIDFrom(string(gid))
+		if err != nil {
+			return nil, []error{err}
+		}
+		jobIDs = append(jobIDs, jid)
 	}
 
-	res, err := c.usecase.Fetch(ctx, ids2, getOperator(ctx))
+	res, err := c.usecase.Fetch(ctx, jobIDs, getOperator(ctx))
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -40,7 +43,7 @@ func (c *JobLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.J
 }
 
 func (c *JobLoader) FindByID(ctx context.Context, jobID gqlmodel.ID) (*gqlmodel.Job, error) {
-	id, err := gqlmodel.ToID[id.Job](jobID)
+	id, err := id.JobIDFrom(string(jobID))
 	if err != nil {
 		return nil, err
 	}

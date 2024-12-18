@@ -31,7 +31,7 @@ import (
 )
 
 func init() {
-	mongotest.Env = "FLOW_DB"
+	mongotest.Env = "REEARTH_FLOW_DB"
 }
 
 func TestEndpoint(t *testing.T) {
