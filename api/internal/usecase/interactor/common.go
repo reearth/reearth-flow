@@ -24,12 +24,13 @@ type ContainerConfig struct {
 
 func NewContainer(r *repo.Container, g *gateway.Container,
 	ar *accountrepo.Container, ag *accountgateway.Container,
+	permissionChecker gateway.PermissionChecker,
 	config ContainerConfig,
 ) interfaces.Container {
 	return interfaces.Container{
 		Asset:      NewAsset(r, g),
 		Deployment: NewDeployment(r, g),
-		Project:    NewProject(r, g),
+		Project:    NewProject(r, g, permissionChecker),
 		Workspace:  accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
 		User:       accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
 	}

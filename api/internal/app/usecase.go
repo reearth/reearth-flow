@@ -12,7 +12,7 @@ import (
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 )
 
-func UsecaseMiddleware(r *repo.Container, g *gateway.Container, ar *accountrepo.Container, ag *accountgateway.Container, config interactor.ContainerConfig) echo.MiddlewareFunc {
+func UsecaseMiddleware(r *repo.Container, g *gateway.Container, ar *accountrepo.Container, ag *accountgateway.Container, permissionChecker gateway.PermissionChecker, config interactor.ContainerConfig) echo.MiddlewareFunc {
 	return ContextMiddleware(func(ctx context.Context) context.Context {
 		repos := r
 
@@ -34,7 +34,7 @@ func UsecaseMiddleware(r *repo.Container, g *gateway.Container, ar *accountrepo.
 			ar2 = ar
 		}
 
-		uc := interactor.NewContainer(repos, g, ar2, ag, config)
+		uc := interactor.NewContainer(repos, g, ar2, ag, permissionChecker, config)
 		ctx = adapter.AttachUsecases(ctx, &uc)
 		return ctx
 	})
