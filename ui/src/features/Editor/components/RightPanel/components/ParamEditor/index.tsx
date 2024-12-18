@@ -1,19 +1,7 @@
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
 import { memo } from "react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  IconButton,
-  Label,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  SchemaForm,
-} from "@flow/components";
+import { IconButton, Tabs, TabsContent, SchemaForm } from "@flow/components";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import type { NodeData } from "@flow/types";
@@ -58,14 +46,13 @@ const ParamEditor: React.FC<Props> = ({
         </div>
       </div>
       <Tabs defaultValue="params" className="w-full">
-        <TabsList className="flex gap-2">
-          <TabsTrigger className="flex-1" value="params">
-            {t("Parameters")}
-          </TabsTrigger>
-          <TabsTrigger className="flex-1" value="data">
+        <div className="flex flex-col gap-2">
+          <p className="text-lg dark:font-thin">{t("Parameters")}</p>
+        </div>
+        {/* <TabsTrigger className="flex-1" value="data">
             {t("Node data")}
-          </TabsTrigger>
-        </TabsList>
+          </TabsTrigger> */}
+
         <TabsContent value="params">
           <div className="rounded border bg-card p-3">
             {!action?.parameter && <p>{t("No Parameters Available")}</p>}
@@ -78,7 +65,7 @@ const ParamEditor: React.FC<Props> = ({
             )}
           </div>
         </TabsContent>
-        <TabsContent value="data">
+        {/* <TabsContent value="data">
           <Card className="bg-transparent">
             <CardHeader>
               <CardTitle>Node data</CardTitle>
@@ -98,7 +85,7 @@ const ParamEditor: React.FC<Props> = ({
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent> */}
       </Tabs>
     </div>
   );

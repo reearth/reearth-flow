@@ -24,12 +24,9 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
   }, []);
 
   const handleParamsSubmit = useCallback(
-    (nodeId: string, data: any) => {
-      onParamsSubmit(nodeId, data);
-      // Ensures that the right panel closes after the submit button is clicked
-      setTimeout(() => {
-        closePanel();
-      }, 0);
+    async (nodeId: string, data: any) => {
+      await Promise.resolve(onParamsSubmit(nodeId, data));
+      closePanel();
     },
     [onParamsSubmit, closePanel],
   );
