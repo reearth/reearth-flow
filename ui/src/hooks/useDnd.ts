@@ -2,6 +2,8 @@ import { useReactFlow, XYPosition } from "@xyflow/react";
 import { DragEvent, useCallback } from "react";
 
 import { config } from "@flow/config";
+import { baseBatchNode } from "@flow/features/Editor/components/Canvas/components/Nodes/BatchNode";
+import { baseNoteNode } from "@flow/features/Editor/components/Canvas/components/Nodes/NoteNode";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import {
   nodeTypes,
@@ -11,9 +13,6 @@ import {
   type NodeType,
 } from "@flow/types";
 import { randomID } from "@flow/utils";
-
-import { baseBatchNode } from "./components/Nodes/BatchNode";
-import { baseNoteNode } from "./components/Nodes/NoteNode";
 
 type Props = {
   nodes: Node[];

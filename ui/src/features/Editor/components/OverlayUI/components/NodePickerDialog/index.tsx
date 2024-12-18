@@ -6,13 +6,12 @@ import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
 import { config } from "@flow/config";
 import { useDoubleClick } from "@flow/hooks";
+import useBatch from "@flow/hooks/useBatch";
 import { useAction } from "@flow/lib/fetch";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
 import type { Action, ActionNodeType, Node } from "@flow/types";
 import { randomID } from "@flow/utils";
-
-import useBatch from "../../../Canvas/useBatch";
 
 type Props = {
   openedActionType: {

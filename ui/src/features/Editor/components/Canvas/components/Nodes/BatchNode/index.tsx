@@ -2,9 +2,8 @@ import { RectangleDashed } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer, useReactFlow } from "@xyflow/react";
 import { memo, useState, useCallback } from "react";
 
+import useBatch from "@flow/hooks/useBatch";
 import { Node } from "@flow/types";
-
-import useBatch from "../../../useBatch";
 
 export type BatchNodeProps = NodeProps<Node>;
 
