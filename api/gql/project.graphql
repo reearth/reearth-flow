@@ -3,6 +3,7 @@ type Project implements Node {
   basicAuthUsername: String!
   createdAt: DateTime!
   description: String!
+  deployment: Deployment
   id: ID!
   isArchived: Boolean!
   isBasicAuthActive: Boolean!
