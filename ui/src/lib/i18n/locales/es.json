@@ -50,7 +50,7 @@
   "Undo last action": "Deshacer última acción",
   "Redo action": "Rehacer acción",
   "Parameters": "Parámetros",
-  "Node data": "Datos del nodo",
+  "No Parameters Available": "No hay parámetros disponibles",
   "Unable to rename workflow": "No se puede renombrar el flujo de trabajo",
   "Renaming workflow failed. Please try again later.": "Renombrar el flujo de trabajo falló. Por favor, inténtalo de nuevo más tarde.",
   "Main Workflow": "Flujo de trabajo principal",
