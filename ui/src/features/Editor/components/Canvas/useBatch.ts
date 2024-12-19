@@ -8,13 +8,15 @@ export default () => {
 
   const handleAddToBatch = useCallback(
     (draggedNode: Node, hoveredNode: Node, nodes: Node[]) => {
+      const internalNode = getInternalNode(draggedNode.id);
+      const updatedNode: Node = { ...draggedNode };
+
       // Check if dragged node isn't already a child to the group
       if (!draggedNode.parentId) {
-        const updatedNode = { ...draggedNode, parentId: hoveredNode.id };
-        const posX =
-          getInternalNode(updatedNode.id)?.position.x || updatedNode.position.x;
-        const posY =
-          getInternalNode(updatedNode.id)?.position.y || updatedNode.position.y;
+        updatedNode.parentId = hoveredNode.id;
+
+        const posX = internalNode?.position.x || updatedNode.position.x;
+        const posY = internalNode?.position.y || updatedNode.position.y;
 
         if (posX && posY) {
           updatedNode.position = {
@@ -34,13 +36,17 @@ export default () => {
 
   const handleRemoveFromBatch = useCallback(
     (draggedNode: Node, hoveredNode: Node, nodes: Node[]) => {
+      const internalNode = getInternalNode(draggedNode.id);
+      const updatedNode: Node = { ...draggedNode };
+
       // Check if dragged node is a child to the group
       if (draggedNode.parentId === hoveredNode.id) {
-        draggedNode.parentId = undefined;
-        const posX = getInternalNode(draggedNode.id)?.position.x;
-        const posY = getInternalNode(draggedNode.id)?.position.y;
+        updatedNode.parentId = undefined;
+
+        const posX = internalNode?.position.x;
+        const posY = internalNode?.position.y;
         if (posX && posY) {
-          draggedNode.position = {
+          updatedNode.position = {
             x: posX + hoveredNode.position.x,
             y: posY + hoveredNode.position.y,
           };
@@ -48,7 +54,7 @@ export default () => {
 
         return nodes.map((n) => {
           if (n.id === draggedNode.id) {
-            n = draggedNode;
+            n = updatedNode;
           }
           return n;
         });

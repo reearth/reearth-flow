@@ -64,7 +64,14 @@ export default ({
       const newNode = await createNode({ position, type });
       if (!newNode) return;
 
-      const newNodes = [...nodes, newNode];
+      const newNodes = [...nodes];
+      // This is needed since children must be after the parent
+      // in the array to avoid issues with react-flow
+      if (type === "batch") {
+        newNodes.splice(0, 0, newNode);
+      } else {
+        newNodes.push(newNode);
+      }
 
       if (type !== "batch") {
         onNodesChange(handleNodeDropInBatch(newNode, newNodes));

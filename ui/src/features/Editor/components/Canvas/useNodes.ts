@@ -191,13 +191,12 @@ export default ({
   const handleNodeDragStop = useCallback(
     (_evt: MouseEvent, node: Node) => {
       if (node.type !== "batch") {
-        onNodesChange(handleNodeDropInBatch(node, nodes));
         if (node.type !== "note") {
           handleNodeDropOnEdge(node);
         }
       }
     },
-    [handleNodeDropInBatch, handleNodeDropOnEdge, nodes, onNodesChange],
+    [handleNodeDropOnEdge],
   );
 
   return {
