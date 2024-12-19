@@ -4,17 +4,26 @@ import { memo, useCallback } from "react";
 import { IconButton } from "@flow/components";
 import { Node } from "@flow/types";
 
+import { useNodeHistory } from "../Canvas/useNodeHistory";
+
 import { ParamEditor } from "./components";
 
 type Props = {
   selected?: Node;
   onParamsSubmit: (nodeId: string, data: any) => void;
+  nodes: Node[];
 };
 
-const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
+const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit, nodes }) => {
+  const { selectedNode, handleNavigateNodeHistory, nodeHistoryPosition } =
+    useNodeHistory({
+      selected,
+      nodes,
+    });
+
   // This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
   // to unlock the node when user wants to close the right panel. - @KaWaite
-  const handleClose = useCallback(() => {
+  const handlePanelClose = useCallback(() => {
     // react-flow__pane is the classname of the div inside react-flow that has the click event
     // https://github.com/xyflow/xyflow/blob/71db83761c245493d44e74311e10cc6465bf8387/packages/react/src/container/Pane/index.tsx#L249
     const paneElement = document.getElementsByClassName("react-flow__pane")[0];
@@ -26,9 +35,9 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
   const handleParamsSubmit = useCallback(
     async (nodeId: string, data: any) => {
       await Promise.resolve(onParamsSubmit(nodeId, data));
-      handleClose();
+      handlePanelClose();
     },
-    [onParamsSubmit, handleClose],
+    [onParamsSubmit, handlePanelClose],
   );
 
   return (
@@ -45,7 +54,7 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
           <IconButton
             className="relative before:absolute before:inset-y-0 before:right-0 before:z-[-1] before:bg-success before:content-['']"
             icon={<X className="size-[30px]" weight="thin" />}
-            onClick={handleClose}
+            onClick={handlePanelClose}
           />
         </div>
       </div>
@@ -59,12 +68,14 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
         <div className="size-full py-4 pl-4 pr-2">
-          {selected && (
+          {selectedNode && (
             <ParamEditor
-              nodeId={selected.id}
-              nodeMeta={selected.data}
-              nodeType={selected.type}
+              nodeId={selectedNode.id}
+              nodeMeta={selectedNode.data}
+              nodeType={selectedNode.type}
               onSubmit={handleParamsSubmit}
+              onNavigateNodeHistory={handleNavigateNodeHistory}
+              nodeHistoryPosition={nodeHistoryPosition}
             />
           )}
         </div>

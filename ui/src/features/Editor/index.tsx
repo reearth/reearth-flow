@@ -99,6 +99,7 @@ export default function Editor({
         <RightPanel
           selected={locallyLockedNode}
           onParamsSubmit={handleNodeParamsUpdate}
+          nodes={nodes}
         />
       </div>
     </div>
