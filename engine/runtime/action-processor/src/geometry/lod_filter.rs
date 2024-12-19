@@ -8,7 +8,6 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::GeometryValue;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -71,20 +70,15 @@ impl ProcessorFactory for GeometryLodFilterFactory {
             )
             .into());
         };
-        let max_lod = params.max_lod.unwrap_or(4);
-        let min_lod = params.min_lod.unwrap_or(0);
-        if max_lod < min_lod {
+        let up_to_lod = params.up_to_lod.unwrap_or(4);
+        if !(1..4).contains(&up_to_lod) {
             return Err(GeometryProcessorError::GeometryLodFilterFactory(
-                "max_lod must be greater than or equal to min_lod".to_string(),
+                "Invalid up_to_lod parameter with 1..4".to_string(),
             )
             .into());
         }
 
-        let process = GeometryLodFilter {
-            max_lod: params.max_lod,
-            min_lod: params.min_lod,
-            target_lods: params.target_lods,
-        };
+        let process = GeometryLodFilter { up_to_lod };
         Ok(Box::new(process))
     }
 }
@@ -92,16 +86,12 @@ impl ProcessorFactory for GeometryLodFilterFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryLodFilterParam {
-    max_lod: Option<u8>,
-    min_lod: Option<u8>,
-    target_lods: Option<Vec<u8>>,
+    up_to_lod: Option<u8>,
 }
 
 #[derive(Debug, Clone)]
 pub struct GeometryLodFilter {
-    max_lod: Option<u8>,
-    min_lod: Option<u8>,
-    target_lods: Option<Vec<u8>>,
+    up_to_lod: u8,
 }
 
 impl Processor for GeometryLodFilter {
@@ -110,57 +100,33 @@ impl Processor for GeometryLodFilter {
         ctx: ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        if let Some(target_lods) = &self.target_lods {
-            let feature = &ctx.feature;
-            if let Some(geometry) = feature.geometry.value.as_citygml_geometry() {
-                let mut geometry = geometry.clone();
-                geometry.gml_geometries.retain(|g| {
-                    if let Some(lod) = g.lod {
-                        target_lods.contains(&lod)
-                    } else {
-                        false
-                    }
-                });
-                if geometry.gml_geometries.is_empty() {
-                    fw.send(
-                        ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()),
-                    );
-                    return Ok(());
-                }
-                let mut feature = feature.clone();
-                feature.geometry.value = GeometryValue::CityGmlGeometry(geometry);
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-                return Ok(());
-            } else {
-                ctx.event_hub.info_log(
-                    None,
-                    format!("Feature {} does not have a citygml geometry", feature.id),
-                );
-                fw.send(
-                    ctx.new_with_feature_and_port(ctx.feature.clone(), UNFILTERED_PORT.clone()),
-                );
-                return Ok(());
-            }
-        }
-        let max_lod = self.max_lod.unwrap_or(4);
-        let min_lod = self.min_lod.unwrap_or(0);
+        let up_to_lod = self.up_to_lod;
         let Some(lod) = &ctx.feature.metadata.lod else {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), UNFILTERED_PORT.clone()));
             return Ok(());
         };
-        let Some(highest_lod) = lod.highest_lod() else {
-            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), UNFILTERED_PORT.clone()));
-            return Ok(());
+        let result = match up_to_lod {
+            1 => lod.has_lod(1),
+            2 => lod.has_lod(2) || (lod.has_lod(1) && !lod.has_lod(2)),
+            3 => {
+                lod.has_lod(3)
+                    || (lod.has_lod(2) && !lod.has_lod(3))
+                    || (lod.has_lod(1) && !lod.has_lod(3) && !lod.has_lod(2))
+            }
+            4 => {
+                lod.has_lod(4)
+                    || (lod.has_lod(3) && !lod.has_lod(4))
+                    || (lod.has_lod(2) && !lod.has_lod(4) && !lod.has_lod(3))
+                    || (lod.has_lod(1) && !lod.has_lod(4) && !lod.has_lod(3) && !lod.has_lod(2))
+            }
+            _ => false,
         };
-        let Some(lowest_lod) = lod.lowest_lod() else {
+        if !result {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), UNFILTERED_PORT.clone()));
-            return Ok(());
-        };
-        if highest_lod <= max_lod && lowest_lod >= min_lod {
-            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
             return Ok(());
         }
-        fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), UNFILTERED_PORT.clone()));
+
+        fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
         Ok(())
     }
 
@@ -187,11 +153,7 @@ mod tests {
 
     #[test]
     fn test_min_lod_default_port() {
-        let mut filter = GeometryLodFilter {
-            max_lod: Some(2),
-            min_lod: Some(1),
-            target_lods: None,
-        };
+        let mut filter = GeometryLodFilter { up_to_lod: 4 };
         let mut fw = Box::new(MockProcessorChannelForwarder::default());
         let mut feature = Feature::default();
         let mut mask = LodMask::default();
@@ -205,11 +167,7 @@ mod tests {
 
     #[test]
     fn test_max_lod_default_port() {
-        let mut filter = GeometryLodFilter {
-            max_lod: Some(3),
-            min_lod: Some(1),
-            target_lods: None,
-        };
+        let mut filter = GeometryLodFilter { up_to_lod: 3 };
         let mut fw = Box::new(MockProcessorChannelForwarder::default());
         let mut feature = Feature::default();
         let mut mask = LodMask::default();
@@ -223,31 +181,8 @@ mod tests {
     }
 
     #[test]
-    fn test_min_lod_unfilter_port() {
-        let mut filter = GeometryLodFilter {
-            max_lod: Some(3),
-            min_lod: Some(2),
-            target_lods: None,
-        };
-        let mut fw = Box::new(MockProcessorChannelForwarder::default());
-        let mut feature = Feature::default();
-        let mut mask = LodMask::default();
-        mask.add_lod(3);
-        mask.add_lod(1);
-        feature.metadata.lod = Some(mask);
-        let ctx = create_default_execute_context(&feature);
-        let result = filter.process(ctx, &mut *fw);
-        assert!(result.is_ok());
-        assert_eq!(fw.send_port, UNFILTERED_PORT.clone());
-    }
-
-    #[test]
     fn test_max_lod_unfilter_port() {
-        let mut filter = GeometryLodFilter {
-            max_lod: Some(3),
-            min_lod: Some(2),
-            target_lods: None,
-        };
+        let mut filter = GeometryLodFilter { up_to_lod: 1 };
         let mut fw = Box::new(MockProcessorChannelForwarder::default());
         let mut feature = Feature::default();
         let mut mask = LodMask::default();
