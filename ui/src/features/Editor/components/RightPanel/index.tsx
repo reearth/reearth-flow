@@ -14,7 +14,7 @@ type Props = {
 const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
   // This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
   // to unlock the node when user wants to close the right panel. - @KaWaite
-  const closePanel = useCallback(() => {
+  const handleClose = useCallback(() => {
     // react-flow__pane is the classname of the div inside react-flow that has the click event
     // https://github.com/xyflow/xyflow/blob/71db83761c245493d44e74311e10cc6465bf8387/packages/react/src/container/Pane/index.tsx#L249
     const paneElement = document.getElementsByClassName("react-flow__pane")[0];
@@ -26,9 +26,9 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
   const handleParamsSubmit = useCallback(
     async (nodeId: string, data: any) => {
       await Promise.resolve(onParamsSubmit(nodeId, data));
-      closePanel();
+      handleClose();
     },
-    [onParamsSubmit, closePanel],
+    [onParamsSubmit, handleClose],
   );
 
   return (
@@ -45,7 +45,7 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
           <IconButton
             className="relative before:absolute before:inset-y-0 before:right-0 before:z-[-1] before:bg-success before:content-['']"
             icon={<X className="size-[30px]" weight="thin" />}
-            onClick={closePanel}
+            onClick={handleClose}
           />
         </div>
       </div>
