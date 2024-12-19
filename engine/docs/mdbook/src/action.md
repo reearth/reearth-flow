@@ -1794,32 +1794,13 @@ Filter geometry by lod
   "title": "GeometryLodFilterParam",
   "type": "object",
   "properties": {
-    "maxLod": {
+    "upToLod": {
       "type": [
         "integer",
         "null"
       ],
       "format": "uint8",
       "minimum": 0.0
-    },
-    "minLod": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint8",
-      "minimum": 0.0
-    },
-    "targetLods": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "integer",
-        "format": "uint8",
-        "minimum": 0.0
-      }
     }
   }
 }
