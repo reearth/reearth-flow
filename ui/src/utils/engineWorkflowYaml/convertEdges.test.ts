@@ -16,13 +16,13 @@ describe("convertEdges", () => {
   it("should correctly convert a single edge", () => {
     const input: Edge[] = [{ id: "1", source: "A", target: "B" }];
     const result = convertEdges(input);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       from: "A",
       to: "B",
       fromPort: "default",
-      toPort: "default"
+      toPort: "default",
     });
     expect(typeof result[0].id).toBe("string");
     expect(result[0].id).not.toBe("");
@@ -40,19 +40,19 @@ describe("convertEdges", () => {
       },
     ];
     const result = convertEdges(input);
-    
+
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
       from: "A",
       to: "B",
       fromPort: "default",
-      toPort: "default"
+      toPort: "default",
     });
     expect(result[1]).toMatchObject({
       from: "B",
       to: "C",
       fromPort: "output",
-      toPort: "input"
+      toPort: "input",
     });
     // Verify IDs are unique
     expect(result[0].id).not.toBe(result[1].id);
@@ -61,13 +61,13 @@ describe("convertEdges", () => {
   it("should use default ports when sourceHandle and targetHandle are not provided", () => {
     const input: Edge[] = [{ id: "1", source: "A", target: "B" }];
     const result = convertEdges(input);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       from: "A",
       to: "B",
       fromPort: "default",
-      toPort: "default"
+      toPort: "default",
     });
   });
 
@@ -82,13 +82,13 @@ describe("convertEdges", () => {
       },
     ];
     const result = convertEdges(input);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       from: "A",
       to: "B",
       fromPort: "output1",
-      toPort: "input1"
+      toPort: "input1",
     });
   });
 
@@ -106,35 +106,35 @@ describe("convertEdges", () => {
       { id: "4", source: "D", target: "E", targetHandle: "input" },
     ];
     const result = convertEdges(input);
-    
+
     expect(result).toHaveLength(4);
     expect(result[0]).toMatchObject({
       from: "A",
       to: "B",
       fromPort: "default",
-      toPort: "default"
+      toPort: "default",
     });
     expect(result[1]).toMatchObject({
       from: "B",
       to: "C",
       fromPort: "output",
-      toPort: "input"
+      toPort: "input",
     });
     expect(result[2]).toMatchObject({
       from: "C",
       to: "D",
       fromPort: "output",
-      toPort: "default"
+      toPort: "default",
     });
     expect(result[3]).toMatchObject({
       from: "D",
       to: "E",
       fromPort: "default",
-      toPort: "input"
+      toPort: "input",
     });
 
     // Verify all IDs are unique
-    const ids = result.map(edge => edge.id);
+    const ids = result.map((edge) => edge.id);
     const uniqueIds = new Set(ids);
     expect(uniqueIds.size).toBe(result.length);
   });
