@@ -71,7 +71,7 @@ impl ProcessorFactory for GeometryLodFilterFactory {
             .into());
         };
         let up_to_lod = params.up_to_lod.unwrap_or(4);
-        if !(1..4).contains(&up_to_lod) {
+        if !(1..=4).contains(&up_to_lod) {
             return Err(GeometryProcessorError::GeometryLodFilterFactory(
                 "Invalid up_to_lod parameter with 1..4".to_string(),
             )
