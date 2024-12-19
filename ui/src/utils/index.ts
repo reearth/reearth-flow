@@ -1,6 +1,6 @@
 export * from "./fullscreen";
 export * from "./date";
-export * from "./randomID";
+export * from "./generateUUID";
 export * from "./cancellableDebounce";
 export * from "./isDefined";
 export * from "./lastOfUrl";

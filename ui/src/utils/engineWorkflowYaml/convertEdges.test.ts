@@ -15,13 +15,20 @@ describe("convertEdges", () => {
 
   it("should correctly convert a single edge", () => {
     const input: Edge[] = [{ id: "1", source: "A", target: "B" }];
-    const expected = [
-      { id: "1", from: "A", to: "B", fromPort: "default", toPort: "default" },
-    ];
-    expect(convertEdges(input)).toEqual(expected);
+    const result = convertEdges(input);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      from: "A",
+      to: "B",
+      fromPort: "default",
+      toPort: "default",
+    });
+    expect(typeof result[0].id).toBe("string");
+    expect(result[0].id).not.toBe("");
   });
 
-  it("should correctly convert multiple edges", () => {
+  it("should correctly convert multiple edges with unique IDs", () => {
     const input: Edge[] = [
       { id: "1", source: "A", target: "B" },
       {
@@ -32,19 +39,36 @@ describe("convertEdges", () => {
         targetHandle: "input",
       },
     ];
-    const expected = [
-      { id: "1", from: "A", to: "B", fromPort: "default", toPort: "default" },
-      { id: "2", from: "B", to: "C", fromPort: "output", toPort: "input" },
-    ];
-    expect(convertEdges(input)).toEqual(expected);
+    const result = convertEdges(input);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      from: "A",
+      to: "B",
+      fromPort: "default",
+      toPort: "default",
+    });
+    expect(result[1]).toMatchObject({
+      from: "B",
+      to: "C",
+      fromPort: "output",
+      toPort: "input",
+    });
+    // Verify IDs are unique
+    expect(result[0].id).not.toBe(result[1].id);
   });
 
   it("should use default ports when sourceHandle and targetHandle are not provided", () => {
     const input: Edge[] = [{ id: "1", source: "A", target: "B" }];
-    const expected = [
-      { id: "1", from: "A", to: "B", fromPort: "default", toPort: "default" },
-    ];
-    expect(convertEdges(input)).toEqual(expected);
+    const result = convertEdges(input);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      from: "A",
+      to: "B",
+      fromPort: "default",
+      toPort: "default",
+    });
   });
 
   it("should use provided sourceHandle and targetHandle when available", () => {
@@ -57,13 +81,18 @@ describe("convertEdges", () => {
         targetHandle: "input1",
       },
     ];
-    const expected = [
-      { id: "1", from: "A", to: "B", fromPort: "output1", toPort: "input1" },
-    ];
-    expect(convertEdges(input)).toEqual(expected);
+    const result = convertEdges(input);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      from: "A",
+      to: "B",
+      fromPort: "output1",
+      toPort: "input1",
+    });
   });
 
-  it("should handle a mix of edges with and without custom handles", () => {
+  it("should handle a mix of edges with and without custom handles and generate unique IDs", () => {
     const input: Edge[] = [
       { id: "1", source: "A", target: "B" },
       {
@@ -76,12 +105,37 @@ describe("convertEdges", () => {
       { id: "3", source: "C", target: "D", sourceHandle: "output" },
       { id: "4", source: "D", target: "E", targetHandle: "input" },
     ];
-    const expected = [
-      { id: "1", from: "A", to: "B", fromPort: "default", toPort: "default" },
-      { id: "2", from: "B", to: "C", fromPort: "output", toPort: "input" },
-      { id: "3", from: "C", to: "D", fromPort: "output", toPort: "default" },
-      { id: "4", from: "D", to: "E", fromPort: "default", toPort: "input" },
-    ];
-    expect(convertEdges(input)).toEqual(expected);
+    const result = convertEdges(input);
+
+    expect(result).toHaveLength(4);
+    expect(result[0]).toMatchObject({
+      from: "A",
+      to: "B",
+      fromPort: "default",
+      toPort: "default",
+    });
+    expect(result[1]).toMatchObject({
+      from: "B",
+      to: "C",
+      fromPort: "output",
+      toPort: "input",
+    });
+    expect(result[2]).toMatchObject({
+      from: "C",
+      to: "D",
+      fromPort: "output",
+      toPort: "default",
+    });
+    expect(result[3]).toMatchObject({
+      from: "D",
+      to: "E",
+      fromPort: "default",
+      toPort: "input",
+    });
+
+    // Verify all IDs are unique
+    const ids = result.map((edge) => edge.id);
+    const uniqueIds = new Set(ids);
+    expect(uniqueIds.size).toBe(result.length);
   });
 });

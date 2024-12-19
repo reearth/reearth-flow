@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import type { Workflow, EngineReadyGraph } from "@flow/types";
 
-import { randomID } from "../randomID";
+import { generateUUID } from "../generateUUID";
 
 import { consolidateWorkflows } from "./consolidateWorkflows";
 import { createSubGraphs } from "./createSubGraphs";
@@ -12,8 +12,8 @@ vi.mock("./createSubGraphs", () => ({
   createSubGraphs: vi.fn(),
 }));
 
-vi.mock("../randomID", () => ({
-  randomID: vi.fn(),
+vi.mock("../generateUUID", () => ({
+  generateUUID: vi.fn(),
 }));
 
 describe("consolidateWorkflows", () => {
@@ -43,7 +43,7 @@ describe("consolidateWorkflows", () => {
     ];
 
     (createSubGraphs as any).mockReturnValue(mockSubGraphs);
-    (vi.mocked(randomID) as any).mockReturnValue("random-id-123");
+    (vi.mocked(generateUUID) as any).mockReturnValue("random-id-123");
 
     const result = consolidateWorkflows("somename", mockWorkflows);
 
@@ -55,7 +55,7 @@ describe("consolidateWorkflows", () => {
     });
 
     expect(createSubGraphs).toHaveBeenCalledWith(mockWorkflows);
-    expect(randomID).toHaveBeenCalled();
+    expect(generateUUID).toHaveBeenCalled();
   });
 
   it("should correctly consolidate workflows without a main workflow", () => {
@@ -70,26 +70,26 @@ describe("consolidateWorkflows", () => {
     ];
 
     (createSubGraphs as any).mockReturnValue(mockSubGraphs);
-    (vi.mocked(randomID) as any).mockReturnValue("random-id-456");
+    (vi.mocked(generateUUID) as any).mockReturnValue("random-id-456");
 
     const result = consolidateWorkflows("somename", mockWorkflows);
 
     expect(result).toEqual(undefined);
 
     expect(createSubGraphs).not.toHaveBeenCalledWith(mockWorkflows);
-    expect(randomID).not.toHaveBeenCalled();
+    expect(generateUUID).not.toHaveBeenCalled();
   });
 
   it("should return undefined when workflows array is empty (since there is no main/entry point)", () => {
     const mockWorkflows: Workflow[] = [];
 
     (createSubGraphs as any).mockReturnValue([]);
-    (vi.mocked(randomID) as any).mockReturnValue("random-id-789");
+    (vi.mocked(generateUUID) as any).mockReturnValue("random-id-789");
 
     const result = consolidateWorkflows("somename", mockWorkflows);
 
     expect(result).toEqual(undefined);
     expect(createSubGraphs).not.toHaveBeenCalledWith(mockWorkflows);
-    expect(randomID).not.toHaveBeenCalled();
+    expect(generateUUID).not.toHaveBeenCalled();
   });
 });
