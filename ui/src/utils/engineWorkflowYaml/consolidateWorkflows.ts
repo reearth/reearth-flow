@@ -24,7 +24,7 @@ export const consolidateWorkflows = (
   const consolidatedWorkflow = {
     id: generateUUID(),
     name,
-    entryGraphId: generateUUID(),
+    entryGraphId: newEntryId,
     // with // TODO: conversion of data.params to with
     graphs: subGraphs,
   };
