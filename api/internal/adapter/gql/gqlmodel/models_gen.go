@@ -29,13 +29,13 @@ type AddMemberToWorkspacePayload struct {
 }
 
 type Asset struct {
-	ID          ID         `json:"id"`
+	ContentType string     `json:"contentType"`
 	CreatedAt   time.Time  `json:"createdAt"`
-	WorkspaceID ID         `json:"workspaceId"`
+	ID          ID         `json:"id"`
 	Name        string     `json:"name"`
 	Size        int64      `json:"size"`
 	URL         string     `json:"url"`
-	ContentType string     `json:"contentType"`
+	WorkspaceID ID         `json:"workspaceId"`
 	Workspace   *Workspace `json:"Workspace,omitempty"`
 }
 
@@ -126,16 +126,16 @@ type DeleteWorkspacePayload struct {
 }
 
 type Deployment struct {
-	ID          ID         `json:"id"`
-	ProjectID   ID         `json:"projectId"`
-	WorkspaceID ID         `json:"workspaceId"`
-	WorkflowURL string     `json:"workflowUrl"`
-	Description string     `json:"description"`
-	Version     string     `json:"version"`
 	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
+	Description string     `json:"description"`
+	ID          ID         `json:"id"`
 	Project     *Project   `json:"project,omitempty"`
+	ProjectID   ID         `json:"projectId"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+	Version     string     `json:"version"`
+	WorkflowURL string     `json:"workflowUrl"`
 	Workspace   *Workspace `json:"workspace,omitempty"`
+	WorkspaceID ID         `json:"workspaceId"`
 }
 
 func (Deployment) IsNode()        {}
@@ -162,14 +162,14 @@ type ExecuteDeploymentInput struct {
 }
 
 type Job struct {
-	ID           ID          `json:"id"`
-	DeploymentID ID          `json:"deploymentId"`
-	WorkspaceID  ID          `json:"workspaceId"`
-	Status       JobStatus   `json:"status"`
-	StartedAt    time.Time   `json:"startedAt"`
 	CompletedAt  *time.Time  `json:"completedAt,omitempty"`
 	Deployment   *Deployment `json:"deployment,omitempty"`
+	DeploymentID ID          `json:"deploymentId"`
+	ID           ID          `json:"id"`
+	StartedAt    time.Time   `json:"startedAt"`
+	Status       JobStatus   `json:"status"`
 	Workspace    *Workspace  `json:"workspace,omitempty"`
+	WorkspaceID  ID          `json:"workspaceId"`
 }
 
 func (Job) IsNode()        {}
@@ -192,24 +192,24 @@ type JobPayload struct {
 }
 
 type Me struct {
-	ID            ID           `json:"id"`
-	Name          string       `json:"name"`
-	Email         string       `json:"email"`
-	Lang          language.Tag `json:"lang"`
-	MyWorkspaceID ID           `json:"myWorkspaceId"`
 	Auths         []string     `json:"auths"`
-	Workspaces    []*Workspace `json:"workspaces"`
+	Email         string       `json:"email"`
+	ID            ID           `json:"id"`
+	Lang          language.Tag `json:"lang"`
 	MyWorkspace   *Workspace   `json:"myWorkspace,omitempty"`
+	MyWorkspaceID ID           `json:"myWorkspaceId"`
+	Name          string       `json:"name"`
+	Workspaces    []*Workspace `json:"workspaces"`
 }
 
 type Mutation struct {
 }
 
 type PageInfo struct {
-	StartCursor     *usecasex.Cursor `json:"startCursor,omitempty"`
 	EndCursor       *usecasex.Cursor `json:"endCursor,omitempty"`
 	HasNextPage     bool             `json:"hasNextPage"`
 	HasPreviousPage bool             `json:"hasPreviousPage"`
+	StartCursor     *usecasex.Cursor `json:"startCursor,omitempty"`
 }
 
 type Pagination struct {
@@ -220,32 +220,32 @@ type Pagination struct {
 }
 
 type Parameter struct {
-	ID        ID            `json:"id"`
-	ProjectID ID            `json:"projectId"`
-	Name      string        `json:"name"`
-	Type      ParameterType `json:"type"`
-	Required  bool          `json:"required"`
-	Value     interface{}   `json:"value"`
 	CreatedAt time.Time     `json:"createdAt"`
-	UpdatedAt time.Time     `json:"updatedAt"`
+	ID        ID            `json:"id"`
 	Index     int           `json:"index"`
+	Name      string        `json:"name"`
+	ProjectID ID            `json:"projectId"`
+	Required  bool          `json:"required"`
+	Type      ParameterType `json:"type"`
+	UpdatedAt time.Time     `json:"updatedAt"`
+	Value     interface{}   `json:"value"`
 }
 
 type Project struct {
+	BasicAuthPassword string       `json:"basicAuthPassword"`
+	BasicAuthUsername string       `json:"basicAuthUsername"`
+	CreatedAt         time.Time    `json:"createdAt"`
+	Description       string       `json:"description"`
+	Deployment        *Deployment  `json:"deployment,omitempty"`
 	ID                ID           `json:"id"`
 	IsArchived        bool         `json:"isArchived"`
 	IsBasicAuthActive bool         `json:"isBasicAuthActive"`
-	BasicAuthUsername string       `json:"basicAuthUsername"`
-	BasicAuthPassword string       `json:"basicAuthPassword"`
-	CreatedAt         time.Time    `json:"createdAt"`
+	Name              string       `json:"name"`
+	Parameters        []*Parameter `json:"parameters"`
 	UpdatedAt         time.Time    `json:"updatedAt"`
 	Version           int          `json:"version"`
-	Name              string       `json:"name"`
-	Description       string       `json:"description"`
-	WorkspaceID       ID           `json:"workspaceId"`
 	Workspace         *Workspace   `json:"workspace,omitempty"`
-	Deployment        *Deployment  `json:"deployment,omitempty"`
-	Parameters        []*Parameter `json:"parameters"`
+	WorkspaceID       ID           `json:"workspaceId"`
 }
 
 func (Project) IsNode()        {}
@@ -318,6 +318,10 @@ type SignupPayload struct {
 	Workspace *Workspace `json:"workspace"`
 }
 
+type Subscription struct {
+	JobStatus JobStatus `json:"jobStatus"`
+}
+
 type UpdateDeploymentInput struct {
 	DeploymentID ID              `json:"deploymentId"`
 	File         *graphql.Upload `json:"file,omitempty"`
@@ -375,21 +379,21 @@ type UpdateWorkspacePayload struct {
 }
 
 type User struct {
-	ID    ID      `json:"id"`
-	Name  string  `json:"name"`
 	Email string  `json:"email"`
 	Host  *string `json:"host,omitempty"`
+	ID    ID      `json:"id"`
+	Name  string  `json:"name"`
 }
 
 func (User) IsNode()        {}
 func (this User) GetID() ID { return this.ID }
 
 type Workspace struct {
-	ID       ID                 `json:"id"`
-	Name     string             `json:"name"`
-	Members  []*WorkspaceMember `json:"members"`
-	Personal bool               `json:"personal"`
 	Assets   *AssetConnection   `json:"assets"`
+	ID       ID                 `json:"id"`
+	Members  []*WorkspaceMember `json:"members"`
+	Name     string             `json:"name"`
+	Personal bool               `json:"personal"`
 	Projects *ProjectConnection `json:"projects"`
 }
 
@@ -397,9 +401,9 @@ func (Workspace) IsNode()        {}
 func (this Workspace) GetID() ID { return this.ID }
 
 type WorkspaceMember struct {
-	UserID ID    `json:"userId"`
 	Role   Role  `json:"role"`
 	User   *User `json:"user,omitempty"`
+	UserID ID    `json:"userId"`
 }
 
 type AssetSortType string
@@ -605,22 +609,22 @@ func (e ParameterType) MarshalGQL(w io.Writer) {
 type Role string
 
 const (
-	RoleReader     Role = "READER"
-	RoleWriter     Role = "WRITER"
 	RoleMaintainer Role = "MAINTAINER"
 	RoleOwner      Role = "OWNER"
+	RoleReader     Role = "READER"
+	RoleWriter     Role = "WRITER"
 )
 
 var AllRole = []Role{
-	RoleReader,
-	RoleWriter,
 	RoleMaintainer,
 	RoleOwner,
+	RoleReader,
+	RoleWriter,
 }
 
 func (e Role) IsValid() bool {
 	switch e {
-	case RoleReader, RoleWriter, RoleMaintainer, RoleOwner:
+	case RoleMaintainer, RoleOwner, RoleReader, RoleWriter:
 		return true
 	}
 	return false

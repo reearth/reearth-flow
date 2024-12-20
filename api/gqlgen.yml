@@ -60,6 +60,10 @@ models:
         resolver: true
       parameters:
         resolver: true
+  Subscription:
+    fields:
+      jobStatus:
+        resolver: true
   Workspace:
     fields:
       assets:

@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"time"
 
@@ -21,24 +22,26 @@ type Deployment struct {
 	common
 	deploymentRepo repo.Deployment
 	projectRepo    repo.Project
-	workflowRepo   repo.Workflow
+	workflowRepo    repo.Workflow
 	jobRepo        repo.Job
 	workspaceRepo  accountrepo.Workspace
 	transaction    usecasex.Transaction
 	batch          gateway.Batch
-	file           gateway.File
+	file            gateway.File
+	job            interfaces.Job
 }
 
-func NewDeployment(r *repo.Container, gr *gateway.Container) interfaces.Deployment {
+func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job) interfaces.Deployment {
 	return &Deployment{
 		deploymentRepo: r.Deployment,
 		projectRepo:    r.Project,
-		workflowRepo:   r.Workflow,
+		workflowRepo:    r.Workflow,
 		jobRepo:        r.Job,
 		workspaceRepo:  r.Workspace,
 		transaction:    r.Transaction,
 		batch:          gr.Batch,
-		file:           gr.File,
+		file:            gr.File,
+		job:            jobUsecase,
 	}
 }
 
@@ -227,9 +230,18 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	_, err = i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), d.Project())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), d.Project())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
+	}
+
+	j.SetGCPJobID(gcpJobID)
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return nil, err
+	}
+
+	if err := i.job.StartMonitoring(ctx, j, operator); err != nil {
+		return nil, fmt.Errorf("failed to start job monitoring: %v", err)
 	}
 
 	tx.Commit()
