@@ -19,9 +19,9 @@ fragment Job on Job {
   status
   startedAt
   completedAt
-  # deployment{
-  #   ...Deployment
-  # }
+  deployment {
+    ...Deployment
+  }
   # workspace{
   #   ...Workspace
   # }

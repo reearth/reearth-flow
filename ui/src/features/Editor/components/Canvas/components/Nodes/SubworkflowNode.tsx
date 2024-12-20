@@ -4,9 +4,7 @@ import GeneralNode, { GeneralNodeProps } from "./GeneralNode";
 
 type Props = GeneralNodeProps;
 
-const SubworkflowNode: React.FC<Props> = (props) => {
-  console.log("SubworkflowNode", props);
-  const { data } = props;
+const SubworkflowNode: React.FC<Props> = ({ data, ...props }) => {
   const uiInputs = useMemo(
     () => data.pseudoInputs?.map((pi) => pi.portName) || data.inputs || [],
     [data.pseudoInputs, data.inputs],

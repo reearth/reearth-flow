@@ -48,6 +48,6 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
       return "failed";
     case "PENDING":
     default:
-      return "pending";
+      return "queued";
   }
 };
