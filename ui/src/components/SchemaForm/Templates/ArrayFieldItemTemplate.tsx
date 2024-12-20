@@ -34,6 +34,7 @@ const ArrayFieldItemTemplate = <
     <div>
       <div className="mb-2 flex items-center gap-1">
         <div>{children}</div>
+        {/* TODO: depending on the type of the children, stylings for icons are broken. */}
         <div className="pt-4">
           {hasToolbar && (
             <div className="flex flex-row gap-1">
