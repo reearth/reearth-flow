@@ -14,7 +14,11 @@ export const consolidateWorkflows = (
   )?.id;
   if (!entryGraphId) return undefined;
 
-  const subGraphs = createSubGraphs(workflows);
+  const convertedWorkflows = workflows.map((wf) => {
+    return wf.id === DEFAULT_ENTRY_GRAPH_ID ? { ...wf, id: entryGraphId } : wf;
+  });
+
+  const subGraphs = createSubGraphs(convertedWorkflows);
 
   const consolidatedWorkflow = {
     id: generateUUID(),
