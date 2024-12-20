@@ -32,6 +32,10 @@ const config = {
           DEFAULT: "rgba(var(--destructive))",
           foreground: "rgba(var(--destructive-foreground))",
         },
+        warning: {
+          DEFAULT: "rgba(var(--warning))",
+          foreground: "rgba(var(--warning-foreground))",
+        },
         muted: {
           DEFAULT: "rgba(var(--muted))",
           foreground: "rgba(var(--muted-foreground))",

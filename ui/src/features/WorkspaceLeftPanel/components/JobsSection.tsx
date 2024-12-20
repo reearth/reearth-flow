@@ -17,7 +17,7 @@ const JobsSection: React.FC<Props> = ({ route }) => {
   const navigate = useNavigate();
 
   const runningJobs = jobs.filter((job) => job.status === "running");
-  const queuedJobs = jobs.filter((job) => job.status === "pending");
+  const queuedJobs = jobs.filter((job) => job.status === "queued");
   const completeJobs = jobs.filter((job) => job.status === "completed");
   const failedJobs = jobs.filter((job) => job.status === "failed");
 

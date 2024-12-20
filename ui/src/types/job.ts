@@ -1,7 +1,9 @@
 import { Deployment } from "./deployment";
 // import { Project } from "./project";
 
-export type JobStatus = "pending" | "running" | "completed" | "failed";
+export type JobStatus = "queued" | "running" | "completed" | "failed";
+
+export type Trigger = "api" | "cms" | "manual"; // do we need CMS? Or maybe "api" and "native" is enough? or..?
 
 export type Job = {
   id: string;
@@ -11,11 +13,10 @@ export type Job = {
   startedAt: string;
   completedAt: string;
   logs?: unknown; // or boolean? or logId?
-  deployment: Deployment;
+  trigger?: Trigger;
+  deployment?: Deployment;
   // workspace: Workspace;
 };
-
-export type Trigger = "api" | "cms" | "manual"; // do we need CMS? Or maybe "api" and "native" is enough? or..?
 
 // type Run = {
 //   id: string;

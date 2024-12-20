@@ -44,7 +44,7 @@ export default () => {
     () =>
       mockJobs.filter((job) => {
         if (tab === "running") return job.status === "running";
-        if (tab === "queued") return job.status === "pending";
+        if (tab === "queued") return job.status === "queued";
         if (tab === "completed")
           return job.status === "completed" || job.status === "failed";
         return true;

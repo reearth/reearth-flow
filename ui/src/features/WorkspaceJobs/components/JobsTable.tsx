@@ -54,7 +54,7 @@ const JobsTable: React.FC<Props> = ({ jobs, onJobSelect }) => {
       size: 20,
     },
     {
-      accessorKey: "project.name",
+      accessorKey: "deployment.projectName",
       header: t("Project Name"),
       size: 10,
     },

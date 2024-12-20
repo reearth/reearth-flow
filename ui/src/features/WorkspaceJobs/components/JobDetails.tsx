@@ -18,6 +18,8 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
 
   const handleBack = useCallback(() => history.go(-1), [history]);
 
+  console.log("selectedJob", selectedJob);
+
   const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
       selectedJob
@@ -30,7 +32,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
             {
               id: "project",
               name: t("Project Name:"),
-              value: selectedJob.deployment.projectName ?? t("Unknown"),
+              value: selectedJob.deployment?.projectName ?? t("Unknown"),
             },
             {
               id: "started",
