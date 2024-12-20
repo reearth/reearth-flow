@@ -1,7 +1,10 @@
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
-import { memo } from "react";
+import { RJSFSchema } from "@rjsf/utils";
+import { JSONSchema7Definition } from "json-schema";
+import { memo, useMemo } from "react";
 
 import { IconButton, Tabs, TabsContent, SchemaForm } from "@flow/components";
+import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import type { NodeData } from "@flow/types";
@@ -28,7 +31,17 @@ const ParamEditor: React.FC<Props> = ({
   const { useGetActionById } = useAction();
   const { action } = useGetActionById(nodeMeta.officialName);
 
+  // This is a patch for the `anyOf` type in JSON Schema.
+  const patchedSchema = useMemo<RJSFSchema | undefined>(
+    () =>
+      action?.parameter
+        ? patchAnyOfType(action.parameter as JSONSchema7Definition)
+        : undefined,
+    [action?.parameter],
+  );
+
   const handleSubmit = (data: any) => onSubmit(nodeId, data);
+
   return (
     <div>
       <div className="mb-3 flex justify-between gap-4">
@@ -58,7 +71,7 @@ const ParamEditor: React.FC<Props> = ({
             {!action?.parameter && <p>{t("No Parameters Available")}</p>}
             {action && (
               <SchemaForm
-                schema={action.parameter}
+                schema={patchedSchema}
                 defaultFormData={nodeMeta.params}
                 onSubmit={handleSubmit}
               />
