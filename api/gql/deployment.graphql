@@ -94,6 +94,12 @@ type JobEdge {
   node: Job
 }
 
+# Subscripton Types
+
+extend type Subscription {
+  jobStatus(jobId: ID!): JobStatus!
+}
+
 # Query and Mutation Extensions
 
 extend type Query {

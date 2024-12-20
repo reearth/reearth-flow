@@ -63,7 +63,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 
 	// Match the command line example format
 	workflowCommand := fmt.Sprintf(
-		"%s --workflow %q --metadata-path %q",
+		"%s --workflow %q --metadata-path %q --pubsub-backend noop",
 		binaryPath,
 		workflowsURL,
 		metadataURL,

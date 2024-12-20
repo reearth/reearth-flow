@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"time"
 
@@ -27,9 +28,10 @@ type Deployment struct {
 	transaction    usecasex.Transaction
 	batch          gateway.Batch
 	file           gateway.File
+	job            interfaces.Job
 }
 
-func NewDeployment(r *repo.Container, gr *gateway.Container) interfaces.Deployment {
+func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job) interfaces.Deployment {
 	return &Deployment{
 		deploymentRepo: r.Deployment,
 		projectRepo:    r.Project,
@@ -39,6 +41,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container) interfaces.Deployme
 		transaction:    r.Transaction,
 		batch:          gr.Batch,
 		file:           gr.File,
+		job:            jobUsecase,
 	}
 }
 
@@ -227,11 +230,18 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	_, err = i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), d.Project())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), d.Project())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}
 
+	j.SetGCPJobID(gcpJobID)
+
 	tx.Commit()
+
+	if err := i.job.StartMonitoring(ctx, j, operator); err != nil {
+		return nil, fmt.Errorf("failed to start job monitoring: %v", err)
+	}
+
 	return j, nil
 }
