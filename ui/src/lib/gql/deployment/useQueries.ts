@@ -4,7 +4,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { Deployment } from "@flow/types";
+import { Deployment, Job } from "@flow/types";
 import { isDefined } from "@flow/utils";
 import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
@@ -192,11 +192,43 @@ export const useQueries = () => {
       },
     });
 
+  const useGetJobsInfiniteQuery = (workspaceId?: string) =>
+    useInfiniteQuery({
+      queryKey: [JobQueryKeys.GetJobs, workspaceId],
+      initialPageParam: null,
+      queryFn: async ({ pageParam }) => {
+        const data = await graphQLContext?.GetJobs({
+          workspaceId: workspaceId ?? "",
+          pagination: {
+            first: DEPLOYMENT_FETCH_RATE,
+            after: pageParam,
+          },
+        });
+        if (!data) return;
+        const {
+          jobs: {
+            nodes,
+            pageInfo: { endCursor, hasNextPage },
+          },
+        } = data;
+        const jobs: Job[] = nodes.filter(isDefined).map((job) => toJob(job));
+        console.log("jobs", jobs);
+        return { jobs, endCursor, hasNextPage };
+      },
+      enabled: !!workspaceId,
+      getNextPageParam: (lastPage) => {
+        if (!lastPage) return undefined;
+        const { endCursor, hasNextPage } = lastPage;
+        return hasNextPage ? endCursor : undefined;
+      },
+    });
+
   return {
     createDeploymentMutation,
     updateDeploymentMutation,
     deleteDeploymentMutation,
     executeDeploymentMutation,
     useGetDeploymentsInfiniteQuery,
+    useGetJobsInfiniteQuery,
   };
 };

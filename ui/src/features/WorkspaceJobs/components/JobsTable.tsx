@@ -28,15 +28,15 @@ import {
   TableRow,
 } from "@flow/components/Table";
 import { useT } from "@flow/lib/i18n";
-import { Run } from "@flow/types";
+import { Job } from "@flow/types";
 
 type Props = {
-  runs: Run[];
+  jobs: Job[];
   rowSelection?: RowSelectionState;
-  onRunSelect?: (runId: string) => void;
+  onJobSelect?: (jobId: string) => void;
 };
 
-const RunsTable: React.FC<Props> = ({ runs, onRunSelect }) => {
+const JobsTable: React.FC<Props> = ({ jobs, onJobSelect }) => {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([
     { id: "completedAt", desc: true },
@@ -47,7 +47,7 @@ const RunsTable: React.FC<Props> = ({ runs, onRunSelect }) => {
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
 
-  const columns: ColumnDef<Run>[] = [
+  const columns: ColumnDef<Job>[] = [
     {
       accessorKey: "id",
       header: t("ID"),
@@ -83,7 +83,7 @@ const RunsTable: React.FC<Props> = ({ runs, onRunSelect }) => {
   ];
 
   const table = useReactTable({
-    data: runs,
+    data: jobs,
     columns,
     enableMultiRowSelection: false,
     getCoreRowModel: getCoreRowModel(),
@@ -169,7 +169,7 @@ const RunsTable: React.FC<Props> = ({ runs, onRunSelect }) => {
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => {
                     row.toggleSelected();
-                    onRunSelect?.(row.original.id);
+                    onJobSelect?.(row.original.id);
                   }}
                   onSelect={(s) => console.log("S", s)}>
                   {row.getVisibleCells().map((cell) => (
@@ -198,4 +198,4 @@ const RunsTable: React.FC<Props> = ({ runs, onRunSelect }) => {
   );
 };
 
-export { RunsTable };
+export { JobsTable };

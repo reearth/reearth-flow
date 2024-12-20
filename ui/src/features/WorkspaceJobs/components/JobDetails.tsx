@@ -6,13 +6,13 @@ import { Button } from "@flow/components";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
 import { useT } from "@flow/lib/i18n";
-import { Run } from "@flow/types";
+import { Job } from "@flow/types";
 
 type Props = {
-  selectedRun?: Run;
+  selectedJob?: Job;
 };
 
-const RunDetails: React.FC<Props> = ({ selectedRun }) => {
+const JobDetails: React.FC<Props> = ({ selectedJob }) => {
   const t = useT();
   const { history } = useRouter();
 
@@ -20,57 +20,59 @@ const RunDetails: React.FC<Props> = ({ selectedRun }) => {
 
   const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
-      selectedRun
+      selectedJob
         ? [
             {
               id: "id",
               name: t("ID:"),
-              value: selectedRun.id,
+              value: selectedJob.id,
             },
             {
               id: "project",
               name: t("Project Name:"),
-              value: selectedRun.project.name,
+              value: selectedJob.deployment.projectName ?? t("Unknown"),
             },
             {
               id: "started",
               name: t("Started:"),
-              value: selectedRun.startedAt,
+              value: selectedJob.startedAt,
             },
             {
               id: "completed",
               name: t("Completed:"),
-              value: selectedRun.completedAt ?? t("N/A"),
+              value: selectedJob.completedAt ?? t("N/A"),
             },
             {
               id: "ranBy",
               name: t("Ran by:"),
-              value: selectedRun.ranBy ?? t("Unknown"),
+              value: t("Unknown"),
+              // value: selectedJob.ranBy ?? t("Unknown"),
             },
             {
               id: "trigger",
               name: t("Trigger:"),
-              value: selectedRun.trigger?.toLocaleUpperCase() ?? t("Unknown"),
+              value: t("Unknown"),
+              // value: selectedJob.trigger?.toLocaleUpperCase() ?? t("Unknown"),
             },
             {
               id: "status",
               name: t("Status:"),
-              value: selectedRun.status.toLocaleUpperCase(),
+              value: selectedJob.status.toLocaleUpperCase(),
             },
           ]
         : undefined,
-    [t, selectedRun],
+    [t, selectedJob],
   );
 
   return (
-    selectedRun && (
+    selectedJob && (
       <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-6">
         <Button size="icon" variant="ghost" onClick={handleBack}>
           <CaretLeft />
         </Button>
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
-          <DetailsBox title={t("Run details")} content={details} />
+          <DetailsBox title={t("Job details")} content={details} />
           <div className="max-h-[50vh] overflow-auto">
             <LogsConsole />
           </div>
@@ -80,4 +82,4 @@ const RunDetails: React.FC<Props> = ({ selectedRun }) => {
   );
 };
 
-export { RunDetails };
+export { JobDetails };

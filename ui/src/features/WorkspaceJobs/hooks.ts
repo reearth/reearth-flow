@@ -1,10 +1,11 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
+import { useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { runs as mockRuns } from "@flow/mock_data/runsData";
+import { jobs as mockJobs } from "@flow/mock_data/jobsData";
 import { useCurrentWorkspace } from "@flow/stores";
-import { lastOfUrl as getRunId } from "@flow/utils";
+import { lastOfUrl as getJobId } from "@flow/utils";
 
 import { RouteOption } from "../WorkspaceLeftPanel";
 
@@ -12,7 +13,13 @@ export default () => {
   const t = useT();
   const navigate = useNavigate();
 
+  const { useGetJobsInfinite } = useDeployment();
+
   const [currentWorkspace] = useCurrentWorkspace();
+
+  const { pages: jobsPages } = useGetJobsInfinite(currentWorkspace?.id);
+
+  console.log("jobsPages", jobsPages);
 
   const {
     location: { pathname },
@@ -20,26 +27,26 @@ export default () => {
 
   const tab = getTab(pathname);
 
-  const selectedRun = useMemo(
-    () => mockRuns.find((run) => run.id === tab),
+  const selectedJob = useMemo(
+    () => mockJobs.find((job) => job.id === tab),
     [tab],
   );
 
-  const handleRunSelect = useCallback(
-    (runId: string) =>
+  const handleJobSelect = useCallback(
+    (jobId: string) =>
       navigate({
-        to: `/workspaces/${currentWorkspace?.id}/runs/${runId}`,
+        to: `/workspaces/${currentWorkspace?.id}/jobs/${jobId}`,
       }),
     [currentWorkspace, navigate],
   );
 
-  const runs = useMemo(
+  const jobs = useMemo(
     () =>
-      mockRuns.filter((run) => {
-        if (tab === "running") return run.status === "running";
-        if (tab === "queued") return run.status === "queued";
+      mockJobs.filter((job) => {
+        if (tab === "running") return job.status === "running";
+        if (tab === "queued") return job.status === "pending";
         if (tab === "completed")
-          return run.status === "completed" || run.status === "failed";
+          return job.status === "completed" || job.status === "failed";
         return true;
       }),
     [tab],
@@ -47,10 +54,10 @@ export default () => {
 
   const statusLabels = useMemo(
     () => ({
-      completed: t("Completed runs"),
-      running: t("Ongoing runs"),
-      queued: t("Queued runs"),
-      all: t("All runs"),
+      completed: t("Completed jobs"),
+      running: t("Ongoing jobs"),
+      queued: t("Queued jobs"),
+      all: t("All jobs"),
     }),
     [t],
   );
@@ -58,9 +65,9 @@ export default () => {
   return {
     tab,
     statusLabels,
-    selectedRun,
-    runs,
-    handleRunSelect,
+    selectedJob,
+    jobs,
+    handleJobSelect,
   };
 };
 
@@ -75,4 +82,4 @@ const getTab = (pathname: string): RouteOption =>
           ? "completed"
           : pathname.includes("all")
             ? "all"
-            : getRunId(pathname);
+            : getJobId(pathname);
