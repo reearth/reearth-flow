@@ -1,10 +1,10 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
-import { useDeployment } from "@flow/lib/gql";
+import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
-import { jobs as mockJobs } from "@flow/mock_data/jobsData";
 import { useCurrentWorkspace } from "@flow/stores";
+import { Job } from "@flow/types";
 import { lastOfUrl as getJobId } from "@flow/utils";
 
 import { RouteOption } from "../WorkspaceLeftPanel";
@@ -13,13 +13,23 @@ export default () => {
   const t = useT();
   const navigate = useNavigate();
 
-  const { useGetJobsInfinite } = useDeployment();
+  const { useGetJobsInfinite } = useJob();
 
   const [currentWorkspace] = useCurrentWorkspace();
 
-  const { pages: jobsPages } = useGetJobsInfinite(currentWorkspace?.id);
+  // const { pages, hasNextPage, isFetching, fetchNextPage } = useGetJobsInfinite(
+  const { pages } = useGetJobsInfinite(currentWorkspace?.id); // TODO: Add pagination
 
-  console.log("jobsPages", jobsPages);
+  const rawJobs: Job[] | undefined = useMemo(
+    () =>
+      pages?.reduce((jobs, page) => {
+        if (page?.jobs) {
+          jobs.push(...page.jobs);
+        }
+        return jobs;
+      }, [] as Job[]),
+    [pages],
+  );
 
   const {
     location: { pathname },
@@ -28,8 +38,8 @@ export default () => {
   const tab = getTab(pathname);
 
   const selectedJob = useMemo(
-    () => mockJobs.find((job) => job.id === tab),
-    [tab],
+    () => rawJobs?.find((job) => job.id === tab),
+    [tab, rawJobs],
   );
 
   const handleJobSelect = useCallback(
@@ -42,14 +52,14 @@ export default () => {
 
   const jobs = useMemo(
     () =>
-      mockJobs.filter((job) => {
+      rawJobs?.filter((job) => {
         if (tab === "running") return job.status === "running";
         if (tab === "queued") return job.status === "queued";
         if (tab === "completed")
           return job.status === "completed" || job.status === "failed";
         return true;
       }),
-    [tab],
+    [tab, rawJobs],
   );
 
   const statusLabels = useMemo(

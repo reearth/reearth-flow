@@ -24,7 +24,6 @@ export const useDeployment = () => {
     deleteDeploymentMutation,
     executeDeploymentMutation,
     useGetDeploymentsInfiniteQuery,
-    useGetJobsInfiniteQuery,
   } = useQueries();
 
   const createDeployment = async (
@@ -107,22 +106,12 @@ export const useDeployment = () => {
     };
   };
 
-  const useGetJobsInfinite = (workspaceId?: string) => {
-    const { data, ...rest } = useGetJobsInfiniteQuery(workspaceId);
-    return {
-      pages: data?.pages,
-      ...rest,
-    };
-  };
-
   const executeDeployment = async (
     input: ExecuteDeploymentInput,
   ): Promise<ExecuteDeployment> => {
     const { mutateAsync, ...rest } = executeDeploymentMutation;
-    console.log("DEPLOYMENT EXECUTE", input);
     try {
       const job = await mutateAsync(input);
-      console.log("job", job);
       toast({
         title: t("Deployment Executed"),
         description: t("Deployment has been successfully executed."),
@@ -136,7 +125,6 @@ export const useDeployment = () => {
   return {
     createDeployment,
     useGetDeploymentsInfinite,
-    useGetJobsInfinite,
     useUpdateDeployment,
     useDeleteDeployment,
     executeDeployment,

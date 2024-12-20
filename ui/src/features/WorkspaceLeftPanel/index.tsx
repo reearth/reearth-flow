@@ -55,5 +55,7 @@ const getRoute = (pathname: string): RouteOption => {
                   ? "all"
                   : pathname.includes("new")
                     ? "new"
-                    : "projects";
+                    : pathname.includes("jobs") // Since all the above jobs are not present in the routeOptions, we can assume that the route is job's details @KaWaite
+                      ? "details"
+                      : "projects";
 };

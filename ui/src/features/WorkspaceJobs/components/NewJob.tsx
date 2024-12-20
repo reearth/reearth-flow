@@ -16,11 +16,14 @@ import { useCurrentWorkspace } from "@flow/stores";
 import type { Deployment } from "@flow/types";
 
 import "./styles.css";
+import { useNavigate } from "@tanstack/react-router";
 
 type JobType = "manual" | "trigger";
 
 const NewJob: React.FC = () => {
   const t = useT();
+  const navigate = useNavigate();
+
   const [currentWorkspace] = useCurrentWorkspace();
 
   const { useGetDeploymentsInfinite, executeDeployment } = useDeployment();
@@ -34,12 +37,14 @@ const NewJob: React.FC = () => {
   const [selectDropDown, setSelectDropDown] = useState<
     HTMLElement | undefined | null
   >();
-  const [selectedDeployment, selectDeployment] = useState<Deployment>();
+  const [selectedDeployment, selectDeployment] = useState<
+    Deployment | undefined
+  >(undefined);
 
   const jobTypes = useMemo(
     () => [
       { label: t("Manual Job"), value: "manual" },
-      { label: t("Trigger Job"), value: "trigger" },
+      // { label: t("Trigger Job"), value: "trigger" },
     ],
     [t],
   );
@@ -64,10 +69,17 @@ const NewJob: React.FC = () => {
     [pages],
   );
 
-  const handleJob = useCallback(() => {
+  const handleJob = useCallback(async () => {
     if (!selectedDeployment || !currentWorkspace) return;
-    executeDeployment({ deploymentId: selectedDeployment.id });
-  }, [currentWorkspace, selectedDeployment, executeDeployment]);
+    const jobData = await executeDeployment({
+      deploymentId: selectedDeployment.id,
+    });
+    if (jobData) {
+      navigate({
+        to: `/workspaces/${currentWorkspace.id}/jobs/${jobData.job?.id}`,
+      });
+    }
+  }, [currentWorkspace, selectedDeployment, navigate, executeDeployment]);
 
   useEffect(() => {
     if (
@@ -96,7 +108,11 @@ const NewJob: React.FC = () => {
     <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-6">
       <div className="flex items-center justify-between gap-4">
         <p className="text-xl dark:font-extralight">{t("New Job")}</p>
-        <Button className="self-end" variant="outline" onClick={handleJob}>
+        <Button
+          className="self-end"
+          variant="outline"
+          disabled={!jobType || !selectedDeployment}
+          onClick={handleJob}>
           {t("Run Job")}
         </Button>
       </div>

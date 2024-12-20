@@ -18,8 +18,6 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
 
   const handleBack = useCallback(() => history.go(-1), [history]);
 
-  console.log("selectedJob", selectedJob);
-
   const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
       selectedJob

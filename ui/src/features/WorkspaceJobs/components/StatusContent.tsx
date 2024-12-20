@@ -4,7 +4,7 @@ import { JobsTable } from "./JobsTable";
 
 type Props = {
   label: string;
-  jobs: Job[];
+  jobs: Job[] | undefined;
   onJobSelect: (jobId: string) => void;
 };
 
@@ -16,7 +16,7 @@ const StatusContent: React.FC<Props> = ({ label, jobs, onJobSelect }) => (
     <div className="w-full border-b" />
     <div className="mt-4 flex flex-col gap-6">
       <div className="min-h-[50vh] overflow-auto rounded-md">
-        <JobsTable jobs={jobs} onJobSelect={onJobSelect} />
+        {jobs && <JobsTable jobs={jobs} onJobSelect={onJobSelect} />}
       </div>
     </div>
   </div>
