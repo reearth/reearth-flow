@@ -9,12 +9,17 @@ export const consolidateWorkflows = (
   name: string,
   workflows: Workflow[],
 ): EngineReadyWorkflow | undefined => {
-  const entryGraphId = workflows.find(
-    (wf) => wf.id === DEFAULT_ENTRY_GRAPH_ID,
-  )?.id;
-  if (!entryGraphId) return undefined;
+  const defaultEntryWorkflow = workflows.find(
+    (wf) => wf.id === DEFAULT_ENTRY_GRAPH_ID
+  );
+  if (!defaultEntryWorkflow) return undefined;
 
-  const subGraphs = createSubGraphs(workflows);
+  const newEntryId = generateUUID();
+  const convertedWorkflows = workflows.map((wf) => {
+    return wf.id === DEFAULT_ENTRY_GRAPH_ID ? { ...wf, id: newEntryId } : wf;
+  });
+
+  const subGraphs = createSubGraphs(convertedWorkflows);
 
   const consolidatedWorkflow = {
     id: generateUUID(),
