@@ -1,29 +1,29 @@
-import { NewRun, StatusContent, RunDetails } from "./components";
+import { NewJob, StatusContent, JobDetails } from "./components";
 import useHooks from "./hooks";
 
 type Status = "running" | "queued" | "completed";
 
-const RunsManager: React.FC = () => {
-  const { tab, statusLabels, selectedRun, runs, handleRunSelect } = useHooks();
+const JobsManager: React.FC = () => {
+  const { tab, statusLabels, selectedJob, jobs, handleJobSelect } = useHooks();
 
   return (
     <div className="flex-1">
       {tab === "new" ? (
-        <NewRun />
+        <NewJob />
       ) : isList(tab) ? (
         <StatusContent
           label={statusLabels[tab as Status]}
-          runs={runs}
-          onRunSelect={handleRunSelect}
+          jobs={jobs}
+          onJobSelect={handleJobSelect}
         />
       ) : (
-        <RunDetails selectedRun={selectedRun} />
+        <JobDetails selectedJob={selectedJob} />
       )}
     </div>
   );
 };
 
-export { RunsManager };
+export { JobsManager };
 
 function isList(value: string) {
   return !!(

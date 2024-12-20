@@ -98,8 +98,8 @@ export const useDeployment = () => {
     }
   };
 
-  const useGetDeploymentsInfinite = (projectId?: string): GetDeployments => {
-    const { data, ...rest } = useGetDeploymentsInfiniteQuery(projectId);
+  const useGetDeploymentsInfinite = (workspaceId?: string): GetDeployments => {
+    const { data, ...rest } = useGetDeploymentsInfiniteQuery(workspaceId);
     return {
       pages: data?.pages,
       ...rest,

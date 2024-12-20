@@ -47,7 +47,5 @@ export const GraphQLRequestProvider = ({
     <GraphQLContext.Provider value={graphQLSdk}>
       {children}
     </GraphQLContext.Provider>
-  ) : (
-    children
-  );
+  ) : null;
 };

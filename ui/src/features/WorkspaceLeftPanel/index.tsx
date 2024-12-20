@@ -1,6 +1,6 @@
 import { useRouterState } from "@tanstack/react-router";
 
-import { RunsSection, EndSection } from "./components";
+import { JobsSection, EndSection } from "./components";
 
 export const routeOptions = [
   "projects",
@@ -27,7 +27,7 @@ const LeftPanel: React.FC = () => {
   return (
     <div className="flex min-w-[250px] flex-col justify-between gap-[8px] border-r bg-secondary">
       <div className="flex flex-1 flex-col">
-        <RunsSection route={route} />
+        <JobsSection route={route} />
         <EndSection route={route} />
       </div>
     </div>
@@ -55,5 +55,7 @@ const getRoute = (pathname: string): RouteOption => {
                   ? "all"
                   : pathname.includes("new")
                     ? "new"
-                    : "projects";
+                    : pathname.includes("jobs") // Since all the above jobs are not present in the routeOptions, we can assume that the route is job's details @KaWaite
+                      ? "details"
+                      : "projects";
 };
