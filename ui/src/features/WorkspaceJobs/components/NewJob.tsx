@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -16,7 +17,6 @@ import { useCurrentWorkspace } from "@flow/stores";
 import type { Deployment } from "@flow/types";
 
 import "./styles.css";
-import { useNavigate } from "@tanstack/react-router";
 
 type JobType = "manual" | "trigger";
 
