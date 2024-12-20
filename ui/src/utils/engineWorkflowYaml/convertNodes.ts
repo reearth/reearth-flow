@@ -15,8 +15,10 @@ export const convertNodes = (nodes?: Node[]) => {
       const n: EngineReadyNode = {
         id,
         name: data.officialName,
-        type,
+        action: data.officialName,
+        type: "action",
       };
+
       if (data.params) {
         n.with = data.params;
       }
