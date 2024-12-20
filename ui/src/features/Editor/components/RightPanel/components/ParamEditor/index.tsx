@@ -12,6 +12,11 @@ type Props = {
   nodeType: string;
   nodeParameters?: unknown; // TODO: define type
   onSubmit: (nodeId: string, data: any) => void;
+  onNavigateNodeHistory: (direction: "prev" | "next") => void;
+  nodeHistoryPosition: {
+    canGoBack: boolean;
+    canGoForward: boolean;
+  };
 };
 
 const actionButtonClasses = "border h-[25px]";
@@ -22,13 +27,15 @@ const ParamEditor: React.FC<Props> = ({
   // nodeType,
   // nodeParameters = [{ id: "param1", name: "Param 1", value: "Value 1", type: "string"}],
   onSubmit,
+  onNavigateNodeHistory,
+  nodeHistoryPosition,
 }) => {
   const t = useT();
-
   const { useGetActionById } = useAction();
   const { action } = useGetActionById(nodeMeta.officialName);
 
   const handleSubmit = (data: any) => onSubmit(nodeId, data);
+
   return (
     <div>
       <div className="mb-3 flex justify-between gap-4">
@@ -37,11 +44,15 @@ const ParamEditor: React.FC<Props> = ({
             className={actionButtonClasses}
             icon={<ArrowLeft />}
             tooltipText="Previous selection"
+            onClick={() => onNavigateNodeHistory("prev")}
+            disabled={!nodeHistoryPosition.canGoBack}
           />
           <IconButton
             className={actionButtonClasses}
             icon={<ArrowRight />}
             tooltipText="Next selection"
+            onClick={() => onNavigateNodeHistory("next")}
+            disabled={!nodeHistoryPosition.canGoForward}
           />
         </div>
       </div>
@@ -52,7 +63,6 @@ const ParamEditor: React.FC<Props> = ({
         {/* <TabsTrigger className="flex-1" value="data">
             {t("Node data")}
           </TabsTrigger> */}
-
         <TabsContent value="params">
           <div className="rounded border bg-card p-3">
             {!action?.parameter && <p>{t("No Parameters Available")}</p>}
