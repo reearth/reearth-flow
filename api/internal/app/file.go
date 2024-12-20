@@ -32,12 +32,12 @@ func serveFiles(
 				}
 			}
 
-			 // For HEAD requests, just set headers without streaming body
-			 if ctx.Request().Method == "HEAD" {
+			// For HEAD requests, just set headers without streaming body
+			if ctx.Request().Method == "HEAD" {
 				ctx.Response().Header().Set("Content-Type", ct)
 				return ctx.NoContent(http.StatusOK)
 			}
-			
+
 			return ctx.Stream(http.StatusOK, ct, reader)
 		}
 	}
