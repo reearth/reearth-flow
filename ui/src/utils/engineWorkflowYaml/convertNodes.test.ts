@@ -23,7 +23,7 @@ describe("convertNodes", () => {
     ];
 
     const expected: EngineReadyNode[] = [
-      { id: "1", name: "Node 1", type: "transformer", action: "Node 1" },
+      { id: "1", name: "Node 1", type: "action", action: "Node 1" },
     ];
 
     expect(convertNodes(input as Node[])).toEqual(expected);
@@ -46,11 +46,11 @@ describe("convertNodes", () => {
     ];
 
     const expected: EngineReadyNode[] = [
-      { id: "1", name: "Subworkflow 1", type: "subworkflow", subGraphId: "1" },
+      { id: "1", name: "Subworkflow 1", type: "subgraph", subGraphId: "1" },
       {
         id: "2",
         name: "Normal Node",
-        type: "transformer",
+        type: "action",
         action: "Normal Node",
       },
     ];
