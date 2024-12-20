@@ -10,7 +10,7 @@ export const consolidateWorkflows = (
   workflows: Workflow[],
 ): EngineReadyWorkflow | undefined => {
   const defaultEntryWorkflow = workflows.find(
-    (wf) => wf.id === DEFAULT_ENTRY_GRAPH_ID
+    (wf) => wf.id === DEFAULT_ENTRY_GRAPH_ID,
   );
   if (!defaultEntryWorkflow) return undefined;
 
