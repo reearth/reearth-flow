@@ -23,6 +23,11 @@ type fileRepo struct {
 	workflowUrlBase *url.URL
 }
 
+// ReadMetadata implements gateway.File.
+func (f *fileRepo) ReadMetadata(context.Context, string) (io.ReadCloser, error) {
+	panic("unimplemented")
+}
+
 // RemoveMetadata implements gateway.File.
 func (f *fileRepo) RemoveMetadata(context.Context, *url.URL) error {
 	panic("unimplemented")

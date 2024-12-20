@@ -3,7 +3,7 @@ import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
 import { Edge, Node } from "@flow/types";
-import { randomID } from "@flow/utils";
+import { generateUUID } from "@flow/utils";
 
 export default ({
   nodes,
@@ -52,7 +52,7 @@ export default ({
         : { x: n.position.x + 40, y: n.position.y + 20 };
       const newNode: Node = {
         ...n,
-        id: randomID(),
+        id: generateUUID(),
         position: newPosition,
         selected: true, // select pasted nodes
         data: {

@@ -143,6 +143,14 @@ func (f *fileRepo) RemoveWorkflow(ctx context.Context, u *url.URL) error {
 	return f.delete(ctx, sn)
 }
 
+func (f *fileRepo) ReadMetadata(ctx context.Context, name string) (io.ReadCloser, error) {
+	sn := sanitize.Path(name)
+	if sn == "" {
+		return nil, rerror.ErrNotFound
+	}
+	return f.read(ctx, path.Join(gcsMetadataBasePath, sn))
+}
+
 func (f *fileRepo) UploadMetadata(ctx context.Context, jobID string, assets []string) (*url.URL, error) {
 	metadataFile, err := f.generateMetadata(jobID, assets)
 	if err != nil {

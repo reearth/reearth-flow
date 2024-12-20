@@ -3,7 +3,7 @@ import { XYPosition } from "@xyflow/react";
 import { config } from "@flow/config";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { nodeTypes, type Action, type Node, type NodeType } from "@flow/types";
-import { randomID } from "@flow/utils";
+import { generateUUID } from "@flow/utils";
 
 import { baseBatchNode } from "./components/Nodes/BatchNode";
 import { baseNoteNode } from "./components/Nodes/NoteNode";
@@ -14,7 +14,7 @@ type CreateNodeOptions = {
 };
 
 const createBaseNode = ({ position, type }: CreateNodeOptions): Node => ({
-  id: randomID(),
+  id: generateUUID(),
   position,
   type,
   data: {
