@@ -22,12 +22,12 @@ type Deployment struct {
 	common
 	deploymentRepo repo.Deployment
 	projectRepo    repo.Project
-	workflowRepo    repo.Workflow
+	workflowRepo   repo.Workflow
 	jobRepo        repo.Job
 	workspaceRepo  accountrepo.Workspace
 	transaction    usecasex.Transaction
 	batch          gateway.Batch
-	file            gateway.File
+	file           gateway.File
 	job            interfaces.Job
 }
 
@@ -35,12 +35,12 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 	return &Deployment{
 		deploymentRepo: r.Deployment,
 		projectRepo:    r.Project,
-		workflowRepo:    r.Workflow,
+		workflowRepo:   r.Workflow,
 		jobRepo:        r.Job,
 		workspaceRepo:  r.Workspace,
 		transaction:    r.Transaction,
 		batch:          gr.Batch,
-		file:            gr.File,
+		file:           gr.File,
 		job:            jobUsecase,
 	}
 }
