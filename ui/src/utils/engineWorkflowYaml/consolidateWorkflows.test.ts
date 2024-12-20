@@ -42,20 +42,23 @@ describe("consolidateWorkflows", () => {
       { id: "sub1", name: "Sub Workflow 1", nodes: [], edges: [] },
     ];
 
+    let uuidCallCount = 0;
     (createSubGraphs as any).mockReturnValue(mockSubGraphs);
-    (vi.mocked(generateUUID) as any).mockReturnValue("random-id-123");
+    (vi.mocked(generateUUID) as any).mockImplementation(
+      () => `random-id-${++uuidCallCount}`,
+    );
 
     const result = consolidateWorkflows("somename", mockWorkflows);
 
     expect(result).toEqual({
-      id: "random-id-123",
+      id: "random-id-1",
       name: "somename",
-      entryGraphId: DEFAULT_ENTRY_GRAPH_ID,
+      entryGraphId: "random-id-2",
       graphs: mockSubGraphs,
     });
 
     expect(createSubGraphs).toHaveBeenCalledWith(mockWorkflows);
-    expect(generateUUID).toHaveBeenCalled();
+    expect(generateUUID).toHaveBeenCalledTimes(2);
   });
 
   it("should correctly consolidate workflows without a main workflow", () => {

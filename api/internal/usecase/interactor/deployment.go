@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"net/url"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -213,6 +214,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		Deployment(d.ID()).
 		Workspace(d.Workspace()).
 		Status(job.StatusPending).
+		StartedAt(time.Now()).
 		Build()
 	if err != nil {
 		return nil, err
