@@ -34,7 +34,7 @@ describe("consolidateWorkflows", () => {
 
     const mockSubGraphs: EngineReadyGraph[] = [
       {
-        id: DEFAULT_ENTRY_GRAPH_ID,
+        id: "random-id-1",
         name: "Main Workflow",
         nodes: [],
         edges: [],
@@ -50,15 +50,25 @@ describe("consolidateWorkflows", () => {
 
     const result = consolidateWorkflows("somename", mockWorkflows);
 
+    const expectedConvertedWorkflows = [
+      {
+        id: "random-id-1",
+        name: "Main Workflow",
+        nodes: [],
+        edges: [],
+      },
+      { id: "sub1", name: "Sub Workflow 1", nodes: [], edges: [] },
+    ];
+
     expect(result).toEqual({
-      id: "random-id-1",
+      id: "random-id-2",
       name: "somename",
-      entryGraphId: "random-id-2",
+      entryGraphId: "random-id-3",
       graphs: mockSubGraphs,
     });
 
-    expect(createSubGraphs).toHaveBeenCalledWith(mockWorkflows);
-    expect(generateUUID).toHaveBeenCalledTimes(2);
+    expect(createSubGraphs).toHaveBeenCalledWith(expectedConvertedWorkflows);
+    expect(generateUUID).toHaveBeenCalledTimes(3);
   });
 
   it("should correctly consolidate workflows without a main workflow", () => {
