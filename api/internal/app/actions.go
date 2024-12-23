@@ -79,15 +79,31 @@ type SegregatedActions struct {
 }
 
 var (
-	actionsData ActionsData
-	once        sync.Once
+	actionsData    ActionsData
+	once           sync.Once
+	supportedLangs = map[string]bool{
+		"en": true,
+		"es": true,
+		"fr": true,
+		"ja": true,
+		"zh": true,
+	}
 )
 
-func loadActionsData() error {
+func loadActionsData(lang string) error {
+	if lang != "" && !supportedLangs[lang] {
+		return fmt.Errorf("unsupported language: %s", lang)
+	}
+
 	var err error
 	once.Do(func() {
-		// Hardcoded for now, Need to find more elegant way to deal with this @pyshx
-		resp, respErr := http.Get("https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/actions.json")
+		baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
+		filename := "actions.json"
+		if lang != "" {
+			filename = fmt.Sprintf("actions_%s.json", lang)
+		}
+
+		resp, respErr := http.Get(baseURL + filename)
 		if respErr != nil {
 			err = respErr
 			return
@@ -125,6 +141,11 @@ func listActions(c echo.Context) error {
 	query := c.QueryParam("q")
 	category := c.QueryParam("category")
 	actionType := c.QueryParam("type")
+	lang := c.QueryParam("lang")
+
+	if err := loadActionsData(lang); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
 
 	var summaries []ActionSummary
 
@@ -144,6 +165,11 @@ func listActions(c echo.Context) error {
 
 func getSegregatedActions(c echo.Context) error {
 	query := c.QueryParam("q")
+	lang := c.QueryParam("lang")
+
+	if err := loadActionsData(lang); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
 
 	segregated := SegregatedActions{
 		ByCategory: make(map[string][]ActionSummary),
@@ -236,6 +262,11 @@ func containsCaseInsensitive(slice []string, s string) bool {
 
 func getActionDetails(c echo.Context) error {
 	id := c.Param("id")
+	lang := c.QueryParam("lang")
+
+	if err := loadActionsData(lang); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
 
 	for _, action := range actionsData.Actions {
 		if action.Name == id {
