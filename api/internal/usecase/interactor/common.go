@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -17,6 +18,8 @@ import (
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 )
 
+var ErrPermissionDenied = fmt.Errorf("permission denied")
+
 type ContainerConfig struct {
 	SignupSecret    string
 	AuthSrvUIDomain string
@@ -24,6 +27,7 @@ type ContainerConfig struct {
 
 func NewContainer(r *repo.Container, g *gateway.Container,
 	ar *accountrepo.Container, ag *accountgateway.Container,
+	permissionChecker gateway.PermissionChecker,
 	config ContainerConfig,
 ) interfaces.Container {
 	job := NewJob(r, g)
@@ -33,7 +37,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Job:        job,
 		Deployment: NewDeployment(r, g, job),
 		Parameter:  NewParameter(r),
-		Project:    NewProject(r, g),
+		Project:    NewProject(r, g, permissionChecker),
 		Workspace:  accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
 		User:       accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
 	}

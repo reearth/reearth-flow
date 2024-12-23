@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -17,37 +19,51 @@ import (
 
 type Project struct {
 	common
-	assetRepo     repo.Asset
-	workflowRepo  repo.Workflow
-	projectRepo   repo.Project
-	userRepo      accountrepo.User
-	workspaceRepo accountrepo.Workspace
-	transaction   usecasex.Transaction
-	file          gateway.File
-	batch         gateway.Batch
+	assetRepo         repo.Asset
+	workflowRepo      repo.Workflow
+	projectRepo       repo.Project
+	userRepo          accountrepo.User
+	workspaceRepo     accountrepo.Workspace
+	transaction       usecasex.Transaction
+	file              gateway.File
+	batch             gateway.Batch
+	permissionChecker gateway.PermissionChecker
 }
 
-func NewProject(r *repo.Container, gr *gateway.Container) interfaces.Project {
+func NewProject(r *repo.Container, gr *gateway.Container, permissionChecker gateway.PermissionChecker) interfaces.Project {
 	return &Project{
-		assetRepo:     r.Asset,
-		workflowRepo:  r.Workflow,
-		projectRepo:   r.Project,
-		userRepo:      r.User,
-		workspaceRepo: r.Workspace,
-		transaction:   r.Transaction,
-		file:          gr.File,
+		assetRepo:         r.Asset,
+		workflowRepo:      r.Workflow,
+		projectRepo:       r.Project,
+		userRepo:          r.User,
+		workspaceRepo:     r.Workspace,
+		transaction:       r.Transaction,
+		file:              gr.File,
+		permissionChecker: permissionChecker,
 	}
 }
 
 func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID, _ *usecase.Operator) ([]*project.Project, error) {
+	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+		return nil, err
+	}
+
 	return i.projectRepo.FindByIDs(ctx, ids)
 }
 
 func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination, _ *usecase.Operator) ([]*project.Project, *usecasex.PageInfo, error) {
+	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+		return nil, nil, err
+	}
+
 	return i.projectRepo.FindByWorkspace(ctx, id, p)
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+		return nil, err
+	}
+
 	if err := i.CanWriteWorkspace(p.WorkspaceID, operator); err != nil {
 		return nil, err
 	}
@@ -97,6 +113,10 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, o
 }
 
 func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+		return nil, err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -150,6 +170,10 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, o
 }
 
 func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *usecase.Operator) (err error) {
+	if err := i.checkPermission(ctx, rbac.ActionDelete); err != nil {
+		return err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -234,4 +258,16 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 
 	tx.Commit()
 	return true, nil
+}
+
+func (i *Project) checkPermission(ctx context.Context, action string) error {
+	authInfo := adapter.GetAuthInfo(ctx)
+	hasPermission, err := i.permissionChecker.CheckPermission(ctx, authInfo, rbac.ResourceProject, action)
+	if err != nil {
+		return fmt.Errorf("failed to check permission: %w", err)
+	}
+	if !hasPermission {
+		return ErrPermissionDenied
+	}
+	return nil
 }
