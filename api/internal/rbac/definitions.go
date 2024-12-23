@@ -12,87 +12,71 @@ const (
 const (
 	ResourceUser      = "user"
 	ResourceWorkspace = "workspace"
-	ResourceMember    = "member"
 	ResourceProject   = "project"
 )
 
 const (
-	ActionList      = "list"
-	ActionCreate    = "create"
-	ActionEdit      = "edit"
-	ActionDelete    = "delete"
-	ActionGet       = "get"
-	ActionImport    = "import"
-	ActionExport    = "export"
-	ActionDuplicate = "duplicate"
-	ActionTransfer  = "transfer"
+	ActionList   = "list"
+	ActionRead   = "read"
+	ActionCreate = "create"
+	ActionEdit   = "edit"
+	ActionDelete = "delete"
+	ActionAny    = "any"
 )
 
 const (
-	roleGeneral = "general"
-	roleEditor  = "editor"
-	roleAdmin   = "admin"
+	roleSelf       = "self"
+	roleReader     = "reader"
+	roleEditor     = "editor"
+	roleOwner      = "owner"
+	roleMaintainer = "maintainer"
 )
 
 func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDefinition {
 	return builder.
 		AddResource(ResourceUser, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionRead, []string{
+				roleSelf,
+			}),
 			generator.NewActionDefinition(ActionEdit, []string{
-				roleGeneral,
+				roleSelf,
 			}),
 		}).
 		AddResource(ResourceWorkspace, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionList, []string{
-				roleGeneral,
+				roleSelf,
 			}),
 			generator.NewActionDefinition(ActionCreate, []string{
-				roleGeneral,
+				roleSelf,
 			}),
 			generator.NewActionDefinition(ActionEdit, []string{
-				roleGeneral,
+				roleOwner,
 			}),
 			generator.NewActionDefinition(ActionDelete, []string{
-				roleGeneral,
-			}),
-		}).
-		AddResource(ResourceMember, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionCreate, []string{
-				roleAdmin,
-			}),
-			generator.NewActionDefinition(ActionEdit, []string{
-				roleAdmin,
-			}),
-			generator.NewActionDefinition(ActionDelete, []string{
-				roleAdmin,
+				roleOwner,
 			}),
 		}).
 		AddResource(ResourceProject, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionList, []string{
-				roleGeneral,
+				roleSelf,
 			}),
 			generator.NewActionDefinition(ActionCreate, []string{
-				roleEditor,
+				roleOwner,
+				roleMaintainer,
 			}),
 			generator.NewActionDefinition(ActionEdit, []string{
-				roleEditor,
+				roleOwner,
+				roleMaintainer,
 			}),
 			generator.NewActionDefinition(ActionDelete, []string{
-				roleEditor,
+				roleOwner,
+				roleMaintainer,
 			}),
-			generator.NewActionDefinition(ActionGet, []string{
+			generator.NewActionDefinition(ActionAny, []string{
+				roleReader,
 				roleEditor,
-			}),
-			generator.NewActionDefinition(ActionImport, []string{
-				roleEditor,
-			}),
-			generator.NewActionDefinition(ActionExport, []string{
-				roleEditor,
-			}),
-			generator.NewActionDefinition(ActionDuplicate, []string{
-				roleEditor,
-			}),
-			generator.NewActionDefinition(ActionTransfer, []string{
-				roleEditor,
+				roleOwner,
+				roleMaintainer,
 			}),
 		}).
 		Build()
