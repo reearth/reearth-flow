@@ -211,7 +211,7 @@ pub trait SourceFactory: Send + Sync + Debug + SourceFactoryClone {
     fn description(&self) -> &str {
         ""
     }
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema>;
+    fn parameter_schema(&self) -> Option<schemars::Schema>;
 
     fn categories(&self) -> &[&'static str] {
         &[]
@@ -275,7 +275,7 @@ pub trait ProcessorFactory: Send + Sync + Debug + ProcessorFactoryClone {
     fn description(&self) -> &str {
         ""
     }
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema>;
+    fn parameter_schema(&self) -> Option<schemars::Schema>;
 
     fn categories(&self) -> &[&'static str] {
         &[]
@@ -337,7 +337,7 @@ pub trait SinkFactory: Send + Sync + Debug + SinkFactoryClone {
     fn description(&self) -> &str {
         ""
     }
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema>;
+    fn parameter_schema(&self) -> Option<schemars::Schema>;
 
     fn categories(&self) -> &[&'static str] {
         &[]
@@ -402,7 +402,7 @@ impl ProcessorFactory for InputRouterFactory {
         "Action for first port forwarding for sub-workflows."
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         Some(schemars::schema_for!(InputRouter))
     }
 
@@ -484,7 +484,7 @@ impl ProcessorFactory for OutputRouterFactory {
         "Action for last port forwarding for sub-workflows."
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         Some(schemars::schema_for!(OutputRouter))
     }
 

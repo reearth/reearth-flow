@@ -8,12 +8,9 @@ Overlays an area on another area
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AreaOnAreaOverlayerParam",
   "type": "object",
-  "required": [
-    "outputAttribute"
-  ],
   "properties": {
     "groupBy": {
       "type": [
@@ -21,14 +18,17 @@ Overlays an area on another area
         "null"
       ],
       "items": {
-        "$ref": "#/definitions/Attribute"
+        "$ref": "#/$defs/Attribute"
       }
     },
     "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
+      "$ref": "#/$defs/Attribute"
     }
   },
-  "definitions": {
+  "required": [
+    "outputAttribute"
+  ],
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -52,33 +52,25 @@ Aggregates features by attributes
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AttributeAggregatorParam",
   "type": "object",
-  "required": [
-    "aggregateAttributes",
-    "calculationAttribute",
-    "method"
-  ],
   "properties": {
     "aggregateAttributes": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/AggregateAttribute"
+        "$ref": "#/$defs/AggregateAttribute"
       }
     },
     "calculation": {
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/$defs/Expr"
         },
         {
           "type": "null"
         }
       ]
-    },
-    "calculationAttribute": {
-      "$ref": "#/definitions/Attribute"
     },
     "calculationValue": {
       "type": [
@@ -87,17 +79,25 @@ Aggregates features by attributes
       ],
       "format": "int64"
     },
+    "calculationAttribute": {
+      "$ref": "#/$defs/Attribute"
+    },
     "method": {
-      "$ref": "#/definitions/Method"
+      "$ref": "#/$defs/Method"
     }
   },
-  "definitions": {
+  "required": [
+    "aggregateAttributes",
+    "calculationAttribute",
+    "method"
+  ],
+  "$defs": {
     "AggregateAttribute": {
       "type": "object",
-      "required": [
-        "newAttribute"
-      ],
       "properties": {
+        "newAttribute": {
+          "$ref": "#/$defs/Attribute"
+        },
         "attribute": {
           "type": [
             "string",
@@ -107,17 +107,17 @@ Aggregates features by attributes
         "attributeValue": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/$defs/Expr"
             },
             {
               "type": "null"
             }
           ]
-        },
-        "newAttribute": {
-          "$ref": "#/definitions/Attribute"
         }
-      }
+      },
+      "required": [
+        "newAttribute"
+      ]
     },
     "Attribute": {
       "type": "string"
@@ -151,21 +151,21 @@ Filters features by duplicate attributes
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AttributeDuplicateFilterParam",
   "type": "object",
-  "required": [
-    "filterBy"
-  ],
   "properties": {
     "filterBy": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Attribute"
+        "$ref": "#/$defs/Attribute"
       }
     }
   },
-  "definitions": {
+  "required": [
+    "filterBy"
+  ],
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -187,18 +187,18 @@ Extracts file path information from attributes
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AttributeFilePathInfoExtractor",
   "type": "object",
+  "properties": {
+    "attribute": {
+      "$ref": "#/$defs/Attribute"
+    }
+  },
   "required": [
     "attribute"
   ],
-  "properties": {
-    "attribute": {
-      "$ref": "#/definitions/Attribute"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -221,23 +221,45 @@ Manages attributes
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AttributeManagerParam",
   "type": "object",
-  "required": [
-    "operations"
-  ],
   "properties": {
     "operations": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Operation"
+        "$ref": "#/$defs/Operation"
       }
     }
   },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+  "required": [
+    "operations"
+  ],
+  "$defs": {
+    "Operation": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "type": "string"
+        },
+        "method": {
+          "$ref": "#/$defs/Method"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "attribute",
+        "method"
+      ]
     },
     "Method": {
       "type": "string",
@@ -248,30 +270,8 @@ Manages attributes
         "remove"
       ]
     },
-    "Operation": {
-      "type": "object",
-      "required": [
-        "attribute",
-        "method"
-      ],
-      "properties": {
-        "attribute": {
-          "type": "string"
-        },
-        "method": {
-          "$ref": "#/definitions/Method"
-        },
-        "value": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      }
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -291,28 +291,47 @@ Maps attributes
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AttributeMapperParam",
   "type": "object",
-  "required": [
-    "mappers"
-  ],
   "properties": {
     "mappers": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Mapper"
+        "$ref": "#/$defs/Mapper"
       }
     }
   },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    },
+  "required": [
+    "mappers"
+  ],
+  "$defs": {
     "Mapper": {
       "type": "object",
       "properties": {
         "attribute": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expr": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "valueAttribute": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parentAttribute": {
           "type": [
             "string",
             "null"
@@ -324,39 +343,20 @@ Maps attributes
             "null"
           ]
         },
-        "expr": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "multipleExpr": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/$defs/Expr"
             },
             {
               "type": "null"
             }
           ]
-        },
-        "parentAttribute": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "valueAttribute": {
-          "type": [
-            "string",
-            "null"
-          ]
         }
       }
+    },
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -391,17 +391,12 @@ Buffers a geometry
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Bufferer",
   "type": "object",
-  "required": [
-    "bufferType",
-    "distance",
-    "interpolationAngle"
-  ],
   "properties": {
     "bufferType": {
-      "$ref": "#/definitions/BufferType"
+      "$ref": "#/$defs/BufferType"
     },
     "distance": {
       "type": "number",
@@ -412,7 +407,12 @@ Buffers a geometry
       "format": "double"
     }
   },
-  "definitions": {
+  "required": [
+    "bufferType",
+    "distance",
+    "interpolationAngle"
+  ],
+  "$defs": {
     "BufferType": {
       "type": "string",
       "enum": [
@@ -438,20 +438,21 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "BulkAttributeRenamerParam",
   "type": "object",
-  "required": [
-    "renameAction",
-    "renameType",
-    "renameValue"
-  ],
   "properties": {
-    "renameAction": {
-      "$ref": "#/definitions/RenameAction"
-    },
     "renameType": {
-      "$ref": "#/definitions/RenameType"
+      "$ref": "#/$defs/RenameType"
+    },
+    "renameAction": {
+      "$ref": "#/$defs/RenameAction"
+    },
+    "textToFind": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "renameValue": {
       "type": "string"
@@ -464,15 +465,21 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
       "items": {
         "type": "string"
       }
-    },
-    "textToFind": {
-      "type": [
-        "string",
-        "null"
-      ]
     }
   },
-  "definitions": {
+  "required": [
+    "renameType",
+    "renameAction",
+    "renameValue"
+  ],
+  "$defs": {
+    "RenameType": {
+      "type": "string",
+      "enum": [
+        "All",
+        "Selected"
+      ]
+    },
     "RenameAction": {
       "type": "string",
       "enum": [
@@ -481,13 +488,6 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
         "RemovePrefix",
         "RemoveSuffix",
         "StringReplace"
-      ]
-    },
-    "RenameType": {
-      "type": "string",
-      "enum": [
-        "All",
-        "Selected"
       ]
     }
   }
@@ -523,36 +523,36 @@ Writes features to a file
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Cesium3DTilesWriterParam",
   "type": "object",
-  "required": [
-    "maxZoom",
-    "minZoom",
-    "output"
-  ],
   "properties": {
+    "output": {
+      "$ref": "#/$defs/Expr"
+    },
+    "minZoom": {
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0
+    },
+    "maxZoom": {
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0
+    },
     "attachTexture": {
       "type": [
         "boolean",
         "null"
       ]
-    },
-    "maxZoom": {
-      "type": "integer",
-      "format": "uint8",
-      "minimum": 0.0
-    },
-    "minZoom": {
-      "type": "integer",
-      "format": "uint8",
-      "minimum": 0.0
-    },
-    "output": {
-      "$ref": "#/definitions/Expr"
     }
   },
-  "definitions": {
+  "required": [
+    "output",
+    "minZoom",
+    "maxZoom"
+  ],
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -606,19 +606,19 @@ Sets the coordinate system of a feature
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CoordinateSystemSetter",
   "type": "object",
-  "required": [
-    "epsgCode"
-  ],
   "properties": {
     "epsgCode": {
       "type": "integer",
       "format": "uint16",
-      "minimum": 0.0
+      "minimum": 0
     }
-  }
+  },
+  "required": [
+    "epsgCode"
+  ]
 }
 ```
 ### Input Ports
@@ -679,18 +679,18 @@ Extracts a feature’s first z coordinate value, storing it in an attribute.
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ElevationExtractorParam",
   "type": "object",
+  "properties": {
+    "outputAttribute": {
+      "$ref": "#/$defs/Attribute"
+    }
+  },
   "required": [
     "outputAttribute"
   ],
-  "properties": {
-    "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -712,18 +712,18 @@ Extrudes a polygon by a distance
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ExtruderParam",
   "type": "object",
+  "properties": {
+    "distance": {
+      "$ref": "#/$defs/Expr"
+    }
+  },
   "required": [
     "distance"
   ],
-  "properties": {
-    "distance": {
-      "$ref": "#/definitions/Expr"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -745,13 +745,9 @@ Counts features
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FeatureCounterParam",
   "type": "object",
-  "required": [
-    "countStart",
-    "outputAttribute"
-  ],
   "properties": {
     "countStart": {
       "type": "integer",
@@ -763,14 +759,18 @@ Counts features
         "null"
       ],
       "items": {
-        "$ref": "#/definitions/Attribute"
+        "$ref": "#/$defs/Attribute"
       }
     },
     "outputAttribute": {
       "type": "string"
     }
   },
-  "definitions": {
+  "required": [
+    "countStart",
+    "outputAttribute"
+  ],
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -793,18 +793,18 @@ Creates features from expressions
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FeatureCreator",
   "type": "object",
+  "properties": {
+    "creator": {
+      "$ref": "#/$defs/Expr"
+    }
+  },
   "required": [
     "creator"
   ],
-  "properties": {
-    "creator": {
-      "$ref": "#/definitions/Expr"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -825,22 +825,22 @@ Extracts features by file path
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FeatureFilePathExtractorParam",
   "type": "object",
-  "required": [
-    "extractArchive",
-    "sourceDataset"
-  ],
   "properties": {
+    "sourceDataset": {
+      "$ref": "#/$defs/Expr"
+    },
     "extractArchive": {
       "type": "boolean"
-    },
-    "sourceDataset": {
-      "$ref": "#/definitions/Expr"
     }
   },
-  "definitions": {
+  "required": [
+    "sourceDataset",
+    "extractArchive"
+  ],
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -863,35 +863,35 @@ Filters features based on conditions
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FeatureFilterParam",
   "type": "object",
-  "required": [
-    "conditions"
-  ],
   "properties": {
     "conditions": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Condition"
+        "$ref": "#/$defs/Condition"
       }
     }
   },
-  "definitions": {
+  "required": [
+    "conditions"
+  ],
+  "$defs": {
     "Condition": {
       "type": "object",
+      "properties": {
+        "expr": {
+          "$ref": "#/$defs/Expr"
+        },
+        "outputPort": {
+          "$ref": "#/$defs/Port"
+        }
+      },
       "required": [
         "expr",
         "outputPort"
-      ],
-      "properties": {
-        "expr": {
-          "$ref": "#/definitions/Expr"
-        },
-        "outputPort": {
-          "$ref": "#/definitions/Port"
-        }
-      }
+      ]
     },
     "Expr": {
       "type": "string"
@@ -917,34 +917,18 @@ Merges features by attributes
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FeatureMergerParam",
   "type": "object",
   "properties": {
-    "completeGrouped": {
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
     "requestorAttribute": {
       "type": [
         "array",
         "null"
       ],
       "items": {
-        "$ref": "#/definitions/Attribute"
+        "$ref": "#/$defs/Attribute"
       }
-    },
-    "requestorAttributeValue": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
     },
     "supplierAttribute": {
       "type": [
@@ -952,21 +936,37 @@ Merges features by attributes
         "null"
       ],
       "items": {
-        "$ref": "#/definitions/Attribute"
+        "$ref": "#/$defs/Attribute"
       }
     },
-    "supplierAttributeValue": {
+    "requestorAttributeValue": {
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/$defs/Expr"
         },
         {
           "type": "null"
         }
       ]
+    },
+    "supplierAttributeValue": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "completeGrouped": {
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
-  "definitions": {
+  "$defs": {
     "Attribute": {
       "type": "string"
     },
@@ -993,48 +993,40 @@ Filters features based on conditions
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FeatureReaderParam",
   "oneOf": [
     {
       "type": "object",
-      "required": [
-        "dataset",
-        "format"
-      ],
       "properties": {
+        "format": {
+          "type": "string",
+          "const": "citygml"
+        },
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/$defs/Expr"
         },
         "flatten": {
           "type": [
             "boolean",
             "null"
           ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "citygml"
-          ]
         }
-      }
+      },
+      "required": [
+        "format",
+        "dataset"
+      ]
     },
     {
       "type": "object",
-      "required": [
-        "dataset",
-        "format"
-      ],
       "properties": {
-        "dataset": {
-          "$ref": "#/definitions/Expr"
-        },
         "format": {
           "type": "string",
-          "enum": [
-            "csv"
-          ]
+          "const": "csv"
+        },
+        "dataset": {
+          "$ref": "#/$defs/Expr"
         },
         "offset": {
           "type": [
@@ -1042,25 +1034,23 @@ Filters features based on conditions
             "null"
           ],
           "format": "uint",
-          "minimum": 0.0
+          "minimum": 0
         }
-      }
+      },
+      "required": [
+        "format",
+        "dataset"
+      ]
     },
     {
       "type": "object",
-      "required": [
-        "dataset",
-        "format"
-      ],
       "properties": {
-        "dataset": {
-          "$ref": "#/definitions/Expr"
-        },
         "format": {
           "type": "string",
-          "enum": [
-            "tsv"
-          ]
+          "const": "tsv"
+        },
+        "dataset": {
+          "$ref": "#/$defs/Expr"
         },
         "offset": {
           "type": [
@@ -1068,12 +1058,16 @@ Filters features based on conditions
             "null"
           ],
           "format": "uint",
-          "minimum": 0.0
+          "minimum": 0
         }
-      }
+      },
+      "required": [
+        "format",
+        "dataset"
+      ]
     }
   ],
-  "definitions": {
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -1095,21 +1089,52 @@ Sorts features by attributes
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FeatureSorterParam",
   "type": "object",
-  "required": [
-    "sortBy"
-  ],
   "properties": {
     "sortBy": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/SortBy"
+        "$ref": "#/$defs/SortBy"
       }
     }
   },
-  "definitions": {
+  "required": [
+    "sortBy"
+  ],
+  "$defs": {
+    "SortBy": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attributeValue": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order": {
+          "$ref": "#/$defs/Order"
+        }
+      },
+      "required": [
+        "order"
+      ]
+    },
     "Attribute": {
       "type": "string"
     },
@@ -1122,37 +1147,6 @@ Sorts features by attributes
         "ascending",
         "descending"
       ]
-    },
-    "SortBy": {
-      "type": "object",
-      "required": [
-        "order"
-      ],
-      "properties": {
-        "attribute": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "attributeValue": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "order": {
-          "$ref": "#/definitions/Order"
-        }
-      }
     }
   }
 }
@@ -1172,34 +1166,34 @@ Transforms features by expressions
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FeatureTransformerParam",
   "type": "object",
-  "required": [
-    "transformers"
-  ],
   "properties": {
     "transformers": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Transform"
+        "$ref": "#/$defs/Transform"
       }
     }
   },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    },
+  "required": [
+    "transformers"
+  ],
+  "$defs": {
     "Transform": {
       "type": "object",
-      "required": [
-        "expr"
-      ],
       "properties": {
         "expr": {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/$defs/Expr"
         }
-      }
+      },
+      "required": [
+        "expr"
+      ]
+    },
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -1219,12 +1213,9 @@ Filters features by feature type
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FeatureTypeFilter",
   "type": "object",
-  "required": [
-    "targetTypes"
-  ],
   "properties": {
     "targetTypes": {
       "type": "array",
@@ -1232,7 +1223,10 @@ Filters features by feature type
         "type": "string"
       }
     }
-  }
+  },
+  "required": [
+    "targetTypes"
+  ]
 }
 ```
 ### Input Ports
@@ -1251,22 +1245,22 @@ Extracts files from a directory or an archive
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FilePathExtractor",
   "type": "object",
-  "required": [
-    "extractArchive",
-    "sourceDataset"
-  ],
   "properties": {
+    "sourceDataset": {
+      "$ref": "#/$defs/Expr"
+    },
     "extractArchive": {
       "type": "boolean"
-    },
-    "sourceDataset": {
-      "$ref": "#/definitions/Expr"
     }
   },
-  "definitions": {
+  "required": [
+    "sourceDataset",
+    "extractArchive"
+  ],
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -1287,17 +1281,17 @@ Extracts properties from a file
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FilePropertyExtractor",
   "type": "object",
-  "required": [
-    "filePathAttribute"
-  ],
   "properties": {
     "filePathAttribute": {
       "type": "string"
     }
-  }
+  },
+  "required": [
+    "filePathAttribute"
+  ]
 }
 ```
 ### Input Ports
@@ -1316,24 +1310,19 @@ Reads features from a file
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FileReader",
   "oneOf": [
     {
+      "title": "CSV",
       "type": "object",
-      "required": [
-        "dataset",
-        "format"
-      ],
       "properties": {
-        "dataset": {
-          "$ref": "#/definitions/Expr"
-        },
         "format": {
           "type": "string",
-          "enum": [
-            "csv"
-          ]
+          "const": "csv"
+        },
+        "dataset": {
+          "$ref": "#/$defs/Expr"
         },
         "offset": {
           "type": [
@@ -1341,25 +1330,24 @@ Reads features from a file
             "null"
           ],
           "format": "uint",
-          "minimum": 0.0
+          "minimum": 0
         }
-      }
+      },
+      "required": [
+        "format",
+        "dataset"
+      ]
     },
     {
+      "title": "TSV",
       "type": "object",
-      "required": [
-        "dataset",
-        "format"
-      ],
       "properties": {
-        "dataset": {
-          "$ref": "#/definitions/Expr"
-        },
         "format": {
           "type": "string",
-          "enum": [
-            "tsv"
-          ]
+          "const": "tsv"
+        },
+        "dataset": {
+          "$ref": "#/$defs/Expr"
         },
         "offset": {
           "type": [
@@ -1367,54 +1355,56 @@ Reads features from a file
             "null"
           ],
           "format": "uint",
-          "minimum": 0.0
+          "minimum": 0
         }
-      }
+      },
+      "required": [
+        "format",
+        "dataset"
+      ]
     },
     {
+      "title": "JSON",
       "type": "object",
-      "required": [
-        "dataset",
-        "format"
-      ],
       "properties": {
-        "dataset": {
-          "$ref": "#/definitions/Expr"
-        },
         "format": {
           "type": "string",
-          "enum": [
-            "json"
-          ]
+          "const": "json"
+        },
+        "dataset": {
+          "$ref": "#/$defs/Expr"
         }
-      }
+      },
+      "required": [
+        "format",
+        "dataset"
+      ]
     },
     {
+      "title": "CityGML",
       "type": "object",
-      "required": [
-        "dataset",
-        "format"
-      ],
       "properties": {
+        "format": {
+          "type": "string",
+          "const": "citygml"
+        },
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/$defs/Expr"
         },
         "flatten": {
           "type": [
             "boolean",
             "null"
           ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "citygml"
-          ]
         }
-      }
+      },
+      "required": [
+        "format",
+        "dataset"
+      ]
     }
   ],
-  "definitions": {
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -1435,88 +1425,76 @@ Writes features to a file
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FileWriterParam",
   "oneOf": [
     {
       "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
       "properties": {
         "format": {
           "type": "string",
-          "enum": [
-            "csv"
-          ]
+          "const": "csv"
         },
         "output": {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/$defs/Expr"
         }
-      }
-    },
-    {
-      "type": "object",
+      },
       "required": [
         "format",
         "output"
-      ],
+      ]
+    },
+    {
+      "type": "object",
       "properties": {
         "format": {
           "type": "string",
-          "enum": [
-            "tsv"
-          ]
+          "const": "tsv"
         },
         "output": {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/$defs/Expr"
         }
-      }
-    },
-    {
-      "type": "object",
+      },
       "required": [
         "format",
         "output"
-      ],
+      ]
+    },
+    {
+      "type": "object",
       "properties": {
+        "format": {
+          "type": "string",
+          "const": "json"
+        },
+        "output": {
+          "$ref": "#/$defs/Expr"
+        },
         "converter": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/$defs/Expr"
             },
             {
               "type": "null"
             }
           ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "json"
-          ]
-        },
-        "output": {
-          "$ref": "#/definitions/Expr"
         }
-      }
-    },
-    {
-      "type": "object",
+      },
       "required": [
         "format",
         "output"
-      ],
+      ]
+    },
+    {
+      "type": "object",
       "properties": {
         "format": {
           "type": "string",
-          "enum": [
-            "excel"
-          ]
+          "const": "excel"
         },
         "output": {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/$defs/Expr"
         },
         "sheetName": {
           "type": [
@@ -1524,10 +1502,14 @@ Writes features to a file
             "null"
           ]
         }
-      }
+      },
+      "required": [
+        "format",
+        "output"
+      ]
     }
   ],
-  "definitions": {
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -1548,31 +1530,31 @@ Writes features to a geojson file
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GeoJsonWriterParam",
   "type": "object",
-  "required": [
-    "output"
-  ],
   "properties": {
+    "output": {
+      "$ref": "#/$defs/Expr"
+    },
     "groupBy": {
       "type": [
         "array",
         "null"
       ],
       "items": {
-        "$ref": "#/definitions/Attribute"
+        "$ref": "#/$defs/Attribute"
       }
-    },
-    "output": {
-      "$ref": "#/definitions/Expr"
     }
   },
-  "definitions": {
-    "Attribute": {
+  "required": [
+    "output"
+  ],
+  "$defs": {
+    "Expr": {
       "type": "string"
     },
-    "Expr": {
+    "Attribute": {
       "type": "string"
     }
   }
@@ -1592,18 +1574,18 @@ Coerces the geometry of a feature to a specific geometry
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GeometryCoercer",
   "type": "object",
+  "properties": {
+    "coercerType": {
+      "$ref": "#/$defs/CoercerType"
+    }
+  },
   "required": [
     "coercerType"
   ],
-  "properties": {
-    "coercerType": {
-      "$ref": "#/definitions/CoercerType"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "CoercerType": {
       "type": "string",
       "enum": [
@@ -1628,27 +1610,27 @@ Dissolve geometries
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GeometryDissolverParam",
   "type": "object",
   "properties": {
-    "completeGrouped": {
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
     "groupBy": {
       "type": [
         "array",
         "null"
       ],
       "items": {
-        "$ref": "#/definitions/Attribute"
+        "$ref": "#/$defs/Attribute"
       }
+    },
+    "completeGrouped": {
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
-  "definitions": {
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -1671,18 +1653,18 @@ Extracts geometry from a feature and adds it as an attribute.
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GeometryExtractor",
   "type": "object",
+  "properties": {
+    "outputAttribute": {
+      "$ref": "#/$defs/Attribute"
+    }
+  },
   "required": [
     "outputAttribute"
   ],
-  "properties": {
-    "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -1704,50 +1686,44 @@ Filter geometry by type
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GeometryFilterParam",
   "oneOf": [
     {
       "type": "object",
-      "required": [
-        "filterType"
-      ],
       "properties": {
         "filterType": {
           "type": "string",
-          "enum": [
-            "none"
-          ]
+          "const": "none"
         }
-      }
+      },
+      "required": [
+        "filterType"
+      ]
     },
     {
       "type": "object",
-      "required": [
-        "filterType"
-      ],
       "properties": {
         "filterType": {
           "type": "string",
-          "enum": [
-            "multiple"
-          ]
+          "const": "multiple"
         }
-      }
+      },
+      "required": [
+        "filterType"
+      ]
     },
     {
       "type": "object",
-      "required": [
-        "filterType"
-      ],
       "properties": {
         "filterType": {
           "type": "string",
-          "enum": [
-            "geometryType"
-          ]
+          "const": "geometryType"
         }
-      }
+      },
+      "required": [
+        "filterType"
+      ]
     }
   ]
 }
@@ -1790,7 +1766,7 @@ Filter geometry by lod
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GeometryLodFilterParam",
   "type": "object",
   "properties": {
@@ -1800,7 +1776,7 @@ Filter geometry by lod
         "null"
       ],
       "format": "uint8",
-      "minimum": 0.0
+      "minimum": 0
     }
   }
 }
@@ -1821,18 +1797,18 @@ Replaces the geometry of a feature with a new geometry.
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GeometryReplacer",
   "type": "object",
+  "properties": {
+    "sourceAttribute": {
+      "$ref": "#/$defs/Attribute"
+    }
+  },
   "required": [
     "sourceAttribute"
   ],
-  "properties": {
-    "sourceAttribute": {
-      "$ref": "#/definitions/Attribute"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -1868,21 +1844,21 @@ Validates the geometry of a feature
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GeometryValidator",
   "type": "object",
-  "required": [
-    "validationTypes"
-  ],
   "properties": {
     "validationTypes": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/ValidationType"
+        "$ref": "#/$defs/ValidationType"
       }
     }
   },
-  "definitions": {
+  "required": [
+    "validationTypes"
+  ],
+  "$defs": {
     "ValidationType": {
       "type": "string",
       "enum": [
@@ -1928,24 +1904,24 @@ Writes features to a Gltf
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GltfWriterParam",
   "type": "object",
-  "required": [
-    "output"
-  ],
   "properties": {
+    "output": {
+      "$ref": "#/$defs/Expr"
+    },
     "attachTexture": {
       "type": [
         "boolean",
         "null"
       ]
-    },
-    "output": {
-      "$ref": "#/definitions/Expr"
     }
   },
-  "definitions": {
+  "required": [
+    "output"
+  ],
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -1966,18 +1942,18 @@ Counts the number of holes in a geometry and adds it as an attribute.
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HoleCounterParam",
   "type": "object",
+  "properties": {
+    "outputAttribute": {
+      "$ref": "#/$defs/Attribute"
+    }
+  },
   "required": [
     "outputAttribute"
   ],
-  "properties": {
-    "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -2015,7 +1991,7 @@ Reprojects the geometry of a feature to a specified coordinate system
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HorizontalReprojectorParam",
   "type": "object",
   "properties": {
@@ -2025,7 +2001,7 @@ Reprojects the geometry of a feature to a specified coordinate system
         "null"
       ],
       "format": "uint16",
-      "minimum": 0.0
+      "minimum": 0
     }
   }
 }
@@ -2045,17 +2021,17 @@ Action for first port forwarding for sub-workflows.
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "InputRouter",
   "type": "object",
-  "required": [
-    "routingPort"
-  ],
   "properties": {
     "routingPort": {
       "type": "string"
     }
-  }
+  },
+  "required": [
+    "routingPort"
+  ]
 }
 ```
 ### Input Ports
@@ -2072,12 +2048,9 @@ Intersection points are turned into point features that can contain the merged l
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LineOnLineOverlayerParam",
   "type": "object",
-  "required": [
-    "outputAttribute"
-  ],
   "properties": {
     "groupBy": {
       "type": [
@@ -2085,14 +2058,17 @@ Intersection points are turned into point features that can contain the merged l
         "null"
       ],
       "items": {
-        "$ref": "#/definitions/Attribute"
+        "$ref": "#/$defs/Attribute"
       }
     },
     "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
+      "$ref": "#/$defs/Attribute"
     }
   },
-  "definitions": {
+  "required": [
+    "outputAttribute"
+  ],
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -2116,18 +2092,18 @@ Explodes list attributes
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ListExploder",
   "type": "object",
+  "properties": {
+    "sourceAttribute": {
+      "$ref": "#/$defs/Attribute"
+    }
+  },
   "required": [
     "sourceAttribute"
   ],
-  "properties": {
-    "sourceAttribute": {
-      "$ref": "#/definitions/Attribute"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -2149,34 +2125,34 @@ Writes features to a file
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MVTWriterParam",
   "type": "object",
-  "required": [
-    "layerName",
-    "maxZoom",
-    "minZoom",
-    "output"
-  ],
   "properties": {
-    "layerName": {
-      "$ref": "#/definitions/Expr"
+    "output": {
+      "$ref": "#/$defs/Expr"
     },
-    "maxZoom": {
-      "type": "integer",
-      "format": "uint8",
-      "minimum": 0.0
+    "layerName": {
+      "$ref": "#/$defs/Expr"
     },
     "minZoom": {
       "type": "integer",
       "format": "uint8",
-      "minimum": 0.0
+      "minimum": 0
     },
-    "output": {
-      "$ref": "#/definitions/Expr"
+    "maxZoom": {
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0
     }
   },
-  "definitions": {
+  "required": [
+    "output",
+    "layerName",
+    "minZoom",
+    "maxZoom"
+  ],
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -2224,7 +2200,7 @@ Adds offsets to the feature's coordinates.
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OffsetterParam",
   "type": "object",
   "properties": {
@@ -2267,18 +2243,18 @@ Extracts the orientation of a geometry from a feature and adds it as an attribut
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OrientationExtractorParam",
   "type": "object",
+  "properties": {
+    "outputAttribute": {
+      "$ref": "#/$defs/Attribute"
+    }
+  },
   "required": [
     "outputAttribute"
   ],
-  "properties": {
-    "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -2300,17 +2276,17 @@ Action for last port forwarding for sub-workflows.
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OutputRouter",
   "type": "object",
-  "required": [
-    "routingPort"
-  ],
   "properties": {
     "routingPort": {
       "type": "string"
     }
-  }
+  },
+  "required": [
+    "routingPort"
+  ]
 }
 ```
 ### Input Ports
@@ -2476,18 +2452,18 @@ Extracts UDX folders from cityGML path
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "UDXFolderExtractorParam",
   "type": "object",
+  "properties": {
+    "cityGmlPath": {
+      "$ref": "#/$defs/Expr"
+    }
+  },
   "required": [
     "cityGmlPath"
   ],
-  "properties": {
-    "cityGmlPath": {
-      "$ref": "#/definitions/Expr"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -2540,22 +2516,22 @@ Calls Rhai script
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "RhaiCallerParam",
   "type": "object",
+  "properties": {
+    "isTarget": {
+      "$ref": "#/$defs/Expr"
+    },
+    "process": {
+      "$ref": "#/$defs/Expr"
+    }
+  },
   "required": [
     "isTarget",
     "process"
   ],
-  "properties": {
-    "isTarget": {
-      "$ref": "#/definitions/Expr"
-    },
-    "process": {
-      "$ref": "#/definitions/Expr"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -2577,27 +2553,24 @@ Calculates statistics of features
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "StatisticsCalculatorParam",
   "type": "object",
-  "required": [
-    "calculations"
-  ],
   "properties": {
-    "aggregateAttribute": {
+    "aggregateName": {
       "anyOf": [
         {
-          "$ref": "#/definitions/Attribute"
+          "$ref": "#/$defs/Attribute"
         },
         {
           "type": "null"
         }
       ]
     },
-    "aggregateName": {
+    "aggregateAttribute": {
       "anyOf": [
         {
-          "$ref": "#/definitions/Attribute"
+          "$ref": "#/$defs/Attribute"
         },
         {
           "type": "null"
@@ -2607,28 +2580,31 @@ Calculates statistics of features
     "calculations": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Calculation"
+        "$ref": "#/$defs/Calculation"
       }
     }
   },
-  "definitions": {
+  "required": [
+    "calculations"
+  ],
+  "$defs": {
     "Attribute": {
       "type": "string"
     },
     "Calculation": {
       "type": "object",
-      "required": [
-        "expr",
-        "newAttribute"
-      ],
       "properties": {
-        "expr": {
-          "$ref": "#/definitions/Expr"
-        },
         "newAttribute": {
-          "$ref": "#/definitions/Attribute"
+          "$ref": "#/$defs/Attribute"
+        },
+        "expr": {
+          "$ref": "#/$defs/Expr"
         }
-      }
+      },
+      "required": [
+        "newAttribute",
+        "expr"
+      ]
     },
     "Expr": {
       "type": "string"
@@ -2652,38 +2628,38 @@ Replaces a three Dimension box with a polygon.
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ThreeDimensionBoxReplacer",
   "type": "object",
-  "required": [
-    "maxX",
-    "maxY",
-    "maxZ",
-    "minX",
-    "minY",
-    "minZ"
-  ],
   "properties": {
-    "maxX": {
-      "$ref": "#/definitions/Attribute"
-    },
-    "maxY": {
-      "$ref": "#/definitions/Attribute"
-    },
-    "maxZ": {
-      "$ref": "#/definitions/Attribute"
-    },
     "minX": {
-      "$ref": "#/definitions/Attribute"
+      "$ref": "#/$defs/Attribute"
     },
     "minY": {
-      "$ref": "#/definitions/Attribute"
+      "$ref": "#/$defs/Attribute"
     },
     "minZ": {
-      "$ref": "#/definitions/Attribute"
+      "$ref": "#/$defs/Attribute"
+    },
+    "maxX": {
+      "$ref": "#/$defs/Attribute"
+    },
+    "maxY": {
+      "$ref": "#/$defs/Attribute"
+    },
+    "maxZ": {
+      "$ref": "#/$defs/Attribute"
     }
   },
-  "definitions": {
+  "required": [
+    "minX",
+    "minY",
+    "minZ",
+    "maxX",
+    "maxY",
+    "maxZ"
+  ],
+  "$defs": {
     "Attribute": {
       "type": "string"
     }
@@ -2705,42 +2681,42 @@ Replaces a three Dimension box with a polygon.
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ThreeDimensionRotatorParam",
   "type": "object",
-  "required": [
-    "angleDegree",
-    "directionX",
-    "directionY",
-    "directionZ",
-    "originX",
-    "originY",
-    "originZ"
-  ],
   "properties": {
     "angleDegree": {
-      "$ref": "#/definitions/Expr"
-    },
-    "directionX": {
-      "$ref": "#/definitions/Expr"
-    },
-    "directionY": {
-      "$ref": "#/definitions/Expr"
-    },
-    "directionZ": {
-      "$ref": "#/definitions/Expr"
+      "$ref": "#/$defs/Expr"
     },
     "originX": {
-      "$ref": "#/definitions/Expr"
+      "$ref": "#/$defs/Expr"
     },
     "originY": {
-      "$ref": "#/definitions/Expr"
+      "$ref": "#/$defs/Expr"
     },
     "originZ": {
-      "$ref": "#/definitions/Expr"
+      "$ref": "#/$defs/Expr"
+    },
+    "directionX": {
+      "$ref": "#/$defs/Expr"
+    },
+    "directionY": {
+      "$ref": "#/$defs/Expr"
+    },
+    "directionZ": {
+      "$ref": "#/$defs/Expr"
     }
   },
-  "definitions": {
+  "required": [
+    "angleDegree",
+    "originX",
+    "originY",
+    "originZ",
+    "directionX",
+    "directionY",
+    "directionZ"
+  ],
+  "$defs": {
     "Expr": {
       "type": "string"
     }
@@ -2791,18 +2767,18 @@ Reprojects the geometry of a feature to a specified coordinate system
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "VerticalReprojectorParam",
   "type": "object",
+  "properties": {
+    "reprojectorType": {
+      "$ref": "#/$defs/VerticalReprojectorType"
+    }
+  },
   "required": [
     "reprojectorType"
   ],
-  "properties": {
-    "reprojectorType": {
-      "$ref": "#/definitions/VerticalReprojectorType"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "VerticalReprojectorType": {
       "type": "string",
       "enum": [
@@ -2827,26 +2803,26 @@ Compiles scripts into .wasm and runs at the wasm runtime
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "WasmRuntimeExecutorParam",
   "type": "object",
-  "required": [
-    "processorType",
-    "programmingLanguage",
-    "sourceCodeFilePath"
-  ],
   "properties": {
-    "processorType": {
-      "$ref": "#/definitions/ProcessorType"
-    },
-    "programmingLanguage": {
-      "$ref": "#/definitions/ProgrammingLanguage"
-    },
     "sourceCodeFilePath": {
       "type": "string"
+    },
+    "processorType": {
+      "$ref": "#/$defs/ProcessorType"
+    },
+    "programmingLanguage": {
+      "$ref": "#/$defs/ProgrammingLanguage"
     }
   },
-  "definitions": {
+  "required": [
+    "sourceCodeFilePath",
+    "processorType",
+    "programmingLanguage"
+  ],
+  "$defs": {
     "ProcessorType": {
       "type": "string",
       "enum": [
@@ -2877,41 +2853,39 @@ Fragment XML
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "XmlFragmenterParam",
   "oneOf": [
     {
       "type": "object",
-      "required": [
-        "attribute",
-        "elementsToExclude",
-        "elementsToMatch",
-        "source"
-      ],
       "properties": {
-        "attribute": {
-          "$ref": "#/definitions/Attribute"
+        "elementsToMatch": {
+          "$ref": "#/$defs/Expr"
         },
         "elementsToExclude": {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/$defs/Expr"
         },
-        "elementsToMatch": {
-          "$ref": "#/definitions/Expr"
+        "attribute": {
+          "$ref": "#/$defs/Attribute"
         },
         "source": {
           "type": "string",
-          "enum": [
-            "url"
-          ]
+          "const": "url"
         }
-      }
+      },
+      "required": [
+        "source",
+        "elementsToMatch",
+        "elementsToExclude",
+        "attribute"
+      ]
     }
   ],
-  "definitions": {
-    "Attribute": {
+  "$defs": {
+    "Expr": {
       "type": "string"
     },
-    "Expr": {
+    "Attribute": {
       "type": "string"
     }
   }
@@ -2932,28 +2906,35 @@ Validates XML content
 ### Parameters
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "XmlValidatorParam",
   "type": "object",
+  "properties": {
+    "attribute": {
+      "$ref": "#/$defs/Attribute"
+    },
+    "inputType": {
+      "$ref": "#/$defs/XmlInputType"
+    },
+    "validationType": {
+      "$ref": "#/$defs/ValidationType"
+    }
+  },
   "required": [
     "attribute",
     "inputType",
     "validationType"
   ],
-  "properties": {
-    "attribute": {
-      "$ref": "#/definitions/Attribute"
-    },
-    "inputType": {
-      "$ref": "#/definitions/XmlInputType"
-    },
-    "validationType": {
-      "$ref": "#/definitions/ValidationType"
-    }
-  },
-  "definitions": {
+  "$defs": {
     "Attribute": {
       "type": "string"
+    },
+    "XmlInputType": {
+      "type": "string",
+      "enum": [
+        "file",
+        "text"
+      ]
     },
     "ValidationType": {
       "type": "string",
@@ -2961,13 +2942,6 @@ Validates XML content
         "syntax",
         "syntaxAndNamespace",
         "syntaxAndSchema"
-      ]
-    },
-    "XmlInputType": {
-      "type": "string",
-      "enum": [
-        "file",
-        "text"
       ]
     }
   }

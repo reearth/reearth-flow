@@ -33,7 +33,7 @@ impl ProcessorFactory for RefinerFactory {
         "Geometry Refiner"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         None
     }
 

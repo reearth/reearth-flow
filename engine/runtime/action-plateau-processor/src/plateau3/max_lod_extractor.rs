@@ -28,7 +28,7 @@ impl ProcessorFactory for MaxLodExtractorFactory {
         "Extracts maxLod"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         None
     }
 

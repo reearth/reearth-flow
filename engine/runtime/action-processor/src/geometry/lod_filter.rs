@@ -28,7 +28,7 @@ impl ProcessorFactory for GeometryLodFilterFactory {
         "Filter geometry by lod"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         Some(schemars::schema_for!(GeometryLodFilterParam))
     }
 

@@ -27,7 +27,7 @@ impl ProcessorFactory for GeometryExtractorFactory {
         "Extracts geometry from a feature and adds it as an attribute."
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         Some(schemars::schema_for!(GeometryExtractor))
     }
 

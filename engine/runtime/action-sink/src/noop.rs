@@ -18,7 +18,7 @@ impl SinkFactory for NoopSinkFactory {
         "noop sink"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         None
     }
 
