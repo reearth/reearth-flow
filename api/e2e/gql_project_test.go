@@ -17,7 +17,7 @@ func TestProjectWorkflows(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser)
+	}, true, baseSeederUser, true)
 
 	projectId := testCreateProject(t, e)
 
@@ -228,7 +228,7 @@ func TestListProjects(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser)
+	}, true, baseSeederUser, true)
 
 	query := fmt.Sprintf(`{
 		projects(
