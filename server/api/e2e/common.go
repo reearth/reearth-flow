@@ -120,18 +120,18 @@ type GraphQLRequest struct {
 	Variables     map[string]any `json:"variables"`
 }
 
-func StartGQLServer(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder) (*httpexpect.Expect, *accountrepo.Container) {
-	e, r := StartGQLServerAndRepos(t, cfg, useMongo, seeder)
+func StartGQLServer(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool) (*httpexpect.Expect, *accountrepo.Container) {
+	e, r := StartGQLServerAndRepos(t, cfg, useMongo, seeder, allowPermission)
 	return e, r
 }
 
-func StartGQLServerAndRepos(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder) (*httpexpect.Expect, *accountrepo.Container) {
+func StartGQLServerAndRepos(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool) (*httpexpect.Expect, *accountrepo.Container) {
 	repos := initRepos(t, useMongo, seeder)
 	acRepos := repos.AccountRepos()
-	return StartGQLServerWithRepos(t, cfg, repos, acRepos), acRepos
+	return StartGQLServerWithRepos(t, cfg, repos, acRepos, allowPermission), acRepos
 }
 
-func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Container, accountrepos *accountrepo.Container) *httpexpect.Expect {
+func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Container, accountrepos *accountrepo.Container, allowPermission bool) *httpexpect.Expect {
 	t.Helper()
 
 	if testing.Short() {
@@ -145,6 +145,10 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 		t.Fatalf("server failed to listen: %v", err)
 	}
 
+	// mockPermissionChecker
+	mockPermissionChecker := gateway.NewMockPermissionChecker()
+	mockPermissionChecker.Allow = allowPermission
+
 	srv := app.NewServer(ctx, &app.ServerConfig{
 		Config:       cfg,
 		Repos:        repos,
@@ -155,7 +159,8 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 		AccountGateways: &accountgateway.Container{
 			Mailer: mailer.New(ctx, &mailer.Config{}),
 		},
-		Debug: true,
+		Debug:             true,
+		PermissionChecker: mockPermissionChecker,
 	})
 
 	ch := make(chan error)
