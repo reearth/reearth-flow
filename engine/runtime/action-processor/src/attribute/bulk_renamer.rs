@@ -24,7 +24,7 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
         "Renames attributes by adding/removing prefixes or suffixes, or replacing text"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         Some(schemars::schema_for!(BulkAttributeRenamerParam))
     }
 

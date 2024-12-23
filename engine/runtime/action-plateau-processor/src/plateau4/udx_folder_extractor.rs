@@ -67,7 +67,7 @@ impl ProcessorFactory for UDXFolderExtractorFactory {
         "Extracts UDX folders from cityGML path"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         Some(schemars::schema_for!(UDXFolderExtractorParam))
     }
 

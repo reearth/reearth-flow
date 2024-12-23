@@ -64,7 +64,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
         "Writes features to a file"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         Some(schemars::schema_for!(Cesium3DTilesWriterParam))
     }
 

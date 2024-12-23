@@ -27,7 +27,7 @@ impl ProcessorFactory for AttributeFilePathInfoExtractorFactory {
         "Extracts file path information from attributes"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         Some(schemars::schema_for!(AttributeFilePathInfoExtractor))
     }
 

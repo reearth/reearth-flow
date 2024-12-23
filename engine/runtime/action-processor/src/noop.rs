@@ -21,7 +21,7 @@ impl ProcessorFactory for NoopProcessorFactory {
         "Noop features"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         None
     }
 

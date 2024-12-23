@@ -29,7 +29,7 @@ impl ProcessorFactory for ThreeDimensionBoxReplacerFactory {
         "Replaces a three Dimension box with a polygon."
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         Some(schemars::schema_for!(ThreeDimensionBoxReplacer))
     }
 

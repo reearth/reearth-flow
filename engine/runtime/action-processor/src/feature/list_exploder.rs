@@ -26,7 +26,7 @@ impl ProcessorFactory for ListExploderFactory {
         "Explodes list attributes"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         Some(schemars::schema_for!(ListExploder))
     }
 

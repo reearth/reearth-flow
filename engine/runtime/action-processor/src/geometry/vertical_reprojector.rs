@@ -27,7 +27,7 @@ impl ProcessorFactory for VerticalReprojectorFactory {
         "Reprojects the geometry of a feature to a specified coordinate system"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+    fn parameter_schema(&self) -> Option<schemars::Schema> {
         Some(schemars::schema_for!(VerticalReprojectorParam))
     }
 
