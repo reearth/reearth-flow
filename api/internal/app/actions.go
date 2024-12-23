@@ -79,8 +79,8 @@ type SegregatedActions struct {
 }
 
 var (
-	actionsData ActionsData
-	once        sync.Once
+	actionsData    ActionsData
+	once           sync.Once
 	supportedLangs = map[string]bool{
 		"en": true,
 		"es": true,
@@ -102,7 +102,7 @@ func loadActionsData(lang string) error {
 		if lang != "" {
 			filename = fmt.Sprintf("actions_%s.json", lang)
 		}
-		
+
 		resp, respErr := http.Get(baseURL + filename)
 		if respErr != nil {
 			err = respErr
