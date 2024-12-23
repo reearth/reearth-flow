@@ -44,21 +44,24 @@ func NewProject(r *repo.Container, gr *gateway.Container, permissionChecker gate
 }
 
 func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID, _ *usecase.Operator) ([]*project.Project, error) {
+	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+		return nil, err
+	}
+
 	return i.projectRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam, _ *usecase.Operator) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam, _ *usecase.Operator) ([]*project.Project, *usecasex.PageInfo, error) {
+	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+		return nil, nil, err
+	}
+
 	return i.projectRepo.FindByWorkspace(ctx, id, pagination)
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
-	authInfo := adapter.GetAuthInfo(ctx)
-	hasPermission, err := i.permissionChecker.CheckPermission(ctx, authInfo, rbac.ResourceProject, rbac.ActionEdit)
-	if err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
 		return nil, err
-	}
-	if !hasPermission {
-		return nil, fmt.Errorf("permission denied")
 	}
 
 	if err := i.CanWriteWorkspace(p.WorkspaceID, operator); err != nil {
@@ -110,6 +113,10 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, o
 }
 
 func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+		return nil, err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -163,6 +170,10 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, o
 }
 
 func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *usecase.Operator) (err error) {
+	if err := i.checkPermission(ctx, rbac.ActionDelete); err != nil {
+		return err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -227,4 +238,16 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 
 	tx.Commit()
 	return true, nil
+}
+
+func (i *Project) checkPermission(ctx context.Context, action string) error {
+	authInfo := adapter.GetAuthInfo(ctx)
+	hasPermission, err := i.permissionChecker.CheckPermission(ctx, authInfo, rbac.ResourceProject, action)
+	if err != nil {
+		return fmt.Errorf("failed to check permission: %w", err)
+	}
+	if !hasPermission {
+		return ErrPermissionDenied
+	}
+	return nil
 }

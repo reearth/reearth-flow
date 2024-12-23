@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -16,6 +17,8 @@ import (
 	"github.com/reearth/reearthx/account/accountusecase/accountinteractor"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 )
+
+var ErrPermissionDenied = fmt.Errorf("permission denied")
 
 type ContainerConfig struct {
 	SignupSecret    string
