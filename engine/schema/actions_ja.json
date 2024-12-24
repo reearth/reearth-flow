@@ -2477,6 +2477,43 @@
       ]
     },
     {
+      "name": "PLATEAU4.MaxLodExtractor",
+      "type": "processor",
+      "description": "Extracts maxLod",
+      "parameter": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "MaxLodExtractorParam",
+        "type": "object",
+        "properties": {
+          "cityGmlPathAttribute": {
+            "$ref": "#/$defs/Attribute"
+          },
+          "maxLodAttribute": {
+            "$ref": "#/$defs/Attribute"
+          }
+        },
+        "required": [
+          "cityGmlPathAttribute",
+          "maxLodAttribute"
+        ],
+        "$defs": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.UDXFolderExtractor",
       "type": "processor",
       "description": "Extracts UDX folders from cityGML path",

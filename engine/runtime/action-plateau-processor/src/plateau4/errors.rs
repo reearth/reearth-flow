@@ -7,6 +7,10 @@ pub(super) enum PlateauProcessorError {
     UDXFolderExtractorFactory(String),
     #[error("UDXFolder Extractor error: {0}")]
     UDXFolderExtractor(String),
+    #[error("UDXFolder Extractor Factory error: {0}")]
+    MaxLodExtractorFactory(String),
+    #[error("UDXFolder Extractor error: {0}")]
+    MaxLodExtractor(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
