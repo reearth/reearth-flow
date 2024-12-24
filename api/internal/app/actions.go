@@ -80,7 +80,8 @@ type SegregatedActions struct {
 
 var (
 	actionsData    ActionsData
-	once           sync.Once
+	actionsDataMap = make(map[string]ActionsData)
+	mutex          sync.RWMutex
 	supportedLangs = map[string]bool{
 		"en": true,
 		"es": true,
@@ -95,46 +96,62 @@ func loadActionsData(lang string) error {
 		return fmt.Errorf("unsupported language: %s", lang)
 	}
 
-	var err error
-	once.Do(func() {
-		baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
-		filename := "actions.json"
-		if lang != "" {
-			filename = fmt.Sprintf("actions_%s.json", lang)
-		}
+	cacheKey := lang
 
-		resp, respErr := http.Get(baseURL + filename)
-		if respErr != nil {
-			err = respErr
-			return
-		}
-		defer func() {
-			if closeErr := resp.Body.Close(); closeErr != nil {
-				if err == nil {
-					err = closeErr
-				} else {
-					err = fmt.Errorf("%w; %v", err, closeErr)
-				}
-			}
-		}()
+	// Try to get from cache first using read lock
+	mutex.RLock()
+	if data, exists := actionsDataMap[cacheKey]; exists {
+		actionsData = data
+		mutex.RUnlock()
+		return nil
+	}
+	mutex.RUnlock()
 
-		body, readErr := io.ReadAll(resp.Body)
-		if readErr != nil {
-			err = readErr
-			return
-		}
+	// If not in cache, acquire write lock
+	mutex.Lock()
+	defer mutex.Unlock()
 
-		if unmarshalErr := json.Unmarshal(body, &actionsData); unmarshalErr != nil {
-			err = unmarshalErr
-			return
-		}
+	// Double-check after acquiring write lock
+	if data, exists := actionsDataMap[cacheKey]; exists {
+		actionsData = data
+		return nil
+	}
 
-		if validateErr := actionsData.Validate(); validateErr != nil {
-			err = validateErr
-			return
+	baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
+	filename := "actions.json"
+	if lang != "" {
+		filename = fmt.Sprintf("actions_%s.json", lang)
+	}
+
+	resp, err := http.Get(baseURL + filename)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Println("Error closing response body:", err)
 		}
-	})
-	return err
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var newData ActionsData
+	if err := json.Unmarshal(body, &newData); err != nil {
+		return err
+	}
+
+	if err := newData.Validate(); err != nil {
+		return err
+	}
+
+	// Store in cache and set current actionsData
+	actionsDataMap[cacheKey] = newData
+	actionsData = newData
+
+	return nil
 }
 
 func listActions(c echo.Context) error {
