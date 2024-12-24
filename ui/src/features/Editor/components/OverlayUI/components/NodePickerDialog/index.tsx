@@ -7,6 +7,7 @@ import ActionItem from "@flow/components/ActionItem";
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
+import i18n from "@flow/lib/i18n/i18n";
 import type { Action, ActionNodeType, Node } from "@flow/types";
 
 import useBatch from "../../../Canvas/useBatch";
@@ -29,7 +30,7 @@ const NodePickerDialog: React.FC<Props> = ({
   onClose,
 }) => {
   const t = useT();
-  const { useGetActionsSegregated } = useAction();
+  const { useGetActionsSegregated } = useAction(i18n.language);
   const { actions: rawActions } = useGetActionsSegregated();
   const [actions, setActions] = useState<Action[] | undefined>();
   const [selectedIndex, setSelectedIndex] = useState(0);
