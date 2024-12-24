@@ -2444,6 +2444,43 @@ Extracts attributes from XML fragments based on a schema definition
 ### Category
 * PLATEAU
 
+## PLATEAU4.MaxLodExtractor
+### Type
+* processor
+### Description
+Extracts maxLod
+### Parameters
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MaxLodExtractorParam",
+  "type": "object",
+  "properties": {
+    "cityGmlPathAttribute": {
+      "$ref": "#/$defs/Attribute"
+    },
+    "maxLodAttribute": {
+      "$ref": "#/$defs/Attribute"
+    }
+  },
+  "required": [
+    "cityGmlPathAttribute",
+    "maxLodAttribute"
+  ],
+  "$defs": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
 ## PLATEAU4.UDXFolderExtractor
 ### Type
 * processor
