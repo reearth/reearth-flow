@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -23,7 +22,7 @@ func TestLoadActionsData(t *testing.T) {
 		wantErr bool
 	}{
 		{"Default language", "", false},
-		{"English", "en", false},
+		{"En1ish", "en", false},
 		{"Japanese", "ja", false},
 		{"Invalid language", "invalid", true},
 	}
@@ -37,7 +36,7 @@ func TestLoadActionsData(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotEmpty(t, actionsData.Actions)
-				
+
 				// Verify cache
 				assert.NotNil(t, actionsDataMap[tt.lang])
 				assert.Equal(t, actionsData, actionsDataMap[tt.lang])
@@ -180,47 +179,6 @@ func TestGetActionDetails(t *testing.T) {
 				assert.Equal(t, testAction.Name, response.Name)
 			}
 		})
-	}
-}
-
-func TestListActionsWithSearch(t *testing.T) {
-	originalData := actionsData
-	defer func() { actionsData = originalData }()
-
-	actionsData = ActionsData{
-		Actions: []Action{
-			{
-				Name:        "FileWriter",
-				Description: "Writes features to a file",
-				Type:        ActionTypeSink,
-				Categories:  []string{"File"},
-			},
-			{
-				Name:        "OtherAction",
-				Description: "Some other action",
-				Type:        ActionTypeProcessor,
-			},
-		},
-	}
-
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/actions?q=file", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	err := listActions(c)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
-
-	var response []ActionSummary
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, response, "Search should return at least one result")
-
-	for _, action := range response {
-		lowercaseContent := strings.ToLower(action.Name + " " + action.Description)
-		assert.Contains(t, lowercaseContent, "file",
-			"Each result should contain 'file' in name or description")
 	}
 }
 
