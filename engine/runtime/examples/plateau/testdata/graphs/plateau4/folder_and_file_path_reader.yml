@@ -56,7 +56,7 @@ nodes:
       outputAttribute: fileIndex
 
   - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
-    name: Router
+    name: OutputRouter
     type: action
     action: OutputRouter
     with:
