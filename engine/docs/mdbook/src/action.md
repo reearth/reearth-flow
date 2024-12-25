@@ -99,9 +99,13 @@ Aggregates features by attributes
           "$ref": "#/$defs/Attribute"
         },
         "attribute": {
-          "type": [
-            "string",
-            "null"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Attribute"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "attributeValue": {

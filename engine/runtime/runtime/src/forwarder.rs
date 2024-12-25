@@ -71,10 +71,16 @@ impl ChannelManager {
                         let mut writer = writer.clone();
                         let feature = ctx.feature.clone();
                         let event_hub = self.event_hub.clone();
-                        self.runtime.spawn(async move {
+                        let node_handle = self.owner.clone();
+                        self.runtime.block_on(async move {
                             let result = writer.write(&feature).await;
+                            let node = node_handle.clone();
                             if let Err(e) = result {
-                                event_hub.error_log(None, format!("Failed to write feature: {e}"));
+                                event_hub.error_log_with_node_handle(
+                                    None,
+                                    node,
+                                    format!("Failed to write feature: {e}"),
+                                );
                             }
                         });
                         self.event_hub.send(Event::EdgePassThrough {
@@ -112,16 +118,34 @@ impl ChannelManager {
             .flatten()
             .cloned()
             .collect::<Vec<_>>();
+        let node_handle = self.owner.clone();
         self.runtime.block_on(async {
-            for writer in all_writers {
-                let result = writer.flush().await;
-                if let Err(e) = result {
-                    self.event_hub
-                        .error_log(None, format!("Failed to flush feature writer: {e}"));
+            let futures = all_writers.iter().map(|writer| {
+                let writer = writer.clone();
+                let node = node_handle.clone();
+                async move {
+                    let result = writer.flush().await;
+                    if let Err(e) = result {
+                        self.event_hub.error_log_with_node_handle(
+                            None,
+                            node,
+                            format!("Failed to flush feature writer: {e}"),
+                        );
+                    }
                 }
-            }
+            });
+            futures::future::join_all(futures).await;
         });
-        self.send_non_op(ExecutorOperation::Terminate { ctx })
+        self.send_non_op(ExecutorOperation::Terminate { ctx })?;
+        self.event_hub.info_log_with_node_handle(
+            None,
+            self.owner.clone(),
+            format!(
+                "Node terminated successfully with node handle: {:?}",
+                self.owner.id,
+            ),
+        );
+        Ok(())
     }
 
     pub fn owner(&self) -> &NodeHandle {
