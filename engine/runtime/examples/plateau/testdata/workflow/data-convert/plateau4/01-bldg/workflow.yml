@@ -50,7 +50,7 @@ graphs:
           maxLodAttribute: maxLod
 
       - id: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        name: AttributeAggregator
+        name: AttributeAggregatorByMaxLod
         type: action
         action: AttributeAggregator
         with:
@@ -69,10 +69,30 @@ graphs:
           calculationAttribute: count
           method: count
 
-      - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
-        name: EchoSink
+      - id: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
+        name: AttributeMapperByMaxLod
         type: action
-        action: EchoSink
+        action: AttributeMapper
+        with:
+          mappers:
+          - attribute: code
+            expr: |
+              env.get("__value").file[0..8]
+          - attribute: type
+            expr: |
+              env.get("__value")["type"].split(":")[0]
+          - attribute: maxLod
+            expr: |
+              env.get("__value").maxLod
+
+      - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+        name: FileWriterTsvFilePath
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "maxLod.tsv")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -95,8 +115,13 @@ graphs:
         to: 1fb4ce1c-538a-436d-8dfa-79185e032de3
         fromPort: default
         toPort: default
-      - id: 993360df-5cfd-4525-9626-bfe13fa62117
+      - id: 59c14dab-0e56-4f90-85e6-0c8cfa6d1d14
         from: 1fb4ce1c-538a-436d-8dfa-79185e032de3
+        to: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
+        fromPort: default
+        toPort: default
+      - id: 993360df-5cfd-4525-9626-bfe13fa62117
+        from: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
         to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
         fromPort: default
         toPort: default

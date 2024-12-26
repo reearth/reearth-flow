@@ -164,7 +164,10 @@ impl Processor for FeatureFilePathExtractor {
             root_output_storage
                 .create_dir_sync(root_output_path.path().as_path())
                 .map_err(|e| FeatureProcessorError::FilePathExtractor(format!("{:?}", e)))?;
-            extract(&ctx, bytes, root_output_path, root_output_storage)?;
+            let features = extract(bytes, root_output_path, root_output_storage)?;
+            for feature in features {
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            }
         } else if source_dataset.is_dir() {
             let entries = storage
                 .list_sync(Some(source_dataset.path().as_path()), true)
@@ -209,7 +212,6 @@ impl FeatureFilePathExtractor {
 }
 
 fn extract(
-    ctx: &ExecutorContext,
     bytes: bytes::Bytes,
     root_output_path: Uri,
     storage: Arc<Storage>,
@@ -220,7 +222,6 @@ fn extract(
             e
         ))
     })?;
-    let span = ctx.info_span();
     let mut features = Vec::<Feature>::new();
     for i in 0..zip_archive.len() {
         let mut entry = zip_archive.by_index(i).map_err(|e| {
@@ -291,16 +292,20 @@ fn extract(
                 e
             ))
         })?;
-        ctx.event_hub.info_log(
-            Some(span.clone()),
-            format!("file path extract with path = {:?}", file_path),
-        );
         let attribute_value = AttributeValue::try_from(file_path).map_err(|e| {
             FeatureProcessorError::FilePathExtractor(format!(
                 "Attribute Value convert error with: error = {:?}",
                 e
             ))
         })?;
+        storage
+            .put_sync(outpath.path().as_path(), bytes::Bytes::from(buf))
+            .map_err(|e| {
+                FeatureProcessorError::FilePathExtractor(format!(
+                    "Storage put error with: error = {:?}",
+                    e
+                ))
+            })?;
         let feature = Feature::from(attribute_value);
         features.push(feature);
     }
