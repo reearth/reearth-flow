@@ -1,4 +1,5 @@
 use super::errors::WasmProcessorError;
+use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
@@ -6,13 +7,13 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::io::Read;
-
-use reearth_flow_types::{Attribute, AttributeValue};
+use std::io::{Read, Write};
+use std::str::FromStr;
 use tempfile::NamedTempFile;
 use wasmer::{Module, Store};
 use wasmer_wasix::{Pipe, WasiEnv};
@@ -155,6 +156,7 @@ pub enum ProgrammingLanguage {
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
 pub enum ProcessorType {
     Attribute,
+    AttributeWithXML,
 }
 
 impl Processor for WasmRuntimeExecutor {
@@ -165,6 +167,9 @@ impl Processor for WasmRuntimeExecutor {
     ) -> Result<(), BoxedError> {
         match self.params.processor_type {
             ProcessorType::Attribute => self.process_attribute(ctx, fw).map_err(Into::into),
+            ProcessorType::AttributeWithXML => {
+                self.process_attribute_with_xml(ctx, fw).map_err(Into::into)
+            }
         }
     }
 
@@ -190,7 +195,43 @@ impl WasmRuntimeExecutor {
         let mut feature = ctx.feature.clone();
 
         let json_input = self.serialize_attributes(&feature.attributes)?;
-        let output = self.execute_wasm_module(&json_input)?;
+        let output = self.execute_wasm_module(&json_input, "")?;
+        let updated_attributes = self.parse_wasm_output(&output)?;
+
+        feature.attributes = updated_attributes;
+        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        Ok(())
+    }
+
+    fn process_attribute_with_xml(
+        &self,
+        ctx: ExecutorContext,
+        fw: &mut dyn ProcessorChannelForwarder,
+    ) -> super::errors::Result<()> {
+        let mut feature = ctx.feature.clone();
+
+        let city_gml_path = feature
+            .attributes
+            .get(&Attribute::new("cityGmlPath"))
+            .ok_or(WasmProcessorError::RuntimeExecutor(
+                "cityGmlPath key empty".to_string(),
+            ))?;
+
+        let uri = Uri::from_str(city_gml_path.to_string().as_str()).map_err(|err| {
+            WasmProcessorError::RuntimeExecutor(format!("cityGmlPath is not a valid uri: {}", err))
+        })?;
+        let storage = ctx
+            .storage_resolver
+            .resolve(&uri)
+            .map_err(|e| WasmProcessorError::RuntimeExecutor(format!("{:?}", e)))?;
+        let content = storage
+            .get_sync(uri.path().as_path())
+            .map_err(|e| WasmProcessorError::RuntimeExecutor(format!("{:?}", e)))?;
+        let xml_content = String::from_utf8(content.to_vec())
+            .map_err(|_| WasmProcessorError::RuntimeExecutor("Invalid UTF-8".to_string()))?;
+
+        let json_input = self.serialize_attributes(&feature.attributes)?;
+        let output = self.execute_wasm_module(&json_input, &xml_content)?;
         let updated_attributes = self.parse_wasm_output(&output)?;
 
         feature.attributes = updated_attributes;
@@ -210,16 +251,22 @@ impl WasmRuntimeExecutor {
         })
     }
 
-    fn execute_wasm_module(&self, input: &str) -> super::errors::Result<String> {
+    fn execute_wasm_module(&self, arg: &str, stdin: &str) -> super::errors::Result<String> {
         let mut store = Store::default();
         let module = Module::new(&store, &self.wasm_binary).map_err(|e| {
             WasmProcessorError::RuntimeExecutor(format!("Failed to compile module: {}", e))
         })?;
 
         let program_name = "WasmRuntimeExecutor";
+        let (mut stdin_tx, stdin_rx) = Pipe::channel();
         let (stdout_tx, mut stdout_rx) = Pipe::channel();
+        stdin_tx.write_all(stdin.as_bytes()).map_err(|e| {
+            WasmProcessorError::RuntimeExecutor(format!("Failed to write to stdin: {}", e))
+        })?;
+        drop(stdin_tx);
         WasiEnv::builder(program_name)
-            .args([input])
+            .args([arg])
+            .stdin(Box::new(stdin_rx))
             .stdout(Box::new(stdout_tx))
             .run_with_store(module, &mut store)
             .map_err(|e| {

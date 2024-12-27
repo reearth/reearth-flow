@@ -2926,7 +2926,8 @@
           "ProcessorType": {
             "type": "string",
             "enum": [
-              "Attribute"
+              "Attribute",
+              "AttributeWithXML"
             ]
           },
           "ProgrammingLanguage": {
