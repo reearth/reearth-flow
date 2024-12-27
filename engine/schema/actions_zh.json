@@ -925,6 +925,43 @@
       ]
     },
     {
+      "name": "FeatureLodFilter",
+      "type": "processor",
+      "description": "Filter Geometry by lod",
+      "parameter": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "FeatureLodFilterParam",
+        "type": "object",
+        "properties": {
+          "filterKey": {
+            "$ref": "#/$defs/Attribute"
+          }
+        },
+        "required": [
+          "filterKey"
+        ],
+        "$defs": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "up_to_lod1",
+        "up_to_lod2",
+        "up_to_lod3",
+        "up_to_lod4",
+        "unfiltered"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "FeatureMerger",
       "type": "processor",
       "description": "根据属性合并实体",
@@ -1770,37 +1807,6 @@
       ]
     },
     {
-      "name": "GeometryLodFilter",
-      "type": "processor",
-      "description": "根据细节级别（LOD）筛选几何",
-      "parameter": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": "GeometryLodFilterParam",
-        "type": "object",
-        "properties": {
-          "upToLod": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint8",
-            "minimum": 0
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default",
-        "unfiltered"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
       "name": "GeometryReplacer",
       "type": "processor",
       "description": "用新几何替换实体的几何",
@@ -2475,6 +2481,22 @@
         "attributeFeature",
         "summary",
         "filePath"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.AttributeFlattener",
+      "type": "processor",
+      "description": "Flatten attributes for building feature",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
       ],
       "categories": [
         "PLATEAU"

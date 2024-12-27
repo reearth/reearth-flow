@@ -913,6 +913,43 @@ Filters features based on conditions
 ### Category
 * Feature
 
+## FeatureLodFilter
+### Type
+* processor
+### Description
+Filter Geometry by lod
+### Parameters
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FeatureLodFilterParam",
+  "type": "object",
+  "properties": {
+    "filterKey": {
+      "$ref": "#/$defs/Attribute"
+    }
+  },
+  "required": [
+    "filterKey"
+  ],
+  "$defs": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* up_to_lod1
+* up_to_lod2
+* up_to_lod3
+* up_to_lod4
+* unfiltered
+### Category
+* Feature
+
 ## FeatureMerger
 ### Type
 * processor
@@ -1762,37 +1799,6 @@ Filter geometry by type
 ### Category
 * Geometry
 
-## GeometryLodFilter
-### Type
-* processor
-### Description
-Filter geometry by lod
-### Parameters
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "GeometryLodFilterParam",
-  "type": "object",
-  "properties": {
-    "upToLod": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint8",
-      "minimum": 0
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-* unfiltered
-### Category
-* Geometry
-
 ## GeometryReplacer
 ### Type
 * processor
@@ -2445,6 +2451,20 @@ Extracts attributes from XML fragments based on a schema definition
 * attributeFeature
 * summary
 * filePath
+### Category
+* PLATEAU
+
+## PLATEAU4.AttributeFlattener
+### Type
+* processor
+### Description
+Flatten attributes for building feature
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * PLATEAU
 

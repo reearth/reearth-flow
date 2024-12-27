@@ -238,7 +238,7 @@ impl FeatureLodFilter {
         {
             let mut feature = feature.clone();
             feature.refresh_id();
-            fw.send(ctx.as_executor_context(feature, UP_TO_LOD3.clone()));
+            fw.send(ctx.as_executor_context(feature, UP_TO_LOD4.clone()));
         }
     }
 }
