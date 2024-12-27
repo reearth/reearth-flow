@@ -11,25 +11,16 @@ use reearth_flow_runtime::{
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct MockProcessorChannelForwarder {
-    pub(crate) send_feature: Feature,
-    pub(crate) send_port: Port,
-}
-
-impl Default for MockProcessorChannelForwarder {
-    fn default() -> Self {
-        Self {
-            send_feature: Feature::default(),
-            send_port: DEFAULT_PORT.clone(),
-        }
-    }
+    pub(crate) send_features: Vec<Feature>,
+    pub(crate) send_ports: Vec<Port>,
 }
 
 impl ProcessorChannelForwarder for MockProcessorChannelForwarder {
     fn send(&mut self, ctx: ExecutorContext) {
-        self.send_feature = ctx.feature;
-        self.send_port = ctx.port;
+        self.send_features.push(ctx.feature);
+        self.send_ports.push(ctx.port);
     }
 }
 

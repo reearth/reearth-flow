@@ -17,7 +17,6 @@ pub(crate) mod hole_counter;
 pub(crate) mod hole_extractor;
 pub(crate) mod horizontal_reprojector;
 pub(crate) mod line_on_line_overlayer;
-pub(crate) mod lod_filter;
 pub(crate) mod mapping;
 pub(crate) mod offsetter;
 pub(crate) mod orientation_extractor;
