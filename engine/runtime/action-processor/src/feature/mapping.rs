@@ -5,7 +5,8 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
     counter::FeatureCounterFactory, file_path_extractor::FeatureFilePathExtractorFactory,
-    filter::FeatureFilterFactory, list_exploder::ListExploderFactory, merger::FeatureMergerFactory,
+    filter::FeatureFilterFactory, list_exploder::ListExploderFactory,
+    lod_filter::FeatureLodFilterFactory, merger::FeatureMergerFactory,
     reader::FeatureReaderFactory, rhai::RhaiCallerFactory, sorter::FeatureSorterFactory,
     transformer::FeatureTransformerFactory, type_filter::FeatureTypeFilterFactory,
 };
@@ -22,6 +23,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<ListExploderFactory>::default(),
         Box::<FeatureTypeFilterFactory>::default(),
         Box::<FeatureFilePathExtractorFactory>::default(),
+        Box::<FeatureLodFilterFactory>::default(),
     ];
     factories
         .into_iter()

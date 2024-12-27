@@ -35,6 +35,10 @@ pub(crate) enum FeatureProcessorError {
     FilePathExtractorFactory(String),
     #[error("FeatureFilePathExtractor error: {0}")]
     FilePathExtractor(String),
+    #[error("LodFilterFactory error: {0}")]
+    LodFilterFactory(String),
+    #[error("LodFilter error: {0}")]
+    LodFilter(String),
 }
 
 #[allow(dead_code)]

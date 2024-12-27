@@ -94,6 +94,16 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "maxLod.tsv")
 
+      - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        name: AttributeFlattener
+        type: action
+        action: PLATEAU4.AttributeFlattener
+
+      - id: 01d2fd3c-07f9-4665-b8b6-e1a796f0d1aa
+        name: NoopSink
+        type: action
+        action: NoopSink
+
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
@@ -123,5 +133,15 @@ graphs:
       - id: 993360df-5cfd-4525-9626-bfe13fa62117
         from: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
         to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+        fromPort: default
+        toPort: default
+      - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
+        from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        fromPort: default
+        toPort: default
+      - id: dde1d751-fe3e-4283-8742-ec4a61a41574
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 01d2fd3c-07f9-4665-b8b6-e1a796f0d1aa
         fromPort: default
         toPort: default
