@@ -2,7 +2,7 @@ import { GetAction, GetActions, GetActionsSegregated } from "@flow/types";
 
 import { useFetch } from "./useFetch";
 
-export const useAction = () => {
+export const useAction = (lang: string) => {
   const {
     useGetActionsFetch,
     useGetActionsByIdFetch,
@@ -10,7 +10,7 @@ export const useAction = () => {
   } = useFetch();
 
   const useGetActions = (): GetActions => {
-    const { data, ...rest } = useGetActionsFetch();
+    const { data, ...rest } = useGetActionsFetch(lang);
     return {
       actions: data,
       ...rest,
@@ -18,7 +18,7 @@ export const useAction = () => {
   };
 
   const useGetActionById = (id: string): GetAction => {
-    const { data, ...rest } = useGetActionsByIdFetch(id);
+    const { data, ...rest } = useGetActionsByIdFetch(id, lang);
     return {
       action: data,
       ...rest,
@@ -26,7 +26,7 @@ export const useAction = () => {
   };
 
   const useGetActionsSegregated = (): GetActionsSegregated => {
-    const { data, ...rest } = useGetActionsSegregatedFetch();
+    const { data, ...rest } = useGetActionsSegregatedFetch(lang);
     return {
       actions: data,
       ...rest,
