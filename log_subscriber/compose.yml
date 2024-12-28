@@ -1,0 +1,31 @@
+networks:
+  reearth-flow-net:
+    external: true
+
+services:
+  redis:
+    image: redis:7
+    container_name: log-subscriber-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - reearth-flow-net
+
+  subscriber:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.subscriber
+    container_name: reearth-flow-subscriber
+    restart: always
+    depends_on:
+      - redis
+    networks:
+      - reearth-flow-net
+    environment:
+      - PUBSUB_EMULATOR_HOST=pubsub:8085
+      - STORAGE_EMULATOR_HOST=http://gcs:4443
+      - FLOW_LOG_SUBSCRIBER_PROJECT_ID=local-project
+      - FLOW_LOG_SUBSCRIBER_SUBSCRIPTION_ID=flow-log-stream-topic-sub
+      - FLOW_LOG_SUBSCRIBER_REDIS_ADDR=redis:6379
+      - FLOW_LOG_SUBSCRIBER_GCS_BUCKET_NAME=reearth-flow-oss-bucket

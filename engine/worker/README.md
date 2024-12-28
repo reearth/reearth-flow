@@ -9,6 +9,9 @@ cargo run --package reearth-flow-worker -- --workflow gs://reearth-flow-assets/w
 
 ### Local Development
 ``` sh
+# Create a network
+docker network create reearth-flow-net
+
 # GCS Emulator
 export STORAGE_EMULATOR_HOST=http://localhost:4443
 # Cloud Pub/Sub Emulator
