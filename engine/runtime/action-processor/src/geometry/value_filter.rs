@@ -145,7 +145,7 @@ mod tests {
         let feature = Feature::default();
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
-        assert_eq!(fw.send_port, NONE_PORT.clone());
+        assert_eq!(fw.send_ports.first().cloned(), Some(NONE_PORT.clone()));
     }
 
     #[test]
@@ -154,7 +154,7 @@ mod tests {
         let feature = Feature::default();
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
-        assert_eq!(fw.send_port, NONE_PORT.clone());
+        assert_eq!(fw.send_ports.first().cloned(), Some(NONE_PORT.clone()));
     }
 
     #[test]
@@ -169,7 +169,10 @@ mod tests {
         };
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
-        assert_eq!(fw.send_port, GEOMETRY_2D_PORT.clone());
+        assert_eq!(
+            fw.send_ports.first().cloned(),
+            Some(GEOMETRY_2D_PORT.clone())
+        );
     }
 
     #[test]
@@ -184,7 +187,10 @@ mod tests {
         };
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
-        assert_eq!(fw.send_port, GEOMETRY_3D_PORT.clone());
+        assert_eq!(
+            fw.send_ports.first().cloned(),
+            Some(GEOMETRY_3D_PORT.clone())
+        );
     }
 
     #[test]
@@ -199,7 +205,7 @@ mod tests {
         };
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
-        assert_eq!(fw.send_port, CITY_GML_PORT.clone());
+        assert_eq!(fw.send_ports.first().cloned(), Some(CITY_GML_PORT.clone()));
     }
     // Add more tests for other scenarios...
 }

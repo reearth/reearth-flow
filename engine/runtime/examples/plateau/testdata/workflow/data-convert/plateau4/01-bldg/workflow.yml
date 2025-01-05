@@ -11,7 +11,7 @@ with:
     - bldg
   outputPath:
 graphs:
-  - !include ../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
     name: entry_point
     nodes:
@@ -28,7 +28,7 @@ graphs:
             ]
 
       - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
-        name: FolderAndfilePathReader
+        name: FolderAndFilePathReader
         type: subGraph
         subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
@@ -41,26 +41,51 @@ graphs:
           dataset: |
             env.get("__value").cityGmlPath
 
-      - id: fc649773-af86-49bd-9629-149f9ac4166b
-        name: AttributeMapperFilePath
+      - id: dc498449-5478-4bff-abaa-59f2d160925f
+        name: PLATEAU4.MaxLodExtractor
+        type: action
+        action: PLATEAU4.MaxLodExtractor
+        with:
+          cityGmlPathAttribute: cityGmlPath
+          maxLodAttribute: maxLod
+
+      - id: 1fb4ce1c-538a-436d-8dfa-79185e032de3
+        name: AttributeAggregatorByMaxLod
+        type: action
+        action: AttributeAggregator
+        with:
+          aggregateAttributes:
+          - newAttribute: file
+            attributeValue: |
+              file::extract_filename(env.get("__value").cityGmlPath)
+          - newAttribute: type
+            attributeValue: |
+              env.get("__feature_type")
+          - newAttribute: maxLod
+            attributeValue: |
+              env.get("__value").maxLod
+          calculation: |
+            1
+          calculationAttribute: count
+          method: count
+
+      - id: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
+        name: AttributeMapperByMaxLod
         type: action
         action: AttributeMapper
         with:
           mappers:
-            - attribute: code
-              valueAttribute: meshCode
-            - attribute: type
-              valueAttribute: package
-            - attribute: maxLod
-              valueAttribute: maxLod
-            - attribute: length
-              expr: |
-                env.get("__value")["package"].len()
-            - attribute: file
-              expr: |
-                file::extract_filename(env.get("__value").cityGmlPath)
+          - attribute: code
+            expr: |
+              env.get("__value").file[0..8]
+          - attribute: type
+            expr: |
+              env.get("__value")["type"].split(":")[0]
+          - attribute: maxLod
+            expr: |
+              env.get("__value").maxLod
 
-      - id: 6e2a7c56-1ce3-48ee-b969-b1a1a0f057ca
+      - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
         name: FileWriterTsvFilePath
         type: action
         action: FileWriter
@@ -69,67 +94,15 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "maxLod.tsv")
 
-
-
-      - id: 1bd42875-4b8c-4439-82dc-9554d9946b07
+      - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         name: AttributeFlattener
         type: action
-        action: PLATEAU3.AttributeFlattener
+        action: PLATEAU4.AttributeFlattener
 
-      - id: 928e21d9-fc30-4876-ba03-41338cfa47ed
-        name: VerticalReprojector
+      - id: 01d2fd3c-07f9-4665-b8b6-e1a796f0d1aa
+        name: NoopSink
         type: action
-        action: VerticalReprojector
-        with:
-          reprojectorType: jgd2011ToWgs84
-
-      - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        name: AttributeManagerCreateValid
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-          - attribute: gmlId
-            method: rename
-            value: id
-          - attribute: cityGmlPath
-            method: remove
-          - attribute: package
-            method: remove
-          - attribute: gmlName
-            method: rename
-            value: featureType
-          - attribute: cityName
-            method: remove
-          - attribute: geometryName
-            method: remove
-          - attribute: featureParentId
-            method: remove
-          - attribute: root
-            method: remove
-          - attribute: type
-            method: remove
-          - attribute: udxDirs
-            method: remove
-          - attribute: cityCode
-            method: remove
-          - attribute: meshCode
-            method: remove
-          - attribute: gmlRootId
-            method: remove
-          - attribute: featureId
-            method: remove
-
-      - id: 41d69f1f-2a4d-4bc1-a5d0-175698273571
-        name: cesium3DTilesWriter
-        type: action
-        action: Cesium3DTilesWriter
-        with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
-          output: |
-             file::join_path(env.get("outputPath"), "bldg_lod")
+        action: NoopSink
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -139,36 +112,36 @@ graphs:
         toPort: default
       - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
         from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
-        to: fc649773-af86-49bd-9629-149f9ac4166b
-        fromPort: filePath
-        toPort: default
-      - id: 284b02d9-8051-4614-a03c-583274c700f8
-        from: fc649773-af86-49bd-9629-149f9ac4166b
-        to: 6e2a7c56-1ce3-48ee-b969-b1a1a0f057ca
-        fromPort: default
-        toPort: default
-      - id: a4751655-5956-4e27-a976-e35f8914ad31
-        from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         to: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        fromPort: filePath
+        fromPort: default
         toPort: default
-      - id: fb48e9e0-fa1b-4f27-8a89-84b6d2e1c6d7
+      - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        to: 1bd42875-4b8c-4439-82dc-9554d9946b07
+        to: dc498449-5478-4bff-abaa-59f2d160925f
         fromPort: default
         toPort: default
-      - id: d4c1c8a9-00a6-49c1-9735-db62a736932b
-        from: 1bd42875-4b8c-4439-82dc-9554d9946b07
-        to: 928e21d9-fc30-4876-ba03-41338cfa47ed
+      - id: 046c94ea-9937-4439-b5f8-c8a616f6599d
+        from: dc498449-5478-4bff-abaa-59f2d160925f
+        to: 1fb4ce1c-538a-436d-8dfa-79185e032de3
         fromPort: default
         toPort: default
-      - id: 8ca2968d-b44f-42dd-befa-86134bd9b030
-        from: 928e21d9-fc30-4876-ba03-41338cfa47ed
-        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+      - id: 59c14dab-0e56-4f90-85e6-0c8cfa6d1d14
+        from: 1fb4ce1c-538a-436d-8dfa-79185e032de3
+        to: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
         fromPort: default
         toPort: default
-      - id: 1c7273e8-f529-4233-a9ef-34ee68c6d586
-        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        to: 41d69f1f-2a4d-4bc1-a5d0-175698273571
+      - id: 993360df-5cfd-4525-9626-bfe13fa62117
+        from: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
+        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+        fromPort: default
+        toPort: default
+      - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
+        from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        fromPort: default
+        toPort: default
+      - id: dde1d751-fe3e-4283-8742-ec4a61a41574
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 01d2fd3c-07f9-4665-b8b6-e1a796f0d1aa
         fromPort: default
         toPort: default

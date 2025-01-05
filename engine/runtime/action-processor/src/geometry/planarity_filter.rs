@@ -151,6 +151,9 @@ mod tests {
 
         processor.process(ctx, &mut fw).unwrap();
 
-        assert_eq!(fw.send_port, NOT_PLANARITY_PORT.clone());
+        assert_eq!(
+            fw.send_ports.first().cloned(),
+            Some(NOT_PLANARITY_PORT.clone())
+        );
     }
 }

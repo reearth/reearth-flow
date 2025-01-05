@@ -96,9 +96,13 @@
                 "$ref": "#/$defs/Attribute"
               },
               "attribute": {
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "attributeValue": {
@@ -914,6 +918,43 @@
         "default"
       ],
       "outputPorts": [
+        "unfiltered"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
+      "name": "FeatureLodFilter",
+      "type": "processor",
+      "description": "Filter Geometry by lod",
+      "parameter": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "FeatureLodFilterParam",
+        "type": "object",
+        "properties": {
+          "filterKey": {
+            "$ref": "#/$defs/Attribute"
+          }
+        },
+        "required": [
+          "filterKey"
+        ],
+        "$defs": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "up_to_lod1",
+        "up_to_lod2",
+        "up_to_lod3",
+        "up_to_lod4",
         "unfiltered"
       ],
       "categories": [
@@ -1766,37 +1807,6 @@
       ]
     },
     {
-      "name": "GeometryLodFilter",
-      "type": "processor",
-      "description": "Filtra la geometría por nivel de detalle (lod)",
-      "parameter": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": "GeometryLodFilterParam",
-        "type": "object",
-        "properties": {
-          "upToLod": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint8",
-            "minimum": 0
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default",
-        "unfiltered"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
       "name": "GeometryReplacer",
       "type": "processor",
       "description": "Reemplaza la geometría de una entidad con una nueva geometría.",
@@ -2471,6 +2481,22 @@
         "attributeFeature",
         "summary",
         "filePath"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.AttributeFlattener",
+      "type": "processor",
+      "description": "Flatten attributes for building feature",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
       ],
       "categories": [
         "PLATEAU"
