@@ -4,7 +4,7 @@ export const availableLanguages = ["en", "ja", "es", "fr", "zh"] as const;
 
 export type AvailableLanguage = (typeof availableLanguages)[number];
 
-export const localesWithLabel: { [l in AvailableLanguage]: string } = {
+export const localesWithLabel: Record<AvailableLanguage, string> = {
   en: "English",
   ja: "日本語",
   es: "Español",
