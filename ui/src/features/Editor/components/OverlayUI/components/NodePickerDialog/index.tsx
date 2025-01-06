@@ -152,7 +152,9 @@ const NodePickerDialog: React.FC<Props> = ({
           {actions?.map((action, idx) => (
             <Fragment key={action.name}>
               <ActionItem
-                ref={(el) => (itemRefs.current[idx] = el)}
+                ref={(el) => {
+                  itemRefs.current[idx] = el;
+                }}
                 className={"m-1"}
                 action={action}
                 selected={selected === action.name}
