@@ -74,30 +74,36 @@ export const fetcher = async <T extends Action[] | Segregated | Action>(
 };
 
 export const useFetch = () => {
-  const useGetActionsFetch = () =>
+  const useGetActionsFetch = (lang: string) =>
     useQuery({
-      queryKey: [ActionFetchKeys.actions],
-      queryFn: async ({ signal }: { signal: AbortSignal }) =>
-        fetcher<Action[]>(`${BASE_URL}/actions`, signal),
+      queryKey: [ActionFetchKeys.actions, lang],
+      queryFn: async ({ signal }: { signal: AbortSignal }) => {
+        return fetcher<Action[]>(`${BASE_URL}/actions?lang=${lang}`, signal);
+      },
       staleTime: Infinity,
     });
 
-  const useGetActionsByIdFetch = (actionId: string) =>
+  const useGetActionsByIdFetch = (actionId: string, lang: string) =>
     useQuery({
-      queryKey: [ActionFetchKeys.actions, actionId],
-      queryFn: async ({ signal }: { signal: AbortSignal }) =>
-        fetcher<Action>(`${BASE_URL}/actions/${actionId}`, signal),
-      staleTime: Infinity,
-    });
-
-  const useGetActionsSegregatedFetch = () =>
-    useQuery({
-      queryKey: [ActionFetchKeys.actions, ActionFetchKeys.segregated],
-      queryFn: async ({ signal }: { signal: AbortSignal }) =>
-        fetcher<Segregated>(
-          `${BASE_URL}/actions/${ActionFetchKeys.segregated}`,
+      queryKey: [ActionFetchKeys.actions, actionId, lang],
+      queryFn: async ({ signal }: { signal: AbortSignal }) => {
+        return fetcher<Action>(
+          `${BASE_URL}/actions/${actionId}?lang=${lang}`,
           signal,
-        ),
+        );
+      },
+      staleTime: Infinity,
+    });
+
+  const useGetActionsSegregatedFetch = (lang: string) =>
+    useQuery({
+      queryKey: [ActionFetchKeys.actions, ActionFetchKeys.segregated, lang],
+      queryFn: async ({ signal }: { signal: AbortSignal }) => {
+        return fetcher<Segregated>(
+          `${BASE_URL}/actions/${ActionFetchKeys.segregated}?lang=${lang}`,
+          signal,
+        );
+      },
       staleTime: Infinity,
     });
 
