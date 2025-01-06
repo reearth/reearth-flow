@@ -68,10 +68,17 @@ const graphqlConfig = {
   },
 };
 
+const flowConfig = {
+  rules: {
+    "@typescript-eslint/no-explicit-any": "off", // Eventually we want to turn this back on, but for now its just a headache @KaWaite
+  },
+};
+
 /** @type { import("eslint").Linter.Config[] } */
 export default [
   ...config("flow"),
   ...customTailwindConfig,
+  flowConfig,
   storyBookConfig,
   graphqlConfig,
   {
