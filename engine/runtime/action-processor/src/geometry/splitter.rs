@@ -22,7 +22,7 @@ impl ProcessorFactory for GeometrySplitterFactory {
         "Split geometry by type"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         None
     }
 

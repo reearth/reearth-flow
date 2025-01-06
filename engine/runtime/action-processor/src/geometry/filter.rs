@@ -31,7 +31,7 @@ impl ProcessorFactory for GeometryFilterFactory {
         "Filter geometry by type"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(GeometryFilterParam))
     }
 

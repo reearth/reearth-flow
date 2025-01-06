@@ -68,7 +68,7 @@ impl ProcessorFactory for FeatureCounterFactory {
         "Counts features"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(FeatureCounterParam))
     }
 

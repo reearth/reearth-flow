@@ -26,7 +26,7 @@ impl ProcessorFactory for PlanarityFilterFactory {
         "Filter geometry by type"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         None
     }
 

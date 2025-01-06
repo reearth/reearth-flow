@@ -27,7 +27,7 @@ impl ProcessorFactory for GeometryReplacerFactory {
         "Replaces the geometry of a feature with a new geometry."
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(GeometryReplacer))
     }
 
