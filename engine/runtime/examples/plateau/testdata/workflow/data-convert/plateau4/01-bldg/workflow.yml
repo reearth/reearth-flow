@@ -99,6 +99,13 @@ graphs:
         type: action
         action: PLATEAU4.AttributeFlattener
 
+      - id: c32a279d-97be-4584-b282-4d65627b1132
+        name: FeatureLodFilter
+        type: action
+        action: FeatureLodFilter
+        with:
+          filterKey: cityGmlPath
+
       - id: 01d2fd3c-07f9-4665-b8b6-e1a796f0d1aa
         name: NoopSink
         type: action
@@ -140,8 +147,23 @@ graphs:
         to: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         fromPort: default
         toPort: default
-      - id: dde1d751-fe3e-4283-8742-ec4a61a41574
+      - id: fddd597c-3e9c-400c-abd9-02b6c2214459
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
-        to: 01d2fd3c-07f9-4665-b8b6-e1a796f0d1aa
+        to: c32a279d-97be-4584-b282-4d65627b1132
         fromPort: default
+        toPort: default
+      - id: dde1d751-fe3e-4283-8742-ec4a61a41574
+        from: c32a279d-97be-4584-b282-4d65627b1132
+        to: 01d2fd3c-07f9-4665-b8b6-e1a796f0d1aa
+        fromPort: up_to_lod1
+        toPort: default
+      - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30bb
+        from: c32a279d-97be-4584-b282-4d65627b1132
+        to: 01d2fd3c-07f9-4665-b8b6-e1a796f0d1aa
+        fromPort: up_to_lod2
+        toPort: default
+      - id: ce3f3571-053c-4487-8e85-b95fb71a49c7
+        from: c32a279d-97be-4584-b282-4d65627b1132
+        to: 01d2fd3c-07f9-4665-b8b6-e1a796f0d1aa
+        fromPort: up_to_lod3
         toPort: default
