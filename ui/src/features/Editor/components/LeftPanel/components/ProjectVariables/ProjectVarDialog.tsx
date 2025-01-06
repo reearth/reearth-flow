@@ -23,7 +23,7 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { ProjectVar } from "@flow/types";
-import { randomID } from "@flow/utils";
+import { generateUUID } from "@flow/utils";
 
 type Props = {
   isOpen: boolean;
@@ -49,7 +49,7 @@ const ProjectVarDialog: React.FC<Props> = ({
       if (selectedIndex !== undefined) {
         const newProjectVars = [...pvs];
         newProjectVars.splice(selectedIndex + 1, 0, {
-          id: randomID(10),
+          id: generateUUID(),
           name: "",
           definition: "",
           type: "string",
@@ -60,7 +60,7 @@ const ProjectVarDialog: React.FC<Props> = ({
       return [
         ...pvs,
         {
-          id: randomID(10),
+          id: generateUUID(),
           name: "",
           definition: "",
           type: "string",
