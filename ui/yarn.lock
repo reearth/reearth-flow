@@ -1800,22 +1800,29 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@graphql-eslint/eslint-plugin@npm:4.0.0-alpha.6":
-  version: 4.0.0-alpha.6
-  resolution: "@graphql-eslint/eslint-plugin@npm:4.0.0-alpha.6"
+"@graphql-eslint/eslint-plugin@npm:4.3.0":
+  version: 4.3.0
+  resolution: "@graphql-eslint/eslint-plugin@npm:4.3.0"
   dependencies:
     "@graphql-tools/code-file-loader": "npm:^8.0.0"
-    "@graphql-tools/graphql-tag-pluck": "npm:8.3.3"
+    "@graphql-tools/graphql-tag-pluck": "npm:^8.3.4"
     "@graphql-tools/utils": "npm:^10.0.0"
     debug: "npm:^4.3.4"
     fast-glob: "npm:^3.2.12"
-    graphql-config: "npm:^5.1.0"
+    graphql-config: "npm:^5.1.3"
     graphql-depth-limit: "npm:^1.1.0"
     lodash.lowercase: "npm:^4.3.0"
   peerDependencies:
+    "@apollo/subgraph": ^2
     eslint: ">=8.44.0"
     graphql: ^16
-  checksum: 10c0/040b4d497f01cc4d5eaae165353d28c9e8e7d4d85fbc72d8fc6b3665bd5b7f8597f381d979791ceaba982d1897e4cfe276ba258b119621a082e2d367f802ddc4
+    json-schema-to-ts: ^3
+  peerDependenciesMeta:
+    "@apollo/subgraph":
+      optional: true
+    json-schema-to-ts:
+      optional: true
+  checksum: 10c0/659d386711a6789c102d547c5f4c23168902e843f7e15c583ed407ae8d48a4b5e68a4e525eadd52740726d1bf194e9f717d239a283a6bc6a1af7dcc0964aaa74
   languageName: node
   linkType: hard
 
@@ -2014,23 +2021,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@graphql-tools/graphql-tag-pluck@npm:8.3.3":
-  version: 8.3.3
-  resolution: "@graphql-tools/graphql-tag-pluck@npm:8.3.3"
-  dependencies:
-    "@babel/core": "npm:^7.22.9"
-    "@babel/parser": "npm:^7.16.8"
-    "@babel/plugin-syntax-import-assertions": "npm:^7.20.0"
-    "@babel/traverse": "npm:^7.16.8"
-    "@babel/types": "npm:^7.16.8"
-    "@graphql-tools/utils": "npm:^10.5.5"
-    tslib: "npm:^2.4.0"
-  peerDependencies:
-    graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
-  checksum: 10c0/197094895ee350d5c2ebd9088396653a56d3d058f0f4b554aef01611d774473a3998083c43f01d9b2a419f91d71a3b80ab937b3d20797bc971317b99ce7ca0b5
-  languageName: node
-  linkType: hard
-
 "@graphql-tools/graphql-tag-pluck@npm:8.3.9, @graphql-tools/graphql-tag-pluck@npm:^8.3.9":
   version: 8.3.9
   resolution: "@graphql-tools/graphql-tag-pluck@npm:8.3.9"
@@ -2045,6 +2035,23 @@ __metadata:
   peerDependencies:
     graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
   checksum: 10c0/46b7b55efb96460bbdbdba6910d01191951bca971151eba7a58e3d6c6079b1678f2b6ef7d8a4bdbf703e33c664c97d5ffb1694d8d21e71059ce6f2009c175329
+  languageName: node
+  linkType: hard
+
+"@graphql-tools/graphql-tag-pluck@npm:^8.3.4":
+  version: 8.3.11
+  resolution: "@graphql-tools/graphql-tag-pluck@npm:8.3.11"
+  dependencies:
+    "@babel/core": "npm:^7.22.9"
+    "@babel/parser": "npm:^7.16.8"
+    "@babel/plugin-syntax-import-assertions": "npm:^7.20.0"
+    "@babel/traverse": "npm:^7.16.8"
+    "@babel/types": "npm:^7.16.8"
+    "@graphql-tools/utils": "npm:^10.7.1"
+    tslib: "npm:^2.4.0"
+  peerDependencies:
+    graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
+  checksum: 10c0/2f48310c2e606c528fa29f34b2725494f0e2e45c94b0cdb3a76f1482e1c76faccf2254fe1f907be01eefeb98764e5eb5bdd63276868daee68dab95f26be3f0a5
   languageName: node
   linkType: hard
 
@@ -2225,7 +2232,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@graphql-tools/utils@npm:^10.5.5":
+"@graphql-tools/utils@npm:^10.7.1":
   version: 10.7.1
   resolution: "@graphql-tools/utils@npm:10.7.1"
   dependencies:
@@ -3746,7 +3753,7 @@ __metadata:
     "@graphql-codegen/typescript": "npm:4.1.2"
     "@graphql-codegen/typescript-graphql-request": "npm:6.2.0"
     "@graphql-codegen/typescript-operations": "npm:4.4.0"
-    "@graphql-eslint/eslint-plugin": "npm:4.0.0-alpha.6"
+    "@graphql-eslint/eslint-plugin": "npm:4.3.0"
     "@parcel/watcher": "npm:2.5.0"
     "@phosphor-icons/react": "npm:2.1.7"
     "@radix-ui/react-accordion": "npm:1.2.2"
@@ -9175,7 +9182,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graphql-config@npm:^5.1.0, graphql-config@npm:^5.1.1":
+"graphql-config@npm:^5.1.1, graphql-config@npm:^5.1.3":
   version: 5.1.3
   resolution: "graphql-config@npm:5.1.3"
   dependencies:
