@@ -35,7 +35,7 @@ impl SinkFactory for FileWriterSinkFactory {
         "Writes features to a file"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(FileWriterParam))
     }
 

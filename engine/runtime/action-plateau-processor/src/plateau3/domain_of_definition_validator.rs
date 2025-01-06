@@ -286,7 +286,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
         "Validates domain of definition of CityGML features"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         None
     }
 

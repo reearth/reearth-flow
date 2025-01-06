@@ -412,7 +412,7 @@ impl ProcessorFactory for XmlAttributeExtractorFactory {
         "Extracts attributes from XML fragments based on a schema definition"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         None
     }
 

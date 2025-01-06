@@ -36,7 +36,7 @@ impl ProcessorFactory for OrientationExtractorFactory {
         "Extracts the orientation of a geometry from a feature and adds it as an attribute."
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(OrientationExtractorParam))
     }
 

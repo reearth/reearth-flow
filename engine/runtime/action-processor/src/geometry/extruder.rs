@@ -27,7 +27,7 @@ impl ProcessorFactory for ExtruderFactory {
         "Extrudes a polygon by a distance"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(ExtruderParam))
     }
 
