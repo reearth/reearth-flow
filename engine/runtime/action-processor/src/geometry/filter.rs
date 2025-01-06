@@ -279,7 +279,10 @@ mod tests {
         };
         let ctx = create_default_execute_context(&feature);
         filter_multiple_geometry(&ctx, &mut fw, &feature, &geometry);
-        assert_eq!(fw.send_port, UNFILTERED_PORT.clone());
+        assert_eq!(
+            fw.send_ports.first().cloned(),
+            Some(UNFILTERED_PORT.clone())
+        );
     }
 
     #[test]
@@ -294,7 +297,10 @@ mod tests {
         };
         let ctx = create_default_execute_context(&feature);
         filter_multiple_geometry(&ctx, &mut fw, &feature, &feature.geometry.clone());
-        assert_eq!(fw.send_port, GeometryFilterParam::Multiple.output_port());
+        assert_eq!(
+            fw.send_ports.first().cloned(),
+            Some(GeometryFilterParam::Multiple.output_port())
+        );
     }
 
     #[test]
@@ -311,7 +317,10 @@ mod tests {
         };
         let ctx = create_default_execute_context(&feature);
         filter_multiple_geometry(&ctx, &mut fw, &feature, &feature.geometry.clone());
-        assert_eq!(fw.send_port, GeometryFilterParam::Multiple.output_port());
+        assert_eq!(
+            fw.send_ports.first().cloned(),
+            Some(GeometryFilterParam::Multiple.output_port())
+        );
     }
 
     #[test]
@@ -326,7 +335,10 @@ mod tests {
         };
         let ctx = create_default_execute_context(&feature);
         filter_multiple_geometry(&ctx, &mut fw, &feature, &feature.geometry.clone());
-        assert_eq!(fw.send_port, UNFILTERED_PORT.clone());
+        assert_eq!(
+            fw.send_ports.first().cloned(),
+            Some(UNFILTERED_PORT.clone())
+        );
     }
 
     // Add more tests for other scenarios...

@@ -79,52 +79,90 @@ type SegregatedActions struct {
 }
 
 var (
-	actionsData ActionsData
-	once        sync.Once
+	actionsData    ActionsData
+	actionsDataMap = make(map[string]ActionsData)
+	mutex          sync.RWMutex
+	supportedLangs = map[string]bool{
+		"en": true,
+		"es": true,
+		"fr": true,
+		"ja": true,
+		"zh": true,
+	}
 )
 
-func loadActionsData() error {
-	var err error
-	once.Do(func() {
-		// Hardcoded for now, Need to find more elegant way to deal with this @pyshx
-		resp, respErr := http.Get("https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/actions.json")
-		if respErr != nil {
-			err = respErr
-			return
-		}
-		defer func() {
-			if closeErr := resp.Body.Close(); closeErr != nil {
-				if err == nil {
-					err = closeErr
-				} else {
-					err = fmt.Errorf("%w; %v", err, closeErr)
-				}
-			}
-		}()
+func loadActionsData(lang string) error {
+	if lang != "" && !supportedLangs[lang] {
+		return fmt.Errorf("unsupported language: %s", lang)
+	}
 
-		body, readErr := io.ReadAll(resp.Body)
-		if readErr != nil {
-			err = readErr
-			return
-		}
+	cacheKey := lang
 
-		if unmarshalErr := json.Unmarshal(body, &actionsData); unmarshalErr != nil {
-			err = unmarshalErr
-			return
-		}
+	// Try to get from cache first using read lock
+	mutex.RLock()
+	if data, exists := actionsDataMap[cacheKey]; exists {
+		actionsData = data
+		mutex.RUnlock()
+		return nil
+	}
+	mutex.RUnlock()
 
-		if validateErr := actionsData.Validate(); validateErr != nil {
-			err = validateErr
-			return
+	// If not in cache, acquire write lock
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Double-check after acquiring write lock
+	if data, exists := actionsDataMap[cacheKey]; exists {
+		actionsData = data
+		return nil
+	}
+
+	baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
+	filename := "actions.json"
+	if lang != "" {
+		filename = fmt.Sprintf("actions_%s.json", lang)
+	}
+
+	resp, err := http.Get(baseURL + filename)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Println("Error closing response body:", err)
 		}
-	})
-	return err
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var newData ActionsData
+	if err := json.Unmarshal(body, &newData); err != nil {
+		return err
+	}
+
+	if err := newData.Validate(); err != nil {
+		return err
+	}
+
+	// Store in cache and set current actionsData
+	actionsDataMap[cacheKey] = newData
+	actionsData = newData
+
+	return nil
 }
 
 func listActions(c echo.Context) error {
 	query := c.QueryParam("q")
 	category := c.QueryParam("category")
 	actionType := c.QueryParam("type")
+	lang := c.QueryParam("lang")
+
+	if err := loadActionsData(lang); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
 
 	var summaries []ActionSummary
 
@@ -144,6 +182,11 @@ func listActions(c echo.Context) error {
 
 func getSegregatedActions(c echo.Context) error {
 	query := c.QueryParam("q")
+	lang := c.QueryParam("lang")
+
+	if err := loadActionsData(lang); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
 
 	segregated := SegregatedActions{
 		ByCategory: make(map[string][]ActionSummary),
@@ -236,6 +279,11 @@ func containsCaseInsensitive(slice []string, s string) bool {
 
 func getActionDetails(c echo.Context) error {
 	id := c.Param("id")
+	lang := c.QueryParam("lang")
+
+	if err := loadActionsData(lang); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
 
 	for _, action := range actionsData.Actions {
 		if action.Name == id {

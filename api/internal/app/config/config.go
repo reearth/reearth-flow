@@ -68,7 +68,9 @@ type (
 		Auth_JWKSURI  *string       `pp:",omitempty"`
 
 		// worker
-		Worker_ImageURL string `pp:",omitempty"`
+		Worker_BatchSAEmail string `pp:",omitempty"`
+		Worker_BinaryPath   string `pp:",omitempty"`
+		Worker_ImageURL     string `pp:",omitempty"`
 	}
 )
 

@@ -18,8 +18,9 @@ import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
+import i18n from "@flow/lib/i18n/i18n";
 import type { Action, ActionsSegregated, Node, Segregated } from "@flow/types";
-import { randomID } from "@flow/utils";
+import { generateUUID } from "@flow/utils";
 
 import ActionComponent from "./Action";
 
@@ -32,7 +33,7 @@ type Props = {
 
 const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
   const t = useT();
-  const { useGetActions, useGetActionsSegregated } = useAction();
+  const { useGetActions, useGetActionsSegregated } = useAction(i18n.language);
 
   const { screenToFlowPosition } = useReactFlow();
 
@@ -84,14 +85,14 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
       if (!action) return;
 
       const newNode: Node = {
-        id: randomID(),
+        id: generateUUID(),
         type: action.type,
         position: screenToFlowPosition({
           x: window.innerWidth / 2,
           y: window.innerHeight / 2,
         }),
         data: {
-          name: action.name,
+          officialName: action.name,
           inputs: [...action.inputPorts],
           outputs: [...action.outputPorts],
           status: "idle",
@@ -195,7 +196,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
             key={order}
             value={order}>
             {Array.isArray(actions) ? (
-              actions.map((action) => (
+              actions.map((action, index) => (
                 <Fragment key={action.name}>
                   <ActionComponent
                     action={action}
@@ -210,7 +211,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
                     onDoubleClick={handleDoubleClick}
                     onSelect={() => handleActionSelect(action.name)}
                   />
-                  <div className="border-b" />
+                  {index !== actions.length - 1 && <div className="border-b" />}
                 </Fragment>
               ))
             ) : (
@@ -222,7 +223,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
                         <p className="capitalize">{key}</p>
                       </AccordionTrigger>
                       <AccordionContent className="flex flex-col gap-1">
-                        {actions[key]?.map((action) => (
+                        {actions[key]?.map((action, index) => (
                           <Fragment key={action.name}>
                             <ActionComponent
                               action={action}
@@ -239,7 +240,10 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
                               onDoubleClick={handleDoubleClick}
                               onSelect={() => handleActionSelect(action.name)}
                             />
-                            <div className="border-b" />
+                            {actions[key] &&
+                              index !== actions[key].length - 1 && (
+                                <div className="border-b" />
+                              )}
                           </Fragment>
                         ))}
                       </AccordionContent>

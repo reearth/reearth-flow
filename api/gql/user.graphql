@@ -1,19 +1,19 @@
 type User implements Node {
-  id: ID!
-  name: String!
   email: String!
   host: String
+  id: ID!
+  name: String!
 }
 
 type Me {
-  id: ID!
-  name: String!
-  email: String!
-  lang: Lang!
-  myWorkspaceId: ID!
   auths: [String!]!
-  workspaces: [Workspace!]!
+  email: String!
+  id: ID!
+  lang: Lang!
   myWorkspace: Workspace
+  myWorkspaceId: ID!
+  name: String!
+  workspaces: [Workspace!]!
 }
 
 # InputType

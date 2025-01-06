@@ -1,8 +1,8 @@
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Button,
-  Input,
   Label,
   Select,
   SelectContent,
@@ -18,10 +18,12 @@ import type { Deployment } from "@flow/types";
 
 import "./styles.css";
 
-type RunType = "manual" | "trigger";
+type JobType = "manual" | "trigger";
 
-const NewRun: React.FC = () => {
+const NewJob: React.FC = () => {
   const t = useT();
+  const navigate = useNavigate();
+
   const [currentWorkspace] = useCurrentWorkspace();
 
   const { useGetDeploymentsInfinite, executeDeployment } = useDeployment();
@@ -29,18 +31,20 @@ const NewRun: React.FC = () => {
   const { pages, isFetching, fetchNextPage, hasNextPage } =
     useGetDeploymentsInfinite(currentWorkspace?.id);
 
-  const [runType, setRunType] = useState<RunType | undefined>(undefined);
+  const [jobType, setJobType] = useState<JobType | undefined>(undefined);
   const [trigger, setTrigger] = useState<string | undefined>(undefined);
 
   const [selectDropDown, setSelectDropDown] = useState<
     HTMLElement | undefined | null
   >();
-  const [selectedDeployment, selectDeployment] = useState<Deployment>();
+  const [selectedDeployment, selectDeployment] = useState<
+    Deployment | undefined
+  >(undefined);
 
-  const runTypes = useMemo(
+  const jobTypes = useMemo(
     () => [
-      { label: t("Manual Run"), value: "manual" },
-      { label: t("Trigger run"), value: "trigger" },
+      { label: t("Manual Job"), value: "manual" },
+      // { label: t("Trigger Job"), value: "trigger" },
     ],
     [t],
   );
@@ -65,10 +69,17 @@ const NewRun: React.FC = () => {
     [pages],
   );
 
-  const handleRun = useCallback(() => {
+  const handleJob = useCallback(async () => {
     if (!selectedDeployment || !currentWorkspace) return;
-    executeDeployment({ deploymentId: selectedDeployment.id });
-  }, [currentWorkspace, selectedDeployment, executeDeployment]);
+    const jobData = await executeDeployment({
+      deploymentId: selectedDeployment.id,
+    });
+    if (jobData) {
+      navigate({
+        to: `/workspaces/${currentWorkspace.id}/jobs/${jobData.job?.id}`,
+      });
+    }
+  }, [currentWorkspace, selectedDeployment, navigate, executeDeployment]);
 
   useEffect(() => {
     if (
@@ -96,24 +107,28 @@ const NewRun: React.FC = () => {
   return (
     <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-6">
       <div className="flex items-center justify-between gap-4">
-        <p className="text-xl dark:font-extralight">{t("New run")}</p>
-        <Button className="self-end" variant="outline" onClick={handleRun}>
-          {t("Run")}
+        <p className="text-xl dark:font-extralight">{t("New Job")}</p>
+        <Button
+          className="self-end"
+          variant="outline"
+          disabled={!jobType || !selectedDeployment}
+          onClick={handleJob}>
+          {t("Run Job")}
         </Button>
       </div>
       <div className="w-full border-b" />
       <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
         <div className="flex w-1/2 max-w-[900px] flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="run-type">{t("Run type")}</Label>
+            <Label htmlFor="job-type">{t("Job type")}</Label>
             <Select
-              onValueChange={(rt) => setRunType(rt as RunType | undefined)}>
+              onValueChange={(rt) => setJobType(rt as JobType | undefined)}>
               <SelectTrigger>
-                <SelectValue placeholder={t("Select desired run type")} />
+                <SelectValue placeholder={t("Select desired job type")} />
               </SelectTrigger>
               <SelectContent>
                 <div ref={(el) => setSelectDropDown(el?.parentElement)}>
-                  {runTypes?.map((rt) => (
+                  {jobTypes?.map((rt) => (
                     <SelectItem key={rt.value} value={rt.value}>
                       {rt.label}
                     </SelectItem>
@@ -122,13 +137,13 @@ const NewRun: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          {runType === "trigger" && (
+          {jobType === "trigger" && (
             <>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="trigger-type">{t("Trigger type")}</Label>
                 <Select onValueChange={(tr) => setTrigger(tr)}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t("Select run type")} />
+                    <SelectValue placeholder={t("Select job type")} />
                   </SelectTrigger>
                   <SelectContent>
                     <div ref={(el) => setSelectDropDown(el?.parentElement)}>
@@ -159,7 +174,7 @@ const NewRun: React.FC = () => {
             </>
           )}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="manual-run-deployment">{t("Deployment")}</Label>
+            <Label htmlFor="manual-job-deployment">{t("Deployment")}</Label>
             <Select
               onValueChange={(pid) =>
                 selectDeployment(deployments?.find((p) => p.id === pid))
@@ -186,25 +201,25 @@ const NewRun: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          {selectedDeployment && (
+          {/* {selectedDeployment && (
             <>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="manual-run-version">{t("Version")}</Label>
+                <Label htmlFor="manual-job-version">{t("Version")}</Label>
                 <Input placeholder="Do we need this?" />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="manual-run-params">{t("Parameters")}</Label>
+                <Label htmlFor="manual-job-params">{t("Parameters")}</Label>
                 <Input placeholder="What kind of parameters? user params? project params? etc" />
               </div>
             </>
-          )}
+          )} */}
         </div>
       </div>
     </div>
   );
 };
 
-export { NewRun };
+export { NewJob };
 
 const deploymentDisplay = (
   projectName: string,

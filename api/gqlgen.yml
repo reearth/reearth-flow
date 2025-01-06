@@ -24,6 +24,8 @@ models:
     model: github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.Lang
   ID:
     model: github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.ID
+  JSON:
+    model: github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.JSON
   Asset:
     fields:
       workspace:
@@ -46,11 +48,21 @@ models:
         resolver: true
       deployment:
         resolver: true
+  Parameter:
+    fields:
+      project:
+        resolver: true
   Project:
     fields:
       workspace:
         resolver: true
       deployment:
+        resolver: true
+      parameters:
+        resolver: true
+  Subscription:
+    fields:
+      jobStatus:
         resolver: true
   Workspace:
     fields:

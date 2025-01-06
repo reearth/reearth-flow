@@ -1,10 +1,11 @@
 use std::{collections::HashMap, sync::Arc};
 
+use reearth_flow_eval_expr::utils::dynamic_to_value;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
-    executor_operation::{ExecutorContext, NodeContext},
+    executor_operation::{Context, ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
@@ -123,7 +124,7 @@ pub struct AttributeAggregator {
     calculation_value: Option<i64>,
     calculation_attribute: Attribute,
     method: Method,
-    buffer: HashMap<String, i64>, // string is tab
+    buffer: HashMap<AttributeValue, i64>, // string is tab
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -140,14 +141,14 @@ pub struct AttributeAggregatorParam {
 #[serde(rename_all = "camelCase")]
 struct AggregateAttribute {
     new_attribute: Attribute,
-    attribute: Option<String>,
+    attribute: Option<Attribute>,
     attribute_value: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
 struct CompliledAggregateAttribute {
     new_attribute: Attribute,
-    attribute: Option<String>,
+    attribute: Option<Attribute>,
     attribute_value: Option<rhai::AST>,
 }
 
@@ -165,9 +166,9 @@ impl Processor for AttributeAggregator {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
+        fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let feature = ctx.feature;
+        let feature = &ctx.feature;
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
 
@@ -180,17 +181,17 @@ impl Processor for AttributeAggregator {
                         attribute
                     ))
                 })?;
-                aggregates.push(result.to_string());
+                aggregates.push(result.clone());
                 continue;
             }
             if let Some(ast) = &aggregate_attribute.attribute_value {
-                let result = scope.eval_ast::<String>(ast).map_err(|e| {
+                let result = scope.eval_ast::<rhai::Dynamic>(ast).map_err(|e| {
                     AttributeProcessorError::Aggregator(format!(
                         "Failed to evaluate aggregation: {}",
                         e
                     ))
                 })?;
-                aggregates.push(result);
+                aggregates.push(dynamic_to_value(&result).into());
             }
         }
         let calc = if let Some(value) = self.calculation_value {
@@ -207,7 +208,10 @@ impl Processor for AttributeAggregator {
                 AttributeProcessorError::Aggregator("Calculation not found".to_string()).into(),
             );
         };
-        let key = generate_aggregate_key(&aggregates);
+        let key = AttributeValue::Array(aggregates);
+        if !self.buffer.contains_key(&key) {
+            self.flush_buffer(ctx.as_context(), fw, &key);
+        }
         match &self.method {
             Method::Max => {
                 let value = self.buffer.entry(key).or_insert(0);
@@ -232,10 +236,13 @@ impl Processor for AttributeAggregator {
     ) -> Result<(), BoxedError> {
         for (key, value) in &self.buffer {
             let mut feature = Feature::new();
+            let AttributeValue::Array(aggregates) = key else {
+                continue;
+            };
             for (i, aggregate_attribute) in self.aggregate_attributes.iter().enumerate() {
                 feature.attributes.insert(
                     aggregate_attribute.new_attribute.clone(),
-                    AttributeValue::String(key.split('\t').nth(i).unwrap_or_default().to_string()),
+                    aggregates.get(i).cloned().unwrap_or(AttributeValue::Null),
                 );
             }
             feature.attributes.insert(
@@ -256,6 +263,37 @@ impl Processor for AttributeAggregator {
     }
 }
 
-fn generate_aggregate_key(values: &[String]) -> String {
-    values.join("\t")
+impl AttributeAggregator {
+    pub(crate) fn flush_buffer(
+        &mut self,
+        ctx: Context,
+        fw: &mut dyn ProcessorChannelForwarder,
+        ignore_key: &AttributeValue,
+    ) {
+        let value = self.buffer.remove(ignore_key);
+        for (key, value) in self.buffer.drain() {
+            let mut feature = Feature::new();
+            let AttributeValue::Array(aggregates) = key else {
+                continue;
+            };
+            for (i, aggregate_attribute) in self.aggregate_attributes.iter().enumerate() {
+                feature.attributes.insert(
+                    aggregate_attribute.new_attribute.clone(),
+                    aggregates.get(i).cloned().unwrap_or(AttributeValue::Null),
+                );
+            }
+            feature.attributes.insert(
+                self.calculation_attribute.clone(),
+                AttributeValue::Number(serde_json::Number::from(value)),
+            );
+            fw.send(ExecutorContext::new_with_context_feature_and_port(
+                &ctx,
+                feature,
+                DEFAULT_PORT.clone(),
+            ));
+        }
+        if let Some(value) = value {
+            self.buffer.insert(ignore_key.clone(), value);
+        }
+    }
 }

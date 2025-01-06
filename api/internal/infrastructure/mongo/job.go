@@ -46,9 +46,15 @@ func (r *Job) FindByIDs(ctx context.Context, ids id.JobIDList) ([]*job.Job, erro
 		return nil, nil
 	}
 
+	// Convert JobIDs to strings for MongoDB query
+	idStrings := make([]string, len(ids))
+	for i, id := range ids {
+		idStrings[i] = id.String()
+	}
+
 	filter := bson.M{
 		"id": bson.M{
-			"$in": ids.Strings(),
+			"$in": idStrings,
 		},
 	}
 	res, err := r.find(ctx, filter)
@@ -88,7 +94,9 @@ func (r *Job) Save(ctx context.Context, j *job.Job) error {
 		return repo.ErrOperationDenied
 	}
 	doc, id := mongodoc.NewJob(j)
-	return r.client.SaveOne(ctx, id, doc)
+
+	err := r.client.SaveOne(ctx, id, doc)
+	return err
 }
 
 func (r *Job) Remove(ctx context.Context, id id.JobID) error {

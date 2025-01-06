@@ -102,9 +102,8 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		apiPrivate.POST("/signup/verify/:code", SignupVerify())
 		apiPrivate.POST("/password-reset", PasswordReset())
 	}
-
-	if err := loadActionsData(); err != nil {
-		log.Errorf("Failed to load actions data: %v", err)
+	if err := initActionsData(ctx); err != nil {
+		log.Errorf("Failed to initialize actions data: %v", err)
 	}
 	SetupActionRoutes(e)
 
@@ -113,6 +112,15 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	Web(e, cfg.Config.WebConfig(), cfg.Config.AuthForWeb(), cfg.Config.Web_Disabled, nil)
 
 	return e
+}
+
+func initActionsData(ctx context.Context) error {
+	for lang := range supportedLangs {
+		if err := loadActionsData(lang); err != nil {
+			log.Errorf("Failed to load actions data for language %s: %v", lang, err)
+		}
+	}
+	return nil
 }
 
 func errorHandler(next func(error, echo.Context)) func(error, echo.Context) {

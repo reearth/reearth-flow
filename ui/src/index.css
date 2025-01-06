@@ -48,6 +48,9 @@
     --destructive: 239, 68, 68;
     --destructive-foreground: 250, 250, 250;
 
+    --warning: 255, 159, 67;
+    --warning-foreground: 250, 250, 250;
+
     --border: 202, 202, 202;
     --border-secondary: 175, 174, 174;
     --input: 228, 228, 231;
@@ -112,13 +115,19 @@
 /* Animation for active node */
 @keyframes cycleColors {
   0% {
-    @apply bg-background;
+    @apply bg-primary;
+  }
+  25% {
+    @apply bg-success;
   }
   50% {
-    @apply bg-foreground;
+    @apply bg-warning;
+  }
+  75% {
+    @apply bg-destructive;
   }
   100% {
-    @apply bg-background;
+    @apply bg-primary;
   }
 }
 

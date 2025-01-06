@@ -1,6 +1,8 @@
 package job
 
-import "time"
+import (
+	"time"
+)
 
 type Status string
 
@@ -19,16 +21,18 @@ type Job struct {
 	status      Status
 	startedAt   time.Time
 	completedAt *time.Time
+	metadataURL string
 }
 
 func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
 	return &Job{
-		id:         id,
-		deployment: deployment,
-		workspace:  workspace,
-		gcpJobID:   gcpJobID,
-		status:     StatusPending,
-		startedAt:  time.Now(),
+		id:          id,
+		deployment:  deployment,
+		workspace:   workspace,
+		gcpJobID:    gcpJobID,
+		status:      StatusPending,
+		startedAt:   time.Now(),
+		metadataURL: "",
 	}
 }
 
@@ -58,6 +62,10 @@ func (j *Job) StartedAt() time.Time {
 
 func (j *Job) CompletedAt() *time.Time {
 	return j.completedAt
+}
+
+func (d *Job) MetadataURL() string {
+	return d.metadataURL
 }
 
 func (j *Job) SetID(id ID) {
@@ -90,4 +98,8 @@ func (j *Job) SetStartedAt(startedAt time.Time) {
 
 func (j *Job) SetCompletedAt(completedAt *time.Time) {
 	j.completedAt = completedAt
+}
+
+func (j *Job) SetMetadataURL(metadataURL string) {
+	j.metadataURL = metadataURL
 }

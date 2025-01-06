@@ -1,19 +1,23 @@
 package gcs
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/kennygrant/sanitize"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/workflow"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 )
@@ -21,6 +25,7 @@ import (
 const (
 	gcsAssetBasePath    string = "assets"
 	gcsWorkflowBasePath string = "workflows"
+	gcsMetadataBasePath string = "metadata"
 	fileSizeLimit       int64  = 1024 * 1024 * 100 // about 100MB
 )
 
@@ -138,8 +143,51 @@ func (f *fileRepo) RemoveWorkflow(ctx context.Context, u *url.URL) error {
 	return f.delete(ctx, sn)
 }
 
-// helpers
+func (f *fileRepo) ReadMetadata(ctx context.Context, name string) (io.ReadCloser, error) {
+	sn := sanitize.Path(name)
+	if sn == "" {
+		return nil, rerror.ErrNotFound
+	}
+	return f.read(ctx, path.Join(gcsMetadataBasePath, sn))
+}
 
+func (f *fileRepo) UploadMetadata(ctx context.Context, jobID string, assets []string) (*url.URL, error) {
+	metadataFile, err := f.generateMetadata(jobID, assets)
+	if err != nil {
+		return nil, err
+	}
+
+	sn := sanitize.Path(metadataFile.Path)
+	if sn == "" {
+		return nil, gateway.ErrInvalidFile
+	}
+
+	filename := path.Join(gcsMetadataBasePath, sn)
+	u := getGCSObjectURL(f.base, filename)
+	if u == nil {
+		return nil, gateway.ErrInvalidFile
+	}
+
+	_, err = f.upload(ctx, filename, metadataFile.Content)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Infofc(ctx, "gcs: metadata uploaded: %s with jobID: %s and %d assets", u, jobID, len(assets))
+	return u, nil
+}
+
+func (f *fileRepo) RemoveMetadata(ctx context.Context, u *url.URL) error {
+	log.Infofc(ctx, "gcs: metadata deleted: %s", u)
+
+	sn := getGCSObjectNameFromURL(f.base, u, gcsMetadataBasePath)
+	if sn == "" {
+		return gateway.ErrInvalidFile
+	}
+	return f.delete(ctx, sn)
+}
+
+// helpers
 func (f *fileRepo) bucket(ctx context.Context) (*storage.BucketHandle, error) {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
@@ -227,6 +275,36 @@ func (f *fileRepo) delete(ctx context.Context, filename string) error {
 		return rerror.ErrInternalByWithContext(ctx, err)
 	}
 	return nil
+}
+
+func (f *fileRepo) generateMetadata(jobID string, assets []string) (*file.File, error) {
+	artifactBaseUrl := fmt.Sprintf("gs://%s/artifacts", f.bucketName)
+	assetBaseUrl := fmt.Sprintf("gs://%s/assets", f.bucketName)
+	created := time.Now()
+
+	metadata := &workflow.Metadata{
+		ArtifactBaseUrl: artifactBaseUrl,
+		Assets: workflow.Asset{
+			BaseUrl: assetBaseUrl,
+			Files:   assets,
+		},
+		JobID: jobID,
+		Timestamps: workflow.Timestamp{
+			Created: created,
+		},
+	}
+
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &file.File{
+		Content:     io.NopCloser(bytes.NewReader(metadataJSON)),
+		Path:        fmt.Sprintf("metadata-%s.json", jobID),
+		Size:        int64(len(metadataJSON)),
+		ContentType: "application/json",
+	}, nil
 }
 
 func getGCSObjectURL(base *url.URL, objectName string) *url.URL {

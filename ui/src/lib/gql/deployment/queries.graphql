@@ -40,22 +40,3 @@ query GetDeployments($workspaceId: ID!, $pagination: Pagination) {
     }
   }
 }
-
-query GetJobs($workspaceId: ID!, $pagination: Pagination) {
-  jobs(workspaceId: $workspaceId, pagination: $pagination) {
-    totalCount
-    nodes {
-      ...Job
-    }
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
-  }
-}
-
-query GetJob($id: ID!) {
-  job(id: $id) {
-    ...Job
-  }
-}

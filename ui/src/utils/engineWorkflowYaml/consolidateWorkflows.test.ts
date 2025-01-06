@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import type { Workflow, EngineReadyGraph } from "@flow/types";
 
-import { randomID } from "../randomID";
+import { generateUUID } from "../generateUUID";
 
 import { consolidateWorkflows } from "./consolidateWorkflows";
 import { createSubGraphs } from "./createSubGraphs";
@@ -12,8 +12,8 @@ vi.mock("./createSubGraphs", () => ({
   createSubGraphs: vi.fn(),
 }));
 
-vi.mock("../randomID", () => ({
-  randomID: vi.fn(),
+vi.mock("../generateUUID", () => ({
+  generateUUID: vi.fn(),
 }));
 
 describe("consolidateWorkflows", () => {
@@ -32,9 +32,14 @@ describe("consolidateWorkflows", () => {
       { id: "sub1", name: "Sub Workflow 1", nodes: [], edges: [] },
     ];
 
-    const mockSubGraphs: EngineReadyGraph[] = [
+    // Generate predictable UUIDs
+    let uuidCounter = 0;
+    vi.mocked(generateUUID).mockImplementation(() => `uuid-${++uuidCounter}`);
+
+    // Create expected workflows with the new entry ID
+    const expectedConvertedWorkflows = [
       {
-        id: DEFAULT_ENTRY_GRAPH_ID,
+        id: "uuid-1", // This replaces DEFAULT_ENTRY_GRAPH_ID
         name: "Main Workflow",
         nodes: [],
         edges: [],
@@ -42,54 +47,51 @@ describe("consolidateWorkflows", () => {
       { id: "sub1", name: "Sub Workflow 1", nodes: [], edges: [] },
     ];
 
-    (createSubGraphs as any).mockReturnValue(mockSubGraphs);
-    (vi.mocked(randomID) as any).mockReturnValue("random-id-123");
+    const mockSubGraphs: EngineReadyGraph[] = [
+      {
+        id: "uuid-1",
+        name: "Main Workflow",
+        nodes: [],
+        edges: [],
+      },
+      { id: "sub1", name: "Sub Workflow 1", nodes: [], edges: [] },
+    ];
+
+    vi.mocked(createSubGraphs).mockReturnValue(mockSubGraphs);
 
     const result = consolidateWorkflows("somename", mockWorkflows);
 
     expect(result).toEqual({
-      id: "random-id-123",
+      id: "uuid-2",
       name: "somename",
-      entryGraphId: DEFAULT_ENTRY_GRAPH_ID,
+      entryGraphId: "uuid-1",
       graphs: mockSubGraphs,
     });
 
-    expect(createSubGraphs).toHaveBeenCalledWith(mockWorkflows);
-    expect(randomID).toHaveBeenCalled();
+    expect(createSubGraphs).toHaveBeenCalledWith(expectedConvertedWorkflows);
+    expect(generateUUID).toHaveBeenCalledTimes(2);
   });
 
-  it("should correctly consolidate workflows without a main workflow", () => {
+  it("should return undefined when no main workflow exists", () => {
     const mockWorkflows: Workflow[] = [
       { id: "sub1", name: "Sub Workflow 1", nodes: [], edges: [] },
       { id: "sub2", name: "Sub Workflow 2", nodes: [], edges: [] },
     ];
 
-    const mockSubGraphs: EngineReadyGraph[] = [
-      { id: "sub1", name: "Sub Workflow 1", nodes: [], edges: [] },
-      { id: "sub2", name: "Sub Workflow 2", nodes: [], edges: [] },
-    ];
-
-    (createSubGraphs as any).mockReturnValue(mockSubGraphs);
-    (vi.mocked(randomID) as any).mockReturnValue("random-id-456");
-
     const result = consolidateWorkflows("somename", mockWorkflows);
 
-    expect(result).toEqual(undefined);
-
-    expect(createSubGraphs).not.toHaveBeenCalledWith(mockWorkflows);
-    expect(randomID).not.toHaveBeenCalled();
+    expect(result).toBeUndefined();
+    expect(createSubGraphs).not.toHaveBeenCalled();
+    expect(generateUUID).not.toHaveBeenCalled();
   });
 
-  it("should return undefined when workflows array is empty (since there is no main/entry point)", () => {
+  it("should return undefined when workflows array is empty", () => {
     const mockWorkflows: Workflow[] = [];
-
-    (createSubGraphs as any).mockReturnValue([]);
-    (vi.mocked(randomID) as any).mockReturnValue("random-id-789");
 
     const result = consolidateWorkflows("somename", mockWorkflows);
 
-    expect(result).toEqual(undefined);
-    expect(createSubGraphs).not.toHaveBeenCalledWith(mockWorkflows);
-    expect(randomID).not.toHaveBeenCalled();
+    expect(result).toBeUndefined();
+    expect(createSubGraphs).not.toHaveBeenCalled();
+    expect(generateUUID).not.toHaveBeenCalled();
   });
 });

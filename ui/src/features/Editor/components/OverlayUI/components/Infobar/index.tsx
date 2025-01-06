@@ -19,7 +19,11 @@ const Infobar: React.FC<Props> = ({ hoveredDetails }) => {
         ) : (
           <>
             <p className="text-xs">ID: {hoveredDetails.id}</p>
-            <p className="text-xs">Name: {hoveredDetails.data?.name}</p>
+            <p className="text-xs">
+              Name:{" "}
+              {hoveredDetails.data.customName ||
+                hoveredDetails.data.officialName}
+            </p>
             <p className="text-xs">Type: {hoveredDetails.type}</p>
           </>
         )}

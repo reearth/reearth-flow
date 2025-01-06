@@ -14,7 +14,7 @@ func ToDeployment(d *deployment.Deployment) *Deployment {
 		ID:          IDFrom(d.ID()),
 		ProjectID:   IDFrom(d.Project()),
 		WorkspaceID: IDFrom(d.Workspace()),
-		WorkflowURL: d.WorkflowUrl(),
+		WorkflowURL: d.WorkflowURL(),
 		Description: d.Description(),
 		Version:     d.Version(),
 		CreatedAt:   d.CreatedAt(),
@@ -28,7 +28,7 @@ func ToJob(j *job.Job) *Job {
 	}
 
 	return &Job{
-		ID:           IDFrom(j.ID()),
+		ID:           ID(j.ID().String()),
 		DeploymentID: IDFrom(j.Deployment()),
 		WorkspaceID:  IDFrom(j.Workspace()),
 		Status:       ToJobStatus(j.Status()),

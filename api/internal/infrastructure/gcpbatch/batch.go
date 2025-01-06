@@ -2,7 +2,11 @@ package gcpbatch
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"regexp"
+	"strings"
 
 	batch "cloud.google.com/go/batch/apiv1"
 	batchpb "cloud.google.com/go/batch/apiv1/batchpb"
@@ -13,10 +17,12 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-type Config struct {
-	ProjectID string
-	Region    string
-	ImageURI  string
+type BatchConfig struct {
+	BinaryPath string
+	ImageURI   string
+	ProjectID  string
+	Region     string
+	SAEmail    string
 }
 
 type BatchClient interface {
@@ -29,10 +35,10 @@ type BatchClient interface {
 
 type BatchRepo struct {
 	client BatchClient
-	config Config
+	config BatchConfig
 }
 
-func NewBatch(ctx context.Context, config Config) (gateway.Batch, error) {
+func NewBatch(ctx context.Context, config BatchConfig) (gateway.Batch, error) {
 	client, err := batch.NewClient(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create batch client: %v", err)
@@ -44,10 +50,25 @@ func NewBatch(ctx context.Context, config Config) (gateway.Batch, error) {
 	}, nil
 }
 
-func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL string, projectID id.ProjectID) (string, error) {
-	jobName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", b.config.ProjectID, b.config.Region, jobID)
+func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, projectID id.ProjectID) (string, error) {
+	formattedJobID := formatJobID(jobID.String())
+
+	jobName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", b.config.ProjectID, b.config.Region, formattedJobID)
 	parent := fmt.Sprintf("projects/%s/locations/%s", b.config.ProjectID, b.config.Region)
-	workflowCommand := fmt.Sprintf("echo %q | /bin/reearth-flow run --workflow -", workflowsURL)
+
+	binaryPath := b.config.BinaryPath
+	if binaryPath == "" {
+		binaryPath = "reearth-flow-worker"
+	}
+
+	// Match the command line example format
+	workflowCommand := fmt.Sprintf(
+		"%s --workflow %q --metadata-path %q --pubsub-backend noop",
+		binaryPath,
+		workflowsURL,
+		metadataURL,
+	)
+
 	commands := []string{
 		"/bin/sh",
 		"-c",
@@ -63,7 +84,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL 
 		Executable: &batchpb.Runnable_Container_{
 			Container: runnableContainer,
 		},
-		DisplayName:      "Run reearth-flow workflow",
+		DisplayName:      "Run reearth-flow workflow with metadata",
 		IgnoreExitStatus: false,
 		Background:       false,
 		AlwaysRun:        false,
@@ -96,11 +117,14 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL 
 		Instances: []*batchpb.AllocationPolicy_InstancePolicyOrTemplate{
 			instancePolicyOrTemplate,
 		},
+		ServiceAccount: &batchpb.ServiceAccount{
+			Email: b.config.SAEmail,
+		},
 	}
 
 	labels := map[string]string{
-		"workflow_url": workflowsURL,
-		"project_id":   projectID.String(),
+		"project_id":  projectID.String(),
+		"original_id": jobID.String(), // Store the original ID as a label
 	}
 
 	logsPolicy := &batchpb.LogsPolicy{
@@ -117,7 +141,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL 
 
 	req := &batchpb.CreateJobRequest{
 		Parent: parent,
-		JobId:  jobID.String(),
+		JobId:  formattedJobID,
 		Job:    job,
 	}
 
@@ -208,4 +232,23 @@ func convertGCPStatusToGatewayStatus(gcpStatus batchpb.JobStatus_State) gateway.
 	default:
 		return gateway.JobStatusUnknown
 	}
+}
+
+func formatJobID(jobID string) string {
+	if regexp.MustCompile(`^[0-9]`).MatchString(jobID) {
+		jobID = "j-" + jobID
+	}
+
+	jobID = strings.ToLower(jobID)
+	jobID = regexp.MustCompile(`[^a-z0-9-]`).ReplaceAllString(jobID, "-")
+
+	jobID = strings.TrimSuffix(jobID, "-")
+
+	if len(jobID) > 63 {
+		hash := sha256.Sum256([]byte(jobID))
+		hashStr := hex.EncodeToString(hash[:])[:8]
+		jobID = jobID[:54] + "-" + hashStr
+	}
+
+	return jobID
 }

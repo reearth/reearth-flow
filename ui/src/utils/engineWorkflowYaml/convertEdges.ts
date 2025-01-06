@@ -1,11 +1,13 @@
 import { DEFAULT_EDGE_PORT } from "@flow/global-constants";
 import type { Edge, EngineReadyEdge } from "@flow/types";
 
+import { generateUUID } from "../generateUUID";
+
 export const convertEdges = (edges?: Edge[]) => {
   if (!edges) return [];
   const convertedEdges: EngineReadyEdge[] = edges.map((edge) => {
     return {
-      id: edge.id,
+      id: generateUUID(),
       from: edge.source,
       to: edge.target,
       fromPort: edge.sourceHandle ?? DEFAULT_EDGE_PORT,

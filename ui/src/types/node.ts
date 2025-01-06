@@ -3,24 +3,27 @@ import { ComponentType } from "react";
 
 import type { Status } from "./shared";
 
-type ParamValueType = string | number | boolean | object | null;
+// type ParamValueType = string | number | boolean | object | null;
 
 // type NodeParam<T extends ParamValueType> = {
-type NodeParam = {
-  id: string;
-  name: string;
-  // type: string; perhaps we don't need this
-  value: ParamValueType;
+type NodeParam = Record<string, any>;
+
+export type PseudoPort = {
+  nodeId: string;
+  portName: string;
 };
 
 export type NodeData = {
-  name: string;
+  officialName: string;
+  customName?: string;
   inputs?: string[];
   outputs?: string[];
   status?: Status;
-  params?: NodeParam[];
+  params?: NodeParam;
   locked?: boolean | undefined;
-
+  // subworkflow nodes
+  pseudoInputs?: PseudoPort[];
+  pseudoOutputs?: PseudoPort[];
   // batch & note nodes
   content?: string;
   width?: number;
@@ -42,6 +45,8 @@ export const nodeTypes = [
   "batch",
   "note",
   "subworkflow",
+  "entrance",
+  "exit",
 ] as const;
 
 export type NodeType = (typeof nodeTypes)[number];
@@ -52,6 +57,7 @@ export type NodeTypes = Record<
   NodeType,
   ComponentType<
     NodeProps & {
+      coolName: string;
       data: NodeData;
       type: NodeType;
     }

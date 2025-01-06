@@ -96,9 +96,13 @@
             ],
             "properties": {
               "attribute": {
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "attributeValue": {
@@ -921,6 +925,43 @@
       ]
     },
     {
+      "name": "FeatureLodFilter",
+      "type": "processor",
+      "description": "Filter Geometry by lod",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureLodFilterParam",
+        "type": "object",
+        "required": [
+          "filterKey"
+        ],
+        "properties": {
+          "filterKey": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "up_to_lod1",
+        "up_to_lod2",
+        "up_to_lod3",
+        "up_to_lod4",
+        "unfiltered"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "FeatureMerger",
       "type": "processor",
       "description": "Une entidades según sus atributos",
@@ -1327,6 +1368,7 @@
         "title": "FileReader",
         "oneOf": [
           {
+            "title": "CSV",
             "type": "object",
             "required": [
               "dataset",
@@ -1353,6 +1395,7 @@
             }
           },
           {
+            "title": "TSV",
             "type": "object",
             "required": [
               "dataset",
@@ -1379,6 +1422,7 @@
             }
           },
           {
+            "title": "JSON",
             "type": "object",
             "required": [
               "dataset",
@@ -1397,6 +1441,7 @@
             }
           },
           {
+            "title": "CityGML",
             "type": "object",
             "required": [
               "dataset",
@@ -1784,56 +1829,6 @@
         "multiPoint",
         "point",
         "tin"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
-      "name": "GeometryLodFilter",
-      "type": "processor",
-      "description": "Filtra la geometría por nivel de detalle (lod)",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryLodFilterParam",
-        "type": "object",
-        "properties": {
-          "maxLod": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint8",
-            "minimum": 0.0
-          },
-          "minLod": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint8",
-            "minimum": 0.0
-          },
-          "targetLods": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "integer",
-              "format": "uint8",
-              "minimum": 0.0
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default",
-        "unfiltered"
       ],
       "categories": [
         "Geometry"
@@ -2514,6 +2509,93 @@
         "attributeFeature",
         "summary",
         "filePath"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.AttributeFlattener",
+      "type": "processor",
+      "description": "Flatten attributes for building feature",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.MaxLodExtractor",
+      "type": "processor",
+      "description": "Extracts maxLod",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "MaxLodExtractorParam",
+        "type": "object",
+        "required": [
+          "cityGmlPathAttribute",
+          "maxLodAttribute"
+        ],
+        "properties": {
+          "cityGmlPathAttribute": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "maxLodAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.UDXFolderExtractor",
+      "type": "processor",
+      "description": "Extracts UDX folders from cityGML path",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "UDXFolderExtractorParam",
+        "type": "object",
+        "required": [
+          "cityGmlPath"
+        ],
+        "properties": {
+          "cityGmlPath": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
       ],
       "categories": [
         "PLATEAU"

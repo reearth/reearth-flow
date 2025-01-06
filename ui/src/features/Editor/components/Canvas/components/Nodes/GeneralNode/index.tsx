@@ -4,14 +4,15 @@ import {
   DoubleArrowRightIcon,
   PlayIcon,
 } from "@radix-ui/react-icons";
-import { NodeProps } from "@xyflow/react";
-import { memo, useEffect, useState } from "react";
+import { NodeProps, useReactFlow } from "@xyflow/react";
+import { memo, useEffect, useRef, useState } from "react";
 
 import { IconButton } from "@flow/components";
 import { useDoubleClick } from "@flow/hooks";
 import { Node } from "@flow/types";
 import type { NodePosition, NodeType } from "@flow/types";
 
+import useBatch from "../../../useBatch";
 import { getPropsFrom } from "../utils";
 
 import { Handles } from "./components";
@@ -33,8 +34,13 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   type,
   selected,
   id,
+  dragging,
 }) => {
-  const { name, status, inputs, outputs, locked } = data;
+  const { officialName, customName, status, inputs, outputs, locked } = data;
+  const isDragging = useRef<boolean>(dragging);
+
+  const { setNodes, getInternalNode } = useReactFlow<Node>();
+  const { handleNodeDropInBatch } = useBatch();
 
   const [hardSelect, setHardSelect] = useState<boolean>(!!locked);
 
@@ -49,6 +55,20 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   }, [id, selected, hardSelect]);
 
   const metaProps = getPropsFrom(status);
+
+  useEffect(() => {
+    if (isDragging.current && !dragging) {
+      isDragging.current = false;
+
+      setNodes((nds) => {
+        const thisNode = getInternalNode(id);
+        if (!thisNode) return nds;
+        return handleNodeDropInBatch(thisNode, nds);
+      });
+    } else if (dragging && !isDragging.current) {
+      isDragging.current = true;
+    }
+  }, [id, dragging, handleNodeDropInBatch, setNodes, getInternalNode]);
 
   return (
     <div className="rounded-sm bg-secondary" onDoubleClick={handleDoubleClick}>
@@ -68,7 +88,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
         <div
           className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? (hardSelect ? "border-red-300" : "border-primary/50") : type === "subworkflow" ? "border-[#a21caf]/60" : "border-primary/20"}`}>
           <p className="self-center truncate text-[10px] dark:font-light">
-            {name}
+            {customName || officialName}
           </p>
           <div
             className={`size-[8px] self-center rounded ${metaProps.style}`}

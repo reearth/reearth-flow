@@ -1,11 +1,11 @@
 type Asset implements Node {
-  id: ID!
+  contentType: String!
   createdAt: DateTime!
-  workspaceId: ID!
+  id: ID!
   name: String!
   size: FileSize!
   url: String!
-  contentType: String!
+  workspaceId: ID!
   Workspace: Workspace
 }
 
