@@ -107,7 +107,7 @@ glam = "0.29.2"
 hashbrown = { version = "0.15.2", features = ["serde"] }
 home = "0.5.9"
 image = { version = "0.25.5", default-features = false, features = ["jpeg", "png", "rayon", "tiff", "webp"] }
-indexmap = "2.5.0"
+indexmap = "2.7.0"
 indoc = "2.0.5"
 itertools = "0.14.0"
 jsonpath_lib = "0.3.0"
