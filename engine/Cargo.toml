@@ -139,7 +139,7 @@ robust = "1.1.0"
 rstar = "0.12.2"
 rstest = "0.24.0"
 rust_xlsxwriter = "0.80.0"
-schemars = { version = "1.0.0-alpha.17", features = ["chrono04", "uuid1"] }
+schemars = { version = "0.8.21", features = ["chrono", "uuid1"] }
 serde = { version = "1.0.217", features = ["derive"] }
 serde_derive = "1.0.217"
 serde_json = { version = "1.0.134", features = ["arbitrary_precision"] }

@@ -29,7 +29,7 @@ impl ProcessorFactory for GeometryCoercerFactory {
         "Coerces the geometry of a feature to a specific geometry"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(GeometryCoercer))
     }
 

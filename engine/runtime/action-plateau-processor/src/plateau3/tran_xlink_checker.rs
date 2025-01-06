@@ -31,7 +31,7 @@ impl ProcessorFactory for TranXLinkCheckerFactory {
         "Check Xlink for Tran"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         None
     }
 

@@ -115,7 +115,7 @@ impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
         "Detect unmatched xlink for PLATEAU"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         None
     }
 

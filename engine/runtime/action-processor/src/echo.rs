@@ -21,7 +21,7 @@ impl ProcessorFactory for EchoProcessorFactory {
         "Echo features"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         None
     }
 

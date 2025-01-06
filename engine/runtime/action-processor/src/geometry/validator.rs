@@ -37,7 +37,7 @@ impl ProcessorFactory for GeometryValidatorFactory {
         "Validates the geometry of a feature"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(GeometryValidator))
     }
 

@@ -5583,7 +5583,7 @@ dependencies = [
  "reearth-flow-types",
  "regex",
  "rhai",
- "schemars 1.0.0-alpha.17",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror 2.0.9",
@@ -5624,7 +5624,7 @@ dependencies = [
  "regex",
  "rhai",
  "rstar 0.12.2",
- "schemars 1.0.0-alpha.17",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror 2.0.9",
@@ -5681,7 +5681,7 @@ dependencies = [
  "regex",
  "rhai",
  "rust_xlsxwriter",
- "schemars 1.0.0-alpha.17",
+ "schemars",
  "serde",
  "serde_json",
  "tempfile",
@@ -5717,7 +5717,7 @@ dependencies = [
  "reearth-flow-types",
  "regex",
  "rhai",
- "schemars 1.0.0-alpha.17",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror 2.0.9",
@@ -5741,7 +5741,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-types",
  "regex",
- "schemars 1.0.0-alpha.17",
+ "schemars",
  "serde",
  "serde_json",
  "tempfile",
@@ -5777,7 +5777,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-telemetry",
  "reearth-flow-types",
- "schemars 1.0.0-alpha.17",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror 2.0.9",
@@ -5905,7 +5905,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-types",
  "regex",
- "schemars 1.0.0-alpha.17",
+ "schemars",
  "serde",
  "serde_json",
  "tempfile",
@@ -5976,7 +5976,7 @@ dependencies = [
  "reearth-flow-types",
  "regex",
  "rmp-serde",
- "schemars 1.0.0-alpha.17",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror 2.0.9",
@@ -6085,7 +6085,7 @@ dependencies = [
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",
  "rhai",
- "schemars 1.0.0-alpha.17",
+ "schemars",
  "serde",
  "serde_json",
  "strum_macros",
@@ -6123,7 +6123,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-telemetry",
  "reearth-flow-types",
- "schemars 1.0.0-alpha.17",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror 2.0.9",
@@ -6134,26 +6134,6 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "walkdir",
-]
-
-[[package]]
-name = "ref-cast"
-version = "1.0.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccf0a6f84d5f1d581da8b41b47ec8600871962f2a528115b542b362d4b744931"
-dependencies = [
- "ref-cast-impl",
-]
-
-[[package]]
-name = "ref-cast-impl"
-version = "1.0.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcc303e793d3734489387d205e9b186fac9c6cfacedd98cbb2e8a5943595f3e6"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.95",
 ]
 
 [[package]]
@@ -6761,25 +6741,12 @@ version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09c024468a378b7e36765cd36702b7a90cc3cba11654f6685c8f233408e89e92"
 dependencies = [
+ "chrono",
  "dyn-clone",
- "schemars_derive 0.8.21",
+ "schemars_derive",
  "serde",
  "serde_json",
  "url",
-]
-
-[[package]]
-name = "schemars"
-version = "1.0.0-alpha.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88ef2a6523400a2228db974a8ddc9e1d3deaa04f51bddd7832ef8d7e531bafcc"
-dependencies = [
- "chrono",
- "dyn-clone",
- "ref-cast",
- "schemars_derive 1.0.0-alpha.17",
- "serde",
- "serde_json",
  "uuid",
 ]
 
@@ -6788,18 +6755,6 @@ name = "schemars_derive"
 version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1eee588578aff73f856ab961cd2f79e36bc45d7ded33a7562adba4667aecc0e"
-dependencies = [
- "proc-macro2",
- "quote",
- "serde_derive_internals",
- "syn 2.0.95",
-]
-
-[[package]]
-name = "schemars_derive"
-version = "1.0.0-alpha.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6d4e1945a3c9e58edaa708449b026519f7f4197185e1b5dbc689615c1ad724d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -9038,7 +8993,7 @@ dependencies = [
  "derive_builder",
  "hex",
  "indexmap 2.7.0",
- "schemars 0.8.21",
+ "schemars",
  "semver",
  "serde",
  "serde_json",
@@ -9060,7 +9015,7 @@ dependencies = [
  "derive_builder",
  "hex",
  "indexmap 2.7.0",
- "schemars 0.8.21",
+ "schemars",
  "semver",
  "serde",
  "serde_json",
