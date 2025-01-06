@@ -2525,22 +2525,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@maplibre/maplibre-gl-style-spec@npm:^22.0.1":
-  version: 22.0.1
-  resolution: "@maplibre/maplibre-gl-style-spec@npm:22.0.1"
+"@maplibre/maplibre-gl-style-spec@npm:^20.3.1":
+  version: 20.4.0
+  resolution: "@maplibre/maplibre-gl-style-spec@npm:20.4.0"
   dependencies:
     "@mapbox/jsonlint-lines-primitives": "npm:~2.0.2"
     "@mapbox/unitbezier": "npm:^0.0.1"
     json-stringify-pretty-compact: "npm:^4.0.0"
     minimist: "npm:^1.2.8"
-    quickselect: "npm:^3.0.0"
+    quickselect: "npm:^2.0.0"
     rw: "npm:^1.3.3"
     tinyqueue: "npm:^3.0.0"
   bin:
     gl-style-format: dist/gl-style-format.mjs
     gl-style-migrate: dist/gl-style-migrate.mjs
     gl-style-validate: dist/gl-style-validate.mjs
-  checksum: 10c0/8fb42ed6236fe22b7d38bc748e7308f44649d973405fe6f2f9f5960b8eec3a6585443f65397b9460d5d20f4850f8a3db61c8b51d0f0ab8099b2c562568cfa1ef
+  checksum: 10c0/3a0bfc72af3a787005a0bc7364eb7f3e9575e5d6b86c78403130873a6333a9a37199c5aca406ac9290e166c751d2b2471c8c8ba78ce31ebd0278e3fc721bad4b
   languageName: node
   linkType: hard
 
@@ -3823,7 +3823,7 @@ __metadata:
     jotai: "npm:2.11.0"
     jsdom: "npm:25.0.1"
     lodash-es: "npm:4.17.21"
-    maplibre-gl: "npm:5.0.0"
+    maplibre-gl: "npm:4.7.1"
     postcss: "npm:8.4.49"
     prettier: "npm:3.4.2"
     react: "npm:19.0.0"
@@ -5010,7 +5010,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/geojson@npm:*, @types/geojson@npm:^7946.0.15":
+"@types/geojson@npm:*, @types/geojson@npm:^7946.0.14":
   version: 7946.0.15
   resolution: "@types/geojson@npm:7946.0.15"
   checksum: 10c0/535d21ceaa01717cfdacc8f3dcbb7bc60a04361f401d80e60be22ce8dea23d669e4d0026c2c3da1168e807ee5ad4c9b2b4913ecd78eb0aabbcf76e92dc69808d
@@ -7545,7 +7545,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"earcut@npm:^3.0.1":
+"earcut@npm:^3.0.0":
   version: 3.0.1
   resolution: "earcut@npm:3.0.1"
   checksum: 10c0/cc1d3ed87a08db1a601b3b836bfb2fe22c8f923dfcfcd7419c64a5d4c270ac6d966d8d1e673cc699f8d69dc32bce84fd6d87136c49431fa35057bd7141627769
@@ -10979,9 +10979,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"maplibre-gl@npm:5.0.0":
-  version: 5.0.0
-  resolution: "maplibre-gl@npm:5.0.0"
+"maplibre-gl@npm:4.7.1":
+  version: 4.7.1
+  resolution: "maplibre-gl@npm:4.7.1"
   dependencies:
     "@mapbox/geojson-rewind": "npm:^0.5.2"
     "@mapbox/jsonlint-lines-primitives": "npm:^2.0.2"
@@ -10990,14 +10990,14 @@ __metadata:
     "@mapbox/unitbezier": "npm:^0.0.1"
     "@mapbox/vector-tile": "npm:^1.3.1"
     "@mapbox/whoots-js": "npm:^3.1.0"
-    "@maplibre/maplibre-gl-style-spec": "npm:^22.0.1"
-    "@types/geojson": "npm:^7946.0.15"
+    "@maplibre/maplibre-gl-style-spec": "npm:^20.3.1"
+    "@types/geojson": "npm:^7946.0.14"
     "@types/geojson-vt": "npm:3.2.5"
     "@types/mapbox__point-geometry": "npm:^0.1.4"
     "@types/mapbox__vector-tile": "npm:^1.3.4"
     "@types/pbf": "npm:^3.0.5"
     "@types/supercluster": "npm:^7.1.3"
-    earcut: "npm:^3.0.1"
+    earcut: "npm:^3.0.0"
     geojson-vt: "npm:^4.0.2"
     gl-matrix: "npm:^3.4.3"
     global-prefix: "npm:^4.0.0"
@@ -11009,7 +11009,7 @@ __metadata:
     supercluster: "npm:^8.0.1"
     tinyqueue: "npm:^3.0.0"
     vt-pbf: "npm:^3.1.3"
-  checksum: 10c0/ce3065685e70b97ca76c567a79d364e1a76095fd5950d048cf0e714de94fee4edd17da627090307b8065fccf64d1aa2c60cc595a605379a8d292a5e3273aecb6
+  checksum: 10c0/dad2da8474af68647f882d5c4ff6df1c9afbe49f6d06c4594e4a55df0a34674f64d347b10b7af2869ac62fe837af6a56caa7617d5602724185e4df674be67b51
   languageName: node
   linkType: hard
 
@@ -12165,6 +12165,13 @@ __metadata:
     rimraf: "npm:^2.5.4"
     underscore.string: "npm:~3.3.4"
   checksum: 10c0/3e8277a2e37db8e101fdefd59dc62050681b46d82f0c617eb700e2ef54f1c4985eff79985a24ef61834fd4c758050dbecfec7f34ed7caa6717f96de03ed9063c
+  languageName: node
+  linkType: hard
+
+"quickselect@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "quickselect@npm:2.0.0"
+  checksum: 10c0/6c8d591bc73beae4c1996b7b7138233a7dbbbdde29b7b6d822a02d08cd220fd27613f47d6e9635989b12e250d42ef9da3448de1ed12ad962974e207ab3c3562c
   languageName: node
   linkType: hard
 
