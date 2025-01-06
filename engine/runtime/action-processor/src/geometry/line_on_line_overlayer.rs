@@ -41,7 +41,7 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
         "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines."
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(LineOnLineOverlayerParam))
     }
 

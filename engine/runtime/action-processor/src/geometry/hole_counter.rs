@@ -27,7 +27,7 @@ impl ProcessorFactory for HoleCounterFactory {
         "Counts the number of holes in a geometry and adds it as an attribute."
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(HoleCounterParam))
     }
 

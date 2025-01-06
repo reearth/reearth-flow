@@ -26,7 +26,7 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
         "Filters features by duplicate attributes"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(AttributeDuplicateFilterParam))
     }
 

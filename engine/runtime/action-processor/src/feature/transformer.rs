@@ -28,7 +28,7 @@ impl ProcessorFactory for FeatureTransformerFactory {
         "Transforms features by expressions"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(FeatureTransformerParam))
     }
 

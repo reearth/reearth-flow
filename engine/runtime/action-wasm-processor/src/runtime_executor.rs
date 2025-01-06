@@ -29,7 +29,7 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
         "Compiles scripts into .wasm and runs at the wasm runtime"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(WasmRuntimeExecutorParam))
     }
 

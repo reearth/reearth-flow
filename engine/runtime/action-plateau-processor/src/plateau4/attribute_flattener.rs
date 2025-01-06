@@ -400,7 +400,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
         "Flatten attributes for building feature"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         None
     }
 

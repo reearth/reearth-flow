@@ -23,7 +23,7 @@ impl ProcessorFactory for TwoDimensionForcerFactory {
         "Forces a geometry to be two dimensional."
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         None
     }
 
