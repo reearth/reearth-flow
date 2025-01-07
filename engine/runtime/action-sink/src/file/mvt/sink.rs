@@ -4,6 +4,7 @@ use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::vec;
 
 use flate2::{write::ZlibEncoder, Compression};
@@ -35,6 +36,8 @@ use tinymvt::vector_tile;
 use super::slice::slice_cityobj_geoms;
 use super::tags::convert_properties;
 use super::tileid::TileIdMethod;
+use super::tiling::TileContent;
+use super::tiling::TileMetadata;
 use crate::errors::SinkError;
 
 #[derive(Debug, Clone, Default)]
@@ -197,9 +200,11 @@ impl MVTWriter {
             let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
             scope.spawn(|| {
                 let result = geometry_slicing_stage(
+                    ctx.clone(),
                     upstream,
                     tile_id_conv,
                     sender_sliced,
+                    output,
                     layer_name,
                     self.params.min_zoom,
                     self.params.max_zoom,
@@ -241,21 +246,29 @@ impl MVTWriter {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn geometry_slicing_stage(
+    ctx: Context,
     upstream: &[Feature],
     tile_id_conv: TileIdMethod,
     sender_sliced: std::sync::mpsc::SyncSender<(u64, Vec<u8>)>,
+    output_path: &Uri,
     layer_name: &str,
     min_zoom: u8,
     max_zoom: u8,
 ) -> crate::errors::Result<()> {
     let bincode_config = bincode::config::standard();
+    let tile_contents = Arc::new(Mutex::new(Vec::new()));
+    let storage = ctx
+        .storage_resolver
+        .resolve(output_path)
+        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))?;
 
     // Convert CityObjects to sliced features
     upstream.iter().par_bridge().try_for_each(|feature| {
         let max_detail = 12; // 4096
         let buffer_pixels = 5;
-        slice_cityobj_geoms(
+        let tile_content = slice_cityobj_geoms(
             feature,
             layer_name,
             min_zoom,
@@ -302,8 +315,51 @@ fn geometry_slicing_stage(
                 };
                 Ok(())
             },
-        )
+        )?;
+        tile_contents
+            .lock()
+            .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {}", e)))?
+            .push(tile_content);
+        Ok(())
     })?;
+
+    let mut tile_content = TileContent::default();
+    for content in tile_contents
+        .lock()
+        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {}", e)))?
+        .iter()
+    {
+        tile_content.min_lng = tile_content.min_lng.min(content.min_lng);
+        tile_content.max_lng = tile_content.max_lng.max(content.max_lng);
+        tile_content.min_lat = tile_content.min_lat.min(content.min_lat);
+        tile_content.max_lat = tile_content.max_lat.max(content.max_lat);
+    }
+    let metadata = TileMetadata::from_tile_content(
+        layer_name.to_string(),
+        min_zoom,
+        max_zoom,
+        &TileContent {
+            min_lng: tile_content.min_lng,
+            max_lng: tile_content.max_lng,
+            min_lat: tile_content.min_lat,
+            max_lat: tile_content.max_lat,
+        },
+    );
+
+    serde_json::to_string_pretty(&metadata)
+        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))
+        .and_then(|metadata| {
+            storage
+                .put_sync(
+                    &output_path
+                        .join(Path::new("metadata.json"))
+                        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))?
+                        .path(),
+                    bytes::Bytes::from(metadata),
+                )
+                .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))
+        })?;
+
     Ok(())
 }
 
