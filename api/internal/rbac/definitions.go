@@ -28,8 +28,8 @@ const (
 	roleSelf       = "self"
 	roleReader     = "reader"
 	roleEditor     = "editor"
-	roleOwner      = "owner"
 	roleMaintainer = "maintainer"
+	roleOwner      = "owner"
 )
 
 func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDefinition {
@@ -61,16 +61,16 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 				roleSelf,
 			}),
 			generator.NewActionDefinition(ActionCreate, []string{
-				roleOwner,
 				roleMaintainer,
+				roleOwner,
 			}),
 			generator.NewActionDefinition(ActionEdit, []string{
-				roleOwner,
 				roleMaintainer,
+				roleOwner,
 			}),
 			generator.NewActionDefinition(ActionDelete, []string{
-				roleOwner,
 				roleMaintainer,
+				roleOwner,
 			}),
 			generator.NewActionDefinition(ActionAny, []string{
 				roleReader,
