@@ -16,8 +16,8 @@ const (
 )
 
 const (
-	ActionList   = "list"
 	ActionRead   = "read"
+	ActionList   = "list"
 	ActionCreate = "create"
 	ActionEdit   = "edit"
 	ActionDelete = "delete"
