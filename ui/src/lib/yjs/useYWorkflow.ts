@@ -147,29 +147,38 @@ export default ({
     (nodeIds: string[]) =>
       undoTrackerActionWrapper(() => {
         const workflowIds: string[] = [];
-
-        const removeNodes = (nodeIds: string[]) => {
-          nodeIds.forEach((nid) => {
-            if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
-
-            const index = rawWorkflows.findIndex((w) => w.id === nid);
-            if (index === -1) return;
-
-            // Loop over workflow at current index and remove any subworkflow nodes
-            (rawWorkflows[index].nodes as Node[]).forEach((node) => {
+        nodeIds.forEach((nid) => {
+          if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
+          workflowIds.push(nid);
+          const workflow = rawWorkflows.find((w) => w.id === nid);
+          const nodes = workflow?.nodes;
+          // Loop over workflow and remove any subworkflow nodes
+          if (nodes && Array.isArray(nodes)) {
+            (nodes as Node[]).forEach((node) => {
               if (node.type === "subworkflow") {
-                removeNodes([node.id]);
+                workflowIds.push(node.id);
               }
             });
+          }
+        });
 
-            workflowIds.push(nid);
-            yWorkflows.delete(index);
-          });
-        };
+        // Indexes in descending order to avoid index shifting problems
+        const indexesToRemove = workflowIds
+          .map((id) => rawWorkflows.findIndex((w) => w.id === id))
+          .filter((index) => index !== -1)
+          .sort((a, b) => b - a);
 
-        removeNodes(nodeIds);
+        indexesToRemove.forEach((index) => {
+          yWorkflows.delete(index);
+        });
 
-        setWorkflows((w) => w.filter((w) => !workflowIds.includes(w.id)));
+        setWorkflows((currentWorkflows) => {
+          const remainingWorkflows = currentWorkflows.filter(
+            (w) => !workflowIds.includes(w.id),
+          );
+          return remainingWorkflows;
+        });
+
         setOpenWorkflowIds((ids) =>
           ids.filter((id) => !workflowIds.includes(id)),
         );
