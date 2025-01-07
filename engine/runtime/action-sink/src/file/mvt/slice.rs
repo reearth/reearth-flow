@@ -5,6 +5,8 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryType, Geome
 use serde::{Deserialize, Serialize};
 use tinymvt::webmercator::lnglat_to_web_mercator;
 
+use super::tiling::TileContent;
+
 pub type TileZXYName = (u8, u32, u32, String);
 
 #[derive(Serialize, Deserialize)]
@@ -25,7 +27,7 @@ pub(super) fn slice_cityobj_geoms<'a>(
     buffer_pixels: u32,
     polygon_func: impl Fn(TileZXYName, MultiPolygon2<'a>) -> Result<(), crate::errors::SinkError>,
     line_string_func: impl Fn(TileZXYName, MultiLineString2<'a>) -> Result<(), crate::errors::SinkError>,
-) -> Result<(), crate::errors::SinkError> {
+) -> Result<TileContent, crate::errors::SinkError> {
     let mut tiled_mpolys = HashMap::new();
     let mut tiled_line_strings = HashMap::new();
 
@@ -43,6 +45,7 @@ pub(super) fn slice_cityobj_geoms<'a>(
         ));
     };
 
+    let mut tile_content = TileContent::default();
     city_geometry
         .gml_geometries
         .iter()
@@ -50,6 +53,12 @@ pub(super) fn slice_cityobj_geoms<'a>(
             GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
                 for flow_poly in entry.polygons.iter() {
                     let idx_poly: Polygon2 = flow_poly.clone().into();
+                    idx_poly.raw_coords().iter().for_each(|[lng, lat]| {
+                        tile_content.min_lng = tile_content.min_lng.min(*lng);
+                        tile_content.max_lng = tile_content.max_lng.max(*lng);
+                        tile_content.min_lat = tile_content.min_lat.min(*lat);
+                        tile_content.max_lat = tile_content.max_lat.max(*lat);
+                    });
                     let poly = idx_poly.transform(|[lng, lat]| {
                         let (mx, my) = lnglat_to_web_mercator(*lng, *lat);
                         [mx, my]
@@ -74,6 +83,12 @@ pub(super) fn slice_cityobj_geoms<'a>(
             GeometryType::Curve => {
                 for flow_line_string in entry.line_strings.iter() {
                     let idx_line_string: LineString2 = flow_line_string.clone().into();
+                    idx_line_string.raw_coords().iter().for_each(|[lng, lat]| {
+                        tile_content.min_lng = tile_content.min_lng.min(*lng);
+                        tile_content.max_lng = tile_content.max_lng.max(*lng);
+                        tile_content.min_lat = tile_content.min_lat.min(*lat);
+                        tile_content.max_lat = tile_content.max_lat.max(*lat);
+                    });
                     let line_string = idx_line_string.transform(|[lng, lat]| {
                         let (mx, my) = lnglat_to_web_mercator(*lng, *lat);
                         [mx, my]
@@ -109,7 +124,7 @@ pub(super) fn slice_cityobj_geoms<'a>(
         }
         line_string_func((z, x, y, typename), mline_string)?;
     }
-    Ok(())
+    Ok(tile_content)
 
     // TODO: linestring, point
 }
