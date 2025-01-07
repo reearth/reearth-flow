@@ -33,6 +33,10 @@ const (
 )
 
 func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDefinition {
+	if builder == nil {
+		panic("ResourceBuilder cannot be nil")
+	}
+
 	return builder.
 		AddResource(ResourceUser, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionRead, []string{
