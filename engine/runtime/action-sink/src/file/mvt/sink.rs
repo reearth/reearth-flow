@@ -36,8 +36,8 @@ use tinymvt::vector_tile;
 use super::slice::slice_cityobj_geoms;
 use super::tags::convert_properties;
 use super::tileid::TileIdMethod;
-use super::tilling::TileContent;
-use super::tilling::TileMetadata;
+use super::tiling::TileContent;
+use super::tiling::TileMetadata;
 use crate::errors::SinkError;
 
 #[derive(Debug, Clone, Default)]
@@ -258,7 +258,7 @@ fn geometry_slicing_stage(
     max_zoom: u8,
 ) -> crate::errors::Result<()> {
     let bincode_config = bincode::config::standard();
-    let tile_contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
+    let tile_contents = Arc::new(Mutex::new(Vec::new()));
     let storage = ctx
         .storage_resolver
         .resolve(output_path)
@@ -316,12 +316,19 @@ fn geometry_slicing_stage(
                 Ok(())
             },
         )?;
-        tile_contents.lock().unwrap().push(tile_content);
+        tile_contents
+            .lock()
+            .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {}", e)))?
+            .push(tile_content);
         Ok(())
     })?;
 
     let mut tile_content = TileContent::default();
-    for content in tile_contents.lock().unwrap().iter() {
+    for content in tile_contents
+        .lock()
+        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {}", e)))?
+        .iter()
+    {
         tile_content.min_lng = tile_content.min_lng.min(content.min_lng);
         tile_content.max_lng = tile_content.max_lng.max(content.max_lng);
         tile_content.min_lat = tile_content.min_lat.min(content.min_lat);

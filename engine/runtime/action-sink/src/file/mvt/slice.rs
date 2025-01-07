@@ -5,7 +5,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryType, Geome
 use serde::{Deserialize, Serialize};
 use tinymvt::webmercator::lnglat_to_web_mercator;
 
-use super::tilling::TileContent;
+use super::tiling::TileContent;
 
 pub type TileZXYName = (u8, u32, u32, String);
 
