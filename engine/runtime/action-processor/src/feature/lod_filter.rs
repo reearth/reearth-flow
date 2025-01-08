@@ -85,9 +85,6 @@ impl ProcessorFactory for FeatureLodFilterFactory {
             filter_key: params.filter_key,
             buffer_features: HashMap::new(),
             max_lod: HashMap::new(),
-            lod2_counter: HashMap::new(),
-            lod3_counter: HashMap::new(),
-            lod4_counter: HashMap::new(),
         };
         Ok(Box::new(process))
     }
@@ -101,9 +98,6 @@ pub(crate) struct FeatureLodFilterParam {
 
 struct LodCount {
     max_lod: u8,
-    lod2: usize,
-    lod3: usize,
-    lod4: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -111,9 +105,6 @@ pub(crate) struct FeatureLodFilter {
     filter_key: Attribute,
     buffer_features: HashMap<AttributeValue, Vec<Feature>>,
     max_lod: HashMap<AttributeValue, u8>,
-    lod2_counter: HashMap<AttributeValue, usize>,
-    lod3_counter: HashMap<AttributeValue, usize>,
-    lod4_counter: HashMap<AttributeValue, usize>,
 }
 
 impl Processor for FeatureLodFilter {
@@ -144,18 +135,6 @@ impl Processor for FeatureLodFilter {
                 *max_lod = highest_lod;
             }
         }
-        if lod.has_lod(2) {
-            let lod2_counter = self.lod2_counter.entry(filter_key.clone()).or_insert(0);
-            *lod2_counter += 1;
-        }
-        if lod.has_lod(3) {
-            let lod3_counter = self.lod3_counter.entry(filter_key.clone()).or_insert(0);
-            *lod3_counter += 1;
-        }
-        if lod.has_lod(4) {
-            let lod4_counter = self.lod4_counter.entry(filter_key.clone()).or_insert(0);
-            *lod4_counter += 1;
-        }
         Ok(())
     }
 
@@ -167,9 +146,6 @@ impl Processor for FeatureLodFilter {
         for (key, features) in self.buffer_features.iter() {
             let lod_count = LodCount {
                 max_lod: self.max_lod.get(key).cloned().unwrap_or(0),
-                lod2: self.lod2_counter.get(key).cloned().unwrap_or(0),
-                lod3: self.lod3_counter.get(key).cloned().unwrap_or(0),
-                lod4: self.lod4_counter.get(key).cloned().unwrap_or(0),
             };
             for feature in features {
                 Self::routing_feature_by_lod(ctx.as_context(), fw, feature, &lod_count);
@@ -188,9 +164,6 @@ impl FeatureLodFilter {
         for (key, features) in self.buffer_features.drain() {
             let lod_count = LodCount {
                 max_lod: self.max_lod.get(&key).cloned().unwrap_or(0),
-                lod2: self.lod2_counter.get(&key).cloned().unwrap_or(0),
-                lod3: self.lod3_counter.get(&key).cloned().unwrap_or(0),
-                lod4: self.lod4_counter.get(&key).cloned().unwrap_or(0),
             };
             for feature in features {
                 Self::routing_feature_by_lod(ctx.clone(), fw, &feature, &lod_count);
@@ -209,35 +182,28 @@ impl FeatureLodFilter {
             return;
         };
         if lod.has_lod(1) {
-            let mut feature = feature.clone();
-            feature.refresh_id();
+            let feature = feature.clone();
             fw.send(ctx.as_executor_context(feature, UP_TO_LOD1.clone()));
         }
-        if lod_count.max_lod >= 2 && (lod.has_lod(2) || (lod.has_lod(1) && lod_count.lod2 == 0)) {
-            let mut feature = feature.clone();
-            feature.refresh_id();
+        if lod_count.max_lod >= 2 && (lod.has_lod(2) || (lod.has_lod(1) && !lod.has_lod(2))) {
+            let feature = feature.clone();
             fw.send(ctx.as_executor_context(feature, UP_TO_LOD2.clone()));
         }
         if lod_count.max_lod >= 3
             && (lod.has_lod(3)
-                || (lod.has_lod(2) && lod_count.lod3 == 0)
-                || (lod.has_lod(1) && lod_count.lod3 == 0 && lod_count.lod2 == 0))
+                || (lod.has_lod(2) && !lod.has_lod(3))
+                || (lod.has_lod(1) && !lod.has_lod(3) && !lod.has_lod(2)))
         {
-            let mut feature = feature.clone();
-            feature.refresh_id();
+            let feature = feature.clone();
             fw.send(ctx.as_executor_context(feature, UP_TO_LOD3.clone()));
         }
         if lod_count.max_lod >= 4
             && (lod.has_lod(4)
-                || (lod.has_lod(3) && lod_count.lod4 == 0)
-                || (lod.has_lod(2) && lod_count.lod4 == 0 && lod_count.lod3 == 0)
-                || (lod.has_lod(1)
-                    && lod_count.lod4 == 0
-                    && lod_count.lod3 == 0
-                    && lod_count.lod2 == 0))
+                || (lod.has_lod(3) && !lod.has_lod(4))
+                || (lod.has_lod(2) && !lod.has_lod(4) && !lod.has_lod(3))
+                || (lod.has_lod(1) && !lod.has_lod(4) && !lod.has_lod(3) && !lod.has_lod(2)))
         {
-            let mut feature = feature.clone();
-            feature.refresh_id();
+            let feature = feature.clone();
             fw.send(ctx.as_executor_context(feature, UP_TO_LOD4.clone()));
         }
     }

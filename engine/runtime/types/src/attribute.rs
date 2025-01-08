@@ -112,7 +112,7 @@ impl AttributeValue {
     }
 
     pub fn convertible_nusamai_type_ref(&self) -> bool {
-        matches!(self, Self::String(_))
+        matches!(self, Self::String(_) | Self::Number(_))
     }
 }
 
