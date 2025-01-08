@@ -1,6 +1,6 @@
 import { useReactFlow } from "@xyflow/react";
 import { debounce } from "lodash-es";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import {
   Accordion,
@@ -19,14 +19,8 @@ import { useAction } from "@flow/lib/fetch";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-import type { Action, ActionsSegregated, Node, Segregated } from "@flow/types";
+import type { Action, ActionsSegregated, Node } from "@flow/types";
 import { generateUUID } from "@flow/utils";
-
-import {
-  filterActionsForMainWorkflow,
-  filterSegregatedActionsForMainWorkflow,
-  isActionAllowedInMainWorkflow,
-} from "../../../utils";
 
 import ActionComponent from "./Action";
 
@@ -45,33 +39,20 @@ const ActionsList: React.FC<Props> = ({
 }) => {
   const t = useT();
   const { useGetActions, useGetActionsSegregated } = useAction(i18n.language);
-
   const { screenToFlowPosition } = useReactFlow();
-
   const [selected, setSelected] = useState<string | undefined>(undefined);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchDone, setSearchDone] = useState<string>("");
 
-  const [actions, setActions] = useState<Action[] | undefined>();
+  const { actions } = useGetActions({
+    isMainWorkflow,
+    searchTerm: searchDone,
+  });
 
-  const [actionsSegregated, setActionsSegregated] = useState<
-    Segregated | undefined
-  >();
-
-  const { actions: actionsData } = useGetActions();
-  const { actions: actionsSegregatedData } = useGetActionsSegregated();
-
-  useEffect(() => {
-    if (actionsData) {
-      setActions(filterActionsForMainWorkflow(actionsData, isMainWorkflow));
-    }
-    if (actionsSegregatedData) {
-      setActionsSegregated(
-        filterSegregatedActionsForMainWorkflow(
-          actionsSegregatedData,
-          isMainWorkflow,
-        ),
-      );
-    }
-  }, [actionsData, actionsSegregatedData, isMainWorkflow]);
+  const { actions: actionsSegregated } = useGetActionsSegregated({
+    isMainWorkflow,
+    searchTerm: searchDone,
+  });
 
   const tabs: {
     title: string;
@@ -126,72 +107,8 @@ const ActionsList: React.FC<Props> = ({
   const handleActionSelect = (name?: string) => {
     setSelected((prevName) => (prevName === name ? undefined : name));
   };
-  const getFilteredActions = useCallback(
-    (
-      filter: string,
-      actions?: Action[],
-      isMainWorkflow?: boolean,
-    ): Action[] | undefined =>
-      actions
-        ?.filter((action) =>
-          isActionAllowedInMainWorkflow(action, isMainWorkflow),
-        )
-        .filter((action) =>
-          (
-            Object.values(action).reduce(
-              (result, value) =>
-                (result += (
-                  Array.isArray(value)
-                    ? value.join()
-                    : typeof value === "string"
-                      ? value
-                      : ""
-                ).toLowerCase()),
-              "",
-            ) as string
-          ).includes(filter.toLowerCase()),
-        ),
-    [],
-  );
 
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [searchDone, setSearchDone] = useState<string>("");
-
-  // Don't worry too much about this implementation. It's only placeholder till we get an actual one using API
   const handleSearch = debounce((filter: string) => {
-    if (!filter) {
-      setActions(filterActionsForMainWorkflow(actionsData, isMainWorkflow));
-      setActionsSegregated(
-        filterSegregatedActionsForMainWorkflow(
-          actionsSegregatedData,
-          isMainWorkflow,
-        ),
-      );
-      return;
-    }
-
-    const filteredActions =
-      actionsData && getFilteredActions(filter, actionsData, isMainWorkflow);
-    setActions(filteredActions);
-
-    const actionsSegregated =
-      actionsSegregatedData &&
-      Object.keys(actionsSegregatedData).reduce((obj, rootKey) => {
-        obj[rootKey] = Object.keys(actionsSegregatedData[rootKey]).reduce(
-          (obj: Record<string, Action[] | undefined>, key) => {
-            obj[key] = getFilteredActions(
-              filter,
-              actionsSegregatedData[rootKey][key],
-              isMainWorkflow,
-            );
-            return obj;
-          },
-          {},
-        );
-        return obj;
-      }, {} as Segregated);
-
-    setActionsSegregated(actionsSegregated);
     setSearchDone(filter);
   }, 200);
 
@@ -229,7 +146,7 @@ const ActionsList: React.FC<Props> = ({
             key={order}
             value={order}>
             {Array.isArray(actions) ? (
-              actions.map((action, index) => (
+              actions?.map((action, index) => (
                 <Fragment key={action.name}>
                   <ActionComponent
                     action={action}
