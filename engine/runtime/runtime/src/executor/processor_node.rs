@@ -14,7 +14,7 @@ use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
 use tracing::{info_span, Span};
 
-use crate::event::EventHub;
+use crate::event::{Event, EventHub};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::kvs::KvStore;
 use crate::{
@@ -274,13 +274,14 @@ fn process(
     let now = time::Instant::now();
     let result = processor.process(ctx, channel_manager);
     let elapsed = now.elapsed();
+    let name = processor.name();
     if elapsed >= *SLOW_ACTION_THRESHOLD {
         event_hub.info_log_with_node_handle(
             Some(span.clone()),
             node_handle.clone(),
             format!(
                 "Slow action, processor node name = {:?}, node_id = {}, feature id = {:?}, elapsed = {:?}",
-                processor.name(),
+                name,
                 node_handle.id,
                 feature_id,
                 elapsed,
@@ -299,5 +300,9 @@ fn process(
                 e,
             ),
         );
+        event_hub.send(Event::ProcessorFailed {
+            node: node_handle.clone(),
+            name: name.to_string(),
+        });
     }
 }
