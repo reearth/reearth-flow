@@ -174,7 +174,6 @@ export default ({
         setOpenWorkflowIds((ids) =>
           ids.filter((id) => !workflowIds.includes(id)),
         );
-        console.log("workflowIds", rawWorkflows);
       }),
     [
       rawWorkflows,
