@@ -1,5 +1,7 @@
-use core::panic;
+use std::sync::Arc;
 
+use parking_lot::Mutex;
+use reearth_flow_runtime::node::NodeHandle;
 use uuid::Uuid;
 
 use crate::{
@@ -12,6 +14,26 @@ use crate::{
 
 use self::edge_pass_through_event::UpdatedEdge;
 
+#[derive(Debug)]
+pub(crate) struct ProcessFailedHandler {
+    pub(crate) failed_nodes: Arc<Mutex<Vec<NodeHandle>>>,
+}
+
+impl ProcessFailedHandler {
+    pub(crate) fn new() -> Self {
+        let failed_nodes = Arc::new(Mutex::new(Vec::new()));
+        Self { failed_nodes }
+    }
+}
+
+#[async_trait::async_trait]
+impl reearth_flow_runtime::event::EventHandler for ProcessFailedHandler {
+    async fn on_event(&self, event: &reearth_flow_runtime::event::Event) {
+        if let reearth_flow_runtime::event::Event::ProcessorFailed { node, .. } = event {
+            self.failed_nodes.lock().push(node.clone());
+        }
+    }
+}
 pub(crate) struct EventHandler<P: Publisher> {
     pub(crate) workflow_id: Uuid,
     pub(crate) job_id: Uuid,
@@ -67,10 +89,6 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                 if let Err(e) = self.publisher.publish(edge_pass_through_event).await {
                     tracing::error!("Failed to publish edge pass through event: {}", e);
                 }
-            }
-            reearth_flow_runtime::event::Event::ProcessorFailed { node, name } => {
-                // NOTE: For worker, force termination if even one Processor fails
-                panic!("Processor failed: node: {:?}, name: {:?}", node, name);
             }
             _ => {}
         }

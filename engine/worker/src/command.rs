@@ -11,7 +11,7 @@ use reearth_flow_types::Workflow;
 use crate::{
     artifact::upload_artifact,
     asset::download_asset,
-    event_handler::EventHandler,
+    event_handler::{EventHandler, ProcessFailedHandler},
     factory::ALL_ACTION_FACTORIES,
     pubsub::{backend::PubSubBackend, publisher::Publisher},
     types::{
@@ -153,6 +153,7 @@ impl RunWorkerCommand {
             }
         };
         let workflow_id = workflow.id;
+        let processor_failed_handler = Arc::new(ProcessFailedHandler::new());
         let result = AsyncRunner::run_with_event_handler(
             meta.job_id,
             workflow,
@@ -160,13 +161,19 @@ impl RunWorkerCommand {
             logger_factory,
             storage_resolver.clone(),
             state,
-            vec![handler],
+            vec![handler, processor_failed_handler.clone()],
         )
         .await;
         let job_result = match result {
             Ok(_) => {
-                self.cleanup(&meta, &storage_resolver).await?;
-                JobResult::Success
+                let failed_nodes = processor_failed_handler.failed_nodes.lock().clone();
+                if failed_nodes.is_empty() {
+                    self.cleanup(&meta, &storage_resolver).await?;
+                    JobResult::Success
+                } else {
+                    tracing::error!("Failed nodes: {:?}", failed_nodes);
+                    JobResult::Failed
+                }
             }
             Err(_) => JobResult::Failed,
         };
