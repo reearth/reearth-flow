@@ -72,7 +72,9 @@ export default function Editor({
             onWorkflowUndo={handleWorkflowUndo}
             onWorkflowRedo={handleWorkflowRedo}
             onNodesChange={handleNodesUpdate}
-            onNodePickerClose={handleNodePickerClose}>
+            onNodePickerClose={handleNodePickerClose}
+            mainWorkflowId={openWorkflows[0]?.id}
+            currentWorkflowId={currentWorkflowId}>
             <Canvas
               nodes={nodes}
               edges={edges}

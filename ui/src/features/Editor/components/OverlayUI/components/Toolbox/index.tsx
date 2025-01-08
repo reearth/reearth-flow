@@ -31,43 +31,57 @@ type Props = {
   canRedo: boolean;
   onRedo?: () => void;
   onUndo?: () => void;
+  mainWorkFlowId?: string;
+  currentWorkflowId: string;
 };
 
-const Toolbox: React.FC<Props> = ({ canUndo, canRedo, onRedo, onUndo }) => {
+const Toolbox: React.FC<Props> = ({
+  canUndo,
+  canRedo,
+  onRedo,
+  onUndo,
+  mainWorkFlowId,
+  currentWorkflowId,
+}) => {
   const t = useT();
 
   const availableTools: Tool[] = [
     {
-      id: "reader",
+      id: "reader" as const,
       name: t("Reader Node"),
       icon: <Database weight="thin" />,
     },
     {
-      id: "transformer",
+      id: "transformer" as const,
       name: t("Transformer Node"),
       icon: <Lightning weight="thin" />,
     },
     {
-      id: "writer",
+      id: "writer" as const,
       name: t("Writer Node"),
       icon: <Disc weight="thin" />,
     },
     {
-      id: "note",
+      id: "note" as const,
       name: t("Note"),
       icon: <Note weight="thin" />,
     },
     {
-      id: "batch",
+      id: "batch" as const,
       name: t("Batch Node"),
       icon: <RectangleDashed weight="thin" />,
     },
     {
-      id: "subworkflow",
+      id: "subworkflow" as const,
       name: t("Subworkflow Node"),
       icon: <Graph weight="thin" />,
     },
-  ];
+  ].filter((tool) => {
+    if (mainWorkFlowId !== currentWorkflowId) {
+      return tool.id !== "reader" && tool.id !== "writer";
+    }
+    return true;
+  });
 
   const availableActions: Action[] = [
     {
@@ -97,7 +111,7 @@ const Toolbox: React.FC<Props> = ({ canUndo, canRedo, onRedo, onUndo }) => {
       <div className="flex size-12 rounded bg-secondary">
         <div
           className={`
-          flex w-full justify-center rounded align-middle 
+          flex w-full justify-center rounded align-middle
           ${
             nodeType === "reader"
               ? "bg-node-reader/60"
