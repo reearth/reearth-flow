@@ -1,3 +1,6 @@
+import { useMemo } from "react";
+
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import {
   Shortcuts,
@@ -8,6 +11,12 @@ import {
   EditorKeys,
   GeneralKeys,
 } from "@flow/types";
+
+export const useIsMainWorkflow = (currentWorkflowId: string | undefined) => {
+  return useMemo(() => {
+    return currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID;
+  }, [currentWorkflowId]);
+};
 
 export default () => {
   const t = useT();

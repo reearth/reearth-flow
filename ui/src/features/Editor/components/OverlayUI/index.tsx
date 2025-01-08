@@ -29,6 +29,7 @@ type OverlayUIProps = {
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
+  isMainWorkflow: boolean;
   children?: React.ReactNode;
 };
 
@@ -43,6 +44,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onNodePickerClose,
   onWorkflowUndo,
   onWorkflowRedo,
+  isMainWorkflow,
   children: canvas,
 }) => {
   // const { devMode } = config();
@@ -58,6 +60,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           canRedo={canRedo}
           onRedo={onWorkflowRedo}
           onUndo={onWorkflowUndo}
+          isMainWorkflow={isMainWorkflow}
         />
         <ActionBar
           allowedToDeploy={allowedToDeploy}
