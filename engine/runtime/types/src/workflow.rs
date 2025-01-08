@@ -67,7 +67,7 @@ impl Workflow {
             environment_vars
                 .into_iter()
                 .map(|(key, value)| {
-                    tracing::info!("Loading environment variable: {}={}", key, value);
+                    tracing::info!("Loading environment variable: {}", key);
                     let value = match determine_format(value.as_str()) {
                         SerdeFormat::Json | SerdeFormat::Yaml => {
                             from_str(value.as_str()).map_err(crate::error::Error::input)?
