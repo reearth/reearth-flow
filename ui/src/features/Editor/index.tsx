@@ -51,7 +51,7 @@ export default function Editor({
     handleWorkflowUndo,
     handleWorkflowRename,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
-
+  const isMainWorkflow = openWorkflows[0]?.id === currentWorkflowId;
   return (
     <div className="flex h-screen flex-col">
       <div className="relative flex flex-1">
@@ -73,8 +73,7 @@ export default function Editor({
             onWorkflowRedo={handleWorkflowRedo}
             onNodesChange={handleNodesUpdate}
             onNodePickerClose={handleNodePickerClose}
-            mainWorkflowId={openWorkflows[0]?.id}
-            currentWorkflowId={currentWorkflowId}>
+            isMainWorkflow={isMainWorkflow}>
             <Canvas
               nodes={nodes}
               edges={edges}

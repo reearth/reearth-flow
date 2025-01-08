@@ -31,8 +31,7 @@ type Props = {
   canRedo: boolean;
   onRedo?: () => void;
   onUndo?: () => void;
-  mainWorkFlowId?: string;
-  currentWorkflowId: string;
+  isMainWorkflow: boolean;
 };
 
 const Toolbox: React.FC<Props> = ({
@@ -40,8 +39,7 @@ const Toolbox: React.FC<Props> = ({
   canRedo,
   onRedo,
   onUndo,
-  mainWorkFlowId,
-  currentWorkflowId,
+  isMainWorkflow,
 }) => {
   const t = useT();
 
@@ -77,7 +75,7 @@ const Toolbox: React.FC<Props> = ({
       icon: <Graph weight="thin" />,
     },
   ].filter((tool) => {
-    if (mainWorkFlowId !== currentWorkflowId) {
+    if (!isMainWorkflow) {
       return tool.id !== "reader" && tool.id !== "writer";
     }
     return true;
