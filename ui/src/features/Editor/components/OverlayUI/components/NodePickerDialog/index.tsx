@@ -12,6 +12,10 @@ import type { Action, ActionNodeType, Node } from "@flow/types";
 
 import useBatch from "../../../Canvas/useBatch";
 import { useCreateNode } from "../../../Canvas/useCreateNode";
+import {
+  filterActionsForMainWorkflow,
+  isActionAllowedInMainWorkflow,
+} from "../../../utils";
 
 type Props = {
   openedActionType: {
@@ -21,6 +25,7 @@ type Props = {
   nodes: Node[];
   onNodesChange: (nodes: Node[]) => void;
   onClose: () => void;
+  isMainWorkflow: boolean;
 };
 
 const NodePickerDialog: React.FC<Props> = ({
@@ -28,6 +33,7 @@ const NodePickerDialog: React.FC<Props> = ({
   nodes,
   onNodesChange,
   onClose,
+  isMainWorkflow,
 }) => {
   const t = useT();
   const { useGetActionsSegregated } = useAction(i18n.language);
@@ -37,10 +43,17 @@ const NodePickerDialog: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const { handleNodeDropInBatch } = useBatch();
+
   useEffect(() => {
-    if (rawActions && openedActionType?.nodeType)
-      setActions(rawActions?.byType[openedActionType.nodeType]);
-  }, [rawActions, openedActionType.nodeType]);
+    if (rawActions && openedActionType?.nodeType) {
+      setActions(
+        filterActionsForMainWorkflow(
+          rawActions?.byType[openedActionType.nodeType],
+          isMainWorkflow,
+        ),
+      );
+    }
+  }, [rawActions, openedActionType.nodeType, isMainWorkflow]);
 
   const [selected, setSelected] = useState<string | undefined>(undefined);
 
@@ -80,35 +93,50 @@ const NodePickerDialog: React.FC<Props> = ({
   );
 
   const getFilteredActions = useCallback(
-    (filter: string, actions?: Action[]): Action[] | undefined =>
-      actions?.filter((action) =>
-        (
-          Object.values(action).reduce(
-            (result, value) =>
-              (result += (
-                Array.isArray(value)
-                  ? value.join()
-                  : typeof value === "string"
-                    ? value
-                    : ""
-              ).toLowerCase()),
-            "",
-          ) as string
-        ).includes(filter.toLowerCase()),
-      ),
+    (
+      filter: string,
+      actions?: Action[],
+      isMainWorkflow?: boolean,
+    ): Action[] | undefined =>
+      actions
+        ?.filter((action) =>
+          isActionAllowedInMainWorkflow(action, isMainWorkflow),
+        )
+        .filter((action) =>
+          (
+            Object.values(action).reduce(
+              (result, value) =>
+                (result += (
+                  Array.isArray(value)
+                    ? value.join()
+                    : typeof value === "string"
+                      ? value
+                      : ""
+                ).toLowerCase()),
+              "",
+            ) as string
+          ).includes(filter.toLowerCase()),
+        ),
     [],
   );
 
   const handleSearch = debounce((filter: string) => {
     if (!filter) {
-      setActions(rawActions?.byType[openedActionType.nodeType]);
+      setActions(
+        filterActionsForMainWorkflow(
+          rawActions?.byType[openedActionType.nodeType],
+          isMainWorkflow,
+        ),
+      );
       return;
     }
 
     const filteredActions = getFilteredActions(
       filter,
       rawActions?.byType[openedActionType.nodeType],
+      isMainWorkflow,
     );
+
     setActions(filteredActions);
   }, 200);
 

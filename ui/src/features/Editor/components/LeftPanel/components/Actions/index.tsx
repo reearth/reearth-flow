@@ -22,6 +22,12 @@ import i18n from "@flow/lib/i18n/i18n";
 import type { Action, ActionsSegregated, Node, Segregated } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
+import {
+  filterActionsForMainWorkflow,
+  filterSegregatedActionsForMainWorkflow,
+  isActionAllowedInMainWorkflow,
+} from "../../../utils";
+
 import ActionComponent from "./Action";
 
 type Ordering = "default" | "categorically" | "byType";
@@ -29,9 +35,14 @@ type Ordering = "default" | "categorically" | "byType";
 type Props = {
   nodes: Node[];
   onNodesChange: (nodes: Node[]) => void;
+  isMainWorkflow: boolean;
 };
 
-const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
+const ActionsList: React.FC<Props> = ({
+  nodes,
+  onNodesChange,
+  isMainWorkflow,
+}) => {
   const t = useT();
   const { useGetActions, useGetActionsSegregated } = useAction(i18n.language);
 
@@ -49,9 +60,18 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
   const { actions: actionsSegregatedData } = useGetActionsSegregated();
 
   useEffect(() => {
-    if (actionsData) setActions(actionsData);
-    if (actionsSegregatedData) setActionsSegregated(actionsSegregatedData);
-  }, [actionsData, actionsSegregatedData]);
+    if (actionsData) {
+      setActions(filterActionsForMainWorkflow(actionsData, isMainWorkflow));
+    }
+    if (actionsSegregatedData) {
+      setActionsSegregated(
+        filterSegregatedActionsForMainWorkflow(
+          actionsSegregatedData,
+          isMainWorkflow,
+        ),
+      );
+    }
+  }, [actionsData, actionsSegregatedData, isMainWorkflow]);
 
   const tabs: {
     title: string;
@@ -106,24 +126,31 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
   const handleActionSelect = (name?: string) => {
     setSelected((prevName) => (prevName === name ? undefined : name));
   };
-
   const getFilteredActions = useCallback(
-    (filter: string, actions?: Action[]): Action[] | undefined =>
-      actions?.filter((action) =>
-        (
-          Object.values(action).reduce(
-            (result, value) =>
-              (result += (
-                Array.isArray(value)
-                  ? value.join()
-                  : typeof value === "string"
-                    ? value
-                    : ""
-              ).toLowerCase()),
-            "",
-          ) as string
-        ).includes(filter.toLowerCase()),
-      ),
+    (
+      filter: string,
+      actions?: Action[],
+      isMainWorkflow?: boolean,
+    ): Action[] | undefined =>
+      actions
+        ?.filter((action) =>
+          isActionAllowedInMainWorkflow(action, isMainWorkflow),
+        )
+        .filter((action) =>
+          (
+            Object.values(action).reduce(
+              (result, value) =>
+                (result += (
+                  Array.isArray(value)
+                    ? value.join()
+                    : typeof value === "string"
+                      ? value
+                      : ""
+                ).toLowerCase()),
+              "",
+            ) as string
+          ).includes(filter.toLowerCase()),
+        ),
     [],
   );
 
@@ -133,13 +160,18 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
   // Don't worry too much about this implementation. It's only placeholder till we get an actual one using API
   const handleSearch = debounce((filter: string) => {
     if (!filter) {
-      setActions(actionsData);
-      setActionsSegregated(actionsSegregatedData);
+      setActions(filterActionsForMainWorkflow(actionsData, isMainWorkflow));
+      setActionsSegregated(
+        filterSegregatedActionsForMainWorkflow(
+          actionsSegregatedData,
+          isMainWorkflow,
+        ),
+      );
       return;
     }
 
     const filteredActions =
-      actionsData && getFilteredActions(filter, actionsData);
+      actionsData && getFilteredActions(filter, actionsData, isMainWorkflow);
     setActions(filteredActions);
 
     const actionsSegregated =
@@ -150,6 +182,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
             obj[key] = getFilteredActions(
               filter,
               actionsSegregatedData[rootKey][key],
+              isMainWorkflow,
             );
             return obj;
           },
