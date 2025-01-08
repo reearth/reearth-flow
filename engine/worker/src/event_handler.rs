@@ -1,3 +1,5 @@
+use core::panic;
+
 use uuid::Uuid;
 
 use crate::{
@@ -65,6 +67,10 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                 if let Err(e) = self.publisher.publish(edge_pass_through_event).await {
                     tracing::error!("Failed to publish edge pass through event: {}", e);
                 }
+            }
+            reearth_flow_runtime::event::Event::ProcessorFailed { node, name } => {
+                // NOTE: For worker, force termination if even one Processor fails
+                panic!("Processor failed: node: {:?}, name: {:?}", node, name);
             }
             _ => {}
         }
