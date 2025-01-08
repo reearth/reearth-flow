@@ -11,7 +11,7 @@ use reearth_flow_types::Workflow;
 use crate::{
     artifact::upload_artifact,
     asset::download_asset,
-    event_handler::{EventHandler, ProcessFailedHandler},
+    event_handler::{EventHandler, ProcessorFailedHandler},
     factory::ALL_ACTION_FACTORIES,
     pubsub::{backend::PubSubBackend, publisher::Publisher},
     types::{
@@ -153,7 +153,7 @@ impl RunWorkerCommand {
             }
         };
         let workflow_id = workflow.id;
-        let processor_failed_handler = Arc::new(ProcessFailedHandler::new());
+        let processor_failed_handler = Arc::new(ProcessorFailedHandler::new());
         let result = AsyncRunner::run_with_event_handler(
             meta.job_id,
             workflow,
