@@ -147,21 +147,27 @@ export default ({
     (nodeIds: string[]) =>
       undoTrackerActionWrapper(() => {
         const workflowIds: string[] = [];
-        nodeIds.forEach((nid) => {
+
+        const collectWorkflowIds = (nid: string) => {
           if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
-          workflowIds.push(nid);
+
           const workflow = rawWorkflows.find((w) => w.id === nid);
-          const nodes = workflow?.nodes;
+          if (!workflow) return;
+
+          workflowIds.push(nid);
+
+          const nodes = workflow.nodes;
           // Loop over workflow and remove any subworkflow nodes
           if (nodes && Array.isArray(nodes)) {
             (nodes as Node[]).forEach((node) => {
               if (node.type === "subworkflow") {
-                workflowIds.push(node.id);
+                collectWorkflowIds(node.id);
               }
             });
           }
-        });
+        };
 
+        nodeIds.forEach((nid) => collectWorkflowIds(nid));
         // Indexes in descending order to avoid index shifting problems
         const indexesToRemove = workflowIds
           .map((id) => rawWorkflows.findIndex((w) => w.id === id))
@@ -170,6 +176,9 @@ export default ({
 
         indexesToRemove.forEach((index) => {
           yWorkflows.delete(index);
+          if (Array.isArray(rawWorkflows)) {
+            rawWorkflows.splice(index, 1);
+          }
         });
 
         setWorkflows((currentWorkflows) => {
