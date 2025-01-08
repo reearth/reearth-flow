@@ -148,49 +148,33 @@ export default ({
       undoTrackerActionWrapper(() => {
         const workflowIds: string[] = [];
 
-        const collectWorkflowIds = (nid: string) => {
-          if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
+        const removeNodes = (nodeIds: string[]) => {
+          nodeIds.forEach((nid) => {
+            if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
 
-          const workflow = rawWorkflows.find((w) => w.id === nid);
-          if (!workflow) return;
+            const index = rawWorkflows.findIndex((w) => w.id === nid);
+            if (index === -1) return;
 
-          workflowIds.push(nid);
-
-          const nodes = workflow.nodes;
-          // Loop over workflow and remove any subworkflow nodes
-          if (nodes && Array.isArray(nodes)) {
-            (nodes as Node[]).forEach((node) => {
+            // Loop over workflow at current index and remove any subworkflow nodes
+            (rawWorkflows[index].nodes as Node[]).forEach((node) => {
               if (node.type === "subworkflow") {
-                collectWorkflowIds(node.id);
+                removeNodes([node.id]);
               }
             });
-          }
+
+            workflowIds.push(nid);
+            yWorkflows.delete(index);
+            rawWorkflows.splice(index, 1);
+          });
         };
 
-        nodeIds.forEach((nid) => collectWorkflowIds(nid));
-        // Indexes in descending order to avoid index shifting problems
-        const indexesToRemove = workflowIds
-          .map((id) => rawWorkflows.findIndex((w) => w.id === id))
-          .filter((index) => index !== -1)
-          .sort((a, b) => b - a);
+        removeNodes(nodeIds);
 
-        indexesToRemove.forEach((index) => {
-          yWorkflows.delete(index);
-          if (Array.isArray(rawWorkflows)) {
-            rawWorkflows.splice(index, 1);
-          }
-        });
-
-        setWorkflows((currentWorkflows) => {
-          const remainingWorkflows = currentWorkflows.filter(
-            (w) => !workflowIds.includes(w.id),
-          );
-          return remainingWorkflows;
-        });
-
+        setWorkflows((w) => w.filter((w) => !workflowIds.includes(w.id)));
         setOpenWorkflowIds((ids) =>
           ids.filter((id) => !workflowIds.includes(id)),
         );
+        console.log("workflowIds", rawWorkflows);
       }),
     [
       rawWorkflows,
