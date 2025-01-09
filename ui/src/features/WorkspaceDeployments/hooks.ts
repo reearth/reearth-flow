@@ -60,12 +60,7 @@ export default () => {
   const handleDeploymentUpdate = useCallback(
     async (description?: string) => {
       if (!selectedDeployment) return;
-      await useUpdateDeployment(
-        selectedDeployment.id,
-        undefined,
-        undefined,
-        description,
-      );
+      await useUpdateDeployment(selectedDeployment.id, undefined, description);
     },
     [selectedDeployment, useUpdateDeployment],
   );
