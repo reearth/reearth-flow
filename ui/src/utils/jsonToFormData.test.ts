@@ -1,20 +1,21 @@
 import { describe, it, expect } from "vitest";
 
-import { yamlToFormData } from "./yamlToFormData";
+import { jsonToFormData } from "./jsonToFormData";
 
-describe("yamlToFormData", () => {
-  it("should create FormData with a yaml file", () => {
+describe("jsonToFormData", () => {
+  it("should create FormData with a JSON file", () => {
     return new Promise<void>((resolve, reject) => {
-      const yaml = "key: value";
-      const formData = yamlToFormData(yaml);
+      const json = { key: "value" };
+      const formData = jsonToFormData(json);
       const file = formData.get("file") as File;
       expect(file).toBeInstanceOf(File);
-      expect(file.name).toBe("untitled.yml");
-      expect(file.type).toBe("application/x-yaml");
+      expect(file.name).toBe("untitled.json");
+      expect(file.type).toBe("application/json");
+
       const reader = new FileReader();
       reader.onerror = () => reject(reader.error);
       reader.onload = () => {
-        expect(reader.result).toBe(yaml);
+        expect(reader.result).toBe(JSON.stringify(json));
         resolve();
       };
       reader.readAsText(file);
@@ -23,39 +24,39 @@ describe("yamlToFormData", () => {
 
   it("should use the provided fileName", () => {
     return new Promise<void>((resolve, reject) => {
-      const yaml = "key: value";
+      const json = { key: "value" };
       const fileName = "test";
-      const formData = yamlToFormData(yaml, fileName);
+      const formData = jsonToFormData(json, fileName);
 
       const file = formData.get("file") as File;
       expect(file).toBeInstanceOf(File);
-      expect(file.name).toBe(`${fileName}.yml`);
-      expect(file.type).toBe("application/x-yaml");
+      expect(file.name).toBe(`${fileName}.json`);
+      expect(file.type).toBe("application/json");
 
       const reader = new FileReader();
       reader.onerror = () => reject(reader.error);
       reader.onload = () => {
-        expect(reader.result).toBe(yaml);
+        expect(reader.result).toBe(JSON.stringify(json));
         resolve();
       };
       reader.readAsText(file);
     });
   });
 
-  it("should handle empty yaml string", () => {
+  it("should handle an empty JSON object", () => {
     return new Promise<void>((resolve, reject) => {
-      const yaml = "";
-      const formData = yamlToFormData(yaml);
+      const json = {};
+      const formData = jsonToFormData(json);
 
       const file = formData.get("file") as File;
       expect(file).toBeInstanceOf(File);
-      expect(file.name).toBe("untitled.yml");
-      expect(file.type).toBe("application/x-yaml");
+      expect(file.name).toBe("untitled.json");
+      expect(file.type).toBe("application/json");
 
       const reader = new FileReader();
       reader.onerror = () => reject(reader.error);
       reader.onload = () => {
-        expect(reader.result).toBe(yaml);
+        expect(reader.result).toBe(JSON.stringify(json));
         resolve();
       };
       reader.readAsText(file);
