@@ -7,3 +7,4 @@ pub(crate) mod folder;
 pub(crate) mod reader;
 
 pub use de_funcs::*;
+pub use error::Error;

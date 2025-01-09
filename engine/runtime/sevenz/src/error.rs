@@ -14,6 +14,8 @@ pub enum Error {
     Io(std::io::Error, Cow<'static, str>),
     #[error("Other")]
     Other(Cow<'static, str>),
+    #[error("Unknown: {0}")]
+    Unknown(String),
     #[error("BadTerminatedStreamsInfo")]
     BadTerminatedStreamsInfo(u8),
     #[error("BadTerminatedUnpackInfo")]
