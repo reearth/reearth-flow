@@ -77,7 +77,11 @@ const DetailsBox: React.FC<Props> = ({ title, content, onContentChange }) => {
                 <p>{detail.name}</p>
                 <p
                   className={`${detail.type === "link" ? "cursor-pointer font-light text-blue-400 hover:text-blue-300" : "font-normal"}`}
-                  onClick={openLinkInNewTab(detail.value)}>
+                  onClick={
+                    detail.type === "link"
+                      ? openLinkInNewTab(detail.value)
+                      : undefined
+                  }>
                   {detail.value}
                 </p>
               </div>
