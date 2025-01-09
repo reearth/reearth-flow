@@ -43,7 +43,7 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
         }}>
         <div className="fixed right-0 z-[1] flex justify-end p-4">
           <IconButton
-            className="before:bg-success relative before:absolute before:inset-y-0 before:right-0 before:z-[-1] before:content-['']"
+            className="relative before:absolute before:inset-y-0 before:right-0 before:z-[-1] before:bg-success before:content-['']"
             icon={<X className="size-[30px]" weight="thin" />}
             onClick={handleClose}
           />
@@ -51,7 +51,7 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
       </div>
       <div
         id="right-panel"
-        className="bg-background fixed right-0 flex h-full w-[350px] border-l transition-all"
+        className="fixed right-0 flex h-full w-[350px] border-l bg-background transition-all"
         style={{
           transform: `translateX(${selected ? "0" : "100%"})`,
           transitionDuration: selected ? "500ms" : "300ms",
@@ -60,12 +60,7 @@ const RightPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
         }}>
         <div className="size-full py-4 pl-4 pr-2">
           {selected && (
-            <ParamEditor
-              nodeId={selected.id}
-              nodeMeta={selected.data}
-              nodeType={selected.type}
-              onSubmit={handleParamsSubmit}
-            />
+            <ParamEditor node={selected} onSubmit={handleParamsSubmit} />
           )}
         </div>
       </div>

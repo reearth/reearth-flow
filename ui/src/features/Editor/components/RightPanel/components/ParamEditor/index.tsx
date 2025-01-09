@@ -7,6 +7,7 @@ import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
+import { Node } from "@flow/types";
 
 type Props = {
   node: Node;
@@ -18,7 +19,7 @@ type Props = {
 const ParamEditor: React.FC<Props> = ({ onSubmit, node }) => {
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
-  const { action } = useGetActionById(nodeMeta.officialName);
+  const { action } = useGetActionById(node.data.officialName);
 
   // This is a patch for the `anyOf` type in JSON Schema.
   const patchedSchema = useMemo<RJSFSchema | undefined>(
@@ -29,68 +30,7 @@ const ParamEditor: React.FC<Props> = ({ onSubmit, node }) => {
     [action?.parameter],
   );
 
-  const handleSubmit = (data: any) => onSubmit(nodeId, data);
-
-  // TODO: Till the backend for the batch node is ready, let's use this type
-  // TODO: Implemented with just en lang
-  const batchNodeSchema: RJSFSchema = {
-    type: "object",
-    properties: {
-      type: {
-        type: "string",
-        const: "batch",
-        title: "Type",
-        readOnly: true,
-      },
-      name: { type: "string", title: "Name", $id: "name" },
-      color: {
-        type: "object",
-        title: "Color (RGBA hex)",
-        properties: {
-          titleColor: {
-            type: "string",
-            title: "Title Color",
-          },
-          transparency: {
-            type: "number",
-            title: "Transparency",
-          },
-          backgroundColor: {
-            type: "string",
-            title: "Background Color",
-          },
-          borderColor: {
-            type: "string",
-            title: "Border Color",
-          },
-        },
-      },
-      size: {
-        type: "object",
-        title: "Size",
-        properties: {
-          height: { type: "number", title: "Height" },
-          width: { type: "number", title: "Width" },
-        },
-      },
-    },
-    required: ["name"],
-  };
-
-  const batchNodeParams = {
-    type: "batch",
-    name: nodeMeta.name,
-    color: {
-      // titleColor: "#000000",
-      // transparency: 1,
-      // backgroundColor: "#ffffff",
-      // borderColor: "#000000",
-    },
-    size: {
-      height: node.height,
-      width: node.width,
-    },
-  };
+  const handleSubmit = (data: any) => onSubmit(node.id, data);
 
   return (
     <div>
@@ -117,12 +57,12 @@ const ParamEditor: React.FC<Props> = ({ onSubmit, node }) => {
           </TabsTrigger> */}
 
         <TabsContent value="params">
-          <div className="bg-card rounded border p-3">
+          <div className="rounded border bg-card p-3">
             {!action?.parameter && <p>{t("No Parameters Available")}</p>}
             {action && (
               <SchemaForm
                 schema={patchedSchema}
-                defaultFormData={nodeMeta.params}
+                defaultFormData={node.data}
                 onSubmit={handleSubmit}
               />
             )}

@@ -68,8 +68,6 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
   // No need to memoize as we want to update because bounds will change on resize
   const bounds = getChildNodesBoundary();
 
-  const params = data.params as unknown as BatchNodeParams | undefined;
-
   return (
     <>
       {selected && (
