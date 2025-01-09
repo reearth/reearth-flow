@@ -6,6 +6,7 @@ use crc::Crc;
 use crate::{archive::*, decoders::add_decoder, error::Error, folder::*};
 pub(crate) const CRC32: Crc<u32> = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
 const MAX_MEM_LIMIT_KB: usize = usize::MAX / 1024;
+const MAX_FILES: usize = 1_000_000; // Adjust based on your requirements
 
 #[allow(dead_code)]
 pub(crate) trait SeedRead: Read + Seek {}
@@ -430,6 +431,12 @@ impl Archive {
     #[allow(clippy::needless_range_loop)]
     fn read_files_info<R: Read + Seek>(header: &mut R, archive: &mut Archive) -> Result<(), Error> {
         let num_files = read_usize(header, "num files")?;
+        if num_files > MAX_FILES {
+            return Err(Error::other(format!(
+                "Too many files in archive: {} (max: {})",
+                num_files, MAX_FILES
+            )));
+        }
         let mut files: Vec<SevenZArchiveEntry> = vec![Default::default(); num_files];
 
         let mut is_empty_stream: Option<BitSet> = None;
@@ -1388,6 +1395,13 @@ impl<'a, R: Read + Seek> BlockDecoder<'a, R> {
 }
 
 #[derive(Debug, Copy)]
+/// A raw pointer wrapper for sharing a reader between multiple consumers.
+///
+/// # Safety
+///
+/// The wrapped reader must outlive all instances of `ReaderPtr` and must not be
+/// accessed directly while `ReaderPtr` instances exist. The reader must be
+/// accessed only through the `ReaderPtr` interface to prevent data races.
 struct ReaderPtr<R> {
     reader: *mut R,
 }
@@ -1409,6 +1423,10 @@ impl<R> ReaderPtr<R> {
 }
 
 impl<R: Read> Read for ReaderPtr<R> {
+    /// # Safety
+    ///
+    /// This method is safe as long as the original reader exists and is not
+    /// accessed directly while this `ReaderPtr` exists.
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         unsafe { (*self.reader).read(buf) }
     }
