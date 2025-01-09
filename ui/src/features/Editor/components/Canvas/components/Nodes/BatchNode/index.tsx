@@ -93,9 +93,9 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
         />
       )}
       <div
-        className={`bg-accent/20 relative z-0 h-full rounded-b-sm ${selected ? "border-border" : undefined}`}>
+        className={`relative z-0 h-full rounded-b-sm bg-accent/20 ${selected ? "border-border" : undefined}`}>
         <div
-          className={`bg-accent/50 absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t px-2 py-1 ${selected ? "border-border" : "border-transparent"}`}>
+          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1 ${selected ? "border-border" : "border-transparent"}`}>
           <RectangleDashed />
           <p>{data.customName || data.officialName}</p>
         </div>
