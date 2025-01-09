@@ -32,11 +32,12 @@ const ArrayFieldItemTemplate = <
     registry.templates.ButtonTemplates;
   return (
     <div>
-      <div className="mb-2 flex items-center">
+      <div className="mb-2 flex items-center gap-1">
         <div>{children}</div>
-        <div className="py-4">
+        {/* TODO: depending on the type of the children, stylings for icons are broken. */}
+        <div className="pt-4">
           {hasToolbar && (
-            <div className="flex flex-row">
+            <div className="flex flex-row gap-1">
               {(hasMoveUp || hasMoveDown) && (
                 <div>
                   <MoveUpButton

@@ -31,12 +31,20 @@ func serveFiles(
 					ct = ct2
 				}
 			}
+
+			// For HEAD requests, just set headers without streaming body
+			if ctx.Request().Method == "HEAD" {
+				ctx.Response().Header().Set("Content-Type", ct)
+				return ctx.NoContent(http.StatusOK)
+			}
+
 			return ctx.Stream(http.StatusOK, ct, reader)
 		}
 	}
 
-	ec.GET(
-		"/assets/:filename",
+	group := ec.Group("")
+
+	group.Match([]string{"GET", "HEAD"}, "/assets/:filename",
 		fileHandler(func(ctx echo.Context) (io.Reader, string, error) {
 			filename := ctx.Param("filename")
 			r, err := repo.ReadAsset(ctx.Request().Context(), filename)
@@ -44,11 +52,18 @@ func serveFiles(
 		}),
 	)
 
-	ec.GET(
-		"/workflows/:filename",
+	group.Match([]string{"GET", "HEAD"}, "/workflows/:filename",
 		fileHandler(func(ctx echo.Context) (io.Reader, string, error) {
 			filename := ctx.Param("filename")
 			r, err := repo.ReadWorkflow(ctx.Request().Context(), filename)
+			return r, filename, err
+		}),
+	)
+
+	group.Match([]string{"GET", "HEAD"}, "/metadata/:filename",
+		fileHandler(func(ctx echo.Context) (io.Reader, string, error) {
+			filename := ctx.Param("filename")
+			r, err := repo.ReadMetadata(ctx.Request().Context(), filename)
 			return r, filename, err
 		}),
 	)

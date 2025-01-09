@@ -39,7 +39,7 @@ pub fn slice_to_tiles<E>(
     };
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
 
-    let slicing_enabled = true;
+    let slicing_enabled = false;
 
     let mut sliced_tiles: HashMap<(u8, u32, u32), SlicedFeature> = HashMap::new();
     let mut materials: IndexSet<Material> = IndexSet::new();
@@ -160,7 +160,18 @@ pub fn slice_to_tiles<E>(
                                                 .clone()
                                                 .into_iter()
                                                 .filter(|(_, v)| v.convertible_nusamai_type_ref())
-                                                .map(|(k, v)| (k.to_string(), v.clone()))
+                                                .map(|(k, v)| {
+                                                    if let AttributeValue::Number(value) = v {
+                                                        (
+                                                            k.to_string(),
+                                                            AttributeValue::String(
+                                                                value.to_string(),
+                                                            ),
+                                                        )
+                                                    } else {
+                                                        (k.to_string(), v.clone())
+                                                    }
+                                                })
                                                 .collect(),
                                             polygon_material_ids: Default::default(),
                                             materials: Default::default(), // set later
@@ -181,7 +192,17 @@ pub fn slice_to_tiles<E>(
                                             .attributes
                                             .clone()
                                             .into_iter()
-                                            .map(|(k, v)| (k.to_string(), v.clone()))
+                                            .filter(|(_, v)| v.convertible_nusamai_type_ref())
+                                            .map(|(k, v)| {
+                                                if let AttributeValue::Number(value) = v {
+                                                    (
+                                                        k.to_string(),
+                                                        AttributeValue::String(value.to_string()),
+                                                    )
+                                                } else {
+                                                    (k.to_string(), v.clone())
+                                                }
+                                            })
                                             .collect(),
                                         polygon_material_ids: Default::default(),
                                         materials: Default::default(), // set later

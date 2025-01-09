@@ -26,9 +26,13 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	ar *accountrepo.Container, ag *accountgateway.Container,
 	config ContainerConfig,
 ) interfaces.Container {
+	job := NewJob(r, g)
+
 	return interfaces.Container{
 		Asset:      NewAsset(r, g),
-		Deployment: NewDeployment(r, g),
+		Job:        job,
+		Deployment: NewDeployment(r, g, job),
+		Parameter:  NewParameter(r),
 		Project:    NewProject(r, g),
 		Workspace:  accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
 		User:       accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),

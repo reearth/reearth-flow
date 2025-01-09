@@ -147,9 +147,9 @@ graphs:
           env.get("__value").extension == "gml"
         outputPort: default
   - id: 712e4c72-950d-466d-9598-19f299668e7e
-    name: PLATEAU.UDXFolderExtractor-01
+    name: PLATEAU3.UDXFolderExtractor-01
     type: action
-    action: PLATEAU.UDXFolderExtractor
+    action: PLATEAU3.UDXFolderExtractor
     with:
       cityGmlPath: |
         env.get("__value")["path"]
@@ -204,7 +204,7 @@ graphs:
     fromPort: default
     toPort: default
 - id: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
-  name: PLATEAU.SurfaceValidator2D
+  name: PLATEAU3.SurfaceValidator2D
   nodes:
   - id: 6a141be1-ee08-4cc4-9c0a-c3f8cad6679f
     name: Noop

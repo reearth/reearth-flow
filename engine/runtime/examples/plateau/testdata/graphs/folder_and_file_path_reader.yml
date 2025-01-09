@@ -28,9 +28,9 @@ nodes:
           outputPort: default
 
   - id: 712e4c72-950d-466d-9598-19f299668e7e
-    name: PLATEAU.UDXFolderExtractor
+    name: PLATEAU3.UDXFolderExtractor
     type: action
-    action: PLATEAU.UDXFolderExtractor
+    action: PLATEAU3.UDXFolderExtractor
     with:
       cityGmlPath: |
         env.get("__value")["path"]

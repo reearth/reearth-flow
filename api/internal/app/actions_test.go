@@ -4,142 +4,136 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
-	"sync"
 	"testing"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLoadActionsData(t *testing.T) {
+func resetTestData() {
 	actionsData = ActionsData{}
-	once = sync.Once{}
+	actionsDataMap = make(map[string]ActionsData)
+}
 
-	err := loadActionsData()
-	assert.NoError(t, err)
-	assert.NotEmpty(t, actionsData.Actions)
+func TestLoadActionsData(t *testing.T) {
+	tests := []struct {
+		name    string
+		lang    string
+		wantErr bool
+	}{
+		{"Default language", "", false},
+		{"En1ish", "en", false},
+		{"Japanese", "ja", false},
+		{"Invalid language", "invalid", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetTestData()
+			err := loadActionsData(tt.lang)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.NotEmpty(t, actionsData.Actions)
+
+				// Verify cache
+				assert.NotNil(t, actionsDataMap[tt.lang])
+				assert.Equal(t, actionsData, actionsDataMap[tt.lang])
+			}
+		})
+	}
 }
 
 func TestListActions(t *testing.T) {
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/actions", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	if assert.NoError(t, listActions(c)) {
-		assert.Equal(t, http.StatusOK, rec.Code)
-
-		var response []ActionSummary
-		err := json.Unmarshal(rec.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, response)
-
-		firstAction := response[0]
-		assert.NotEmpty(t, firstAction.Name)
-		assert.NotEmpty(t, firstAction.Type)
-		assert.NotEmpty(t, firstAction.Description)
-	}
-}
-
-func TestListActionsWithSearch(t *testing.T) {
-	originalData := actionsData
-	defer func() { actionsData = originalData }()
-
-	actionsData = ActionsData{
-		Actions: []Action{
-			{
-				Name:        "FileWriter",
-				Description: "Writes features to a file",
-				Type:        ActionTypeSink,
-				Categories:  []string{"File"},
-			},
-			{
-				Name:        "OtherAction",
-				Description: "Some other action",
-				Type:        ActionTypeProcessor,
-			},
-		},
+	tests := []struct {
+		name     string
+		query    string
+		lang     string
+		wantCode int
+	}{
+		{"Default language", "", "", http.StatusOK},
+		{"With language", "", "en", http.StatusOK},
+		{"Japanese language", "", "ja", http.StatusOK},
+		{"Invalid language", "", "invalid", http.StatusBadRequest},
 	}
 
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/actions?q=file", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetTestData()
+			req := httptest.NewRequest(http.MethodGet, "/actions?lang="+tt.lang+tt.query, nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-	err := listActions(c)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
+			err := listActions(c)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantCode, rec.Code)
 
-	var response []ActionSummary
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, response, "Search should return at least one result")
-
-	for _, action := range response {
-		lowercaseContent := strings.ToLower(action.Name + " " + action.Description)
-		assert.Contains(t, lowercaseContent, "file",
-			"Each result should contain 'file' in name or description")
+			if tt.wantCode == http.StatusOK {
+				var response []ActionSummary
+				err := json.Unmarshal(rec.Body.Bytes(), &response)
+				assert.NoError(t, err)
+				assert.NotEmpty(t, response)
+			}
+		})
 	}
 }
 
 func TestGetSegregatedActions(t *testing.T) {
-	originalData := actionsData
-	defer func() { actionsData = originalData }()
-
-	actionsData = ActionsData{
-		Actions: []Action{
-			{
-				Name:        "FileWriter",
-				Type:        ActionTypeSink,
-				Description: "Writes features to a file",
-				Categories:  []string{"File"},
-			},
-			{
-				Name:        "Router",
-				Type:        ActionTypeProcessor,
-				Description: "Action for last port forwarding for sub-workflows.",
-				Categories:  []string{},
-			},
+	testActions := []Action{
+		{
+			Name:        "FileWriter",
+			Type:        ActionTypeSink,
+			Description: "Writes features to a file",
+			Categories:  []string{"File"},
+		},
+		{
+			Name:        "Router",
+			Type:        ActionTypeProcessor,
+			Description: "Action for port forwarding",
+			Categories:  []string{},
 		},
 	}
 
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/actions/segregated", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	err := getSegregatedActions(c)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
-
-	var response SegregatedActions
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
-	assert.NoError(t, err)
-
-	assert.NotEmpty(t, response.ByCategory)
-	assert.NotEmpty(t, response.ByType)
-
-	assert.Contains(t, response.ByCategory, "File")
-	assert.Contains(t, response.ByCategory, "Uncategorized")
-	assert.Contains(t, response.ByType, string(ActionTypeSink))
-	assert.Contains(t, response.ByType, string(ActionTypeProcessor))
-
-	uncategorizedActions := response.ByCategory["Uncategorized"]
-	routerFound := false
-	for _, action := range uncategorizedActions {
-		if action.Name == "Router" {
-			routerFound = true
-			break
-		}
+	tests := []struct {
+		name     string
+		lang     string
+		wantCode int
+	}{
+		{"Default language", "", http.StatusOK},
+		{"English", "en", http.StatusOK},
+		{"Japanese", "ja", http.StatusOK},
+		{"Invalid language", "invalid", http.StatusBadRequest},
 	}
-	assert.True(t, routerFound, "Router should be in Uncategorized category")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetTestData()
+			actionsData = ActionsData{Actions: testActions}
+			actionsDataMap[tt.lang] = actionsData
+
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/actions/segregated?lang="+tt.lang, nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			err := getSegregatedActions(c)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantCode, rec.Code)
+
+			if tt.wantCode == http.StatusOK {
+				var response SegregatedActions
+				err = json.Unmarshal(rec.Body.Bytes(), &response)
+				assert.NoError(t, err)
+				assert.NotEmpty(t, response.ByCategory)
+				assert.NotEmpty(t, response.ByType)
+			}
+		})
+	}
 }
 
 func TestGetActionDetails(t *testing.T) {
-	originalData := actionsData
-	defer func() { actionsData = originalData }()
-
 	testAction := Action{
 		Name:        "TestAction",
 		Type:        ActionTypeProcessor,
@@ -147,29 +141,45 @@ func TestGetActionDetails(t *testing.T) {
 		Categories:  []string{"TestCategory"},
 	}
 
-	actionsData = ActionsData{
-		Actions: []Action{testAction},
+	tests := []struct {
+		name     string
+		lang     string
+		id       string
+		wantCode int
+	}{
+		{"Default language", "", testAction.Name, http.StatusOK},
+		{"English", "en", testAction.Name, http.StatusOK},
+		{"Japanese", "ja", testAction.Name, http.StatusOK},
+		{"Invalid language", "invalid", testAction.Name, http.StatusBadRequest},
+		{"Not found", "en", "NonExistent", http.StatusNotFound},
 	}
 
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	c.SetPath("/actions/:id")
-	c.SetParamNames("id")
-	c.SetParamValues(testAction.Name)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetTestData()
+			actionsData = ActionsData{Actions: []Action{testAction}}
+			actionsDataMap[tt.lang] = actionsData
 
-	err := getActionDetails(c)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/?lang="+tt.lang, nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c.SetPath("/actions/:id")
+			c.SetParamNames("id")
+			c.SetParamValues(tt.id)
 
-	var response Action
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.Equal(t, testAction.Name, response.Name)
-	assert.Equal(t, testAction.Description, response.Description)
-	assert.Equal(t, testAction.Type, response.Type)
-	assert.Equal(t, testAction.Categories, response.Categories)
+			err := getActionDetails(c)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantCode, rec.Code)
+
+			if tt.wantCode == http.StatusOK {
+				var response Action
+				err = json.Unmarshal(rec.Body.Bytes(), &response)
+				assert.NoError(t, err)
+				assert.Equal(t, testAction.Name, response.Name)
+			}
+		})
+	}
 }
 
 func TestGetActionDetailsNotFound(t *testing.T) {

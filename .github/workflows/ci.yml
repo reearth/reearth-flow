@@ -22,6 +22,7 @@ jobs:
         with:
             files: |
               api/**
+              engine/schema/**
               .github/workflows/ci.yml
               .github/workflows/ci_api.yml
               .github/workflows/build_api.yml

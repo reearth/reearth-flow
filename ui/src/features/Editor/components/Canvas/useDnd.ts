@@ -1,19 +1,14 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
 import { DragEvent, useCallback } from "react";
 
-import { config } from "@flow/config";
-import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import {
   nodeTypes,
   type ActionNodeType,
-  type Action,
   type Node,
   type NodeType,
 } from "@flow/types";
-import { randomID } from "@flow/utils";
 
-import { baseBatchNode } from "./components/Nodes/BatchNode";
-import { baseNoteNode } from "./components/Nodes/NoteNode";
+import { useCreateNode } from "./useCreateNode";
 
 type Props = {
   nodes: Node[];
@@ -33,7 +28,7 @@ export default ({
   handleNodeDropInBatch,
 }: Props) => {
   const { screenToFlowPosition } = useReactFlow();
-  const { api } = config();
+  const { createNode } = useCreateNode();
 
   const handleNodeDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -48,73 +43,37 @@ export default ({
         x: event.clientX,
         y: event.clientY,
       });
+      // Type can either be a node type or a action name
+      const type = event.dataTransfer.getData("application/reactflow");
+      if (!type) return;
 
-      const d = event.dataTransfer.getData("application/reactflow");
-
-      // check if the dropped element is valid
-      if (typeof d === "undefined" || !d) return;
-
-      if (d === "subworkflow") {
+      if (type === "subworkflow") {
         onWorkflowAdd(position);
         return;
       }
 
-      let newNode: Node = {
-        id: randomID(),
-        position,
-        type: d,
-        data: {
-          name: d,
-          status: "idle",
-          locked: false,
-        },
-      };
-
-      if (nodeTypes.includes(d as NodeType)) {
-        newNode = {
-          ...newNode,
-          type: d,
-          data: {
-            ...newNode.data,
-          },
-        };
-
-        if (d === "batch") {
-          newNode = { ...newNode, ...baseBatchNode };
-        } else if (d === "note") {
-          newNode = {
-            ...newNode,
-            data: { ...newNode.data, ...baseNoteNode },
-          };
-        } else {
-          onNodePickerOpen(position, d as ActionNodeType);
-          return;
-        }
-      } else {
-        const action = await fetcher<Action>(`${api}/actions/${d}`);
-        if (!action) return;
-
-        newNode = {
-          ...newNode,
-          type: action.type,
-          // Needs measured, but at time of creation we don't know size yet.
-          // 150x25 is base-size of GeneralNode.
-          measured: {
-            width: 150,
-            height: 25,
-          },
-          data: {
-            ...newNode.data,
-            name: action.name,
-            inputs: [...action.inputPorts],
-            outputs: [...action.outputPorts],
-          },
-        };
+      if (
+        nodeTypes.includes(type as NodeType) &&
+        type !== "batch" &&
+        type !== "note"
+      ) {
+        onNodePickerOpen(position, type as ActionNodeType);
+        return;
       }
 
-      const newNodes = [...nodes, newNode];
+      const newNode = await createNode({ position, type });
+      if (!newNode) return;
 
-      if (d !== "batch") {
+      const newNodes = [...nodes];
+      // This is needed since children must be after the parent
+      // in the array to avoid issues with react-flow
+      if (type === "batch") {
+        newNodes.splice(0, 0, newNode);
+      } else {
+        newNodes.push(newNode);
+      }
+
+      if (type !== "batch") {
         onNodesChange(handleNodeDropInBatch(newNode, newNodes));
       } else {
         onNodesChange(newNodes);
@@ -122,12 +81,12 @@ export default ({
     },
     [
       nodes,
-      api,
       screenToFlowPosition,
       handleNodeDropInBatch,
       onWorkflowAdd,
       onNodesChange,
       onNodePickerOpen,
+      createNode,
     ],
   );
 

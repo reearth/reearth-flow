@@ -35,11 +35,11 @@ function RootRoute() {
 
   return (
     <AuthProvider>
-      <ThemeProvider>
-        <GraphQLProvider>
-          <I18nProvider>
-            <TooltipProvider>
-              <AuthenticationWrapper>
+      <AuthenticationWrapper>
+        <ThemeProvider>
+          <GraphQLProvider>
+            <I18nProvider>
+              <TooltipProvider>
                 <NotificationSystem />
                 <Outlet />
                 {devMode && (
@@ -48,11 +48,11 @@ function RootRoute() {
                     {/* <TanStackRouterDevtools /> */}
                   </>
                 )}
-              </AuthenticationWrapper>
-            </TooltipProvider>
-          </I18nProvider>
-        </GraphQLProvider>
-      </ThemeProvider>
+              </TooltipProvider>
+            </I18nProvider>
+          </GraphQLProvider>
+        </ThemeProvider>
+      </AuthenticationWrapper>
     </AuthProvider>
   );
 }

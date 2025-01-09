@@ -99,9 +99,13 @@ Aggregates features by attributes
       ],
       "properties": {
         "attribute": {
-          "type": [
-            "string",
-            "null"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "attributeValue": {
@@ -909,6 +913,43 @@ Filters features based on conditions
 ### Category
 * Feature
 
+## FeatureLodFilter
+### Type
+* processor
+### Description
+Filter Geometry by lod
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureLodFilterParam",
+  "type": "object",
+  "required": [
+    "filterKey"
+  ],
+  "properties": {
+    "filterKey": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* up_to_lod1
+* up_to_lod2
+* up_to_lod3
+* up_to_lod4
+* unfiltered
+### Category
+* Feature
+
 ## FeatureMerger
 ### Type
 * processor
@@ -1320,6 +1361,7 @@ Reads features from a file
   "title": "FileReader",
   "oneOf": [
     {
+      "title": "CSV",
       "type": "object",
       "required": [
         "dataset",
@@ -1346,6 +1388,7 @@ Reads features from a file
       }
     },
     {
+      "title": "TSV",
       "type": "object",
       "required": [
         "dataset",
@@ -1372,6 +1415,7 @@ Reads features from a file
       }
     },
     {
+      "title": "JSON",
       "type": "object",
       "required": [
         "dataset",
@@ -1390,6 +1434,7 @@ Reads features from a file
       }
     },
     {
+      "title": "CityGML",
       "type": "object",
       "required": [
         "dataset",
@@ -1779,56 +1824,6 @@ Filter geometry by type
 * multiPoint
 * point
 * tin
-### Category
-* Geometry
-
-## GeometryLodFilter
-### Type
-* processor
-### Description
-Filter geometry by lod
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GeometryLodFilterParam",
-  "type": "object",
-  "properties": {
-    "maxLod": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint8",
-      "minimum": 0.0
-    },
-    "minLod": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint8",
-      "minimum": 0.0
-    },
-    "targetLods": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "integer",
-        "format": "uint8",
-        "minimum": 0.0
-      }
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-* unfiltered
 ### Category
 * Geometry
 
@@ -2338,7 +2333,7 @@ Action for last port forwarding for sub-workflows.
 ### Category
 * System
 
-## PLATEAU.AttributeFlattener
+## PLATEAU3.AttributeFlattener
 ### Type
 * processor
 ### Description
@@ -2352,7 +2347,7 @@ Flatten attributes for building feature
 ### Category
 * PLATEAU
 
-## PLATEAU.BuildingInstallationGeometryTypeExtractor
+## PLATEAU3.BuildingInstallationGeometryTypeExtractor
 ### Type
 * processor
 ### Description
@@ -2366,7 +2361,7 @@ Extracts BuildingInstallationGeometryType
 ### Category
 * PLATEAU
 
-## PLATEAU.BuildingUsageAttributeValidator
+## PLATEAU3.BuildingUsageAttributeValidator
 ### Type
 * processor
 ### Description
@@ -2382,7 +2377,7 @@ This processor validates building usage attributes by checking for the presence 
 ### Category
 * PLATEAU
 
-## PLATEAU.DictionariesInitiator
+## PLATEAU3.DictionariesInitiator
 ### Type
 * processor
 ### Description
@@ -2397,7 +2392,7 @@ Initializes dictionaries for PLATEAU
 ### Category
 * PLATEAU
 
-## PLATEAU.DomainOfDefinitionValidator
+## PLATEAU3.DomainOfDefinitionValidator
 ### Type
 * processor
 ### Description
@@ -2412,7 +2407,7 @@ Validates domain of definition of CityGML features
 ### Category
 * PLATEAU
 
-## PLATEAU.MaxLodExtractor
+## PLATEAU3.MaxLodExtractor
 ### Type
 * processor
 ### Description
@@ -2426,7 +2421,7 @@ Extracts maxLod
 ### Category
 * PLATEAU
 
-## PLATEAU.TranXLinkChecker
+## PLATEAU3.TranXLinkChecker
 ### Type
 * processor
 ### Description
@@ -2440,7 +2435,7 @@ Check Xlink for Tran
 ### Category
 * PLATEAU
 
-## PLATEAU.UDXFolderExtractor
+## PLATEAU3.UDXFolderExtractor
 ### Type
 * processor
 ### Description
@@ -2455,7 +2450,7 @@ Extracts UDX folders from cityGML path
 ### Category
 * PLATEAU
 
-## PLATEAU.UnmatchedXlinkDetector
+## PLATEAU3.UnmatchedXlinkDetector
 ### Type
 * processor
 ### Description
@@ -2471,7 +2466,7 @@ Detect unmatched xlink for PLATEAU
 ### Category
 * PLATEAU
 
-## PLATEAU.XMLAttributeExtractor
+## PLATEAU3.XMLAttributeExtractor
 ### Type
 * processor
 ### Description
@@ -2484,6 +2479,91 @@ Extracts attributes from XML fragments based on a schema definition
 * attributeFeature
 * summary
 * filePath
+### Category
+* PLATEAU
+
+## PLATEAU4.AttributeFlattener
+### Type
+* processor
+### Description
+Flatten attributes for building feature
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
+## PLATEAU4.MaxLodExtractor
+### Type
+* processor
+### Description
+Extracts maxLod
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MaxLodExtractorParam",
+  "type": "object",
+  "required": [
+    "cityGmlPathAttribute",
+    "maxLodAttribute"
+  ],
+  "properties": {
+    "cityGmlPathAttribute": {
+      "$ref": "#/definitions/Attribute"
+    },
+    "maxLodAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
+## PLATEAU4.UDXFolderExtractor
+### Type
+* processor
+### Description
+Extracts UDX folders from cityGML path
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UDXFolderExtractorParam",
+  "type": "object",
+  "required": [
+    "cityGmlPath"
+  ],
+  "properties": {
+    "cityGmlPath": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
 ### Category
 * PLATEAU
 

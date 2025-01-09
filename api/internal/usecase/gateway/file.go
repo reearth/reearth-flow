@@ -26,4 +26,7 @@ type File interface {
 	ReadWorkflow(context.Context, string) (io.ReadCloser, error)
 	UploadWorkflow(context.Context, *file.File) (*url.URL, error)
 	RemoveWorkflow(context.Context, *url.URL) error
+	ReadMetadata(context.Context, string) (io.ReadCloser, error)
+	UploadMetadata(context.Context, string, []string) (*url.URL, error)
+	RemoveMetadata(context.Context, *url.URL) error
 }

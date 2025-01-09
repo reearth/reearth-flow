@@ -5,127 +5,129 @@ import "github.com/reearth/reearthx/idx"
 type (
 	Asset       struct{}
 	AuthRequest struct{}
-	Edge        struct{}
-	Node        struct{}
-	Graph       struct{}
-	Workflow    struct{}
-	Project     struct{}
-	Workspace   struct{}
-	User        struct{}
-	Job         struct{}
 	Deployment  struct{}
+	Edge        struct{}
+	Graph       struct{}
+	Node        struct{}
+	Parameter   struct{}
+	Project     struct{}
+	User        struct{}
+	Workflow    struct{}
+	Workspace   struct{}
 )
 
 func (Asset) Type() string       { return "asset" }
 func (AuthRequest) Type() string { return "authRequest" }
-func (Edge) Type() string        { return "edge" }
-func (Node) Type() string        { return "node" }
-func (Graph) Type() string       { return "graph" }
-func (Workflow) Type() string    { return "workflow" }
-func (Project) Type() string     { return "project" }
-func (Workspace) Type() string   { return "workspace" }
-func (User) Type() string        { return "user" }
-func (Job) Type() string         { return "job" }
 func (Deployment) Type() string  { return "deployment" }
+func (Edge) Type() string        { return "edge" }
+func (Graph) Type() string       { return "graph" }
+func (Node) Type() string        { return "node" }
+func (Parameter) Type() string   { return "parameter" }
+func (Project) Type() string     { return "project" }
+func (User) Type() string        { return "user" }
+func (Workflow) Type() string    { return "workflow" }
+func (Workspace) Type() string   { return "workspace" }
 
 type (
 	AssetID       = idx.ID[Asset]
 	AuthRequestID = idx.ID[AuthRequest]
-	EdgeID        = idx.ID[Edge]
-	NodeID        = idx.ID[Node]
-	GraphID       = idx.ID[Graph]
-	WorkflowID    = idx.ID[Workflow]
-	ProjectID     = idx.ID[Project]
-	WorkspaceID   = idx.ID[Workspace]
-	UserID        = idx.ID[User]
-	JobID         = idx.ID[Job]
 	DeploymentID  = idx.ID[Deployment]
+	EdgeID        = idx.ID[Edge]
+	GraphID       = idx.ID[Graph]
+	NodeID        = idx.ID[Node]
+	ParameterID   = idx.ID[Parameter]
+	ProjectID     = idx.ID[Project]
+	UserID        = idx.ID[User]
+	WorkflowID    = idx.ID[Workflow]
+	WorkspaceID   = idx.ID[Workspace]
 )
 
 var (
 	NewAssetID       = idx.New[Asset]
 	NewAuthRequestID = idx.New[AuthRequest]
-	NewEdgeID        = idx.New[Edge]
-	NewNodeID        = idx.New[Node]
-	NewGraphID       = idx.New[Graph]
-	NewWorkflowID    = idx.New[Workflow]
-	NewProjectID     = idx.New[Project]
-	NewJobID         = idx.New[Job]
 	NewDeploymentID  = idx.New[Deployment]
+	NewEdgeID        = idx.New[Edge]
+	NewGraphID       = idx.New[Graph]
+	NewNodeID        = idx.New[Node]
+	NewParameterID   = idx.New[Parameter]
+	NewProjectID     = idx.New[Project]
+	NewUserID        = idx.New[User]
+	NewWorkflowID    = idx.New[Workflow]
+	NewWorkspaceID   = idx.New[Workspace]
 )
 
 var (
 	MustAssetID       = idx.Must[Asset]
 	MustAuthRequestID = idx.Must[AuthRequest]
-	MustWorkflowID    = idx.Must[Workflow]
+	MustDeploymentID  = idx.Must[Deployment]
+	MustParameterID   = idx.Must[Parameter]
 	MustProjectID     = idx.Must[Project]
-	MustWorkspaceID   = idx.Must[Workspace]
 	MustUserID        = idx.Must[User]
-	MustJobID         = idx.Must[Job]
-	MustDeploymentID  = idx.Must[Job]
+	MustWorkflowID    = idx.Must[Workflow]
+	MustWorkspaceID   = idx.Must[Workspace]
 )
 
 var (
 	AssetIDFrom       = idx.From[Asset]
 	AuthRequestIDFrom = idx.From[AuthRequest]
-	EdgeIDFrom        = idx.From[Edge]
-	NodeIDFrom        = idx.From[Node]
-	GraphIDFrom       = idx.From[Graph]
-	WorkflowIDFrom    = idx.From[Workflow]
-	ProjectIDFrom     = idx.From[Project]
-	WorkspaceIDFrom   = idx.From[Workspace]
-	UserIDFrom        = idx.From[User]
-	JobIDFrom         = idx.From[Job]
 	DeploymentIDFrom  = idx.From[Deployment]
+	EdgeIDFrom        = idx.From[Edge]
+	GraphIDFrom       = idx.From[Graph]
+	NodeIDFrom        = idx.From[Node]
+	ParameterIDFrom   = idx.From[Parameter]
+	ProjectIDFrom     = idx.From[Project]
+	UserIDFrom        = idx.From[User]
+	WorkflowIDFrom    = idx.From[Workflow]
+	WorkspaceIDFrom   = idx.From[Workspace]
 )
 
 var (
 	AssetIDFromRef       = idx.FromRef[Asset]
 	AuthRequestIDFromRef = idx.FromRef[AuthRequest]
-	WorkflowIDFromRef    = idx.FromRef[Workflow]
-	ProjectIDFromRef     = idx.FromRef[Project]
-	WorkspaceIDFromRef   = idx.FromRef[Workspace]
-	UserIDFromRef        = idx.FromRef[User]
-	JobIDFromRef         = idx.FromRef[Job]
 	DeploymentIDFromRef  = idx.FromRef[Deployment]
+	ParameterIDFromRef   = idx.FromRef[Parameter]
+	ProjectIDFromRef     = idx.FromRef[Project]
+	UserIDFromRef        = idx.FromRef[User]
+	WorkflowIDFromRef    = idx.FromRef[Workflow]
+	WorkspaceIDFromRef   = idx.FromRef[Workspace]
 )
 
 type (
 	AssetIDList       = idx.List[Asset]
 	AuthRequestIDList = idx.List[AuthRequest]
-	ProjectIDList     = idx.List[Project]
-	WorkspaceIDList   = idx.List[Workspace]
-	UserIDList        = idx.List[User]
-	JobIDList         = idx.List[Job]
 	DeploymentIDList  = idx.List[Deployment]
+	ParameterIDList   = idx.List[Parameter]
+	ProjectIDList     = idx.List[Project]
+	UserIDList        = idx.List[User]
+	WorkspaceIDList   = idx.List[Workspace]
 )
 
 var (
 	AssetIDListFrom       = idx.ListFrom[Asset]
 	AuthRequestIDListFrom = idx.ListFrom[AuthRequest]
-	ProjectIDListFrom     = idx.ListFrom[Project]
-	WorkspaceIDListFrom   = idx.ListFrom[Workspace]
-	UserIDListFrom        = idx.ListFrom[User]
-	JobIDListFrom         = idx.ListFrom[Job]
 	DeploymentIDListFrom  = idx.ListFrom[Deployment]
+	ParameterIDListFrom   = idx.ListFrom[Parameter]
+	ProjectIDListFrom     = idx.ListFrom[Project]
+	UserIDListFrom        = idx.ListFrom[User]
+	WorkspaceIDListFrom   = idx.ListFrom[Workspace]
 )
 
 type (
 	AssetIDSet       = idx.Set[Asset]
 	AuthRequestIDSet = idx.Set[AuthRequest]
-	ProjectIDSet     = idx.Set[Project]
-	WorkspaceIDSet   = idx.Set[Workspace]
-	UserIDSet        = idx.Set[User]
-	JobIDSet         = idx.Set[Job]
 	DeploymentIDSet  = idx.Set[Deployment]
+	ParameterIDSet   = idx.Set[Parameter]
+	ProjectIDSet     = idx.Set[Project]
+	UserIDSet        = idx.Set[User]
+	WorkspaceIDSet   = idx.Set[Workspace]
 )
 
 var (
 	NewAssetIDSet       = idx.NewSet[Asset]
 	NewAuthRequestIDSet = idx.NewSet[AuthRequest]
-	NewProjectIDSet     = idx.NewSet[Project]
-	NewWorkspaceIDSet   = idx.NewSet[Workspace]
-	NewUserIDSet        = idx.NewSet[User]
-	NewJobIDSet         = idx.NewSet[Job]
 	NewDeploymentIDSet  = idx.NewSet[Deployment]
+	NewParameterIDSet   = idx.NewSet[Parameter]
+	NewProjectIDSet     = idx.NewSet[Project]
+	NewUserIDSet        = idx.NewSet[User]
+	NewWorkspaceIDSet   = idx.NewSet[Workspace]
 )

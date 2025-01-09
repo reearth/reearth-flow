@@ -16,10 +16,10 @@ func (r *mutationResolver) CreateProject(ctx context.Context, input gqlmodel.Cre
 	}
 
 	res, err := usecases(ctx).Project.Create(ctx, interfaces.CreateProjectParam{
-		WorkspaceID: tid,
-		Name:        input.Name,
-		Description: input.Description,
 		Archived:    input.Archived,
+		Description: input.Description,
+		Name:        input.Name,
+		WorkspaceID: tid,
 	}, getOperator(ctx))
 	if err != nil {
 		return nil, err
@@ -35,13 +35,13 @@ func (r *mutationResolver) UpdateProject(ctx context.Context, input gqlmodel.Upd
 	}
 
 	res, err := usecases(ctx).Project.Update(ctx, interfaces.UpdateProjectParam{
-		ID:                pid,
-		Name:              input.Name,
-		Description:       input.Description,
 		Archived:          input.Archived,
-		IsBasicAuthActive: input.IsBasicAuthActive,
-		BasicAuthUsername: input.BasicAuthUsername,
 		BasicAuthPassword: input.BasicAuthPassword,
+		BasicAuthUsername: input.BasicAuthUsername,
+		Description:       input.Description,
+		ID:                pid,
+		IsBasicAuthActive: input.IsBasicAuthActive,
+		Name:              input.Name,
 	}, getOperator(ctx))
 	if err != nil {
 		return nil, err

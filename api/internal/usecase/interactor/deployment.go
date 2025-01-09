@@ -2,7 +2,9 @@ package interactor
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -26,9 +28,10 @@ type Deployment struct {
 	transaction    usecasex.Transaction
 	batch          gateway.Batch
 	file           gateway.File
+	job            interfaces.Job
 }
 
-func NewDeployment(r *repo.Container, gr *gateway.Container) interfaces.Deployment {
+func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job) interfaces.Deployment {
 	return &Deployment{
 		deploymentRepo: r.Deployment,
 		projectRepo:    r.Project,
@@ -38,6 +41,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container) interfaces.Deployme
 		transaction:    r.Transaction,
 		batch:          gr.Batch,
 		file:           gr.File,
+		job:            jobUsecase,
 	}
 }
 
@@ -127,7 +131,7 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 	// }
 
 	if dp.Workflow != nil {
-		if url, _ := url.Parse(d.WorkflowUrl()); url != nil {
+		if url, _ := url.Parse(d.WorkflowURL()); url != nil {
 			if err := i.file.RemoveWorkflow(ctx, url); err != nil {
 				return nil, err
 			}
@@ -137,7 +141,7 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 		if err != nil {
 			return nil, err
 		}
-		d.SetWorkflowUrl(url.String())
+		d.SetWorkflowURL(url.String())
 	}
 
 	if dp.Description != nil {
@@ -176,7 +180,7 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID, o
 	// 	return err
 	// }
 
-	if url, _ := url.Parse(dep.WorkflowUrl()); url != nil {
+	if url, _ := url.Parse(dep.WorkflowURL()); url != nil {
 		if err := i.file.RemoveWorkflow(ctx, url); err != nil {
 			return err
 		}
@@ -208,30 +212,36 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	// TODO: uncomment this once operator checks are fixed
-	// if err := i.CanWriteWorkspace(d.Workspace(), operator); err != nil {
-	// 	return nil, err
-	// }
-
 	j, err := job.New().
 		NewID().
 		Deployment(d.ID()).
 		Workspace(d.Workspace()).
 		Status(job.StatusPending).
+		StartedAt(time.Now()).
 		Build()
 	if err != nil {
 		return nil, err
 	}
 
+	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{}) // TODO: add assets
+	j.SetMetadataURL(metadataURL.String())
+
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		return nil, err
 	}
 
-	_, err = i.batch.SubmitJob(ctx, j.ID(), d.WorkflowUrl(), d.Project())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), d.Project())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}
 
+	j.SetGCPJobID(gcpJobID)
+
 	tx.Commit()
+
+	if err := i.job.StartMonitoring(ctx, j, operator); err != nil {
+		return nil, fmt.Errorf("failed to start job monitoring: %v", err)
+	}
+
 	return j, nil
 }

@@ -22,22 +22,26 @@ pub struct FileReaderCommonParam {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "format")]
 pub enum FileReader {
+    /// # CSV
     Csv {
         #[serde(flatten)]
         common_property: FileReaderCommonParam,
         #[serde(flatten)]
         property: csv::CsvReaderParam,
     },
+    /// # TSV
     Tsv {
         #[serde(flatten)]
         common_property: FileReaderCommonParam,
         #[serde(flatten)]
         property: csv::CsvReaderParam,
     },
+    /// # JSON
     Json {
         #[serde(flatten)]
         common_property: FileReaderCommonParam,
     },
+    /// # CityGML
     Citygml {
         #[serde(flatten)]
         common_property: FileReaderCommonParam,

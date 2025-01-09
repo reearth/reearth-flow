@@ -107,7 +107,7 @@ const Portal: React.FC<BottomPortalProps> = ({
   }, [isVisible, onClose]);
 
   if (!portalContainer || !isVisible) {
-    return null;
+    return <>{children}</>;
   }
 
   return ReactDOM.createPortal(

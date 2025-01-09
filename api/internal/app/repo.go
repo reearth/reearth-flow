@@ -105,10 +105,12 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batch) {
 	var err error
 	if conf.Worker_ImageURL != "" {
-		config := gcpbatch.Config{
-			ProjectID: conf.GCPProject,
-			Region:    "us-central1",
-			ImageURI:  conf.Worker_ImageURL,
+		config := gcpbatch.BatchConfig{
+			BinaryPath: conf.Worker_BinaryPath,
+			ImageURI:   conf.Worker_ImageURL,
+			ProjectID:  conf.GCPProject,
+			Region:     conf.GCPRegion,
+			SAEmail:    conf.Worker_BatchSAEmail,
 		}
 
 		batchRepo, err = gcpbatch.NewBatch(ctx, config)

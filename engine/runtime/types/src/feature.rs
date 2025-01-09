@@ -148,6 +148,13 @@ impl From<&Feature> for nusamai_citygml::schema::TypeDef {
             .iter()
             .filter(|(_, v)| v.convertible_nusamai_type_ref())
         {
+            if let AttributeValue::Number(value) = v {
+                attributes.insert(
+                    k.to_string(),
+                    AttributeValue::String(value.to_string()).into(),
+                );
+                continue;
+            }
             attributes.insert(k.to_string(), v.clone().into());
         }
         nusamai_citygml::schema::TypeDef::Feature(nusamai_citygml::schema::FeatureTypeDef {

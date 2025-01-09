@@ -15,7 +15,7 @@ describe("convertNodes", () => {
         id: "1",
         type: "transformer",
         position: { x: 22, y: 22 },
-        data: { name: "Node 1" },
+        data: { officialName: "Node 1" },
       },
       { id: "2", type: "normal", position: { x: 22, y: 22 }, data: {} }, // Missing name
       { type: "normal", position: { x: 22, y: 22 }, data: { name: "Node 3" } }, // Missing id
@@ -23,7 +23,7 @@ describe("convertNodes", () => {
     ];
 
     const expected: EngineReadyNode[] = [
-      { id: "1", name: "Node 1", type: "transformer", action: "Node 1" },
+      { id: "1", name: "Node 1", type: "action", action: "Node 1" },
     ];
 
     expect(convertNodes(input as Node[])).toEqual(expected);
@@ -35,22 +35,22 @@ describe("convertNodes", () => {
         id: "1",
         type: "subworkflow",
         position: { x: 22, y: 22 },
-        data: { name: "Subworkflow 1" },
+        data: { officialName: "Subworkflow 1" },
       },
       {
         id: "2",
         type: "transformer",
         position: { x: 22, y: 22 },
-        data: { name: "Normal Node" },
+        data: { officialName: "Normal Node" },
       },
     ];
 
     const expected: EngineReadyNode[] = [
-      { id: "1", name: "Subworkflow 1", type: "subworkflow", subGraphId: "1" },
+      { id: "1", name: "Subworkflow 1", type: "subgraph", subGraphId: "1" },
       {
         id: "2",
         name: "Normal Node",
-        type: "transformer",
+        type: "action",
         action: "Normal Node",
       },
     ];

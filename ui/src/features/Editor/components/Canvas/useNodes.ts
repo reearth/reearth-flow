@@ -81,7 +81,18 @@ export default ({
 
   const handleNodeDropOnEdge = useCallback(
     (droppedNode: Node) => {
-      if (!droppedNode.data.inputs || !droppedNode.data.outputs) return;
+      if (
+        droppedNode.type === "subworkflow" &&
+        (!droppedNode.data.pseudoOutputs?.length ||
+          !droppedNode.data.pseudoInputs?.length)
+      ) {
+        return;
+      } else if (
+        droppedNode.type !== "subworkflow" &&
+        (!droppedNode.data.outputs?.length || !droppedNode.data.inputs?.length)
+      ) {
+        return;
+      }
 
       let edgeCreationComplete = false;
 
@@ -180,13 +191,12 @@ export default ({
   const handleNodeDragStop = useCallback(
     (_evt: MouseEvent, node: Node) => {
       if (node.type !== "batch") {
-        onNodesChange(handleNodeDropInBatch(node, nodes));
         if (node.type !== "note") {
           handleNodeDropOnEdge(node);
         }
       }
     },
-    [handleNodeDropInBatch, handleNodeDropOnEdge, nodes, onNodesChange],
+    [handleNodeDropOnEdge],
   );
 
   return {

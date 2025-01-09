@@ -19,6 +19,7 @@ type Container struct {
 	Deployment  Deployment
 	Job         Job
 	Lock        Lock
+	Parameter   Parameter
 	Project     Project
 	Transaction usecasex.Transaction
 	User        accountrepo.User
@@ -28,9 +29,8 @@ type Container struct {
 
 func (c *Container) AccountRepos() *accountrepo.Container {
 	return &accountrepo.Container{
-		Workspace: c.Workspace,
-		User:      c.User,
-		// TODO: Policy: c.Policy,
+		Workspace:   c.Workspace,
+		User:        c.User,
 		Transaction: c.Transaction,
 	}
 }
@@ -44,8 +44,10 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		AuthRequest: c.AuthRequest,
 		Config:      c.Config,
 		Deployment:  c.Deployment.Filtered(workspace),
+		Job:         c.Job.Filtered(workspace),
 		Lock:        c.Lock,
 		Workflow:    c.Workflow.Filtered(workspace),
+		Parameter:   c.Parameter,
 		Project:     c.Project.Filtered(workspace),
 		Transaction: c.Transaction,
 		User:        c.User,

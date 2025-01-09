@@ -29,7 +29,7 @@ jobs:
       mongo:
         image: mongo:6-focal
         ports:
-          - 12345:12345
+          - 27017:27017
     steps:
       - name: checkout
         uses: actions/checkout@v3

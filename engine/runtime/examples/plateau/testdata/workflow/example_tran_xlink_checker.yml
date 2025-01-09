@@ -35,9 +35,9 @@ graphs:
         subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
       - id: 2596b371-cb37-4856-8f6f-a4096f76f391
-        name: PLATEAU.TranXLinkChecker-l-tran-03
+        name: PLATEAU3.TranXLinkChecker-l-tran-03
         type: action
-        action: PLATEAU.TranXLinkChecker
+        action: PLATEAU3.TranXLinkChecker
 
       - id: 30a42dee-474c-4283-b34b-3c54e16bd2b6
         name: Echo
