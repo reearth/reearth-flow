@@ -56,7 +56,7 @@ pub fn add_decoder<I: Read>(
             if mem_size > max_mem_limit_kb {
                 return Err(Error::MaxMemLimited {
                     max_kb: max_mem_limit_kb,
-                    actaul_kb: mem_size,
+                    actual_kb: mem_size,
                 });
             }
             let lz = LZMA2Reader::new(input, dic_size, None);
@@ -87,6 +87,9 @@ fn get_lzma2_dic_size(coder: &Coder) -> Result<u32, Error> {
 
 #[inline]
 fn get_lzma_dic_size(coder: &Coder) -> Result<u32, Error> {
+    if coder.properties.len() < 5 {
+        return Err(Error::other("LZMA properties too short"));
+    }
     let mut props = &coder.properties[1..5];
     props.read_u32::<LittleEndian>().map_err(Error::io)
 }

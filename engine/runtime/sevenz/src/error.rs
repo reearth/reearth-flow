@@ -4,11 +4,11 @@ use std::borrow::Cow;
 pub enum Error {
     #[error("BadSignature:")]
     BadSignature([u8; 6]),
-    #[error("Unsupported Version:")]
+    #[error("Unsupported Version")]
     UnsupportedVersion { major: u8, minor: u8 },
-    #[error("ChecksumVerificationFailed: ")]
+    #[error("ChecksumVerificationFailed")]
     ChecksumVerificationFailed,
-    #[error("NextHeaderCrcMismatch: ")]
+    #[error("NextHeaderCrcMismatch")]
     NextHeaderCrcMismatch,
     #[error("FileIoError: {0}")]
     Io(std::io::Error, Cow<'static, str>),
@@ -27,7 +27,7 @@ pub enum Error {
     #[error("ExternalUnsupported")]
     ExternalUnsupported,
     #[error("MaxMemLimited")]
-    MaxMemLimited { max_kb: usize, actaul_kb: usize },
+    MaxMemLimited { max_kb: usize, actual_kb: usize },
     #[error("Unsupported")]
     Unsupported(String),
 }

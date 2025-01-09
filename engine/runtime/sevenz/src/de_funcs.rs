@@ -1,6 +1,6 @@
+use std::io::SeekFrom;
 use std::io::{Read, Seek};
 use std::path::{Path, PathBuf};
-use std::io::SeekFrom;
 
 use crate::archive::SevenZArchiveEntry;
 use crate::error::Error;
@@ -80,7 +80,7 @@ pub fn default_entry_extract_fn(
                     entry.creation_date().into(),
                 )),
             )
-            .unwrap_or_default();
+            .map_err(Error::io)?;
         }
     }
     Ok(true)

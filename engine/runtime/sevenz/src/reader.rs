@@ -68,6 +68,9 @@ impl<R: Read + Seek> Seek for SeekableBoundedReader<R> {
         if new_pos < 0 {
             return Err(std::io::Error::new(ErrorKind::Other, "SeekBeforeStart"));
         }
+        if new_pos > self.bounds.1 as i64 {
+            return Err(std::io::Error::new(ErrorKind::Other, "SeekBeyondEnd"));
+        }
         self.cur = new_pos as u64;
         self.inner.seek(SeekFrom::Start(self.cur))
     }
