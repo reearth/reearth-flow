@@ -26,7 +26,7 @@ func (c *ProjectLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmod
 		return nil, []error{err}
 	}
 
-	res, err := c.usecase.Fetch(ctx, ids2, getOperator(ctx))
+	res, err := c.usecase.Fetch(ctx, ids2)
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -50,7 +50,7 @@ func (c *ProjectLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, f
 		Last:   intToInt64(last),
 		Before: before,
 		After:  after,
-	}.Wrap(), getOperator(ctx))
+	}.Wrap())
 	if err != nil {
 		return nil, err
 	}

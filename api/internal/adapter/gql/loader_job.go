@@ -29,7 +29,7 @@ func (c *JobLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.J
 		jobIDs = append(jobIDs, jid)
 	}
 
-	res, err := c.usecase.Fetch(ctx, jobIDs, getOperator(ctx))
+	res, err := c.usecase.Fetch(ctx, jobIDs)
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -48,7 +48,7 @@ func (c *JobLoader) FindByID(ctx context.Context, jobID gqlmodel.ID) (*gqlmodel.
 		return nil, err
 	}
 
-	job, err := c.usecase.FindByID(ctx, id, getOperator(ctx))
+	job, err := c.usecase.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (c *JobLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, pagin
 		return nil, err
 	}
 
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, gqlmodel.ToPagination(pagination), getOperator(ctx))
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, gqlmodel.ToPagination(pagination))
 	if err != nil {
 		return nil, err
 	}

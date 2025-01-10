@@ -6,11 +6,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/account/accountdomain/workspace"
-	"github.com/reearth/reearthx/account/accountusecase"
 	"github.com/reearth/reearthx/account/accountusecase/accountinteractor"
 	"github.com/reearth/reearthx/account/accountusecase/accountinterfaces"
 	"github.com/reearth/reearthx/log"
@@ -21,8 +18,8 @@ const (
 	debugUserHeader = "X-Reearth-Debug-User"
 )
 
-// attachOpMiddleware attaches the operator and user to the context
-func attachOpMiddleware(cfg *ServerConfig) echo.MiddlewareFunc {
+// attachUserMiddleware attaches user to the context
+func attachUserMiddleware(cfg *ServerConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		multiUser := accountinteractor.NewMultiUser(cfg.AccountRepos, cfg.AccountGateways, cfg.Config.SignupSecret, cfg.Config.Host_Web, cfg.AccountRepos.Users)
 		return func(c echo.Context) error {
@@ -34,11 +31,9 @@ func attachOpMiddleware(cfg *ServerConfig) echo.MiddlewareFunc {
 
 			if u != nil {
 				ctx = attachUserToContext(ctx, u, cfg)
-				op, err := generateOperator(ctx, cfg, u)
 				if err != nil {
 					return err
 				}
-				ctx = adapter.AttachOperator(ctx, op)
 			}
 
 			c.SetRequest(c.Request().WithContext(ctx))
@@ -83,33 +78,6 @@ func attachUserToContext(ctx context.Context, u *user.User, _ *ServerConfig) con
 	return ctx
 }
 
-func generateOperator(ctx context.Context, cfg *ServerConfig, u *user.User) (*usecase.Operator, error) {
-	if u == nil {
-		return nil, nil
-	}
-
-	uid := u.ID()
-	workspaces, err := cfg.Repos.Workspace.FindByUser(ctx, uid)
-	if err != nil {
-		return nil, err
-	}
-
-	readableWorkspaces := workspaces.FilterByUserRole(uid, workspace.RoleReader).IDs()
-	writableWorkspaces := workspaces.FilterByUserRole(uid, workspace.RoleWriter).IDs()
-	maintainingWorkspaces := workspaces.FilterByUserRole(uid, workspace.RoleMaintainer).IDs()
-	owningWorkspaces := workspaces.FilterByUserRole(uid, workspace.RoleOwner).IDs()
-
-	return &usecase.Operator{
-		AcOperator: &accountusecase.Operator{
-			User:                   &uid,
-			ReadableWorkspaces:     readableWorkspaces,
-			WritableWorkspaces:     writableWorkspaces,
-			MaintainableWorkspaces: maintainingWorkspaces,
-			OwningWorkspaces:       owningWorkspaces,
-		},
-	}, nil
-}
-
 func addAuth0SubToUser(ctx context.Context, u *user.User, a user.Auth, cfg *ServerConfig) error {
 	if u.AddAuth(a) {
 		err := cfg.Repos.User.Save(ctx, u)
@@ -118,16 +86,4 @@ func addAuth0SubToUser(ctx context.Context, u *user.User, a user.Auth, cfg *Serv
 		}
 	}
 	return nil
-}
-
-func AuthRequiredMiddleware() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			ctx := c.Request().Context()
-			if adapter.Operator(ctx) == nil {
-				return echo.ErrUnauthorized
-			}
-			return next(c)
-		}
-	}
 }
