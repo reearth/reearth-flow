@@ -28,6 +28,37 @@ const DetailsBox: React.FC<Props> = ({ title, content, onContentChange }) => {
 
   const status = content?.find((detail) => detail.id === "status")?.value;
 
+  // This function is necessary because without it the file will sometimes open in the browser instead of downloading
+  const handleDownload =
+    (url: string) => async (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = blobUrl;
+
+        const fileName =
+          response.headers.get("Content-Disposition")?.split("filename=")[1] ||
+          url.split("/").pop() ||
+          "workflow.json";
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error("Download failed:", error);
+        // Fallback to direct navigation if fetch fails
+        window.location.href = url;
+      }
+    };
+
   return (
     <div className="rounded-md border dark:font-thin">
       <div className="flex justify-between border-b px-4 py-2">
@@ -42,7 +73,7 @@ const DetailsBox: React.FC<Props> = ({ title, content, onContentChange }) => {
               <a
                 className="flex h-full items-center gap-2 rounded px-4 py-2"
                 href={detail.value}
-                download>
+                onClick={handleDownload(detail.value)}>
                 <Download />
                 <p className="font-light">{detail.name}</p>
               </a>

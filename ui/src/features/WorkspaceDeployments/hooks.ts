@@ -66,9 +66,10 @@ export default () => {
     [selectedDeployment, useUpdateDeployment],
   );
 
-  const handleDeploymentDelete = useCallback(() => {
+  const handleDeploymentDelete = useCallback(async () => {
     if (!selectedDeployment || !currentWorkspace) return;
-    useDeleteDeployment(selectedDeployment.id, currentWorkspace.id);
+    await useDeleteDeployment(selectedDeployment.id, currentWorkspace.id);
+    setDeploymentToBeDeleted(undefined);
     history.go(-1); // Go back to previous page
   }, [selectedDeployment, currentWorkspace, history, useDeleteDeployment]);
 
