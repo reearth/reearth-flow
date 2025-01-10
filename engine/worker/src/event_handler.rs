@@ -31,7 +31,7 @@ impl NodeFailureHandler {
     }
 
     pub(crate) fn all_success(&self) -> bool {
-        !self.failed_processor_nodes.lock().is_empty() || !self.failed_sinks.lock().is_empty()
+        self.failed_processor_nodes.lock().is_empty() && self.failed_sinks.lock().is_empty()
     }
 
     pub(crate) fn failed_nodes(&self) -> Vec<String> {
