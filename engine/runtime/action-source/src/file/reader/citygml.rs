@@ -60,8 +60,8 @@ pub(crate) async fn read_citygml(
     Ok(())
 }
 
-async fn parse_tree_reader<'a, 'b, R: BufRead>(
-    st: &mut SubTreeReader<'a, 'b, R>,
+async fn parse_tree_reader<R: BufRead>(
+    st: &mut SubTreeReader<'_, '_, R>,
     base_url: Url,
     flatten: bool,
     sender: Sender<(Port, IngestionMessage)>,

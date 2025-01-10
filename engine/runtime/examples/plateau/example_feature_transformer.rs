@@ -1,5 +1,5 @@
 mod helper;
 
 fn main() {
-    helper::execute("data-convert/plateau4/04-luse-lsld/workflow.yml");
+    helper::execute("data-convert/plateau4/06-area-urf/workflow.yml");
 }
