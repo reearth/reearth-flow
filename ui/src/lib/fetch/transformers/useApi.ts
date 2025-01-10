@@ -9,69 +9,6 @@ import {
 
 import { useFetch } from "./useFetch";
 
-const filterActions = (
-  actions: Action[],
-  filter?: {
-    isMainWorkflow: boolean;
-    searchTerm?: string;
-  },
-) => {
-  if (!actions) return [];
-
-  let result = [...actions];
-
-  if (filter?.isMainWorkflow) {
-    result = result.filter(
-      (action) => !action.name.toLowerCase().includes("router"),
-    );
-  }
-
-  if (filter?.searchTerm) {
-    result = result.filter((action) =>
-      Object.values(action).some((value) => {
-        const strValue = Array.isArray(value)
-          ? value.join(" ")
-          : typeof value === "string"
-            ? value
-            : String(value);
-        return strValue
-          .toLowerCase()
-          .includes(filter.searchTerm?.toLowerCase() ?? "");
-      }),
-    );
-  }
-
-  return result;
-};
-
-const filterActionsByPredicate = (
-  obj: Record<string, Action[] | undefined>,
-  predicate: (action: Action) => boolean,
-  removeEmptyArrays = false,
-) => {
-  const entries = Object.entries(obj).map(([key, actions]) => [
-    key,
-    actions?.filter(predicate),
-  ]);
-
-  return Object.fromEntries(
-    removeEmptyArrays
-      ? entries.filter(([_, actions]) => actions && actions.length > 0)
-      : entries,
-  );
-};
-
-const filterBySearchTerm = (action: Action, searchTerm?: string) => {
-  return Object.values(action).some((value) => {
-    const strValue = Array.isArray(value)
-      ? value.join(" ")
-      : typeof value === "string"
-        ? value
-        : String(value);
-    return strValue.toLowerCase().includes(searchTerm?.toLowerCase() ?? "");
-  });
-};
-
 export const useAction = (lang: string) => {
   const {
     useGetActionsFetch,
@@ -116,33 +53,18 @@ export const useAction = (lang: string) => {
 
       let result = { ...data };
 
-      if (filter?.isMainWorkflow) {
-        const filterOutRouter = (action: Action) =>
-          !action.name.toLowerCase().includes("router");
-
-        result = {
-          byCategory: filterActionsByPredicate(
-            result.byCategory,
-            filterOutRouter,
-          ),
-          byType: filterActionsByPredicate(result.byType, filterOutRouter),
-        };
-      }
-
-      if (filter?.searchTerm) {
-        result = {
-          byCategory: filterActionsByPredicate(
-            result.byCategory,
-            (action) => filterBySearchTerm(action, filter.searchTerm),
-            true,
-          ),
-          byType: filterActionsByPredicate(
-            result.byType,
-            (action) => filterBySearchTerm(action, filter.searchTerm),
-            true,
-          ),
-        };
-      }
+      result = {
+        byCategory: filterActionsByPredicate(
+          result.byCategory,
+          (action) => combinedFilter(action, filter),
+          !!filter?.searchTerm,
+        ),
+        byType: filterActionsByPredicate(
+          result.byType,
+          (action) => combinedFilter(action, filter),
+          !!filter?.searchTerm,
+        ),
+      };
 
       if (filter?.type && result.byType) {
         return {
@@ -154,7 +76,7 @@ export const useAction = (lang: string) => {
       }
 
       return result;
-    }, [data, filter?.isMainWorkflow, filter?.searchTerm, filter?.type]);
+    }, [data, filter]);
 
     return {
       actions: filteredData,
@@ -167,4 +89,68 @@ export const useAction = (lang: string) => {
     useGetActionById,
     useGetActionsSegregated,
   };
+};
+
+const combinedFilter = (
+  action: Action,
+  filter?: {
+    isMainWorkflow: boolean;
+    searchTerm?: string;
+  },
+) => {
+  if (filter?.isMainWorkflow && action.name.toLowerCase().includes("router")) {
+    return false;
+  }
+
+  if (filter?.searchTerm) {
+    return filterBySearchTerm(action, filter.searchTerm);
+  }
+
+  return true;
+};
+
+const filterActions = (
+  actions: Action[],
+  filter?: {
+    isMainWorkflow: boolean;
+    searchTerm?: string;
+  },
+) => {
+  if (actions.length < 1) return [];
+
+  return actions.filter((action) => {
+    return combinedFilter(action, filter);
+  });
+};
+
+const filterActionsByPredicate = (
+  obj: Record<string, Action[] | undefined>,
+  predicate: (action: Action) => boolean,
+  removeEmptyArrays = false,
+) =>
+  Object.fromEntries(
+    Object.entries(obj).reduce(
+      (acc, [key, actions]) => {
+        const filteredActions = actions?.filter(predicate);
+        if (
+          !removeEmptyArrays ||
+          (filteredActions && filteredActions.length > 0)
+        ) {
+          acc.push([key, filteredActions]);
+        }
+        return acc;
+      },
+      [] as [string, Action[] | undefined][],
+    ),
+  );
+
+const filterBySearchTerm = (action: Action, searchTerm?: string) => {
+  return Object.values(action).some((value) => {
+    const strValue = Array.isArray(value)
+      ? value.join(" ")
+      : typeof value === "string"
+        ? value
+        : String(value);
+    return strValue.toLowerCase().includes(searchTerm?.toLowerCase() ?? "");
+  });
 };
