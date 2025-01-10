@@ -11,7 +11,7 @@ import { cancellableDebounce } from "@flow/utils";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useNodeLocker from "./useNodeLocker";
-import { useSubworkflowCreation } from "./useSubworkflowCreation";
+// import { useSubworkflowCreation } from "./useSubworkflowCreation";
 
 export default ({
   yWorkflows,
@@ -38,8 +38,6 @@ export default ({
     nodes,
     edges,
     openWorkflows,
-    setOpenWorkflowIds,
-    setWorkflows,
     selectedNodes,
     rawWorkflows,
     handleWorkflowDeployment,
@@ -55,23 +53,13 @@ export default ({
     handleWorkflowRename,
     canUndo,
     canRedo,
+    handleAddSubworkFlowViaMultiSelect,
   } = useYjsStore({
     currentWorkflowId,
     yWorkflows,
     undoManager,
     undoTrackerActionWrapper,
     handleCurrentWorkflowIdChange,
-  });
-
-  const { handleCreateSubworkflow } = useSubworkflowCreation({
-    nodes,
-    edges,
-    yWorkflows,
-    rawWorkflows,
-    currentWorkflowId,
-    undoTrackerActionWrapper,
-    setOpenWorkflowIds,
-    setWorkflows,
   });
 
   const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
@@ -190,7 +178,7 @@ export default ({
     },
     {
       keyBinding: { key: "x", commandKey: true },
-      callback: handleCreateSubworkflow,
+      callback: () => handleAddSubworkFlowViaMultiSelect(nodes, edges),
     },
     {
       keyBinding: { key: "z", commandKey: true },

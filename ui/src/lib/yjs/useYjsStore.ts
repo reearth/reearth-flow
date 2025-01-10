@@ -80,6 +80,7 @@ export default ({
     handleWorkflowUpdate,
     handleWorkflowsRemove,
     handleWorkflowRename,
+    handleAddSubworkFlowViaMultiSelect,
   } = useYWorkflow({
     yWorkflows,
     rawWorkflows,
@@ -189,5 +190,6 @@ export default ({
     handleWorkflowRename,
     setOpenWorkflowIds,
     setWorkflows,
+    handleAddSubworkFlowViaMultiSelect,
   };
 };
