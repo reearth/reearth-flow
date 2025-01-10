@@ -5,7 +5,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project1",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -17,7 +17,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -29,7 +29,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -41,7 +41,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -53,7 +53,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -65,7 +65,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -77,7 +77,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -89,7 +89,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -101,7 +101,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -113,7 +113,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -125,7 +125,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -137,7 +137,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -149,7 +149,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -161,7 +161,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -173,7 +173,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -185,7 +185,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -197,7 +197,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -209,7 +209,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -221,7 +221,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -233,7 +233,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -245,7 +245,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -257,7 +257,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -269,7 +269,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -281,7 +281,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -293,7 +293,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -305,319 +305,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project1",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
-    description: "My awesome deployment123",
-    version: "v0.1",
-    createdAt: "2024-10-29 16:49",
-    updatedAt: "2024-10-29 16:49",
-  },
-  {
-    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
-    projectName: "First project",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
-    description: "This is a 3 node workflow",
-    version: "v0.1",
-    createdAt: "2024-10-29 9:23",
-    updatedAt: "2024-10-29 9:23",
-  },
-  {
-    id: "01jbbkzz9ks0s59b54jte8rst9",
-    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
-    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
-    projectName: "asdf",
-    workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -629,7 +317,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project1",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -641,7 +329,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -653,7 +341,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -665,7 +353,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -677,7 +365,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -689,7 +377,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -701,7 +389,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -713,7 +401,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -725,7 +413,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -737,7 +425,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -749,7 +437,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -761,7 +449,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -773,7 +461,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -785,7 +473,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -797,7 +485,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -809,7 +497,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -821,7 +509,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -833,7 +521,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -845,7 +533,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -857,7 +545,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -869,7 +557,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -881,7 +569,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -893,7 +581,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -905,7 +593,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -917,7 +605,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -929,7 +617,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -941,7 +629,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project1",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -953,7 +641,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -965,7 +653,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -977,7 +665,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -989,7 +677,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1001,7 +689,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1013,7 +701,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1025,7 +713,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1037,7 +725,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1049,7 +737,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1061,7 +749,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1073,7 +761,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1085,7 +773,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1097,7 +785,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1109,7 +797,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1121,7 +809,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1133,7 +821,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1145,7 +833,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1157,7 +845,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1169,7 +857,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1181,7 +869,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1193,7 +881,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1205,7 +893,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1217,7 +905,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1229,7 +917,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1241,7 +929,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1253,7 +941,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project1",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1265,7 +953,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1277,7 +965,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1289,7 +977,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1301,7 +989,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1313,7 +1001,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1325,7 +1013,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1337,7 +1025,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1349,7 +1037,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1361,7 +1049,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1373,7 +1061,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1385,7 +1073,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1397,7 +1085,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1409,7 +1097,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1421,7 +1109,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1433,7 +1121,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1445,7 +1133,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1457,7 +1145,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1469,7 +1157,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1481,7 +1169,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1493,7 +1181,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1505,7 +1193,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1517,7 +1205,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1529,7 +1217,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1541,7 +1229,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1553,7 +1241,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1565,7 +1253,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project1",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1577,7 +1265,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1589,7 +1277,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1601,7 +1289,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1613,7 +1301,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1625,7 +1313,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1637,7 +1325,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1649,7 +1337,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1661,7 +1349,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1673,7 +1361,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1685,7 +1373,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1697,7 +1385,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1709,7 +1397,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1721,7 +1409,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1733,7 +1421,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1745,7 +1433,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1757,7 +1445,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1769,7 +1457,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1781,7 +1469,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1793,7 +1481,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1805,7 +1493,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1817,7 +1505,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1829,7 +1517,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1841,7 +1529,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1853,7 +1541,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1865,7 +1553,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1877,7 +1565,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project1",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1889,7 +1577,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1901,7 +1589,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1913,7 +1601,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1925,7 +1613,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1937,7 +1625,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1949,7 +1637,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1961,7 +1649,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1973,7 +1661,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -1985,7 +1673,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -1997,7 +1685,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -2009,7 +1697,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -2021,7 +1709,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -2033,7 +1721,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -2045,7 +1733,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -2057,7 +1745,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -2069,7 +1757,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -2081,7 +1769,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -2093,7 +1781,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -2105,7 +1793,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -2117,7 +1805,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -2129,7 +1817,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -2141,7 +1829,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -2153,7 +1841,7 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",
@@ -2165,7 +1853,7 @@ export const deploymentsData = [
     projectId: "01j86j8bxyfbfem9ywhwf2mgam",
     projectName: "First project",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.yaml",
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
     description: "This is a 3 node workflow",
     version: "v0.1",
     createdAt: "2024-10-29 9:23",
@@ -2177,7 +1865,319 @@ export const deploymentsData = [
     projectId: "01jaf6eq22swz4n1knzdzmkpeq",
     projectName: "asdf",
     workflowUrl:
-      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.yaml",
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project1",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
+    description: "My awesome deployment123",
+    version: "v0.1",
+    createdAt: "2024-10-29 16:49",
+    updatedAt: "2024-10-29 16:49",
+  },
+  {
+    id: "01jbatgwfr1cbt5w2p6n4x5ajh",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01j86j8bxyfbfem9ywhwf2mgam",
+    projectName: "First project",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbatgwfqhft01k5e4h45sq8d.json",
+    description: "This is a 3 node workflow",
+    version: "v0.1",
+    createdAt: "2024-10-29 9:23",
+    updatedAt: "2024-10-29 9:23",
+  },
+  {
+    id: "01jbbkzz9ks0s59b54jte8rst9",
+    workspaceId: "01j86j78ca06j4z1gmkpzen6ds",
+    projectId: "01jaf6eq22swz4n1knzdzmkpeq",
+    projectName: "asdf",
+    workflowUrl:
+      "http://localhost:8080/workflows/01jbbkzz9jdjsemptpm5f98ae5.json",
     description: "My awesome deployment123",
     version: "v0.1",
     createdAt: "2024-10-29 16:49",

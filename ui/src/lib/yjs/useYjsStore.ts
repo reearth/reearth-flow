@@ -6,7 +6,7 @@ import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useCurrentProject } from "@flow/stores";
 import type { Edge, Node, Workflow } from "@flow/types";
 import { isDefined } from "@flow/utils";
-import { createWorkflowsYaml } from "@flow/utils/engineWorkflowYaml/workflowYaml";
+import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflowJson/engineReadyWorkflow";
 
 import { useDeployment } from "../gql/deployment";
 import { useT } from "../i18n";
@@ -108,22 +108,21 @@ export default ({
 
       if (!workspaceId || !projectId) return;
 
-      const { workflowId, yamlWorkflow } =
-        createWorkflowsYaml(
-          projectName,
-          rawWorkflows
-            .map((w): Workflow | undefined => {
-              if (!w || w.nodes.length < 1) return undefined;
-              const id = w.id as string;
-              const name = w.name as string;
-              const n = w.nodes as Node[];
-              const e = w.edges as Edge[];
-              return { id, name, nodes: n, edges: e };
-            })
-            .filter(isDefined),
-        ) ?? {};
+      const engineReadyWorkflow = createEngineReadyWorkflow(
+        projectName,
+        rawWorkflows
+          .map((w): Workflow | undefined => {
+            if (!w || w.nodes.length < 1) return undefined;
+            const id = w.id as string;
+            const name = w.name as string;
+            const n = w.nodes as Node[];
+            const e = w.edges as Edge[];
+            return { id, name, nodes: n, edges: e };
+          })
+          .filter(isDefined),
+      );
 
-      if (!workflowId || !yamlWorkflow) {
+      if (!engineReadyWorkflow) {
         toast({
           title: t("Empty workflow detected"),
           description: t("You cannot create a deployment without a workflow."),
@@ -134,16 +133,14 @@ export default ({
       if (deploymentId) {
         await useUpdateDeployment(
           deploymentId,
-          workflowId,
-          yamlWorkflow,
+          engineReadyWorkflow,
           description,
         );
       } else {
         await createDeployment(
           workspaceId,
           projectId,
-          workflowId,
-          yamlWorkflow,
+          engineReadyWorkflow,
           description,
         );
       }

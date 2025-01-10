@@ -4,11 +4,12 @@ import type {
   CreateDeployment,
   DeleteDeployment,
   Deployment,
+  EngineReadyWorkflow,
   ExecuteDeployment,
   GetDeployments,
   UpdateDeployment,
 } from "@flow/types";
-import { yamlToFormData } from "@flow/utils/yamlToFormData";
+import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
 
@@ -29,14 +30,16 @@ export const useDeployment = () => {
   const createDeployment = async (
     workspaceId: string,
     projectId: string,
-    workflowId: string,
-    workflow: string,
+    engineReadyWorkflow: EngineReadyWorkflow,
     description?: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
 
     try {
-      const formData = yamlToFormData(workflow, workflowId);
+      const formData = jsonToFormData(
+        engineReadyWorkflow,
+        engineReadyWorkflow.id,
+      );
 
       const data = await mutateAsync({
         workspaceId,
@@ -56,16 +59,14 @@ export const useDeployment = () => {
 
   const useUpdateDeployment = async (
     deploymentId: string,
-    workflowId?: string,
-    workflowYaml?: string,
+    engineReadyWorkflow?: EngineReadyWorkflow,
     description?: string,
   ): Promise<UpdateDeployment> => {
     const { mutateAsync, ...rest } = updateDeploymentMutation;
     try {
       const deployment: Deployment | undefined = await mutateAsync({
         deploymentId,
-        workflowId,
-        workflowYaml,
+        engineReadyWorkflow,
         description,
       });
       toast({

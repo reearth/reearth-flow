@@ -3,7 +3,6 @@ import {
   Disc,
   HardDrive,
   Lightning,
-  MagnifyingGlass,
   TreeView,
 } from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
@@ -182,7 +181,8 @@ const LeftPanel: React.FC<Props> = ({
             ))}
           </nav>
           <nav className="mt-auto flex flex-col items-center gap-4 p-2">
-            <MagnifyingGlass
+            {/* TODO: Implement global search */}
+            {/* <MagnifyingGlass
               className="size-6 cursor-pointer text-popover-foreground/50 hover:text-popover-foreground"
               weight="thin"
               onClick={() =>
@@ -190,7 +190,7 @@ const LeftPanel: React.FC<Props> = ({
                   "Need to implement a global search and assign a shortcut as well",
                 )
               }
-            />
+            /> */}
             <UserNavigation
               className="flex w-full justify-center"
               iconOnly

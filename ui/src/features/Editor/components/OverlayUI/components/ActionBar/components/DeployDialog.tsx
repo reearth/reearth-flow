@@ -1,4 +1,4 @@
-import { CaretRight } from "@phosphor-icons/react";
+// import { CaretRight } from "@phosphor-icons/react";
 import { useCallback, useMemo, useState } from "react";
 
 import {
@@ -65,14 +65,14 @@ const DeployDialog: React.FC<Props> = ({
               {currentProject?.name ?? t("N/A")}
             </p>
           </DialogContentSection>
-          <DialogContentSection>
+          {/* <DialogContentSection>
             <Label>{t("Deploy version: ")}</Label>
             <div className="flex items-center">
               <p className="dark:font-thin">{deployment?.version || 1.0}</p>
               <CaretRight />
               <p className="font-semibold">2.0</p>
             </div>
-          </DialogContentSection>
+          </DialogContentSection> */}
           <div className="border-t border-primary" />
           <DialogContentSection className="flex flex-col">
             <Label>{t("Description (optional): ")}</Label>
