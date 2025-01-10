@@ -1,19 +1,19 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
-id: 3e39d990-0a80-47df-9be9-3bf7c0068b5a
-name: "PLATEAU4-DataConvert-04-luse-lsld-workflow"
-entryGraphId: 0e500d5a-7882-4835-9285-9763ba8b5b65
+id: cd93ce74-eff8-479c-abec-f8a1bc24cbda
+name: "PLATEAU4-DataConvert-06-urf-area-workflow"
+entryGraphId: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
 with:
   cityGmlPath:
   cityCode:
   codelistsPath:
   schemasPath:
   targetPackages:
-    - luse
-    - lsld
+    - urf
+    - area
   outputPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
-  - id: 0e500d5a-7882-4835-9285-9763ba8b5b65
+  - id: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
     name: entry_point
     nodes:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
@@ -98,21 +98,8 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "maxLod.tsv")
 
-      - id: 8510992d-2546-4e89-a09b-f31ff435bbb7
-        name: FeatureFilterByPackage
-        type: action
-        action: FeatureFilter
-        with:
-          conditions:
-            - expr: |
-                env.get("__value")["package"] == "luse"
-              outputPort: luse
-            - expr: |
-                env.get("__value")["package"] == "lsld"
-              outputPort: lsld
-
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        name: AttributeMapperLuse
+        name: AttributeMapper
         type: action
         action: AttributeMapper
         with:
@@ -127,21 +114,23 @@ graphs:
               valueAttribute: gmlName
             - attribute: gml_id
               valueAttribute: gmlId
-            - attribute: luse_class
-              parentAttribute: cityGmlAttributes
-              childAttribute: luse:class
 
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
-        name: MVTWriter
+        name: MvtWriter
         type: action
         action: MVTWriter
         with:
+          format: mvt
           layerName: |
-            "luse"
+            let feature_type = env.get("__value").feature_type;
+            feature_type.replace(":", "_");
+            feature_type
           minZoom: 8
           maxZoom: 16
           output: |
-             file::join_path(env.get("outputPath"), "luse")
+            let feature_type = env.get("__value").feature_type;
+            feature_type.replace(":", "_");
+            file::join_path(env.get("outputPath"), feature_type)
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -176,13 +165,8 @@ graphs:
         toPort: default
       - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        to: 8510992d-2546-4e89-a09b-f31ff435bbb7
-        fromPort: default
-        toPort: default
-      - id: 1e29f24a-620b-472c-805f-8295bf5920c2
-        from: 8510992d-2546-4e89-a09b-f31ff435bbb7
         to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        fromPort: luse
+        fromPort: default
         toPort: default
       - id: e862f11a-88a6-4c1b-a743-ba80253039df
         from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
