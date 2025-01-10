@@ -26,7 +26,8 @@ export type CanvasKeys =
   | "+" // zoom in
   | "=" // zoom in (alternative - depends on keyboard layout)
   | "-" // zoom out
-  | "0"; // fit view
+  | "0" // fit view
+  | "x"; // new subworkflow with select nodes
 
 export type PossibleKeys = GeneralKeys | EditorKeys | CanvasKeys;
 
@@ -47,7 +48,8 @@ type PossibleActions =
   | "bottomPanelPreview"
   | "leftPanelCanvasNavigator"
   | "leftPanelActionsList"
-  | "leftPanelResources";
+  | "leftPanelResources"
+  | "newSubWorkFlow";
 
 export type KeyBinding<K extends PossibleKeys = PossibleKeys> = {
   key: K;
@@ -96,4 +98,5 @@ export const CanvasKeyBindings: Partial<
   zoomIn: { key: "+" },
   zoomOut: { key: "-" },
   fitView: { key: "0", commandKey: true },
+  newSubWorkFlow: { key: "x", commandKey: true },
 };

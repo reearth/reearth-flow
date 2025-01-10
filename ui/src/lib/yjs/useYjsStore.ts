@@ -187,5 +187,7 @@ export default ({
     handleWorkflowUndo,
     handleWorkflowRedo,
     handleWorkflowRename,
+    setOpenWorkflowIds,
+    setWorkflows,
   };
 };
