@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-use reearth_flow_runtime::node::NodeHandle;
 use uuid::Uuid;
 
 use crate::{
@@ -16,7 +15,7 @@ use self::edge_pass_through_event::UpdatedEdge;
 
 #[derive(Debug)]
 pub(crate) struct ProcessorFailedHandler {
-    pub(crate) failed_nodes: Arc<Mutex<Vec<NodeHandle>>>,
+    pub(crate) failed_nodes: Arc<Mutex<Vec<String>>>,
 }
 
 impl ProcessorFailedHandler {
@@ -29,8 +28,14 @@ impl ProcessorFailedHandler {
 #[async_trait::async_trait]
 impl reearth_flow_runtime::event::EventHandler for ProcessorFailedHandler {
     async fn on_event(&self, event: &reearth_flow_runtime::event::Event) {
-        if let reearth_flow_runtime::event::Event::ProcessorFailed { node, .. } = event {
-            self.failed_nodes.lock().push(node.clone());
+        match event {
+            reearth_flow_runtime::event::Event::ProcessorFailed { node, .. } => {
+                self.failed_nodes.lock().push(node.id.to_string());
+            }
+            reearth_flow_runtime::event::Event::SinkFinishFailed { name } => {
+                self.failed_nodes.lock().push(name.clone());
+            }
+            _ => {}
         }
     }
 }
