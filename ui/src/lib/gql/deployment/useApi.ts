@@ -57,6 +57,38 @@ export const useDeployment = () => {
     }
   };
 
+  const createDeploymentFromFile = async (
+    workspaceId: string,
+    workflowFile: File,
+    customName?: string,
+    description?: string,
+  ): Promise<CreateDeployment> => {
+    const { mutateAsync, ...rest } = createDeploymentMutation;
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new File([workflowFile], customName || workflowFile.name, {
+        type: workflowFile.type,
+      }),
+    );
+
+    try {
+      const data = await mutateAsync({
+        workspaceId,
+        projectId,
+        file: formData,
+        description,
+      });
+      toast({
+        title: t("Deployment Created"),
+        description: t("Deployment has been successfully created."),
+      });
+      return { deployment: data?.deployment, ...rest };
+    } catch (_err) {
+      return { deployment: undefined, ...rest };
+    }
+  };
+
   const useUpdateDeployment = async (
     deploymentId: string,
     engineReadyWorkflow?: EngineReadyWorkflow,
@@ -125,6 +157,7 @@ export const useDeployment = () => {
 
   return {
     createDeployment,
+    createDeploymentFromFile,
     useGetDeploymentsInfinite,
     useUpdateDeployment,
     useDeleteDeployment,
