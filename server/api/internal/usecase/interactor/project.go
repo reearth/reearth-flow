@@ -6,7 +6,6 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -18,7 +17,6 @@ import (
 )
 
 type Project struct {
-	common
 	assetRepo         repo.Asset
 	workflowRepo      repo.Workflow
 	projectRepo       repo.Project
@@ -43,7 +41,7 @@ func NewProject(r *repo.Container, gr *gateway.Container, permissionChecker gate
 	}
 }
 
-func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID, _ *usecase.Operator) ([]*project.Project, error) {
+func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Project, error) {
 	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
 		return nil, err
 	}
@@ -51,7 +49,7 @@ func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID, _ *usecase.Oper
 	return i.projectRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam, _ *usecase.Operator) ([]*project.Project, *usecasex.PageInfo, error) {
+func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *usecasex.PageInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
 		return nil, nil, err
 	}
@@ -59,12 +57,8 @@ func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 	return i.projectRepo.FindByWorkspace(ctx, id, pagination)
 }
 
-func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
+func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (_ *project.Project, err error) {
 	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
-		return nil, err
-	}
-
-	if err := i.CanWriteWorkspace(p.WorkspaceID, operator); err != nil {
 		return nil, err
 	}
 
@@ -112,7 +106,7 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, o
 	return proj, nil
 }
 
-func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
+func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (_ *project.Project, err error) {
 	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
 		return nil, err
 	}
@@ -131,9 +125,6 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, o
 
 	prj, err := i.projectRepo.FindByID(ctx, p.ID)
 	if err != nil {
-		return nil, err
-	}
-	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
 		return nil, err
 	}
 
@@ -169,7 +160,7 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, o
 	return prj, nil
 }
 
-func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *usecase.Operator) (err error) {
+func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error) {
 	if err := i.checkPermission(ctx, rbac.ActionDelete); err != nil {
 		return err
 	}
@@ -190,15 +181,12 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *
 	if err != nil {
 		return err
 	}
-	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
-		return err
-	}
 
 	deleter := ProjectDeleter{
 		File:    i.file,
 		Project: i.projectRepo,
 	}
-	if err := deleter.Delete(ctx, prj, true, operator); err != nil {
+	if err := deleter.Delete(ctx, prj, true); err != nil {
 		return err
 	}
 
@@ -206,7 +194,7 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *
 	return nil
 }
 
-func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (started bool, err error) {
+func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (started bool, err error) {
 	if p.Workflow == nil {
 		return false, nil
 	}

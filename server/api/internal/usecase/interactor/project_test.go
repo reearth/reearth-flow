@@ -6,12 +6,10 @@ import (
 	"testing"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
-	"github.com/reearth/reearthx/account/accountusecase"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
@@ -50,7 +48,6 @@ func TestProject_Create(t *testing.T) {
 	tests := []struct {
 		name       string
 		param      interfaces.CreateProjectParam
-		operator   *usecase.Operator
 		permission *mockPermissionChecker
 		wantErr    error
 	}{
@@ -62,35 +59,13 @@ func TestProject_Create(t *testing.T) {
 				Description: lo.ToPtr("bbb"),
 				Archived:    lo.ToPtr(false),
 			},
-			operator: &usecase.Operator{
-				AcOperator: &accountusecase.Operator{
-					WritableWorkspaces: workspace.IDList{ws.ID()},
-				},
-			},
 		},
 		{
 			name: "nonexistent workspace",
 			param: interfaces.CreateProjectParam{
 				WorkspaceID: wsid2,
 			},
-			operator: &usecase.Operator{
-				AcOperator: &accountusecase.Operator{
-					WritableWorkspaces: workspace.IDList{wsid2},
-				},
-			},
 			wantErr: rerror.ErrNotFound,
-		},
-		{
-			name: "operation denied",
-			param: interfaces.CreateProjectParam{
-				WorkspaceID: ws.ID(),
-			},
-			operator: &usecase.Operator{
-				AcOperator: &accountusecase.Operator{
-					ReadableWorkspaces: workspace.IDList{ws.ID()},
-				},
-			},
-			wantErr: interfaces.ErrOperationDenied,
 		},
 		{
 			name: "permission denied",
@@ -99,11 +74,6 @@ func TestProject_Create(t *testing.T) {
 				Name:        lo.ToPtr("ccc"),
 				Description: lo.ToPtr("ddd"),
 				Archived:    lo.ToPtr(false),
-			},
-			operator: &usecase.Operator{
-				AcOperator: &accountusecase.Operator{
-					WritableWorkspaces: workspace.IDList{ws.ID()},
-				},
 			},
 			permission: NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
 				return false, nil
@@ -118,7 +88,7 @@ func TestProject_Create(t *testing.T) {
 				uc.permissionChecker = tt.permission
 			}
 
-			got, err := uc.Create(ctx, tt.param, tt.operator)
+			got, err := uc.Create(ctx, tt.param)
 
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error())

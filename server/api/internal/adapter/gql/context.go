@@ -4,10 +4,8 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearthx/account/accountdomain/user"
-
 	"github.com/reearth/reearthx/account/accountusecase"
 )
 
@@ -33,14 +31,11 @@ func getUser(ctx context.Context) *user.User {
 	return adapter.User(ctx)
 }
 
-func getOperator(ctx context.Context) *usecase.Operator {
-	return adapter.Operator(ctx)
-}
-
-func getAcOperator(ctx context.Context) *accountusecase.Operator {
-	if op := getOperator(ctx); op != nil {
-		return op.AcOperator
-	}
+// Temporarily returns nil because the operator is defined in reearthx interface.
+// This implementation is a temporary workaround and will be removed in the future.
+// TODO: After fixing the reearthx module (removing operator implementation and modifying interfaces),
+// this function and all its usages should be deleted.
+func getAcOperator() *accountusecase.Operator {
 	return nil
 }
 

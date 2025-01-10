@@ -3,10 +3,8 @@ package adapter
 import (
 	"context"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/account/accountusecase"
 	"github.com/reearth/reearthx/appx"
 	"golang.org/x/text/language"
 )
@@ -15,7 +13,6 @@ type ContextKey string
 
 const (
 	contextUser     ContextKey = "user"
-	contextOperator ContextKey = "operator"
 	ContextAuthInfo ContextKey = "authinfo"
 	contextUsecases ContextKey = "usecases"
 )
@@ -33,10 +30,6 @@ type AuthInfo struct {
 
 func AttachUser(ctx context.Context, u *user.User) context.Context {
 	return context.WithValue(ctx, contextUser, u)
-}
-
-func AttachOperator(ctx context.Context, o *usecase.Operator) context.Context {
-	return context.WithValue(ctx, contextOperator, o)
 }
 
 func AttachUsecases(ctx context.Context, u *interfaces.Container) context.Context {
@@ -69,24 +62,6 @@ func Lang(ctx context.Context, lang *language.Tag) string {
 	}
 
 	return l.String()
-}
-
-func Operator(ctx context.Context) *usecase.Operator {
-	if v := ctx.Value(contextOperator); v != nil {
-		if v2, ok := v.(*usecase.Operator); ok {
-			return v2
-		}
-	}
-	return nil
-}
-
-func AcOperator(ctx context.Context) *accountusecase.Operator {
-	if v := ctx.Value(contextOperator); v != nil {
-		if v2, ok := v.(*accountusecase.Operator); ok {
-			return v2
-		}
-	}
-	return nil
 }
 
 func GetAuthInfo(ctx context.Context) *appx.AuthInfo {

@@ -20,7 +20,6 @@ import (
 )
 
 type Job struct {
-	common
 	jobRepo       repo.Job
 	workspaceRepo accountrepo.Workspace
 	transaction   usecasex.Transaction
@@ -52,38 +51,29 @@ func NewJob(r *repo.Container, gr *gateway.Container) interfaces.Job {
 	}
 }
 
-func (i *Job) FindByID(ctx context.Context, id id.JobID, operator *usecase.Operator) (*job.Job, error) {
+func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 	j, err := i.jobRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, err
-	}
-	if err := i.CanReadWorkspace(j.Workspace(), operator); err != nil {
 		return nil, err
 	}
 	return j, nil
 }
 
-func (i *Job) Fetch(ctx context.Context, ids []id.JobID, operator *usecase.Operator) ([]*job.Job, error) {
+func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
 	jobs, err := i.jobRepo.FindByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	return i.filterReadableJobs(jobs, operator), nil
+	return jobs, nil
 }
 
-func (i *Job) FindByWorkspace(ctx context.Context, wsID accountdomain.WorkspaceID, p *interfaces.PaginationParam, operator *usecase.Operator) ([]*job.Job, *interfaces.PageBasedInfo, error) {
-	if err := i.CanReadWorkspace(wsID, operator); err != nil {
-		return nil, nil, err
-	}
+func (i *Job) FindByWorkspace(ctx context.Context, wsID accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	return i.jobRepo.FindByWorkspace(ctx, wsID, p)
 }
 
-func (i *Job) GetStatus(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (job.Status, error) {
+func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error) {
 	j, err := i.jobRepo.FindByID(ctx, jobID)
 	if err != nil {
-		return "", err
-	}
-	if err := i.CanReadWorkspace(j.Workspace(), operator); err != nil {
 		return "", err
 	}
 	return j.Status(), nil
@@ -199,8 +189,8 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	return i.notifier.Send(*config.NotificationURL, payload)
 }
 
-func (i *Job) Subscribe(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (chan job.Status, error) {
-	j, err := i.FindByID(ctx, jobID, operator)
+func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, error) {
+	j, err := i.FindByID(ctx, jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -212,14 +202,4 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID, operator *usecase.O
 
 func (i *Job) Unsubscribe(jobID id.JobID, ch chan job.Status) {
 	i.subscriptions.Unsubscribe(jobID.String(), ch)
-}
-
-func (i *Job) filterReadableJobs(jobs []*job.Job, operator *usecase.Operator) []*job.Job {
-	result := make([]*job.Job, 0, len(jobs))
-	for _, j := range jobs {
-		if i.CanReadWorkspace(j.Workspace(), operator) == nil {
-			result = append(result, j)
-		}
-	}
-	return result
 }

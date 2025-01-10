@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountusecase"
@@ -47,42 +45,12 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	}
 }
 
-// Deprecated: common will be deprecated. Please use the Usecase function instead.
-type common struct{}
-
-func (common) OnlyOperator(op *usecase.Operator) error {
-	if op == nil {
-		return interfaces.ErrOperationDenied
-	}
-	return nil
-}
-
-func (i common) CanReadWorkspace(t accountdomain.WorkspaceID, op *usecase.Operator) error {
-	if err := i.OnlyOperator(op); err != nil {
-		return err
-	}
-	if !op.IsReadableWorkspace(t) {
-		return interfaces.ErrOperationDenied
-	}
-	return nil
-}
-
-func (i common) CanWriteWorkspace(t accountdomain.WorkspaceID, op *usecase.Operator) error {
-	if err := i.OnlyOperator(op); err != nil {
-		return err
-	}
-	if !op.IsWritableWorkspace(t) {
-		return interfaces.ErrOperationDenied
-	}
-	return nil
-}
-
 type ProjectDeleter struct {
 	File    gateway.File
 	Project repo.Project
 }
 
-func (d ProjectDeleter) Delete(ctx context.Context, prj *project.Project, force bool, operator *usecase.Operator) error {
+func (d ProjectDeleter) Delete(ctx context.Context, prj *project.Project, force bool) error {
 	if prj == nil {
 		return nil
 	}
