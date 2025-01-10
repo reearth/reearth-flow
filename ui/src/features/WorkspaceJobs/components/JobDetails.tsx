@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 import { Button } from "@flow/components";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
+import { useJobStatus } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { Job } from "@flow/types";
 
@@ -15,6 +16,17 @@ type Props = {
 const JobDetails: React.FC<Props> = ({ selectedJob }) => {
   const t = useT();
   const { history } = useRouter();
+
+  const { data, isLoading, error } = useJobStatus(selectedJob?.id ?? "");
+
+  const statusValue = isLoading
+    ? t("Loading...")
+    : error
+      ? t("Error")
+      : (data ?? "queued");
+
+  console.log("data", data);
+  console.log("selectedJob", selectedJob);
 
   const handleBack = useCallback(() => history.go(-1), [history]);
 
@@ -57,11 +69,11 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
             {
               id: "status",
               name: t("Status:"),
-              value: selectedJob.status.toLocaleUpperCase(),
+              value: statusValue ?? "ASLDKFJLAKSDFJ",
             },
           ]
         : undefined,
-    [t, selectedJob],
+    [t, statusValue, selectedJob],
   );
 
   return (
