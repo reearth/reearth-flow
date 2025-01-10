@@ -1,4 +1,10 @@
-use std::{collections::HashMap, io::Read, path::Path, str::FromStr, sync::Arc};
+use std::{
+    collections::HashMap,
+    io::{Cursor, Read},
+    path::Path,
+    str::FromStr,
+    sync::Arc,
+};
 
 use once_cell::sync::Lazy;
 use reearth_flow_common::{dir::project_temp_dir, uri::Uri};
@@ -9,6 +15,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_sevenz::{decompress_with_extract_fn, default_entry_extract_fn};
 use reearth_flow_storage::storage::Storage;
 use reearth_flow_types::{AttributeValue, Expr, Feature, FilePath};
 use schemars::JsonSchema;
@@ -164,7 +171,19 @@ impl Processor for FeatureFilePathExtractor {
             root_output_storage
                 .create_dir_sync(root_output_path.path().as_path())
                 .map_err(|e| FeatureProcessorError::FilePathExtractor(format!("{:?}", e)))?;
-            let features = extract(bytes, root_output_path, root_output_storage)?;
+            let features = if let Some(ext) = source_dataset.path().as_path().extension() {
+                if let Some(ext) = ext.to_str() {
+                    if ["7z", "7zip"].contains(&ext) {
+                        extract_sevenz(bytes, root_output_path)?
+                    } else {
+                        extract_zip(bytes, root_output_path, root_output_storage)?
+                    }
+                } else {
+                    extract_zip(bytes, root_output_path, root_output_storage)?
+                }
+            } else {
+                extract_zip(bytes, root_output_path, root_output_storage)?
+            };
             for feature in features {
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
@@ -211,7 +230,7 @@ impl FeatureFilePathExtractor {
     }
 }
 
-fn extract(
+fn extract_zip(
     bytes: bytes::Bytes,
     root_output_path: Uri,
     storage: Arc<Storage>,
@@ -309,5 +328,56 @@ fn extract(
         let feature = Feature::from(attribute_value);
         features.push(feature);
     }
+    Ok(features)
+}
+
+fn extract_sevenz(
+    bytes: bytes::Bytes,
+    root_output_path: Uri,
+) -> super::errors::Result<Vec<Feature>> {
+    let mut entries = Vec::<Uri>::new();
+    let cursor = Cursor::new(bytes);
+    decompress_with_extract_fn(cursor, root_output_path.as_path(), |entry, reader, dest| {
+        if !entry.is_directory {
+            let dest_uri = Uri::try_from(dest.clone()).map_err(|e| {
+                reearth_flow_sevenz::Error::Unknown(format!(
+                    "Failed to convert `dest` to URI: {}",
+                    e
+                ))
+            });
+            if let Ok(dest_uri) = dest_uri {
+                entries.push(dest_uri);
+            }
+        }
+        default_entry_extract_fn(entry, reader, dest)
+    })
+    .map_err(|e| {
+        FeatureProcessorError::FilePathExtractor(format!(
+            "Failed to extract `source_dataset` archive: {}",
+            e
+        ))
+    })?;
+    let features = entries
+        .iter()
+        .flat_map(|entry| {
+            let file_path = FilePath::try_from(entry.clone())
+                .map_err(|e| {
+                    FeatureProcessorError::FilePathExtractor(format!(
+                        "Filepath convert error with: error = {:?}",
+                        e
+                    ))
+                })
+                .ok()?;
+            let attribute_value = AttributeValue::try_from(file_path)
+                .map_err(|e| {
+                    FeatureProcessorError::FilePathExtractor(format!(
+                        "Attribute Value convert error with: error = {:?}",
+                        e
+                    ))
+                })
+                .ok()?;
+            Some(Feature::from(attribute_value))
+        })
+        .collect::<Vec<_>>();
     Ok(features)
 }

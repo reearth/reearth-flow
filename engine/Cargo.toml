@@ -58,6 +58,7 @@ reearth-flow-gltf = { path = "runtime/gltf" }
 reearth-flow-macros = { path = "runtime/macros" }
 reearth-flow-runner = { path = "runtime/runner" }
 reearth-flow-runtime = { path = "runtime/runtime" }
+reearth-flow-sevenz = { path = "runtime/sevenz" }
 reearth-flow-state = { path = "runtime/state" }
 reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
