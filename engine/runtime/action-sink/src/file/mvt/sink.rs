@@ -19,6 +19,7 @@ use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
+use reearth_flow_runtime::event::Event;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -195,6 +196,7 @@ impl MVTWriter {
         layer_name: &str,
     ) -> crate::errors::Result<()> {
         let tile_id_conv = TileIdMethod::Hilbert;
+        let name = self.name().to_string();
         std::thread::scope(|scope| {
             let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
             let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
@@ -214,6 +216,8 @@ impl MVTWriter {
                         None,
                         format!("Failed to geometry_slicing_stage with error =  {:?}", err),
                     );
+                    ctx.event_hub
+                        .send(Event::SinkFinishFailed { name: name.clone() });
                 }
             });
             scope.spawn(|| {
@@ -223,6 +227,8 @@ impl MVTWriter {
                         None,
                         format!("Failed to feature_sorting_stage with error =  {:?}", err),
                     );
+                    ctx.event_hub
+                        .send(Event::SinkFinishFailed { name: name.clone() });
                 }
             });
             scope.spawn(|| {
@@ -238,6 +244,8 @@ impl MVTWriter {
                             None,
                             format!("Failed to tile_writing_stage with error =  {:?}", err),
                         );
+                        ctx.event_hub
+                            .send(Event::SinkFinishFailed { name: name.clone() });
                     }
                 })
             });
