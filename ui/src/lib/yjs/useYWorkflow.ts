@@ -42,12 +42,26 @@ export default ({
   );
 
   const handleWorkflowAdd = useCallback(
-    (position?: XYPosition) =>
+    (position?: XYPosition, nodes?: Node[], edges?: Edge[]) =>
       undoTrackerActionWrapper(async () => {
         const workflowId = generateUUID();
         const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
 
+        const selectedNodes = nodes?.filter((n) => n.selected);
+        const selectedNodeIds = selectedNodes?.map((n) => n.id);
+        const hasSelectedNodes = selectedNodes && selectedNodes.length > 0;
+
+        const calculatedPosition = hasSelectedNodes
+          ? {
+              x: Math.min(...selectedNodes.map((n) => n.position.x)),
+              y: Math.min(...selectedNodes.map((n) => n.position.y)),
+            }
+          : (position ?? { x: 600, y: 200 });
+
         const inputRouter = await fetcher<Action>(`${api}/actions/InputRouter`);
+        const outputRouter = await fetcher<Action>(
+          `${api}/actions/OutputRouter`,
+        );
 
         const inputNodeId = generateUUID();
         const newInputNode: Node = {
@@ -64,10 +78,6 @@ export default ({
           },
         };
 
-        const outputRouter = await fetcher<Action>(
-          `${api}/actions/OutputRouter`,
-        );
-
         const outputNodeId = generateUUID();
         const newOutputNode: Node = {
           id: outputNodeId,
@@ -83,15 +93,41 @@ export default ({
           },
         };
 
-        const newYWorkflow = yWorkflowBuilder(workflowId, workflowName, [
-          newInputNode,
-          newOutputNode,
-        ]);
+        // Creation through selection of node
+        let workflowNodes = [newInputNode, newOutputNode];
+        let workflowEdges: Edge[] = [];
+
+        if (hasSelectedNodes && edges) {
+          const internalEdges = edges.filter(
+            (e) =>
+              selectedNodeIds?.includes(e.source) &&
+              selectedNodeIds?.includes(e.target),
+          );
+
+          const adjustedNodes = selectedNodes.map((node) => ({
+            ...node,
+            position: {
+              x: node.position.x - calculatedPosition.x + 400,
+              y: node.position.y - calculatedPosition.y + 200,
+            },
+            selected: false,
+          }));
+
+          workflowNodes = [newInputNode, ...adjustedNodes, newOutputNode];
+          workflowEdges = internalEdges;
+        }
+
+        const newYWorkflow = yWorkflowBuilder(
+          workflowId,
+          workflowName,
+          workflowNodes,
+          workflowEdges,
+        );
 
         const newSubworkflowNode: Node = {
           id: workflowId,
           type: "subworkflow",
-          position: position ?? { x: 600, y: 200 },
+          position: calculatedPosition,
           data: {
             officialName: workflowName,
             status: "idle",
@@ -102,16 +138,28 @@ export default ({
               { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
             ],
           },
+          selected: true,
         };
 
         const parentWorkflow = yWorkflows.get(
           rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
         );
-
         const parentWorkflowNodes = parentWorkflow?.get("nodes") as
           | YNodesArray
           | undefined;
-        parentWorkflowNodes?.push([newSubworkflowNode]);
+
+        if (hasSelectedNodes) {
+          const remainingNodes = nodes?.filter(
+            (n) => !selectedNodeIds?.includes(n.id),
+          );
+          parentWorkflowNodes?.delete(0, parentWorkflowNodes.length);
+          parentWorkflowNodes?.push([
+            ...(remainingNodes ?? []),
+            newSubworkflowNode,
+          ]);
+        } else {
+          parentWorkflowNodes?.push([newSubworkflowNode]);
+        }
 
         yWorkflows.push([newYWorkflow]);
         setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
@@ -143,126 +191,6 @@ export default ({
     [setWorkflows, yWorkflows],
   );
 
-  const handleAddSubworkFlowViaMultiSelect = useCallback(
-    (nodes: Node[], edges: Edge[]) => {
-      undoTrackerActionWrapper(async () => {
-        const selectedNodes = nodes.filter((n) => n.selected);
-        const selectedNodeIds = selectedNodes.map((n) => n.id);
-
-        if (selectedNodes.length === 0) return;
-
-        const workflowId = generateUUID();
-        const position = {
-          x: Math.min(...selectedNodes.map((n) => n.position.x)),
-          y: Math.min(...selectedNodes.map((n) => n.position.y)),
-        };
-
-        const internalEdges = edges.filter(
-          (e) =>
-            selectedNodeIds.includes(e.source) &&
-            selectedNodeIds.includes(e.target),
-        );
-
-        const inputRouter = await fetcher<Action>(`${api}/actions/InputRouter`);
-
-        const inputNodeId = generateUUID();
-        const newInputNode: Node = {
-          id: inputNodeId,
-          type: inputRouter.type,
-          position: { x: 200, y: 200 },
-          data: {
-            officialName: inputRouter.name,
-            outputs: inputRouter.outputPorts,
-            status: "idle",
-            params: {
-              routingPort: DEFAULT_ROUTING_PORT,
-            },
-          },
-        };
-        const outputRouter = await fetcher<Action>(
-          `${api}/actions/OutputRouter`,
-        );
-
-        const outputNodeId = generateUUID();
-        const newOutputNode: Node = {
-          id: outputNodeId,
-          type: outputRouter.type,
-          position: { x: 1000, y: 200 },
-          data: {
-            officialName: outputRouter.name,
-            inputs: outputRouter.inputPorts,
-            status: "idle",
-            params: {
-              routingPort: DEFAULT_ROUTING_PORT,
-            },
-          },
-        };
-
-        const adjustedNodes = selectedNodes.map((node) => ({
-          ...node,
-          position: {
-            x: node.position.x - position.x + 400,
-            y: node.position.y - position.y + 200,
-          },
-          selected: false,
-        }));
-
-        const allNodes = [newInputNode, ...adjustedNodes, newOutputNode];
-        const workflowName = `Sub Workflow-${yWorkflows.length}`;
-        const newYWorkflow = yWorkflowBuilder(
-          workflowId,
-          workflowName,
-          allNodes,
-          internalEdges,
-        );
-
-        const newSubworkflowNode: Node = {
-          id: workflowId,
-          type: "subworkflow",
-          position,
-          data: {
-            officialName: `Sub Workflow-${yWorkflows.length}`,
-            status: "idle",
-            pseudoInputs: [
-              { nodeId: inputNodeId, portName: DEFAULT_ROUTING_PORT },
-            ],
-            pseudoOutputs: [
-              { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
-            ],
-          },
-          selected: true,
-        };
-        yWorkflows.push([newYWorkflow]);
-
-        const parentWorkflow = yWorkflows.get(
-          rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
-        );
-
-        const parentWorkflowNodes = parentWorkflow?.get("nodes") as
-          | YNodesArray
-          | undefined;
-        parentWorkflowNodes?.push([newSubworkflowNode]);
-
-        const remainingNodes = nodes.filter(
-          (n) => !selectedNodeIds.includes(n.id),
-        );
-
-        parentWorkflowNodes?.delete(0, parentWorkflowNodes.length);
-        parentWorkflowNodes?.push([...remainingNodes, newSubworkflowNode]);
-        setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
-        setOpenWorkflowIds((ids) => [...ids, workflowId]);
-      });
-    },
-    [
-      yWorkflows,
-      rawWorkflows,
-      currentWorkflowId,
-      api,
-      undoTrackerActionWrapper,
-      setOpenWorkflowIds,
-      setWorkflows,
-    ],
-  );
   const handleWorkflowsRemove = useCallback(
     (nodeIds: string[]) =>
       undoTrackerActionWrapper(() => {
@@ -337,6 +265,5 @@ export default ({
     handleWorkflowUpdate,
     handleWorkflowsRemove,
     handleWorkflowRename,
-    handleAddSubworkFlowViaMultiSelect,
   };
 };

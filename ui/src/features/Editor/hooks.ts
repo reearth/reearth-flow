@@ -53,7 +53,6 @@ export default ({
     handleWorkflowRename,
     canUndo,
     canRedo,
-    handleAddSubworkFlowViaMultiSelect,
   } = useYjsStore({
     currentWorkflowId,
     yWorkflows,
@@ -177,12 +176,12 @@ export default ({
       callback: handleWorkflowRedo,
     },
     {
-      keyBinding: { key: "x", commandKey: true },
-      callback: () => handleAddSubworkFlowViaMultiSelect(nodes, edges),
-    },
-    {
       keyBinding: { key: "z", commandKey: true },
       callback: handleWorkflowUndo,
+    },
+    {
+      keyBinding: { key: "g", commandKey: true },
+      callback: () => handleWorkflowAdd(undefined, nodes, edges),
     },
   ]);
 
