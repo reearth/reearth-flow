@@ -13,6 +13,7 @@ export default () => {
   const navigate = useNavigate();
   const { history } = useRouter();
 
+  const [openDeploymentAddDialog, setOpenDeploymentAddDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
   const [deploymentToBeDeleted, setDeploymentToBeDeleted] = useState<
     string | undefined
@@ -104,6 +105,8 @@ export default () => {
     deployments,
     selectedDeployment,
     deploymentToBeDeleted,
+    openDeploymentAddDialog,
+    setOpenDeploymentAddDialog,
     setDeploymentToBeDeleted,
     handleDeploymentSelect,
     handleDeploymentUpdate,
