@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"cloud.google.com/go/storage"
 	domainLog "github.com/reearth/reearth-flow/log-subscriber/pkg/log"
@@ -39,7 +40,11 @@ func (g *GCSStorage) SaveLogToGCS(ctx context.Context, event *domainLog.LogEvent
 	bucket := g.client.Bucket(g.bucketName)
 	obj := bucket.Object(filePath)
 	writer := obj.NewWriter(ctx)
-	defer writer.Close()
+	defer func() {
+		if err := writer.Close(); err != nil {
+			log.Printf("failed to close writer: %v", err)
+		}
+	}()
 
 	writer.ContentType = "application/json"
 

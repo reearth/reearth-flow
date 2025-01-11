@@ -45,7 +45,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create pubsub client: %v", err)
 	}
-	defer pubsubClient.Close()
+	defer func() {
+		if cerr := pubsubClient.Close(); cerr != nil {
+			log.Printf("failed to close pubsub client: %v", cerr)
+		}
+	}()
 
 	sub := pubsubClient.Subscription(subscriptionID)
 	subAdapter := flow_pubsub.NewRealSubscription(sub)
@@ -72,7 +76,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create gcs client: %v", err)
 	}
-	defer gcsClient.Close()
+	defer func() {
+		if cerr := gcsClient.Close(); cerr != nil {
+			log.Printf("failed to close gcs client: %v", cerr)
+		}
+	}()
 
 	gcsStorageImpl := flow_gcs.NewGCSStorage(gcsClient, gcsBucketName)
 
