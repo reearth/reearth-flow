@@ -28,4 +28,5 @@ services:
       - FLOW_LOG_SUBSCRIBER_PROJECT_ID=local-project
       - FLOW_LOG_SUBSCRIBER_SUBSCRIPTION_ID=flow-log-stream-topic-sub
       - FLOW_LOG_SUBSCRIBER_REDIS_ADDR=redis:6379
+      - FLOW_LOG_SUBSCRIBER_REDIS_PASSWORD=
       - FLOW_LOG_SUBSCRIBER_GCS_BUCKET_NAME=reearth-flow-oss-bucket

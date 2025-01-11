@@ -77,7 +77,7 @@ log:{workflowId}:{jobId}:{timestamp}
 
 **Example**
 ```
-log:6b82fd47-4427-422f-9f42-02ba8e8bfa60:e3e5d510-d725-4dd9-8b91-886436223145:2024-12-22T12:34:56Z
+log:00caad2a-9f7d-4189-b479-153fa9ea36dc:5566c900-9581-4c5c-be02-fd13e4d93669:2025-01-11T09:12:54.943837Z
 ```
 
 ### GCS
@@ -86,22 +86,12 @@ The same log entry is also stored as a JSON file on GCS
 
 **Path format**
 ```
-gs://<your-bucket-name>/logs/{yyyy}/{MM}/{dd}/{workflowId}/{jobId}/{timestamp}.json
+gs://<your-bucket-name>/artifacts/logs/{yyyy}/{MM}/{dd}/{workflowId}/{jobId}/{timestamp}.json
 ```
-
-
-**Example structure**
+**Example**
 ```
-gs://your-bucket-name
-└─ logs
-   └─ 2024
-      └─ 12
-         └─ 22
-            └─ <workflowId>
-               └─ <jobId>
-                  └─ <timestamp>.json
+gs://reearth-flow-oss-bucket/artifacts/logs/2025/01/11/00caad2a-9f7d-4189-b479-153fa9ea36dc/5566c900-9581-4c5c-be02-fd13e4d93669/2025-01-11T09:12:54.943837Z.json
 ```
-
 ### Retry Behavior
 
 Pub/Sub provides automatic retry. The subscriber logic is
@@ -115,7 +105,7 @@ Pub/Sub provides automatic retry. The subscriber logic is
 This can lead to duplicate entries in Redis if the first write was successful but the second failed.
 Idempotency is not handled in this approach.
 
-## Setup
+## Usage
 Create a network
 ```
 docker network create reearth-flow-net
@@ -154,7 +144,7 @@ docker compose build
 docker compose up -d
 ```
 
-### Example Workflow
+### Prepare Example Workflow
 
 Below is an example demonstrating how to run a workflow (e.g., using cargo run) and retrieve logs via Pub/Sub.
 
@@ -205,6 +195,12 @@ graphs:
         fromPort: default
         toPort: default
 ```
+**Upload to the bucket**
+```
+curl -X POST \
+  --data-binary @example.yml \
+  "http://localhost:4443/upload/storage/v1/b/reearth-flow-oss-bucket/o?uploadType=media&name=workflows/example.yml"
+```
 
 **Metadata (metadata.json)**
 ```
@@ -221,11 +217,21 @@ graphs:
   }
 }
 ```
+**Upload to the bucket**
+```
+curl -X POST \
+  --data-binary @metadata.json \
+  "http://localhost:4443/upload/storage/v1/b/reearth-flow-oss-bucket/o?uploadType=media&name=metadata/metadata.json"
+```
 
-
-### Run the Workflow
+### Run the workflow
 ```
 cd engine
+# For the emulators
+export STORAGE_EMULATOR_HOST=http://localhost:4443
+export PUBSUB_EMULATOR_HOST=0.0.0.0:8085
+
+# Run the workflow
 cargo run --package reearth-flow-worker \
   -- --workflow gs://reearth-flow-oss-bucket/workflows/example.yml \
   --metadata-path gs://reearth-flow-oss-bucket/metadata/metadata.json \
@@ -233,20 +239,32 @@ cargo run --package reearth-flow-worker \
 ```
 ### Confirm Logs in Redis
 ```
-# docker-compose exec log-subscriber-redis redis-cli
-redis> KEYS log:*
-1) "log:6b82fd47-4427-422f-9f42-02ba8e8bfa60:5566c900-9581-4c5c-be02-fd13e4d93669:2024-12-22T12:34:56Z"
-2) ...
+docker exec -it log-subscriber-redis redis-cli
+127.0.0.1:6379> KEYS *
+ 1) "log:00caad2a-9f7d-4189-b479-153fa9ea36dc:5566c900-9581-4c5c-be02-fd13e4d93669:2025-01-11T09:12:54.943837Z"
+ 2) "log:00caad2a-9f7d-4189-b479-153fa9ea36dc:5566c900-9581-4c5c-be02-fd13e4d93669:2025-01-11T09:12:54.602634Z"
+ 3) "log:00caad2a-9f7d-4189-b479-153fa9ea36dc:5566c900-9581-4c5c-be02-fd13e4d93669:2025-01-11T09:12:54.487779Z"
+127.0.0.1:6379> get "log:00caad2a-9f7d-4189-b479-153fa9ea36dc:5566c900-9581-4c5c-be02-fd13e4d93669:2025-01-11T09:12:54.487779Z"
 ```
-
+**Example Output**
+```
+"{\"workflowId\":\"00caad2a-9f7d-4189-b479-153fa9ea36dc\",\"jobId\":\"5566c900-9581-4c5c-be02-fd13e4d93669\",\"nodeId\":\"f5e66920-24c0-4c70-ae16-6be1ed3b906c\",\"logLevel\":\"INFO\",\"timestamp\":\"2025-01-11T09:12:54.487779Z\",\"message\":\"\\\"FileWriter\\\" sink start...\"}"
+"{\"workflowId\":\"00caad2a-9f7d-4189-b479-153fa9ea36dc\",\"jobId\":\"5566c900-9581-4c5c-be02-fd13e4d93669\",\"nodeId\":\"\",\"logLevel\":\"INFO\",\"timestamp\":\"2025-01-11T09:12:54.602634Z\",\"message\":\"\\\"FeatureCreator\\\" finish source complete. elapsed = 855.334\xc2\xb5s\"}"
+"{\"workflowId\":\"00caad2a-9f7d-4189-b479-153fa9ea36dc\",\"jobId\":\"5566c900-9581-4c5c-be02-fd13e4d93669\",\"nodeId\":\"f5e66920-24c0-4c70-ae16-6be1ed3b906c\",\"logLevel\":\"INFO\",\"timestamp\":\"2025-01-11T09:12:54.943837Z\",\"message\":\"\\\"FileWriter\\\" sink finish. elapsed = 1.688292ms\"}"
+```
 ### Confirm Logs in GCS
 ```
-gsutil ls gs://<your-bucket-name>/logs/<yyyy>/<MM>/<dd>/<workflowId>/<jobId>/
+curl -X GET "http://localhost:4443/storage/v1/b/reearth-flow-oss-bucket/o?prefix=artifacts/logs"
+curl -o log.json "http://localhost:4443/download/storage/v1/b/reearth-flow-oss-bucket/o/artifacts%2Flogs%2F2025%2F01%2F11%2F00caad2a-9f7d-4189-b479-153fa9ea36dc%2F5566c900-9581-4c5c-be02-fd13e4d93669%2F2025-01-11T09:12:54.487779Z.json?alt=media"
+cat log.json
 ```
-**Example**
+**Example Output**
 ```
-gsutil ls gs://reearth-flow-oss-bucket/logs/2024/12/22/6b82fd47-4427-422f-9f42-02ba8e8bfa60/5566c900-9581-4c5c-be02-fd13e4d93669/
+{"workflowId":"00caad2a-9f7d-4189-b479-153fa9ea36dc","jobId":"5566c900-9581-4c5c-be02-fd13e4d93669","nodeId":"f5e66920-24c0-4c70-ae16-6be1ed3b906c","timestamp":"2025-01-11T09:12:54.487779Z","logLevel":"INFO","message":"\"FileWriter\" sink start..."}
+{"workflowId":"00caad2a-9f7d-4189-b479-153fa9ea36dc","jobId":"5566c900-9581-4c5c-be02-fd13e4d93669","timestamp":"2025-01-11T09:12:54.602634Z","logLevel":"INFO","message":"\"FeatureCreator\" finish source complete. elapsed = 855.334µs"}
+{"workflowId":"00caad2a-9f7d-4189-b479-153fa9ea36dc","jobId":"5566c900-9581-4c5c-be02-fd13e4d93669","nodeId":"f5e66920-24c0-4c70-ae16-6be1ed3b906c","timestamp":"2025-01-11T09:12:54.943837Z","logLevel":"INFO","message":"\"FileWriter\" sink finish. elapsed = 1.688292ms"}
 ```
+
 
 ### (Optional) Pulling Logs Dilectly
 ```
@@ -255,23 +273,4 @@ curl -X POST "http://localhost:8085/v1/projects/local-project/subscriptions/flow
      -d '{
            "maxMessages": 1000
          }'
-```
-**Sample output**
-```
-{
-  "workflowId": "00caad2a-9f7d-4189-b479-153fa9ea36dc",
-  "jobId": "5566c900-9581-4c5c-be02-fd13e4d93669",
-  "logLevel": "INFO",
-  "nodeId": "f5e66920-24c0-4c70-ae16-6be1ed3b906c",
-  "message": "\"FileWriter\" sink start...",
-  "timestamp": "2024-12-21T06:27:11.184599Z"
-}
-{
-  "workflowId": "00caad2a-9f7d-4189-b479-153fa9ea36dc",
-  "jobId": "5566c900-9581-4c5c-be02-fd13e4d93669",
-  "logLevel": "INFO",
-  "nodeId": "f5e66920-24c0-4c70-ae16-6be1ed3b906c",
-  "message": "\"FileWriter\" sink finish. elapsed = 1.737ms",
-  "timestamp": "2024-12-21T06:42:33.753321Z"
-}
 ```

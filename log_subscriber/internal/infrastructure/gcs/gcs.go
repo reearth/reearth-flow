@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"cloud.google.com/go/storage"
 	domainLog "github.com/reearth/reearth-flow/log-subscriber/pkg/log"
@@ -28,13 +27,13 @@ func NewGCSStorage(client GCSClient, bucketName string) *GCSStorage {
 
 // Write LogEvent to GCS as a JSON file
 func (g *GCSStorage) SaveLogToGCS(ctx context.Context, event *domainLog.LogEvent) error {
-	// File path example: logs/yyyy/MM/dd/workflowId/jobId/timestamp.json
+	// File path example: artifacts/logs/yyyy/MM/dd/workflowId/jobId/timestamp.json
 	year, month, day := event.Timestamp.UTC().Date()
-	filePath := fmt.Sprintf("logs/%04d/%02d/%02d/%s/%s/%s.json",
+	filePath := fmt.Sprintf("artifacts/logs/%04d/%02d/%02d/%s/%s/%s.json",
 		year, month, day,
 		event.WorkflowID,
 		event.JobID,
-		event.Timestamp.UTC().Format(time.RFC3339),
+		event.Timestamp.UTC().Format("2006-01-02T15:04:05.000000Z"),
 	)
 
 	bucket := g.client.Bucket(g.bucketName)
