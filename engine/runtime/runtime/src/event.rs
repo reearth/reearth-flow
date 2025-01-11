@@ -15,6 +15,13 @@ pub enum Event {
         node: NodeHandle,
         name: String,
     },
+    ProcessorFailed {
+        node: NodeHandle,
+        name: String,
+    },
+    SinkFinishFailed {
+        name: String,
+    },
     SinkFinished {
         node: NodeHandle,
         name: String,

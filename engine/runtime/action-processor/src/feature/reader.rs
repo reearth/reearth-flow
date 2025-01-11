@@ -30,7 +30,7 @@ impl ProcessorFactory for FeatureReaderFactory {
         "Filters features based on conditions"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(FeatureReaderParam))
     }
 

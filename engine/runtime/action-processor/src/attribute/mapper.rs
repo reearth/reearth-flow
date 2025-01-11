@@ -27,7 +27,7 @@ impl ProcessorFactory for AttributeMapperFactory {
         "Maps attributes"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(AttributeMapperParam))
     }
 

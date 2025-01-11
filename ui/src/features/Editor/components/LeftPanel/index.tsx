@@ -3,7 +3,6 @@ import {
   Disc,
   HardDrive,
   Lightning,
-  MagnifyingGlass,
   TreeView,
 } from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
@@ -24,6 +23,7 @@ type Props = {
   isOpen: boolean;
   onOpen: (panel?: "left" | "right" | "bottom") => void;
   onNodesChange: (nodes: Node[]) => void;
+  isMainWorkflow: boolean;
 };
 
 const LeftPanel: React.FC<Props> = ({
@@ -31,6 +31,7 @@ const LeftPanel: React.FC<Props> = ({
   isOpen,
   onOpen,
   onNodesChange,
+  isMainWorkflow,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
@@ -98,7 +99,13 @@ const LeftPanel: React.FC<Props> = ({
       id: "actions-list",
       title: t("Actions list"),
       icon: <Lightning className="size-5" weight="thin" />,
-      component: <ActionsList nodes={nodes} onNodesChange={onNodesChange} />,
+      component: (
+        <ActionsList
+          nodes={nodes}
+          onNodesChange={onNodesChange}
+          isMainWorkflow={isMainWorkflow}
+        />
+      ),
     },
     {
       id: "resources",
@@ -174,7 +181,8 @@ const LeftPanel: React.FC<Props> = ({
             ))}
           </nav>
           <nav className="mt-auto flex flex-col items-center gap-4 p-2">
-            <MagnifyingGlass
+            {/* TODO: Implement global search */}
+            {/* <MagnifyingGlass
               className="size-6 cursor-pointer text-popover-foreground/50 hover:text-popover-foreground"
               weight="thin"
               onClick={() =>
@@ -182,7 +190,7 @@ const LeftPanel: React.FC<Props> = ({
                   "Need to implement a global search and assign a shortcut as well",
                 )
               }
-            />
+            /> */}
             <UserNavigation
               className="flex w-full justify-center"
               iconOnly

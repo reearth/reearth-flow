@@ -1,6 +1,6 @@
 import { useReactFlow } from "@xyflow/react";
 import { debounce } from "lodash-es";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import {
   Accordion,
@@ -18,7 +18,8 @@ import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
-import type { Action, ActionsSegregated, Node, Segregated } from "@flow/types";
+import i18n from "@flow/lib/i18n/i18n";
+import type { Action, ActionsSegregated, Node } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
 import ActionComponent from "./Action";
@@ -28,29 +29,30 @@ type Ordering = "default" | "categorically" | "byType";
 type Props = {
   nodes: Node[];
   onNodesChange: (nodes: Node[]) => void;
+  isMainWorkflow: boolean;
 };
 
-const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
+const ActionsList: React.FC<Props> = ({
+  nodes,
+  onNodesChange,
+  isMainWorkflow,
+}) => {
   const t = useT();
-  const { useGetActions, useGetActionsSegregated } = useAction();
-
+  const { useGetActions, useGetActionsSegregated } = useAction(i18n.language);
   const { screenToFlowPosition } = useReactFlow();
-
   const [selected, setSelected] = useState<string | undefined>(undefined);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchDone, setSearchDone] = useState<string>("");
 
-  const [actions, setActions] = useState<Action[] | undefined>();
+  const { actions } = useGetActions({
+    isMainWorkflow,
+    searchTerm: searchDone,
+  });
 
-  const [actionsSegregated, setActionsSegregated] = useState<
-    Segregated | undefined
-  >();
-
-  const { actions: actionsData } = useGetActions();
-  const { actions: actionsSegregatedData } = useGetActionsSegregated();
-
-  useEffect(() => {
-    if (actionsData) setActions(actionsData);
-    if (actionsSegregatedData) setActionsSegregated(actionsSegregatedData);
-  }, [actionsData, actionsSegregatedData]);
+  const { actions: actionsSegregated } = useGetActionsSegregated({
+    isMainWorkflow,
+    searchTerm: searchDone,
+  });
 
   const tabs: {
     title: string;
@@ -106,58 +108,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
     setSelected((prevName) => (prevName === name ? undefined : name));
   };
 
-  const getFilteredActions = useCallback(
-    (filter: string, actions?: Action[]): Action[] | undefined =>
-      actions?.filter((action) =>
-        (
-          Object.values(action).reduce(
-            (result, value) =>
-              (result += (
-                Array.isArray(value)
-                  ? value.join()
-                  : typeof value === "string"
-                    ? value
-                    : ""
-              ).toLowerCase()),
-            "",
-          ) as string
-        ).includes(filter.toLowerCase()),
-      ),
-    [],
-  );
-
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [searchDone, setSearchDone] = useState<string>("");
-
-  // Don't worry too much about this implementation. It's only placeholder till we get an actual one using API
   const handleSearch = debounce((filter: string) => {
-    if (!filter) {
-      setActions(actionsData);
-      setActionsSegregated(actionsSegregatedData);
-      return;
-    }
-
-    const filteredActions =
-      actionsData && getFilteredActions(filter, actionsData);
-    setActions(filteredActions);
-
-    const actionsSegregated =
-      actionsSegregatedData &&
-      Object.keys(actionsSegregatedData).reduce((obj, rootKey) => {
-        obj[rootKey] = Object.keys(actionsSegregatedData[rootKey]).reduce(
-          (obj: Record<string, Action[] | undefined>, key) => {
-            obj[key] = getFilteredActions(
-              filter,
-              actionsSegregatedData[rootKey][key],
-            );
-            return obj;
-          },
-          {},
-        );
-        return obj;
-      }, {} as Segregated);
-
-    setActionsSegregated(actionsSegregated);
     setSearchDone(filter);
   }, 200);
 
@@ -195,7 +146,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
             key={order}
             value={order}>
             {Array.isArray(actions) ? (
-              actions.map((action) => (
+              actions?.map((action, index) => (
                 <Fragment key={action.name}>
                   <ActionComponent
                     action={action}
@@ -210,7 +161,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
                     onDoubleClick={handleDoubleClick}
                     onSelect={() => handleActionSelect(action.name)}
                   />
-                  <div className="border-b" />
+                  {index !== actions.length - 1 && <div className="border-b" />}
                 </Fragment>
               ))
             ) : (
@@ -222,7 +173,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
                         <p className="capitalize">{key}</p>
                       </AccordionTrigger>
                       <AccordionContent className="flex flex-col gap-1">
-                        {actions[key]?.map((action) => (
+                        {actions[key]?.map((action, index) => (
                           <Fragment key={action.name}>
                             <ActionComponent
                               action={action}
@@ -239,7 +190,10 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
                               onDoubleClick={handleDoubleClick}
                               onSelect={() => handleActionSelect(action.name)}
                             />
-                            <div className="border-b" />
+                            {actions[key] &&
+                              index !== actions[key].length - 1 && (
+                                <div className="border-b" />
+                              )}
                           </Fragment>
                         ))}
                       </AccordionContent>
