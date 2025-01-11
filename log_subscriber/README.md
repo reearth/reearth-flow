@@ -140,8 +140,7 @@ The log_subscriber uses the following environment variables
 
 ```
 cd log_subscriber
-docker compose build
-docker compose up -d
+make run
 ```
 
 ### Prepare Example Workflow

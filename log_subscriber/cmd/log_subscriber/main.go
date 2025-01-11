@@ -48,6 +48,7 @@ func main() {
 	defer pubsubClient.Close()
 
 	sub := pubsubClient.Subscription(subscriptionID)
+	subAdapter := flow_pubsub.NewRealSubscription(sub)
 
 	// Redis client initialization
 	redisAddr := getEnv("FLOW_LOG_SUBSCRIBER_REDIS_ADDR", "localhost:6379")
@@ -82,7 +83,7 @@ func main() {
 	logSubscriberUC := interactor.NewLogSubscriberUseCase(storageImpl)
 
 	// Initializing and running the Subscriber
-	subscriber := flow_pubsub.NewSubscriber(sub, logSubscriberUC)
+	subscriber := flow_pubsub.NewSubscriber(subAdapter, logSubscriberUC)
 
 	log.Println("[log_subscriber] Starting subscriber...")
 

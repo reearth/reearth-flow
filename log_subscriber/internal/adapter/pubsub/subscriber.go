@@ -5,41 +5,38 @@ import (
 	"encoding/json"
 	"log"
 
-	"cloud.google.com/go/pubsub"
 	"github.com/reearth/reearth-flow/log-subscriber/internal/usecase/interactor"
 	domainLog "github.com/reearth/reearth-flow/log-subscriber/pkg/log"
 )
 
 type Subscriber struct {
-	subscription *pubsub.Subscription
-	useCase      interactor.LogSubscriberUseCase
+	sub     Subscription
+	useCase interactor.LogSubscriberUseCase
 }
 
-func NewSubscriber(subscription *pubsub.Subscription, useCase interactor.LogSubscriberUseCase) *Subscriber {
+func NewSubscriber(subscription Subscription, useCase interactor.LogSubscriberUseCase) *Subscriber {
 	return &Subscriber{
-		subscription: subscription,
-		useCase:      useCase,
+		sub:     subscription,
+		useCase: useCase,
 	}
 }
 
-// Subscribe and receive messages
+// Subscribe and receive messages from Pub/Sub
 func (s *Subscriber) StartListening(ctx context.Context) error {
-	return s.subscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-
-		// Automatically recovers when panic occurs
+	return s.sub.Receive(ctx, func(ctx context.Context, m Message) {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("panic recovered in subscriber: %v", r)
+				log.Printf("[Subscriber] panic recovered: %v", r)
 			}
 		}()
+
 		var evt domainLog.LogEvent
-		if err := json.Unmarshal(m.Data, &evt); err != nil {
+		if err := json.Unmarshal(m.Data(), &evt); err != nil {
 			log.Printf("failed to unmarshal message: %v", err)
 			m.Nack()
 			return
 		}
 
-		// Process using LogSubscriberUseCase
 		if err := s.useCase.ProcessLogEvent(ctx, &evt); err != nil {
 			log.Printf("failed to process event: %v", err)
 			m.Nack()
