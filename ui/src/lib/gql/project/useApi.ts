@@ -3,13 +3,14 @@ import { useT } from "@flow/lib/i18n";
 import {
   CreateProject,
   DeleteProject,
+  EngineReadyWorkflow,
   GetProject,
   GetWorkspaceProjects,
   Project,
   RunProject,
   UpdateProject,
 } from "@flow/types";
-import { yamlToFormData } from "@flow/utils/yamlToFormData";
+import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
 import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
 
@@ -97,12 +98,15 @@ export const useProject = () => {
   const runProject = async (
     projectId: string,
     workspaceId: string,
-    workflow: string,
+    engineReadyWorkflow: EngineReadyWorkflow,
   ): Promise<RunProject> => {
     const { mutateAsync, ...rest } = runProjectMutation;
 
     try {
-      const formData = yamlToFormData(workflow, "debug-run-workflow");
+      const formData = jsonToFormData(
+        engineReadyWorkflow,
+        engineReadyWorkflow.id,
+      );
       const data = await mutateAsync({
         projectId,
         workspaceId,

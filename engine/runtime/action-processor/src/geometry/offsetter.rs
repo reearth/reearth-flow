@@ -26,7 +26,7 @@ impl ProcessorFactory for OffsetterFactory {
         "Adds offsets to the feature's coordinates."
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(OffsetterParam))
     }
 

@@ -9,7 +9,7 @@ import fr from "./locales/fr.json";
 import ja from "./locales/ja.json";
 import zh from "./locales/zh.json";
 
-const resources: { [l in AvailableLanguage]: ResourceLanguage } = {
+const resources: Record<AvailableLanguage, ResourceLanguage> = {
   en: {
     translation: en,
   },

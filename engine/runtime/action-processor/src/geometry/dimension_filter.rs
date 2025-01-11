@@ -27,7 +27,7 @@ impl ProcessorFactory for DimensionFilterFactory {
         "Filters the dimension of features"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         None
     }
 

@@ -600,6 +600,16 @@ export type SignupPayload = {
   workspace: Workspace;
 };
 
+export type Subscription = {
+  __typename?: 'Subscription';
+  jobStatus: JobStatus;
+};
+
+
+export type SubscriptionJobStatusArgs = {
+  jobId: Scalars['ID']['input'];
+};
+
 export type UpdateDeploymentInput = {
   deploymentId: Scalars['ID']['input'];
   description?: InputMaybe<Scalars['String']['input']>;

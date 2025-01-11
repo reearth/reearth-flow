@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use parking_lot::Mutex;
+use reearth_flow_runtime::node::NodeHandle;
 use uuid::Uuid;
 
 use crate::{
@@ -10,6 +14,52 @@ use crate::{
 
 use self::edge_pass_through_event::UpdatedEdge;
 
+#[derive(Debug)]
+pub(crate) struct NodeFailureHandler {
+    pub(crate) failed_processor_nodes: Arc<Mutex<Vec<NodeHandle>>>,
+    pub(crate) failed_sinks: Arc<Mutex<Vec<String>>>,
+}
+
+impl NodeFailureHandler {
+    pub(crate) fn new() -> Self {
+        let failed_processor_nodes = Arc::new(Mutex::new(Vec::new()));
+        let failed_sinks = Arc::new(Mutex::new(Vec::new()));
+        Self {
+            failed_processor_nodes,
+            failed_sinks,
+        }
+    }
+
+    pub(crate) fn all_success(&self) -> bool {
+        self.failed_processor_nodes.lock().is_empty() && self.failed_sinks.lock().is_empty()
+    }
+
+    pub(crate) fn failed_nodes(&self) -> Vec<String> {
+        let mut failed_nodes = self
+            .failed_processor_nodes
+            .lock()
+            .iter()
+            .map(|n| n.id.to_string())
+            .collect::<Vec<String>>();
+        failed_nodes.extend(self.failed_sinks.lock().iter().cloned());
+        failed_nodes
+    }
+}
+
+#[async_trait::async_trait]
+impl reearth_flow_runtime::event::EventHandler for NodeFailureHandler {
+    async fn on_event(&self, event: &reearth_flow_runtime::event::Event) {
+        match event {
+            reearth_flow_runtime::event::Event::ProcessorFailed { node, .. } => {
+                self.failed_processor_nodes.lock().push(node.clone());
+            }
+            reearth_flow_runtime::event::Event::SinkFinishFailed { name } => {
+                self.failed_sinks.lock().push(name.clone());
+            }
+            _ => {}
+        }
+    }
+}
 pub(crate) struct EventHandler<P: Publisher> {
     pub(crate) workflow_id: Uuid,
     pub(crate) job_id: Uuid,

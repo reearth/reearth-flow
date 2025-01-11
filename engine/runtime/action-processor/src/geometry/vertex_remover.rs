@@ -30,7 +30,7 @@ impl ProcessorFactory for VertexRemoverFactory {
         "Removes specific vertices from a feature’s geometry"
     }
 
-    fn parameter_schema(&self) -> Option<schemars::Schema> {
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         None
     }
 
