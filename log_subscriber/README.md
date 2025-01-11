@@ -140,6 +140,7 @@ The log_subscriber uses the following environment variables
 
 ```
 cd log_subscriber
+cp .env.example .env
 make run
 ```
 
