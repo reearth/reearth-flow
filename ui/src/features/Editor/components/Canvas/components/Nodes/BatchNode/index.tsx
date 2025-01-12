@@ -1,7 +1,7 @@
 import { RectangleDashed } from "@phosphor-icons/react";
 import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps, NodeResizer, useReactFlow } from "@xyflow/react";
-import { memo, useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { memo, useState, useCallback } from "react";
 
 import { cn } from "@flow/lib/utils";
 import { Node } from "@flow/types";
