@@ -25,7 +25,6 @@
   "Deploy project": "部署项目",
   "Project to deploy: ": "要部署的项目: ",
   "N/A": "不适用",
-  "Deploy version: ": "部署版本: ",
   "Description (optional): ": "描述（可选）: ",
   "Give your deployment a meaningful description...": "为您的部署提供有意义的描述...",
   "Are you sure you want to proceed?": "你确定要继续吗？",

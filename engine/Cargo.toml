@@ -17,7 +17,7 @@ exclude = ["benches/", "test-data/", "testdata/"]
 homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
-rust-version = "1.83" # Remember to update clippy.toml as well
+rust-version = "1.84" # Remember to update clippy.toml as well
 version = "0.0.2"
 
 [profile.dev]
@@ -58,6 +58,7 @@ reearth-flow-gltf = { path = "runtime/gltf" }
 reearth-flow-macros = { path = "runtime/macros" }
 reearth-flow-runner = { path = "runtime/runner" }
 reearth-flow-runtime = { path = "runtime/runtime" }
+reearth-flow-sevenz = { path = "runtime/sevenz" }
 reearth-flow-state = { path = "runtime/state" }
 reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }

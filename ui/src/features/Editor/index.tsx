@@ -62,6 +62,7 @@ export default function Editor({
           isOpen={openPanel === "left" && !locallyLockedNode}
           onOpen={handlePanelOpen}
           onNodesChange={handleNodesUpdate}
+          isMainWorkflow={isMainWorkflow}
         />
         <div className="flex flex-1 flex-col">
           <OverlayUI

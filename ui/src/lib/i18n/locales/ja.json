@@ -25,7 +25,6 @@
   "Deploy project": "プロジェクトをデプロイ",
   "Project to deploy: ": "デプロイするプロジェクト: ",
   "N/A": "N/A",
-  "Deploy version: ": "デプロイバージョン: ",
   "Description (optional): ": "説明（任意）: ",
   "Give your deployment a meaningful description...": "デプロイに意味のある説明を付けてください...",
   "Are you sure you want to proceed?": "続行しますか？",

@@ -147,16 +147,17 @@ export default ({
     (nodeIds: string[]) =>
       undoTrackerActionWrapper(() => {
         const workflowIds: string[] = [];
+        const localWorkflows = [...rawWorkflows];
 
         const removeNodes = (nodeIds: string[]) => {
           nodeIds.forEach((nid) => {
             if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
 
-            const index = rawWorkflows.findIndex((w) => w.id === nid);
+            const index = localWorkflows.findIndex((w) => w.id === nid);
             if (index === -1) return;
 
             // Loop over workflow at current index and remove any subworkflow nodes
-            (rawWorkflows[index].nodes as Node[]).forEach((node) => {
+            (localWorkflows[index].nodes as Node[]).forEach((node) => {
               if (node.type === "subworkflow") {
                 removeNodes([node.id]);
               }
@@ -164,6 +165,7 @@ export default ({
 
             workflowIds.push(nid);
             yWorkflows.delete(index);
+            localWorkflows.splice(index, 1);
           });
         };
 
