@@ -79,7 +79,10 @@ export default ({
           );
         }
 
-        const updatedNode: Node = { ...node, data: { ...node.data, params } };
+        const updatedNode: Node = {
+          ...node,
+          data: { ...node.data, ...params },
+        };
         const newNodes = [...nodes];
         newNodes.splice(nodeIndex, 1, updatedNode);
 
