@@ -201,33 +201,13 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 
 	fmt.Println("RunProjectParam", p)
 
-	// prj, err := i.projectRepo.FindByID(ctx, p.Workflow.Project)
-	// if err != nil {
-	// 	return false, err
-	// }
-
-	// if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
-	// 	return false, err
-	// }
-
-	// prevWf, _ := i.workflowRepo.FindByID(ctx, prj.Workspace(), prj.Workflow())
-	// if prevWf != nil && prevWf.ID == prj.Workflow() {
-	// 	if err := i.workflowRepo.Remove(ctx, prevWf.Workspace, prevWf.ID); err != nil {
-	// 		return false, err
-	// 	}
-	// }
-
-	// if err := i.workflowRepo.Save(ctx, prj.Workspace(), p.Workflow); err != nil {
-	// 	return false, err
-	// }
-
-	// prj.UpdateWorkflow(p.Workflow.ID)
-	// if err := i.projectRepo.Save(ctx, prj); err != nil {
-	// 	return false, err
-	// }
+	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
+	if err != nil {
+		return false, err
+	}
 
 	jobID := id.NewJobID()
-	_, err = i.batch.SubmitJob(ctx, jobID, p.Workflow.Path, "", p.ProjectID)
+	_, err = i.batch.SubmitJob(ctx, jobID, p.Workflow.Path, "", p.ProjectID, prj.Workspace())
 	if err != nil {
 		return false, fmt.Errorf("failed to submit job: %v", err)
 	}

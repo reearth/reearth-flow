@@ -13,25 +13,23 @@ func (r *Resolver) Subscription() SubscriptionResolver {
 
 type subscriptionResolver struct{ *Resolver }
 
-func (r *subscriptionResolver) JobStatus(ctx context.Context, obj *gqlmodel.Subscription, jobID gqlmodel.ID) (gqlmodel.JobStatus, error) {
-	loader := loaders(ctx).Job
-	job, err := loader.FindByID(ctx, jobID)
-	if err != nil {
-		return "", err
-	}
-
+func (r *subscriptionResolver) JobStatus(ctx context.Context, jobID gqlmodel.ID) (<-chan gqlmodel.JobStatus, error) {
 	jID, err := id.JobIDFrom(string(jobID))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	statusCh, err := usecases(ctx).Job.Subscribe(ctx, jID, getOperator(ctx))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
+	resultCh := make(chan gqlmodel.JobStatus)
+
 	go func() {
+		defer close(resultCh)
 		defer usecases(ctx).Job.Unsubscribe(jID, statusCh)
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -40,10 +38,10 @@ func (r *subscriptionResolver) JobStatus(ctx context.Context, obj *gqlmodel.Subs
 				if !ok {
 					return
 				}
-				obj.JobStatus = gqlmodel.JobStatus(status)
+				resultCh <- gqlmodel.JobStatus(status)
 			}
 		}
 	}()
 
-	return gqlmodel.JobStatus(job.Status), nil
+	return resultCh, nil
 }
