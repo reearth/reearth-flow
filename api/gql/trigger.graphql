@@ -1,0 +1,64 @@
+# Types
+type Trigger {
+    authToken: String
+    createdAt: DateTime!
+    deployment: ID!
+    eventSource: EventSourceType!
+    id: ID!
+    lastTriggered: DateTime
+    projectId: ID
+    timeInterval: TimeInterval
+    updatedAt: DateTime!
+}
+
+# Enums
+enum DeploymentType {
+    HEAD
+}
+
+enum EventSourceType {
+    REEARTH_CMS
+    TIME_DRIVEN
+}
+
+enum TimeInterval {
+    EVERY_DAY
+    EVERY_HOUR
+    EVERY_MONTH
+    EVERY_WEEK
+}
+
+# InputTypes
+input CreateTriggerInput {
+    deployment: DeploymentType!
+    eventSource: EventSourceType!
+    timeInterval: TimeInterval
+}
+
+input UpdateTriggerInput {
+    deployment: DeploymentType
+    eventSource: EventSourceType
+    timeInterval: TimeInterval
+}
+
+# Query and Mutation
+extend type Mutation {
+    createTrigger(
+        input: CreateTriggerInput!
+        projectId: ID!
+    ): Trigger!
+    
+    deleteTrigger(
+        triggerId: ID!
+    ): Boolean!
+    
+    updateTrigger(
+        input: UpdateTriggerInput!
+        triggerId: ID!
+    ): Trigger!
+}
+
+extend type Query {
+    trigger(id: ID!): Trigger
+    triggers(projectId: ID!): [Trigger!]!
+}
