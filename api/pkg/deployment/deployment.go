@@ -6,7 +6,7 @@ import (
 
 type Deployment struct {
 	id          ID
-	project     ProjectID
+	project     *ProjectID
 	workspace   WorkspaceID
 	workflowURL string
 	description string
@@ -18,7 +18,7 @@ func (d *Deployment) ID() ID {
 	return d.id
 }
 
-func (d *Deployment) Project() ProjectID {
+func (d *Deployment) Project() *ProjectID {
 	return d.project
 }
 
@@ -50,7 +50,7 @@ func (d *Deployment) SetID(id ID) {
 	d.id = id
 }
 
-func (d *Deployment) SetProject(project ProjectID) {
+func (d *Deployment) SetProject(project *ProjectID) {
 	d.project = project
 	d.updatedAt = time.Now()
 }

@@ -41,7 +41,7 @@ func (b *DeploymentBuilder) NewID() *DeploymentBuilder {
 	return b
 }
 
-func (b *DeploymentBuilder) Project(project ProjectID) *DeploymentBuilder {
+func (b *DeploymentBuilder) Project(project *ProjectID) *DeploymentBuilder {
 	b.d.project = project
 	return b
 }

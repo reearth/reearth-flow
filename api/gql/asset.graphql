@@ -50,6 +50,8 @@ type AssetEdge {
   node: Asset
 }
 
+# Query and Mutation
+
 extend type Query {
   assets(
     workspaceId: ID!
