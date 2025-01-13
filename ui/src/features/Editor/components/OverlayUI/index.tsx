@@ -75,6 +75,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           nodes={nodes}
           onNodesChange={onNodesChange}
           onClose={onNodePickerClose}
+          isMainWorkflow={isMainWorkflow}
         />
       )}
     </>

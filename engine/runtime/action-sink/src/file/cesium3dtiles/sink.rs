@@ -31,7 +31,7 @@ use reearth_flow_common::{
     uri::Uri,
 };
 use reearth_flow_gltf::calculate_normal;
-use reearth_flow_runtime::event::EventHub;
+use reearth_flow_runtime::event::{Event, EventHub};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
@@ -209,6 +209,7 @@ impl Cesium3DTilesWriter {
         upstream: &Vec<(String, Vec<Feature>)>,
         output: &Uri,
     ) -> crate::errors::Result<()> {
+        let name = self.name().to_string();
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
         let mut features = Vec::new();
@@ -238,6 +239,8 @@ impl Cesium3DTilesWriter {
                         None,
                         format!("Failed to geometry_slicing_stage with error = {:?}", e),
                     );
+                    ctx.event_hub
+                        .send(Event::SinkFinishFailed { name: name.clone() });
                 }
             });
             scope.spawn(|| {
@@ -247,6 +250,8 @@ impl Cesium3DTilesWriter {
                         None,
                         format!("Failed to feature_sorting_stage with error = {:?}", e),
                     );
+                    ctx.event_hub
+                        .send(Event::SinkFinishFailed { name: name.clone() });
                 }
             });
             scope.spawn(|| {
@@ -268,6 +273,8 @@ impl Cesium3DTilesWriter {
                             None,
                             format!("Failed to tile_writing_stage with error = {:?}", e),
                         );
+                        ctx.event_hub
+                            .send(Event::SinkFinishFailed { name: name.clone() });
                     }
                 })
             });

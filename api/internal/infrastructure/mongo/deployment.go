@@ -70,6 +70,10 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, workspace accountdomai
 func (r *Deployment) FindByProject(ctx context.Context, project id.ProjectID) (*deployment.Deployment, error) {
 	return r.findOne(ctx, bson.M{
 		"projectid": project.String(),
+		"$and": []bson.M{
+			{"projectid": bson.M{"$exists": true}},
+			{"projectid": bson.M{"$ne": nil}},
+		},
 	}, true)
 }
 

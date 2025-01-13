@@ -147,7 +147,6 @@ const Toolbox: React.FC<Props> = ({
       document.body.removeChild(dragPreviewContainer);
     }, 0);
   };
-
   return (
     <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
       <div className="self-start rounded-md bg-secondary">
