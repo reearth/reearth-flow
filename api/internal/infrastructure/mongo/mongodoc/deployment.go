@@ -11,7 +11,7 @@ import (
 
 type DeploymentDocument struct {
 	ID          string    `bson:"id"`
-	ProjectID   string    `bson:"projectid"`
+	ProjectID   *string   `bson:"projectid,omitempty"`
 	WorkspaceID string    `bson:"workspaceid"`
 	WorkflowURL string    `bson:"workflowurl"`
 	Description string    `bson:"description"`
@@ -30,9 +30,15 @@ func NewDeploymentConsumer(workspaces []accountdomain.WorkspaceID) *DeploymentCo
 func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, string) {
 	did := d.ID().String()
 
+	var pid *string
+	if p := d.Project(); p != nil {
+		ps := p.String()
+		pid = &ps
+	}
+
 	return &DeploymentDocument{
 		ID:          did,
-		ProjectID:   d.Project().String(),
+		ProjectID:   pid,
 		WorkspaceID: d.Workspace().String(),
 		WorkflowURL: d.WorkflowURL(),
 		Description: d.Description(),
@@ -46,22 +52,26 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 	if err != nil {
 		return nil, err
 	}
-	pid, err := id.ProjectIDFrom(d.ProjectID)
-	if err != nil {
-		return nil, err
-	}
 	wid, err := accountdomain.WorkspaceIDFrom(d.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
 
-	return deployment.New().
+	builder := deployment.New().
 		ID(did).
-		Project(pid).
 		Workspace(wid).
 		WorkflowURL(d.WorkflowURL).
 		Description(d.Description).
 		Version(d.Version).
-		UpdatedAt(d.UpdatedAt).
-		Build()
+		UpdatedAt(d.UpdatedAt)
+
+	if d.ProjectID != nil {
+		pid, err := id.ProjectIDFrom(*d.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		builder = builder.Project(pid)
+	}
+
+	return builder.Build()
 }

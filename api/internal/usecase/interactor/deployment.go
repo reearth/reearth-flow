@@ -75,9 +75,11 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		}
 	}()
 
-	_, err = i.projectRepo.FindByID(ctx, dp.Project)
-	if err != nil {
-		return nil, err
+	if dp.Project != nil {
+		_, err = i.projectRepo.FindByID(ctx, *dp.Project)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	url, err := i.file.UploadWorkflow(ctx, dp.Workflow)
@@ -87,10 +89,14 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 
 	d := deployment.New().
 		NewID().
-		Project(dp.Project).
 		Workspace(dp.Workspace).
 		WorkflowURL(url.String()).
 		Version("v0.1") //version is hardcoded for now @pyshx
+
+	if dp.Project != nil {
+		d = d.Project(*dp.Project)
+	}
+
 	if dp.Description != nil {
 		d = d.Description(*dp.Description)
 	}
@@ -230,7 +236,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), d.Project())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), *d.Project(), d.Workspace())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}

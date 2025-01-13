@@ -42,7 +42,7 @@ func (b *DeploymentBuilder) NewID() *DeploymentBuilder {
 }
 
 func (b *DeploymentBuilder) Project(project ProjectID) *DeploymentBuilder {
-	b.d.project = project
+	b.d.project = &project
 	return b
 }
 

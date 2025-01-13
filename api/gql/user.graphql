@@ -56,6 +56,8 @@ type DeleteMePayload {
   userId: ID!
 }
 
+# Query and Mutation
+
 extend type Query {
   me: Me
   searchUser(nameOrEmail: String!): User
