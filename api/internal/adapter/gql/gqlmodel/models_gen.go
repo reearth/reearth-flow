@@ -65,8 +65,8 @@ type CreateAssetPayload struct {
 
 type CreateDeploymentInput struct {
 	WorkspaceID ID             `json:"workspaceId"`
-	ProjectID   ID             `json:"projectId"`
 	File        graphql.Upload `json:"file"`
+	ProjectID   *ID            `json:"projectId,omitempty"`
 	Description *string        `json:"description,omitempty"`
 }
 
@@ -130,7 +130,7 @@ type Deployment struct {
 	Description string     `json:"description"`
 	ID          ID         `json:"id"`
 	Project     *Project   `json:"project,omitempty"`
-	ProjectID   ID         `json:"projectId"`
+	ProjectID   *ID        `json:"projectId,omitempty"`
 	UpdatedAt   time.Time  `json:"updatedAt"`
 	Version     string     `json:"version"`
 	WorkflowURL string     `json:"workflowUrl"`
@@ -319,7 +319,6 @@ type SignupPayload struct {
 }
 
 type Subscription struct {
-	JobStatus JobStatus `json:"jobStatus"`
 }
 
 type UpdateDeploymentInput struct {
