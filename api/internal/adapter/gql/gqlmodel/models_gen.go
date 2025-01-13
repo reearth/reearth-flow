@@ -319,7 +319,6 @@ type SignupPayload struct {
 }
 
 type Subscription struct {
-	JobStatus JobStatus `json:"jobStatus"`
 }
 
 type UpdateDeploymentInput struct {
