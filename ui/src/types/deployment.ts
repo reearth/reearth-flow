@@ -3,7 +3,7 @@ import { Job } from "./job";
 
 export type Deployment = {
   id: string;
-  projectId: string;
+  projectId?: string | null;
   projectName?: string;
   workspaceId: string;
   workflowUrl: string;
