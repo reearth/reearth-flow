@@ -1,4 +1,4 @@
-name: Build and Deploy UI
+name: Docker Push Worker
 
 on:
   workflow_call:
@@ -20,41 +20,12 @@ on:
         type: string
 
 jobs:
-  build-ui:
-    name: Build UI
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "lts/*"
-
-      - name: Build UI
-        shell: bash
-        env:
-          NODE_OPTIONS: "--max-old-space-size=8192"
-        run: |
-          cd ui
-          yarn install
-          yarn build
-          tar -zcvf flow-ui.tar.gz dist
-          mv flow-ui.tar.gz flow-ui_${{ inputs.name }}.tar.gz
-
-      - name: Upload UI Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: flow-ui-artifact
-          path: ui/flow-ui_${{ inputs.name }}.tar.gz
-
-  build-docker-image:
+  deploy-worker:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
     env:
-      IMAGE_NAME: reearth/reearth-flow-web
+      IMAGE_NAME: reearth/reearth-flow-worker
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -65,7 +36,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to DockerHub
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -98,49 +69,16 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
-      - name: Build and Push Docker Image
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: ui
+          context: engine
+          file: engine/containers/worker/Dockerfile
           platforms: ${{ steps.options.outputs.platforms }}
           push: true
           build-args: VERSION=${{ steps.options.outputs.version }}
           tags: ${{ steps.options.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  deploy-to-cloud-run:
-    name: Deploy to Cloud Run (Nightly)
-    needs: build-docker-image
-    runs-on: ubuntu-latest
-    if: ${{ inputs.name == 'nightly' }}
-    env:
-      IMAGE: reearth/reearth-flow-web:nightly
-      IMAGE_GCP: us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-web:nightly
-      GCP_REGION: us-central1
-      CLOUD_RUN_SERVICE: reearth-flow-web
-    steps:
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker for GCP
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
-
-      - name: Push Docker Image to GCP Artifact Registry
-        run: |
-          docker pull $IMAGE
-          docker tag $IMAGE $IMAGE_GCP
-          docker push $IMAGE_GCP
-
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy $CLOUD_RUN_SERVICE \
-            --image $IMAGE_GCP \
-            --region $GCP_REGION \
-            --platform managed \
-            --quiet
+          provenance: true
+          sbom: true
