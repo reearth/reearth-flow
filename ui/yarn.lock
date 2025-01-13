@@ -3891,6 +3891,7 @@ __metadata:
     eslint-plugin-tailwindcss: "npm:3.17.5"
     graphql: "npm:16.10.0"
     graphql-request: "npm:7.1.2"
+    graphql-ws: "npm:5.16.1"
     i18next: "npm:24.2.0"
     i18next-browser-languagedetector: "npm:8.0.2"
     i18next-parser: "npm:9.1.0"
@@ -9438,6 +9439,15 @@ __metadata:
   peerDependencies:
     graphql: ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0
   checksum: 10c0/7763a72011bda454ed8ff1a0d82325f43ca6478e4ce4ab8b7910c4c651dd00db553132171c04d80af5d5aebf1ef6a8a9fd53ccfa33b90ddc00aa3d4be6114419
+  languageName: node
+  linkType: hard
+
+"graphql-ws@npm:5.16.1":
+  version: 5.16.1
+  resolution: "graphql-ws@npm:5.16.1"
+  peerDependencies:
+    graphql: ">=0.11 <=16"
+  checksum: 10c0/317ed1df0d1e9288c2333dbd35e7f59f086fac645d202e3d65946c175788aa616d06bf0b5b13bbd8bb7d1c4a7cbbb5a32b25de82101c2bb31a9c1887162a763e
   languageName: node
   linkType: hard
 

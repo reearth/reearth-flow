@@ -769,6 +769,13 @@ export type GetJobQueryVariables = Exact<{
 
 export type GetJobQuery = { __typename?: 'Query', job?: { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, deployment?: { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null };
 
+export type JobStatusSubscriptionVariables = Exact<{
+  jobId: Scalars['ID']['input'];
+}>;
+
+
+export type JobStatusSubscription = { __typename?: 'Subscription', jobStatus: JobStatus };
+
 export type CreateProjectMutationVariables = Exact<{
   input: CreateProjectInput;
 }>;
@@ -1014,6 +1021,11 @@ export const GetJobDocument = gql`
   }
 }
     ${JobFragmentDoc}`;
+export const JobStatusDocument = gql`
+    subscription JobStatus($jobId: ID!) {
+  jobStatus(jobId: $jobId)
+}
+    `;
 export const CreateProjectDocument = gql`
     mutation CreateProject($input: CreateProjectInput!) {
   createProject(input: $input) {
@@ -1199,6 +1211,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetJob(variables: GetJobQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobQuery>(GetJobDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJob', 'query', variables);
+    },
+    JobStatus(variables: JobStatusSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<JobStatusSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<JobStatusSubscription>(JobStatusDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'JobStatus', 'subscription', variables);
     },
     CreateProject(variables: CreateProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateProjectMutation>(CreateProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateProject', 'mutation', variables);
