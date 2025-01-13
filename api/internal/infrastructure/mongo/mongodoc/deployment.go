@@ -70,7 +70,7 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 		if err != nil {
 			return nil, err
 		}
-		builder = builder.Project(pid)
+		builder = builder.Project(&pid)
 	}
 
 	return builder.Build()

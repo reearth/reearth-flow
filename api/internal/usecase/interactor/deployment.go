@@ -94,7 +94,7 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		Version("v0.1") //version is hardcoded for now @pyshx
 
 	if dp.Project != nil {
-		d = d.Project(*dp.Project)
+		d = d.Project(dp.Project)
 	}
 
 	if dp.Description != nil {
@@ -236,7 +236,12 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), *d.Project(), d.Workspace())
+	var projectID id.ProjectID
+	if d.Project() != nil {
+		projectID = *d.Project()
+	}
+
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), projectID, d.Workspace())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}

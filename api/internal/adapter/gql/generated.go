@@ -1899,6 +1899,8 @@ type AssetEdge {
   node: Asset
 }
 
+# Query and Mutation
+
 extend type Query {
   assets(
     workspaceId: ID!
@@ -1913,14 +1915,12 @@ extend type Mutation {
   removeAsset(input: RemoveAssetInput!): RemoveAssetPayload
 }
 `, BuiltIn: false},
-	{Name: "../../../gql/deployment.graphql", Input: `# Types
-
-type Deployment implements Node {
+	{Name: "../../../gql/deployment.graphql", Input: `type Deployment implements Node {
   createdAt: DateTime!
   description: String!
   id: ID!
   project: Project
-  projectId: ID!
+  projectId: ID
   updatedAt: DateTime!
   version: String!
   workflowUrl: String!
@@ -1928,30 +1928,12 @@ type Deployment implements Node {
   workspaceId: ID!
 }
 
-type Job implements Node {
-  completedAt: DateTime
-  deployment: Deployment
-  deploymentId: ID!
-  id: ID!
-  startedAt: DateTime!
-  status: JobStatus!
-  workspace: Workspace
-  workspaceId: ID!
-}
-
-enum JobStatus {
-  PENDING
-  RUNNING
-  COMPLETED
-  FAILED
-}
-
 # Input Types
 
 input CreateDeploymentInput {
   workspaceId: ID!
-  projectId: ID!
   file: Upload!
+  projectId: ID
   description: String
 }
 
@@ -1983,7 +1965,7 @@ type JobPayload {
   job: Job!
 }
 
-# Connection Types
+# Connection
 
 type DeploymentConnection {
   edges: [DeploymentEdge!]!
@@ -1996,6 +1978,39 @@ type DeploymentEdge {
   cursor: Cursor!
   node: Deployment
 }
+
+# Query and Mutation
+
+extend type Query {
+  deployments(workspaceId: ID!, pagination: Pagination): DeploymentConnection!
+}
+
+extend type Mutation {
+  createDeployment(input: CreateDeploymentInput!): DeploymentPayload
+  updateDeployment(input: UpdateDeploymentInput!): DeploymentPayload
+  deleteDeployment(input: DeleteDeploymentInput!): DeleteDeploymentPayload
+  executeDeployment(input: ExecuteDeploymentInput!): JobPayload
+}
+`, BuiltIn: false},
+	{Name: "../../../gql/job.graphql", Input: `type Job implements Node {
+  completedAt: DateTime
+  deployment: Deployment
+  deploymentId: ID!
+  id: ID!
+  startedAt: DateTime!
+  status: JobStatus!
+  workspace: Workspace
+  workspaceId: ID!
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+# Connection
 
 type JobConnection {
   edges: [JobEdge!]!
@@ -2015,19 +2030,11 @@ extend type Subscription {
   jobStatus(jobId: ID!): JobStatus!
 }
 
-# Query and Mutation Extensions
+# Query and Mutation
 
 extend type Query {
-  deployments(workspaceId: ID!, pagination: Pagination): DeploymentConnection!
   jobs(workspaceId: ID!, pagination: Pagination): JobConnection!
   job(id: ID!): Job
-}
-
-extend type Mutation {
-  createDeployment(input: CreateDeploymentInput!): DeploymentPayload
-  updateDeployment(input: UpdateDeploymentInput!): DeploymentPayload
-  deleteDeployment(input: DeleteDeploymentInput!): DeleteDeploymentPayload
-  executeDeployment(input: ExecuteDeploymentInput!): JobPayload
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/parameter.graphql", Input: `type Parameter {
@@ -2060,6 +2067,8 @@ enum ParameterType {
     WEB_CONNECTION
 }
 
+# InputType
+
 input DeclareParameterInput {
     name: String!
     type: ParameterType!
@@ -2080,6 +2089,8 @@ input UpdateParameterOrderInput {
 input RemoveParameterInput {
     paramId: ID!
 }
+
+# Query and Mutation
 
 extend type Mutation {
     declareParameter(
@@ -2175,6 +2186,8 @@ type ProjectEdge {
   node: Project
 }
 
+# Query and Mutation
+
 extend type Query {
   projects(
     workspaceId: ID!
@@ -2250,6 +2263,8 @@ type SignupPayload {
 type DeleteMePayload {
   userId: ID!
 }
+
+# Query and Mutation
 
 extend type Query {
   me: Me
@@ -2347,7 +2362,7 @@ type DeleteWorkspacePayload {
   workspaceId: ID!
 }
 
-#extend type Query{ }
+# Query and Mutation
 
 extend type Mutation {
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload
@@ -4395,14 +4410,11 @@ func (ec *executionContext) _Deployment_projectId(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(gqlmodel.ID)
+	res := resTmp.(*gqlmodel.ID)
 	fc.Result = res
-	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+	return ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Deployment_projectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -12931,7 +12943,7 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "projectId", "file", "description"}
+	fieldsInOrder := [...]string{"workspaceId", "file", "projectId", "description"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -12945,13 +12957,6 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 				return it, err
 			}
 			it.WorkspaceID = data
-		case "projectId":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ProjectID = data
 		case "file":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("file"))
 			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
@@ -12959,6 +12964,13 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 				return it, err
 			}
 			it.File = data
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectID = data
 		case "description":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -14349,9 +14361,6 @@ func (ec *executionContext) _Deployment(ctx context.Context, sel ast.SelectionSe
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "projectId":
 			out.Values[i] = ec._Deployment_projectId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "updatedAt":
 			out.Values[i] = ec._Deployment_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
