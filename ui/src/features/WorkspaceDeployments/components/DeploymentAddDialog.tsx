@@ -15,6 +15,7 @@ import { useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { validateWorkflowJson } from "@flow/utils/engineWorkflowValidation";
+import { removeWhiteSpace } from "@flow/utils/removeWhiteSpace";
 
 type Props = {
   setShowDialog: (show: boolean) => void;
@@ -31,6 +32,11 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
 
   const [workflowFile, setWorkflowFile] = useState<File | null>(null);
   const [invalidFile, setInvalidFile] = useState<boolean>(false);
+
+  const handleNameChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const trimmedValue = removeWhiteSpace(e.target.value);
+    setName(trimmedValue);
+  }, []);
 
   const handleWorkflowFileUpload = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -124,7 +130,7 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
             <Label>{t("Name (optional): ")}</Label>
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={handleNameChange}
               placeholder={t("Give your deployment a unique name...")}
             />
           </DialogContentSection>
