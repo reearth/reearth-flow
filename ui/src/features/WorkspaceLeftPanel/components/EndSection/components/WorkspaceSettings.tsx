@@ -16,7 +16,7 @@ const WorkspaceSettings: React.FC<Props> = ({ selected }) => {
 
   return (
     <div className="flex w-full flex-col gap-1">
-      <p className="text-sm dark:font-thin">{t("Workspace")}</p>
+      <p className="text-xs dark:font-thin">{t("Workspace")}</p>
       <div
         className={`-mx-2 flex flex-1 cursor-pointer items-center gap-2 rounded px-2 py-1 ${selected === "general" && "bg-accent"} hover:bg-accent`}
         onClick={() =>
@@ -25,7 +25,7 @@ const WorkspaceSettings: React.FC<Props> = ({ selected }) => {
           })
         }>
         <Toolbox weight="light" />
-        <p className="dark:font-extralight">{t("General Settings")}</p>
+        <p className="text-sm dark:font-extralight">{t("General Settings")}</p>
       </div>
       <div
         className={`-mx-2 flex flex-1 cursor-pointer items-center gap-2 rounded px-2 py-1 ${selected === "members" && "bg-accent"} hover:bg-accent`}
@@ -35,7 +35,7 @@ const WorkspaceSettings: React.FC<Props> = ({ selected }) => {
           })
         }>
         <UsersThree weight="light" />
-        <p className="dark:font-extralight">{t("Member Settings")}</p>
+        <p className="text-sm dark:font-extralight">{t("Member Settings")}</p>
       </div>
       {/* <div
         className={`-mx-2 flex flex-1 cursor-pointer items-center gap-2 rounded px-2 py-1 ${selected === "integrations" && "bg-accent"} hover:bg-accent`}

@@ -24,7 +24,9 @@ const DeploymentManager: React.FC<Props> = ({ selected }) => {
         className={`-mx-2 flex flex-1 cursor-pointer items-center gap-2 rounded px-2 py-1 ${selected && "bg-accent"} hover:bg-accent`}
         onClick={handleNavigation}>
         <RocketLaunch weight="light" />
-        <p className="dark:font-extralight">{t("Manage deployments")}</p>
+        <p className="text-sm dark:font-extralight">
+          {t("Manage deployments")}
+        </p>
       </div>
     </div>
   );

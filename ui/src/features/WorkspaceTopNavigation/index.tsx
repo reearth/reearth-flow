@@ -23,9 +23,7 @@ const TopNavigation: React.FC = () => {
             }>
             <FlowLogo className="size-8" />
           </div>
-          <h1 className="select-none dark:font-extralight">
-            {brandName ?? "Flow"}
-          </h1>
+          <h1 className="select-none font-light">{brandName ?? "Flow"}</h1>
         </div>
         <div
           id="dashboard-middle"
