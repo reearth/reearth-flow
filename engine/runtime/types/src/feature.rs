@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fmt::Display, sync::Arc};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
 use nutype::nutype;
 use reearth_flow_common::{str, xml::XmlXpathValue};
@@ -67,6 +72,12 @@ impl From<HashMap<String, AttributeValue>> for Feature {
             metadata: Default::default(),
             geometry: Default::default(),
         }
+    }
+}
+
+impl Hash for Feature {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 
