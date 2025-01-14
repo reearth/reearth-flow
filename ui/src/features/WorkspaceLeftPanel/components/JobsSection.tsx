@@ -11,6 +11,7 @@ type Props = {
   route?: RouteOption;
 };
 
+// TODO: Update and use JobsSection again in WorkspaceLeftPanel, or remove it if it's not needed anymore
 const JobsSection: React.FC<Props> = ({ route }) => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();

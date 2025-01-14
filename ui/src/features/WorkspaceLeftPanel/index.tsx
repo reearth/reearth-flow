@@ -1,6 +1,6 @@
 import { useRouterState } from "@tanstack/react-router";
 
-import { JobsSection, EndSection } from "./components";
+import { EndSection, TopSection } from "./components";
 
 export const routeOptions = [
   "projects",
@@ -25,9 +25,9 @@ const LeftPanel: React.FC = () => {
   const route: RouteOption = getRoute(pathname);
 
   return (
-    <div className="flex min-w-[250px] flex-col justify-between gap-[8px] border-r bg-secondary">
+    <div className="flex min-w-[215px] flex-col justify-between gap-[8px] border-r bg-secondary">
       <div className="flex flex-1 flex-col">
-        <JobsSection route={route} />
+        <TopSection route={route} />
         <EndSection route={route} />
       </div>
     </div>

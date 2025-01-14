@@ -54,8 +54,10 @@ const GeneralSettings: React.FC = () => {
   }, [currentWorkspace]);
 
   return (
-    <div>
-      <p className="text-lg dark:font-extralight">{t("General Settings")}</p>
+    <>
+      <div className="flex h-[53px] items-center justify-between gap-2 border-b pb-4">
+        <p className="text-lg dark:font-extralight">{t("General Settings")}</p>
+      </div>
       <div className="mt-4 flex max-w-[700px] flex-col gap-6">
         <div className="flex flex-col gap-2">
           <Label htmlFor="workspace-name">{t("Workspace Name")}</Label>
@@ -83,7 +85,7 @@ const GeneralSettings: React.FC = () => {
           {showError === "update" && t("Failed to update Workspace")}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

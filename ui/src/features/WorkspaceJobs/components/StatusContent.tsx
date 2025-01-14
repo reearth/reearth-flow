@@ -9,7 +9,7 @@ type Props = {
 };
 
 const StatusContent: React.FC<Props> = ({ label, jobs, onJobSelect }) => (
-  <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-6">
+  <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-4">
     <div className="flex h-[36px] items-center">
       <p className="text-xl dark:font-extralight">{label}</p>
     </div>

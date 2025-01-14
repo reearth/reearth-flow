@@ -67,7 +67,7 @@ export default () => {
       completed: t("Completed jobs"),
       running: t("Ongoing jobs"),
       queued: t("Queued jobs"),
-      all: t("All jobs"),
+      all: t("Jobs"),
     }),
     [t],
   );
