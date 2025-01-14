@@ -39,6 +39,10 @@ pub(crate) enum FeatureProcessorError {
     LodFilterFactory(String),
     #[error("LodFilter error: {0}")]
     LodFilter(String),
+    #[error("DuplicateFilterFactory error: {0}")]
+    DuplicateFilterFactory(String),
+    #[error("DuplicateFilter error: {0}")]
+    DuplicateFilter(String),
 }
 
 #[allow(dead_code)]

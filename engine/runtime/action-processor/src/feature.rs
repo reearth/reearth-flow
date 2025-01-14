@@ -1,4 +1,5 @@
 pub(crate) mod counter;
+pub(crate) mod duplicate_filter;
 pub(crate) mod errors;
 pub(crate) mod file_path_extractor;
 pub(crate) mod filter;

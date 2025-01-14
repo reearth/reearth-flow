@@ -821,6 +821,20 @@ Creates features from expressions
 ### Category
 * Feature
 
+## FeatureDuplicateFilter
+### Type
+* processor
+### Description
+Filters features by duplicate feature
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
+
 ## FeatureFilePathExtractor
 ### Type
 * processor

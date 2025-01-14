@@ -220,6 +220,17 @@ impl From<Context> for NodeContext {
     }
 }
 
+impl From<ExecutorContext> for NodeContext {
+    fn from(ctx: ExecutorContext) -> Self {
+        Self {
+            expr_engine: ctx.expr_engine,
+            storage_resolver: ctx.storage_resolver,
+            kv_store: ctx.kv_store,
+            event_hub: ctx.event_hub,
+        }
+    }
+}
+
 impl Default for NodeContext {
     fn default() -> Self {
         Self {
