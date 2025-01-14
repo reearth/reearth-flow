@@ -5,6 +5,7 @@ import { JobsSection, EndSection } from "./components";
 export const routeOptions = [
   "projects",
   "deployments",
+  "triggers",
   "general",
   "integrations",
   "members",
@@ -39,23 +40,25 @@ export default LeftPanel;
 const getRoute = (pathname: string): RouteOption => {
   return pathname.includes("deployments")
     ? "deployments"
-    : pathname.includes("general")
-      ? "general"
-      : pathname.includes("integrations")
-        ? "integrations"
-        : pathname.includes("members")
-          ? "members"
-          : pathname.includes("completed")
-            ? "completed"
-            : pathname.includes("running")
-              ? "running"
-              : pathname.includes("queued")
-                ? "queued"
-                : pathname.includes("all")
-                  ? "all"
-                  : pathname.includes("new")
-                    ? "new"
-                    : pathname.includes("jobs") // Since all the above jobs are not present in the routeOptions, we can assume that the route is job's details @KaWaite
-                      ? "details"
-                      : "projects";
+    : pathname.includes("triggers")
+      ? "triggers"
+      : pathname.includes("general")
+        ? "general"
+        : pathname.includes("integrations")
+          ? "integrations"
+          : pathname.includes("members")
+            ? "members"
+            : pathname.includes("completed")
+              ? "completed"
+              : pathname.includes("running")
+                ? "running"
+                : pathname.includes("queued")
+                  ? "queued"
+                  : pathname.includes("all")
+                    ? "all"
+                    : pathname.includes("new")
+                      ? "new"
+                      : pathname.includes("jobs") // Since all the above jobs are not present in the routeOptions, we can assume that the route is job's details @KaWaite
+                        ? "details"
+                        : "projects";
 };
