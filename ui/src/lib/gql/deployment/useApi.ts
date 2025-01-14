@@ -75,7 +75,6 @@ export const useDeployment = () => {
     try {
       const data = await mutateAsync({
         workspaceId,
-        projectId,
         file: formData,
         description,
       });
