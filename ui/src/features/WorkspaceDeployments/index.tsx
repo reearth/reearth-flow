@@ -1,19 +1,27 @@
+import { Plus } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { FlowLogo, DataTable as Table } from "@flow/components";
+import { Button, FlowLogo, DataTable as Table } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
 
-import { DeploymentDeletionDialog, DeploymentDetails } from "./components";
+import {
+  DeploymentAddDialog,
+  DeploymentDeletionDialog,
+  DeploymentDetails,
+} from "./components";
 import useHooks from "./hooks";
 
 const DeploymentManager: React.FC = () => {
   const t = useT();
   const {
+    // ref,
     deployments,
     selectedDeployment,
     deploymentToBeDeleted,
+    openDeploymentAddDialog,
+    setOpenDeploymentAddDialog,
     setDeploymentToBeDeleted,
     handleDeploymentSelect,
     handleDeploymentUpdate,
@@ -61,14 +69,13 @@ const DeploymentManager: React.FC = () => {
       <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-6">
         <div className="flex h-[53px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Deployments")}</p>
-          {/* <Button
+          <Button
             className="flex gap-2"
             variant="outline"
-            // onClick={() => setOpenProjectAddDialog(true)}>
-          >
+            onClick={() => setOpenDeploymentAddDialog(true)}>
             <Plus weight="thin" />
             <p className="text-xs dark:font-light">{t("New Deployment")}</p>
-          </Button> */}
+          </Button>
         </div>
         {deployments && deployments.length > 0 ? (
           <Table
@@ -87,6 +94,9 @@ const DeploymentManager: React.FC = () => {
           />
         )}
       </div>
+      {openDeploymentAddDialog && (
+        <DeploymentAddDialog setShowDialog={setOpenDeploymentAddDialog} />
+      )}
     </div>
   );
 };

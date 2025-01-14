@@ -36,7 +36,7 @@ export const useQueries = () => {
       description,
     }: {
       workspaceId: string;
-      projectId: string;
+      projectId?: string;
       file: FormData;
       description?: string;
     }) => {
