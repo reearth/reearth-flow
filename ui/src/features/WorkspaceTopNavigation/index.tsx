@@ -7,7 +7,7 @@ import { useCurrentWorkspace } from "@flow/stores";
 import { UserNavigation, WorkspaceNavigation } from "./components";
 
 const TopNavigation: React.FC = () => {
-  const { brandName, version } = config();
+  const { brandName } = config();
   const [currentWorkspace] = useCurrentWorkspace();
 
   const navigate = useNavigate();
@@ -24,10 +24,7 @@ const TopNavigation: React.FC = () => {
             <FlowLogo className="size-8" />
           </div>
           <h1 className="select-none dark:font-extralight">
-            {brandName ?? "Re:Earth Flow"}{" "}
-            <span className="text-xs dark:font-thin">
-              v{version ?? "X.X.X"}
-            </span>
+            {brandName ?? "Flow"}
           </h1>
         </div>
         <div

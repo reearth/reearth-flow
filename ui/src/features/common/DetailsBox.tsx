@@ -81,7 +81,7 @@ const DetailsBox: React.FC<Props> = ({ title, content, onContentChange }) => {
           ))}
           {status && (
             <div
-              className={`${status === "COMPLETED" ? "bg-success" : status === "QUEUED" ? "bg-primary" : status === "FAILED" ? "bg-destructive" : "active-node-status"} size-4 rounded-full`}
+              className={`${status === "COMPLETED" ? "bg-success" : status === "RUNNING" ? "active-node-status" : status === "FAILED" ? "bg-destructive" : "queued-node-status"} size-4 rounded-full`}
             />
           )}
         </div>

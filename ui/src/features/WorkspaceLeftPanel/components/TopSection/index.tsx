@@ -15,7 +15,7 @@ const TopSection: React.FC<Props> = ({ route }) => {
         <p className="text-sm dark:font-thin">{t("General")}</p>
         <ProjectManager selected={route === "projects"} />
         <DeploymentManager selected={route === "deployments"} />
-        <JobManager selected={route === "all"} />
+        <JobManager selected={route === "jobs"} />
       </div>
     </div>
   );

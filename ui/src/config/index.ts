@@ -23,7 +23,7 @@ export type Config = {
 
 const defaultConfig: Config = {
   version: "X.X.X",
-  brandName: "Re:Earth Flow",
+  brandName: "Flow",
 };
 
 export default async function loadConfig() {

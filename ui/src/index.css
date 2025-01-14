@@ -147,3 +147,33 @@
     pulse 1.5s infinite;
 }
 /* Animation for active node END */
+
+/* Animation for queued node */
+@keyframes cycleColors {
+  0% {
+    @apply bg-primary;
+  }
+  50% {
+    @apply bg-foreground;
+  }
+  100% {
+    @apply bg-primary;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.queued-node-status {
+  animation:
+    cycleColors 3s infinite,
+    pulse 1.5s infinite;
+}
+/* Animation for queued node END */

@@ -16,13 +16,14 @@ export default () => {
   const [openDeploymentAddDialog, setOpenDeploymentAddDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
   const [deploymentToBeDeleted, setDeploymentToBeDeleted] = useState<
-    string | undefined
+    Deployment | undefined
   >(undefined);
 
   const {
     useGetDeploymentsInfinite,
     useUpdateDeployment,
     useDeleteDeployment,
+    executeDeployment,
   } = useDeployment();
 
   const { pages, hasNextPage, isFetching, fetchNextPage } =
@@ -66,12 +67,40 @@ export default () => {
     [selectedDeployment, useUpdateDeployment],
   );
 
-  const handleDeploymentDelete = useCallback(async () => {
-    if (!selectedDeployment || !currentWorkspace) return;
-    await useDeleteDeployment(selectedDeployment.id, currentWorkspace.id);
-    setDeploymentToBeDeleted(undefined);
-    history.go(-1); // Go back to previous page
-  }, [selectedDeployment, currentWorkspace, history, useDeleteDeployment]);
+  const handleDeploymentDelete = useCallback(
+    async (deployment?: Deployment) => {
+      const d =
+        deployment ||
+        deployments?.find((d2) => d2.id === deploymentToBeDeleted?.id);
+      if (!d || !currentWorkspace) return;
+      await useDeleteDeployment(d.id, currentWorkspace.id);
+      setDeploymentToBeDeleted(undefined);
+      history.go(-1); // Go back to previous page
+    },
+    [
+      currentWorkspace,
+      deploymentToBeDeleted,
+      deployments,
+      history,
+      useDeleteDeployment,
+    ],
+  );
+
+  const handleDeploymentRun = useCallback(
+    async (deployment?: Deployment) => {
+      const d = deployment || selectedDeployment;
+      if (!d || !currentWorkspace) return;
+      const jobData = await executeDeployment({
+        deploymentId: d.id,
+      });
+      if (jobData) {
+        navigate({
+          to: `/workspaces/${currentWorkspace.id}/jobs/${jobData.job?.id}`,
+        });
+      }
+    },
+    [selectedDeployment, currentWorkspace, navigate, executeDeployment],
+  );
 
   // Auto fills the page
   useEffect(() => {
@@ -112,6 +141,7 @@ export default () => {
     handleDeploymentSelect,
     handleDeploymentUpdate,
     handleDeploymentDelete,
+    handleDeploymentRun,
   };
 };
 
