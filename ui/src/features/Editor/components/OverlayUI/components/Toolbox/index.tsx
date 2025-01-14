@@ -13,7 +13,7 @@ import { createRoot } from "react-dom/client";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { type NodeType } from "@flow/types";
+import { type NodeType, Node } from "@flow/types";
 
 type ToolboxItem<T> = {
   id: T;
@@ -32,6 +32,7 @@ type Props = {
   onRedo?: () => void;
   onUndo?: () => void;
   isMainWorkflow: boolean;
+  nodes: Node[];
 };
 
 const Toolbox: React.FC<Props> = ({
@@ -40,9 +41,10 @@ const Toolbox: React.FC<Props> = ({
   onRedo,
   onUndo,
   isMainWorkflow,
+  nodes,
 }) => {
   const t = useT();
-
+  console.log("nodes", nodes);
   const availableTools: Tool[] = [
     {
       id: "reader" as const,
@@ -77,6 +79,10 @@ const Toolbox: React.FC<Props> = ({
   ].filter((tool) => {
     if (!isMainWorkflow) {
       return tool.id !== "reader" && tool.id !== "writer";
+    }
+
+    if (isMainWorkflow && nodes?.some((node) => node.type === "reader")) {
+      return tool.id !== "reader";
     }
     return true;
   });

@@ -61,6 +61,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           onRedo={onWorkflowRedo}
           onUndo={onWorkflowUndo}
           isMainWorkflow={isMainWorkflow}
+          nodes={nodes}
         />
         <ActionBar
           allowedToDeploy={allowedToDeploy}
