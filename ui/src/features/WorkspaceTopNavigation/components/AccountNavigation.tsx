@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Avatar,
   AvatarFallback,
-  AvatarImage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -35,7 +34,7 @@ const UserNavigation: React.FC<Props> = ({
   dropdownOffset,
 }) => {
   const t = useT();
-  const { logout: handleLogout, user } = useAuth();
+  const { logout: handleLogout } = useAuth();
   const { useGetMe } = useUser();
   const { me } = useGetMe();
 
@@ -59,10 +58,9 @@ const UserNavigation: React.FC<Props> = ({
       <DropdownMenu>
         <DropdownMenuTrigger>
           <div className={`mr-2 flex gap-2 ${className}`}>
-            <Avatar className="size-8">
-              <AvatarImage src={user?.picture} />
+            <Avatar className="size-7">
               <AvatarFallback>
-                {me?.name ? me.name.charAt(0).toUpperCase() : "F"}
+                {me?.name ? me.name.charAt(0).toUpperCase() : "?"}
               </AvatarFallback>
             </Avatar>
             {!iconOnly ? (
@@ -78,7 +76,7 @@ const UserNavigation: React.FC<Props> = ({
         <DropdownMenuContent
           className="w-[200px]"
           side={dropdownPosition ?? "bottom"}
-          align="end"
+          align="start"
           sideOffset={dropdownOffset ?? 4}>
           <DropdownMenuItem
             className="gap-2"

@@ -38,18 +38,15 @@ const WorkspaceNavigation: React.FC = () => {
       <DropdownMenu
         open={openDropdown}
         onOpenChange={(o) => setOpenDropdown(o)}>
-        <DropdownMenuTrigger className="-mx-2 flex max-w-[30vw] items-center rounded-md px-2 py-1 hover:bg-background">
-          <p className="truncate text-lg dark:font-thin">
-            {currentWorkspace?.name}
-          </p>
-          <div className="ml-2">
-            <CaretDown size="12px" />
-          </div>
+        <DropdownMenuTrigger className="flex max-w-[30vw] items-center gap-2 rounded-md py-1 hover:bg-background">
+          <CaretDown size="12px" />
+          <p className="truncate dark:font-thin">{currentWorkspace?.name}</p>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="min-w-[150px] max-w-[300px] border"
           sideOffset={5}
-          align="center">
+          align="start"
+          side="top">
           <DropdownMenuGroup className="flex max-h-[200px] flex-col gap-1 overflow-auto">
             {workspaces?.map((workspace) => (
               <DropdownMenuItem
