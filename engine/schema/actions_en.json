@@ -833,6 +833,22 @@
       ]
     },
     {
+      "name": "FeatureDuplicateFilter",
+      "type": "processor",
+      "description": "Filters features by duplicate feature",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "FeatureFilePathExtractor",
       "type": "processor",
       "description": "Extracts features by file path",
