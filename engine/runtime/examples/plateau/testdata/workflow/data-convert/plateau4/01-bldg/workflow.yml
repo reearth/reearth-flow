@@ -77,13 +77,16 @@ graphs:
           mappers:
           - attribute: code
             expr: |
-              env.get("__value").file[0..8]
+              env.get("__value").file[0..6]
           - attribute: type
             expr: |
               env.get("__value")["type"].split(":")[0]
           - attribute: maxLod
             expr: |
               env.get("__value").maxLod
+          - attribute: file
+            expr: |
+              env.get("__value").file
 
       - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
         name: FileWriterTsvFilePath

@@ -80,7 +80,7 @@ export type CreateAssetPayload = {
 export type CreateDeploymentInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   file: Scalars['Upload']['input'];
-  projectId: Scalars['ID']['input'];
+  projectId?: InputMaybe<Scalars['ID']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -150,7 +150,7 @@ export type Deployment = Node & {
   description: Scalars['String']['output'];
   id: Scalars['ID']['output'];
   project?: Maybe<Project>;
-  projectId: Scalars['ID']['output'];
+  projectId?: Maybe<Scalars['ID']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   version: Scalars['String']['output'];
   workflowUrl: Scalars['String']['output'];
@@ -759,7 +759,7 @@ export type GetDeploymentsQuery = { __typename?: 'Query', deployments: { __typen
       & { ' $fragmentRefs'?: { 'DeploymentFragment': DeploymentFragment } }
     ) | null>, pageInfo: { __typename?: 'PageInfo', endCursor?: any | null, hasNextPage: boolean } } };
 
-export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId: string, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } & { ' $fragmentName'?: 'DeploymentFragment' };
+export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } & { ' $fragmentName'?: 'DeploymentFragment' };
 
 export type JobFragment = { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, deployment?: (
     { __typename?: 'Deployment' }
