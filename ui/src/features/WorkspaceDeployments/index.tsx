@@ -1,4 +1,4 @@
-import { Play, Plus, Trash } from "@phosphor-icons/react";
+import { PencilLine, Play, Plus, Trash } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
 import {
@@ -15,6 +15,7 @@ import {
   DeploymentAddDialog,
   DeploymentDeletionDialog,
   DeploymentDetails,
+  DeploymentEditDialog,
 } from "./components";
 import useHooks from "./hooks";
 
@@ -26,10 +27,11 @@ const DeploymentManager: React.FC = () => {
     selectedDeployment,
     deploymentToBeDeleted,
     openDeploymentAddDialog,
+    deploymentToBeEdited,
+    setDeploymentToBeEdited,
     setOpenDeploymentAddDialog,
     setDeploymentToBeDeleted,
     handleDeploymentSelect,
-    handleDeploymentUpdate,
     handleDeploymentDelete,
     handleDeploymentRun,
   } = useHooks();
@@ -48,10 +50,6 @@ const DeploymentManager: React.FC = () => {
       header: t("Version"),
     },
     {
-      accessorKey: "createdAt",
-      header: t("Created At"),
-    },
-    {
       accessorKey: "updatedAt",
       header: t("Updated At"),
     },
@@ -68,6 +66,13 @@ const DeploymentManager: React.FC = () => {
             <Play />
           </ButtonWithTooltip>
           <ButtonWithTooltip
+            variant="outline"
+            size="icon"
+            tooltipText={t("Edit Deployment")}
+            onClick={() => setDeploymentToBeEdited(row.row.original)}>
+            <PencilLine />
+          </ButtonWithTooltip>
+          <ButtonWithTooltip
             variant="destructive"
             size="icon"
             tooltipText={t("Delete Deployment")}
@@ -81,20 +86,12 @@ const DeploymentManager: React.FC = () => {
 
   return (
     <>
-      {deploymentToBeDeleted && (
-        <DeploymentDeletionDialog
-          deploymentToBeDeleted={deploymentToBeDeleted}
-          setDeploymentToBeDeleted={setDeploymentToBeDeleted}
-          onDeploymentDelete={handleDeploymentDelete}
-        />
-      )}
       {selectedDeployment ? (
         <div className="flex flex-1">
           <DeploymentDetails
             selectedDeployment={selectedDeployment}
             setDeploymentToBeDeleted={setDeploymentToBeDeleted}
             onDeploymentRun={handleDeploymentRun}
-            onDeploymentUpdate={handleDeploymentUpdate}
           />
         </div>
       ) : (
@@ -131,6 +128,19 @@ const DeploymentManager: React.FC = () => {
             <DeploymentAddDialog setShowDialog={setOpenDeploymentAddDialog} />
           )}
         </div>
+      )}
+      {deploymentToBeEdited && (
+        <DeploymentEditDialog
+          selectedDeployment={deploymentToBeEdited}
+          onDialogClose={() => setDeploymentToBeEdited(undefined)}
+        />
+      )}
+      {deploymentToBeDeleted && (
+        <DeploymentDeletionDialog
+          deploymentToBeDeleted={deploymentToBeDeleted}
+          setDeploymentToBeDeleted={setDeploymentToBeDeleted}
+          onDeploymentDelete={handleDeploymentDelete}
+        />
       )}
     </>
   );
