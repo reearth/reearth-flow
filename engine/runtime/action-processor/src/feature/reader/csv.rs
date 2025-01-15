@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor, sync::Arc};
+use std::{collections::HashMap, io::Cursor, str::FromStr, sync::Arc};
 
 use reearth_flow_common::{csv::Delimiter, uri::Uri};
 use reearth_flow_runtime::{
@@ -34,7 +34,8 @@ pub(crate) fn read_csv(
             e
         ))
     })?;
-    let input_path = Uri::for_test(csv_path.as_str());
+    let input_path = Uri::from_str(csv_path.as_str())
+        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{:?}", e)))?;
     let storage = storage_resolver
         .resolve(&input_path)
         .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{:?}", e)))?;

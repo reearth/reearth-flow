@@ -27,6 +27,8 @@ pub(crate) enum FeatureProcessorError {
     FileCityGmlReader(String),
     #[error("Feature File Csv Reader error: {0}")]
     FileCsvReader(String),
+    #[error("Feature File Json Reader error: {0}")]
+    FileJsonReader(String),
     #[error("RhaiCallerFactory error: {0}")]
     RhaiCallerFactory(String),
     #[error("RhaiCaller error: {0}")]
