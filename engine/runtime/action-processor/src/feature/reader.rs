@@ -1,5 +1,6 @@
 mod citygml;
 mod csv;
+mod json;
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -27,7 +28,7 @@ impl ProcessorFactory for FeatureReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Filters features based on conditions"
+        "Reads features from various formats"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -129,6 +130,18 @@ impl ProcessorFactory for FeatureReaderFactory {
                 };
                 Ok(Box::new(process))
             }
+            FeatureReaderParam::Json { common_param } => {
+                let common_param = CompiledCommonReaderParam {
+                    expr: expr_engine
+                        .compile(common_param.dataset.as_ref())
+                        .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
+                };
+                let process = FeatureReader {
+                    global_params: with,
+                    params: CompiledFeatureReaderParam::Json { common_param },
+                };
+                Ok(Box::new(process))
+            }
         }
     }
 }
@@ -169,6 +182,11 @@ pub enum FeatureReaderParam {
         #[serde(flatten)]
         param: csv::CsvReaderParam,
     },
+    #[serde(rename = "json")]
+    Json {
+        #[serde(flatten)]
+        common_param: CommonReaderParam,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -184,6 +202,9 @@ enum CompiledFeatureReaderParam {
     Tsv {
         common_param: CompiledCommonReaderParam,
         param: csv::CsvReaderParam,
+    },
+    Json {
+        common_param: CompiledCommonReaderParam,
     },
 }
 
@@ -244,6 +265,10 @@ impl Processor for FeatureReader {
                 fw,
             )
             .map_err(|e| e.into()),
+            FeatureReader {
+                global_params,
+                params: CompiledFeatureReaderParam::Json { common_param },
+            } => json::read_json(ctx, fw, global_params, common_param).map_err(|e| e.into()),
         }
     }
 
