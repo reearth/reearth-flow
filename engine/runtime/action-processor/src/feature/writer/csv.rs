@@ -21,7 +21,11 @@ pub(super) fn write_csv(
         .quote_style(csv::QuoteStyle::NonNumeric)
         .from_writer(vec![]);
     let rows: Vec<AttributeValue> = features.iter().map(|f| f.clone().into()).collect();
-    let mut fields = get_fields(rows.first().unwrap());
+    let mut fields = if let Some(first_row) = rows.first() {
+        get_fields(first_row)
+    } else {
+        return Ok(());
+    };
 
     if let Some(ref mut fields) = fields {
         // Remove _id field
