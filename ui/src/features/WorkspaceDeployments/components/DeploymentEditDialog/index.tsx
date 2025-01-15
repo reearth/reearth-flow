@@ -37,7 +37,7 @@ const DeploymentEditDialog: React.FC<Props> = ({
   return (
     <Dialog open={true} onOpenChange={onDialogClose}>
       <DialogContent size="sm">
-        <DialogTitle>{t("Edit deployment")}</DialogTitle>
+        <DialogTitle>{t("Edit Deployment")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex flex-col">
             <Label>{t("Workflow file: ")}</Label>
