@@ -49,7 +49,7 @@ const JobsManager: React.FC = () => {
   ) : (
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-4">
-        <div className="flex h-[53px] items-center justify-between gap-2 border-b pb-4">
+        <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Jobs")}</p>
         </div>
         {jobs && jobs.length > 0 ? (

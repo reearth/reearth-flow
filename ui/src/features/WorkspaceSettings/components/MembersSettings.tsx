@@ -104,7 +104,7 @@ const MembersSettings: React.FC = () => {
 
   return (
     <>
-      <div className="flex h-[53px] items-center justify-between gap-2 border-b pb-4">
+      <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
         <p className="text-lg dark:font-extralight">{t("Members Settings")}</p>
       </div>
       <div className="mt-4 flex max-w-[900px] flex-col gap-6">
