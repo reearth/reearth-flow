@@ -1,0 +1,12 @@
+[package]
+edition = "2018"
+name = "xml2-macro"
+version = "0.1.0"
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = "2"
+
+[lib]
+proc-macro = true
