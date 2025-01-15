@@ -9,7 +9,7 @@ use super::{
     list_exploder::ListExploderFactory, lod_filter::FeatureLodFilterFactory,
     merger::FeatureMergerFactory, reader::FeatureReaderFactory, rhai::RhaiCallerFactory,
     sorter::FeatureSorterFactory, transformer::FeatureTransformerFactory,
-    type_filter::FeatureTypeFilterFactory,
+    type_filter::FeatureTypeFilterFactory, writer::FeatureWriterFactory,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -26,6 +26,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<FeatureFilePathExtractorFactory>::default(),
         Box::<FeatureLodFilterFactory>::default(),
         Box::<FeatureDuplicateFilterFactory>::default(),
+        Box::<FeatureWriterFactory>::default(),
     ];
     factories
         .into_iter()

@@ -28,7 +28,7 @@ impl ProcessorFactory for FeatureReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Filters features based on conditions"
+        "Reads features from various formats"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

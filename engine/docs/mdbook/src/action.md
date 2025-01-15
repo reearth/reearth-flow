@@ -1044,7 +1044,7 @@ Merges features by attributes
 ### Type
 * processor
 ### Description
-Filters features based on conditions
+Reads features from various formats
 ### Parameters
 ```json
 {
@@ -1313,6 +1313,86 @@ Filters features by feature type
 ### Output Ports
 * default
 * unfiltered
+### Category
+* Feature
+
+## FeatureWriter
+### Type
+* processor
+### Description
+Writes features from various formats
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureWriterParam",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "csv"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "tsv"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "json"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * Feature
 
