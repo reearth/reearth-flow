@@ -1126,6 +1126,24 @@ Filters features based on conditions
           "minimum": 0.0
         }
       }
+    },
+    {
+      "type": "object",
+      "required": [
+        "dataset",
+        "format"
+      ],
+      "properties": {
+        "dataset": {
+          "$ref": "#/definitions/Expr"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "json"
+          ]
+        }
+      }
     }
   ],
   "definitions": {
