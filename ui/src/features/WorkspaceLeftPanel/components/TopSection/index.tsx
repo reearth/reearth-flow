@@ -2,8 +2,8 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { FlowLogo } from "@flow/components";
 import { config } from "@flow/config";
+import { UserMenu } from "@flow/features/common";
 import type { RouteOption } from "@flow/features/WorkspaceLeftPanel";
-import { UserNavigation } from "@flow/features/WorkspaceTopNavigation/components";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
@@ -33,7 +33,7 @@ const TopSection: React.FC<Props> = ({ route }) => {
         <div className="h-px bg-primary" />
         <div className="flex flex-1 flex-col gap-2 p-4">
           <p className="text-xs dark:font-thin">{t("User")}</p>
-          <UserNavigation />
+          <UserMenu />
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">

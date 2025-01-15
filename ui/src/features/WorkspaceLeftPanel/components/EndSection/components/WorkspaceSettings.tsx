@@ -1,8 +1,8 @@
 import { Toolbox, UsersThree } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
+import { WorkspaceMenu } from "@flow/features/common";
 import { RouteOption } from "@flow/features/WorkspaceLeftPanel";
-import { WorkspaceNavigation } from "@flow/features/WorkspaceTopNavigation/components";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
@@ -18,7 +18,7 @@ const WorkspaceSettings: React.FC<Props> = ({ selected }) => {
   return (
     <div className="flex w-full flex-col gap-1">
       <p className="text-xs dark:font-thin">{t("Workspace")}</p>
-      <WorkspaceNavigation />
+      <WorkspaceMenu />
       <div
         className={`-mx-2 flex flex-1 cursor-pointer items-center gap-2 rounded px-2 py-1 ${selected === "general" && "bg-accent"} hover:bg-accent`}
         onClick={() =>

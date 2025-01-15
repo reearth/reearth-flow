@@ -1,4 +1,4 @@
-import { CaretDown, Keyboard, SignOut, User } from "@phosphor-icons/react";
+import { CaretRight, Keyboard, SignOut, User } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -27,7 +27,7 @@ type Props = {
   dropdownOffset?: number;
 };
 
-const UserNavigation: React.FC<Props> = ({
+const UserMenu: React.FC<Props> = ({
   className,
   iconOnly,
   dropdownPosition,
@@ -64,18 +64,18 @@ const UserNavigation: React.FC<Props> = ({
               </AvatarFallback>
             </Avatar>
             {!iconOnly ? (
-              <div className="flex items-center gap-2 self-center">
+              <div className="flex flex-1 items-center justify-between gap-2 self-center">
                 <p className="max-w-28 truncate text-sm transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500 dark:font-extralight">
                   {me?.name ? me.name : "User"}
                 </p>
-                <CaretDown className="w-[12px]" weight="thin" />
+                <CaretRight className="w-[12px]" weight="thin" />
               </div>
             ) : null}
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="w-[200px]"
-          side={dropdownPosition ?? "bottom"}
+          side={dropdownPosition ?? "right"}
           align="start"
           sideOffset={dropdownOffset ?? 4}>
           <DropdownMenuItem
@@ -124,4 +124,4 @@ const UserNavigation: React.FC<Props> = ({
   );
 };
 
-export { UserNavigation };
+export { UserMenu };

@@ -105,7 +105,7 @@
 @layer base {
   * {
     @apply border-border;
-    @apply no-scrollbar;
+    /* @apply no-scrollbar; */
   }
   body {
     @apply bg-background text-foreground;
@@ -177,3 +177,11 @@
     pulse 1.5s infinite;
 }
 /* Animation for queued node END */
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+
+}

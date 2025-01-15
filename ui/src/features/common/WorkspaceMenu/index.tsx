@@ -1,4 +1,4 @@
-import { CaretDown, Plus } from "@phosphor-icons/react";
+import { CaretRight, Plus } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -8,6 +8,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ScrollArea,
 } from "@flow/components";
 import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -16,7 +17,7 @@ import { Workspace } from "@flow/types";
 
 import { WorkspaceAddDialog } from "./WorkspaceAddDialog";
 
-const WorkspaceNavigation: React.FC = () => {
+const WorkspaceMenu: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
   const { useGetWorkspaces } = useWorkspace();
@@ -38,27 +39,39 @@ const WorkspaceNavigation: React.FC = () => {
       <DropdownMenu
         open={openDropdown}
         onOpenChange={(o) => setOpenDropdown(o)}>
-        <DropdownMenuTrigger className="flex max-w-[30vw] items-center gap-2 rounded-md py-1 hover:bg-background">
-          <CaretDown size="12px" />
-          <p className="truncate dark:font-thin">{currentWorkspace?.name}</p>
+        <DropdownMenuTrigger className="-mx-2 flex max-w-[213px] items-center gap-2 overflow-auto rounded-md bg-background p-1 hover:bg-primary">
+          <p className="line-clamp-2 flex-1 text-sm font-extralight">
+            {currentWorkspace?.personal
+              ? t("Personal workspace")
+              : currentWorkspace?.name}
+          </p>
+          <div className="shrink-0">
+            <CaretRight size="12px" weight="thin" />
+          </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="min-w-[150px] max-w-[300px] border"
           sideOffset={5}
-          align="start"
-          side="top">
-          <DropdownMenuGroup className="flex max-h-[200px] flex-col gap-1 overflow-auto">
-            {workspaces?.map((workspace) => (
-              <DropdownMenuItem
-                key={workspace.id}
-                className={`rounded-md px-4 py-1 ${currentWorkspace?.id === workspace.id ? "bg-accent" : ""}`}
-                onClick={() => handleWorkspaceChange(workspace)}>
-                <p className="w-full truncate text-center dark:font-extralight">
-                  {workspace.name}
-                </p>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
+          alignOffset={-50}
+          align="end"
+          side="right">
+          <ScrollArea>
+            <DropdownMenuGroup className="flex max-h-[50vh] flex-col gap-1 overflow-auto">
+              {workspaces?.map((workspace) => (
+                <DropdownMenuItem
+                  key={workspace.id}
+                  className={`rounded-md px-4 py-1 ${currentWorkspace?.id === workspace.id ? "bg-accent" : ""}`}
+                  onClick={() => handleWorkspaceChange(workspace)}>
+                  <p className="w-full truncate text-center font-extralight">
+                    {workspace.name}
+                    {workspace.personal && (
+                      <span className="font-normal">{t(" (Personal)")}</span>
+                    )}
+                  </p>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </ScrollArea>
           <div className="-mx-2 mt-1 border-t pb-1" />
           <div
             className="flex w-full cursor-pointer justify-center gap-2 rounded-md py-2 hover:bg-primary"
@@ -81,4 +94,4 @@ const WorkspaceNavigation: React.FC = () => {
   );
 };
 
-export { WorkspaceNavigation };
+export { WorkspaceMenu };
