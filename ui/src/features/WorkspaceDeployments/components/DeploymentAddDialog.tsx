@@ -68,14 +68,8 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
 
   const handleWorkflowDeployment = useCallback(async () => {
     const workspaceId = currentWorkspace?.id;
-    // const {
-    //   name: projectName,
-    //   workspaceId,
-    //   id: projectId,
-    // } = currentProject ?? {};
 
     if (!workspaceId || !workflowFile) return;
-    // if (!workspaceId || !projectId) return;
 
     await createDeploymentFromFile(
       workspaceId,

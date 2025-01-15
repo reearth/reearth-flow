@@ -15,16 +15,15 @@ export default () => {
 
   const [openDeploymentAddDialog, setOpenDeploymentAddDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
+  const [deploymentToBeEdited, setDeploymentToBeEdited] = useState<
+    Deployment | undefined
+  >(undefined);
   const [deploymentToBeDeleted, setDeploymentToBeDeleted] = useState<
     Deployment | undefined
   >(undefined);
 
-  const {
-    useGetDeploymentsInfinite,
-    useUpdateDeployment,
-    useDeleteDeployment,
-    executeDeployment,
-  } = useDeployment();
+  const { useGetDeploymentsInfinite, useDeleteDeployment, executeDeployment } =
+    useDeployment();
 
   const { pages, hasNextPage, isFetching, fetchNextPage } =
     useGetDeploymentsInfinite(currentWorkspace?.id);
@@ -57,14 +56,6 @@ export default () => {
         to: `/workspaces/${currentWorkspace?.id}/deployments/${deployment.id}`,
       }),
     [currentWorkspace, navigate],
-  );
-
-  const handleDeploymentUpdate = useCallback(
-    async (description?: string) => {
-      if (!selectedDeployment) return;
-      await useUpdateDeployment(selectedDeployment.id, undefined, description);
-    },
-    [selectedDeployment, useUpdateDeployment],
   );
 
   const handleDeploymentDelete = useCallback(
@@ -136,10 +127,11 @@ export default () => {
     selectedDeployment,
     deploymentToBeDeleted,
     openDeploymentAddDialog,
+    deploymentToBeEdited,
+    setDeploymentToBeEdited,
     setOpenDeploymentAddDialog,
     setDeploymentToBeDeleted,
     handleDeploymentSelect,
-    handleDeploymentUpdate,
     handleDeploymentDelete,
     handleDeploymentRun,
   };
