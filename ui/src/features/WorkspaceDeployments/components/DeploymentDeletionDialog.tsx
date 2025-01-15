@@ -1,16 +1,17 @@
 import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import { useT } from "@flow/lib/i18n";
+import { Deployment } from "@flow/types";
 
 type Props = {
-  deploymentToBeDeleted: string | undefined;
-  setDeploymentToBeDeleted: (deployment?: string) => void;
-  onDeleteDeployment: (id: string) => void;
+  deploymentToBeDeleted: Deployment | undefined;
+  setDeploymentToBeDeleted: (deployment?: Deployment) => void;
+  onDeploymentDelete: (deployment?: Deployment) => Promise<void>;
 };
 
 const DeploymentDeletionDialog: React.FC<Props> = ({
   deploymentToBeDeleted,
   setDeploymentToBeDeleted,
-  onDeleteDeployment,
+  onDeploymentDelete,
 }) => {
   const t = useT();
   return (
@@ -23,7 +24,7 @@ const DeploymentDeletionDialog: React.FC<Props> = ({
       confirmDisabled={!deploymentToBeDeleted}
       onClose={() => setDeploymentToBeDeleted(undefined)}
       onConfirm={() =>
-        deploymentToBeDeleted && onDeleteDeployment(deploymentToBeDeleted)
+        deploymentToBeDeleted && onDeploymentDelete(deploymentToBeDeleted)
       }
     />
   );

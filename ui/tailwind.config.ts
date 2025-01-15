@@ -84,6 +84,7 @@ const config = {
     },
   },
   plugins: [require("tailwindcss-animate")], // eslint-disable-line
+  safelist: ["line-clamp-2"],
 } satisfies Config;
 
 export default config;

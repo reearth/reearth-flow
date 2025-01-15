@@ -48,18 +48,8 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
         const results = e2.target?.result;
         if (results && typeof results === "string") {
           if (validateWorkflowJson(results).isValid) {
-            console.log(
-              "Valid workflow file",
-              validateWorkflowJson(results).isValid,
-              results,
-            );
             setInvalidFile(false);
           } else {
-            console.log(
-              "Invalid workflow file",
-              validateWorkflowJson(results).isValid,
-              results,
-            );
             setInvalidFile(true);
           }
           setWorkflowFile(e.target.files?.[0] || null);

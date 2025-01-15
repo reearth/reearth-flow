@@ -1,10 +1,9 @@
-import { CaretDown, Keyboard, SignOut, User } from "@phosphor-icons/react";
+import { CaretRight, Keyboard, SignOut, User } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
   Avatar,
   AvatarFallback,
-  AvatarImage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -28,14 +27,14 @@ type Props = {
   dropdownOffset?: number;
 };
 
-const UserNavigation: React.FC<Props> = ({
+const UserMenu: React.FC<Props> = ({
   className,
   iconOnly,
   dropdownPosition,
   dropdownOffset,
 }) => {
   const t = useT();
-  const { logout: handleLogout, user } = useAuth();
+  const { logout: handleLogout } = useAuth();
   const { useGetMe } = useUser();
   const { me } = useGetMe();
 
@@ -59,26 +58,25 @@ const UserNavigation: React.FC<Props> = ({
       <DropdownMenu>
         <DropdownMenuTrigger>
           <div className={`mr-2 flex gap-2 ${className}`}>
-            <Avatar className="size-8">
-              <AvatarImage src={user?.picture} />
+            <Avatar className="size-7">
               <AvatarFallback>
-                {me?.name ? me.name.charAt(0).toUpperCase() : "F"}
+                {me?.name ? me.name.charAt(0).toUpperCase() : "?"}
               </AvatarFallback>
             </Avatar>
             {!iconOnly ? (
-              <div className="flex items-center gap-2 self-center">
+              <div className="flex flex-1 items-center justify-between gap-2 self-center">
                 <p className="max-w-28 truncate text-sm transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500 dark:font-extralight">
                   {me?.name ? me.name : "User"}
                 </p>
-                <CaretDown className="w-[12px]" weight="thin" />
+                <CaretRight className="w-[12px]" weight="thin" />
               </div>
             ) : null}
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="w-[200px]"
-          side={dropdownPosition ?? "bottom"}
-          align="end"
+          side={dropdownPosition ?? "right"}
+          align="start"
           sideOffset={dropdownOffset ?? 4}>
           <DropdownMenuItem
             className="gap-2"
@@ -126,4 +124,4 @@ const UserNavigation: React.FC<Props> = ({
   );
 };
 
-export { UserNavigation };
+export { UserMenu };

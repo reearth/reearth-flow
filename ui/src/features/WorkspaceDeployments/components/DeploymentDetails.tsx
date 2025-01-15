@@ -1,4 +1,4 @@
-import { CaretLeft } from "@phosphor-icons/react";
+import { CaretLeft, Play, Trash } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 
@@ -10,13 +10,15 @@ import type { Deployment } from "@flow/types";
 
 type Props = {
   selectedDeployment?: Deployment;
-  setDeploymentToBeDeleted: (deployment: string | undefined) => void;
+  setDeploymentToBeDeleted: (deployment?: Deployment) => void;
+  onDeploymentRun: () => void;
   onDeploymentUpdate: (description?: string) => Promise<void>;
 };
 
 const DeploymentDetails: React.FC<Props> = ({
   selectedDeployment,
   setDeploymentToBeDeleted,
+  onDeploymentRun,
   onDeploymentUpdate,
 }) => {
   const t = useT();
@@ -32,11 +34,6 @@ const DeploymentDetails: React.FC<Props> = ({
     () => onDeploymentUpdate(updatedDescription),
     [onDeploymentUpdate, updatedDescription],
   );
-
-  const handleDelete = useCallback(() => {
-    if (!selectedDeployment) return;
-    setDeploymentToBeDeleted(selectedDeployment.id);
-  }, [selectedDeployment, setDeploymentToBeDeleted]);
 
   const handleDescriptionChange = useCallback((content: DetailsBoxContent) => {
     setUpdatedDescription(content.value);
@@ -97,9 +94,19 @@ const DeploymentDetails: React.FC<Props> = ({
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeft />
           </Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            {t("Delete Deployment")}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="default" size="sm" onClick={onDeploymentRun}>
+              <Play />
+              {t("Run")}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setDeploymentToBeDeleted(selectedDeployment)}>
+              <Trash />
+              {t("Delete")}
+            </Button>
+          </div>
         </div>
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
