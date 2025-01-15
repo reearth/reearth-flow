@@ -99,7 +99,6 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               type="file"
               accept=".json"
               onChange={handleWorkflowFileUpload}
-              placeholder={t("Give your deployment a unique name...")}
             />
             {invalidFile && (
               <p className="text-xs text-red-500 dark:text-red-400">
