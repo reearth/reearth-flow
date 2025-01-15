@@ -45,6 +45,10 @@ pub(crate) enum FeatureProcessorError {
     DuplicateFilterFactory(String),
     #[error("DuplicateFilter error: {0}")]
     DuplicateFilter(String),
+    #[error("FeatureWriterFactory error: {0}")]
+    FeatureWriterFactory(String),
+    #[error("FeatureWriter error: {0}")]
+    FeatureWriter(String),
 }
 
 #[allow(dead_code)]
