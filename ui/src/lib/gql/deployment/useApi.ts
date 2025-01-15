@@ -90,14 +90,14 @@ export const useDeployment = () => {
 
   const useUpdateDeployment = async (
     deploymentId: string,
-    engineReadyWorkflow?: EngineReadyWorkflow,
+    file?: FormDataEntryValue,
     description?: string,
   ): Promise<UpdateDeployment> => {
     const { mutateAsync, ...rest } = updateDeploymentMutation;
     try {
       const deployment: Deployment | undefined = await mutateAsync({
         deploymentId,
-        engineReadyWorkflow,
+        file,
         description,
       });
       toast({
