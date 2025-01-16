@@ -44,7 +44,6 @@ const Toolbox: React.FC<Props> = ({
   nodes,
 }) => {
   const t = useT();
-  console.log("nodes", nodes);
   const availableTools: Tool[] = [
     {
       id: "reader" as const,

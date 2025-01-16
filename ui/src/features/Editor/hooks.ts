@@ -3,13 +3,11 @@ import { MouseEvent, useCallback, useState } from "react";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useShortcuts } from "@flow/hooks";
+import { useIsMainWorkflow, useShortcuts } from "@flow/hooks";
 import { useYjsStore } from "@flow/lib/yjs";
 import { YWorkflow } from "@flow/lib/yjs/utils";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 import { cancellableDebounce } from "@flow/utils";
-
-import { useIsMainWorkflow } from "../KeyboardShortcutDialog/useHooks";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useNodeLocker from "./useNodeLocker";
@@ -107,7 +105,23 @@ export default ({
   >(undefined);
 
   const handleNodePickerOpen = useCallback(
-    (position?: XYPosition, nodeType?: ActionNodeType) => {
+    (
+      position?: XYPosition,
+      nodeType?: ActionNodeType,
+      isMainWorkflow?: boolean,
+      nodes?: Node[],
+    ) => {
+      if (
+        (!isMainWorkflow && nodeType === "reader") ||
+        nodes?.some((node) => node.type === "reader")
+      ) {
+        return;
+      }
+
+      if (!isMainWorkflow && nodeType === "writer") {
+        return;
+      }
+
       setNodePickerOpen(
         !position || !nodeType ? undefined : { position, nodeType },
       );
@@ -155,7 +169,8 @@ export default ({
   useShortcuts([
     {
       keyBinding: { key: "r", commandKey: false },
-      callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "reader"),
+      callback: () =>
+        handleNodePickerOpen({ x: 0, y: 0 }, "reader", isMainWorkflow, nodes),
     },
     {
       keyBinding: { key: "t", commandKey: false },
@@ -163,7 +178,8 @@ export default ({
     },
     {
       keyBinding: { key: "w", commandKey: false },
-      callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "writer"),
+      callback: () =>
+        handleNodePickerOpen({ x: 0, y: 0 }, "writer", isMainWorkflow),
     },
     {
       keyBinding: { key: "c", commandKey: true },
