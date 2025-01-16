@@ -1,4 +1,4 @@
-import { CaretRight, Plus } from "@phosphor-icons/react";
+import { CaretDown, Plus } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -39,22 +39,22 @@ const WorkspaceMenu: React.FC = () => {
       <DropdownMenu
         open={openDropdown}
         onOpenChange={(o) => setOpenDropdown(o)}>
-        <DropdownMenuTrigger className="-mx-2 flex max-w-[213px] items-center gap-2 overflow-auto rounded-md bg-background p-1 hover:bg-primary">
-          <p className="line-clamp-2 flex-1 text-sm font-extralight">
+        <DropdownMenuTrigger
+          className={`mx-2 flex items-center justify-between gap-2 overflow-auto rounded-md p-4 ${openDropdown ? "bg-background" : undefined} hover:bg-primary`}>
+          <p className="line-clamp-2 text-sm font-extralight">
             {currentWorkspace?.personal
               ? t("Personal workspace")
               : currentWorkspace?.name}
           </p>
           <div className="shrink-0">
-            <CaretRight size="12px" weight="thin" />
+            <CaretDown size="12px" weight="thin" />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="min-w-[150px] max-w-[300px] border"
-          sideOffset={5}
-          alignOffset={-50}
-          align="end"
-          side="right">
+          className="w-[230px] border"
+          alignOffset={-20}
+          align="center"
+          side="bottom">
           <ScrollArea>
             <DropdownMenuGroup className="flex max-h-[50vh] flex-col gap-1 overflow-auto">
               {workspaces?.map((workspace) => (
