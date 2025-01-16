@@ -39,7 +39,8 @@ const WorkspaceMenu: React.FC = () => {
       <DropdownMenu
         open={openDropdown}
         onOpenChange={(o) => setOpenDropdown(o)}>
-        <DropdownMenuTrigger className="mx-2 flex items-center justify-between gap-2 overflow-auto rounded-md p-4 hover:bg-primary">
+        <DropdownMenuTrigger
+          className={`mx-2 flex items-center justify-between gap-2 overflow-auto rounded-md p-4 ${openDropdown ? "bg-background" : undefined} hover:bg-primary`}>
           <p className="line-clamp-2 text-sm font-extralight">
             {currentWorkspace?.personal
               ? t("Personal workspace")
