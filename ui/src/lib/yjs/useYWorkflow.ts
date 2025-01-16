@@ -47,9 +47,24 @@ export default ({
         const workflowId = generateUUID();
         const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
 
+        // Helper function to get all nested nodes within a batch
+        const getBatchNodes = (batchId: string): Node[] => {
+          return nodes?.filter((n) => n.parentId === batchId) ?? [];
+        };
+
         const selectedNodes = nodes?.filter((n) => n.selected);
-        const selectedNodeIds = selectedNodes?.map((n) => n.id);
         const hasSelectedNodes = selectedNodes && selectedNodes.length > 0;
+
+        // Get all nodes that should be included (selected nodes + their nested nodes)
+        const allIncludedNodes =
+          selectedNodes?.flatMap((node) => {
+            if (node.type === "batch") {
+              return [node, ...getBatchNodes(node.id)];
+            }
+            return [node];
+          }) ?? [];
+
+        const allIncludedNodeIds = allIncludedNodes.map((n) => n.id);
 
         const calculatedPosition = hasSelectedNodes
           ? {
@@ -100,18 +115,26 @@ export default ({
         if (hasSelectedNodes && edges) {
           const internalEdges = edges.filter(
             (e) =>
-              selectedNodeIds?.includes(e.source) &&
-              selectedNodeIds?.includes(e.target),
+              allIncludedNodeIds.includes(e.source) &&
+              allIncludedNodeIds.includes(e.target),
           );
 
-          const adjustedNodes = selectedNodes.map((node) => ({
-            ...node,
-            position: {
-              x: node.position.x - calculatedPosition.x + 400,
-              y: node.position.y - calculatedPosition.y + 200,
-            },
-            selected: false,
-          }));
+          const adjustedNodes = allIncludedNodes.map((node) => {
+            if (node.parentId) {
+              return {
+                ...node,
+                selected: false,
+              };
+            }
+            return {
+              ...node,
+              position: {
+                x: node.position.x - calculatedPosition.x + 400,
+                y: node.position.y - calculatedPosition.y + 200,
+              },
+              selected: false,
+            };
+          });
 
           workflowNodes = [newInputNode, ...adjustedNodes, newOutputNode];
           workflowEdges = internalEdges;
@@ -150,7 +173,7 @@ export default ({
 
         if (hasSelectedNodes) {
           const remainingNodes = nodes?.filter(
-            (n) => !selectedNodeIds?.includes(n.id),
+            (n) => !allIncludedNodeIds.includes(n.id),
           );
           parentWorkflowNodes?.delete(0, parentWorkflowNodes.length);
           parentWorkflowNodes?.push([
