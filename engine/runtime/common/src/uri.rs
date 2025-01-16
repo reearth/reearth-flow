@@ -538,7 +538,11 @@ mod tests {
             "file:///foo/bar"
         );
         assert_eq!(
-            Uri::for_test("file:///foo/hoge/fuga/").join("..").unwrap().join("..").unwrap(),
+            Uri::for_test("file:///foo/hoge/fuga/")
+                .join("..")
+                .unwrap()
+                .join("..")
+                .unwrap(),
             "file:///foo"
         );
 

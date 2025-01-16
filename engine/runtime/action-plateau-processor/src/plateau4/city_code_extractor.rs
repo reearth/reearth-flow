@@ -124,7 +124,7 @@ impl Processor for CityCodeExtractor {
             .into());
         };
         let codelists_path = Uri::from_str(&codelists_path)?;
-        let authorities_path =  codelists_path.join("Common_localPublicAuthorities.xml")?;
+        let authorities_path = codelists_path.join("Common_localPublicAuthorities.xml")?;
         let storage = ctx.storage_resolver.resolve(&authorities_path)?;
         let bytes = storage.get_sync(&authorities_path.as_path())?;
         let dic: Dictionary = quick_xml::de::from_str(&String::from_utf8(bytes.to_vec())?)?;

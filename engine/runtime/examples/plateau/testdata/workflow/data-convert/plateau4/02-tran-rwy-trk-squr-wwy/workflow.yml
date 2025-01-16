@@ -189,7 +189,7 @@ graphs:
         to: c32a279d-97be-4584-b282-4d65627b1132
         fromPort: default
         toPort: default
-      - id: dde1d751-fe3e-4283-8742-ec4a61a41574
+      - id: 90f518e2-3ca0-404f-821c-5dffe4e57597
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         fromPort: up_to_lod0
