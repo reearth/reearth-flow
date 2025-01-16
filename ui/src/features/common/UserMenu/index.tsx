@@ -1,4 +1,4 @@
-import { CaretRight, Keyboard, SignOut, User } from "@phosphor-icons/react";
+import { Keyboard, SignOut, User } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -22,14 +22,12 @@ import { AccountUpdateDialog } from "./AccountUpdateDialog";
 
 type Props = {
   className?: string;
-  iconOnly?: boolean;
   dropdownPosition?: "left" | "right" | "bottom" | "top";
   dropdownOffset?: number;
 };
 
 const UserMenu: React.FC<Props> = ({
   className,
-  iconOnly,
   dropdownPosition,
   dropdownOffset,
 }) => {
@@ -57,27 +55,23 @@ const UserMenu: React.FC<Props> = ({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger>
-          <div className={`mr-2 flex gap-2 ${className}`}>
+          <div className={`flex items-center gap-1 ${className}`}>
             <Avatar className="size-7">
               <AvatarFallback>
                 {me?.name ? me.name.charAt(0).toUpperCase() : "?"}
               </AvatarFallback>
             </Avatar>
-            {!iconOnly ? (
-              <div className="flex flex-1 items-center justify-between gap-2 self-center">
-                <p className="max-w-28 truncate text-sm transition-all delay-0 duration-500 hover:max-w-[30vw] hover:delay-500 dark:font-extralight">
-                  {me?.name ? me.name : "User"}
-                </p>
-                <CaretRight className="w-[12px]" weight="thin" />
-              </div>
-            ) : null}
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="w-[200px]"
-          side={dropdownPosition ?? "right"}
-          align="start"
+          side={dropdownPosition ?? "bottom"}
+          align="end"
           sideOffset={dropdownOffset ?? 4}>
+          <div className="mb-2 rounded bg-primary px-2 py-1">
+            <p className="text-xs">{t("Username: ")}</p>
+            <p className="truncate text-sm">{me?.name ?? me?.email}</p>
+          </div>
           <DropdownMenuItem
             className="gap-2"
             onClick={() => setOpenAccountUpdateDialog(true)}>
