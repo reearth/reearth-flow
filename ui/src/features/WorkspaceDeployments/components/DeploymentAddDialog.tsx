@@ -48,18 +48,8 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
         const results = e2.target?.result;
         if (results && typeof results === "string") {
           if (validateWorkflowJson(results).isValid) {
-            console.log(
-              "Valid workflow file",
-              validateWorkflowJson(results).isValid,
-              results,
-            );
             setInvalidFile(false);
           } else {
-            console.log(
-              "Invalid workflow file",
-              validateWorkflowJson(results).isValid,
-              results,
-            );
             setInvalidFile(true);
           }
           setWorkflowFile(e.target.files?.[0] || null);
@@ -78,14 +68,8 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
 
   const handleWorkflowDeployment = useCallback(async () => {
     const workspaceId = currentWorkspace?.id;
-    // const {
-    //   name: projectName,
-    //   workspaceId,
-    //   id: projectId,
-    // } = currentProject ?? {};
 
     if (!workspaceId || !workflowFile) return;
-    // if (!workspaceId || !projectId) return;
 
     await createDeploymentFromFile(
       workspaceId,
@@ -115,7 +99,6 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               type="file"
               accept=".json"
               onChange={handleWorkflowFileUpload}
-              placeholder={t("Give your deployment a unique name...")}
             />
             {invalidFile && (
               <p className="text-xs text-red-500 dark:text-red-400">

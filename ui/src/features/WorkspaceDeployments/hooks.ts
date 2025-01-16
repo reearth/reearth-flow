@@ -15,15 +15,15 @@ export default () => {
 
   const [openDeploymentAddDialog, setOpenDeploymentAddDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
+  const [deploymentToBeEdited, setDeploymentToBeEdited] = useState<
+    Deployment | undefined
+  >(undefined);
   const [deploymentToBeDeleted, setDeploymentToBeDeleted] = useState<
-    string | undefined
+    Deployment | undefined
   >(undefined);
 
-  const {
-    useGetDeploymentsInfinite,
-    useUpdateDeployment,
-    useDeleteDeployment,
-  } = useDeployment();
+  const { useGetDeploymentsInfinite, useDeleteDeployment, executeDeployment } =
+    useDeployment();
 
   const { pages, hasNextPage, isFetching, fetchNextPage } =
     useGetDeploymentsInfinite(currentWorkspace?.id);
@@ -58,20 +58,40 @@ export default () => {
     [currentWorkspace, navigate],
   );
 
-  const handleDeploymentUpdate = useCallback(
-    async (description?: string) => {
-      if (!selectedDeployment) return;
-      await useUpdateDeployment(selectedDeployment.id, undefined, description);
+  const handleDeploymentDelete = useCallback(
+    async (deployment?: Deployment) => {
+      const d =
+        deployment ||
+        deployments?.find((d2) => d2.id === deploymentToBeDeleted?.id);
+      if (!d || !currentWorkspace) return;
+      await useDeleteDeployment(d.id, currentWorkspace.id);
+      setDeploymentToBeDeleted(undefined);
+      history.go(-1); // Go back to previous page
     },
-    [selectedDeployment, useUpdateDeployment],
+    [
+      currentWorkspace,
+      deploymentToBeDeleted,
+      deployments,
+      history,
+      useDeleteDeployment,
+    ],
   );
 
-  const handleDeploymentDelete = useCallback(async () => {
-    if (!selectedDeployment || !currentWorkspace) return;
-    await useDeleteDeployment(selectedDeployment.id, currentWorkspace.id);
-    setDeploymentToBeDeleted(undefined);
-    history.go(-1); // Go back to previous page
-  }, [selectedDeployment, currentWorkspace, history, useDeleteDeployment]);
+  const handleDeploymentRun = useCallback(
+    async (deployment?: Deployment) => {
+      const d = deployment || selectedDeployment;
+      if (!d || !currentWorkspace) return;
+      const jobData = await executeDeployment({
+        deploymentId: d.id,
+      });
+      if (jobData) {
+        navigate({
+          to: `/workspaces/${currentWorkspace.id}/jobs/${jobData.job?.id}`,
+        });
+      }
+    },
+    [selectedDeployment, currentWorkspace, navigate, executeDeployment],
+  );
 
   // Auto fills the page
   useEffect(() => {
@@ -107,11 +127,13 @@ export default () => {
     selectedDeployment,
     deploymentToBeDeleted,
     openDeploymentAddDialog,
+    deploymentToBeEdited,
+    setDeploymentToBeEdited,
     setOpenDeploymentAddDialog,
     setDeploymentToBeDeleted,
     handleDeploymentSelect,
-    handleDeploymentUpdate,
     handleDeploymentDelete,
+    handleDeploymentRun,
   };
 };
 

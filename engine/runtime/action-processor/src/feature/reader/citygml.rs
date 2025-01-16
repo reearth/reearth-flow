@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     io::{BufRead, BufReader, Cursor},
+    str::FromStr,
     sync::{Arc, RwLock},
 };
 
@@ -46,7 +47,8 @@ pub(crate) fn read_citygml(
             e
         ))
     })?;
-    let input_path = Uri::for_test(city_gml_path.as_str());
+    let input_path = Uri::from_str(city_gml_path.as_str())
+        .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let storage = storage_resolver
         .resolve(&input_path)

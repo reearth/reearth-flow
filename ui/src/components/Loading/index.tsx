@@ -1,8 +1,11 @@
+import { config } from "@flow/config";
+
 import { FlowLogo } from "..";
 
 import "./styles.css";
 
 const Loading: React.FC<{ show?: boolean }> = () => {
+  const { brandName } = config();
   return (
     <div className="absolute left-0 top-0 z-40 flex h-screen w-full justify-center bg-secondary">
       <div className="flex h-full items-center">
@@ -12,7 +15,7 @@ const Loading: React.FC<{ show?: boolean }> = () => {
               id="loading-svg"
               style={{ height: "110px", width: "110px" }}
             />
-            <p className="text-2xl font-thin">Re:Earth Flow</p>
+            <p className="text-2xl font-thin"> {brandName || "Flow"}</p>
           </div>
         </div>
       </div>

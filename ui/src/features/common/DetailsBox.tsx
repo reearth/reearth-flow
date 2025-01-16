@@ -1,23 +1,22 @@
 import { Download } from "@phosphor-icons/react";
 
-import { Button, Input, Label } from "@flow/components";
+import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { openLinkInNewTab } from "@flow/utils";
 
 export type DetailsBoxContent = {
   id: string;
   name: string;
-  value: string;
-  type?: "link" | "download" | "textbox" | "status";
+  value?: string;
+  type?: "link" | "download" | "status";
 };
 
 type Props = {
   title: string;
   content?: DetailsBoxContent[];
-  onContentChange?: (content: DetailsBoxContent) => void;
 };
 
-const DetailsBox: React.FC<Props> = ({ title, content, onContentChange }) => {
+const DetailsBox: React.FC<Props> = ({ title, content }) => {
   const t = useT();
   const filteredContent = content?.filter(
     (detail) => detail.type !== "download" && detail.type !== "status",
@@ -73,7 +72,7 @@ const DetailsBox: React.FC<Props> = ({ title, content, onContentChange }) => {
               <a
                 className="flex h-full items-center gap-2 rounded px-4 py-2"
                 href={detail.value}
-                onClick={handleDownload(detail.value)}>
+                onClick={() => detail.value && handleDownload(detail.value)}>
                 <Download />
                 <p className="font-light">{detail.name}</p>
               </a>
@@ -81,43 +80,33 @@ const DetailsBox: React.FC<Props> = ({ title, content, onContentChange }) => {
           ))}
           {status && (
             <div
-              className={`${status === "COMPLETED" ? "bg-success" : status === "QUEUED" ? "bg-primary" : status === "FAILED" ? "bg-destructive" : "active-node-status"} size-4 rounded-full`}
+              className={`${status === "COMPLETED" ? "bg-success" : status === "RUNNING" ? "active-node-status" : status === "FAILED" ? "bg-destructive" : "queued-node-status"} size-4 rounded-full`}
             />
           )}
         </div>
       </div>
-      <div className="flex flex-col gap-2 p-4">
+      <div className="flex gap-4 p-4">
         {filteredContent ? (
-          filteredContent.map((detail) =>
-            detail.type === "textbox" ? (
-              <div key={detail.id} className="flex items-center gap-2">
-                <Label>{detail.name}: </Label>
-                <Input
-                  className="max-w-[500px]"
-                  value={detail.value}
-                  onChange={(e) =>
-                    onContentChange?.({
-                      ...detail,
-                      value: e.currentTarget.value,
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <div className="flex items-center gap-1" key={detail.id}>
-                <p>{detail.name}</p>
+          <>
+            <div className="flex flex-col gap-2">
+              {filteredContent.map(({ name }) => (
+                <p>{name}</p>
+              ))}
+            </div>
+            <div className="flex flex-col gap-2">
+              {filteredContent.map(({ value, type }) => (
                 <p
-                  className={`${detail.type === "link" ? "cursor-pointer font-light text-blue-400 hover:text-blue-300" : "font-normal"}`}
+                  className={`${type === "link" ? "cursor-pointer font-light text-blue-400 hover:text-blue-300" : "font-light"}`}
                   onClick={
-                    detail.type === "link"
-                      ? openLinkInNewTab(detail.value)
+                    type === "link" && value
+                      ? openLinkInNewTab(value)
                       : undefined
                   }>
-                  {detail.value}
+                  {value}
                 </p>
-              </div>
-            ),
-          )
+              ))}
+            </div>
+          </>
         ) : (
           <p>{t("No content to display")}</p>
         )}
