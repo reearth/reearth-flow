@@ -17,6 +17,8 @@ type DeploymentDocument struct {
 	Description string    `bson:"description"`
 	Version     string    `bson:"version"`
 	UpdatedAt   time.Time `bson:"updatedat"`
+	HeadID      *string   `bson:"headid,omitempty"`
+	IsHead      bool      `bson:"ishead"`
 }
 
 type DeploymentConsumer = Consumer[*DeploymentDocument, *deployment.Deployment]
@@ -36,6 +38,12 @@ func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, string) {
 		pid = &ps
 	}
 
+	var hid *string
+	if h := d.HeadID(); h != nil {
+		hs := h.String()
+		hid = &hs
+	}
+
 	return &DeploymentDocument{
 		ID:          did,
 		ProjectID:   pid,
@@ -44,6 +52,8 @@ func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, string) {
 		Description: d.Description(),
 		Version:     d.Version(),
 		UpdatedAt:   d.UpdatedAt(),
+		HeadID:      hid,
+		IsHead:      d.IsHead(),
 	}, did
 }
 
@@ -63,7 +73,8 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 		WorkflowURL(d.WorkflowURL).
 		Description(d.Description).
 		Version(d.Version).
-		UpdatedAt(d.UpdatedAt)
+		UpdatedAt(d.UpdatedAt).
+		IsHead(d.IsHead)
 
 	if d.ProjectID != nil {
 		pid, err := id.ProjectIDFrom(*d.ProjectID)
@@ -71,6 +82,14 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 			return nil, err
 		}
 		builder = builder.Project(&pid)
+	}
+
+	if d.HeadID != nil {
+		hid, err := id.DeploymentIDFrom(*d.HeadID)
+		if err != nil {
+			return nil, err
+		}
+		builder = builder.HeadID(&hid)
 	}
 
 	return builder.Build()
