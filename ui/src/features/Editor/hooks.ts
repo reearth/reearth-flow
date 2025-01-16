@@ -9,6 +9,8 @@ import { YWorkflow } from "@flow/lib/yjs/utils";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 import { cancellableDebounce } from "@flow/utils";
 
+import { useIsMainWorkflow } from "../KeyboardShortcutDialog/useHooks";
+
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useNodeLocker from "./useNodeLocker";
 
@@ -32,6 +34,7 @@ export default ({
     },
     [setCurrentWorkflowId],
   );
+  const isMainWorkflow = useIsMainWorkflow(currentWorkflowId);
 
   const {
     nodes,
@@ -208,5 +211,6 @@ export default ({
     handleWorkflowRename,
     canUndo,
     canRedo,
+    isMainWorkflow,
   };
 };
