@@ -135,3 +135,7 @@ func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, i
 func (r *queryResolver) SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error) {
 	return loaders(ctx).User.SearchUser(ctx, nameOrEmail)
 }
+
+func (r *queryResolver) Triggers(ctx context.Context, workspaceID gqlmodel.ID) ([]*gqlmodel.Trigger, error) {
+	return loaders(ctx).Trigger.FindByWorkspace(ctx, workspaceID)
+}
