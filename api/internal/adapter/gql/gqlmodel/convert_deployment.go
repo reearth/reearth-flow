@@ -19,6 +19,8 @@ func ToDeployment(d *deployment.Deployment) *Deployment {
 		CreatedAt:   d.CreatedAt(),
 		UpdatedAt:   d.UpdatedAt(),
 		ProjectID:   IDFromRef(d.Project()),
+		HeadID:      IDFromRef(d.HeadID()),
+		IsHead:      d.IsHead(),
 	}
 }
 

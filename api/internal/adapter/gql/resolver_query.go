@@ -29,6 +29,18 @@ func (r *queryResolver) Deployments(ctx context.Context, workspaceID gqlmodel.ID
 	return loaders(ctx).Deployment.FindByWorkspace(ctx, workspaceID, pagination)
 }
 
+func (r *queryResolver) DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error) {
+	return loaders(ctx).Deployment.FindByVersion(ctx, &input)
+}
+
+func (r *queryResolver) DeploymentHead(ctx context.Context, input gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error) {
+	return loaders(ctx).Deployment.FindHead(ctx, &input)
+}
+
+func (r *queryResolver) DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error) {
+	return loaders(ctx).Deployment.FindVersions(ctx, workspaceID, projectID)
+}
+
 func (r *queryResolver) Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error) {
 	return loaders(ctx).Job.FindByID(ctx, id)
 }

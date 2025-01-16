@@ -128,6 +128,8 @@ type DeleteWorkspacePayload struct {
 type Deployment struct {
 	CreatedAt   time.Time  `json:"createdAt"`
 	Description string     `json:"description"`
+	HeadID      *ID        `json:"headId,omitempty"`
+	IsHead      bool       `json:"isHead"`
 	ID          ID         `json:"id"`
 	Project     *Project   `json:"project,omitempty"`
 	ProjectID   *ID        `json:"projectId,omitempty"`
@@ -159,6 +161,17 @@ type DeploymentPayload struct {
 
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
+}
+
+type GetByVersionInput struct {
+	WorkspaceID ID     `json:"workspaceId"`
+	ProjectID   *ID    `json:"projectId,omitempty"`
+	Version     string `json:"version"`
+}
+
+type GetHeadInput struct {
+	WorkspaceID ID  `json:"workspaceId"`
+	ProjectID   *ID `json:"projectId,omitempty"`
 }
 
 type Job struct {
