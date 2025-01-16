@@ -73,6 +73,8 @@ type ProjectEdge {
   node: Project
 }
 
+# Query and Mutation
+
 extend type Query {
   projects(
     workspaceId: ID!

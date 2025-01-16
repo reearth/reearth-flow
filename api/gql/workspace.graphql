@@ -82,7 +82,7 @@ type DeleteWorkspacePayload {
   workspaceId: ID!
 }
 
-#extend type Query{ }
+# Query and Mutation
 
 extend type Mutation {
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload

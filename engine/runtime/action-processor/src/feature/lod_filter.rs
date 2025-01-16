@@ -15,6 +15,7 @@ use serde_json::Value;
 
 use super::errors::FeatureProcessorError;
 
+pub static UP_TO_LOD0: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod0"));
 pub static UP_TO_LOD1: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod1"));
 pub static UP_TO_LOD2: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod2"));
 pub static UP_TO_LOD3: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod3"));
@@ -181,11 +182,19 @@ impl FeatureLodFilter {
             fw.send(ctx.as_executor_context(feature.clone(), UNFILTERED_PORT.clone()));
             return;
         };
+        if lod.has_lod(0) {
+            let feature = feature.clone();
+            fw.send(ctx.as_executor_context(feature, UP_TO_LOD0.clone()));
+        }
         if lod.has_lod(1) {
             let feature = feature.clone();
             fw.send(ctx.as_executor_context(feature, UP_TO_LOD1.clone()));
         }
-        if lod_count.max_lod >= 2 && (lod.has_lod(2) || (lod.has_lod(1) && !lod.has_lod(2))) {
+        if lod_count.max_lod >= 2
+            && (lod.has_lod(2)
+                || (lod.has_lod(1) && !lod.has_lod(2))
+                || (lod.has_lod(0) && !lod.has_lod(2) && !lod.has_lod(1)))
+        {
             let feature = feature.clone();
             fw.send(ctx.as_executor_context(feature, UP_TO_LOD2.clone()));
         }

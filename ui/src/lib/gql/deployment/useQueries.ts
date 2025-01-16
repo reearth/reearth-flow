@@ -4,9 +4,8 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { Deployment, EngineReadyWorkflow } from "@flow/types";
+import type { Deployment } from "@flow/types";
 import { isDefined } from "@flow/utils";
-import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
 import {
@@ -36,7 +35,7 @@ export const useQueries = () => {
       description,
     }: {
       workspaceId: string;
-      projectId: string;
+      projectId?: string;
       file: FormData;
       description?: string;
     }) => {
@@ -79,21 +78,14 @@ export const useQueries = () => {
   const updateDeploymentMutation = useMutation({
     mutationFn: async ({
       deploymentId,
-      engineReadyWorkflow,
+      file,
       description,
     }: {
       deploymentId: string;
-      engineReadyWorkflow?: EngineReadyWorkflow;
+      file?: FormDataEntryValue;
       description?: string;
     }) => {
-      const input: UpdateDeploymentInput = { deploymentId, description };
-      if (engineReadyWorkflow) {
-        const formData = jsonToFormData(
-          engineReadyWorkflow,
-          engineReadyWorkflow.id,
-        );
-        input.file = formData.get("file");
-      }
+      const input: UpdateDeploymentInput = { deploymentId, description, file };
 
       const data = await graphQLContext?.UpdateDeployment({
         input,

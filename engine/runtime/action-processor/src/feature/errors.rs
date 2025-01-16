@@ -27,6 +27,8 @@ pub(crate) enum FeatureProcessorError {
     FileCityGmlReader(String),
     #[error("Feature File Csv Reader error: {0}")]
     FileCsvReader(String),
+    #[error("Feature File Json Reader error: {0}")]
+    FileJsonReader(String),
     #[error("RhaiCallerFactory error: {0}")]
     RhaiCallerFactory(String),
     #[error("RhaiCaller error: {0}")]
@@ -39,6 +41,14 @@ pub(crate) enum FeatureProcessorError {
     LodFilterFactory(String),
     #[error("LodFilter error: {0}")]
     LodFilter(String),
+    #[error("DuplicateFilterFactory error: {0}")]
+    DuplicateFilterFactory(String),
+    #[error("DuplicateFilter error: {0}")]
+    DuplicateFilter(String),
+    #[error("FeatureWriterFactory error: {0}")]
+    FeatureWriterFactory(String),
+    #[error("FeatureWriter error: {0}")]
+    FeatureWriter(String),
 }
 
 #[allow(dead_code)]

@@ -12,13 +12,13 @@ func ToDeployment(d *deployment.Deployment) *Deployment {
 
 	return &Deployment{
 		ID:          IDFrom(d.ID()),
-		ProjectID:   IDFrom(d.Project()),
 		WorkspaceID: IDFrom(d.Workspace()),
 		WorkflowURL: d.WorkflowURL(),
 		Description: d.Description(),
 		Version:     d.Version(),
 		CreatedAt:   d.CreatedAt(),
 		UpdatedAt:   d.UpdatedAt(),
+		ProjectID:   IDFromRef(d.Project()),
 	}
 }
 

@@ -6,6 +6,7 @@ import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useCurrentProject } from "@flow/stores";
 import type { Edge, Node, Workflow } from "@flow/types";
 import { isDefined } from "@flow/utils";
+import { jsonToFormData } from "@flow/utils/jsonToFormData";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflowJson/engineReadyWorkflow";
 
 import { useDeployment } from "../gql/deployment";
@@ -130,10 +131,15 @@ export default ({
         return;
       }
 
+      const formData = jsonToFormData(
+        engineReadyWorkflow,
+        engineReadyWorkflow.id,
+      );
+
       if (deploymentId) {
         await useUpdateDeployment(
           deploymentId,
-          engineReadyWorkflow,
+          formData.get("file") ?? undefined,
           description,
         );
       } else {
