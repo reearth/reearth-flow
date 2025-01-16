@@ -2608,6 +2608,43 @@ Flatten attributes for building feature
 ### Category
 * PLATEAU
 
+## PLATEAU4.CityCodeExtractor
+### Type
+* processor
+### Description
+Extracts Codelist
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityCodeExtractorParam",
+  "type": "object",
+  "required": [
+    "cityCodeAttribute",
+    "codelistsPathAttribute"
+  ],
+  "properties": {
+    "cityCodeAttribute": {
+      "$ref": "#/definitions/Attribute"
+    },
+    "codelistsPathAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
 ## PLATEAU4.MaxLodExtractor
 ### Type
 * processor
