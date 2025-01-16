@@ -8,6 +8,7 @@ import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
 import { DeploymentManager, ProjectManager, JobManager } from "./components";
+import { TriggerManager } from "./components/TriggerManager";
 
 type Props = {
   route?: RouteOption;
@@ -41,6 +42,7 @@ const TopSection: React.FC<Props> = ({ route }) => {
         <ProjectManager selected={route === "projects"} />
         <DeploymentManager selected={route === "deployments"} />
         <JobManager selected={route === "jobs"} />
+        <TriggerManager selected={route === "triggers"} />
       </div>
     </div>
   );
