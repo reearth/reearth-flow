@@ -45,27 +45,39 @@ export default ({
     (position?: XYPosition, nodes?: Node[], edges?: Edge[]) =>
       undoTrackerActionWrapper(async () => {
         const workflowId = generateUUID();
-        const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
+        const workflowName = `Sub Workflow-${yWorkflows.length}`;
 
-        // Helper function to get all nested nodes within a batch
-        const getBatchNodes = (batchId: string): Node[] => {
-          return nodes?.filter((n) => n.parentId === batchId) ?? [];
-        };
+        const nodesByParentId = new Map<string, Node[]>();
+        nodes?.forEach((node) => {
+          if (node.parentId) {
+            if (!nodesByParentId.has(node.parentId)) {
+              nodesByParentId.set(node.parentId, []);
+            }
+            nodesByParentId.get(node.parentId)?.push(node);
+          }
+        });
 
         const selectedNodes = nodes?.filter((n) => n.selected);
         const hasSelectedNodes = selectedNodes && selectedNodes.length > 0;
 
+        const getBatchNodes = (batchId: string): Node[] =>
+          nodesByParentId.get(batchId) ?? [];
+
         // Get all nodes that should be included (selected nodes + their nested nodes)
+        const allIncludedNodeIds = new Set<string>();
+        selectedNodes?.forEach((node) => {
+          allIncludedNodeIds.add(node.id);
+          if (node.type === "batch") {
+            getBatchNodes(node.id).forEach((batchNode) =>
+              allIncludedNodeIds.add(batchNode.id),
+            );
+          }
+        });
+
         const allIncludedNodes =
-          selectedNodes?.flatMap((node) => {
-            if (node.type === "batch") {
-              return [node, ...getBatchNodes(node.id)];
-            }
-            return [node];
-          }) ?? [];
+          nodes?.filter((n) => allIncludedNodeIds.has(n.id)) ?? [];
 
-        const allIncludedNodeIds = allIncludedNodes.map((n) => n.id);
-
+        // Calculate position for new subworkflow node
         const calculatedPosition = hasSelectedNodes
           ? {
               x: Math.min(...selectedNodes.map((n) => n.position.x)),
@@ -73,10 +85,10 @@ export default ({
             }
           : (position ?? { x: 600, y: 200 });
 
-        const inputRouter = await fetcher<Action>(`${api}/actions/InputRouter`);
-        const outputRouter = await fetcher<Action>(
-          `${api}/actions/OutputRouter`,
-        );
+        const [inputRouter, outputRouter] = await Promise.all([
+          fetcher<Action>(`${api}/actions/InputRouter`),
+          fetcher<Action>(`${api}/actions/OutputRouter`),
+        ]);
 
         const inputNodeId = generateUUID();
         const newInputNode: Node = {
@@ -108,17 +120,17 @@ export default ({
           },
         };
 
-        // Creation through selection of node
         let workflowNodes = [newInputNode, newOutputNode];
         let workflowEdges: Edge[] = [];
 
         if (hasSelectedNodes && edges) {
           const internalEdges = edges.filter(
             (e) =>
-              allIncludedNodeIds.includes(e.source) &&
-              allIncludedNodeIds.includes(e.target),
+              allIncludedNodeIds.has(e.source) &&
+              allIncludedNodeIds.has(e.target),
           );
 
+          // Adjust positions of included nodes, respecting parentId (batch nodes)
           const adjustedNodes = allIncludedNodes.map((node) => {
             if (node.parentId) {
               return {
@@ -173,7 +185,7 @@ export default ({
 
         if (hasSelectedNodes) {
           const remainingNodes = nodes?.filter(
-            (n) => !allIncludedNodeIds.includes(n.id),
+            (n) => !allIncludedNodeIds.has(n.id),
           );
           parentWorkflowNodes?.delete(0, parentWorkflowNodes.length);
           parentWorkflowNodes?.push([
