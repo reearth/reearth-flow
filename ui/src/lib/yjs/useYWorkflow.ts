@@ -211,6 +211,8 @@ export default ({
     [undoTrackerActionWrapper, yWorkflows, setWorkflows],
   );
 
+  console.log("rawWorkflows", rawWorkflows);
+
   return {
     currentYWorkflow,
     handleWorkflowAdd,

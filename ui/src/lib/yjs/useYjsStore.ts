@@ -161,13 +161,14 @@ export default ({
     ],
   );
 
-  const { handleNodesUpdate, handleNodeParamsUpdate } = useYNode({
-    currentYWorkflow,
-    rawWorkflows,
-    yWorkflows,
-    undoTrackerActionWrapper,
-    handleWorkflowsRemove,
-  });
+  const { handleNodesUpdate, handleNodesChange, handleNodeParamsUpdate } =
+    useYNode({
+      currentYWorkflow,
+      rawWorkflows,
+      yWorkflows,
+      undoTrackerActionWrapper,
+      handleWorkflowsRemove,
+    });
 
   const { handleEdgesUpdate } = useYEdge({
     currentYWorkflow,
@@ -188,6 +189,7 @@ export default ({
     handleWorkflowAdd,
     handleWorkflowUpdate,
     handleNodesUpdate,
+    handleNodesChange,
     handleNodeParamsUpdate,
     handleEdgesUpdate,
     handleWorkflowUndo,

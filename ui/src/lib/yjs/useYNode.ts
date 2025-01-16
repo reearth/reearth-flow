@@ -1,3 +1,4 @@
+import { OnNodesChange, XYPosition } from "@xyflow/react";
 import isEqual from "lodash-es/isEqual";
 import { useCallback } from "react";
 import * as Y from "yjs";
@@ -19,6 +20,78 @@ export default ({
   undoTrackerActionWrapper: (callback: () => void) => void;
   handleWorkflowsRemove: (workflowId: string[]) => void;
 }) => {
+  const handleNodesChange: OnNodesChange<Node> = useCallback(
+    (changes) =>
+      undoTrackerActionWrapper(() => {
+        changes.forEach((change) => {
+          const yNodes = currentYWorkflow?.get("nodes") as
+            | YNodesArray
+            | undefined;
+          if (!yNodes) return;
+
+          console.log("change", change);
+
+          switch (change.type) {
+            case "position": {
+              // Find the node in Yjs array
+              const nodeIndex = yNodes
+                .toArray()
+                .findIndex((n) => n.id === change.id);
+              if (nodeIndex >= 0) {
+                // Update just the position
+                const node = yNodes.get(nodeIndex);
+                yNodes.delete(nodeIndex, 1);
+                yNodes.insert(nodeIndex, [
+                  {
+                    ...node,
+                    position: change.position as XYPosition,
+                  },
+                ]);
+              }
+              break;
+            }
+            case "remove": {
+              const nodeIndex = yNodes
+                .toArray()
+                .findIndex((n) => n.id === change.id);
+              if (nodeIndex >= 0) {
+                handleWorkflowsRemove([change.id]);
+                // TODO:
+                // Currently here we are doing "cleanup" to
+                // remove the subworkflow nodes that are not used anymore.
+                // What we want is to have a cleanup function
+                // that does this removal but also to update
+                // any subworkflow nodes' pseudoInputs and pseudoOutputs
+                // that are effected by the removal of the subworkflow node. @KaWaite
+              }
+              yNodes.delete(nodeIndex, 1);
+
+              break;
+            }
+            case "select": {
+              // Find the node in Yjs array
+              const nodeIndex = yNodes
+                .toArray()
+                .findIndex((n) => n.id === change.id);
+              if (nodeIndex >= 0) {
+                // Update just the position
+                const node = yNodes.get(nodeIndex);
+                yNodes.delete(nodeIndex, 1);
+                yNodes.insert(nodeIndex, [
+                  {
+                    ...node,
+                    selected: change.selected,
+                  },
+                ]);
+              }
+              break;
+            }
+            // TODO: add all cases
+          }
+        });
+      }),
+    [currentYWorkflow, undoTrackerActionWrapper, handleWorkflowsRemove],
+  );
   const handleNodesUpdate = useCallback(
     (newNodes: Node[]) =>
       undoTrackerActionWrapper(() => {
@@ -91,6 +164,7 @@ export default ({
   );
 
   return {
+    handleNodesChange,
     handleNodesUpdate,
     handleNodeParamsUpdate,
   };

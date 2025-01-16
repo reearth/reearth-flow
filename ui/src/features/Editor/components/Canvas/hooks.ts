@@ -1,4 +1,4 @@
-import { DefaultEdgeOptions, XYPosition } from "@xyflow/react";
+import { DefaultEdgeOptions, OnNodesChange, XYPosition } from "@xyflow/react";
 
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
@@ -10,6 +10,7 @@ type Props = {
   edges: Edge[];
   onWorkflowAdd: (position?: XYPosition) => void;
   onNodesUpdate: (newNodes: Node[]) => void;
+  onNodesChange: OnNodesChange<Node>;
   onEdgesUpdate: (newEdges: Edge[]) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
@@ -36,6 +37,7 @@ export default ({
   edges,
   onWorkflowAdd,
   onNodesUpdate,
+  onNodesChange,
   onEdgesUpdate,
   onNodePickerOpen,
 }: Props) => {
@@ -50,6 +52,7 @@ export default ({
     edges,
     onWorkflowAdd,
     onNodesChange: onNodesUpdate,
+    onNodesChange2: onNodesChange,
     onEdgesChange: onEdgesUpdate,
     onNodePickerOpen,
   });

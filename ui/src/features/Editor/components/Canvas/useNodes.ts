@@ -3,7 +3,6 @@ import {
   OnNodesChange,
   XYPosition,
   addEdge,
-  applyNodeChanges,
   getBezierPath,
   getConnectedEdges,
   getIncomers,
@@ -22,6 +21,7 @@ type Props = {
   edges: Edge[];
   onWorkflowAdd: (position?: XYPosition) => void;
   onNodesChange: (newNodes: Node[]) => void;
+  onNodesChange2: OnNodesChange<Node>;
   onEdgesChange: (edges: Edge[]) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
@@ -31,6 +31,7 @@ export default ({
   edges,
   onWorkflowAdd,
   onNodesChange,
+  onNodesChange2,
   onEdgesChange,
   onNodePickerOpen,
 }: Props) => {
@@ -46,8 +47,8 @@ export default ({
   });
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
-    (changes) => onNodesChange(applyNodeChanges<Node>(changes, nodes)),
-    [nodes, onNodesChange],
+    (changes) => onNodesChange2(changes),
+    [onNodesChange2],
   );
 
   const handleNodesDelete = useCallback(
