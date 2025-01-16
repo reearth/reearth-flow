@@ -53,6 +53,10 @@ export default () => {
         description: t("Open the writer dialog"),
       },
       {
+        keyBinding: EditorKeyBindings["groupToSubWorkFlow"],
+        description: t("Create new sub workflow from selected nodes"),
+      },
+      {
         keyBinding: EditorKeyBindings["bottomPanelLogs"],
         description: t("Toggle the logs panel"),
       },

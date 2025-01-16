@@ -180,7 +180,7 @@ export default ({
       callback: handleWorkflowUndo,
     },
     {
-      keyBinding: { key: "g", commandKey: true },
+      keyBinding: { key: "s", commandKey: false },
       callback: () => handleWorkflowAdd(undefined, nodes, edges),
     },
   ]);

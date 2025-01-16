@@ -84,6 +84,7 @@
   "Open the reader dialog": "リーダーダイアログを開く",
   "Open the transformer dialog": "トランスフォーマーダイアログを開く",
   "Open the writer dialog": "ライターダイアログを開く",
+  "Create new sub workflow from selected nodes": "選択したノードから新しいサブワークフローを作成",
   "Toggle the logs panel": "ログパネルを切り替え",
   "Toggle the preview panel": "プレビューパネルを切り替え",
   "Toggle the canvas navigator panel": "キャンバスナビゲーターパネルを切り替え",

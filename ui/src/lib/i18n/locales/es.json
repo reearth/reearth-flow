@@ -84,6 +84,7 @@
   "Open the reader dialog": "Abrir el diálogo del lector",
   "Open the transformer dialog": "Abrir el diálogo del transformador",
   "Open the writer dialog": "Abrir el diálogo del escritor",
+  "Create new sub workflow from selected nodes": "Crear un nuevo subflujo de trabajo a partir de los nodos seleccionados",
   "Toggle the logs panel": "Alternar el panel de registros",
   "Toggle the preview panel": "Alternar el panel de vista previa",
   "Toggle the canvas navigator panel": "Alternar el panel de navegación del lienzo",

@@ -17,7 +17,8 @@ export type EditorKeys =
   | "p" // bottom panel preview
   | "a" // SHIFT + a = left panel actions list
   | "r" // SHIFT + r = left panel resources
-  | "c"; // SHIFT + c = left panel canvas navigator
+  | "c" // SHIFT + c = left panel canvas navigator
+  | "s"; // new subworkflow with select nodes
 
 export type CanvasKeys =
   | "c" // w CMD = Copy, wout CMD = left panel canvas navigator
@@ -26,8 +27,7 @@ export type CanvasKeys =
   | "+" // zoom in
   | "=" // zoom in (alternative - depends on keyboard layout)
   | "-" // zoom out
-  | "0" // fit view
-  | "g"; // new subworkflow with select nodes
+  | "0"; // fit view
 
 export type PossibleKeys = GeneralKeys | EditorKeys | CanvasKeys;
 
@@ -86,6 +86,7 @@ export const EditorKeyBindings: Partial<
   leftPanelCanvasNavigator: { key: "c", shiftKey: true },
   leftPanelActionsList: { key: "a", shiftKey: true },
   leftPanelResources: { key: "r", shiftKey: true },
+  groupToSubWorkFlow: { key: "s" },
 };
 
 export const CanvasKeyBindings: Partial<
@@ -98,5 +99,4 @@ export const CanvasKeyBindings: Partial<
   zoomIn: { key: "+" },
   zoomOut: { key: "-" },
   fitView: { key: "0", commandKey: true },
-  groupToSubWorkFlow: { key: "g", commandKey: true },
 };

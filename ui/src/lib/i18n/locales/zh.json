@@ -84,6 +84,7 @@
   "Open the reader dialog": "打开阅读器对话框",
   "Open the transformer dialog": "打开转换器对话框",
   "Open the writer dialog": "打开写入器对话框",
+  "Create new sub workflow from selected nodes": "从选定的节点创建新的子工作流",
   "Toggle the logs panel": "切换日志面板",
   "Toggle the preview panel": "切换预览面板",
   "Toggle the canvas navigator panel": "切换画布导航面板",
