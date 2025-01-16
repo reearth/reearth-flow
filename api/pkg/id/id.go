@@ -105,7 +105,7 @@ type (
 	DeploymentIDList  = idx.List[Deployment]
 	ParameterIDList   = idx.List[Parameter]
 	ProjectIDList     = idx.List[Project]
-	TrggerIDList      = idx.List[Trigger]
+	TriggerIDList     = idx.List[Trigger]
 	UserIDList        = idx.List[User]
 	WorkspaceIDList   = idx.List[Workspace]
 )
