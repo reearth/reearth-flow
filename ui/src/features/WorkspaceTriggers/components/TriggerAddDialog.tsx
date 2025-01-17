@@ -119,7 +119,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
         <DialogContentWrapper>
           <DialogContentSection className="flex-1">
             <Label htmlFor="deployments-selector">
-              {t("Select Deployment")}
+              {t("Select a deployment")}
             </Label>
             <Select
               value={selectedDeployment?.id || ""}
