@@ -14,6 +14,7 @@ const TriggerDeletionDialog: React.FC<Props> = ({
   onTriggerDelete,
 }) => {
   const t = useT();
+
   return (
     <ConfirmationDialog
       title={t("Are you absolutely sure?")}
@@ -23,9 +24,11 @@ const TriggerDeletionDialog: React.FC<Props> = ({
       isOpen={!!triggerTobeDeleted}
       confirmDisabled={!triggerTobeDeleted}
       onClose={() => setTriggerToBeDeleted(undefined)}
-      onConfirm={() =>
-        triggerTobeDeleted && onTriggerDelete(triggerTobeDeleted)
-      }
+      onConfirm={async () => {
+        if (triggerTobeDeleted) {
+          await onTriggerDelete(triggerTobeDeleted);
+        }
+      }}
     />
   );
 };

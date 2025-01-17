@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import {
   Button,
   Dialog,
@@ -12,8 +14,11 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { useCurrentWorkspace } from "@flow/stores";
+import { EventSourceType, TimeInterval } from "@flow/types/trigger";
 
 type Props = {
   setShowDialog: (show: boolean) => void;
@@ -21,20 +26,37 @@ type Props = {
 
 const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const t = useT();
+  const [currentWorkspace] = useCurrentWorkspace();
+  const [eventSource, setEventSource] = useState<EventSourceType>(
+    EventSourceType.API_DRIVEN,
+  );
+  const [timeInterval, setTimeInterval] = useState<TimeInterval | null>(null);
 
-  const sampleEventSources = {
-    cms: "Cms",
-    api: "Api",
-    manual: "Manual",
+  const [authToken, setAuthToken] = useState<string>("");
+  const handleSelectEventSource = (eventSource: EventSourceType) => {
+    if (eventSource === "API_DRIVEN") {
+      setTimeInterval(null);
+    }
+    setEventSource(eventSource);
   };
 
-  const sampleTimeIntervals = {
+  const eventSources: Record<EventSourceType, string> = {
+    API_DRIVEN: t("API Driven"),
+    TIME_DRIVEN: t("Time Driven"),
+  };
+
+  const handleSelectTimeInterval = (timeInterval: TimeInterval) => {
+    setTimeInterval(timeInterval);
+  };
+
+  const timeIntervals: Record<TimeInterval, string> = {
     EVERY_DAY: t("Every Day"),
     EVERY_HOUR: t("Every Hour"),
     EVERY_WEEK: t("Every Week"),
     EVERY_MONTH: t("Every Month"),
   };
 
+  console.log("tEST", eventSource, timeInterval);
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       <DialogContent size="sm">
@@ -44,12 +66,12 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
             <Label htmlFor="event-source-selector">
               {t("Select Event Source")}
             </Label>
-            <Select>
+            <Select onValueChange={handleSelectEventSource}>
               <SelectTrigger>
-                <SelectValue placeholder={sampleEventSources.manual} />
+                <SelectValue placeholder={eventSources.API_DRIVEN} />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(sampleEventSources).map(([value, label]) => (
+                {Object.entries(eventSources).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
                   </SelectItem>
@@ -57,23 +79,35 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               </SelectContent>
             </Select>
           </DialogContentSection>
-          <DialogContentSection className="flex-1">
-            <Label htmlFor="time-interval-selector">
-              {t("Select Time Interval")}
-            </Label>
-            <Select>
-              <SelectTrigger>
-                <SelectValue placeholder={sampleTimeIntervals.EVERY_DAY} />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(sampleTimeIntervals).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </DialogContentSection>
+          {eventSource === "API_DRIVEN" && (
+            <DialogContentSection className="flex flex-col">
+              <Label>{t("Auth Token")}</Label>
+              <Input
+                value={authToken}
+                onChange={(e) => setAuthToken(e.target.value)}
+                placeholder={t("Add your auth token")}
+              />
+            </DialogContentSection>
+          )}
+          {eventSource === "TIME_DRIVEN" && (
+            <DialogContentSection className="flex-1">
+              <Label htmlFor="time-interval-selector">
+                {t("Select Time Interval")}
+              </Label>
+              <Select onValueChange={handleSelectTimeInterval}>
+                <SelectTrigger>
+                  <SelectValue placeholder={timeIntervals.EVERY_DAY} />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(timeIntervals).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </DialogContentSection>
+          )}
           <DialogContentSection>
             <p className="dark:font-light">
               {t("Are you sure you want to proceed?")}

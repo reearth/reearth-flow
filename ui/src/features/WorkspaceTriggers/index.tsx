@@ -40,18 +40,6 @@ const TriggerManager: React.FC = () => {
       header: t("ID"),
     },
     {
-      accessorKey: "authToken",
-      header: t("Auth Token"),
-    },
-    {
-      accessorKey: "projectId",
-      header: t("Project ID"),
-    },
-    {
-      accessorKey: "timeInterval",
-      header: t("Time Interval"),
-    },
-    {
       accessorKey: "eventSource",
       header: t("Event Source"),
     },
@@ -135,7 +123,7 @@ const TriggerManager: React.FC = () => {
       )}
       {triggerToBeDeleted && (
         <TriggerDeletionDialog
-          triggerToBeDeleted={triggerToBeDeleted}
+          triggerTobeDeleted={triggerToBeDeleted}
           setTriggerToBeDeleted={setTriggerToBeDeleted}
           onTriggerDelete={handleTriggerDelete}
         />

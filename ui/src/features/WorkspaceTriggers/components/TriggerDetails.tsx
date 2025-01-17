@@ -21,8 +21,7 @@ const TriggerDetails: React.FC<Props> = ({
 }) => {
   const t = useT();
   const { history } = useRouter();
-  const [openDeploymentEditDialog, setOpenDeploymentEditDialog] =
-    useState(false);
+  const [openTriggerEditDialog, setOpenTriggerEditDialog] = useState(false);
 
   const handleBack = useCallback(() => history.go(-1), [history]); // Go back to previous page
 
@@ -36,19 +35,9 @@ const TriggerDetails: React.FC<Props> = ({
               value: selectedTrigger.id,
             },
             {
-              id: "deployment",
+              id: "deploymentId",
               name: t("Deployment Id"),
-              value: selectedTrigger.deployment,
-            },
-            {
-              id: "authToken",
-              name: t("Auth Token"),
-              value: selectedTrigger.authToken,
-            },
-            {
-              id: "timeInterval",
-              name: t("Time Interval"),
-              value: selectedTrigger.timeInterval,
+              value: selectedTrigger.deploymentId,
             },
             {
               id: "eventSource",
@@ -87,7 +76,7 @@ const TriggerDetails: React.FC<Props> = ({
               variant="outline"
               size="sm"
               disabled={!selectedTrigger}
-              onClick={() => setOpenDeploymentEditDialog(true)}>
+              onClick={() => setOpenTriggerEditDialog(true)}>
               <PencilLine />
               {t("Edit Trigger")}
             </Button>
@@ -105,10 +94,10 @@ const TriggerDetails: React.FC<Props> = ({
           <DetailsBox title={t("Trigger Details")} content={details} />
         </div>
       </div>
-      {openDeploymentEditDialog && selectedTrigger && (
+      {openTriggerEditDialog && selectedTrigger && (
         <TriggerEditDialog
           selectedTrigger={selectedTrigger}
-          onDialogClose={() => setOpenDeploymentEditDialog(false)}
+          onDialogClose={() => setOpenTriggerEditDialog(false)}
         />
       )}
     </>
