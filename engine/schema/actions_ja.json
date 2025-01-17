@@ -218,6 +218,42 @@
       ]
     },
     {
+      "name": "AttributeFlattener",
+      "type": "processor",
+      "description": "Flattens features by attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeFlattenerParam",
+        "type": "object",
+        "required": [
+          "attributes"
+        ],
+        "properties": {
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "AttributeManager",
       "type": "processor",
       "description": "属性を管理する",
