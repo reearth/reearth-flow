@@ -87,7 +87,7 @@ const TriggerDetails: React.FC<Props> = ({
               disabled={!selectedTrigger}
               onClick={() => setOpenTriggerEditDialog(true)}>
               <PencilLine />
-              {t("Edit Trigger")}
+              {t("Update Trigger")}
             </Button>
             <Button
               variant="destructive"

@@ -67,7 +67,7 @@ const TriggerManager: React.FC = () => {
           <ButtonWithTooltip
             variant="outline"
             size="icon"
-            tooltipText={t("Edit Trigger")}
+            tooltipText={t("Update Trigger")}
             onClick={() => setTriggerToBeEdited(row.row.original)}>
             <PencilLine />
           </ButtonWithTooltip>
