@@ -1,4 +1,4 @@
-type Trigger {
+type Trigger implements Node {
     id: ID!
     createdAt: DateTime!
     updatedAt: DateTime!
@@ -51,12 +51,12 @@ input UpdateTriggerInput {
 
 # Query and Mutation
 
+extend type Query {
+    triggers(workspaceId: ID!): [Trigger!]!
+}
+
 extend type Mutation {
     createTrigger(input: CreateTriggerInput!): Trigger!
     updateTrigger(input: UpdateTriggerInput!): Trigger!
     deleteTrigger(triggerId: ID!): Boolean!
-}
-
-extend type Query {
-    triggers(workspaceId: ID!): [Trigger!]!
 }
