@@ -55,7 +55,7 @@ const TriggerEditDialog: React.FC<Props> = ({
   return (
     <Dialog open={true} onOpenChange={onDialogClose}>
       <DialogContent size="sm">
-        <DialogTitle>{t("Edit Trigger")}</DialogTitle>
+        <DialogTitle>{t("Update Trigger")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex-1">
             <Label htmlFor="event-source-selector">
@@ -117,7 +117,15 @@ const TriggerEditDialog: React.FC<Props> = ({
           )}
         </DialogContentWrapper>
         <DialogFooter>
-          <Button onClick={handleTriggerUpdate}>{t("Update Trigger")}</Button>
+          <Button
+            onClick={handleTriggerUpdate}
+            disabled={
+              updatedEventSource === selectedTrigger.eventSource &&
+              updatedTimeInterval === selectedTrigger.timeInterval &&
+              updatedAuthToken === selectedTrigger.authToken
+            }>
+            {t("Update Trigger")}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

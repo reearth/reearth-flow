@@ -30,6 +30,8 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const [currentWorkspace] = useCurrentWorkspace();
   const { createTrigger } = useTrigger();
   const [deploymentId, setDeploymentId] = useState<string>("");
+  const [selectedDeployment, setSelectedDeployment] =
+    useState<Deployment | null>(null);
   const [eventSource, setEventSource] = useState<string>("API_DRIVEN");
   const [timeInterval, setTimeInterval] = useState<TimeInterval | undefined>(
     undefined,
@@ -59,6 +61,8 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   }, [eventSource]);
 
   const handleSelectDeploymentId = (deploymentId: string) => {
+    const deployment = deployments?.find((d) => d.id === deploymentId);
+    setSelectedDeployment(deployment || null);
     setDeploymentId(deploymentId);
   };
 
@@ -115,20 +119,23 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
         <DialogContentWrapper>
           <DialogContentSection className="flex-1">
             <Label htmlFor="deployments-selector">
-              {t("Select Deployments")}
+              {t("Select Deployment")}
             </Label>
             <Select
-              value={eventSource}
+              value={selectedDeployment?.id || ""}
               onValueChange={handleSelectDeploymentId}>
               <SelectTrigger>
                 <SelectValue placeholder={t("Select a deployment")}>
-                  {deploymentId || t("Select a deployment")}{" "}
+                  {selectedDeployment
+                    ? `${selectedDeployment.projectName}[${selectedDeployment.description}]@${selectedDeployment.version}`
+                    : t("Select a deployment")}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {deployments?.map((deployment) => (
                   <SelectItem key={deployment.id} value={deployment.id}>
-                    {deployment.id}
+                    {deployment.projectName}[{deployment.description}]@
+                    {deployment.version}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -193,7 +200,8 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
             onClick={handleTriggerCreation}
             disabled={
               (eventSource === "API_DRIVEN" && !authToken) ||
-              (eventSource === "TIME_DRIVEN" && !timeInterval)
+              (eventSource === "TIME_DRIVEN" && !timeInterval) ||
+              !deploymentId
             }>
             {t("Add New Trigger")}
           </Button>
