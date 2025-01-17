@@ -217,6 +217,42 @@ Extracts file path information from attributes
 ### Category
 * Attribute
 
+## AttributeFlattener
+### Type
+* processor
+### Description
+Flattens features by attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttributeFlattenerParam",
+  "type": "object",
+  "required": [
+    "attributes"
+  ],
+  "properties": {
+    "attributes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
+
 ## AttributeManager
 ### Type
 * processor
