@@ -15,6 +15,9 @@ type realMessage struct {
 }
 
 func NewRealMessage(m *pubsub.Message) Message {
+	if m == nil {
+		return nil
+	}
 	return &realMessage{msg: m}
 }
 
