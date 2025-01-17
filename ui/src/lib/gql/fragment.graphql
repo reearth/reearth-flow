@@ -1,3 +1,15 @@
+fragment Project on Project {
+  id
+  name
+  description
+  createdAt
+  updatedAt
+  workspaceId
+  deployment {
+    ...Deployment
+  }
+}
+
 fragment Deployment on Deployment {
   id
   projectId
@@ -10,6 +22,21 @@ fragment Deployment on Deployment {
   project {
     name
   }
+}
+
+fragment Trigger on Trigger {
+  id
+  createdAt
+  updatedAt
+  lastTriggered
+  workspaceId
+  deploymentId
+  deployment {
+    ...Deployment
+  }
+  eventSource
+  authToken
+  timeInterval
 }
 
 fragment Job on Job {
@@ -25,16 +52,4 @@ fragment Job on Job {
   # workspace{
   #   ...Workspace
   # }
-}
-
-fragment Project on Project {
-  id
-  name
-  description
-  createdAt
-  updatedAt
-  workspaceId
-  deployment {
-    ...Deployment
-  }
 }
