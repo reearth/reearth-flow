@@ -135,8 +135,6 @@ func TestSubscriber_StartListening_InvalidJSON(t *testing.T) {
 	mMsg.On("Ack").Return().Maybe()
 	mMsg.On("Nack").Return().Once()
 
-	mUseCase.AssertNotCalled(t, "ProcessLogEvent")
-
 	mSub.On("Receive", ctx, mock.Anything).
 		Run(func(args mock.Arguments) {
 			cb := args.Get(1).(func(context.Context, Message))
@@ -147,6 +145,8 @@ func TestSubscriber_StartListening_InvalidJSON(t *testing.T) {
 	s := NewSubscriber(mSub, mUseCase)
 	err := s.StartListening(ctx)
 	assert.NoError(t, err)
+
+	mUseCase.AssertNotCalled(t, "ProcessLogEvent")
 
 	mMsg.AssertExpectations(t)
 	mUseCase.AssertExpectations(t)
