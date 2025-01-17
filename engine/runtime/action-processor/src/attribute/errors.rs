@@ -31,6 +31,10 @@ pub(super) enum AttributeProcessorError {
     StatisticsCalculatorFactory(String),
     #[error("Attribute Mapper Factory error: {0}")]
     MapperFactory(String),
+    #[error("Attribute Flattener error: {0}")]
+    FlattenerFactory(String),
+    #[error("Attribute Flattener error: {0}")]
+    Flattener(String),
 }
 
 #[allow(dead_code)]
