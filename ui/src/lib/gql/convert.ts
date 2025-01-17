@@ -3,8 +3,15 @@ import type {
   ProjectFragment,
   JobFragment,
   JobStatus as GraphqlJobStatus,
+  TriggerFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
-import type { Deployment, Job, JobStatus, Project } from "@flow/types";
+import {
+  type Deployment,
+  type Job,
+  type JobStatus,
+  type Project,
+  type Trigger,
+} from "@flow/types";
 import { formatDate } from "@flow/utils";
 
 export const toProject = (project: ProjectFragment): Project => ({
@@ -27,6 +34,18 @@ export const toDeployment = (deployment: DeploymentFragment): Deployment => ({
   version: deployment.version,
   createdAt: formatDate(deployment.createdAt),
   updatedAt: formatDate(deployment.updatedAt),
+});
+
+export const toTrigger = (trigger: TriggerFragment): Trigger => ({
+  id: trigger.id,
+  deploymentId: trigger.deploymentId,
+  deployment: toDeployment(trigger.deployment),
+  workspaceId: trigger.workspaceId,
+  createdAt: trigger.createdAt,
+  updatedAt: trigger.updatedAt,
+  eventSource: trigger.eventSource,
+  authToken: trigger.authToken ?? undefined,
+  timeInterval: trigger.timeInterval ?? undefined,
 });
 
 export const toJob = (job: JobFragment): Job => ({

@@ -1,30 +1,42 @@
-import { Deployment } from "./deployment";
-import { Workspace } from "./workspace";
+import type { ApiResponse } from "./api";
+import type { Deployment } from "./deployment";
 
-// Enums
-export enum EventSourceType {
-  API_DRIVEN = "API_DRIVEN",
-  TIME_DRIVEN = "TIME_DRIVEN",
-}
+export type EventSourceType = "TIME_DRIVEN" | "API_DRIVEN";
 
-export enum TimeInterval {
+export enum TimeIntervalEnum {
   EVERY_DAY = "EVERY_DAY",
   EVERY_HOUR = "EVERY_HOUR",
   EVERY_MONTH = "EVERY_MONTH",
   EVERY_WEEK = "EVERY_WEEK",
 }
 
-// Trigger Type
+export type TimeInterval = keyof typeof TimeIntervalEnum;
+
 export type Trigger = {
   id: string;
   createdAt: string;
   updatedAt: string;
-  lastTriggered?: string | null;
+  lastTriggered?: string;
   workspaceId: string;
-  workspace?: Workspace;
   deployment: Deployment;
   deploymentId: string;
   eventSource: EventSourceType;
-  authToken?: string | null;
-  timeInterval?: TimeInterval | null;
+  authToken?: string;
+  timeInterval?: TimeInterval;
 };
+
+export type GetTriggers = {
+  triggers?: Trigger[];
+} & ApiResponse;
+
+export type CreateTrigger = {
+  trigger?: Trigger;
+} & ApiResponse;
+
+export type UpdateTrigger = {
+  trigger?: Trigger;
+} & ApiResponse;
+
+export type DeleteTrigger = {
+  success?: boolean;
+} & ApiResponse;
