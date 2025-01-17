@@ -47,14 +47,17 @@ impl Scope {
     pub fn eval<T: rhai::Variant + Clone>(&self, expr: &str) -> crate::Result<T> {
         match self.engine.eval_scope::<T>(expr, self) {
             Ok(ret) => Ok(ret),
-            Err(err) => Err(Error::InternalRuntime(format!("{err} in {expr}"))),
+            Err(err) => Err(Error::ExprInternalRuntime(format!("{err} in {expr}"))),
         }
     }
 
     pub fn eval_ast<T: rhai::Variant + Clone>(&self, ast: &rhai::AST) -> crate::Result<T> {
         match self.engine.eval_scope_ast::<T>(ast, self) {
             Ok(ret) => Ok(ret),
-            Err(err) => Err(Error::InternalRuntime(format!("{err}"))),
+            Err(err) => Err(Error::ExprInternalRuntime(format!(
+                "ast = {:?}, err = {}",
+                ast, err
+            ))),
         }
     }
 
