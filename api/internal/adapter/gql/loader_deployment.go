@@ -8,6 +8,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearthx/idx"
 	"github.com/reearth/reearthx/usecasex"
 	"github.com/reearth/reearthx/util"
 )
@@ -67,6 +68,80 @@ func (c *DeploymentLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID
 		PageInfo:   gqlmodel.ToPageInfo(pi),
 		TotalCount: int(pi.TotalCount),
 	}, nil
+}
+
+func (c *DeploymentLoader) FindByVersion(ctx context.Context, input *gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error) {
+	wsID, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pID *idx.ID[id.Project]
+	if input.ProjectID != nil {
+		pid, err := gqlmodel.ToID[id.Project](*input.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		pID = &pid
+	}
+
+	res, err := c.usecase.FindByVersion(ctx, wsID, pID, input.Version, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToDeployment(res), nil
+}
+
+func (c *DeploymentLoader) FindHead(ctx context.Context, input *gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error) {
+	wsID, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pID *idx.ID[id.Project]
+	if input.ProjectID != nil {
+		pid, err := gqlmodel.ToID[id.Project](*input.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		pID = &pid
+	}
+
+	res, err := c.usecase.FindHead(ctx, wsID, pID, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToDeployment(res), nil
+}
+
+func (c *DeploymentLoader) FindVersions(ctx context.Context, wsID gqlmodel.ID, pID *gqlmodel.ID) ([]*gqlmodel.Deployment, error) {
+	wID, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
+	if err != nil {
+		return nil, err
+	}
+
+	var projectID *idx.ID[id.Project]
+	if pID != nil {
+		pid, err := gqlmodel.ToID[id.Project](*pID)
+		if err != nil {
+			return nil, err
+		}
+		projectID = &pid
+	}
+
+	res, err := c.usecase.FindVersions(ctx, wID, projectID, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	deployments := make([]*gqlmodel.Deployment, 0, len(res))
+	for _, d := range res {
+		deployments = append(deployments, gqlmodel.ToDeployment(d))
+	}
+
+	return deployments, nil
 }
 
 func (c *DeploymentLoader) FindByProject(ctx context.Context, pID gqlmodel.ID) (*gqlmodel.Deployment, error) {

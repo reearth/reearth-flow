@@ -1,6 +1,8 @@
 type Deployment implements Node {
   createdAt: DateTime!
   description: String!
+  headId: ID
+  isHead: Boolean!
   id: ID!
   project: Project
   projectId: ID
@@ -20,18 +22,29 @@ input CreateDeploymentInput {
   description: String
 }
 
-input UpdateDeploymentInput {
-  deploymentId: ID!
-  file: Upload
-  description: String
-}
-
 input DeleteDeploymentInput {
   deploymentId: ID!
 }
 
 input ExecuteDeploymentInput {
   deploymentId: ID!
+}
+
+input GetHeadInput {
+  workspaceId: ID!
+  projectId: ID
+}
+
+input GetByVersionInput {
+  workspaceId: ID!
+  projectId: ID
+  version: String!
+}
+
+input UpdateDeploymentInput {
+  deploymentId: ID!
+  file: Upload
+  description: String
 }
 
 # Payload Types
@@ -66,6 +79,9 @@ type DeploymentEdge {
 
 extend type Query {
   deployments(workspaceId: ID!, pagination: Pagination): DeploymentConnection!
+  deploymentByVersion(input: GetByVersionInput!): Deployment
+  deploymentHead(input: GetHeadInput!): Deployment
+  deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!
 }
 
 extend type Mutation {

@@ -12,6 +12,8 @@ type Deployment struct {
 	description string
 	version     string
 	updatedAt   time.Time
+	headId      *ID
+	isHead      bool
 }
 
 func (d *Deployment) ID() ID {
@@ -46,6 +48,14 @@ func (d *Deployment) UpdatedAt() time.Time {
 	return d.updatedAt
 }
 
+func (d *Deployment) HeadID() *ID {
+	return d.headId
+}
+
+func (d *Deployment) IsHead() bool {
+	return d.isHead
+}
+
 func (d *Deployment) SetID(id ID) {
 	d.id = id
 }
@@ -72,5 +82,15 @@ func (d *Deployment) SetDescription(description string) {
 
 func (d *Deployment) SetVersion(version string) {
 	d.version = version
+	d.updatedAt = time.Now()
+}
+
+func (d *Deployment) SetHeadID(headId ID) {
+	d.headId = &headId
+	d.updatedAt = time.Now()
+}
+
+func (d *Deployment) SetIsHead(isHead bool) {
+	d.isHead = isHead
 	d.updatedAt = time.Now()
 }

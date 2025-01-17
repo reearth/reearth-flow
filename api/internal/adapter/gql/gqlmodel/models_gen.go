@@ -18,6 +18,10 @@ type Node interface {
 	GetID() ID
 }
 
+type APIDriverInput struct {
+	Token string `json:"token"`
+}
+
 type AddMemberToWorkspaceInput struct {
 	WorkspaceID ID   `json:"workspaceId"`
 	UserID      ID   `json:"userId"`
@@ -77,6 +81,13 @@ type CreateProjectInput struct {
 	Archived    *bool   `json:"archived,omitempty"`
 }
 
+type CreateTriggerInput struct {
+	WorkspaceID     ID               `json:"workspaceId"`
+	DeploymentID    ID               `json:"deploymentId"`
+	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
+	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
+}
+
 type CreateWorkspaceInput struct {
 	Name string `json:"name"`
 }
@@ -128,6 +139,8 @@ type DeleteWorkspacePayload struct {
 type Deployment struct {
 	CreatedAt   time.Time  `json:"createdAt"`
 	Description string     `json:"description"`
+	HeadID      *ID        `json:"headId,omitempty"`
+	IsHead      bool       `json:"isHead"`
 	ID          ID         `json:"id"`
 	Project     *Project   `json:"project,omitempty"`
 	ProjectID   *ID        `json:"projectId,omitempty"`
@@ -159,6 +172,17 @@ type DeploymentPayload struct {
 
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
+}
+
+type GetByVersionInput struct {
+	WorkspaceID ID     `json:"workspaceId"`
+	ProjectID   *ID    `json:"projectId,omitempty"`
+	Version     string `json:"version"`
+}
+
+type GetHeadInput struct {
+	WorkspaceID ID  `json:"workspaceId"`
+	ProjectID   *ID `json:"projectId,omitempty"`
 }
 
 type Job struct {
@@ -321,6 +345,24 @@ type SignupPayload struct {
 type Subscription struct {
 }
 
+type TimeDriverInput struct {
+	Interval TimeInterval `json:"interval"`
+}
+
+type Trigger struct {
+	ID            ID              `json:"id"`
+	CreatedAt     time.Time       `json:"createdAt"`
+	UpdatedAt     time.Time       `json:"updatedAt"`
+	LastTriggered *time.Time      `json:"lastTriggered,omitempty"`
+	WorkspaceID   ID              `json:"workspaceId"`
+	Workspace     *Workspace      `json:"workspace,omitempty"`
+	Deployment    *Deployment     `json:"deployment"`
+	DeploymentID  ID              `json:"deploymentId"`
+	EventSource   EventSourceType `json:"eventSource"`
+	AuthToken     *string         `json:"authToken,omitempty"`
+	TimeInterval  *TimeInterval   `json:"timeInterval,omitempty"`
+}
+
 type UpdateDeploymentInput struct {
 	DeploymentID ID              `json:"deploymentId"`
 	File         *graphql.Upload `json:"file,omitempty"`
@@ -366,6 +408,12 @@ type UpdateProjectInput struct {
 	IsBasicAuthActive *bool   `json:"isBasicAuthActive,omitempty"`
 	BasicAuthUsername *string `json:"basicAuthUsername,omitempty"`
 	BasicAuthPassword *string `json:"basicAuthPassword,omitempty"`
+}
+
+type UpdateTriggerInput struct {
+	TriggerID       ID               `json:"triggerId"`
+	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
+	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 }
 
 type UpdateWorkspaceInput struct {
@@ -445,6 +493,47 @@ func (e *AssetSortType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e AssetSortType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type EventSourceType string
+
+const (
+	EventSourceTypeTimeDriven EventSourceType = "TIME_DRIVEN"
+	EventSourceTypeAPIDriven  EventSourceType = "API_DRIVEN"
+)
+
+var AllEventSourceType = []EventSourceType{
+	EventSourceTypeTimeDriven,
+	EventSourceTypeAPIDriven,
+}
+
+func (e EventSourceType) IsValid() bool {
+	switch e {
+	case EventSourceTypeTimeDriven, EventSourceTypeAPIDriven:
+		return true
+	}
+	return false
+}
+
+func (e EventSourceType) String() string {
+	return string(e)
+}
+
+func (e *EventSourceType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = EventSourceType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid EventSourceType", str)
+	}
+	return nil
+}
+
+func (e EventSourceType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
@@ -647,5 +736,50 @@ func (e *Role) UnmarshalGQL(v interface{}) error {
 }
 
 func (e Role) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type TimeInterval string
+
+const (
+	TimeIntervalEveryDay   TimeInterval = "EVERY_DAY"
+	TimeIntervalEveryHour  TimeInterval = "EVERY_HOUR"
+	TimeIntervalEveryMonth TimeInterval = "EVERY_MONTH"
+	TimeIntervalEveryWeek  TimeInterval = "EVERY_WEEK"
+)
+
+var AllTimeInterval = []TimeInterval{
+	TimeIntervalEveryDay,
+	TimeIntervalEveryHour,
+	TimeIntervalEveryMonth,
+	TimeIntervalEveryWeek,
+}
+
+func (e TimeInterval) IsValid() bool {
+	switch e {
+	case TimeIntervalEveryDay, TimeIntervalEveryHour, TimeIntervalEveryMonth, TimeIntervalEveryWeek:
+		return true
+	}
+	return false
+}
+
+func (e TimeInterval) String() string {
+	return string(e)
+}
+
+func (e *TimeInterval) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TimeInterval(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TimeInterval", str)
+	}
+	return nil
+}
+
+func (e TimeInterval) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }

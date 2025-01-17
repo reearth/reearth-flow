@@ -23,7 +23,8 @@ graphs:
           creator: |
             [
               #{
-                cityGmlPath: env.get("cityGmlPath")
+                cityGmlPath: env.get("cityGmlPath"),
+                cityCode: env.get("cityCode"),
               },
             ]
 
@@ -39,14 +40,14 @@ graphs:
         with:
           format: citygml
           dataset: |
-            env.get("__value").cityGmlPath
+            env.get("__value")["path"]
 
       - id: dc498449-5478-4bff-abaa-59f2d160925f
         name: PLATEAU4.MaxLodExtractor
         type: action
         action: PLATEAU4.MaxLodExtractor
         with:
-          cityGmlPathAttribute: cityGmlPath
+          cityGmlPathAttribute: path
           maxLodAttribute: maxLod
 
       - id: 1fb4ce1c-538a-436d-8dfa-79185e032de3
@@ -57,7 +58,7 @@ graphs:
           aggregateAttributes:
           - newAttribute: file
             attributeValue: |
-              file::extract_filename(env.get("__value").cityGmlPath)
+              file::extract_filename(env.get("__value")["path"])
           - newAttribute: type
             attributeValue: |
               env.get("__feature_type")
@@ -114,7 +115,7 @@ graphs:
         type: action
         action: FeatureLodFilter
         with:
-          filterKey: cityGmlPath
+          filterKey: path
 
       - id: 41d69f1f-2a4d-4bc1-a5d0-175698273571
         name: cesium3DTilesWriterByLod1
