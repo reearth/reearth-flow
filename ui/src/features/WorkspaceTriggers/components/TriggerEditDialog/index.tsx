@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import {
   Button,
   Dialog,
@@ -17,7 +15,9 @@ import {
   Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { Trigger } from "@flow/types";
+import { TimeInterval, Trigger } from "@flow/types";
+
+import useHooks from "./useHooks";
 
 type Props = {
   selectedTrigger: Trigger;
@@ -30,16 +30,15 @@ const TriggerEditDialog: React.FC<Props> = ({
 }) => {
   const t = useT();
 
-  const [eventSource, setEventSource] = useState<string>(
-    selectedTrigger.eventSource,
-  );
-
-  const [authToken, setAuthToken] = useState<string>(
-    selectedTrigger.authToken || "",
-  );
-  const [timeInterval, setTimeInterval] = useState<string | null>(
-    selectedTrigger.timeInterval || null,
-  );
+  const {
+    updatedEventSource,
+    updatedAuthToken,
+    updatedTimeInterval,
+    handleEventSourceChange,
+    handleAuthTokenChange,
+    handleTimeIntervalChange,
+    handleTriggerUpdate,
+  } = useHooks({ selectedTrigger, onDialogClose });
 
   const eventSources: Record<string, string> = {
     API_DRIVEN: t("API Driven"),
@@ -53,32 +52,20 @@ const TriggerEditDialog: React.FC<Props> = ({
     EVERY_MONTH: t("Every Month"),
   };
 
-  const handleUpdateTrigger = () => {
-    console.log("Updated Event Source:", eventSource);
-    console.log("Updated Time Interval:", timeInterval);
-  };
-
   return (
     <Dialog open={true} onOpenChange={onDialogClose}>
       <DialogContent size="sm">
         <DialogTitle>{t("Edit Trigger")}</DialogTitle>
         <DialogContentWrapper>
-          <div className="border-b border-primary text-center" />
           <DialogContentSection className="flex-1">
             <Label htmlFor="event-source-selector">
               {t("Select Event Source")}
             </Label>
             <Select
-              value={eventSource}
-              onValueChange={(value) => {
-                setEventSource(value as string);
-                // Reset time interval if switching to API_DRIVEN
-                if (value === "API_DRIVEN") {
-                  setTimeInterval(null);
-                }
-              }}>
+              value={updatedEventSource}
+              onValueChange={handleEventSourceChange}>
               <SelectTrigger>
-                <SelectValue placeholder={eventSources[eventSource]} />
+                <SelectValue placeholder={eventSources[updatedEventSource]} />
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(eventSources).map(([value, label]) => (
@@ -89,29 +76,31 @@ const TriggerEditDialog: React.FC<Props> = ({
               </SelectContent>
             </Select>
           </DialogContentSection>
-          {eventSource === "API_DRIVEN" && (
+          {updatedEventSource === "API_DRIVEN" && (
             <DialogContentSection className="flex flex-col">
               <Label>{t("Auth Token")}</Label>
               <Input
-                value={authToken}
-                onChange={(e) => setAuthToken(e.target.value)}
+                value={updatedAuthToken}
+                onChange={handleAuthTokenChange}
                 placeholder={t("Add your auth token")}
               />
             </DialogContentSection>
           )}
-          {eventSource === "TIME_DRIVEN" && (
+          {updatedEventSource === "TIME_DRIVEN" && (
             <DialogContentSection className="flex-1">
               <Label htmlFor="time-interval-selector">
                 {t("Select Time Interval")}
               </Label>
               <Select
-                value={timeInterval || ""}
-                onValueChange={(value) => setTimeInterval(value)}>
+                value={updatedTimeInterval || ""}
+                onValueChange={(value) =>
+                  handleTimeIntervalChange(value.toString() as TimeInterval)
+                }>
                 <SelectTrigger>
                   <SelectValue
                     placeholder={
-                      timeInterval
-                        ? timeIntervals[timeInterval]
+                      updatedTimeInterval
+                        ? timeIntervals[updatedTimeInterval]
                         : timeIntervals.EVERY_DAY
                     }
                   />
@@ -126,15 +115,9 @@ const TriggerEditDialog: React.FC<Props> = ({
               </Select>
             </DialogContentSection>
           )}
-
-          <DialogContentSection>
-            <p className="dark:font-light">
-              {t("Are you sure you want to proceed?")}
-            </p>
-          </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>
-          <Button onClick={handleUpdateTrigger}>{t("Update Trigger")}</Button>
+          <Button onClick={handleTriggerUpdate}>{t("Update Trigger")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
