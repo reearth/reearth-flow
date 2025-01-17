@@ -16,6 +16,9 @@ type Deployment interface {
 	FindByID(context.Context, id.DeploymentID) (*deployment.Deployment, error)
 	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination) ([]*deployment.Deployment, *usecasex.PageInfo, error)
 	FindByProject(context.Context, id.ProjectID) (*deployment.Deployment, error)
+	FindByVersion(context.Context, accountdomain.WorkspaceID, *id.ProjectID, string) (*deployment.Deployment, error)
+	FindHead(context.Context, accountdomain.WorkspaceID, *id.ProjectID) (*deployment.Deployment, error)
+	FindVersions(context.Context, accountdomain.WorkspaceID, *id.ProjectID) ([]*deployment.Deployment, error)
 	Save(context.Context, *deployment.Deployment) error
 	Remove(context.Context, id.DeploymentID) error
 }

@@ -83,7 +83,7 @@
 @layer base {
   * {
     @apply border-border;
-    /* @apply no-scrollbar; */
+    @apply no-scrollbar;
   }
   body {
     @apply bg-background text-foreground;

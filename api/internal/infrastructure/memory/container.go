@@ -13,6 +13,7 @@ func New() *repo.Container {
 		Workflow:    NewWorkflow(),
 		Deployment:  NewDeployment(),
 		Project:     NewProject(),
+		Trigger:     NewTrigger(),
 		Workspace:   accountmemory.NewWorkspace(),
 		Lock:        NewLock(),
 		Transaction: &usecasex.NopTransaction{},
