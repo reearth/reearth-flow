@@ -33,7 +33,6 @@ const TriggerManager: React.FC = () => {
     handleTriggerSelect,
     handleTriggerDelete,
   } = useHooks();
-  console.log("All Triggers", triggers);
   const columns: ColumnDef<Trigger>[] = [
     {
       accessorKey: "id",
