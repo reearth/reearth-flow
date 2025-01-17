@@ -1,114 +1,12 @@
 import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useTrigger } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Deployment, Workspace } from "@flow/types";
-import { EventSourceType, TimeInterval, Trigger } from "@flow/types/trigger";
+import { Trigger } from "@flow/types";
 import { lastOfUrl as getTriggerId } from "@flow/utils";
 
 import { RouteOption } from "../WorkspaceLeftPanel";
-// Code below is only placeholder and should be replaced when backend is ready @billcookie
-// Sample Deployments
-const sampleDeployments: Deployment[] = [
-  {
-    id: "deployment-1",
-    projectId: "project-1",
-    projectName: "Project Alpha",
-    workspaceId: "workspace-1",
-    workflowUrl: "https://example.com/workflows/1",
-    description: "First deployment description",
-    version: "1.0.0",
-    createdAt: "2023-01-01T10:00:00Z",
-    updatedAt: "2023-01-02T10:00:00Z",
-  },
-  {
-    id: "deployment-2",
-    projectId: null,
-    // projectName: null,
-    workspaceId: "workspace-2",
-    workflowUrl: "https://example.com/workflows/2",
-    description: "Second deployment description",
-    version: "1.1.0",
-    createdAt: "2023-02-01T10:00:00Z",
-    updatedAt: "2023-02-02T10:00:00Z",
-  },
-  {
-    id: "deployment-3",
-    projectId: "project-3",
-    projectName: "Project Gamma",
-    workspaceId: "workspace-3",
-    workflowUrl: "https://example.com/workflows/3",
-    description: "Third deployment description",
-    version: "2.0.0",
-    createdAt: "2023-03-01T10:00:00Z",
-    updatedAt: "2023-03-02T10:00:00Z",
-  },
-];
-
-// Sample Workspaces
-const sampleWorkspaces: Workspace[] = [
-  {
-    id: "workspace-1",
-    name: "Workspace Alpha",
-    personal: false,
-    members: [],
-    projects: [],
-  },
-  {
-    id: "workspace-2",
-    name: "Workspace Beta",
-    personal: true,
-    members: [],
-    projects: [],
-  },
-  {
-    id: "workspace-3",
-    name: "Workspace Gamma",
-    personal: false,
-    members: [],
-    projects: [],
-  },
-];
-
-// Sample Triggers
-const sampleTriggers: Trigger[] = [
-  {
-    id: "trigger-1",
-    authToken: "auth-token-1",
-    createdAt: "2023-01-01T12:00:00Z",
-    updatedAt: "2023-01-02T12:00:00Z",
-    deployment: sampleDeployments[0],
-    deploymentId: sampleDeployments[0].id,
-    workspaceId: sampleDeployments[0].workspaceId,
-    timeInterval: TimeInterval.EVERY_DAY,
-    lastTriggered: "2023-01-03T12:00:00Z",
-    eventSource: EventSourceType.API_DRIVEN,
-  },
-  {
-    id: "trigger-2",
-    authToken: "auth-token-2",
-    createdAt: "2023-02-01T12:00:00Z",
-    updatedAt: "2023-02-02T12:00:00Z",
-    deployment: sampleDeployments[1],
-    deploymentId: sampleDeployments[1].id,
-    workspaceId: sampleDeployments[1].workspaceId,
-    timeInterval: TimeInterval.EVERY_WEEK,
-    lastTriggered: null,
-    eventSource: EventSourceType.TIME_DRIVEN,
-  },
-  {
-    id: "trigger-3",
-    authToken: null, // Nullable
-    createdAt: "2023-03-01T12:00:00Z",
-    updatedAt: "2023-03-02T12:00:00Z",
-    deployment: sampleDeployments[2],
-    deploymentId: sampleDeployments[2].id,
-    workspaceId: sampleDeployments[2].workspaceId,
-    timeInterval: null, // Nullable
-    lastTriggered: "2023-03-03T12:00:00Z",
-    eventSource: EventSourceType.API_DRIVEN,
-  },
-];
 
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
@@ -123,6 +21,7 @@ export default () => {
   const [triggerToBeDeleted, setTriggerToBeDeleted] = useState<
     Trigger | undefined
   >(undefined);
+  const { useGetTriggers, useDeleteTrigger } = useTrigger();
 
   const {
     location: { pathname },
@@ -130,10 +29,10 @@ export default () => {
 
   const tab = getTab(pathname);
 
-  const triggers: Trigger[] = sampleTriggers;
+  const { triggers } = useGetTriggers(currentWorkspace?.id);
 
   const selectedTrigger = useMemo(
-    () => triggers.find((trigger) => trigger.id === tab),
+    () => triggers?.find((trigger) => trigger.id === tab),
     [tab, triggers],
   );
 
@@ -146,16 +45,16 @@ export default () => {
   );
 
   const handleTriggerDelete = useCallback(
-    async (trigger?: Trigger): Promise<void> => {
+    async (trigger?: Trigger) => {
       const t =
-        trigger || triggers.find((t2) => t2.id === triggerToBeDeleted?.id);
-      if (!t) return;
+        trigger || triggers?.find((t2) => t2.id === triggerToBeDeleted?.id);
+      if (!t || !currentWorkspace) return;
 
-      console.log("Trigger deleted:", t);
+      await useDeleteTrigger(t.id, currentWorkspace.id);
       setTriggerToBeDeleted(undefined);
       history.go(-1);
     },
-    [triggerToBeDeleted, triggers, history],
+    [currentWorkspace, triggerToBeDeleted, triggers, history, useDeleteTrigger],
   );
 
   useEffect(() => {

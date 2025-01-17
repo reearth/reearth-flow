@@ -9,7 +9,7 @@ import {
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
-import { Trigger } from "@flow/types/trigger";
+import { Trigger } from "@flow/types";
 
 import {
   TriggerAddDialog,
@@ -33,11 +33,19 @@ const TriggerManager: React.FC = () => {
     handleTriggerSelect,
     handleTriggerDelete,
   } = useHooks();
-
+  console.log("All Triggers", triggers);
   const columns: ColumnDef<Trigger>[] = [
     {
       accessorKey: "id",
       header: t("ID"),
+    },
+    {
+      accessorKey: "deploymentId",
+      header: t("Deployment Id"),
+    },
+    {
+      accessorKey: "deployment.projectName",
+      header: t("Project Name"),
     },
     {
       accessorKey: "eventSource",
@@ -46,6 +54,10 @@ const TriggerManager: React.FC = () => {
     {
       accessorKey: "lastTriggered",
       header: t("Last Triggered"),
+    },
+    {
+      accessorKey: "updatedAt",
+      header: t("Updated At"),
     },
     {
       accessorKey: "quickActions",

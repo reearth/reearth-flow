@@ -1,6 +1,6 @@
 import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import { useT } from "@flow/lib/i18n";
-import { Trigger } from "@flow/types/trigger";
+import { Trigger } from "@flow/types";
 
 type Props = {
   triggerTobeDeleted: Trigger | undefined;

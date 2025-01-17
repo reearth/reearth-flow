@@ -6,7 +6,7 @@ import { Button } from "@flow/components";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 // import { LogConsole } from "@flow/features/Editor/components/BottomPanel/components";
 import { useT } from "@flow/lib/i18n";
-import { Trigger } from "@flow/types/trigger";
+import { Trigger } from "@flow/types";
 
 import { TriggerEditDialog } from "./TriggerEditDialog";
 
@@ -40,6 +40,11 @@ const TriggerDetails: React.FC<Props> = ({
               value: selectedTrigger.deploymentId,
             },
             {
+              id: "deploymentName",
+              name: t("Project Name"),
+              value: selectedTrigger.deployment.projectName,
+            },
+            {
               id: "eventSource",
               name: t("Event Source"),
               value: selectedTrigger.eventSource,
@@ -58,6 +63,11 @@ const TriggerDetails: React.FC<Props> = ({
               id: "updatedAt",
               name: t("Updated At"),
               value: selectedTrigger.updatedAt,
+            },
+            {
+              id: "workflowUrl",
+              name: t("Workflow Url"),
+              value: selectedTrigger.deployment.workflowUrl,
             },
           ]
         : undefined,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState, useEffect, useMemo } from "react";
 
 import {
   Button,
@@ -16,9 +16,10 @@ import {
   SelectItem,
   Input,
 } from "@flow/components";
+import { useDeployment, useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import { EventSourceType, TimeInterval } from "@flow/types/trigger";
+import { Deployment, TimeInterval } from "@flow/types";
 
 type Props = {
   setShowDialog: (show: boolean) => void;
@@ -27,20 +28,45 @@ type Props = {
 const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
-  const [eventSource, setEventSource] = useState<EventSourceType>(
-    EventSourceType.API_DRIVEN,
+  const { createTrigger } = useTrigger();
+  const [deploymentId, setDeploymentId] = useState<string>("");
+  const [eventSource, setEventSource] = useState<string>("API_DRIVEN");
+  const [timeInterval, setTimeInterval] = useState<TimeInterval | undefined>(
+    undefined,
   );
-  const [timeInterval, setTimeInterval] = useState<TimeInterval | null>(null);
-
   const [authToken, setAuthToken] = useState<string>("");
-  const handleSelectEventSource = (eventSource: EventSourceType) => {
+  const { useGetDeploymentsInfinite } = useDeployment();
+
+  const { pages } = useGetDeploymentsInfinite(currentWorkspace?.id);
+
+  const deployments: Deployment[] | undefined = useMemo(
+    () =>
+      pages?.reduce((deployments, page) => {
+        if (page?.deployments) {
+          deployments.push(...page.deployments);
+        }
+        return deployments;
+      }, [] as Deployment[]),
+    [pages],
+  );
+
+  useEffect(() => {
     if (eventSource === "API_DRIVEN") {
-      setTimeInterval(null);
+      setTimeInterval(undefined);
+    } else {
+      setAuthToken("");
     }
+  }, [eventSource]);
+
+  const handleSelectDeploymentId = (deploymentId: string) => {
+    setDeploymentId(deploymentId);
+  };
+
+  const handleSelectEventSource = (eventSource: string) => {
     setEventSource(eventSource);
   };
 
-  const eventSources: Record<EventSourceType, string> = {
+  const eventSources: Record<string, string> = {
     API_DRIVEN: t("API Driven"),
     TIME_DRIVEN: t("Time Driven"),
   };
@@ -56,17 +82,63 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     EVERY_MONTH: t("Every Month"),
   };
 
-  console.log("tEST", eventSource, timeInterval);
+  const handleTriggerCreation = useCallback(async () => {
+    const workspaceId = currentWorkspace?.id;
+
+    if (!workspaceId) {
+      console.error("No workspace ID found");
+      return;
+    }
+
+    await createTrigger(
+      workspaceId,
+      deploymentId,
+      eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
+      eventSource === "API_DRIVEN" ? authToken : undefined,
+    );
+
+    setShowDialog(false);
+  }, [
+    currentWorkspace?.id,
+    deploymentId,
+    eventSource,
+    authToken,
+    timeInterval,
+    setShowDialog,
+    createTrigger,
+  ]);
+
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       <DialogContent size="sm">
         <DialogTitle>{t("Create a new trigger")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex-1">
+            <Label htmlFor="deployments-selector">
+              {t("Select Deployments")}
+            </Label>
+            <Select
+              value={eventSource}
+              onValueChange={handleSelectDeploymentId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("Select a deployment")}>
+                  {deploymentId || t("Select a deployment")}{" "}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {deployments?.map((deployment) => (
+                  <SelectItem key={deployment.id} value={deployment.id}>
+                    {deployment.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </DialogContentSection>
+          <DialogContentSection className="flex-1">
             <Label htmlFor="event-source-selector">
               {t("Select Event Source")}
             </Label>
-            <Select onValueChange={handleSelectEventSource}>
+            <Select value={eventSource} onValueChange={handleSelectEventSource}>
               <SelectTrigger>
                 <SelectValue placeholder={eventSources.API_DRIVEN} />
               </SelectTrigger>
@@ -94,7 +166,9 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               <Label htmlFor="time-interval-selector">
                 {t("Select Time Interval")}
               </Label>
-              <Select onValueChange={handleSelectTimeInterval}>
+              <Select
+                value={timeInterval}
+                onValueChange={handleSelectTimeInterval}>
                 <SelectTrigger>
                   <SelectValue placeholder={timeIntervals.EVERY_DAY} />
                 </SelectTrigger>
@@ -115,7 +189,14 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>
-          <Button>{t("Add New Trigger")}</Button>
+          <Button
+            onClick={handleTriggerCreation}
+            disabled={
+              (eventSource === "API_DRIVEN" && !authToken) ||
+              (eventSource === "TIME_DRIVEN" && !timeInterval)
+            }>
+            {t("Add New Trigger")}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

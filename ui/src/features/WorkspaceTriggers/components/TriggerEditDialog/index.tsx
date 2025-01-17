@@ -17,7 +17,7 @@ import {
   Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { Trigger, EventSourceType, TimeInterval } from "@flow/types/trigger";
+import { Trigger } from "@flow/types";
 
 type Props = {
   selectedTrigger: Trigger;
@@ -30,23 +30,23 @@ const TriggerEditDialog: React.FC<Props> = ({
 }) => {
   const t = useT();
 
-  const [eventSource, setEventSource] = useState<EventSourceType>(
+  const [eventSource, setEventSource] = useState<string>(
     selectedTrigger.eventSource,
   );
 
   const [authToken, setAuthToken] = useState<string>(
     selectedTrigger.authToken || "",
   );
-  const [timeInterval, setTimeInterval] = useState<TimeInterval | null>(
+  const [timeInterval, setTimeInterval] = useState<string | null>(
     selectedTrigger.timeInterval || null,
   );
 
-  const eventSources: Record<EventSourceType, string> = {
+  const eventSources: Record<string, string> = {
     API_DRIVEN: t("API Driven"),
     TIME_DRIVEN: t("Time Driven"),
   };
 
-  const timeIntervals: Record<TimeInterval, string> = {
+  const timeIntervals: Record<string, string> = {
     EVERY_DAY: t("Every Day"),
     EVERY_HOUR: t("Every Hour"),
     EVERY_WEEK: t("Every Week"),
@@ -71,9 +71,9 @@ const TriggerEditDialog: React.FC<Props> = ({
             <Select
               value={eventSource}
               onValueChange={(value) => {
-                setEventSource(value as EventSourceType);
+                setEventSource(value as string);
                 // Reset time interval if switching to API_DRIVEN
-                if (value === EventSourceType.API_DRIVEN) {
+                if (value === "API_DRIVEN") {
                   setTimeInterval(null);
                 }
               }}>
@@ -99,16 +99,14 @@ const TriggerEditDialog: React.FC<Props> = ({
               />
             </DialogContentSection>
           )}
-          {eventSource === EventSourceType.TIME_DRIVEN && (
+          {eventSource === "TIME_DRIVEN" && (
             <DialogContentSection className="flex-1">
               <Label htmlFor="time-interval-selector">
                 {t("Select Time Interval")}
               </Label>
               <Select
                 value={timeInterval || ""}
-                onValueChange={(value) =>
-                  setTimeInterval(value as TimeInterval)
-                }>
+                onValueChange={(value) => setTimeInterval(value)}>
                 <SelectTrigger>
                   <SelectValue
                     placeholder={
