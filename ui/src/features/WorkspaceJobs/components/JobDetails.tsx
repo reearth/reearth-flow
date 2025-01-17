@@ -27,19 +27,14 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
               value: selectedJob.id,
             },
             {
-              id: "projectName",
-              name: t("Project Name"),
-              value: selectedJob.deployment?.projectName || "N/A",
+              id: "deploymentId",
+              name: t("Deployment ID"),
+              value: selectedJob.deploymentId,
             },
             {
               id: "status",
               name: t("Status"),
               value: selectedJob.status,
-            },
-            {
-              id: "trigger",
-              name: t("Trigger"),
-              value: selectedJob.trigger || "N/A",
             },
             {
               id: "startedAt",
