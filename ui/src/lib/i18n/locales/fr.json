@@ -141,6 +141,7 @@
   "Create a new trigger": "Créer un nouveau déclencheur",
   "Update Trigger": "Mettre à jour le déclencheur",
   "Delete Trigger": "Supprimer le déclencheur",
+  "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "Cette action est irréversible. Cela supprimera définitivement votre déclencheur et supprimera vos données de nos serveurs.",
   "No Triggers": "Aucun déclencheur",
   "Auth Token": "Jeton d'authentification",
   "Add your auth token": "Ajouter votre jeton d'authentification",

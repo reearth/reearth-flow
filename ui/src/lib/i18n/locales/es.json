@@ -141,6 +141,7 @@
   "Create a new trigger": "Crear un nuevo disparador",
   "Update Trigger": "Actualizar disparador",
   "Delete Trigger": "Eliminar disparador",
+  "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "Esta acción no se puede deshacer. Esto eliminará permanentemente tu disparador y eliminará tus datos de nuestros servidores.",
   "No Triggers": "Sin disparadores",
   "Auth Token": "Token de autenticación",
   "Add your auth token": "Agrega tu token de autenticación",

@@ -141,6 +141,7 @@
   "Create a new trigger": "新しいトリガーを作成",
   "Update Trigger": "トリガーを更新",
   "Delete Trigger": "トリガーを削除",
+  "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "この操作は元に戻すことができません。この操作はトリガーを完全に削除し、データをサーバーから削除します。",
   "No Triggers": "トリガーなし",
   "Auth Token": "",
   "Add your auth token": "authトークンを追加",
