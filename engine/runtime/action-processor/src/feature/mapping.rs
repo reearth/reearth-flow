@@ -4,11 +4,12 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
-    counter::FeatureCounterFactory, file_path_extractor::FeatureFilePathExtractorFactory,
-    filter::FeatureFilterFactory, list_exploder::ListExploderFactory,
-    lod_filter::FeatureLodFilterFactory, merger::FeatureMergerFactory,
-    reader::FeatureReaderFactory, rhai::RhaiCallerFactory, sorter::FeatureSorterFactory,
-    transformer::FeatureTransformerFactory, type_filter::FeatureTypeFilterFactory,
+    counter::FeatureCounterFactory, duplicate_filter::FeatureDuplicateFilterFactory,
+    file_path_extractor::FeatureFilePathExtractorFactory, filter::FeatureFilterFactory,
+    list_exploder::ListExploderFactory, lod_filter::FeatureLodFilterFactory,
+    merger::FeatureMergerFactory, reader::FeatureReaderFactory, rhai::RhaiCallerFactory,
+    sorter::FeatureSorterFactory, transformer::FeatureTransformerFactory,
+    type_filter::FeatureTypeFilterFactory, writer::FeatureWriterFactory,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -24,6 +25,8 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<FeatureTypeFilterFactory>::default(),
         Box::<FeatureFilePathExtractorFactory>::default(),
         Box::<FeatureLodFilterFactory>::default(),
+        Box::<FeatureDuplicateFilterFactory>::default(),
+        Box::<FeatureWriterFactory>::default(),
     ];
     factories
         .into_iter()

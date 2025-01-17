@@ -4,7 +4,6 @@ import "@testing-library/jest-dom";
 const { window } = new JSDOM("<!doctype html><html><body></body></html>");
 
 // Assign the window object to global
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 global.window = window as any;
 global.document = window.document;
 global.navigator = {

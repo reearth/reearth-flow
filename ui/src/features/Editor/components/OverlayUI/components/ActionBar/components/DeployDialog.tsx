@@ -41,8 +41,8 @@ const DeployDialog: React.FC<Props> = ({
     deployment?.description ?? "",
   );
 
-  const handleWorkflowDeployment = useCallback(() => {
-    onWorkflowDeployment(deployment?.id, description);
+  const handleWorkflowDeployment = useCallback(async () => {
+    await onWorkflowDeployment(deployment?.id, description);
     if (allowedToDeploy) {
       setShowDialog(false);
     }

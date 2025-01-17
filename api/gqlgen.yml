@@ -60,6 +60,12 @@ models:
         resolver: true
       parameters:
         resolver: true
+  Trigger:
+    fields:
+      workspace:
+        resolver: true
+      deployment:
+        resolver: true
   Subscription:
     fields:
       jobStatus:

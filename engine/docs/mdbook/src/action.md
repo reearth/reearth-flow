@@ -217,6 +217,42 @@ Extracts file path information from attributes
 ### Category
 * Attribute
 
+## AttributeFlattener
+### Type
+* processor
+### Description
+Flattens features by attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttributeFlattenerParam",
+  "type": "object",
+  "required": [
+    "attributes"
+  ],
+  "properties": {
+    "attributes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
+
 ## AttributeManager
 ### Type
 * processor
@@ -821,6 +857,20 @@ Creates features from expressions
 ### Category
 * Feature
 
+## FeatureDuplicateFilter
+### Type
+* processor
+### Description
+Filters features by duplicate feature
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
+
 ## FeatureFilePathExtractor
 ### Type
 * processor
@@ -1030,7 +1080,7 @@ Merges features by attributes
 ### Type
 * processor
 ### Description
-Filters features based on conditions
+Reads features from various formats
 ### Parameters
 ```json
 {
@@ -1110,6 +1160,24 @@ Filters features based on conditions
           ],
           "format": "uint",
           "minimum": 0.0
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "dataset",
+        "format"
+      ],
+      "properties": {
+        "dataset": {
+          "$ref": "#/definitions/Expr"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "json"
+          ]
         }
       }
     }
@@ -1281,6 +1349,86 @@ Filters features by feature type
 ### Output Ports
 * default
 * unfiltered
+### Category
+* Feature
+
+## FeatureWriter
+### Type
+* processor
+### Description
+Writes features from various formats
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureWriterParam",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "csv"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "tsv"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "json"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * Feature
 
@@ -2489,6 +2637,43 @@ Extracts attributes from XML fragments based on a schema definition
 Flatten attributes for building feature
 ### Parameters
 * No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
+## PLATEAU4.CityCodeExtractor
+### Type
+* processor
+### Description
+Extracts Codelist
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityCodeExtractorParam",
+  "type": "object",
+  "required": [
+    "cityCodeAttribute",
+    "codelistsPathAttribute"
+  ],
+  "properties": {
+    "cityCodeAttribute": {
+      "$ref": "#/definitions/Attribute"
+    },
+    "codelistsPathAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports

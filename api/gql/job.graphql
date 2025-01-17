@@ -1,0 +1,44 @@
+type Job implements Node {
+  completedAt: DateTime
+  deployment: Deployment
+  deploymentId: ID!
+  id: ID!
+  startedAt: DateTime!
+  status: JobStatus!
+  workspace: Workspace
+  workspaceId: ID!
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+# Connection
+
+type JobConnection {
+  edges: [JobEdge!]!
+  nodes: [Job]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type JobEdge {
+  cursor: Cursor!
+  node: Job
+}
+
+# Subscripton Types
+
+extend type Subscription {
+  jobStatus(jobId: ID!): JobStatus!
+}
+
+# Query and Mutation
+
+extend type Query {
+  jobs(workspaceId: ID!, pagination: Pagination): JobConnection!
+  job(id: ID!): Job
+}

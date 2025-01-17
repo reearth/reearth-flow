@@ -10,9 +10,13 @@ import (
 )
 
 func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.CreateDeploymentInput) (*gqlmodel.DeploymentPayload, error) {
-	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
-	if err != nil {
-		return nil, err
+	var pid *id.ProjectID
+	if input.ProjectID != nil {
+		p, err := gqlmodel.ToID[id.Project](*input.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		pid = &p
 	}
 
 	wsid, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
@@ -29,7 +33,6 @@ func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.
 	if err != nil {
 		return nil, err
 	}
-
 	return &gqlmodel.DeploymentPayload{Deployment: gqlmodel.ToDeployment(res)}, nil
 }
 

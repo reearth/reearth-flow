@@ -103,13 +103,11 @@ const MembersSettings: React.FC = () => {
   };
 
   return (
-    <div>
-      <div className="mt-4 flex max-w-[800px] flex-col gap-6">
-        <div className="flex justify-between">
-          <p className="text-lg dark:font-extralight">
-            {t("Members Settings")}
-          </p>
-        </div>
+    <>
+      <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
+        <p className="text-lg dark:font-extralight">{t("Members Settings")}</p>
+      </div>
+      <div className="mt-4 flex max-w-[900px] flex-col gap-6">
         <div className="flex items-center justify-between">
           {/* TODO: This will be a dialog component */}
           <Input
@@ -190,7 +188,7 @@ const MembersSettings: React.FC = () => {
         </div>
         <p className="text-sm text-red-400">{error}</p>
       </div>
-    </div>
+    </>
   );
 };
 

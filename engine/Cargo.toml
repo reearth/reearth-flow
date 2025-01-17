@@ -129,7 +129,7 @@ parking_lot = "0.12.3"
 petgraph = "0.6.5"
 pretty_assertions = "1.4.1"
 prost = "0.13.4"
-quick-xml = "0.37.2"
+quick-xml = { version = "0.37.2", features = ["serialize"] }
 rand = "0.8.5"
 rayon = "1.10.0"
 regex = "1.11.1"

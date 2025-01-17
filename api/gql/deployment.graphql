@@ -1,11 +1,11 @@
-# Types
-
 type Deployment implements Node {
   createdAt: DateTime!
   description: String!
+  headId: ID
+  isHead: Boolean!
   id: ID!
   project: Project
-  projectId: ID!
+  projectId: ID
   updatedAt: DateTime!
   version: String!
   workflowUrl: String!
@@ -13,36 +13,12 @@ type Deployment implements Node {
   workspaceId: ID!
 }
 
-type Job implements Node {
-  completedAt: DateTime
-  deployment: Deployment
-  deploymentId: ID!
-  id: ID!
-  startedAt: DateTime!
-  status: JobStatus!
-  workspace: Workspace
-  workspaceId: ID!
-}
-
-enum JobStatus {
-  PENDING
-  RUNNING
-  COMPLETED
-  FAILED
-}
-
 # Input Types
 
 input CreateDeploymentInput {
   workspaceId: ID!
-  projectId: ID!
   file: Upload!
-  description: String
-}
-
-input UpdateDeploymentInput {
-  deploymentId: ID!
-  file: Upload
+  projectId: ID
   description: String
 }
 
@@ -52,6 +28,23 @@ input DeleteDeploymentInput {
 
 input ExecuteDeploymentInput {
   deploymentId: ID!
+}
+
+input GetHeadInput {
+  workspaceId: ID!
+  projectId: ID
+}
+
+input GetByVersionInput {
+  workspaceId: ID!
+  projectId: ID
+  version: String!
+}
+
+input UpdateDeploymentInput {
+  deploymentId: ID!
+  file: Upload
+  description: String
 }
 
 # Payload Types
@@ -68,7 +61,7 @@ type JobPayload {
   job: Job!
 }
 
-# Connection Types
+# Connection
 
 type DeploymentConnection {
   edges: [DeploymentEdge!]!
@@ -82,30 +75,13 @@ type DeploymentEdge {
   node: Deployment
 }
 
-type JobConnection {
-  edges: [JobEdge!]!
-  nodes: [Job]!
-  pageInfo: PageInfo!
-  totalCount: Int!
-}
-
-type JobEdge {
-  cursor: Cursor!
-  node: Job
-}
-
-# Subscripton Types
-
-extend type Subscription {
-  jobStatus(jobId: ID!): JobStatus!
-}
-
-# Query and Mutation Extensions
+# Query and Mutation
 
 extend type Query {
   deployments(workspaceId: ID!, pagination: Pagination): DeploymentConnection!
-  jobs(workspaceId: ID!, pagination: Pagination): JobConnection!
-  job(id: ID!): Job
+  deploymentByVersion(input: GetByVersionInput!): Deployment
+  deploymentHead(input: GetHeadInput!): Deployment
+  deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!
 }
 
 extend type Mutation {
