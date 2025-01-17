@@ -15,7 +15,7 @@ var ErrOperationDenied = errors.New("operation denied")
 type Container struct {
 	Asset       Asset
 	AuthRequest authserver.RequestRepo
-	Config       Config
+	Config      Config
 	Deployment  Deployment
 	Job         Job
 	Lock        Lock
@@ -24,7 +24,7 @@ type Container struct {
 	Transaction usecasex.Transaction
 	Trigger     Trigger
 	User        accountrepo.User
-	Workflow     Workflow
+	Workflow    Workflow
 	Workspace   accountrepo.Workspace
 }
 
@@ -43,11 +43,11 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 	return &Container{
 		Asset:       c.Asset.Filtered(workspace),
 		AuthRequest: c.AuthRequest,
-		Config:       c.Config,
+		Config:      c.Config,
 		Deployment:  c.Deployment.Filtered(workspace),
 		Job:         c.Job.Filtered(workspace),
 		Lock:        c.Lock,
-		Workflow:     c.Workflow.Filtered(workspace),
+		Workflow:    c.Workflow.Filtered(workspace),
 		Parameter:   c.Parameter,
 		Project:     c.Project.Filtered(workspace),
 		Transaction: c.Transaction,

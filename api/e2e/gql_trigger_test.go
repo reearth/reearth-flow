@@ -46,7 +46,7 @@ func createTestDeployment(t *testing.T, e *httpexpect.Expect) string {
 		`,
 		"variables": map[string]interface{}{
 			"input": map[string]interface{}{
-				"workspaceId":  wId1.String(),
+				"workspaceId": wId1.String(),
 				"description": "Test deployment",
 				"file":        nil,
 			},
@@ -72,7 +72,8 @@ func createTestDeployment(t *testing.T, e *httpexpect.Expect) string {
 	_, err = part.Write([]byte(workflowContent))
 	assert.NoError(t, err)
 
-	w.Close()
+	err = w.Close()
+	assert.NoError(t, err)
 
 	t.Log("Creating test deployment...")
 	resp := e.POST("/api/graphql").
@@ -91,7 +92,7 @@ func createTestDeployment(t *testing.T, e *httpexpect.Expect) string {
 			} `json:"createDeployment"`
 		} `json:"data"`
 		Errors []struct {
-			Message string `json:"message"`
+			Message string   `json:"message"`
 			Path    []string `json:"path"`
 		} `json:"errors"`
 	}
@@ -125,8 +126,8 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 
 	variables := map[string]interface{}{
 		"input": map[string]interface{}{
-			"workspaceId":     wId1.String(),
-			"deploymentId":    deploymentId,
+			"workspaceId":  wId1.String(),
+			"deploymentId": deploymentId,
 			"timeDriverInput": map[string]interface{}{
 				"interval": "EVERY_DAY",
 			},
@@ -160,7 +161,7 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 			} `json:"createTrigger"`
 		} `json:"data"`
 		Errors []struct {
-			Message string `json:"message"`
+			Message string   `json:"message"`
 			Path    []string `json:"path"`
 		} `json:"errors"`
 	}
