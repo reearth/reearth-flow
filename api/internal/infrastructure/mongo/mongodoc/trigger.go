@@ -32,17 +32,30 @@ func NewTriggerConsumer(workspaces []accountdomain.WorkspaceID) *TriggerConsumer
 func NewTrigger(t *trigger.Trigger) (*TriggerDocument, string) {
 	tid := t.ID().String()
 
-	return &TriggerDocument{
-		ID:            tid,
-		WorkspaceID:   t.Workspace().String(),
-		DeploymentID:  t.Deployment().String(),
-		EventSource:   string(t.EventSource()),
-		TimeInterval:  string(*t.TimeInterval()),
-		AuthToken:     *t.AuthToken(),
-		CreatedAt:     t.CreatedAt(),
-		UpdatedAt:     t.UpdatedAt(),
-		LastTriggered: *t.LastTriggered(),
-	}, tid
+	doc := &TriggerDocument{
+		ID:           tid,
+		WorkspaceID:  t.Workspace().String(),
+		DeploymentID: t.Deployment().String(),
+		EventSource:  string(t.EventSource()),
+		CreatedAt:    t.CreatedAt(),
+		UpdatedAt:    t.UpdatedAt(),
+	}
+
+	if timeInterval := t.TimeInterval(); timeInterval != nil {
+		ti := string(*timeInterval)
+		doc.TimeInterval = ti
+	}
+
+	if authToken := t.AuthToken(); authToken != nil {
+		at := string(*authToken)
+		doc.AuthToken = at
+	}
+
+	if lastTriggered := t.LastTriggered(); lastTriggered != nil {
+		doc.LastTriggered = *lastTriggered
+	}
+
+	return doc, tid
 }
 
 func (d *TriggerDocument) Model() (*trigger.Trigger, error) {
