@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -27,9 +28,10 @@ func (r *RedisStorage) SaveLogToRedis(ctx context.Context, event *domainLog.LogE
 	key := fmt.Sprintf("log:%s:%s:%s", event.WorkflowID, event.JobID, event.Timestamp.UTC().Format(layoutWithMillis))
 
 	// Convert the event to a string and save it
-	serialized := fmt.Sprintf(`{"workflowId":%q,"jobId":%q,"nodeId":%q,"logLevel":%q,"timestamp":%q,"message":%q}`,
-		event.WorkflowID, event.JobID, valOrEmpty(event.NodeID),
-		event.LogLevel, event.Timestamp.Format(layoutWithMillis), event.Message)
+	serialized, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
 
 	// Set TTL as 60 minutes
 	if err := r.client.Set(ctx, key, serialized, 60*time.Minute).Err(); err != nil {
