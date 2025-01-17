@@ -86,10 +86,13 @@ impl Engine {
         let mut scope = self
             .scope
             .write()
-            .map_err(|_| Error::InternalRuntime("lock".to_string()))?;
+            .map_err(|_| Error::ExprInternalRuntime("lock".to_string()))?;
         match scr.eval_with_scope::<T>(&mut scope, expr) {
             Ok(ret) => Ok(ret),
-            Err(err) => Err(Error::InternalRuntime(format!("{}", err))),
+            Err(err) => Err(Error::ExprInternalRuntime(format!(
+                "expr code = {}, err = {}",
+                expr, err
+            ))),
         }
     }
 
@@ -98,10 +101,13 @@ impl Engine {
         let mut scope = self
             .scope
             .write()
-            .map_err(|_| Error::InternalRuntime("lock".to_string()))?;
+            .map_err(|_| Error::ExprInternalRuntime("lock".to_string()))?;
         match scr.eval_ast_with_scope::<T>(&mut scope, ast) {
             Ok(ret) => Ok(ret),
-            Err(err) => Err(Error::InternalRuntime(format!("{}", err))),
+            Err(err) => Err(Error::ExprInternalRuntime(format!(
+                "ast = {:?} err = {}",
+                ast, err
+            ))),
         }
     }
 
@@ -115,7 +121,10 @@ impl Engine {
 
         match scr.eval_with_scope::<T>(&mut scope, expr) {
             Ok(ret) => Ok(ret),
-            Err(err) => Err(Error::InternalRuntime(format!("{}", err))),
+            Err(err) => Err(Error::ExprInternalRuntime(format!(
+                "expr code = {}, err = {}",
+                expr, err
+            ))),
         }
     }
 
@@ -129,14 +138,17 @@ impl Engine {
 
         match scr.eval_ast_with_scope::<T>(&mut scope, ast) {
             Ok(ret) => Ok(ret),
-            Err(err) => Err(Error::InternalRuntime(format!("{}", err))),
+            Err(err) => Err(Error::ExprInternalRuntime(format!(
+                "ast = {:?} err = {}",
+                ast, err
+            ))),
         }
     }
 
     pub fn compile(&self, expr: &str) -> crate::Result<rhai::AST> {
         let scr = Arc::clone(&self.script_engine);
         scr.compile(expr)
-            .map_err(|err| Error::InternalRuntime(format!("{}", err)))
+            .map_err(|err| Error::ExprCompile(format!("expr code = {}, err = {}", expr, err)))
     }
 
     pub fn get(&self, name: &str) -> Option<Value> {

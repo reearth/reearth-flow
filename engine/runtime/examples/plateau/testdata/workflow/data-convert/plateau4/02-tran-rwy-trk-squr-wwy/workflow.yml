@@ -144,9 +144,16 @@ graphs:
               valueAttribute: maxLod
 
       - id: 7a17c4f9-dd4d-44b0-936c-50c394272016
-        name: NoopSink
+        name: MVTWriter
         type: action
-        action: NoopSink
+        action: MVTWriter
+        with:
+          layerName: |
+            env.get("__value").feature_type.split(":")[1]
+          minZoom: 8
+          maxZoom: 16
+          output: |
+            file::join_path(env.get("outputPath"), env.get("__value").feature_type.split(":")[0] + "_lod" + env.get("__value").lod)
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
