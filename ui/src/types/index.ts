@@ -11,3 +11,4 @@ export * from "./action";
 export * from "./shortcuts";
 export * from "./deployment";
 export * from "./job";
+export * from "./trigger";

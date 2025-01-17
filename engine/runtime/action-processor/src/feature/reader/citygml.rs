@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     io::{BufRead, BufReader, Cursor},
+    str::FromStr,
     sync::{Arc, RwLock},
 };
 
@@ -46,7 +47,8 @@ pub(crate) fn read_citygml(
             e
         ))
     })?;
-    let input_path = Uri::for_test(city_gml_path.as_str());
+    let input_path = Uri::from_str(city_gml_path.as_str())
+        .map_err(|e| super::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e)))?;
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let storage = storage_resolver
         .resolve(&input_path)
@@ -155,6 +157,12 @@ fn parse_tree_reader<R: BufRead>(
         let attributes = entity.root.to_attribute_json();
         let gml_id = entity.root.id();
         let name = entity.root.typename();
+        let lod = LodMask::find_lods_by_citygml_value(&entity.root);
+        let metadata = Metadata {
+            feature_id: gml_id.map(|id| id.to_string()),
+            feature_type: name.map(|name| name.to_string()),
+            lod: Some(lod),
+        };
         let mut attributes = HashMap::<Attribute, AttributeValue>::from([
             (Attribute::new("cityGmlAttributes"), attributes.into()),
             (
@@ -173,13 +181,13 @@ fn parse_tree_reader<R: BufRead>(
                 AttributeValue::String(format!("root_{}", to_hash(base_url.as_str()))),
             ),
         ]);
+        if let Some(max_lod) = lod.highest_lod() {
+            attributes.insert(
+                Attribute::new("maxLod"),
+                AttributeValue::String(max_lod.to_string()),
+            );
+        }
         attributes.extend(base_attributes.clone());
-        let lod = LodMask::find_lods_by_citygml_value(&entity.root);
-        let metadata = Metadata {
-            feature_id: gml_id.map(|id| id.to_string()),
-            feature_type: name.map(|name| name.to_string()),
-            lod: Some(lod),
-        };
         let entities = if flatten {
             FlattenTreeTransform::transform(entity)
         } else {

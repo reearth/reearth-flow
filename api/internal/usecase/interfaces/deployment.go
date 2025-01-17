@@ -14,7 +14,7 @@ import (
 )
 
 type CreateDeploymentParam struct {
-	Project     id.ProjectID
+	Project     *id.ProjectID
 	Workspace   accountdomain.WorkspaceID
 	Workflow    *file.File
 	Description *string
@@ -37,8 +37,11 @@ var (
 
 type Deployment interface {
 	Fetch(context.Context, []id.DeploymentID, *usecase.Operator) ([]*deployment.Deployment, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination, *usecase.Operator) ([]*deployment.Deployment, *usecasex.PageInfo, error)
 	FindByProject(context.Context, id.ProjectID, *usecase.Operator) (*deployment.Deployment, error)
+	FindByVersion(context.Context, accountdomain.WorkspaceID, *id.ProjectID, string, *usecase.Operator) (*deployment.Deployment, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination, *usecase.Operator) ([]*deployment.Deployment, *usecasex.PageInfo, error)
+	FindHead(context.Context, accountdomain.WorkspaceID, *id.ProjectID, *usecase.Operator) (*deployment.Deployment, error)
+	FindVersions(context.Context, accountdomain.WorkspaceID, *id.ProjectID, *usecase.Operator) ([]*deployment.Deployment, error)
 	Create(context.Context, CreateDeploymentParam, *usecase.Operator) (*deployment.Deployment, error)
 	Update(context.Context, UpdateDeploymentParam, *usecase.Operator) (*deployment.Deployment, error)
 	Delete(context.Context, id.DeploymentID, *usecase.Operator) error

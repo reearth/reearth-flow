@@ -38,6 +38,7 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		Project:     NewProject(client),
 		Lock:        lock,
 		Transaction: client.Transaction(),
+		Trigger:     NewTrigger(client),
 		Workspace:   account.Workspace,
 		User:        account.User,
 	}
@@ -69,6 +70,7 @@ func Init(r *repo.Container) error {
 		func() error { return r.Job.(*Job).Init(ctx) },
 		func() error { return r.Parameter.(*Parameter).Init(ctx) },
 		func() error { return r.Project.(*Project).Init(ctx) },
+		func() error { return r.Trigger.(*Trigger).Init(ctx) },
 		func() error { return r.User.(*accountmongo.User).Init() },
 		func() error { return r.Workspace.(*accountmongo.Workspace).Init() },
 	)

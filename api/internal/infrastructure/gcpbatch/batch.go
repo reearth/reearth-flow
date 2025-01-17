@@ -13,6 +13,7 @@ import (
 	"github.com/googleapis/gax-go/v2"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
 )
@@ -50,7 +51,7 @@ func NewBatch(ctx context.Context, config BatchConfig) (gateway.Batch, error) {
 	}, nil
 }
 
-func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, projectID id.ProjectID) (string, error) {
+func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, projectID id.ProjectID, workspaceID accountdomain.WorkspaceID) (string, error) {
 	formattedJobID := formatJobID(jobID.String())
 
 	jobName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", b.config.ProjectID, b.config.Region, formattedJobID)

@@ -28,6 +28,8 @@ enum ParameterType {
     WEB_CONNECTION
 }
 
+# InputType
+
 input DeclareParameterInput {
     name: String!
     type: ParameterType!
@@ -48,6 +50,8 @@ input UpdateParameterOrderInput {
 input RemoveParameterInput {
     paramId: ID!
 }
+
+# Query and Mutation
 
 extend type Mutation {
     declareParameter(

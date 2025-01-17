@@ -12,6 +12,7 @@ import (
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -70,7 +71,67 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, workspace accountdomai
 func (r *Deployment) FindByProject(ctx context.Context, project id.ProjectID) (*deployment.Deployment, error) {
 	return r.findOne(ctx, bson.M{
 		"projectid": project.String(),
+		"$and": []bson.M{
+			{"projectid": bson.M{"$exists": true}},
+			{"projectid": bson.M{"$ne": nil}},
+		},
 	}, true)
+}
+
+func (r *Deployment) FindByVersion(ctx context.Context, workspace accountdomain.WorkspaceID, project *id.ProjectID, version string) (*deployment.Deployment, error) {
+	if !r.f.CanRead(workspace) {
+		return nil, nil
+	}
+
+	filter := bson.M{
+		"workspaceid": workspace.String(),
+		"version":     version,
+	}
+
+	if project != nil {
+		filter["projectid"] = project.String()
+	}
+
+	return r.findOne(ctx, filter, true)
+}
+
+func (r *Deployment) FindHead(ctx context.Context, workspace accountdomain.WorkspaceID, project *id.ProjectID) (*deployment.Deployment, error) {
+	if !r.f.CanRead(workspace) {
+		return nil, nil
+	}
+
+	filter := bson.M{
+		"workspaceid": workspace.String(),
+		"ishead":      true,
+	}
+
+	if project != nil {
+		filter["projectid"] = project.String()
+	}
+
+	return r.findOne(ctx, filter, true)
+}
+
+func (r *Deployment) FindVersions(ctx context.Context, workspace accountdomain.WorkspaceID, project *id.ProjectID) ([]*deployment.Deployment, error) {
+	if !r.f.CanRead(workspace) {
+		return nil, nil
+	}
+
+	filter := bson.M{
+		"workspaceid": workspace.String(),
+	}
+
+	if project != nil {
+		filter["projectid"] = project.String()
+	}
+
+	opts := options.Find().SetSort(bson.D{{Key: "version", Value: -1}})
+
+	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
+	if err := r.client.Find(ctx, filter, c, opts); err != nil {
+		return nil, err
+	}
+	return c.Result, nil
 }
 
 func (r *Deployment) Save(ctx context.Context, deployment *deployment.Deployment) error {

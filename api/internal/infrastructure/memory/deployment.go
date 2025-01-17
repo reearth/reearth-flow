@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -69,7 +70,7 @@ func (r *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deplo
 	defer r.lock.Unlock()
 
 	for _, d := range r.data {
-		if d.Project() == id && r.f.CanRead(d.Workspace()) {
+		if d.Project() != nil && *d.Project() == id && r.f.CanRead(d.Workspace()) {
 			return d, nil
 		}
 	}
@@ -99,6 +100,80 @@ func (r *Deployment) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]
 		}
 		result = append(result, nil)
 	}
+	return result, nil
+}
+
+func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, version string) (*deployment.Deployment, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if !r.f.CanRead(wsID) {
+		return nil, nil
+	}
+
+	for _, d := range r.data {
+		if d.Workspace() == wsID && d.Version() == version {
+			if projectID != nil {
+				if d.Project() != nil && *d.Project() == *projectID {
+					return d, nil
+				}
+			} else if d.Project() == nil {
+				return d, nil
+			}
+		}
+	}
+
+	return nil, rerror.ErrNotFound
+}
+
+func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) (*deployment.Deployment, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if !r.f.CanRead(wsID) {
+		return nil, nil
+	}
+
+	for _, d := range r.data {
+		if d.Workspace() == wsID && d.IsHead() {
+			if projectID != nil {
+				if d.Project() != nil && *d.Project() == *projectID {
+					return d, nil
+				}
+			} else if d.Project() == nil {
+				return d, nil
+			}
+		}
+	}
+
+	return nil, rerror.ErrNotFound
+}
+
+func (r *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) ([]*deployment.Deployment, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if !r.f.CanRead(wsID) {
+		return nil, nil
+	}
+
+	var result []*deployment.Deployment
+	for _, d := range r.data {
+		if d.Workspace() == wsID {
+			if projectID != nil {
+				if d.Project() != nil && *d.Project() == *projectID {
+					result = append(result, d)
+				}
+			} else if d.Project() == nil {
+				result = append(result, d)
+			}
+		}
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Version() > result[j].Version()
+	})
+
 	return result, nil
 }
 

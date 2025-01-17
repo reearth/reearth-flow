@@ -43,7 +43,7 @@ const ProjectCard: React.FC<Props> = ({
       onClick={() => onProjectSelect(project)}>
       <CardContent className="flex h-[120px] items-center justify-center p-0">
         <FlowLogo
-          className={`size-[70px] ${description ? "group:hover:opacity-90" : ""}`}
+          className={`size-[120px] translate-x-20 opacity-50 ${description ? "group:hover:opacity-90" : ""}`}
         />
       </CardContent>
       <CardHeader className="px-2 py-1">
@@ -67,7 +67,7 @@ const ProjectCard: React.FC<Props> = ({
             modal={false}
             onOpenChange={(o) => setPersistOverlay(o)}>
             <DropdownMenuTrigger
-              className="flex h-full w-[30px] items-center justify-center rounded-br-lg hover:bg-secondary"
+              className="flex h-full w-[30px] items-center justify-center rounded-br-lg hover:bg-primary"
               onClick={(e) => e.stopPropagation()}>
               <DotsThreeVertical className="size-[24px]" />
             </DropdownMenuTrigger>

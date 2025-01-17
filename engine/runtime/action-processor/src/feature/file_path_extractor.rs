@@ -126,6 +126,7 @@ impl Processor for FeatureFilePathExtractor {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
+        let base_attributes = feature.attributes.clone();
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let scope = feature.new_scope(expr_engine, &self.with);
         let source_dataset = scope
@@ -184,7 +185,14 @@ impl Processor for FeatureFilePathExtractor {
             } else {
                 extract_zip(bytes, root_output_path, root_output_storage)?
             };
-            for feature in features {
+            for mut feature in features {
+                feature.extend(
+                    base_attributes
+                        .iter()
+                        .filter(|(k, _)| !feature.contains_key(k))
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect::<HashMap<_, _>>(),
+                );
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
         } else if source_dataset.is_dir() {
