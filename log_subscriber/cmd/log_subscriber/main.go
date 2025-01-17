@@ -62,6 +62,9 @@ func main() {
 		Password: redisPassword,
 		DB:       0,
 	})
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
 
 	redisStorage := flow_redis.NewRedisStorage(rdb)
 
