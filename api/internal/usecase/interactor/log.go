@@ -18,9 +18,9 @@ type LogInteractor struct {
 	recentLogsThreshold time.Duration
 }
 
-func NewLogInteractor(lgRedis gateway.Log, lgGCS gateway.Log, recentLogsThreshold time.Duration) interfaces.Log {
+func NewLogInteractor(lgRedis gateway.Log, lgGCS gateway.Log, recentLogsThreshold time.Duration) (interfaces.Log, error) {
 	if lgRedis == nil || lgGCS == nil {
-		panic("Log gateways cannot be nil")
+		return nil, fmt.Errorf("log gateways are required")
 	}
 	if recentLogsThreshold <= 0 {
 		recentLogsThreshold = 60 * time.Minute
@@ -30,7 +30,7 @@ func NewLogInteractor(lgRedis gateway.Log, lgGCS gateway.Log, recentLogsThreshol
 		logsGatewayRedis:    lgRedis,
 		logsGatewayGCS:      lgGCS,
 		recentLogsThreshold: recentLogsThreshold,
-	}
+	}, nil
 }
 
 func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, workflowID id.WorkflowID, jobID id.JobID, operator *usecase.Operator) ([]*log.Log, error) {
