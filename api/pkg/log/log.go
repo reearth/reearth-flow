@@ -26,7 +26,7 @@ func NewLog(workflowID WorkflowID, jobID JobID, nodeID *NodeID, level Level, mes
 		workflowID: workflowID,
 		jobID:      jobID,
 		nodeID:     nodeID,
-		timestamp:  time.Now(),
+		timestamp:  time.Now().UTC(),
 		level:      level,
 		message:    message,
 	}

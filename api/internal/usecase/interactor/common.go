@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -32,7 +33,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Asset:      NewAsset(r, g),
 		Job:        job,
 		Deployment: NewDeployment(r, g, job),
-		Log:        NewLogInteractor(g.LogRedis, g.LogGCS),
+		Log:        NewLogInteractor(g.LogRedis, g.LogGCS, 60*time.Minute),
 		Parameter:  NewParameter(r),
 		Project:    NewProject(r, g),
 		Workspace:  accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
