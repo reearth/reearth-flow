@@ -3,12 +3,15 @@ package app
 import (
 	"context"
 
+	"cloud.google.com/go/storage"
+	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpbatch"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
+	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
@@ -67,6 +70,9 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, debug bool) 
 	if err != nil {
 		log.Fatalf("Failed to init mongo: %+v\n", err)
 	}
+	// Log
+	gateways.LogRedis = initLogRedis(ctx, conf)
+	gateways.LogGCS = initLogGCS(ctx, conf)
 
 	// File
 	gateways.File = initFile(ctx, conf)
@@ -121,4 +127,19 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 	}
 
 	return batchRepo
+}
+
+func initLogRedis(ctx context.Context, conf *config.Config) gateway.Log {
+	client := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+	return redisrepo.NewRedisLog(client)
+}
+
+func initLogGCS(ctx context.Context, conf *config.Config) gateway.Log {
+	gcsClient, err := storage.NewClient(ctx)
+	if err != nil {
+		log.Fatalf("Failed to create gcs client: %v", err)
+	}
+	return gcs.NewGCSLog(gcsClient)
 }

@@ -17,6 +17,7 @@ require (
 	github.com/kennygrant/sanitize v1.2.4
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/ravilushqa/otelgqlgen v0.15.0
+	github.com/redis/go-redis/v9 v9.7.0
 	github.com/reearth/reearthx v0.0.0-20240403021819-5cbc45bf18eb
 	github.com/samber/lo v1.39.0
 	github.com/spf13/afero v1.11.0
@@ -37,6 +38,11 @@ require (
 	golang.org/x/oauth2 v0.20.0
 	golang.org/x/text v0.15.0
 	gopkg.in/square/go-jose.v2 v2.6.0
+)
+
+require (
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 )
 
 require (

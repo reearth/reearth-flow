@@ -1,0 +1,20 @@
+enum LogLevel {
+  ERROR
+  WARN
+  INFO
+  DEBUG
+  TRACE
+}
+
+type Log {
+  workflowId: ID!
+  jobId: ID!
+  nodeId: ID
+  timestamp: DateTime!
+  logLevel: LogLevel!
+  message: String!
+}
+
+extend type Query {
+  logs(since: DateTime!, workflowId: ID!, jobId: ID!): [Log!]!
+}
