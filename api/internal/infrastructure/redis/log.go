@@ -23,7 +23,7 @@ func NewRedisLog(client *redis.Client) (gateway.Log, error) {
 	return &redisLog{client: client}, nil
 }
 
-func (g *redisLog) GetLogs(ctx context.Context, since time.Time, workflowID id.WorkflowID, jobID id.JobID) ([]*log.Log, error) {
+func (r *redisLog) GetLogs(ctx context.Context, since time.Time, workflowID id.WorkflowID, jobID id.JobID) ([]*log.Log, error) {
 	// TODO: Implement
 	nodeID := log.NodeID(id.NewNodeID())
 	dummyLogs := []*log.Log{
