@@ -19,7 +19,7 @@ func NewRedisLog(client *redis.Client) gateway.Log {
 }
 
 func (g *redisLog) GetLogs(ctx context.Context, since time.Time, workflowID id.WorkflowID, jobID id.JobID) ([]*log.Log, error) {
-
+	// TODO: Implement
 	dummyLogs := []*log.Log{
 		log.NewLog(id.NewWorkflowID(), id.NewJobID(), nil, log.LevelInfo, "Test log message 1 from redis"),
 		log.NewLog(id.NewWorkflowID(), id.NewJobID(), nil, log.LevelDebug, "Test log message 2 from redis"),
