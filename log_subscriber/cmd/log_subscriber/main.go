@@ -85,7 +85,10 @@ func main() {
 		}
 	}()
 
-	gcsStorageImpl := flow_gcs.NewGCSStorage(gcsClient, gcsBucketName)
+	gcsStorageImpl := flow_gcs.NewGCSStorage(
+		flow_gcs.NewRealGCSClient(gcsClient),
+		gcsBucketName,
+	)
 
 	// gateway.LogStorage implementation
 	storageImpl := infrastructure.NewStorageImpl(redisStorage, gcsStorageImpl)

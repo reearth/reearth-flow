@@ -1,3 +1,5 @@
+// /log_subscriber/internal/infrastructure/gcs/gcs.go
+
 package gcs
 
 import (
@@ -6,12 +8,25 @@ import (
 	"fmt"
 	"log"
 
-	"cloud.google.com/go/storage"
 	domainLog "github.com/reearth/reearth-flow/log-subscriber/pkg/log"
 )
 
 type GCSClient interface {
-	Bucket(name string) *storage.BucketHandle
+	Bucket(name string) GCSBucket
+}
+
+type GCSBucket interface {
+	Object(name string) GCSObject
+}
+
+type GCSObject interface {
+	NewWriter(ctx context.Context) GCSWriter
+}
+
+type GCSWriter interface {
+	Write(p []byte) (n int, err error)
+	Close() error
+	SetContentType(contentType string)
 }
 
 type GCSStorage struct {
@@ -26,9 +41,8 @@ func NewGCSStorage(client GCSClient, bucketName string) *GCSStorage {
 	}
 }
 
-// Write LogEvent to GCS as a JSON file
 func (g *GCSStorage) SaveLogToGCS(ctx context.Context, event *domainLog.LogEvent) error {
-	// File path example: artifacts/logs/yyyy/MM/dd/workflowId/jobId/timestamp.json
+	// artifacts/logs/yyyy/MM/dd/workflowId/jobId/timestamp.json
 	year, month, day := event.Timestamp.UTC().Date()
 	filePath := fmt.Sprintf("artifacts/logs/%04d/%02d/%02d/%s/%s/%s.json",
 		year, month, day,
@@ -42,11 +56,11 @@ func (g *GCSStorage) SaveLogToGCS(ctx context.Context, event *domainLog.LogEvent
 	writer := obj.NewWriter(ctx)
 	defer func() {
 		if err := writer.Close(); err != nil {
-			log.Printf("failed to close writer: %v", err)
+			log.Printf("[GCSStorage] failed to close writer: %v", err)
 		}
 	}()
 
-	writer.ContentType = "application/json"
+	writer.SetContentType("application/json")
 
 	enc := json.NewEncoder(writer)
 	if err := enc.Encode(event); err != nil {
