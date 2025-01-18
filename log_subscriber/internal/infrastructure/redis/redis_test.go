@@ -41,7 +41,7 @@ func TestRedisStorage_SaveLogToRedis(t *testing.T) {
 	}
 
 	expectedKey := "log:wf-123:job-123:2025-01-11T09:12:54.487779Z"
-	expectedVal := `{"workflowId":"wf-123","jobId":"job-123","nodeId":"","logLevel":"INFO","timestamp":"2025-01-11T09:12:54.487779Z","message":"Hello from test"}`
+	expectedVal := `{"workflowId":"wf-123","jobId":"job-123","timestamp":"2025-01-11T09:12:54.487779Z","logLevel":"INFO","message":"Hello from test"}`
 
 	mClient.
 		On("Set", ctx, expectedKey, expectedVal, 60*time.Minute).
