@@ -2,6 +2,7 @@ package gcs
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -13,8 +14,12 @@ type gcsLog struct {
 	client *storage.Client
 }
 
-func NewGCSLog(client *storage.Client) *gcsLog {
-	return &gcsLog{client: client}
+func NewGCSLog(client *storage.Client) (*gcsLog, error) {
+	if client == nil {
+		return nil, errors.New("client is nil")
+	}
+
+	return &gcsLog{client: client}, nil
 }
 
 func (g *gcsLog) GetLogs(ctx context.Context, since time.Time, workflowID id.WorkflowID, jobID id.JobID) ([]*log.Log, error) {

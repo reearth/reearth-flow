@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -14,8 +15,12 @@ type redisLog struct {
 	client *redis.Client
 }
 
-func NewRedisLog(client *redis.Client) gateway.Log {
-	return &redisLog{client: client}
+func NewRedisLog(client *redis.Client) (gateway.Log, error) {
+	if client == nil {
+		return nil, errors.New("client is nil")
+	}
+
+	return &redisLog{client: client}, nil
 }
 
 func (g *redisLog) GetLogs(ctx context.Context, since time.Time, workflowID id.WorkflowID, jobID id.JobID) ([]*log.Log, error) {
