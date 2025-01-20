@@ -32,7 +32,7 @@ type Props = {
   onRedo?: () => void;
   onUndo?: () => void;
   isMainWorkflow: boolean;
-  hasReader: boolean;
+  hasReader?: boolean;
 };
 
 const Toolbox: React.FC<Props> = ({

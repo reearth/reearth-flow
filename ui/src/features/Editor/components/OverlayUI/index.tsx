@@ -31,7 +31,7 @@ type OverlayUIProps = {
   onWorkflowRedo: () => void;
   isMainWorkflow: boolean;
   children?: React.ReactNode;
-  hasReader: boolean;
+  hasReader?: boolean;
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({

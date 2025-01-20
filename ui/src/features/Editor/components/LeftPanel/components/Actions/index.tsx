@@ -30,7 +30,7 @@ type Props = {
   nodes: Node[];
   onNodesChange: (nodes: Node[]) => void;
   isMainWorkflow: boolean;
-  hasReader: boolean;
+  hasReader?: boolean;
 };
 
 const ActionsList: React.FC<Props> = ({

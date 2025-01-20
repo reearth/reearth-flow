@@ -24,7 +24,7 @@ type Props = {
   onOpen: (panel?: "left" | "right" | "bottom") => void;
   onNodesChange: (nodes: Node[]) => void;
   isMainWorkflow: boolean;
-  hasReader: boolean;
+  hasReader?: boolean;
 };
 
 const LeftPanel: React.FC<Props> = ({
