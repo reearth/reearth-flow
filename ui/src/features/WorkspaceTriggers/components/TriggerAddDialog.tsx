@@ -32,7 +32,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const [deploymentId, setDeploymentId] = useState<string>("");
   const [selectedDeployment, setSelectedDeployment] =
     useState<Deployment | null>(null);
-  const [eventSource, setEventSource] = useState<string>("API_DRIVEN");
+  const [eventSource, setEventSource] = useState<string>("");
   const [timeInterval, setTimeInterval] = useState<TimeInterval | undefined>(
     undefined,
   );
@@ -127,15 +127,14 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               <SelectTrigger>
                 <SelectValue placeholder={t("Select a deployment")}>
                   {selectedDeployment
-                    ? `${selectedDeployment.projectName}[${selectedDeployment.description}]@${selectedDeployment.version}`
+                    ? `${selectedDeployment.description}`
                     : t("Select a deployment")}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {deployments?.map((deployment) => (
                   <SelectItem key={deployment.id} value={deployment.id}>
-                    {deployment.projectName}[{deployment.description}]@
-                    {deployment.version}
+                    {deployment.description}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -147,7 +146,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
             </Label>
             <Select value={eventSource} onValueChange={handleSelectEventSource}>
               <SelectTrigger>
-                <SelectValue placeholder={eventSources.API_DRIVEN} />
+                <SelectValue placeholder={t("Select an event source")} />
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(eventSources).map(([value, label]) => (

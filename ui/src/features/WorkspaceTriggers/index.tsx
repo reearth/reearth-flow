@@ -36,15 +36,11 @@ const TriggerManager: React.FC = () => {
   const columns: ColumnDef<Trigger>[] = [
     {
       accessorKey: "id",
-      header: t("ID"),
+      header: t("Trigger Description"),
     },
     {
-      accessorKey: "deploymentId",
-      header: t("Deployment Id"),
-    },
-    {
-      accessorKey: "deployment.projectName",
-      header: t("Project Name"),
+      accessorKey: "deployment.description",
+      header: t("Deployment Description"),
     },
     {
       accessorKey: "eventSource",

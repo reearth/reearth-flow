@@ -45,7 +45,7 @@ const TriggerEditDialog: React.FC<Props> = ({
     TIME_DRIVEN: t("Time Driven"),
   };
 
-  const timeIntervals: Record<string, string> = {
+  const timeIntervals: Record<TimeInterval, string> = {
     EVERY_DAY: t("Every Day"),
     EVERY_HOUR: t("Every Hour"),
     EVERY_WEEK: t("Every Week"),
