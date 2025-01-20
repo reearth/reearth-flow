@@ -85,7 +85,7 @@ func (c *DeploymentLoader) FindByVersion(ctx context.Context, input *gqlmodel.Ge
 		pID = &pid
 	}
 
-	res, err := c.usecase.FindByVersion(ctx, wsID, pID, input.Version, getOperator(ctx))
+	res, err := c.usecase.FindByVersion(ctx, wsID, pID, input.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (c *DeploymentLoader) FindHead(ctx context.Context, input *gqlmodel.GetHead
 		pID = &pid
 	}
 
-	res, err := c.usecase.FindHead(ctx, wsID, pID, getOperator(ctx))
+	res, err := c.usecase.FindHead(ctx, wsID, pID)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (c *DeploymentLoader) FindVersions(ctx context.Context, wsID gqlmodel.ID, p
 		projectID = &pid
 	}
 
-	res, err := c.usecase.FindVersions(ctx, wID, projectID, getOperator(ctx))
+	res, err := c.usecase.FindVersions(ctx, wID, projectID)
 	if err != nil {
 		return nil, err
 	}
