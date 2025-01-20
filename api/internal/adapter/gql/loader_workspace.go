@@ -42,7 +42,7 @@ func (c *WorkspaceLoader) FindByUser(ctx context.Context, uid gqlmodel.ID) ([]*g
 		return nil, err
 	}
 
-	res, err := c.usecase.FindByUser(ctx, userid, getAcOperator())
+	res, err := c.usecase.FindByUser(ctx, userid, getAcOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
