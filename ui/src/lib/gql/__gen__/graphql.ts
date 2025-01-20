@@ -693,7 +693,7 @@ export enum TimeInterval {
   EveryWeek = 'EVERY_WEEK'
 }
 
-export type Trigger = {
+export type Trigger = Node & {
   __typename?: 'Trigger';
   authToken?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['DateTime']['output'];
@@ -931,7 +931,7 @@ export type GetProjectByIdQueryVariables = Exact<{
 export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | (
     { __typename: 'Project' }
     & { ' $fragmentRefs'?: { 'ProjectFragment': ProjectFragment } }
-  ) | { __typename: 'User' } | { __typename: 'Workspace' } | null };
+  ) | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace' } | null };
 
 export type UpdateProjectMutationVariables = Exact<{
   input: UpdateProjectInput;
@@ -1038,7 +1038,7 @@ export type GetWorkspaceByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'Project' } | { __typename: 'User' } | (
+export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'Project' } | { __typename: 'Trigger' } | { __typename: 'User' } | (
     { __typename: 'Workspace' }
     & { ' $fragmentRefs'?: { 'WorkspaceFragment': WorkspaceFragment } }
   ) | null };
