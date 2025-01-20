@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -18,7 +17,6 @@ import (
 )
 
 type Trigger struct {
-	common
 	triggerRepo    repo.Trigger
 	deploymentRepo repo.Deployment
 	jobRepo        repo.Job
@@ -42,22 +40,19 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 	}
 }
 
-func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID, operator *usecase.Operator) ([]*trigger.Trigger, error) {
+func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Trigger, error) {
 	return i.triggerRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *interfaces.PaginationParam, operator *usecase.Operator) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
-	if err := i.CanReadWorkspace(id, operator); err != nil {
-		return nil, nil, err
-	}
+func (i *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	return i.triggerRepo.FindByWorkspace(ctx, id, p)
 }
 
-func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID, operator *usecase.Operator) (*trigger.Trigger, error) {
+func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {
 	return i.triggerRepo.FindByID(ctx, id)
 }
 
-func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam, operator *usecase.Operator) (result *trigger.Trigger, err error) {
+func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -101,7 +96,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 	return trg, nil
 }
 
-func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam, operator *usecase.Operator) (_ *job.Job, err error) {
+func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (_ *job.Job, err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -158,7 +153,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 
 	j.SetGCPJobID(gcpJobID)
 
-	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL, operator); err != nil {
+	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
 		return nil, err
 	}
 
@@ -167,7 +162,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	return j, nil
 }
 
-func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam, operator *usecase.Operator) (_ *trigger.Trigger, err error) {
+func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam) (_ *trigger.Trigger, err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -214,7 +209,7 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 	return t, nil
 }
 
-func (i *Trigger) Delete(ctx context.Context, id id.TriggerID, operator *usecase.Operator) (err error) {
+func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return

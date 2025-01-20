@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -50,7 +49,7 @@ func TestTrigger_Create(t *testing.T) {
 		TimeInterval: "EVERY_DAY",
 	}
 
-	got, err := i.Create(ctx, param, &usecase.Operator{})
+	got, err := i.Create(ctx, param)
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.Equal(t, wid, got.Workspace())
@@ -67,7 +66,7 @@ func TestTrigger_Create(t *testing.T) {
 		AuthToken:    "token123",
 	}
 
-	got, err = i.Create(ctx, param, &usecase.Operator{})
+	got, err = i.Create(ctx, param)
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.Equal(t, "API trigger", got.Description())
@@ -75,7 +74,7 @@ func TestTrigger_Create(t *testing.T) {
 	assert.Equal(t, "token123", *got.AuthToken())
 
 	param.DeploymentID = id.NewDeploymentID()
-	got, err = i.Create(ctx, param, &usecase.Operator{})
+	got, err = i.Create(ctx, param)
 	assert.Error(t, err)
 	assert.Nil(t, got)
 }
@@ -133,7 +132,7 @@ func TestTrigger_Update(t *testing.T) {
 		AuthToken:   "newtoken",
 	}
 
-	got, err := i.Update(ctx, param, &usecase.Operator{})
+	got, err := i.Update(ctx, param)
 	assert.NoError(t, err)
 	assert.Equal(t, "Updated trigger", got.Description())
 	assert.Equal(t, trigger.EventSourceTypeAPIDriven, got.EventSource())
@@ -148,14 +147,14 @@ func TestTrigger_Update(t *testing.T) {
 		TimeInterval: "EVERY_HOUR",
 	}
 
-	got, err = i.Update(ctx, param, &usecase.Operator{})
+	got, err = i.Update(ctx, param)
 	assert.NoError(t, err)
 	assert.Equal(t, newDid, got.Deployment())
 	assert.Equal(t, trigger.TimeIntervalEveryHour, *got.TimeInterval())
 
 	// Test updating with invalid trigger ID
 	param.ID = id.NewTriggerID()
-	got, err = i.Update(ctx, param, &usecase.Operator{})
+	got, err = i.Update(ctx, param)
 	assert.Error(t, err)
 	assert.Nil(t, got)
 
@@ -163,7 +162,7 @@ func TestTrigger_Update(t *testing.T) {
 	invalidDid := id.NewDeploymentID()
 	param.ID = tid
 	param.DeploymentID = &invalidDid
-	got, err = i.Update(ctx, param, &usecase.Operator{})
+	got, err = i.Update(ctx, param)
 	assert.Error(t, err)
 	assert.Nil(t, got)
 }
@@ -205,7 +204,7 @@ func TestTrigger_Fetch(t *testing.T) {
 	job := NewJob(&repo, gateway)
 	i := NewTrigger(&repo, gateway, job)
 
-	got, err := i.Fetch(ctx, []id.TriggerID{tid1, tid2}, &usecase.Operator{})
+	got, err := i.Fetch(ctx, []id.TriggerID{tid1, tid2})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(got))
 	assert.Equal(t, tid1, got[0].ID())
@@ -238,7 +237,7 @@ func TestTrigger_Delete(t *testing.T) {
 	job := NewJob(&repo, gateway)
 	i := NewTrigger(&repo, gateway, job)
 
-	err := i.Delete(ctx, tid, &usecase.Operator{})
+	err := i.Delete(ctx, tid)
 	assert.NoError(t, err)
 
 	var count int64
@@ -246,6 +245,6 @@ func TestTrigger_Delete(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), count)
 
-	err = i.Delete(ctx, id.NewTriggerID(), &usecase.Operator{})
+	err = i.Delete(ctx, id.NewTriggerID())
 	assert.NoError(t, err)
 }
