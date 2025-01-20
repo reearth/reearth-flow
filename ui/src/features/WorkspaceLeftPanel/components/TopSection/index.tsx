@@ -38,8 +38,8 @@ const TopSection: React.FC<Props> = ({ route }) => {
       <div className="flex flex-1 flex-col gap-2 px-4">
         <ProjectManager selected={route === "projects"} />
         <DeploymentManager selected={route === "deployments"} />
-        <JobManager selected={route === "jobs"} />
         <TriggerManager selected={route === "triggers"} />
+        <JobManager selected={route === "jobs"} />
       </div>
     </div>
   );
