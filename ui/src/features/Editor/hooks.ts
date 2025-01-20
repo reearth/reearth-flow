@@ -112,11 +112,11 @@ export default ({
       nodeType?: ActionNodeType,
       isMainWorkflow?: boolean,
     ) => {
-      if ((!isMainWorkflow && nodeType === "reader") || hasReader) {
+      if ((isMainWorkflow === false && nodeType === "reader") || hasReader) {
         return;
       }
 
-      if (!isMainWorkflow && nodeType === "writer") {
+      if (isMainWorkflow === false && nodeType === "writer") {
         return;
       }
 
@@ -126,7 +126,6 @@ export default ({
     },
     [hasReader],
   );
-
   const handleNodePickerClose = useCallback(
     () => setNodePickerOpen(undefined),
     [],

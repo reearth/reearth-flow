@@ -76,7 +76,8 @@ export default function Editor({
             onWorkflowRedo={handleWorkflowRedo}
             onNodesChange={handleNodesUpdate}
             onNodePickerClose={handleNodePickerClose}
-            isMainWorkflow={isMainWorkflow}>
+            isMainWorkflow={isMainWorkflow}
+            hasReader={hasReader}>
             <Canvas
               nodes={nodes}
               edges={edges}

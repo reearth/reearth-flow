@@ -33,6 +33,7 @@ type Props = {
   onUndo?: () => void;
   isMainWorkflow: boolean;
   nodes: Node[];
+  hasReader: boolean;
 };
 
 const Toolbox: React.FC<Props> = ({
@@ -41,7 +42,7 @@ const Toolbox: React.FC<Props> = ({
   onRedo,
   onUndo,
   isMainWorkflow,
-  nodes,
+  hasReader,
 }) => {
   const t = useT();
   const availableTools: Tool[] = [
@@ -80,7 +81,7 @@ const Toolbox: React.FC<Props> = ({
       return tool.id !== "reader" && tool.id !== "writer";
     }
 
-    if (isMainWorkflow && nodes?.some((node) => node.type === "reader")) {
+    if (isMainWorkflow && hasReader) {
       return tool.id !== "reader";
     }
     return true;

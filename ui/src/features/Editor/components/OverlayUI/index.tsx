@@ -31,6 +31,7 @@ type OverlayUIProps = {
   onWorkflowRedo: () => void;
   isMainWorkflow: boolean;
   children?: React.ReactNode;
+  hasReader: boolean;
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({
@@ -45,6 +46,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onWorkflowUndo,
   onWorkflowRedo,
   isMainWorkflow,
+  hasReader,
   children: canvas,
 }) => {
   // const { devMode } = config();
@@ -62,6 +64,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           onUndo={onWorkflowUndo}
           isMainWorkflow={isMainWorkflow}
           nodes={nodes}
+          hasReader={hasReader}
         />
         <ActionBar
           allowedToDeploy={allowedToDeploy}
