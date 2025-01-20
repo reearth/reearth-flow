@@ -204,6 +204,7 @@
   "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "Esta acción no se puede deshacer. Esto eliminará permanentemente tu disparador y eliminará tus datos de nuestros servidores.",
   "Deployment Id": "",
   "Event Source": "Fuente del evento",
+  "Time Interval": "",
   "Last Triggered": "Última activación",
   "Update Trigger": "Actualizar disparador",
   "Trigger Details": "Detalles del disparador",

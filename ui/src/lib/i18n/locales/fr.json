@@ -204,6 +204,7 @@
   "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "Cette action est irréversible. Cela supprimera définitivement votre déclencheur et supprimera vos données de nos serveurs.",
   "Deployment Id": "",
   "Event Source": "Source de l'événement",
+  "Time Interval": "",
   "Last Triggered": "Dernier déclenchement",
   "Update Trigger": "Mettre à jour le déclencheur",
   "Trigger Details": "Détails du déclencheur",

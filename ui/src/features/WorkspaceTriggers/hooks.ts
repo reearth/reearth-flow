@@ -1,4 +1,4 @@
-import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useTrigger } from "@flow/lib/gql";
@@ -11,7 +11,6 @@ import { RouteOption } from "../WorkspaceLeftPanel";
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { history } = useRouter();
 
   const [openTriggerAddDialog, setOpenTriggerAddDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
@@ -52,9 +51,8 @@ export default () => {
 
       await useDeleteTrigger(t.id, currentWorkspace.id);
       setTriggerToBeDeleted(undefined);
-      history.go(-1);
     },
-    [currentWorkspace, triggerToBeDeleted, triggers, history, useDeleteTrigger],
+    [currentWorkspace, triggerToBeDeleted, triggers, useDeleteTrigger],
   );
 
   useEffect(() => {

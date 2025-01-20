@@ -204,6 +204,7 @@
   "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "此操作无法撤销。这将永久删除您的触发器并从我们的服务器中删除您的数据。",
   "Deployment Id": "",
   "Event Source": "事件源",
+  "Time Interval": "",
   "Last Triggered": "最后触发时间",
   "Update Trigger": "更新触发器",
   "Trigger Details": "触发器详情",

@@ -204,6 +204,7 @@
   "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "この操作は元に戻すことができません。この操作はトリガーを完全に削除し、データをサーバーから削除します。",
   "Deployment Id": "",
   "Event Source": "イベントソース",
+  "Time Interval": "",
   "Last Triggered": "最終トリガー",
   "Update Trigger": "トリガーを更新",
   "Trigger Details": "トリガー詳細",
